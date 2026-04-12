@@ -177,6 +177,12 @@
   5. Create developer documentation
 - **Definition of Done**: Users and developers understand invitation flow
 
+### Phase 4 Remaining Work (Current)
+- **Still pending before Phase 4 can be called complete**:
+  1. Replace external QR generation (`api.qrserver.com`) with local QR generation library/output in workspace invite UI
+  2. Run full verification pass for invite methods together (email invite, link/code, QR, CSV, org-member quick invite, status history)
+  3. Keep invitation docs aligned with final QR implementation details and final UI wording
+
 ---
 
 ## Phase 5: Chat & Communication (Medium Priority)

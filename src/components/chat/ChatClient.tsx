@@ -13,7 +13,7 @@ import { useSocket } from "~/components/providers/SocketProvider";
 import { useSocketEvent } from "~/lib/useSocketEvent";
 
 type ChatMessage = RouterOutputs["chat"]["listMessages"]["messages"][number];
-type WorkspaceMember = RouterOutputs["organization"]["getMembers"][number];
+type ParticipantSuggestion = RouterOutputs["chat"]["getParticipantSuggestions"];
 
 export function ChatClient({ userId }: { userId: string }) {
   const t = useTranslations("chat.direct");
@@ -38,16 +38,13 @@ export function ChatClient({ userId }: { userId: string }) {
   const searchParams = useSearchParams();
   const { startUpload } = useUploadThing("chatAttachment");
 
-  // Get user profile to find active organization
-  const profileQuery = api.user.getProfile.useQuery();
-  const activeOrgId = profileQuery.data?.activeOrganizationId;
-
-  // Get workspace members from active organization
-  const workspaceMembersQuery = api.organization.getMembers.useQuery(
-    { organizationId: activeOrgId ?? -1 },
-    { enabled: !!activeOrgId }
-  );
-  const workspaceMembers = workspaceMembersQuery.data ?? [];
+  const participantSuggestionsQuery = api.chat.getParticipantSuggestions.useQuery();
+  const participantSuggestions: ParticipantSuggestion = participantSuggestionsQuery.data ?? {
+    organizationMembers: [],
+    recentContacts: [],
+    projectSuggestions: [],
+  };
+  const workspaceMembers = participantSuggestions.organizationMembers;
 
   // Get all conversations (real-time updates via Socket.IO)
   const conversationsQuery = api.chat.listAllConversations.useQuery(undefined);
@@ -173,29 +170,7 @@ export function ChatClient({ userId }: { userId: string }) {
     { enabled: newChatEmail.trim().length > 3 && newChatEmail.includes("@"), retry: false }
   );
 
-  const recentContacts = useMemo(() => {
-    const latestByUser = new Map<
-      string,
-      { id: string; name: string | null; email: string | null; image: string | null; lastMessageAt: Date | null }
-    >();
-    for (const conv of conversations) {
-      const otherUser = conv.userOne.id === userId ? conv.userTwo : conv.userOne;
-      const existing = latestByUser.get(otherUser.id);
-      const convLastMessageAt = conv.lastMessageAt ? new Date(conv.lastMessageAt) : null;
-      if (!existing) {
-        latestByUser.set(otherUser.id, { ...otherUser, lastMessageAt: convLastMessageAt });
-        continue;
-      }
-      const existingTime = existing.lastMessageAt?.getTime() ?? 0;
-      const nextTime = convLastMessageAt?.getTime() ?? 0;
-      if (nextTime > existingTime) {
-        latestByUser.set(otherUser.id, { ...otherUser, lastMessageAt: convLastMessageAt });
-      }
-    }
-    return Array.from(latestByUser.values())
-      .sort((a, b) => (b.lastMessageAt?.getTime() ?? 0) - (a.lastMessageAt?.getTime() ?? 0))
-      .map(({ lastMessageAt: _lastMessageAt, ...user }) => user);
-  }, [conversations, userId]);
+  const recentContacts = participantSuggestions.recentContacts;
 
   // Filter workspace members based on search input
   const filteredMemberSuggestions = useMemo(() => {
@@ -222,6 +197,21 @@ export function ChatClient({ userId }: { userId: string }) {
       )
       .slice(0, 8);
   }, [recentContacts, newChatEmail]);
+  const filteredProjectSuggestions = useMemo(() => {
+    const query = newChatEmail.toLowerCase().trim();
+    if (!query) return participantSuggestions.projectSuggestions.slice(0, 6);
+    return participantSuggestions.projectSuggestions
+      .map((project) => ({
+        ...project,
+        members: project.members.filter(
+          (member) =>
+            (member.name?.toLowerCase() ?? "").includes(query) ||
+            (member.email?.toLowerCase() ?? "").includes(query),
+        ),
+      }))
+      .filter((project) => project.members.length > 0)
+      .slice(0, 6);
+  }, [participantSuggestions.projectSuggestions, newChatEmail]);
 
   // Create new conversation
   const createConversation = api.chat.getOrCreateDirectConversation.useMutation({
@@ -276,7 +266,7 @@ export function ChatClient({ userId }: { userId: string }) {
     }
   }, [showChatMenu]);
 
-  const handleSelectMember = (member: WorkspaceMember) => {
+  const handleSelectMember = (member: { id: string }) => {
     createConversation.mutate({ otherUserId: member.id });
   };
 
@@ -484,7 +474,7 @@ export function ChatClient({ userId }: { userId: string }) {
                     {filteredRecentContacts.map((member) => (
                       <button
                         key={`recent-${member.id}`}
-                        onClick={() => handleSelectMember(member as WorkspaceMember)}
+                        onClick={() => handleSelectMember(member)}
                         disabled={createConversation.isPending}
                         className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-bg-elevated transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-left min-h-11"
                       >
@@ -511,8 +501,37 @@ export function ChatClient({ userId }: { userId: string }) {
                 </div>
               )}
 
+              {/* Project members quick-add section */}
+              {filteredProjectSuggestions.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 px-3 py-2">
+                    <Users size={16} className="text-fg-tertiary" />
+                    <p className="text-xs font-semibold text-fg-tertiary uppercase">{t("projectMembersQuickAdd")}</p>
+                  </div>
+                  <div className="space-y-2 max-h-52 overflow-y-auto">
+                    {filteredProjectSuggestions.map((project) => (
+                      <div key={project.projectId} className="rounded-lg border border-white/[0.06] p-2">
+                        <p className="px-1 pb-1 text-[11px] font-semibold text-fg-tertiary truncate">{project.projectTitle}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {project.members.slice(0, 6).map((member) => (
+                            <button
+                              key={`project-${project.projectId}-${member.id}`}
+                              onClick={() => handleSelectMember(member)}
+                              disabled={createConversation.isPending}
+                              className="rounded-full bg-bg-primary px-3 py-1.5 text-xs text-fg-secondary border border-white/[0.08] hover:border-accent-primary/35 hover:text-fg-primary transition min-h-11"
+                            >
+                              {member.name ?? member.email}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Workspace Members Section */}
-              {activeOrgId && filteredMemberSuggestions.length > 0 && (
+              {filteredMemberSuggestions.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 px-3 py-2">
                     <Users size={16} className="text-fg-tertiary" />
@@ -593,7 +612,7 @@ export function ChatClient({ userId }: { userId: string }) {
               )}
 
               {/* Empty State */}
-              {!newChatEmail.trim() && filteredMemberSuggestions.length === 0 && activeOrgId && (
+              {!newChatEmail.trim() && filteredMemberSuggestions.length === 0 && (
                 <p className="text-sm text-fg-tertiary text-center py-4">{t("noWorkspaceMembersAvailable")}</p>
               )}
             </div>

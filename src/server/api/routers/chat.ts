@@ -49,6 +49,169 @@ function normalizePair(a: string, b: string): { userOneId: string; userTwoId: st
 }
 
 export const chatRouter = createTRPCRouter({
+  getParticipantSuggestions: protectedProcedure
+    .query(async ({ ctx }) => {
+      const selfId: string = ctx.session.user.id;
+
+      let activeOrganizationId: number | null = null;
+      const [selfUser] = await ctx.db
+        .select({ activeOrganizationId: users.activeOrganizationId })
+        .from(users)
+        .where(eq(users.id, selfId))
+        .limit(1);
+      activeOrganizationId = selfUser?.activeOrganizationId ?? null;
+
+      const orgMembers = activeOrganizationId
+        ? await ctx.db
+            .select({
+              id: users.id,
+              name: users.name,
+              email: users.email,
+              image: users.image,
+            })
+            .from(organizationMembers)
+            .innerJoin(users, eq(users.id, organizationMembers.userId))
+            .where(eq(organizationMembers.organizationId, activeOrganizationId))
+            .orderBy(asc(users.name))
+        : [];
+
+      const memberships = await ctx.db
+        .select({ organizationId: organizationMembers.organizationId })
+        .from(organizationMembers)
+        .where(eq(organizationMembers.userId, selfId));
+      const orgIds = memberships.map((m) => m.organizationId);
+
+      const userProjects = orgIds.length
+        ? await ctx.db
+            .select({ id: projects.id, title: projects.title, createdById: projects.createdById })
+            .from(projects)
+            .where(
+              or(
+                inArray(projects.organizationId, orgIds),
+                eq(projects.createdById, selfId),
+              ),
+            )
+        : await ctx.db
+            .select({ id: projects.id, title: projects.title, createdById: projects.createdById })
+            .from(projects)
+            .where(eq(projects.createdById, selfId));
+
+      const projectIds = userProjects.map((p) => p.id);
+      const projectCollaboratorRows = projectIds.length
+        ? await ctx.db
+            .select({
+              projectId: projectCollaborators.projectId,
+              id: users.id,
+              name: users.name,
+              email: users.email,
+              image: users.image,
+            })
+            .from(projectCollaborators)
+            .innerJoin(users, eq(users.id, projectCollaborators.collaboratorId))
+            .where(inArray(projectCollaborators.projectId, projectIds))
+        : [];
+      const ownerIds = Array.from(new Set(userProjects.map((p) => p.createdById).filter((id) => id !== selfId)));
+      const projectOwners = ownerIds.length
+        ? await ctx.db
+            .select({ id: users.id, name: users.name, email: users.email, image: users.image })
+            .from(users)
+            .where(inArray(users.id, ownerIds))
+        : [];
+      const ownersById = new Map(projectOwners.map((o) => [o.id, o] as const));
+
+      const allConversationRows = await ctx.db
+        .select({
+          id: directConversations.id,
+          userOneId: directConversations.userOneId,
+          userTwoId: directConversations.userTwoId,
+          lastMessageAt: directConversations.lastMessageAt,
+          projectId: directConversations.projectId,
+        })
+        .from(directConversations)
+        .where(or(eq(directConversations.userOneId, selfId), eq(directConversations.userTwoId, selfId)))
+        .orderBy(desc(directConversations.lastMessageAt));
+
+      const projectMembersMap = new Map<number, Array<{ id: string; name: string | null; email: string | null; image: string | null }>>();
+      for (const project of userProjects) {
+        projectMembersMap.set(project.id, []);
+      }
+      for (const row of projectCollaboratorRows) {
+        const list = projectMembersMap.get(row.projectId) ?? [];
+        list.push({ id: row.id, name: row.name, email: row.email, image: row.image });
+        projectMembersMap.set(row.projectId, list);
+      }
+      for (const project of userProjects) {
+        const list = projectMembersMap.get(project.id) ?? [];
+        if (project.createdById !== selfId && !list.some((m) => m.id === project.createdById)) {
+          const owner = ownersById.get(project.createdById);
+          if (owner) list.push(owner);
+          projectMembersMap.set(project.id, list);
+        }
+      }
+
+      const recentByUser = new Map<string, { id: string; name: string | null; email: string | null; image: string | null; lastMessageAt: Date | null }>();
+      const convoUserIds = new Set<string>();
+      for (const c of allConversationRows) {
+        convoUserIds.add(c.userOneId);
+        convoUserIds.add(c.userTwoId);
+      }
+      convoUserIds.delete(selfId);
+      const convoUsers = convoUserIds.size
+        ? await ctx.db
+            .select({ id: users.id, name: users.name, email: users.email, image: users.image })
+            .from(users)
+            .where(inArray(users.id, Array.from(convoUserIds)))
+        : [];
+      const convoUserMap = new Map(convoUsers.map((u) => [u.id, u] as const));
+      for (const convo of allConversationRows) {
+        const otherUserId = convo.userOneId === selfId ? convo.userTwoId : convo.userOneId;
+        const other = convoUserMap.get(otherUserId);
+        if (!other) continue;
+        const prev = recentByUser.get(otherUserId);
+        const nextTs = convo.lastMessageAt?.getTime() ?? 0;
+        const prevTs = prev?.lastMessageAt?.getTime() ?? 0;
+        if (!prev || nextTs > prevTs) {
+          recentByUser.set(otherUserId, {
+            id: other.id,
+            name: other.name,
+            email: other.email,
+            image: other.image,
+            lastMessageAt: convo.lastMessageAt,
+          });
+        }
+      }
+
+      const sortByName = (a: { name: string | null; email: string | null }, b: { name: string | null; email: string | null }) =>
+        (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? "", undefined, { sensitivity: "base" });
+
+      const uniqueOrgMembers = orgMembers
+        .filter((m) => m.id !== selfId)
+        .sort(sortByName);
+      const uniqueRecentContacts = Array.from(recentByUser.values())
+        .sort((a, b) => (b.lastMessageAt?.getTime() ?? 0) - (a.lastMessageAt?.getTime() ?? 0))
+        .map(({ lastMessageAt: _ts, ...u }) => u);
+      const projectSuggestions = userProjects
+        .map((p) => ({
+          projectId: p.id,
+          projectTitle: p.title,
+          members: Array.from(
+            new Map(
+              (projectMembersMap.get(p.id) ?? [])
+                .filter((m) => m.id !== selfId)
+                .map((m) => [m.id, m] as const),
+            ).values(),
+          ).sort(sortByName),
+        }))
+        .filter((p) => p.members.length > 0)
+        .slice(0, 12);
+
+      return {
+        organizationMembers: uniqueOrgMembers,
+        recentContacts: uniqueRecentContacts.slice(0, 12),
+        projectSuggestions,
+      };
+    }),
+
   listProjectUsers: protectedProcedure
     .input(z.object({ projectId: z.number() }))
     .query(async ({ ctx, input }) => {

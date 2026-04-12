@@ -1142,6 +1142,7 @@
       "searchByNameOrEmail": "Search by name or email...",
       "workspaceMembers": "Workspace Members",
       "recentContacts": "Recent contacts",
+      "projectMembersQuickAdd": "Add from project members",
       "searchResults": "Search Results",
       "searching": "Searching...",
       "userNotFound": "User not found",
