@@ -4,14 +4,31 @@ import { z } from "zod";
 export const env = createEnv({
 
   server: {
-    AUTH_SECRET: z.string().optional(),
+    // ---------------------------------------------------------------------
+    // Required. These were all `.optional()`, which defeated the point of
+    // validating: a deploy missing its auth secret or database URL booted
+    // successfully and failed later in confusing ways — the DB layer silently
+    // substituted a hardcoded localhost connection string. Fail fast instead.
+    //
+    // Set SKIP_ENV_VALIDATION=1 for lint/typecheck/CI steps that don't need a
+    // real environment.
+    // ---------------------------------------------------------------------
+
+    // 32-char floor mirrors the check ws-server already enforced on its own
+    // secret; a short secret weakens JWT and cookie signing.
+    AUTH_SECRET: z.string().min(32),
+    DATABASE_URL: z.string().url(),
+    WS_SECRET: z.string().min(32),
+
+    // ---------------------------------------------------------------------
+    // Optional: these features degrade cleanly when unset.
+    // ---------------------------------------------------------------------
     AUTH_DISCORD_ID: z.string().optional(),
     AUTH_DISCORD_SECRET: z.string().optional(),
     AUTH_GOOGLE_ID: z.string().optional(),
     AUTH_GOOGLE_SECRET: z.string().optional(),
     AUTH_MICROSOFT_ID: z.string().optional(),
     AUTH_MICROSOFT_SECRET: z.string().optional(),
-    DATABASE_URL: z.string().optional(),
 
     // LLM Agent System (OpenAI-compatible — can point to HuggingFace, OpenAI, etc.)
     LLM_BASE_URL: z.string().url().optional(),
@@ -24,11 +41,6 @@ export const env = createEnv({
     RESEND_API_KEY: z.string().optional(),
     RESEND_FROM_EMAIL: z.string().optional(),
 
-    // Used for building absolute URLs in emails
-    NEXT_PUBLIC_APP_URL: z.string().optional(),
-
-    // WebSocket (standalone WS server)
-    WS_SECRET: z.string().optional(),
     WS_INTERNAL_URL: z.string().optional(),
 
     NODE_ENV: z
@@ -39,6 +51,11 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: z.string().optional(),
     NEXT_PUBLIC_WS_URL: z.string().optional(),
+    // Declared here rather than under `server`: the NEXT_PUBLIC_ prefix means
+    // Next inlines it into the client bundle, so validating it as a server-only
+    // variable was checking it in the wrong scope. Client vars stay readable on
+    // the server, so existing server-side reads are unaffected.
+    NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   },
 
 

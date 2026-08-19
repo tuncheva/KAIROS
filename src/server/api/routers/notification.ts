@@ -2,23 +2,39 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { notifications } from "~/server/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, count } from "drizzle-orm";
 import { emitNotification } from "~/server/socket/emit";
 
-export const notificationRouter = createTRPCRouter({
-  getAll: protectedProcedure.query(async ({ ctx }) => {
-    const userNotifications = await ctx.db
-      .select()
-      .from(notifications)
-      .where(eq(notifications.userId, ctx.session.user.id))
-      .orderBy(desc(notifications.createdAt));
+/**
+ * Cap on `getAll`. The notification bell shows a short list, so there is no
+ * reason to ship a user's entire history — and this query is polled on an
+ * interval, so an unbounded SELECT grows more expensive for every user forever.
+ */
+const MAX_NOTIFICATIONS = 50;
 
-    return userNotifications;
-  }),
+export const notificationRouter = createTRPCRouter({
+  getAll: protectedProcedure
+    .input(
+      z
+        .object({ limit: z.number().int().min(1).max(MAX_NOTIFICATIONS).optional() })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const userNotifications = await ctx.db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, ctx.session.user.id))
+        .orderBy(desc(notifications.createdAt))
+        .limit(input?.limit ?? MAX_NOTIFICATIONS);
+
+      return userNotifications;
+    }),
 
   getUnreadCount: protectedProcedure.query(async ({ ctx }) => {
-    const unreadNotifications = await ctx.db
-      .select()
+    // COUNT(*) in the database rather than fetching every unread row and taking
+    // `.length` — this runs on a poll interval for every signed-in user.
+    const [row] = await ctx.db
+      .select({ count: count() })
       .from(notifications)
       .where(
         and(
@@ -27,7 +43,7 @@ export const notificationRouter = createTRPCRouter({
         )
       );
 
-    return unreadNotifications.length;
+    return row?.count ?? 0;
   }),
 
   markAsRead: protectedProcedure

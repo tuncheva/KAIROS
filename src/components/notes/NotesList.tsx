@@ -16,7 +16,10 @@ export function NotesList() {
   const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<number, boolean>>({});
   const [passwordInputs, setPasswordInputs] = useState<Record<number, string>>({});
-  const [unlockedNotes, setUnlockedNotes] = useState<Record<number, { unlocked: boolean; content: string }>>({});
+  // `password` is retained in memory after a successful unlock so a later save
+  // can re-encrypt with it: the server refuses to write a password-protected
+  // note without its password (writing plaintext would strip the encryption).
+  const [unlockedNotes, setUnlockedNotes] = useState<Record<number, { unlocked: boolean; content: string; password: string }>>({});
   const [passwordErrors, setPasswordErrors] = useState<Record<number, string>>({});
   const unlockAttemptsRef = useRef<Record<number, number>>({});
 
@@ -93,6 +96,7 @@ export function NotesList() {
           [variables.noteId]: {
             unlocked: true,
             content: data.content,
+            password: variables.password,
           },
         }));
         setPasswordInputs((prev) => ({ ...prev, [variables.noteId]: "" }));
@@ -239,7 +243,7 @@ export function NotesList() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {allNotes.map((note, index) => {
                 const unlockedState = unlockedNotes[note.id];
-                const isLocked = !!note.passwordHash && !unlockedState?.unlocked;
+                const isLocked = note.isPasswordProtected && !unlockedState?.unlocked;
                 const rawContent = unlockedState?.content ?? note.content ?? "";
                 const titleCandidate = rawContent.split("\n")[0]?.trim();
                 const firstLine =
@@ -301,7 +305,7 @@ export function NotesList() {
         const note = allNotes.find((n) => n.id === selectedNoteId);
         if (!note) return null;
         const unlockedState = unlockedNotes[note.id];
-        const isLocked = !!note.passwordHash && !unlockedState?.unlocked;
+        const isLocked = note.isPasswordProtected && !unlockedState?.unlocked;
 
         return (
           <div
@@ -359,6 +363,7 @@ export function NotesList() {
                     updateNote.mutate({
                       id: note.id,
                       content,
+                      password: unlockedState?.password,
                       calendarDate: editAddToCalendar ? (editCalendarDate ?? null) : null,
                     });
                   }}

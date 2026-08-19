@@ -118,7 +118,10 @@ export const noteRouter = createTRPCRouter({
             createdAt: n.createdAt,
             updatedAt: n.updatedAt,
             notebookId: n.notebookId,
-            passwordHash: n.passwordHash,
+            // Only the boolean, never the hash: the client needs to know a note
+            // is locked, and shipping the Argon2 hash to the browser hands out
+            // material for offline cracking.
+            isPasswordProtected: true,
             shareStatus: n.shareStatus,
             sharedWith,
             // content intentionally omitted
@@ -126,7 +129,12 @@ export const noteRouter = createTRPCRouter({
           };
         }
 
-        return { ...n, sharedWith };
+        // Drop the credential columns even on unprotected notes, so this
+        // endpoint can never return them regardless of the branch taken.
+        const { passwordHash, passwordSalt, ...rest } = n;
+        void passwordHash;
+        void passwordSalt;
+        return { ...rest, isPasswordProtected: false, sharedWith };
       });
     }),
 
@@ -152,9 +160,12 @@ export const noteRouter = createTRPCRouter({
         .innerJoin(users, eq(stickyNotes.createdById, users.id))
         .where(eq(noteShares.sharedWithId, ctx.session.user.id));
 
-      return shares.map((s) => ({
+      // Strip the hash before it leaves the server — this endpoint previously
+      // shipped the owner's note-password hash to every user it was shared with.
+      return shares.map(({ passwordHash, ...s }) => ({
         ...s,
-        content: s.passwordHash ? null : s.content,
+        isPasswordProtected: !!passwordHash,
+        content: passwordHash ? null : s.content,
       }));
     }),
 
@@ -474,14 +485,37 @@ export const noteRouter = createTRPCRouter({
         }
       }
 
-      // Re-encrypt if the note is password-protected and password is provided
       let storedContent = input.content;
-      if (note.passwordHash && note.passwordSalt && input.password) {
-        // Verify password matches before re-encrypting
+
+      if (note.passwordHash) {
+        // A password-protected note must never be written as plaintext.
+        //
+        // Previously, omitting `password` fell through and stored the new content
+        // unencrypted into a row that still had passwordHash/passwordSalt set.
+        // That both silently removed the encryption and bricked the note: every
+        // read path then ran decryptContent() over plaintext and threw, so the
+        // note became permanently unreadable through the UI. Anyone holding a
+        // write share could trigger it too, without ever knowing the password.
+        if (!input.password) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "This note is password protected. Unlock it with its password before saving changes.",
+          });
+        }
+
+        if (!note.passwordSalt) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Note is password protected but has no salt; it needs to be re-saved.",
+          });
+        }
+
         const isMatch = await argon2.verify(note.passwordHash, input.password);
         if (!isMatch) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Incorrect note password." });
         }
+
         storedContent = encryptContent(input.content, input.password, note.passwordSalt);
       }
 

@@ -331,9 +331,11 @@ These mutations also `throw new Error("You don't have permission…")` rather th
 
 ---
 
-### 22. Six unused dependencies, duplicate libraries, and two lockfiles
+### 22. Unused dependencies, duplicate libraries, and two lockfiles
 
-Verified absent from `src/`, `ws-server/`, `server.ts`: **`openai`** (LLM calls use raw `fetch` — `src/server/llm/llm/modelClient.ts:146`), **`bcrypt`**, **`bcryptjs`** (only `argon2` is used, in 4 files), **`@vercel/blob`** (UploadThing is the upload path), **`d3`**, **`motion`** (`framer-motion` is what's imported). `bcrypt` carries native bindings and `openai` is large — both slow installs and widen the supply-chain surface for nothing.
+**Correction:** this originally listed six unused packages including `motion`. `motion` **is** used — `AiTaskDraftPanel.tsx:16` and `AiTaskPlannerPanel.tsx:6` both `import { motion, AnimatePresence } from"motion/react"`, written with no space after `from`, which the detection grep required. Removing it broke the typecheck and it was restored at its original version range. A reminder that this codebase's inconsistent import formatting defeats naive pattern matching.
+
+Genuinely absent from `src/`, `ws-server/`, `server.ts` (re-verified space-insensitively and including subpath imports): **`openai`** (LLM calls use raw `fetch` — `src/server/llm/llm/modelClient.ts:146`), **`bcrypt`**, **`bcryptjs`** (only `argon2` is used, in 4 files), **`@vercel/blob`** (UploadThing is the upload path), and **`d3`**. `bcrypt` carries native bindings and `openai` is large — both slow installs and widen the supply-chain surface for nothing. **Fixed:** all five removed.
 
 Both `package-lock.json` (384 KB) and `pnpm-lock.yaml` (302 KB) are committed, alongside both `.npmrc` and `.pnpmrc`, while `postinstall` hardcodes `npm run`. Installs are not reproducible — resolved versions depend on which package manager runs.
 
@@ -445,6 +447,14 @@ Only `useTranslations` and `useLocale` are imported from next-intl anywhere in `
 > by 15 behavioural tests in `tests/server/authz.test.ts`. Two things surfaced during
 > the work and are recorded as #33 and #34 below. Still open from week 1: whether
 > account switching should require re-authentication (#3c).
+>
+> **Status — week 2 implemented.** #6 (code), #8, #9, #10, #11, #14, #15, #19, #20, #22
+> and #24 are fixed, with 11 new behavioural tests in `tests/server/authRateLimit.test.ts`.
+> Deferred with reasons: the `users.email` unique constraint (#6, needs a data migration
+> and a dedupe decision), persistent login lockout across restarts (#8, needs new
+> columns), and #7 email verification. **Correction to #22:** `motion` is used — the
+> imports are written `from"motion/react"` with no space, which the original grep
+> missed. Only five dependencies were genuinely unused.
 >
 > **Status — `pnpm check` and `pnpm test` now pass.** Both were red before this work:
 > lint reported 109 errors and 42 tests failed. `pnpm check` exits 0 (0 errors,

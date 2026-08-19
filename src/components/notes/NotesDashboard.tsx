@@ -61,7 +61,10 @@ export function NotesDashboard() {
   // ---- Password state ----
   const [passwordInputs, setPasswordInputs] = useState<Record<number, string>>({});
   const [showPasswords, setShowPasswords] = useState<Record<number, boolean>>({});
-  const [unlockedNotes, setUnlockedNotes] = useState<Record<number, { unlocked: boolean; content: string }>>({});
+  // `password` is retained in memory after a successful unlock so a later save
+  // can re-encrypt with it: the server refuses to write a password-protected
+  // note without its password (writing plaintext would strip the encryption).
+  const [unlockedNotes, setUnlockedNotes] = useState<Record<number, { unlocked: boolean; content: string; password: string }>>({});
   const [passwordErrors, setPasswordErrors] = useState<Record<number, string>>({});
   const unlockAttemptsRef = useRef<Record<number, number>>({});
   const [showResetPromptModal, setShowResetPromptModal] = useState<number | null>(null);
@@ -191,7 +194,7 @@ export function NotesDashboard() {
       if (data.valid && data.content) {
         setUnlockedNotes((prev) => ({
           ...prev,
-          [variables.noteId]: { unlocked: true, content: data.content },
+          [variables.noteId]: { unlocked: true, content: data.content, password: variables.password },
         }));
         setPasswordInputs((prev) => ({ ...prev, [variables.noteId]: "" }));
         setPasswordErrors((prev) => ({ ...prev, [variables.noteId]: "" }));
@@ -473,7 +476,7 @@ export function NotesDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filteredNotes.map((note) => {
                   const unlockedState = unlockedNotes[note.id];
-                  const isLocked = !!note.passwordHash && !unlockedState?.unlocked;
+                  const isLocked = note.isPasswordProtected && !unlockedState?.unlocked;
                   const rawContent = unlockedState?.content ?? note.content ?? "";
                   const title = note.title ?? rawContent.split("\n")[0]?.trim().substring(0, 60) ?? "";
                   const preview = rawContent.split("\n").slice(note.title ? 0 : 1).join("\n").trim().substring(0, 120);
@@ -734,7 +737,7 @@ export function NotesDashboard() {
               {selectedSharedNoteId && (() => {
                 const sn = sharedNotes?.find((n) => n.id === selectedSharedNoteId);
                 if (!sn) return null;
-                const canEdit = sn.permission === "write" && !sn.passwordHash;
+                const canEdit = sn.permission === "write" && !sn.isPasswordProtected;
                 return (
                   <div className="mb-6 p-5 rounded-xl border border-accent-primary/20 bg-bg-secondary space-y-4">
                     <div className="flex items-center justify-between">
@@ -816,10 +819,10 @@ export function NotesDashboard() {
                         <span className="text-xs text-fg-tertiary">{formatTime(note.createdAt)}</span>
                       </div>
                       <h3 className="text-sm font-bold text-fg-primary mb-2 group-hover:text-accent-primary transition-colors line-clamp-1">
-                        {note.passwordHash ? t("encryptedNote") : title}
+                        {note.isPasswordProtected ? t("encryptedNote") : title}
                       </h3>
                       <p className="text-fg-tertiary text-xs leading-relaxed mb-4 line-clamp-3">
-                        {note.passwordHash ? t("passwordProtected") : (preview || t("noContent"))}
+                        {note.isPasswordProtected ? t("passwordProtected") : (preview || t("noContent"))}
                       </p>
                       <div className="flex items-center gap-2 text-fg-tertiary">
                         <Users size={12} />
@@ -988,7 +991,7 @@ export function NotesDashboard() {
         const note = allNotes.find((n) => n.id === selectedNoteId);
         if (!note) return null;
         const unlockedState = unlockedNotes[note.id];
-        const isLocked = !!note.passwordHash && !unlockedState?.unlocked;
+        const isLocked = note.isPasswordProtected && !unlockedState?.unlocked;
 
         return (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={closeExpandedNote}>
@@ -1100,7 +1103,7 @@ export function NotesDashboard() {
                     onClick={() => {
                       const content = editingContent[note.id] ?? (unlockedState?.content ?? note.content ?? "");
                       const title = editingTitle[note.id] ?? note.title ?? "";
-                      updateNote.mutate({ id: note.id, content, title: title || undefined });
+                      updateNote.mutate({ id: note.id, content, title: title || undefined, password: unlockedState?.password });
                     }}
                     disabled={updateNote.isPending}
                     className="w-full mt-4 kairos-neon-btn text-white font-bold py-3 rounded-xl disabled:opacity-50 text-sm"

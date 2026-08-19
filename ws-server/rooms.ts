@@ -30,9 +30,16 @@ export type AuthSocket = Socket<
   WsSocketData
 >;
 
-const DATABASE_URL =
-  process.env.DATABASE_URL ??
-  "postgres://postgres:postgres@localhost:5432/kairos";
+// This process doesn't import `~/env` (it runs outside the Next build), so it
+// validates for itself rather than silently falling back to a hardcoded
+// localhost connection string — which would mean authorizing room joins against
+// the wrong database.
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  console.error("FATAL: DATABASE_URL is not set. The WS server cannot authorize room joins.");
+  process.exit(1);
+}
 
 const sql = postgres(DATABASE_URL, {
   max: 3,

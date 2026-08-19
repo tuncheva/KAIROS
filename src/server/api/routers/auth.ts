@@ -96,6 +96,18 @@ export const authRouter = createTRPCRouter({
       const code = generateResetCode();
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
+      // Issuing a new code retires any earlier ones, so only the most recent
+      // code is ever valid. Previously each request just inserted another row.
+      await ctx.db
+        .update(passwordResetCodes)
+        .set({ used: true })
+        .where(
+          and(
+            eq(passwordResetCodes.email, email),
+            eq(passwordResetCodes.used, false),
+          ),
+        );
+
       // Store the code in the database
       await ctx.db.insert(passwordResetCodes).values({
         email,
@@ -202,16 +214,31 @@ export const authRouter = createTRPCRouter({
         parallelism: 4,
       });
 
-      // Update password and mark code as used
+      // Scope the write by primary key, not by email.
+      //
+      // `users.email` carries no unique constraint, so `where(eq(users.email, …))`
+      // would rewrite the password of *every* account sharing this address — and
+      // duplicates are reachable, since signup does a check-then-insert with
+      // nothing to make it atomic and the OAuth adapter can create a second row
+      // for an address that already has a credentials account.
       await ctx.db
         .update(users)
         .set({ password: hashedPassword, updatedAt: new Date() })
-        .where(eq(users.email, email));
+        .where(eq(users.id, user.id));
 
+      // Invalidate every outstanding code for this address, not just the one
+      // consumed. Each request inserted a new row without expiring the previous
+      // ones, so up to 5 codes stayed valid per window — including after the
+      // password had already been changed.
       await ctx.db
         .update(passwordResetCodes)
         .set({ used: true })
-        .where(eq(passwordResetCodes.id, resetCode.id));
+        .where(
+          and(
+            eq(passwordResetCodes.email, email),
+            eq(passwordResetCodes.used, false),
+          ),
+        );
 
       return { success: true };
     }),

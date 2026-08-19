@@ -37,7 +37,6 @@ export const settingsRouter = createTRPCRouter({
           activityTracking: true,
           dataCollection: true,
         
-          twoFactorEnabled: true,
 
           notesKeepUnlockedUntilClose: true,
 
@@ -112,7 +111,6 @@ export const settingsRouter = createTRPCRouter({
   updateSecurity: protectedProcedure
     .input(
       z.object({
-        twoFactorEnabled: z.boolean().optional(),
         notesKeepUnlockedUntilClose: z.boolean().optional(),
       })
     )
@@ -194,7 +192,6 @@ export const settingsRouter = createTRPCRouter({
       showOnlineStatus: z.boolean().optional(),
       activityTracking: z.boolean().optional(),
       dataCollection: z.boolean().optional(),
-      twoFactorEnabled: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.update(users)

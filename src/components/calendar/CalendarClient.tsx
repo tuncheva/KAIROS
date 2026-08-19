@@ -45,7 +45,7 @@ type CalendarNote = {
   calendarDate: Date | string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
-  passwordHash: string | null;
+  isPasswordProtected: boolean;
   notebookId: number | null;
   createdById: string;
 };
@@ -272,7 +272,7 @@ export function CalendarClient() {
     }
     for (const n of data?.notes ?? []) {
       if (!n.calendarDate) continue;
-      items.push({ kind: "note", id: n.id, title: n.title ?? t("untitledNote"), locked: !!n.passwordHash, date: new Date(n.calendarDate) });
+      items.push({ kind: "note", id: n.id, title: n.title ?? t("untitledNote"), locked: n.isPasswordProtected, date: new Date(n.calendarDate) });
     }
     items.sort((a, b) => a.date.getTime() - b.date.getTime());
     return items;

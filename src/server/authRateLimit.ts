@@ -118,3 +118,27 @@ export function consumeAuthRateLimit(key: string): AuthRateLimitStatus {
 export function createAuthRateLimitKey(action: string, identifier: string): string {
   return `${action}:${identifier.toLowerCase()}`;
 }
+
+/**
+ * Record one failed attempt against a key, without throwing.
+ *
+ * `consumeAuthRateLimit` throws a TRPCError, which is the right shape for tRPC
+ * procedures but not for NextAuth's `authorize` — that must return `null` to
+ * signal a failed sign-in. Sign-in also counts only *failures*, so a user who
+ * legitimately signs in several times in a window is never locked out.
+ */
+export function recordAuthFailure(key: string): void {
+  const now = Date.now();
+  const cutoff = now - AUTH_WINDOW_MS;
+  const valid = (authAttemptLog.get(key) ?? []).filter((ts) => ts > cutoff);
+  valid.push(now);
+  authAttemptLog.set(key, valid);
+}
+
+/**
+ * Clear recorded attempts for a key. Called after a successful sign-in so a
+ * few mistyped passwords don't count against the user afterwards.
+ */
+export function clearAuthAttempts(key: string): void {
+  authAttemptLog.delete(key);
+}

@@ -8,6 +8,29 @@ import { env } from "~/env"
 import { eq } from "drizzle-orm";
 import * as argon2 from "argon2";
 import { decodeAccountSwitchCookie, getCookieFromHeader, ACCOUNT_SWITCH_COOKIE } from "~/server/accountSwitch";
+import {
+  checkAuthRateLimit,
+  clearAuthAttempts,
+  createAuthRateLimitKey,
+  recordAuthFailure,
+} from "~/server/authRateLimit";
+
+/**
+ * Best-effort client IP for rate limiting.
+ *
+ * Trusts `x-forwarded-for` / `x-real-ip`, which is only meaningful when the app
+ * sits behind a proxy that sets them; a client can otherwise spoof the header.
+ * That's acceptable here because the per-email limit is the real guard and this
+ * is a second axis, but it does mean the IP limit should not be relied on alone.
+ */
+function getClientIp(request: Request | undefined): string {
+  const forwarded = request?.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return request?.headers.get("x-real-ip") ?? "unknown";
+}
 
 import { db } from "~/server/db";
 import {
@@ -109,16 +132,40 @@ export const authConfig = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
+        const email = (credentials.email as string).toLowerCase();
+
+        // Brute-force protection. Sign-in does not go through tRPC, so the
+        // limiter guarding the auth router never covered this path: password
+        // guessing here was completely unbounded. Each attempt also runs Argon2id
+        // at 64MB, so an unthrottled flood is a memory-exhaustion vector as much
+        // as a credential-stuffing one.
+        //
+        // Limited on two axes so that neither a single account nor a single
+        // source can be hammered. Only failures count (see recordAuthFailure).
+        const emailKey = createAuthRateLimitKey("login", email);
+        const ipKey = createAuthRateLimitKey("login_ip", getClientIp(request));
+
+        if (!checkAuthRateLimit(emailKey).allowed || !checkAuthRateLimit(ipKey).allowed) {
+          // Deliberately the same generic failure as a wrong password: telling a
+          // caller they've been throttled confirms the account exists.
+          console.warn(`[auth] sign-in throttled for ${email}`);
+          return null;
+        }
+
         const user = await db.query.users.findFirst({
-          where: eq(users.email, credentials.email as string),
+          where: eq(users.email, email),
         });
 
         if (!user?.password) {
+          // Count misses too, so the endpoint can't be used to enumerate which
+          // addresses have credentials accounts.
+          recordAuthFailure(emailKey);
+          recordAuthFailure(ipKey);
           return null;
         }
 
@@ -128,8 +175,13 @@ export const authConfig = {
         );
 
         if (!isPasswordValid) {
+          recordAuthFailure(emailKey);
+          recordAuthFailure(ipKey);
           return null;
         }
+
+        clearAuthAttempts(emailKey);
+        clearAuthAttempts(ipKey);
 
         return {
           id: user.id,

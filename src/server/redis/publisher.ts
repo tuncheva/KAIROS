@@ -172,15 +172,17 @@ export function publishConversationEvent(
  * For events that need global broadcast, publish to a well-known room.
  */
 export function publishBroadcast(event: string, payload: unknown): void {
-  // Use the internal emit endpoint with a special "broadcast" room
-  // The WS server's /internal/emit already supports io.to(room)
-  // For true broadcast we emit to a room that all clients join isn't practical,
-  // so we use a direct HTTP call that hits io.emit (all sockets)
-  const body = JSON.stringify({ room: "__broadcast__", event, payload });
-
+  // Redis and the HTTP endpoint are alternatives, not a pair. This previously
+  // published via Redis *and then unconditionally* POSTed, so with Redis
+  // configured every broadcast was delivered to every client twice.
   if (REDIS_NATIVE_URL) {
     void publish("user", "__broadcast__", event, payload);
+    return;
   }
+
+  // HTTP fallback (dev / no Redis). The WS server maps the "__broadcast__" room
+  // to io.emit, since having every client join a shared room isn't practical.
+  const body = JSON.stringify({ room: "__broadcast__", event, payload });
 
   void fetch(`${WS_INTERNAL_URL}/internal/emit`, {
     method: "POST",
