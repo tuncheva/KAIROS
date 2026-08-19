@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   getPermissions,
   isViewOnlyRole,
-  type OrgRole,
   type RolePermissions,
 } from "~/lib/permissions";
 

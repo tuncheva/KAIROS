@@ -1,7 +1,21 @@
-import React from "react";
 import { describe, expect, it } from "vitest";
 
-function filterItems(items: any[], filters: {
+/**
+ * Shape of the calendar items this filter operates on. Previously typed `any[]`,
+ * which produced 20 lint errors and gave the test no protection against the
+ * production shape drifting away from it.
+ */
+interface CalendarItem {
+  kind: string;
+  id: number;
+  title: string;
+  status?: string;
+  priority?: string;
+  projectTitle?: string | null;
+  description?: string | null;
+}
+
+function filterItems(items: CalendarItem[], filters: {
   q: string;
   types: Set<string>;
   taskStatuses: Set<string>;
@@ -11,8 +25,8 @@ function filterItems(items: any[], filters: {
   return items.filter((item) => {
     if (!filters.types.has(item.kind)) return false;
     if (item.kind === "task") {
-      if (!filters.taskStatuses.has(item.status)) return false;
-      if (!filters.priorities.has(item.priority)) return false;
+      if (!filters.taskStatuses.has(item.status ?? "")) return false;
+      if (!filters.priorities.has(item.priority ?? "")) return false;
     }
     if (q.length > 0) {
       const hay = (

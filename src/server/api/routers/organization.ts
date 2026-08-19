@@ -581,7 +581,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin" || !caller.canManageRoles) {
+      if (caller?.role !== "admin" || !caller.canManageRoles) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "You do not have permission to update member permissions",
@@ -634,7 +634,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin" || !caller.canManageRoles) {
+      if (caller?.role !== "admin" || !caller.canManageRoles) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only admins with role management permission can change member roles",
@@ -740,7 +740,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin" || !caller.canKickMembers) {
+      if (caller?.role !== "admin" || !caller.canKickMembers) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "You do not have permission to remove members",
@@ -898,7 +898,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin" || !caller.canManageRoles) {
+      if (caller?.role !== "admin" || !caller.canManageRoles) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only admins with role management permission can create roles",
@@ -944,7 +944,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin" || !caller.canManageRoles) {
+      if (caller?.role !== "admin" || !caller.canManageRoles) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only admins with role management permission can delete roles",
@@ -1062,6 +1062,18 @@ export const organizationRouter = createTRPCRouter({
       const dbRole: ValidRole = validRoles.includes(input.role as ValidRole)
         ? (input.role as ValidRole)
         : "member";
+
+      // SECURITY: inviting an admin is role management, not member management.
+      // The caller check above admits any member holding `canAddMembers`, so
+      // without this a delegated inviter could invite an address they control as
+      // "admin" and escalate to full org control. Mirrors the guard in
+      // `updateMemberRole`.
+      if (dbRole === "admin" && !(caller.role === "admin" && caller.canManageRoles)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins with role management permission can invite admins",
+        });
+      }
 
       const [invite] = await ctx.db
         .insert(organizationInvites)
@@ -1400,7 +1412,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin") {
+      if (caller?.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only admins can view invites",
@@ -1438,7 +1450,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin") {
+      if (caller?.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only admins can view invite history",
@@ -1473,7 +1485,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin") {
+      if (caller?.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only admins can cancel invites",

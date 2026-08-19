@@ -213,7 +213,7 @@ export function useResolvedThemeColors() {
   const tick = useThemeColorTick();
 
   return useMemo(() => {
-    const accentPrimaryTriplet = resolveCssVarToTriplet("--accent-primary");
+    const accentPrimaryTriplet = tick >= 0 ? resolveCssVarToTriplet("--accent-primary") : null;
     const defaultPalette = ACCENT_PALETTES.violet ?? [];
 
     const generatePalette = (): string[] => {

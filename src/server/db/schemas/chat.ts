@@ -1,5 +1,5 @@
 import { type InferInsertModel, type InferSelectModel, sql } from "drizzle-orm";
-import { index, timestamp, varchar, integer, text } from "drizzle-orm/pg-core";
+import { index, integer } from "drizzle-orm/pg-core";
 import { createTable } from "./enums";
 import { users } from "./users";
 import { projects } from "./projects";

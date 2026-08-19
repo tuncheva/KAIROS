@@ -11,9 +11,9 @@
  */
 
 import { createServer } from "node:http";
-import { Server } from "socket.io";
+import { Server, type DefaultEventsMap } from "socket.io";
 import { verifyWsTicket } from "./auth";
-import { registerRoomHandlers } from "./rooms";
+import { registerRoomHandlers, type WsSocketData } from "./rooms";
 
 const WS_PORT = parseInt(process.env.WS_PORT ?? "3001", 10);
 const WS_SECRET = process.env.WS_SECRET;
@@ -81,7 +81,13 @@ const httpServer = createServer((req, res) => {
 
 // ── Socket.IO server ─────────────────────────────────────────────────
 
-const io = new Server(httpServer, {
+// Typed with WsSocketData so `socket.data` is checked rather than `any`.
+const io = new Server<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  WsSocketData
+>(httpServer, {
   cors: {
     origin: CORS_ORIGIN,
     credentials: true,
@@ -91,15 +97,44 @@ const io = new Server(httpServer, {
   pingTimeout: 20_000,
 });
 
+// ── Optional Redis peer-dependency shapes ────────────────────────────
+
+/** Minimal structural types for the optional `redis` / redis-adapter packages. */
+interface RedisClientLike {
+  connect: () => Promise<unknown>;
+  duplicate: () => RedisClientLike;
+  pSubscribe: (
+    pattern: string,
+    listener: (message: string, channel: string) => void,
+  ) => Promise<unknown>;
+}
+
+interface RedisModuleLike {
+  createClient: (options: { url: string }) => RedisClientLike;
+}
+
+interface RedisAdapterModuleLike {
+  createAdapter: (
+    pubClient: RedisClientLike,
+    subClient: RedisClientLike,
+  ) => Parameters<typeof io.adapter>[0];
+}
+
 // ── Optional Redis adapter (multi-instance) ──────────────────────────
 
 if (REDIS_NATIVE_URL) {
   void (async () => {
     try {
-      // @ts-expect-error -- redis is an optional peer dependency
-      const { createClient } = await import("redis");
+      // Both packages are optional peer dependencies that may not be installed,
+      // so their imports cannot be type-resolved. Absorb each into `unknown` and
+      // cast once against a declared shape, rather than letting `any` leak into
+      // every downstream call.
+      // @ts-expect-error -- redis is an optional peer dependency, may not be installed
+      const redisMod: unknown = await import("redis");
+      const { createClient } = redisMod as RedisModuleLike;
       // @ts-expect-error -- @socket.io/redis-adapter is an optional peer dependency
-      const { createAdapter } = await import("@socket.io/redis-adapter");
+      const adapterMod: unknown = await import("@socket.io/redis-adapter");
+      const { createAdapter } = adapterMod as RedisAdapterModuleLike;
 
       const pubClient = createClient({ url: REDIS_NATIVE_URL });
       const subClient = pubClient.duplicate();
@@ -159,7 +194,7 @@ io.use((socket, next) => {
 // ── Connection handler ───────────────────────────────────────────────
 
 io.on("connection", (socket) => {
-  const userId = socket.data.userId as string;
+  const userId = socket.data.userId;
   if (!userId) {
     socket.disconnect(true);
     return;

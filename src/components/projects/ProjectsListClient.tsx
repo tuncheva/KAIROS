@@ -62,7 +62,7 @@ function hasCollaborators(value: unknown): value is { collaborators: Array<{ id:
 function getUpdatedAt(value: unknown): string | Date | null {
  if (value == null || typeof value !== "object") return null;
  const v = value as Record<string, unknown>;
- if (v.updatedAt instanceof Date || typeof v.updatedAt === "string") return v.updatedAt as string | Date;
+ if (v.updatedAt instanceof Date || typeof v.updatedAt === "string") return v.updatedAt;
  return null;
 }
 

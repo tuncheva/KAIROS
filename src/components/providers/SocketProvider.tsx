@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -30,7 +31,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const tokenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch WS ticket from the API
-  const fetchToken = async (): Promise<string | null> => {
+  const fetchToken = useCallback(async (): Promise<string | null> => {
     try {
       const res = await fetch("/api/ws/token");
       if (!res.ok) return null;
@@ -47,7 +48,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     } catch {
       return null;
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -105,7 +106,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       });
       setConnected(false);
     };
-  }, [status, session?.user?.id]);
+  }, [status, session?.user?.id, fetchToken]);
 
   return (
     <SocketContext.Provider value={{ socket, connected }}>{children}</SocketContext.Provider>

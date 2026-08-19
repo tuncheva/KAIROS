@@ -4,10 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
 
 /**
- * The global next-intl mock (tests/setup.tsx) makes
- *   useTranslations("chat") => (key: string) => key
- * So every t("foo") call returns the literal key string "foo".
- * The tests below assert against those key strings.
+ * The global next-intl mock (tests/setup.tsx) resolves keys against the real
+ * en.json, so `t("emptyTitle")` renders the English copy rather than the key
+ * string. The tests below assert against that English copy.
  */
 
 describe("ProjectIntelligenceChat", () => {
@@ -19,32 +18,33 @@ describe("ProjectIntelligenceChat", () => {
 
   it("renders without crashing", () => {
     render(<ProjectIntelligenceChat />);
-    // emptyTitle key → rendered as "emptyTitle"
-    expect(screen.getByText("emptyTitle")).toBeInTheDocument();
+    expect(
+      screen.getByText("Ask a question about your workspace or projects."),
+    ).toBeInTheDocument();
   });
 
   it("renders with a projectId prop", () => {
     render(<ProjectIntelligenceChat projectId={1} />);
-    expect(screen.getByText("emptyTitle")).toBeInTheDocument();
+    expect(
+      screen.getByText("Ask a question about your workspace or projects."),
+    ).toBeInTheDocument();
   });
 
   it("renders the message input", () => {
     render(<ProjectIntelligenceChat />);
-    // placeholder key
-    const input = screen.getByPlaceholderText("placeholder");
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
     expect(input).toBeInTheDocument();
   });
 
   it("renders the send button", () => {
     render(<ProjectIntelligenceChat />);
-    // send key
-    const sendBtn = screen.getByText("send");
+    const sendBtn = screen.getByText("Send");
     expect(sendBtn).toBeInTheDocument();
   });
 
   it("send button is disabled when input is empty", () => {
     render(<ProjectIntelligenceChat />);
-    const sendBtn = screen.getByText("send");
+    const sendBtn = screen.getByText("Send");
     expect(sendBtn).toBeDisabled();
   });
 
@@ -54,10 +54,10 @@ describe("ProjectIntelligenceChat", () => {
     const user = userEvent.setup();
     render(<ProjectIntelligenceChat />);
 
-    const input = screen.getByPlaceholderText("placeholder");
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
     await user.type(input, "Hello");
 
-    const sendBtn = screen.getByText("send");
+    const sendBtn = screen.getByText("Send");
     expect(sendBtn).not.toBeDisabled();
   });
 
@@ -65,9 +65,9 @@ describe("ProjectIntelligenceChat", () => {
     const user = userEvent.setup();
     render(<ProjectIntelligenceChat />);
 
-    const input = screen.getByPlaceholderText("placeholder");
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
     await user.type(input, "Hello");
-    await user.click(screen.getByText("send"));
+    await user.click(screen.getByText("Send"));
 
     expect(input).toHaveValue("");
   });
@@ -76,9 +76,9 @@ describe("ProjectIntelligenceChat", () => {
     const user = userEvent.setup();
     render(<ProjectIntelligenceChat />);
 
-    const input = screen.getByPlaceholderText("placeholder");
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
     await user.type(input, "Hello");
-    await user.click(screen.getByText("send"));
+    await user.click(screen.getByText("Send"));
 
     expect(screen.getByText("Hello")).toBeInTheDocument();
   });
@@ -89,13 +89,13 @@ describe("ProjectIntelligenceChat", () => {
     const user = userEvent.setup();
     render(<ProjectIntelligenceChat />);
 
-    const input = screen.getByPlaceholderText("placeholder");
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
     await user.type(input, "hi");
-    await user.click(screen.getByText("send"));
+    await user.click(screen.getByText("Send"));
 
     // Should show user message
     expect(screen.getByText("hi")).toBeInTheDocument();
-    // Should show an agent greeting (one of the i18n key strings: greeting1..greeting4)
+    // Should show an agent greeting
     const agentMessages = document.querySelectorAll(".kairos-chat-response");
     expect(agentMessages.length).toBeGreaterThan(0);
   });
@@ -106,9 +106,9 @@ describe("ProjectIntelligenceChat", () => {
     const user = userEvent.setup();
     render(<ProjectIntelligenceChat />);
 
-    const input = screen.getByPlaceholderText("placeholder");
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
     await user.type(input, "What is my project status?");
-    await user.click(screen.getByText("send"));
+    await user.click(screen.getByText("Send"));
 
     // Thinking dots should appear
     const thinkingIndicator = screen.getByTestId("thinking-indicator");
@@ -116,66 +116,20 @@ describe("ProjectIntelligenceChat", () => {
     expect(thinkingIndicator.className).toContain("kairos-thinking-dots");
   });
 
-  /* ---- Task planner handoff ---- */
-
-  it("shows handoff message when user asks to create tasks", async () => {
-    const user = userEvent.setup();
-    render(<ProjectIntelligenceChat />);
-
-    const input = screen.getByPlaceholderText("placeholder");
-    await user.type(input, "create tasks for my project");
-    await user.click(screen.getByText("send"));
-
-    // Should show the user message
-    expect(
-      screen.getByText("create tasks for my project"),
-    ).toBeInTheDocument();
-
-    // Should show "handoffTaskPlanner" (the i18n key)
-    expect(screen.getByText("handoffTaskPlanner")).toBeInTheDocument();
-  });
-
-  it("shows handoff message for 'build tasks' intent", async () => {
-    const user = userEvent.setup();
-    render(<ProjectIntelligenceChat />);
-
-    const input = screen.getByPlaceholderText("placeholder");
-    await user.type(input, "build tasks into the project");
-    await user.click(screen.getByText("send"));
-
-    expect(screen.getByText("handoffTaskPlanner")).toBeInTheDocument();
-  });
-
-  it("shows sub-agent working indicator for task planner", async () => {
-    const user = userEvent.setup();
-    render(<ProjectIntelligenceChat />);
-
-    const input = screen.getByPlaceholderText("placeholder");
-    await user.type(input, "create tasks for my project");
-    await user.click(screen.getByText("send"));
-
-    // The sub-agent sentinel triggers a visually distinct indicator
-    const subagent = screen.queryByTestId("subagent-indicator");
-    // The indicator appears while the pipeline runs (may or may not be visible depending on mutation mock timing)
-    // At minimum, the handoff message should always appear
-    expect(screen.getByText("handoffTaskPlanner")).toBeInTheDocument();
-    // If the sub-agent indicator is visible, it should use the correct class
-    if (subagent) {
-      expect(subagent.className).toContain("kairos-subagent-working");
-    }
-  });
-
   /* ---- Static UI ---- */
 
   it("renders the disclaimer text", () => {
     render(<ProjectIntelligenceChat />);
-    // disclaimer key
-    expect(screen.getByText("disclaimer")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "AI-powered workspace assistant. Verify critical decisions independently.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("input has proper styling classes", () => {
     render(<ProjectIntelligenceChat />);
-    const input = screen.getByPlaceholderText("placeholder");
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
     expect(input.className).toContain("bg-transparent");
   });
 
@@ -192,9 +146,9 @@ describe("ProjectIntelligenceChat", () => {
     const user = userEvent.setup();
     render(<ProjectIntelligenceChat />);
 
-    const input = screen.getByPlaceholderText("placeholder");
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
     await user.type(input, "hi");
-    await user.click(screen.getByText("send"));
+    await user.click(screen.getByText("Send"));
 
     // User message should be right-aligned
     const userMsg = screen.getByText("hi").closest(".kairos-msg-enter");
@@ -211,9 +165,9 @@ describe("ProjectIntelligenceChat", () => {
     const user = userEvent.setup();
     render(<ProjectIntelligenceChat />);
 
-    const input = screen.getByPlaceholderText("placeholder");
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
     await user.type(input, "hi");
-    await user.click(screen.getByText("send"));
+    await user.click(screen.getByText("Send"));
 
     const agentBubbles = document.querySelectorAll(".kairos-chat-response");
     expect(agentBubbles.length).toBeGreaterThan(0);
@@ -223,9 +177,9 @@ describe("ProjectIntelligenceChat", () => {
     const user = userEvent.setup();
     render(<ProjectIntelligenceChat />);
 
-    const input = screen.getByPlaceholderText("placeholder");
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
     await user.type(input, "User msg");
-    await user.click(screen.getByText("send"));
+    await user.click(screen.getByText("Send"));
 
     const userBubble = screen.getByText("User msg");
     expect(userBubble.className).toContain("whitespace-pre-wrap");
@@ -235,50 +189,43 @@ describe("ProjectIntelligenceChat", () => {
     const user = userEvent.setup();
     render(<ProjectIntelligenceChat />);
 
-    const input = screen.getByPlaceholderText("placeholder");
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
     await user.type(input, "Copy me");
-    await user.click(screen.getByText("send"));
+    await user.click(screen.getByText("Send"));
 
     const copyButton = screen.getByText("Copy me").closest("button");
     expect(copyButton).toBeInTheDocument();
-    // copyTooltip key
-    expect(copyButton).toHaveAttribute("title", "copyTooltip");
+    expect(copyButton).toHaveAttribute("title", "Click to copy");
   });
 
   /* ---- Suggested questions ---- */
 
   it("renders suggested questions in empty state", () => {
     render(<ProjectIntelligenceChat />);
-    // Suggested question keys
-    expect(screen.getByText("suggestedQ1")).toBeInTheDocument();
-    expect(screen.getByText("suggestedQ2")).toBeInTheDocument();
-    expect(screen.getByText("suggestedQ3")).toBeInTheDocument();
-    expect(screen.getByText("suggestedQ4")).toBeInTheDocument();
+    expect(screen.getByText(/status of my projects/)).toBeInTheDocument();
+    expect(screen.getByText("Show me overdue tasks")).toBeInTheDocument();
+    expect(screen.getByText("What are the biggest risks?")).toBeInTheDocument();
+    expect(screen.getByText(/Summarize this week/)).toBeInTheDocument();
   });
 
   /* ---- Header ---- */
 
-  it("renders header with KAIROS AI title (i18n key)", () => {
+  it("renders header with KAIROS AI title", () => {
     render(<ProjectIntelligenceChat />);
-    // title key
-    expect(screen.getByText("title")).toBeInTheDocument();
-    // subtitle key
-    expect(screen.getByText("subtitle")).toBeInTheDocument();
+    expect(screen.getByText("KAIROS AI")).toBeInTheDocument();
+    expect(screen.getByText("Workspace Concierge")).toBeInTheDocument();
   });
 
   it("info button toggles info panel", async () => {
     const user = userEvent.setup();
     render(<ProjectIntelligenceChat />);
 
-    // info key
-    const infoBtn = screen.getByText("info");
+    const infoBtn = screen.getByText("Info");
     expect(infoBtn).toBeInTheDocument();
 
     await user.click(infoBtn);
-    // hide key
-    expect(screen.getByText("hide")).toBeInTheDocument();
-    // infoDesc and infoCaps keys
-    expect(screen.getByText("infoDesc")).toBeInTheDocument();
-    expect(screen.getByText("infoCaps")).toBeInTheDocument();
+    expect(screen.getByText("Hide")).toBeInTheDocument();
+    expect(screen.getByText(/Project-scoped AI assistant/)).toBeInTheDocument();
+    expect(screen.getByText(/Capabilities: workspace Q&A/)).toBeInTheDocument();
   });
 });

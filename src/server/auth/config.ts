@@ -3,6 +3,7 @@ import { type DefaultSession, type NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import Credentials from "next-auth/providers/credentials";
+import { cookies } from "next/headers";
 import { env } from "~/env"
 import { eq } from "drizzle-orm";
 import * as argon2 from "argon2";
@@ -215,6 +216,35 @@ export const authConfig = {
     },
   },
   
+  events: {
+    /**
+     * Drop the account-switch cookie on sign-out.
+     *
+     * That cookie is the sole credential the `account-switch` provider accepts:
+     * any user id listed in it can be signed in as, with no password. Left in
+     * place after sign-out it meant anyone with access to the browser profile
+     * could enumerate previous users via /api/account-switch/list and resume
+     * their session for the cookie's full 30-day lifetime.
+     *
+     * The in-session switcher is unaffected — it calls signIn("account-switch")
+     * directly rather than signing out first, and re-registers the cookie on the
+     * next authenticated page load.
+     */
+    async signOut() {
+      try {
+        // Awaited, not fire-and-forget: the deletion has to be applied to the
+        // cookie store before the sign-out response headers are written, or the
+        // Set-Cookie never reaches the browser. `cookies()` is writable here
+        // because this event runs inside the NextAuth route handler.
+        const store = await cookies();
+        store.delete(ACCOUNT_SWITCH_COOKIE);
+      } catch (err) {
+        // Never let cookie cleanup break sign-out itself.
+        console.error("[auth] failed to clear account-switch cookie", err);
+      }
+    },
+  },
+
   pages: {
     signIn: "/",
   },

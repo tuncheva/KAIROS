@@ -4,6 +4,7 @@ import { eq, desc, and } from "drizzle-orm";
 
 import { env } from "~/env";
 import type { TRPCContext } from "~/server/api/trpc";
+import { assertProjectAccess } from "~/server/api/authz";
 import { a1WorkspaceConciergeProfile } from "~/server/llm/profiles/a1WorkspaceConcierge";
 import { a2TaskPlannerProfile } from "~/server/llm/profiles/a2TaskPlanner";
 import {
@@ -286,9 +287,9 @@ export const agentOrchestrator = {
       for (const edit of input.edits) {
         if (edit.index >= 0 && edit.index < updatedOperations.length) {
           const op = updatedOperations[edit.index];
-          if (op && op.type === "create") {
+          if (op?.type === "create") {
             updatedOperations[edit.index] = { ...op, content: edit.content };
-          } else if (op && op.type === "update") {
+          } else if (op?.type === "update") {
             updatedOperations[edit.index] = { ...op, nextContent: edit.content };
           }
           // Don't allow editing delete operations
@@ -481,7 +482,7 @@ export const agentOrchestrator = {
 
     // Allow draft calls without projectId. A2 will respond with questionsForUser.
     // Try to resolve projectId from handoffContext (A1 may pass it there) or from project name.
-    const hc = (input.handoffContext ?? {}) as Record<string, unknown>;
+    const hc = (input.handoffContext ?? {});
     const requestedNameRaw = hc.projectName;
     const requestedName = typeof requestedNameRaw === "string" ? requestedNameRaw.trim() : "";
 
@@ -530,6 +531,15 @@ export const agentOrchestrator = {
           projectName: requestedName,
         };
       }
+    }
+
+    // `resolvedProjectId` originates from caller-supplied scope or handoff
+    // context, so it must be authorized before A2 reads the project's tasks and
+    // collaborators into the prompt — and before a draft is persisted against it.
+    // Name-based resolution above is already constrained to the caller's own
+    // projects; this covers the id-supplied paths.
+    if (typeof resolvedProjectId === "number") {
+      await assertProjectAccess(input.ctx, resolvedProjectId, "write");
     }
 
     const draftId = createDraftId();
@@ -698,6 +708,23 @@ export const agentOrchestrator = {
 
     const plan = TaskPlanDraftSchema.parse(JSON.parse(draft.planJson) as unknown);
 
+    // `plan.scope.projectId` round-trips through the LLM's JSON output, so it is
+    // not a trusted value. `draft.projectId` is the column this server wrote at
+    // draft time and is the only authority for where writes may land. They should
+    // always agree; a mismatch means the plan was tampered with or the model
+    // rewrote the scope, and either way we refuse rather than guess.
+    const targetProjectId = draft.projectId;
+    if (plan.scope.projectId !== targetProjectId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Plan scope does not match the project this draft was created for",
+      });
+    }
+
+    // Re-check access at apply time: membership or collaborator permission may
+    // have been revoked between draft and apply.
+    await assertProjectAccess(input.ctx, targetProjectId, "write");
+
     const createdTaskIds: number[] = [];
     const updatedTaskIds: number[] = [];
     const statusChangedTaskIds: number[] = [];
@@ -709,7 +736,7 @@ export const agentOrchestrator = {
       const existing = await input.ctx.db
         .select({ id: tasks.id })
         .from(tasks)
-        .where(and(eq(tasks.projectId, plan.scope.projectId), eq(tasks.clientRequestId, c.clientRequestId)))
+        .where(and(eq(tasks.projectId, targetProjectId), eq(tasks.clientRequestId, c.clientRequestId)))
         .limit(1);
 
       if (existing[0]?.id) {
@@ -722,7 +749,7 @@ export const agentOrchestrator = {
         .values({
           title: c.title,
           description: c.description,
-          projectId: plan.scope.projectId,
+          projectId: targetProjectId,
           priority: c.priority,
           assignedToId: c.assignedToId ?? null,
           dueDate: c.dueDate ? new Date(c.dueDate) : null,
@@ -764,7 +791,7 @@ export const agentOrchestrator = {
           lastEditedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(and(eq(tasks.id, u.taskId), eq(tasks.projectId, plan.scope.projectId)));
+        .where(and(eq(tasks.id, u.taskId), eq(tasks.projectId, targetProjectId)));
       updatedTaskIds.push(u.taskId);
       await input.ctx.db.insert(taskActivityLog).values({
         taskId: u.taskId,
@@ -787,7 +814,7 @@ export const agentOrchestrator = {
           lastEditedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(and(eq(tasks.id, s.taskId), eq(tasks.projectId, plan.scope.projectId)));
+        .where(and(eq(tasks.id, s.taskId), eq(tasks.projectId, targetProjectId)));
       statusChangedTaskIds.push(s.taskId);
       await input.ctx.db.insert(taskActivityLog).values({
         taskId: s.taskId,
@@ -801,7 +828,7 @@ export const agentOrchestrator = {
       if (!d.dangerous) continue;
       await input.ctx.db
         .delete(tasks)
-        .where(and(eq(tasks.id, d.taskId), eq(tasks.projectId, plan.scope.projectId)));
+        .where(and(eq(tasks.id, d.taskId), eq(tasks.projectId, targetProjectId)));
       deletedTaskIds.push(d.taskId);
     }
 
@@ -919,6 +946,9 @@ export const agentOrchestrator = {
 
         const userId = requireUserId(input.ctx);
         const projectId = requireProjectId(input.scope);
+
+        // Caller-supplied scope — authorize before persisting a draft against it.
+        await assertProjectAccess(input.ctx, projectId, "write");
 
         const computedPlanHash = computePlanHash(parseResult.data);
         const plan: TaskPlanDraft = {
@@ -1155,7 +1185,13 @@ export const agentOrchestrator = {
       const [collab] = await input.ctx.db
         .select({ collaboratorId: projectCollaborators.collaboratorId })
         .from(projectCollaborators)
-        .where(eq(projectCollaborators.projectId, input.projectId))
+        .where(and(
+          eq(projectCollaborators.projectId, input.projectId),
+          // Without this predicate the query returned an arbitrary collaborator
+          // and compared it to the caller, denying legitimate collaborators
+          // whenever they were not the first row.
+          eq(projectCollaborators.collaboratorId, userId),
+        ))
         .limit(1);
 
       if (collab?.collaboratorId !== userId) {
@@ -1337,7 +1373,7 @@ export const agentOrchestrator = {
   }> {
     const userId = requireUserId(input.ctx);
     const stored = a4DraftStore.get(input.draftId);
-    if (!stored || stored.userId !== userId) {
+    if (stored?.userId !== userId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
     }
 
@@ -1425,7 +1461,7 @@ export const agentOrchestrator = {
     }
 
     const stored = a4DraftStore.get(input.draftId);
-    if (!stored || stored.userId !== userId) {
+    if (stored?.userId !== userId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
     }
 

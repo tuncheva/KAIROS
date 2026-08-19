@@ -13,11 +13,21 @@
 import type { Socket, DefaultEventsMap } from "socket.io";
 import postgres from "postgres";
 
-type AuthSocket = Socket<
+/**
+ * Per-socket data populated by the auth middleware in `index.ts`.
+ * Exported so the `Server` instance can be typed with the same shape — otherwise
+ * `socket.data` is `any` and every access to it is unchecked.
+ */
+export interface WsSocketData {
+  userId: string;
+  sessionId: string;
+}
+
+export type AuthSocket = Socket<
   DefaultEventsMap,
   DefaultEventsMap,
   DefaultEventsMap,
-  { userId: string }
+  WsSocketData
 >;
 
 const DATABASE_URL =
@@ -41,8 +51,8 @@ async function handleJoinOrg(socket: AuthSocket, orgId: unknown) {
   try {
     const rows = await sql`
       SELECT 1 FROM organization_members
-      WHERE "organizationId" = ${organizationId}
-        AND "userId" = ${userId}
+      WHERE "organization_id" = ${organizationId}
+        AND "user_id" = ${userId}
       LIMIT 1
     `;
 
@@ -72,9 +82,15 @@ async function handleJoinProject(socket: AuthSocket, projectId: unknown) {
   const userId = socket.data.userId;
 
   try {
-    // Check project exists and get its organizationId
+    // Check project exists and get its organizationId.
+    // NOTE ON IDENTIFIERS: this schema mixes naming conventions — most columns
+    // are snake_case, but `projects.createdById` and
+    // `project_collaborators.collaboratorId` are declared in Drizzle without an
+    // explicit column name, so their real column names are camelCase. Raw SQL
+    // here must match exactly; a wrong identifier raises, and the catch blocks
+    // below hard-disconnect the socket.
     const projectRows = await sql`
-      SELECT "organizationId", "createdById" FROM projects
+      SELECT "organization_id", "createdById" FROM projects
       WHERE id = ${pid}
       LIMIT 1
     `;
@@ -101,7 +117,7 @@ async function handleJoinProject(socket: AuthSocket, projectId: unknown) {
     // Check if user is a project collaborator
     const collabRows = await sql`
       SELECT 1 FROM project_collaborators
-      WHERE "projectId" = ${pid}
+      WHERE "project_id" = ${pid}
         AND "collaboratorId" = ${userId}
       LIMIT 1
     `;
@@ -115,11 +131,11 @@ async function handleJoinProject(socket: AuthSocket, projectId: unknown) {
     }
 
     // If org-scoped project, check org membership
-    if (project.organizationId) {
+    if (project.organization_id) {
       const orgRows = await sql`
         SELECT 1 FROM organization_members
-        WHERE "organizationId" = ${project.organizationId as string}
-          AND "userId" = ${userId}
+        WHERE "organization_id" = ${project.organization_id as string}
+          AND "user_id" = ${userId}
         LIMIT 1
       `;
 
@@ -138,6 +154,53 @@ async function handleJoinProject(socket: AuthSocket, projectId: unknown) {
     socket.disconnect(true);
   } catch (err) {
     console.error("[ws:rooms] join:project DB error", err);
+    socket.disconnect(true);
+  }
+}
+
+// ── join:conversation ────────────────────────────────────────────────
+
+async function handleJoinConversation(
+  socket: AuthSocket,
+  conversationId: unknown,
+) {
+  if (
+    typeof conversationId !== "string" &&
+    typeof conversationId !== "number"
+  ) {
+    return;
+  }
+
+  // Conversation ids are sequential identity columns, so an unauthorized join
+  // is trivially enumerable — this must be checked against the DB like org and
+  // project joins are, not assumed from the client's behaviour.
+  const cid = Number(conversationId);
+  if (!Number.isInteger(cid) || cid <= 0) return;
+
+  const userId = socket.data.userId;
+
+  try {
+    const rows = await sql`
+      SELECT 1 FROM direct_conversations
+      WHERE id = ${cid}
+        AND ("user_one_id" = ${userId} OR "user_two_id" = ${userId})
+      LIMIT 1
+    `;
+
+    if (rows.length === 0) {
+      console.warn(
+        `[ws:rooms] join:conversation DENIED — user=${userId} conversation=${cid}`,
+      );
+      socket.disconnect(true);
+      return;
+    }
+
+    void socket.join(`conversation:${cid}`);
+    console.log(
+      `[ws:rooms] join:conversation OK — user=${userId} conversation=${cid}`,
+    );
+  } catch (err) {
+    console.error("[ws:rooms] join:conversation DB error", err);
     socket.disconnect(true);
   }
 }
@@ -167,15 +230,13 @@ export function registerRoomHandlers(socket: AuthSocket) {
     handleLeaveProject(socket, projectId),
   );
 
-  // Conversation rooms — lightweight, no DB auth (user must be in conversation to receive messages)
-  socket.on("join:conversation", (conversationId: unknown) => {
-    if (
-      typeof conversationId !== "number" &&
-      typeof conversationId !== "string"
-    )
-      return;
-    void socket.join(`conversation:${String(conversationId)}`);
-  });
+  // Conversation rooms — participant membership is verified against the DB,
+  // exactly like org and project joins. Message bodies are broadcast to these
+  // rooms, so an unchecked join leaks private direct messages.
+  socket.on(
+    "join:conversation",
+    (conversationId: unknown) => void handleJoinConversation(socket, conversationId),
+  );
   socket.on("leave:conversation", (conversationId: unknown) => {
     if (
       typeof conversationId !== "number" &&
@@ -199,8 +260,14 @@ export function registerRoomHandlers(socket: AuthSocket) {
       isTyping: boolean;
     };
 
+    // Only relay into rooms this socket has actually been authorized into by
+    // `join:conversation`; otherwise any client could spoof presence in any
+    // conversation it can name.
+    const room = `conversation:${String(conversationId)}`;
+    if (!socket.rooms.has(room)) return;
+
     socket
-      .to(`conversation:${String(conversationId)}`)
+      .to(room)
       .emit("message:typing", {
         userId: socket.data.userId,
         isTyping: !!isTyping,

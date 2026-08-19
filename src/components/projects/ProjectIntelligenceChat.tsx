@@ -540,8 +540,8 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
         void (async () => {
           try {
             const res = (await notesDraftMutation.mutateAsync({
-              message: clampText(output!.handoff!.userIntent),
-              handoffContext: output!.handoff!.context,
+              message: clampText(output.handoff!.userIntent),
+              handoffContext: output.handoff!.context,
             })) as NotesDraftResponse;
 
             const plan = res?.plan;
@@ -609,8 +609,8 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
         void (async () => {
           try {
             const res = (await eventsDraftMutation.mutateAsync({
-              message: clampText(output!.handoff!.userIntent),
-              handoffContext: output!.handoff!.context,
+              message: clampText(output.handoff!.userIntent),
+              handoffContext: output.handoff!.context,
             })) as EventsDraftResponse;
 
             const plan = res?.plan;
@@ -1150,10 +1150,11 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
               m.text !== THINKING_SENTINEL && m.text !== SUBAGENT_SENTINEL,
           )
           .slice(-16)
-          .map((m) => ({
-            role: (m.role === "user" ? "user" : "assistant") as
-              | "user"
-              | "assistant",
+          // Explicit return type rather than a cast: it gives the ternary a
+          // contextual type so it narrows to the literal union instead of
+          // widening to `string`.
+          .map((m): { role: "user" | "assistant"; content: string } => ({
+            role: m.role === "user" ? "user" : "assistant",
             content: m.text,
           }));
 

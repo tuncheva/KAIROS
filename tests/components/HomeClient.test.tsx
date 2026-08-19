@@ -23,11 +23,12 @@ describe("HomeClient", () => {
     expect(main?.tagName).toBe("MAIN");
   });
 
-  it("displays translated text keys for i18n", () => {
-    // Our mock returns the key itself
+  it("displays translated subtitle and description", () => {
     render(<HomeClient />);
-    expect(screen.getByText("subtitle")).toBeInTheDocument();
-    expect(screen.getByText("description")).toBeInTheDocument();
+    expect(screen.getByText("Where great ideas come to life.")).toBeInTheDocument();
+    expect(
+      screen.getByText("The workspace where teams align and launch moments that matter."),
+    ).toBeInTheDocument();
   });
 
   it("renders the language switcher in header", () => {
@@ -45,8 +46,8 @@ describe("HomeClient", () => {
 
   it("renders the sign in button in header", () => {
     render(<HomeClient />);
-    // The sign-in button uses i18n key "signIn"
-    const signInButtons = screen.getAllByText("signIn");
+    // The sign-in CTA uses the "signIn" translation
+    const signInButtons = screen.getAllByText("Log In / Sign Up");
     expect(signInButtons.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -66,8 +67,8 @@ describe("HomeClient", () => {
     const user = userEvent.setup();
     render(<HomeClient />);
 
-    // Click the first "signIn" button (header CTA)
-    const signInButtons = screen.getAllByText("signIn");
+    // Click the "Log In / Sign Up" CTA (hero)
+    const signInButtons = screen.getAllByText("Log In / Sign Up");
     await user.click(signInButtons[0]!);
 
     // SignInModal should now be visible — look for email/password fields
@@ -78,11 +79,10 @@ describe("HomeClient", () => {
 
   it("renders the why-teams section with 4 feature cards", () => {
     render(<HomeClient />);
-    // Each card has a title key rendered by t()
-    expect(screen.getByText("streamlinedWorkflow")).toBeInTheDocument();
-    expect(screen.getByText("beautifulPublications")).toBeInTheDocument();
-    expect(screen.getByText("secureReliable")).toBeInTheDocument();
-    expect(screen.getByText("smartScheduling")).toBeInTheDocument();
+    expect(screen.getByText("Streamlined Workflow")).toBeInTheDocument();
+    expect(screen.getByText("Beautiful Publications")).toBeInTheDocument();
+    expect(screen.getByText("Secure & Reliable")).toBeInTheDocument();
+    expect(screen.getByText("Smart Scheduling")).toBeInTheDocument();
   });
 
   it("renders the footer with copyright", () => {
@@ -94,17 +94,17 @@ describe("HomeClient", () => {
 
   it("renders the hero tagline pill", () => {
     render(<HomeClient />);
-    expect(screen.getByText("heroTagline")).toBeInTheDocument();
+    expect(screen.getByText("Plan · Collaborate · Publish")).toBeInTheDocument();
   });
 
   it("renders the trust badge", () => {
     render(<HomeClient />);
-    expect(screen.getByText("trustedBy")).toBeInTheDocument();
+    expect(screen.getByText("Trusted by teams worldwide")).toBeInTheDocument();
   });
 
   it("renders the get started CTA at the bottom", () => {
     render(<HomeClient />);
-    expect(screen.getByText("getStarted")).toBeInTheDocument();
+    expect(screen.getByText("Get Started")).toBeInTheDocument();
   });
 
   it("contains proper gradient background class", () => {

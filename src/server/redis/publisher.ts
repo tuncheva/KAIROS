@@ -14,19 +14,35 @@ const WS_SECRET = process.env.WS_SECRET ?? "";
 
 // ── Redis client (lazy init) ─────────────────────────────────────────
 
-let redisPublisher: {
+/**
+ * Minimal structural type for the parts of `redis` this module uses.
+ *
+ * `redis` is an optional peer dependency that may not be installed, so the
+ * dynamic import below cannot be type-resolved. Absorbing it into `unknown` and
+ * casting once against this shape keeps the `any` from leaking into every
+ * downstream call.
+ */
+interface RedisClientLike {
   publish: (channel: string, message: string) => Promise<number>;
-} | null = null;
+  connect: () => Promise<unknown>;
+}
+
+interface RedisModuleLike {
+  createClient: (options: { url: string }) => RedisClientLike;
+}
+
+let redisPublisher: RedisClientLike | null = null;
 let redisInitializing = false;
 
-async function getRedisPublisher() {
+async function getRedisPublisher(): Promise<RedisClientLike | null> {
   if (redisPublisher) return redisPublisher;
   if (!REDIS_NATIVE_URL || redisInitializing) return null;
 
   redisInitializing = true;
   try {
-    // @ts-expect-error -- redis is an optional peer dependency
-    const { createClient } = await import("redis");
+    // @ts-expect-error -- redis is an optional peer dependency, may not be installed
+    const mod: unknown = await import("redis");
+    const { createClient } = mod as RedisModuleLike;
     const client = createClient({ url: REDIS_NATIVE_URL });
     await client.connect();
     redisPublisher = client;

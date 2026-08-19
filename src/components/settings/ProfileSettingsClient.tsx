@@ -115,9 +115,9 @@ export function ProfileSettingsClient({ user }: ProfileSettingsClientProps) {
  // Without this, places like the event comment composer can keep showing the old avatar.
  void updateSession?.({ user: { image: data.imageUrl } });
  },
- onError: (error) => {
- setIsUploading(false);
- },
+  onError: () => {
+    setIsUploading(false);
+  },
  });
 
  const handleImageUpload = async (file: File) => {
@@ -135,9 +135,9 @@ export function ProfileSettingsClient({ user }: ProfileSettingsClientProps) {
  image: url,
  filename: file.name,
  });
- } catch (error) {
- setIsUploading(false);
- }
+    } catch {
+      setIsUploading(false);
+    }
  };
 
  const handleSubmit = (e: React.FormEvent) => {

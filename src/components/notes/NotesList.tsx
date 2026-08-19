@@ -168,14 +168,6 @@ export function NotesList() {
     setShowPasswords((prev) => ({ ...prev, [noteId]: !prev[noteId] }));
   };
 
-  const handleResetRequest = (noteId: number) => {
-    setShowResetModal(noteId);
-    setResetPinInput("");
-    setResetPinError(null);
-    setNewPasswordInput("");
-    setConfirmNewPasswordInput("");
-  };
-
   const openResetPromptAfterFailedUnlock = (noteId: number) => {
     setShowResetPromptModal(noteId);
   };
@@ -753,7 +745,7 @@ function UnlockedNoteContent(props: UnlockedNoteContentProps) {
                   return;
                 }
                 const [y, m, d] = v.split("-").map(Number);
-                onCalendarDateChange(new Date(y!, (m! - 1), d!, 12, 0, 0));
+                onCalendarDateChange(new Date(y!, (m! - 1), d, 12, 0, 0));
               }}
               className="w-full px-3 py-2 bg-bg-primary rounded-lg text-sm text-fg-primary border border-white/[0.06] focus:outline-none focus:ring-2 focus:ring-accent-primary/30"
             />

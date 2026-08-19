@@ -40,7 +40,7 @@ export function useDateFormat() {
     staleTime: 1000 * 60 * 10,
   });
 
-  const pref: DateFormatPreference = (settings?.dateFormat as DateFormatPreference) ?? "MM/DD/YYYY";
+  const pref: DateFormatPreference = settings?.dateFormat ?? "MM/DD/YYYY";
   const locale = localeCode.startsWith("bg") ? bg : enUS;
 
   const formatDate = useCallback(

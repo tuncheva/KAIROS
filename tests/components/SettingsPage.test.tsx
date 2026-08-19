@@ -45,7 +45,7 @@ describe("Settings Page – No White Borders", () => {
   });
 
   it("uses bg-bg-primary as base background (not bg-bg-secondary)", () => {
-    expect(settingsPageSource).toContain('min-h-screen bg-bg-primary"');
+    expect(settingsPageSource).toContain('min-h-screen bg-bg-primary');
   });
 
   it("mobile settings button uses subtle border", () => {

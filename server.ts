@@ -20,12 +20,20 @@ const port = parseInt(process.env.PORT ?? "3000", 10);
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-app.prepare().then(() => {
-  const httpServer = createServer((req, res) => {
-    void handle(req, res);
-  });
+app
+  .prepare()
+  .then(() => {
+    const httpServer = createServer((req, res) => {
+      void handle(req, res);
+    });
 
-  httpServer.listen(port, () => {
-    console.log(`> Ready on http://${hostname}:${port}`);
+    httpServer.listen(port, () => {
+      console.log(`> Ready on http://${hostname}:${port}`);
+    });
+  })
+  .catch((err: unknown) => {
+    // Without this the promise was unhandled: a failure during Next's prepare
+    // step left the process alive with no server listening and nothing logged.
+    console.error("> Failed to start server", err);
+    process.exit(1);
   });
-});

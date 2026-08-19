@@ -5,6 +5,7 @@
  * that gets injected into the system prompt for LLM calls.
  */
 import type { TRPCContext } from "~/server/api/trpc";
+import { assertProjectAccess } from "~/server/api/authz";
 import { A1_READ_TOOLS } from "~/server/llm/tools/a1/readTools";
 
 export interface A1ContextPack {
@@ -62,6 +63,12 @@ export async function buildA1Context(
       ? Number(scope.projectId)
       : scope.projectId
     : null;
+
+  // `scope.projectId` is caller-supplied. Authorize it before any project-scoped
+  // read so an unauthorized id fails closed rather than building a partial pack.
+  if (projectId !== null && Number.isFinite(projectId)) {
+    await assertProjectAccess(ctx, projectId, "read");
+  }
 
   const projectsResult = await A1_READ_TOOLS.listProjects.execute(ctx, { limit: 10 });
 

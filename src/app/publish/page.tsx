@@ -70,7 +70,7 @@ function FeedRightSidebar() {
     const t = useTranslations("publish");
     const { data: eventsData } = api.event.getPublicEvents.useQuery({ limit: 50 });
 
-    const events = eventsData?.items ?? [];
+    const events = useMemo(() => eventsData?.items ?? [], [eventsData]);
 
     /* Compute engagement stats from the events data */
     const engagementStats = useMemo(() => {

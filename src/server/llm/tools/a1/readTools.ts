@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { eq, and, desc } from "drizzle-orm";
 
 import type { TRPCContext } from "~/server/api/trpc";
+import { assertProjectAccess } from "~/server/api/authz";
 import { users, projects, tasks, notifications } from "~/server/db/schema";
 
 export type A1ReadToolName =
@@ -207,13 +208,15 @@ export const listTasksTool: A1Tool<"listTasks", ListTasksInput, ListTasksOutput>
   async execute(ctx, input) {
     const limit = input.limit ?? 20;
 
+    // The projectId reaches this tool from caller-supplied agent scope, so it
+    // must be authorized here — this is not a trusted internal value.
+    await assertProjectAccess(ctx, input.projectId, "read");
+
     const where =
       input.status !== undefined
         ? and(eq(tasks.projectId, input.projectId), eq(tasks.status, input.status))
         : eq(tasks.projectId, input.projectId);
 
-    // NOTE: This does not yet enforce project read access beyond direct membership.
-    // Next iteration: reuse the permission logic from the task/project routers.
     const rows = await ctx.db
       .select({
         id: tasks.id,

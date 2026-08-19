@@ -54,7 +54,7 @@ export function NotificationSystem() {
       void utils.notification.getUnreadCount.invalidate();
 
       // Show floating popup for the incoming notification
-      if (data && data.title) {
+      if (data?.title) {
         const floatId = `float-${Date.now()}-${Math.random()}`;
         const notif: FloatingNotif = {
           id: floatId,
@@ -94,8 +94,9 @@ export function NotificationSystem() {
 
   // Cleanup timers on unmount
   useEffect(() => {
+    const timers = floatingTimers.current;
     return () => {
-      floatingTimers.current.forEach((t) => clearTimeout(t));
+      timers.forEach((t) => clearTimeout(t));
     };
   }, []);
 

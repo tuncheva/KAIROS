@@ -85,7 +85,11 @@ describe("Encryption — AES-256-GCM", () => {
     const cipher = encryptContent(plaintext, password, salt);
     // Flip a character in the middle
     const buf = Buffer.from(cipher, "base64");
-    buf[buf.length - 5] ^= 0xff;
+    // `noUncheckedIndexedAccess` types buf[i] as number | undefined, so the
+    // in-place `^=` doesn't typecheck. Read, flip, write back explicitly.
+    const idx = buf.length - 5;
+    expect(idx).toBeGreaterThanOrEqual(0);
+    buf[idx] = (buf[idx] ?? 0) ^ 0xff;
     const tampered = buf.toString("base64");
     expect(() => decryptContent(tampered, password, salt)).toThrow();
   });

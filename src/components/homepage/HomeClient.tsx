@@ -168,7 +168,7 @@ export function HomeClient() {
     /* ─── Circle gradients (always dark values) ─── */
     const circleGradients = useMemo(() => {
         if (!isClient) return { circle1: "", circle2: "", circle3: "", circle4: "" };
-        const primary = getCssVarRgb("--accent-primary") ?? DEFAULT_PRIMARY;
+        const primary = (colorTick >= 0 ? getCssVarRgb("--accent-primary") : null) ?? DEFAULT_PRIMARY;
         const a1 = rotateHue(primary, -20), a2 = rotateHue(primary, 10);
         const a3 = rotateHue(primary, -45), a4 = rotateHue(primary, -10);
         const toRgb = (c: [number, number, number]) => `${c[0]}, ${c[1]}, ${c[2]}`;

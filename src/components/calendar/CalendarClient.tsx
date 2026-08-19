@@ -259,51 +259,6 @@ export function CalendarClient() {
     return days;
   }, [currentMonth]);
 
-  /* ------------ items per day ------------ */
-
-  const itemsByDate = useMemo(() => {
-    const map = new Map<string, CalendarItem[]>();
-    const key = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-
-    for (const t of data?.tasks ?? []) {
-      if (!t.dueDate) continue;
-      const d = new Date(t.dueDate);
-      const k = key(d);
-      if (!map.has(k)) map.set(k, []);
-      map.get(k)!.push({
-        kind: "task",
-        id: t.id,
-        title: t.title,
-        status: t.status,
-        priority: t.priority,
-        projectTitle: t.projectTitle,
-        date: d,
-      });
-    }
-
-    for (const e of data?.events ?? []) {
-      const d = new Date(e.eventDate);
-      const k = key(d);
-      if (!map.has(k)) map.set(k, []);
-      map.get(k)!.push({ kind: "event", id: e.id, title: e.title, description: e.description, date: d });
-    }
-
-    for (const n of data?.notes ?? []) {
-      if (!n.calendarDate) continue;
-      const d = new Date(n.calendarDate);
-      const k = key(d);
-      if (!map.has(k)) map.set(k, []);
-      map.get(k)!.push({ kind: "note", id: n.id, title: n.title ?? t("untitledNote"), locked: !!n.passwordHash, date: d });
-    }
-
-    return map;
-  }, [data]);
-
-  const getItems = useCallback(
-    (d: Date) => itemsByDate.get(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`) ?? [],
-    [itemsByDate]
-  );
-
   /* ------------ all month items for right panel ------------ */
 
   const allMonthItems = useMemo(() => {
@@ -383,7 +338,7 @@ export function CalendarClient() {
       });
     }
     return getFilteredItems(selectedDate);
-  }, [filters.view, filteredAllMonthItems, getFilteredItems, selectedDate]);
+  }, [filters.view, filteredAllMonthItems, getFilteredItems, selectedDate, startOfWeek, endOfWeek]);
 
   /* ------------ navigation ------------ */
 
@@ -489,7 +444,8 @@ export function CalendarClient() {
                 onClick={() =>
                   setFilters((f) => {
                     const next = new Set(f.types);
-                    next.has(k) ? next.delete(k) : next.add(k);
+                    if (next.has(k)) next.delete(k);
+                    else next.add(k);
                     return { ...f, types: next };
                   })
                 }
@@ -622,7 +578,8 @@ export function CalendarClient() {
                     onClick={() =>
                       setFilters((f) => {
                         const next = new Set(f.taskStatuses);
-                        next.has(s) ? next.delete(s) : next.add(s);
+                        if (next.has(s)) next.delete(s);
+                        else next.add(s);
                         return { ...f, taskStatuses: next };
                       })
                     }
@@ -650,7 +607,8 @@ export function CalendarClient() {
                     onClick={() =>
                       setFilters((f) => {
                         const next = new Set(f.priorities);
-                        next.has(p) ? next.delete(p) : next.add(p);
+                        if (next.has(p)) next.delete(p);
+                        else next.add(p);
                         return { ...f, priorities: next };
                       })
                     }

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { env } from "~/env";
+import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 import { inArray } from "drizzle-orm";
@@ -12,6 +13,15 @@ import {
 export async function GET() {
   if (!env.AUTH_SECRET) {
     return NextResponse.json({ accounts: [] });
+  }
+
+  // This endpoint discloses the email, name and user id of every account that
+  // has signed in on this browser, and those ids are exactly what the
+  // `account-switch` credentials provider accepts. It must never answer an
+  // unauthenticated request.
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const secret = env.AUTH_SECRET;
