@@ -14,6 +14,9 @@ import { createServer } from "node:http";
 import { Server, type DefaultEventsMap } from "socket.io";
 import { verifyWsTicket } from "./auth";
 import { registerRoomHandlers, type WsSocketData } from "./rooms";
+import { createLogger } from "./logger";
+
+const log = createLogger("ws");
 
 const WS_PORT = parseInt(process.env.WS_PORT ?? "3001", 10);
 const WS_SECRET = process.env.WS_SECRET;
@@ -24,9 +27,7 @@ const CORS_ORIGIN =
 // ── fatal checks ─────────────────────────────────────────────────────
 
 if (!WS_SECRET || WS_SECRET.length < 32) {
-  console.error(
-    "FATAL: WS_SECRET missing or too short (min 32 chars). Set it in .env.",
-  );
+  log.error("FATAL: WS_SECRET missing or too short (min 32 chars)");
   process.exit(1);
 }
 
@@ -141,7 +142,7 @@ if (REDIS_NATIVE_URL) {
       await Promise.all([pubClient.connect(), subClient.connect()]);
 
       io.adapter(createAdapter(pubClient, subClient));
-      console.log("[ws] Redis adapter enabled for multi-instance scaling");
+      log.info("redis adapter enabled for multi-instance scaling");
 
       // App-level Redis subscriber for app->WS fanout
       const appSubClient = pubClient.duplicate();
@@ -157,19 +158,18 @@ if (REDIS_NATIVE_URL) {
           const room = channel.slice(firstColon + 1);
           io.to(room).emit(parsed.event, parsed.payload);
         } catch (err) {
-          console.error("[ws] Redis message parse error", err);
+          log.error("redis message parse failed", { err, channel });
         }
       });
-      console.log("[ws] Subscribed to ws:* channels via Redis");
+      log.info("subscribed to ws:* channels via redis");
     } catch (err) {
-      console.error("[ws] Failed to set up Redis adapter", err);
-      console.warn("[ws] Running in single-instance mode (no Redis)");
+      log.error("failed to set up redis adapter", { err });
+      log.warn("running in single-instance mode (no redis)");
     }
   })();
 } else {
-  console.warn(
-    "[ws] REDIS_NATIVE_URL not set — running in single-instance mode (dev). " +
-      "Using HTTP /internal/emit fallback for app->WS communication.",
+  log.warn(
+    "REDIS_NATIVE_URL not set; single-instance mode using the HTTP /internal/emit fallback",
   );
 }
 
@@ -200,9 +200,7 @@ io.on("connection", (socket) => {
     return;
   }
 
-  console.log(
-    `[ws] client connected — userId=${userId}, socketId=${socket.id}`,
-  );
+  log.debug("client connected", { userId, socketId: socket.id });
 
   // Auto-join private room
   void socket.join(`user:${userId}`);
@@ -211,15 +209,12 @@ io.on("connection", (socket) => {
   registerRoomHandlers(socket);
 
   socket.on("disconnect", (reason: string) => {
-    console.log(
-      `[ws] client disconnected — userId=${userId}, reason=${reason}`,
-    );
+    log.debug("client disconnected", { userId, reason });
   });
 });
 
 // ── Start ────────────────────────────────────────────────────────────
 
 httpServer.listen(WS_PORT, () => {
-  console.log(`[ws] WebSocket server listening on port ${WS_PORT}`);
-  console.log(`[ws] CORS origin: ${CORS_ORIGIN}`);
+  log.info("websocket server listening", { port: WS_PORT, corsOrigin: CORS_ORIGIN });
 });

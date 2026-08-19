@@ -29,23 +29,24 @@ describe("Page animations", () => {
     });
   }
 
-  it("HomeClient has GSAP reveal animations", () => {
+  it("the landing page marks elements for scroll reveal", () => {
     const homeClientPath = path.resolve(
       __dirname,
       "../../src/components/homepage/HomeClient.tsx",
     );
     const content = fs.readFileSync(homeClientPath, "utf-8");
-    expect(content).toContain("data-reveal");
-    expect(content).toContain("gsap.fromTo");
+    expect(content).toContain("useLandingReveals");
   });
 
-  it("HomeClient imports gsap and ScrollTrigger", () => {
-    const homeClientPath = path.resolve(
+  it("landing reveals run on gsap + ScrollTrigger", () => {
+    const revealsPath = path.resolve(
       __dirname,
-      "../../src/components/homepage/HomeClient.tsx",
+      "../../src/components/homepage/useLandingReveals.ts",
     );
-    const content = fs.readFileSync(homeClientPath, "utf-8");
+    const content = fs.readFileSync(revealsPath, "utf-8");
     expect(content).toContain("import { gsap }");
     expect(content).toContain("import { ScrollTrigger }");
+    expect(content).toContain("data-reveal");
   });
+
 });

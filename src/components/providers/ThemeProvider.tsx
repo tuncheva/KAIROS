@@ -13,9 +13,17 @@ interface ThemeProviderProps {
    * so the experience is consistent across devices.
    */
   initialTheme?: ThemeName;
+  /**
+   * Per-response CSP nonce.
+   *
+   * next-themes injects its own inline script to apply the theme before paint, so
+   * it needs the nonce or the CSP refuses it. Passed down from the root layout,
+   * which reads it from the `x-nonce` header set by `src/proxy.ts`.
+   */
+  nonce?: string;
 }
 
-export function ThemeProvider({ children, initialTheme = "dark" }: ThemeProviderProps) {
+export function ThemeProvider({ children, initialTheme = "dark", nonce }: ThemeProviderProps) {
   return (
     <NextThemesProvider
       attribute="class"
@@ -28,6 +36,7 @@ export function ThemeProvider({ children, initialTheme = "dark" }: ThemeProvider
       enableSystem={false}
       enableColorScheme={false}
       disableTransitionOnChange
+      nonce={nonce}
     >
       {children}
     </NextThemesProvider>

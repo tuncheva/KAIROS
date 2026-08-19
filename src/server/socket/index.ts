@@ -9,6 +9,9 @@ import { Server as SocketIOServer } from "socket.io";
 import type { Server as HTTPServer } from "node:http";
 import { socketAuthMiddleware } from "./auth";
 import { handleConnection } from "./handlers";
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("socket");
 
 let io: SocketIOServer | null = null;
 
@@ -33,7 +36,7 @@ export function initSocketIO(httpServer: HTTPServer): SocketIOServer {
   io.use(socketAuthMiddleware as Parameters<typeof io.use>[0]);
   io.on("connection", handleConnection as Parameters<(typeof io)["on"]>[1]);
 
-  console.log("[Socket.IO] initialised on path /api/socketio");
+  log.debug("[Socket.IO] initialised on path /api/socketio");
   return io;
 }
 

@@ -14,6 +14,9 @@ import { ZodError } from "zod";
 
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("trpc");
 
 /**
  * 1. CONTEXT
@@ -100,7 +103,7 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
 
   const end = Date.now();
   if (t._config.isDev) {
-    console.log(`[TRPC] ${path} took ${end - start}ms to execute`);
+    log.debug("procedure timing", { path, ms: end - start });
   }
 
   return result;

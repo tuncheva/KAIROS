@@ -2,12 +2,28 @@ import { createHmac, timingSafeEqual } from "crypto";
 
 export const ACCOUNT_SWITCH_COOKIE = "kairos.accounts";
 
+/**
+ * How long an entry stays switchable, independent of the cookie's own `maxAge`.
+ *
+ * The cookie lifetime alone is not a security boundary: a client controls when it
+ * sends a cookie, and a copied cookie jar keeps working until the browser decides
+ * otherwise. Stamping the deadline inside the signed payload means the server
+ * decides, and the signature makes it untamperable.
+ */
+export const ACCOUNT_SWITCH_ENTRY_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
 export type AccountSwitchEntry = {
   userId: string;
   email: string;
   name: string | null;
   image: string | null;
   lastUsed: number;
+  /**
+   * Epoch ms after which this entry is ignored. Entries written before this field
+   * existed have no value and are treated as expired — failing closed costs those
+   * users one extra sign-in and is the right direction for a credential.
+   */
+  expiresAt?: number;
 };
 
 type CookiePayloadV1 = {
@@ -40,7 +56,7 @@ export class AccountSwitchCookieCodec {
     return `${payloadB64}.${sig}`;
   }
 
-  decode(value: string | undefined) {
+  decode(value: string | undefined, now = Date.now()) {
     if (!value) return [] as AccountSwitchEntry[];
 
     const [payloadB64, sig] = value.split(".");
@@ -75,6 +91,7 @@ export class AccountSwitchCookieCodec {
           (typeof x.image === "string" || x.image === null || x.image === undefined)
         );
       })
+      .filter((a) => typeof a.expiresAt === "number" && a.expiresAt > now)
       .sort((a, b) => b.lastUsed - a.lastUsed);
   }
 
@@ -94,8 +111,12 @@ export const encodeAccountSwitchCookie = (accounts: AccountSwitchEntry[], secret
   return new AccountSwitchCookieCodec(secret).encode(accounts);
 };
 
-export const decodeAccountSwitchCookie = (value: string | undefined, secret: string) => {
-  return new AccountSwitchCookieCodec(secret).decode(value);
+export const decodeAccountSwitchCookie = (
+  value: string | undefined,
+  secret: string,
+  now = Date.now(),
+) => {
+  return new AccountSwitchCookieCodec(secret).decode(value, now);
 };
 
 export const getCookieFromHeader = (cookieHeader: string | null, name: string) => {

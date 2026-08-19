@@ -536,6 +536,14 @@ Only `useTranslations` and `useLocale` are imported from next-intl anywhere in `
 > `used_at` / `used_by_user_id` (unused). Dropping them is not a sync — it needs
 > someone who knows whether that data still matters.
 >
+> **#6 is now fully closed.** The `user(email)` unique constraint already existed in
+> the deployed database as `user_email_unique` — applied out-of-band — but
+> `schema.ts` never declared it, so a database provisioned from the migrations would
+> not have had it. A unique-index diff between a from-scratch schema and production
+> caught this; the column-level diff had not. `.unique()` added, baseline
+> regenerated (drizzle emits the same constraint name), 0 duplicate emails live. The
+> only remaining unique/FK differences belong to the six orphan tables above.
+>
 > Still open from weeks 3–4: **#13** (integration harness) — `createCallerFactory`
 > against a real database. The scratch-schema technique proven here for #12 is the
 > way to do it without a container: provision the baseline into a throwaway schema,
@@ -550,6 +558,105 @@ Only `useTranslations` and `useLocale` are imported from next-intl anywhere in `
 > a single root cause, now fixed — see #36. #35 is fixed. Note that `pnpm check` runs
 > `lint && tsc --noEmit`, so while lint was failing the typecheck never ran at all.
 
+> **Status — all remaining items implemented (2026-08-20).** Every finding in this
+> document is now either fixed or explicitly closed with a recorded decision.
+> `pnpm check` exits 0, `pnpm test` is 56 files / 1338 tests green, and
+> `pnpm test:integration` is 13 tests green against a real Postgres.
+>
+> **#3c account switching** — re-authentication is now mandatory. The provider takes
+> a password as well as the userId, verifies it with Argon2, and is rate-limited on
+> both the target account and the client IP. OAuth-only accounts cannot
+> re-authenticate here and are refused, which sends the UI through a full sign-in —
+> a fresh provider round-trip is the equivalent proof. The cookie also gained a
+> per-entry deadline inside the signed payload, and legacy entries with no deadline
+> fail closed. 11 tests in `tests/server/accountSwitch.test.ts`.
+>
+> **#7 email verification** — credentials signup now writes `emailVerified: null`,
+> issues a single-use token (only its SHA-256 is stored), and mails a link;
+> sign-in is refused until it is redeemed. `/verify-email` handles the link.
+> `allowDangerousEmailAccountLinking` stays on — turning it off reintroduces the
+> `OAuthAccountNotLinked` failure the provider comment describes — but the `signIn`
+> callback now supplies the condition that makes it safe: a provider identity may
+> only attach to a row that is already verified, and the provider must itself assert
+> the address is verified. That closes the takeover path. Verified against the live
+> data first: all four password accounts were already verified and the two
+> unverified rows are OAuth-only and already linked, so nobody is locked out.
+> 14 tests in `tests/server/emailVerification.test.ts`.
+>
+> **#8 remainder** — `note.getOne` and `note.verifyPassword` are rate-limited before
+> any Argon2 work, closing the 64MB-per-attempt exhaustion vector. Durable lockout
+> columns (`login_failed_attempts`, `login_locked_until`, `login_last_failed_at`,
+> migration `0022`) mean a restart no longer hands an attacker a fresh budget.
+>
+> **#27** — the `jwt` callback no longer trusts client-supplied `email`/`name`;
+> only `image` is accepted and identity is re-read from the database by `token.id`.
+>
+> **#28, #29, #30, #31** — access codes are returned only to members who can add
+> people (nullable in the API, and the sharing controls hide themselves);
+> `organization.join` is rate-limited on user and IP; PBKDF2 raised to 210,000
+> iterations with a `v2:` prefix on new ciphertext so legacy payloads still decrypt
+> (and the 12-vs-16-byte auth-tag comment is corrected); the A1 `listProjects` tool
+> now unions owned, org-member and collaborator projects; `proxy.ts` matches known
+> static extensions instead of treating any path containing a dot as public.
+>
+> **#20 remainder** — `event:updated` / `event:deleted` publish to a `feed:events`
+> room that clients join on connect, instead of `io.emit` to every socket.
+>
+> **#26 + orphan cleanup** (migration `0023`) — `rsvp_unique` is a real unique index
+> and `organization_members` gained `(organization_id, user_id)`; both verified to
+> have zero duplicates first, and the constraint proven to reject a duplicate
+> insert. The six tables `schema.ts` never declared were dropped on an explicit
+> decision; the four rows in `ai_conversations`/`ai_messages` were snapshotted first.
+> The `organization_invites` columns were kept, so a from-scratch build lacks them —
+> that is the one remaining known difference.
+>
+> **#32** — all ~84 bare `console.*` calls in `src/server` and `ws-server` now go
+> through a logger with levels (`LOG_LEVEL`) and redaction: sensitive keys replaced,
+> emails masked, user ids truncated, errors reduced to name and message without the
+> stack. A `no-console` lint rule on both trees stops it regressing. 16 tests.
+>
+> **#22 + #34** — `package-lock.json`, `build.log` and `run_tsc.bat` untracked
+> (`build.log` gitignored); `.pnpmrc` merged into `.npmrc`, which is the file pnpm
+> actually reads — so the hoist patterns had never been in effect. `next-auth`
+> upgraded to `5.0.0-beta.32`, whose peer range includes Next 16.
+>
+> **#23** — `de`/`es`/`fr` are no longer offered (51% translated); both switcher
+> UIs now derive their list from `~/i18n/locales`, and the `language` enum is
+> narrowed to locales that have files (migration `0024`, verified only `en`/`bg` in
+> use). The parity test fails if an offered locale has a gap — and it immediately
+> found four keys in `bg` that English lacked, all unused leftovers, now removed.
+>
+> **#13** — a real integration harness. `tests/integration/` runs actual tRPC
+> procedures against Postgres using the scratch-schema technique proven for #12:
+> each run provisions its own schema, pins `search_path` to it, and drops it after,
+> so it is safe against a database holding real data. Verified afterwards that
+> `public` was untouched and no fixtures leaked. The 13 tests assert the negative
+> case on each P0 path — every one would have failed before its fix.
+>
+> **#25** — `agentOrchestrator.ts` split from 1,647 lines into `shared.ts`,
+> `a1Concierge.ts`, `a2TaskPlanner.ts`, `a3NotesVault.ts`, `a4EventsPublisher.ts`
+> and `taskGeneration.ts`. The exported object has the same 12 methods, so no caller
+> or test changed.
+>
+> **#21 — CSP now enforced, after being exercised in a browser.** Running the app
+> found two bugs source review had not: the inline theme script had been given the
+> per-response nonce, which produced *both* a CSP violation and a React hydration
+> mismatch (React does not carry `nonce` into the client tree), and `next-themes`
+> injects a **second** inline script nothing had accounted for. The theme script is
+> allowed by hash (with a test that regenerates it if the script changes — and note
+> hash sources must be *single-quoted*, which was a third bug found the same way);
+> `next-themes` gets the nonce through `ThemeProvider`. Verified with zero
+> violations on the marketing page, the sign-in modal and `/verify-email`. **Not
+> verified:** the Maps picker, UploadThing uploads and the authenticated socket,
+> because signing in was not possible — their hosts are in the allowlist and
+> `strict-dynamic` covers scripts they inject, but if one is blocked, set
+> `CSP_REPORT_ONLY=1`, read the violation, and add the source it names.
+>
+> **Still open, deliberately:** `organization_roles` is unused but not deleted, and
+> `ws-server` still does its own raw-SQL membership checks rather than sharing the
+> authz helper. Both are noted rather than done because neither is a defect — the
+> checks are correct, just duplicated.
+
 **Week 1 — close the cross-tenant holes.** These are the only findings where an ordinary authenticated user can reach another tenant's data today.
 
 1. **#2 WS conversation authorization** (S) — smallest fix with the largest blast-radius reduction. One DB check in `ws-server/rooms.ts`.
@@ -563,7 +670,7 @@ Write an integration test for each as you fix it — that bootstraps #13's harne
 
 5. **#9 env validation** (S) — required secrets, no hardcoded DB fallback. Do this before anything reaches production.
 6. **#8 Login rate limiting** (S) — reuse the existing limiter; add persistent lockout.
-7. **#6 email uniqueness + scoped reset** (S code / M data) — the `.where(eq(users.id, …))` fix is a one-liner and should not wait for the migration.
+7. **#6 email uniqueness + scoped reset** (S code / M data) — *done.* The scoped reset was fixed in week 2; the unique constraint turned out to already exist in the deployed database and was missing only from `schema.ts`, which is now corrected.
 8. **#11 ProjectChat loop and polling** (S) — likely the single biggest load reduction available.
 9. **#10 Note encryption guard** (S) — stop the data loss; the PIN key-wrapping redesign can follow.
 10. **#14 2FA** (S) — remove the misleading toggle now, implement later.

@@ -13,6 +13,10 @@
 import type { Socket, DefaultEventsMap } from "socket.io";
 import postgres from "postgres";
 
+import { createLogger } from "./logger";
+
+const log = createLogger("ws:rooms");
+
 /**
  * Per-socket data populated by the auth middleware in `index.ts`.
  * Exported so the `Server` instance can be typed with the same shape — otherwise
@@ -37,7 +41,7 @@ export type AuthSocket = Socket<
 const DATABASE_URL = process.env.DATABASE_URL;
 
 if (!DATABASE_URL) {
-  console.error("FATAL: DATABASE_URL is not set. The WS server cannot authorize room joins.");
+  log.error("FATAL: DATABASE_URL is not set; room joins cannot be authorized");
   process.exit(1);
 }
 
@@ -64,19 +68,15 @@ async function handleJoinOrg(socket: AuthSocket, orgId: unknown) {
     `;
 
     if (rows.length === 0) {
-      console.warn(
-        `[ws:rooms] join:org DENIED — user=${userId} org=${organizationId}`,
-      );
+      log.warn("join:org denied", { userId, organizationId });
       socket.disconnect(true);
       return;
     }
 
     void socket.join(`org:${organizationId}`);
-    console.log(
-      `[ws:rooms] join:org OK — user=${userId} org=${organizationId}`,
-    );
+    log.debug("join:org ok", { userId, organizationId });
   } catch (err) {
-    console.error("[ws:rooms] join:org DB error", err);
+    log.error("join:org failed", { err });
     socket.disconnect(true);
   }
 }
@@ -103,9 +103,7 @@ async function handleJoinProject(socket: AuthSocket, projectId: unknown) {
     `;
 
     if (projectRows.length === 0) {
-      console.warn(
-        `[ws:rooms] join:project DENIED (not found) — user=${userId} project=${pid}`,
-      );
+      log.warn("join:project denied, project not found", { userId, projectId: pid });
       socket.disconnect(true);
       return;
     }
@@ -115,9 +113,7 @@ async function handleJoinProject(socket: AuthSocket, projectId: unknown) {
     // Project owner always has access
     if (project.createdById === userId) {
       void socket.join(`project:${pid}`);
-      console.log(
-        `[ws:rooms] join:project OK (owner) — user=${userId} project=${pid}`,
-      );
+      log.debug("join:project ok", { userId, projectId: pid, via: "owner" });
       return;
     }
 
@@ -131,9 +127,7 @@ async function handleJoinProject(socket: AuthSocket, projectId: unknown) {
 
     if (collabRows.length > 0) {
       void socket.join(`project:${pid}`);
-      console.log(
-        `[ws:rooms] join:project OK (collaborator) — user=${userId} project=${pid}`,
-      );
+      log.debug("join:project ok", { userId, projectId: pid, via: "collaborator" });
       return;
     }
 
@@ -148,19 +142,15 @@ async function handleJoinProject(socket: AuthSocket, projectId: unknown) {
 
       if (orgRows.length > 0) {
         void socket.join(`project:${pid}`);
-        console.log(
-          `[ws:rooms] join:project OK (org member) — user=${userId} project=${pid}`,
-        );
+        log.debug("join:project ok", { userId, projectId: pid, via: "org-member" });
         return;
       }
     }
 
-    console.warn(
-      `[ws:rooms] join:project DENIED — user=${userId} project=${pid}`,
-    );
+    log.warn("join:project denied", { userId, projectId: pid });
     socket.disconnect(true);
   } catch (err) {
-    console.error("[ws:rooms] join:project DB error", err);
+    log.error("join:project failed", { err });
     socket.disconnect(true);
   }
 }
@@ -195,21 +185,38 @@ async function handleJoinConversation(
     `;
 
     if (rows.length === 0) {
-      console.warn(
-        `[ws:rooms] join:conversation DENIED — user=${userId} conversation=${cid}`,
-      );
+      log.warn("join:conversation denied", { userId, conversationId: cid });
       socket.disconnect(true);
       return;
     }
 
     void socket.join(`conversation:${cid}`);
-    console.log(
-      `[ws:rooms] join:conversation OK — user=${userId} conversation=${cid}`,
-    );
+    log.debug("join:conversation ok", { userId, conversationId: cid });
   } catch (err) {
-    console.error("[ws:rooms] join:conversation DB error", err);
+    log.error("join:conversation failed", { err });
     socket.disconnect(true);
   }
+}
+
+// ── join:events (public feed) ────────────────────────────────────────
+
+/**
+ * The public events feed.
+ *
+ * No membership check, deliberately: events are public content — region-scoped,
+ * with no organization — and `event.getPublicEvents` is a `publicProcedure`. This
+ * room exists for scope, not secrecy: it replaces an `io.emit` that woke every
+ * connected socket in the system whenever any event changed.
+ *
+ * Anything carrying an authorization decision belongs in one of the handlers above,
+ * which query the database before joining.
+ */
+function handleJoinEvents(socket: AuthSocket) {
+  void socket.join(EVENTS_FEED_ROOM);
+}
+
+function handleLeaveEvents(socket: AuthSocket) {
+  void socket.leave(EVENTS_FEED_ROOM);
 }
 
 // ── leave handlers ───────────────────────────────────────────────────
@@ -226,7 +233,16 @@ function handleLeaveProject(socket: AuthSocket, projectId: unknown) {
 
 // ── register all room handlers on a socket ───────────────────────────
 
+/**
+ * Must match the room the app publishes to — `publishEventsFeedEvent` in
+ * `src/server/redis/publisher.ts` uses the "feed" scope with id "events", and the
+ * subscriber maps channel `ws:feed:events` to room `feed:events`.
+ */
+const EVENTS_FEED_ROOM = "feed:events";
+
 export function registerRoomHandlers(socket: AuthSocket) {
+  socket.on("join:events", () => handleJoinEvents(socket));
+  socket.on("leave:events", () => handleLeaveEvents(socket));
   socket.on("join:org", (orgId: unknown) => void handleJoinOrg(socket, orgId));
   socket.on("leave:org", (orgId: unknown) => handleLeaveOrg(socket, orgId));
   socket.on(

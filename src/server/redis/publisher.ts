@@ -8,6 +8,9 @@
  */
 
 const REDIS_NATIVE_URL = process.env.REDIS_NATIVE_URL;
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("publisher");
 const WS_INTERNAL_URL =
   process.env.WS_INTERNAL_URL ?? "http://localhost:3001";
 const WS_SECRET = process.env.WS_SECRET ?? "";
@@ -46,10 +49,10 @@ async function getRedisPublisher(): Promise<RedisClientLike | null> {
     const client = createClient({ url: REDIS_NATIVE_URL });
     await client.connect();
     redisPublisher = client;
-    console.log("[publisher] Redis publisher connected");
+    log.info("redis publisher connected");
     return redisPublisher;
   } catch (err) {
-    console.error("[publisher] Failed to connect Redis publisher", err);
+    log.error("failed to connect redis publisher", { err });
     redisInitializing = false;
     return null;
   }
@@ -58,7 +61,7 @@ async function getRedisPublisher(): Promise<RedisClientLike | null> {
 // ── core publish ─────────────────────────────────────────────────────
 
 async function publish(
-  scope: "user" | "org" | "project" | "conversation",
+  scope: "user" | "org" | "project" | "conversation" | "feed",
   id: string,
   event: string,
   payload: unknown,
@@ -76,7 +79,7 @@ async function publish(
         return;
       }
     } catch (err) {
-      console.error("[publisher] Redis publish failed, falling back to HTTP", err);
+      log.warn("redis publish failed, falling back to HTTP", { err });
     }
   }
 
@@ -91,16 +94,14 @@ async function publish(
       body: JSON.stringify({ room, event, payload }),
     });
     if (!res.ok) {
-      console.error(
-        `[publisher] HTTP fallback failed: ${res.status} ${res.statusText}`,
-      );
+      log.error("HTTP fallback failed", {
+        status: res.status,
+        statusText: res.statusText,
+      });
     }
   } catch (err) {
     if (process.env.NODE_ENV !== "production") {
-      console.warn(
-        "[publisher] HTTP fallback failed (WS server may not be running)",
-        (err as Error).message,
-      );
+      log.warn("HTTP fallback failed (WS server may not be running)", { err });
     }
   }
 }
@@ -168,6 +169,18 @@ export function publishConversationEvent(
 }
 
 /**
+ * Publish to the public events feed.
+ *
+ * Events are public content — region-scoped, no organization — so this room needs
+ * no authorization to join. What it does buy is scope: only sockets that have
+ * actually opened the feed receive the invalidation, instead of every connected
+ * client in the system receiving every event change.
+ */
+export function publishEventsFeedEvent(event: string, payload: unknown): void {
+  void publish("feed", "events", event, payload);
+}
+
+/**
  * Broadcast to all connected clients (publishes to each scope).
  * For events that need global broadcast, publish to a well-known room.
  */
@@ -193,7 +206,7 @@ export function publishBroadcast(event: string, payload: unknown): void {
     body,
   }).catch((err: Error) => {
     if (process.env.NODE_ENV !== "production") {
-      console.warn("[publisher] broadcast HTTP fallback failed", err.message);
+      log.warn("broadcast HTTP fallback failed", { err });
     }
   });
 }

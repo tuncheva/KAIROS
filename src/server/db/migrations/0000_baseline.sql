@@ -1,7 +1,7 @@
 CREATE TYPE "public"."agent_notes_vault_draft_status" AS ENUM('draft', 'confirmed', 'applied', 'expired');--> statement-breakpoint
 CREATE TYPE "public"."agent_task_planner_draft_status" AS ENUM('draft', 'confirmed', 'applied', 'expired');--> statement-breakpoint
 CREATE TYPE "public"."date_format" AS ENUM('MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD');--> statement-breakpoint
-CREATE TYPE "public"."language" AS ENUM('en', 'bg', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko', 'zh', 'ar');--> statement-breakpoint
+CREATE TYPE "public"."language" AS ENUM('en', 'bg', 'es', 'fr', 'de');--> statement-breakpoint
 CREATE TYPE "public"."notification_type" AS ENUM('event', 'task', 'project', 'system', 'like', 'comment', 'reply');--> statement-breakpoint
 CREATE TYPE "public"."org_role" AS ENUM('admin', 'member', 'guest', 'worker', 'mentor');--> statement-breakpoint
 CREATE TYPE "public"."permission" AS ENUM('read', 'write');--> statement-breakpoint
@@ -57,6 +57,9 @@ CREATE TABLE "user" (
 	"reset_pin_failed_attempts" integer DEFAULT 0 NOT NULL,
 	"reset_pin_locked_until" timestamp with time zone,
 	"reset_pin_last_failed_at" timestamp with time zone,
+	"login_failed_attempts" integer DEFAULT 0 NOT NULL,
+	"login_locked_until" timestamp with time zone,
+	"login_last_failed_at" timestamp with time zone,
 	"bio" text,
 	"email_notifications" boolean DEFAULT true NOT NULL,
 	"project_updates_notifications" boolean DEFAULT true NOT NULL,
@@ -76,7 +79,8 @@ CREATE TABLE "user" (
 	"two_factor_enabled" boolean DEFAULT false NOT NULL,
 	"two_factor_secret" varchar(255),
 	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"updated_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	CONSTRAINT "user_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
 CREATE TABLE "verification_token" (
@@ -408,6 +412,7 @@ CREATE INDEX "org_invite_org_idx" ON "organization_invites" USING btree ("organi
 CREATE INDEX "org_invite_email_idx" ON "organization_invites" USING btree ("email");--> statement-breakpoint
 CREATE INDEX "org_member_org_idx" ON "organization_members" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "org_member_user_idx" ON "organization_members" USING btree ("user_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "org_member_unique" ON "organization_members" USING btree ("organization_id","user_id");--> statement-breakpoint
 CREATE INDEX "org_role_org_idx" ON "organization_roles" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "org_created_by_idx" ON "organizations" USING btree ("created_by_id");--> statement-breakpoint
 CREATE INDEX "org_access_code_idx" ON "organizations" USING btree ("access_code");--> statement-breakpoint
@@ -435,7 +440,7 @@ CREATE INDEX "comment_created_by_idx" ON "event_comment" USING btree ("createdBy
 CREATE INDEX "like_event_id_idx" ON "event_like" USING btree ("event_id");--> statement-breakpoint
 CREATE INDEX "rsvp_event_idx" ON "event_rsvp" USING btree ("event_id");--> statement-breakpoint
 CREATE INDEX "rsvp_user_idx" ON "event_rsvp" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "rsvp_unique" ON "event_rsvp" USING btree ("event_id","user_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "rsvp_unique" ON "event_rsvp" USING btree ("event_id","user_id");--> statement-breakpoint
 CREATE INDEX "event_created_by_idx" ON "event" USING btree ("createdById");--> statement-breakpoint
 CREATE INDEX "event_date_idx" ON "event" USING btree ("event_date");--> statement-breakpoint
 CREATE INDEX "event_region_idx" ON "event" USING btree ("region");--> statement-breakpoint

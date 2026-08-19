@@ -5,6 +5,9 @@ import { assertOrgPermission, assertProjectPermission } from "~/server/api/authz
 import { projects, tasks, projectCollaborators, users, organizationMembers, notifications } from "~/server/db/schema";
 import { eq, and, desc, inArray, isNull, sql, ne, or } from "drizzle-orm";
 import { emitNotification } from "~/server/socket/emit";
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("project");
 
 export const projectRouter = createTRPCRouter({
   
@@ -49,8 +52,8 @@ export const projectRouter = createTRPCRouter({
         : [undefined];
 
       if (process.env.NODE_ENV !== "production") {
-        console.log("Creating project - User ID:", ctx.session.user.id);
-        console.log("User's organization membership:", membership);
+        log.debug("creating project", { userId: ctx.session.user.id });
+        log.debug("caller membership resolved", { organizationId: membership?.organizationId ?? null });
       }
 
       // A project created inside an organization requires `canCreateProjects`.
@@ -76,7 +79,7 @@ export const projectRouter = createTRPCRouter({
         .returning();
 
       if (process.env.NODE_ENV !== "production") {
-        console.log("Created project:", {
+        log.debug("Created project:", {
           id: project?.id,
           title: project?.title,
           organizationId: project?.organizationId,
@@ -89,7 +92,7 @@ export const projectRouter = createTRPCRouter({
  
   getMyProjects: protectedProcedure.query(async ({ ctx }) => {
     if (process.env.NODE_ENV !== "production") {
-      console.log("Fetching projects for user:", ctx.session.user.id);
+      log.debug("listing projects", { userId: ctx.session.user.id });
     }
 
     let activeOrganizationId: number | null = null;
@@ -124,7 +127,7 @@ export const projectRouter = createTRPCRouter({
       : [undefined];
 
     if (process.env.NODE_ENV !== "production") {
-      console.log("User active organization membership:", membership);
+      log.debug("active membership resolved", { organizationId: membership?.organizationId ?? null });
     }
 
     let projectsList;
@@ -138,7 +141,7 @@ export const projectRouter = createTRPCRouter({
         .orderBy(desc(projects.createdAt));
 
       if (process.env.NODE_ENV !== "production") {
-        console.log("Found organization projects:", projectsList.length);
+        log.debug("found organization projects", { count: projectsList.length });
       }
     } else {
 
@@ -168,7 +171,7 @@ export const projectRouter = createTRPCRouter({
         .orderBy(desc(projects.createdAt));
 
       if (process.env.NODE_ENV !== "production") {
-        console.log("Found personal projects:", projectsList.length);
+        log.debug("found personal projects", { count: projectsList.length });
       }
     }
 
@@ -239,14 +242,10 @@ export const projectRouter = createTRPCRouter({
     }));
 
 
-    if (process.env.NODE_ENV !== "production") {
-      console.log("Projects with tasks:", projectsWithTasks.map(p => ({
-        id: p.id,
-        title: p.title,
-        tasksCount: p.tasks.length,
-        completedCount: p.tasks.filter(t => t.status === 'completed').length,
-      })));
-    }
+    log.debug("projects with tasks", {
+      count: projectsWithTasks.length,
+      totalTasks: projectsWithTasks.reduce((n, p) => n + p.tasks.length, 0),
+    });
 
     return projectsWithTasks;
   }),
@@ -344,7 +343,7 @@ export const projectRouter = createTRPCRouter({
       }
 
       if (process.env.NODE_ENV !== "production") {
-        console.log("Fetching project:", {
+        log.debug("Fetching project:", {
           id: project.id,
           organizationId: project.organizationId,
           createdById: project.createdById,
@@ -371,7 +370,7 @@ export const projectRouter = createTRPCRouter({
         hasOrgAccess = !!membership;
         isOrgMember = !!membership;
         if (process.env.NODE_ENV !== "production") {
-          console.log("User has org access:", hasOrgAccess, "via membership:", !!membership);
+          log.debug("org access resolved", { hasOrgAccess, viaMembership: !!membership });
         }
       }
 
@@ -387,7 +386,7 @@ export const projectRouter = createTRPCRouter({
         );
 
       if (process.env.NODE_ENV !== "production") {
-        console.log("Access check:", { isOwner, hasOrgAccess, isCollaborator: !!collaboration });
+        log.debug("Access check:", { isOwner, hasOrgAccess, isCollaborator: !!collaboration });
       }
 
       if (!isOwner && !collaboration && !hasOrgAccess) {
@@ -505,7 +504,7 @@ export const projectRouter = createTRPCRouter({
       }));
 
       if (process.env.NODE_ENV !== "production") {
-        console.log("Project tasks:", formattedTasks.length);
+        log.debug("project tasks loaded", { count: formattedTasks.length });
       }
 
       
@@ -610,7 +609,7 @@ export const projectRouter = createTRPCRouter({
             });
           }
         } catch (notifError) {
-          console.error("Failed to create notification (collaborator was still added):", notifError);
+          log.error("collaborator added but notification failed", { err: notifError });
         }
 
         return { 

@@ -41,7 +41,12 @@ export async function GET() {
     .where(inArray(users.id, userIds));
 
   const existingUserIds = new Set(existingUsers.map(u => u.id));
-  const filteredAccounts = accounts.filter(a => existingUserIds.has(a.userId));
+  const filteredAccounts = accounts.filter(
+    // Drop rows whose user no longer exists, and the caller's own entry: the
+    // switcher only ever offers *other* accounts, so returning the current one
+    // discloses nothing the client needs and widens what a leaked response says.
+    (a) => existingUserIds.has(a.userId) && a.userId !== session.user.id,
+  );
 
   return NextResponse.json({ accounts: filteredAccounts });
 }

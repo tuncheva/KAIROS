@@ -13,19 +13,34 @@
  *  - The CSP needs a fresh nonce per response, so it is built in the proxy
  *    (`src/proxy.ts`), which is the only place that sees each request.
  *
- * ## Report-Only by default
+ ## Enforced, with a rollback switch
  *
- * The CSP ships as `Content-Security-Policy-Report-Only` unless `CSP_ENFORCE` is
- * set. An enforced CSP that has never been exercised against the running app is a
- * blank-page outage waiting to happen — Google Maps, UploadThing and GSAP all
- * inject at runtime, and the allowlist below is derived from reading the source,
- * not from watching the browser. Report-Only puts violations in the console where
- * they can be read, without breaking anything.
+ * The policy blocks by default. Set `CSP_REPORT_ONLY=1` to downgrade it to
+ * `Content-Security-Policy-Report-Only` — one variable, no deploy — if something
+ * turns out to be blocked that should not be.
  *
- * To enforce: run the app with Report-Only, exercise the map picker, an image
- * upload, the chat, and an animated page; fix whatever is reported; then set
- * `CSP_ENFORCE=1`.
+ * ## What was actually exercised
+ *
+ * Enforcement was turned on only after loading the app and reading the violations,
+ * which found two bugs that source review had not:
+ *
+ *  1. The inline theme script was given the per-response nonce. That produced both
+ *     a CSP violation and a React hydration mismatch (`nonce="…"` server,
+ *     `nonce=""` client), because React does not carry `nonce` into the client
+ *     tree. It is allowed by hash now — see `~/server/themeInitScript`.
+ *  2. `next-themes` injects a *second* inline script that nothing had accounted
+ *     for. It takes a `nonce` prop, now threaded through `ThemeProvider`.
+ *
+ * Verified with zero violations: the marketing page, the sign-in modal, and
+ * `/verify-email`. **Not** verified, because signing in was not possible during
+ * that pass: the Google Maps region picker, UploadThing image uploads, and the
+ * authenticated socket connection. Those hosts are in the allowlist below and
+ * `strict-dynamic` covers scripts they inject at runtime, but if any of them turns
+ * out to be blocked, set `CSP_REPORT_ONLY=1`, collect the violation, and add the
+ * source it names.
  */
+
+import { THEME_INIT_SCRIPT_SHA256 } from "~/server/themeInitScript";
 
 /** Origins the browser genuinely needs to reach, by directive. */
 const ALLOWLIST = {
@@ -117,7 +132,13 @@ export function contentSecurityPolicy(nonce: string): string {
     // host allowlist; the hosts stay for those that don't.
     "script-src": [
       "'self'",
+      // Next.js reads this nonce back out of the header and stamps it on the script
+      // tags it generates itself.
       `'nonce-${nonce}'`,
+      // The theme-flash script is static and allowed by hash instead. A nonce on it
+      // caused both a CSP violation and a React hydration mismatch, because React
+      // does not carry `nonce` into the client tree — see `~/server/themeInitScript`.
+      THEME_INIT_SCRIPT_SHA256,
       "'strict-dynamic'",
       ...ALLOWLIST.maps,
       // React refresh and the dev overlay evaluate generated code.
@@ -174,9 +195,16 @@ export function contentSecurityPolicy(nonce: string): string {
   return isDev ? policy : `${policy}; upgrade-insecure-requests`;
 }
 
-/** True when the CSP should block rather than merely report. */
+/**
+ * True when the CSP should block rather than merely report.
+ *
+ * Enforced by default: a report-only policy is diagnostics, not a control. The
+ * escape hatch is opt-*out* so that a misconfigured environment fails toward
+ * protection rather than away from it.
+ */
 export function isCspEnforced(): boolean {
-  return process.env.CSP_ENFORCE === "1" || process.env.CSP_ENFORCE === "true";
+  const reportOnly = process.env.CSP_REPORT_ONLY;
+  return !(reportOnly === "1" || reportOnly === "true");
 }
 
 /** The header name to send the policy under, given the enforcement mode. */

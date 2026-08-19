@@ -1,5 +1,5 @@
 import { type InferInsertModel, type InferSelectModel } from "drizzle-orm";
-import { index, primaryKey, integer } from "drizzle-orm/pg-core";
+import { index, primaryKey, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { createTable, regionEnum, rsvpStatusEnum } from "./enums";
 import { users } from "./users";
 
@@ -58,7 +58,10 @@ export const eventRsvps = createTable(
   (t) => [
     index("rsvp_event_idx").on(t.eventId),
     index("rsvp_user_idx").on(t.userId),
-    index("rsvp_unique").on(t.eventId, t.userId),
+    // Was a plain `index()` despite the name, so nothing stopped a duplicate RSVP —
+    // the check-then-insert in `event.updateRsvp` could race into two rows for one
+    // user, and the feed would then count that person twice.
+    uniqueIndex("rsvp_unique").on(t.eventId, t.userId),
   ]
 );
 

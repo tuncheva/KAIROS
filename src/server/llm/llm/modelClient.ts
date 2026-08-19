@@ -20,6 +20,10 @@
  *   LLM_ALTERNATE_MODEL  — alternate model (third tier)
  */
 
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("llm");
+
 // ---------------------------------------------------------------------------
 // Config helpers
 // ---------------------------------------------------------------------------
@@ -132,7 +136,7 @@ async function singleCompletion(
   const apiKey = getApiKey();
 
   if (!apiKey) {
-    console.error("[ModelClient] LLM_API_KEY is not set. AI features will not work.");
+    log.error("LLM_API_KEY is not set; AI features are disabled");
     throw new Error(
       "LLM_API_KEY is not set. Please add your HuggingFace token to .env",
     );
@@ -222,10 +226,7 @@ export async function chatCompletion(req: ChatRequest): Promise<ChatResponse> {
     } catch (err) {
       lastError = err;
       if (!isRetriable(err)) throw err; // non-retriable → fail immediately
-      console.warn(
-        `[LLM] ${model} failed with retriable error, falling back…`,
-        err instanceof Error ? err.message : err,
-      );
+      log.warn("model failed with a retriable error, falling back", { model, err });
     }
   }
 

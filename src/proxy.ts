@@ -28,7 +28,43 @@ const SESSION_COOKIE = "authjs.session-token";
 const SECURE_SESSION_COOKIE = "__Secure-authjs.session-token";
 
 // Routes that do NOT require authentication
-const PUBLIC_PATHS = new Set(["/", "/api/auth", "/reset-password"]);
+// `/verify-email` must be reachable without a session: the token in the link *is*
+// the credential, and credentials sign-in is refused until it is redeemed, so
+// requiring a session here would make confirmation impossible.
+const PUBLIC_PATHS = new Set([
+  "/",
+  "/api/auth",
+  "/reset-password",
+  "/verify-email",
+]);
+
+/**
+ * File extensions that belong to static assets.
+ *
+ * The rule here used to be `pathname.includes(".")`, which treated *any* path
+ * containing a dot as public — so a route like `/orgs/acme.co/settings` skipped the
+ * session check entirely. Matching a known extension at the end of the path is the
+ * same convenience without the hole.
+ *
+ * This is defence in depth rather than the real gate: `protectedProcedure` and
+ * `auth()` authorize every request that matters. The Edge runtime cannot call
+ * `auth()`, so this file can only ever check for the presence of a cookie.
+ */
+const STATIC_ASSET_EXTENSIONS = new Set([
+  "ico", "png", "jpg", "jpeg", "gif", "webp", "avif", "svg", "bmp",
+  "css", "js", "mjs", "map",
+  "woff", "woff2", "ttf", "otf", "eot",
+  "json", "txt", "xml", "webmanifest",
+  "mp4", "webm", "mp3", "wav", "ogg",
+  "pdf",
+]);
+
+function isStaticAsset(pathname: string): boolean {
+  const lastSegment = pathname.slice(pathname.lastIndexOf("/") + 1);
+  const dot = lastSegment.lastIndexOf(".");
+  if (dot <= 0) return false;
+  return STATIC_ASSET_EXTENSIONS.has(lastSegment.slice(dot + 1).toLowerCase());
+}
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;
@@ -37,7 +73,7 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/account-switch")) return true;
   if (pathname.startsWith("/api/uploadthing")) return true;
   if (pathname.startsWith("/_next")) return true;
-  if (pathname.includes(".")) return true;
+  if (isStaticAsset(pathname)) return true;
   return false;
 }
 

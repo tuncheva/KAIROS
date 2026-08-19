@@ -7,6 +7,38 @@ import { eq, and } from "drizzle-orm";
 import { emitNotification } from "~/server/socket/emit";
 import * as argon2 from "argon2";
 import { encryptContent, decryptContent } from "~/server/encryption";
+import {
+  consumeAuthRateLimit,
+  createAuthRateLimitKey,
+} from "~/server/authRateLimit";
+import { getClientIp } from "~/server/clientIp";
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("note");
+
+/**
+ * Throttle a note-password attempt before any Argon2 work happens.
+ *
+ * Two reasons, both from audit finding #8. The obvious one is that an unbounded
+ * number of attempts turns the note password into a guessing oracle. The less
+ * obvious one is cost: every verify runs Argon2id at `memoryCost: 65536`, so a few
+ * hundred concurrent attempts is 64MB each — a memory-exhaustion denial of service
+ * against the app server, reachable by any signed-in user.
+ *
+ * Keyed on the note *and* the caller, and separately on client IP, so one user
+ * hammering one note cannot deny everyone else access to their own notes.
+ */
+async function throttleNotePasswordAttempt(
+  ctx: { session: { user: { id: string } }; headers: Headers },
+  noteId: number,
+): Promise<void> {
+  await consumeAuthRateLimit(
+    createAuthRateLimitKey("note_password", `${ctx.session.user.id}:${noteId}`),
+  );
+  await consumeAuthRateLimit(
+    createAuthRateLimitKey("note_password_ip", getClientIp(ctx.headers)),
+  );
+}
 
 const ARGON2_OPTS = {
   type: argon2.argon2id,
@@ -34,10 +66,10 @@ export const noteRouter = createTRPCRouter({
           passwordSalt = crypto.randomBytes(32).toString("hex");
           passwordHash = await argon2.hash(input.password, ARGON2_OPTS);
           if (process.env.NODE_ENV !== "production") {
-            console.log("Password Hashed Successfully.");
+            log.debug("Password Hashed Successfully.");
           }
         } catch (hashError) {
-          console.error("❌ Hashing Error:", hashError); 
+          log.error("failed to hash note password", { err: hashError });
           throw new TRPCError({ 
             code: "INTERNAL_SERVER_ERROR", 
             message: "Failed to secure note password." 
@@ -63,7 +95,7 @@ export const noteRouter = createTRPCRouter({
         }).returning();
 
         if (!newNote) {
-          console.error("❌ Insertion failed, returned no note.");
+          log.error("❌ Insertion failed, returned no note.");
           throw new TRPCError({ 
             code: "INTERNAL_SERVER_ERROR", 
             message: "Note creation failed unexpectedly." 
@@ -71,12 +103,12 @@ export const noteRouter = createTRPCRouter({
         }
 
         if (process.env.NODE_ENV !== "production") {
-          console.log("Note Inserted Successfully. New ID:", newNote.id);
+          log.debug("note created", { noteId: newNote.id });
         }
         return newNote;
 
       } catch (dbError) {
-        console.error("Database Insertion Error:", dbError); 
+        log.error("note insert failed", { err: dbError });
         throw new TRPCError({ 
           code: "INTERNAL_SERVER_ERROR", 
           message: "Database insertion failed. Check your schema and database logs." 
@@ -422,6 +454,8 @@ export const noteRouter = createTRPCRouter({
           };
         }
 
+        await throttleNotePasswordAttempt(ctx, input.id);
+
         const isMatch = await argon2.verify(
           note.passwordHash,
           input.attemptedPassword
@@ -577,6 +611,8 @@ export const noteRouter = createTRPCRouter({
           message: "Note is not password protected."
         });
       }
+
+      await throttleNotePasswordAttempt(ctx, input.noteId);
 
       const isMatch = await argon2.verify(note.passwordHash, input.password);
 

@@ -1,4 +1,7 @@
 import { Resend } from 'resend';
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("email");
 
 export interface PasswordResetEmailParams {
   email: string;
@@ -18,9 +21,20 @@ export interface PasswordResetCodeParams {
   code: string;
 }
 
+export interface EmailVerificationParams {
+  email: string;
+  userName: string;
+  verifyToken: string;
+}
+
 type PasswordResetTemplateInput = {
   userName: string;
   resetUrl: string;
+};
+
+type EmailVerificationTemplateInput = {
+  userName: string;
+  verifyUrl: string;
 };
 
 type WelcomeTemplateInput = {
@@ -154,6 +168,51 @@ ${logoBlock('Password Reset Code')}
 } as const;
 
 // ---------------------------------------------------------------------------
+// Email Verification
+// ---------------------------------------------------------------------------
+
+const EmailVerificationTemplate = {
+  subject: 'Confirm your email - Kairos',
+  renderHtml: ({ userName, verifyUrl }: EmailVerificationTemplateInput) =>
+    emailWrapper(`
+${logoBlock('Confirm your email')}
+          <!-- Content Card -->
+          <tr>
+            <td style="background:#ffffff;border-radius:16px;padding:32px;border:1px solid #DDE3E9;">
+              <p style="margin:0 0 20px;color:#222B32;font-size:16px;line-height:1.6;">Hi <strong>${userName}</strong>,</p>
+              <p style="margin:0 0 24px;color:#59677C;font-size:16px;line-height:1.6;">Confirm this address to finish setting up your Kairos account. You will not be able to sign in until you do.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td align="center" style="padding:8px 0 24px;">
+                    <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;background-color:#9448F2;color:#ffffff;text-decoration:none;border-radius:12px;font-size:16px;font-weight:bold;">Confirm email</a>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="background-color:#FFF8E6;border-left:4px solid #FFC53D;padding:16px;border-radius:0 8px 8px 0;">
+                    <p style="margin:0;color:#59677C;font-size:14px;line-height:1.6;"><strong style="color:#222B32;">Didn't sign up?</strong><br>Someone may have entered your address by mistake. Ignore this email and no account will be usable with it. The link expires in <strong>24 hours</strong>.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`),
+  renderText: ({ userName, verifyUrl }: EmailVerificationTemplateInput) =>
+    `Hi ${userName},
+
+Confirm your email address to finish setting up your Kairos account:
+
+${verifyUrl}
+
+This link expires in 24 hours. You will not be able to sign in until the address is confirmed.
+
+If you didn't sign up, ignore this email.
+
+Best regards,
+The Kairos Team`,
+} as const;
+
+// ---------------------------------------------------------------------------
 // Note Password Reset Email (link-based)
 // ---------------------------------------------------------------------------
 
@@ -223,13 +282,13 @@ export class EmailService {
       });
 
       if (error) {
-        console.error('Resend Error:', error);
+        log.error('note password reset send failed', { err: error });
         throw new Error(`Failed to send email: ${error.message}`);
       }
 
       return data;
     } catch (error) {
-      console.error('Email Service Error:', error);
+      log.error('note password reset send threw', { err: error });
       throw error;
     }
   }
@@ -238,7 +297,7 @@ export class EmailService {
     email,
     userName,
   }: WelcomeEmailParams): Promise<{ id: string } | null> {
-    console.log('[Email Service] Sending welcome email to:', email);
+    log.debug('sending welcome email', { email });
     try {
       const { data, error } = await this.resend.emails.send({
         from: this.options.fromEmail,
@@ -249,16 +308,38 @@ export class EmailService {
       });
 
       if (error) {
-        console.error('[Email Service] Resend Error (welcome):', JSON.stringify(error, null, 2));
+        log.error('welcome send failed', { err: error });
         throw new Error(`Failed to send welcome email: ${error.message}`);
       }
 
-      console.log('[Email Service] Welcome email sent successfully:', data?.id);
+      log.debug('welcome email sent', { id: data?.id });
       return data;
     } catch (error) {
-      console.error('[Email Service] Email Service Error (welcome):', error);
+      log.error('welcome send threw', { err: error });
       throw error;
     }
+  }
+
+  async sendEmailVerification({
+    email,
+    userName,
+    verifyToken,
+  }: EmailVerificationParams): Promise<{ id: string } | null> {
+    const verifyUrl = `${this.options.appUrl}/verify-email?token=${encodeURIComponent(verifyToken)}`;
+
+    const { data, error } = await this.resend.emails.send({
+      from: this.options.fromEmail,
+      to: [email],
+      subject: EmailVerificationTemplate.subject,
+      html: EmailVerificationTemplate.renderHtml({ userName, verifyUrl }),
+      text: EmailVerificationTemplate.renderText({ userName, verifyUrl }),
+    });
+
+    if (error) {
+      throw new Error(`Failed to send verification email: ${error.message}`);
+    }
+
+    return data;
   }
 
   async sendPasswordResetCode({
@@ -266,7 +347,7 @@ export class EmailService {
     userName,
     code,
   }: PasswordResetCodeParams): Promise<{ id: string } | null> {
-    console.log('[Email Service] Sending password reset code to:', email);
+    log.debug('sending password reset code', { email });
     try {
       const { data, error } = await this.resend.emails.send({
         from: this.options.fromEmail,
@@ -277,14 +358,14 @@ export class EmailService {
       });
 
       if (error) {
-        console.error('[Email Service] Resend Error (reset code):', JSON.stringify(error, null, 2));
+        log.error('reset code send failed', { err: error });
         throw new Error(`Failed to send reset code: ${error.message}`);
       }
 
-      console.log('[Email Service] Reset code email sent successfully:', data?.id);
+      log.debug('reset code email sent', { id: data?.id });
       return data;
     } catch (error) {
-      console.error('[Email Service] Email Service Error (reset code):', error);
+      log.error('reset code send threw', { err: error });
       throw error;
     }
   }
@@ -296,13 +377,13 @@ export function getEmailService(): EmailService {
   // Always re-read env to pick up changes (no stale cached fromEmail)
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.error('[Email Service] RESEND_API_KEY is not set in environment variables');
+    log.error('RESEND_API_KEY is not set; email is disabled');
     throw new Error('RESEND_API_KEY is not set in environment variables');
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) {
-    console.error('[Email Service] NEXT_PUBLIC_APP_URL is not set in environment variables');
+    log.error('NEXT_PUBLIC_APP_URL is not set; email links would be broken');
     throw new Error('NEXT_PUBLIC_APP_URL is not set in environment variables');
   }
 
@@ -316,7 +397,7 @@ export function getEmailService(): EmailService {
     }
   }
 
-  console.log('[Email Service] Initialized with:', { appUrl, fromEmail: fromEmail.replace(/<.*>/, '<***>') });
+  log.info('email service initialised', { appUrl });
 
   cachedEmailService = new EmailService(new Resend(apiKey), {
     appUrl,
@@ -341,4 +422,10 @@ export async function sendPasswordResetCode(
   params: PasswordResetCodeParams
 ): Promise<{ id: string } | null> {
   return getEmailService().sendPasswordResetCode(params);
+}
+
+export async function sendEmailVerification(
+  params: EmailVerificationParams
+): Promise<{ id: string } | null> {
+  return getEmailService().sendEmailVerification(params);
 }

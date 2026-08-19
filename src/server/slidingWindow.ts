@@ -38,9 +38,12 @@
  * brute-force speed rather than correctness.
  */
 
+import { createLogger } from "~/server/logger";
+
 const REDIS_NATIVE_URL = process.env.REDIS_NATIVE_URL;
 
 const KEY_PREFIX = "rl:";
+const log = createLogger("rateLimit");
 
 export interface WindowState {
   /** Hits currently inside the window. */
@@ -107,10 +110,7 @@ async function getClient(): Promise<RedisLike | null> {
       client = created;
       return client;
     } catch (err) {
-      console.warn(
-        "[slidingWindow] Redis unavailable, using in-process windows:",
-        err instanceof Error ? err.message : err,
-      );
+      log.warn("redis unavailable, using in-process windows", { err });
       return null;
     } finally {
       connecting = null;
@@ -171,10 +171,7 @@ export async function readWindow(
     const [first] = await redis.zRangeWithScores(rkey, 0, 0);
     return { count, oldest: first?.score ?? null };
   } catch (err) {
-    console.warn(
-      "[slidingWindow] read failed, falling back to memory:",
-      err instanceof Error ? err.message : err,
-    );
+    log.warn("window read failed, falling back to memory", { err });
     return memoryState(key, windowMs, now);
   }
 }
@@ -214,10 +211,7 @@ export async function recordHit(
     const [first] = await redis.zRangeWithScores(rkey, 0, 0);
     return { count, oldest: first?.score ?? now };
   } catch (err) {
-    console.warn(
-      "[slidingWindow] write failed, falling back to memory:",
-      err instanceof Error ? err.message : err,
-    );
+    log.warn("window write failed, falling back to memory", { err });
     const valid = memoryPrune(key, now - windowMs);
     valid.push(now);
     memoryStore.set(key, valid);
@@ -234,10 +228,7 @@ export async function clearWindow(key: string): Promise<void> {
   try {
     await redis.del(KEY_PREFIX + key);
   } catch (err) {
-    console.warn(
-      "[slidingWindow] clear failed:",
-      err instanceof Error ? err.message : err,
-    );
+    log.warn("window clear failed", { err });
   }
 }
 

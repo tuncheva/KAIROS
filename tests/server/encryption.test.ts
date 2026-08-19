@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import nodeCrypto from "node:crypto";
 import { encryptContent, decryptContent } from "~/server/encryption";
 
 describe("Encryption — AES-256-GCM", () => {
@@ -13,10 +14,30 @@ describe("Encryption — AES-256-GCM", () => {
     expect(result).toBe(plaintext);
   });
 
-  it("returns a base64-encoded string", () => {
+  it("returns a version-marked base64 payload", () => {
     const cipher = encryptContent(plaintext, password, salt);
-    // Base64 regex
-    expect(cipher).toMatch(/^[A-Za-z0-9+/]+=*$/);
+
+    // The "v2:" prefix records which PBKDF2 cost the payload was written with, so
+    // the iteration count can be raised later without orphaning existing notes.
+    // ':' is not in the base64 alphabet, so the marker can never be mistaken for
+    // part of a legacy value.
+    expect(cipher).toMatch(/^v2:[A-Za-z0-9+/]+=*$/);
+  });
+
+  it("still decrypts legacy payloads written without a marker", () => {
+    // v1 was raw base64 at 100,000 iterations. Those rows are already in the
+    // database and there is no way to re-derive them without the password, so
+    // reading them back has to keep working.
+    const legacy = (() => {
+      const key = nodeCrypto.pbkdf2Sync(password, salt, 100_000, 32, "sha512");
+      const iv = nodeCrypto.randomBytes(16);
+      const cipher = nodeCrypto.createCipheriv("aes-256-gcm", key, iv);
+      const body = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+      return Buffer.concat([iv, cipher.getAuthTag(), body]).toString("base64");
+    })();
+
+    expect(legacy).not.toContain("v2:");
+    expect(decryptContent(legacy, password, salt)).toBe(plaintext);
   });
 
   it("produces ciphertext different from plaintext", () => {

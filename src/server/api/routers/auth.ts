@@ -4,10 +4,17 @@ import { users, passwordResetCodes } from "~/server/db/schema";
 import { eq, and, gt } from "drizzle-orm";
 import * as argon2 from "argon2";
 import { TRPCError } from "@trpc/server";
-import { sendWelcomeEmail, sendPasswordResetCode } from "~/server/email";
+import { sendWelcomeEmail, sendPasswordResetCode, sendEmailVerification } from "~/server/email";
+import {
+  consumeVerificationToken,
+  issueVerificationToken,
+} from "~/server/emailVerification";
 import crypto from "node:crypto";
 import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/authRateLimit";
 import { getClientIp } from "~/server/clientIp";
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("auth.router");
 
 function generateResetCode(): string {
   const buf = crypto.randomBytes(4);
@@ -52,28 +59,129 @@ export const authRouter = createTRPCRouter({
         parallelism: 4,
       });
 
+      // Unverified until a token is redeemed. This used to be `new Date()` with no
+      // mail sent, which made the column meaningless and left OAuth linking able
+      // to attach a real owner's provider identity to a row someone else created
+      // with their address.
       const [newUser] = await ctx.db
         .insert(users)
         .values({
           email,
           password: hashedPassword,
           name: name ?? null,
-          emailVerified: new Date(),
+          emailVerified: null,
         })
         .returning();
 
-      // Send welcome email (fire-and-forget, don't block signup)
+      const verifyToken = await issueVerificationToken(ctx.db, email);
+
+      // Sent before the welcome mail because it is the one the user needs: sign-in
+      // is refused until the address is confirmed.
+      void sendEmailVerification({
+        email,
+        userName: name ?? email,
+        verifyToken,
+      }).catch((err) => {
+        log.error("failed to send verification email", { email, err });
+      });
+
       void sendWelcomeEmail({
         email,
         userName: name ?? email,
       }).catch((err) => {
-        console.error("Failed to send welcome email to:", email, err);
+        log.error("failed to send welcome email", { email, err });
       });
 
       return {
         success: true,
         userId: newUser?.id,
+        verificationRequired: true,
       };
+    }),
+
+  /**
+   * Redeem a verification token from the emailed link.
+   *
+   * Public by design: the holder of the token is the person being authenticated,
+   * and there is no session yet.
+   */
+  verifyEmail: publicProcedure
+    .input(z.object({ token: z.string().min(1).max(256) }))
+    .mutation(async ({ ctx, input }) => {
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("verify_email_ip", getClientIp(ctx.headers)),
+      );
+
+      const result = await consumeVerificationToken(ctx.db, input.token);
+
+      if (!result.ok) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            result.reason === "expired"
+              ? "This confirmation link has expired. Request a new one."
+              : "This confirmation link is not valid.",
+        });
+      }
+
+      const user = await ctx.db.query.users.findFirst({
+        where: eq(users.email, result.email),
+        columns: { id: true, emailVerified: true },
+      });
+
+      if (!user) {
+        // The token was valid but the account is gone. Nothing to confirm.
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This confirmation link is not valid.",
+        });
+      }
+
+      if (!user.emailVerified) {
+        await ctx.db
+          .update(users)
+          .set({ emailVerified: new Date(), updatedAt: new Date() })
+          .where(eq(users.id, user.id));
+      }
+
+      return { success: true, email: result.email };
+    }),
+
+  /**
+   * Send a fresh confirmation link.
+   *
+   * Always reports success, so this cannot be used to discover which addresses
+   * have accounts or which are already confirmed.
+   */
+  resendVerification: publicProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(async ({ ctx, input }) => {
+      const email = input.email.trim().toLowerCase();
+
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("resend_verification_ip", getClientIp(ctx.headers)),
+      );
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("resend_verification", email),
+      );
+
+      const user = await ctx.db.query.users.findFirst({
+        where: eq(users.email, email),
+        columns: { name: true, emailVerified: true },
+      });
+
+      if (user && !user.emailVerified) {
+        const verifyToken = await issueVerificationToken(ctx.db, email);
+        void sendEmailVerification({
+          email,
+          userName: user.name ?? email,
+          verifyToken,
+        }).catch((err) => {
+          log.error("failed to resend verification email", { email, err });
+        });
+      }
+
+      return { success: true };
     }),
 
   requestPasswordReset: publicProcedure
@@ -138,7 +246,7 @@ export const authRouter = createTRPCRouter({
           code,
         });
       } catch (err) {
-        console.error("Failed to send password reset code:", err);
+        log.error("failed to send password reset code", { err });
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to send reset code. Please try again.",

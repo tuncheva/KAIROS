@@ -9,7 +9,13 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 
 /* ─── Types ─── */
-type ModalView = "signIn" | "signUp" | "forgotPassword" | "resetCode" | "newPassword";
+type ModalView =
+  | "signIn"
+  | "signUp"
+  | "verifyEmailSent"
+  | "forgotPassword"
+  | "resetCode"
+  | "newPassword";
 
 export function SignInModal({
   isOpen,
@@ -43,6 +49,7 @@ export function SignInModal({
 
   const router = useRouter();
   const signupMutation = api.auth.signup.useMutation();
+  const resendVerificationMutation = api.auth.resendVerification.useMutation();
   const requestResetMutation = api.auth.requestPasswordReset.useMutation();
   const verifyCodeMutation = api.auth.verifyResetCode.useMutation();
   const resetPasswordMutation = api.auth.resetPassword.useMutation();
@@ -148,21 +155,11 @@ export function SignInModal({
         name: name || undefined,
       });
 
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        setError(t("signUp.createdButSignInFailed"));
-      } else {
-        setTimeout(() => {
-          onClose();
-          router.push("/");
-          router.refresh();
-        }, 500);
-      }
+      // No automatic sign-in any more: the account starts unverified and
+      // credentials sign-in is refused until the emailed link is redeemed, so
+      // attempting it here would only ever produce a confusing failure.
+      setPassword("");
+      setView("verifyEmailSent");
     } catch (error) {
       console.error("Sign up error:", error);
       if (error instanceof Error) {
@@ -608,6 +605,44 @@ export function SignInModal({
     </>
   );
 
+  const renderVerifyEmailSent = () => (
+    <>
+      {renderHeader(
+        t("verifyEmail.title"),
+        t("verifyEmail.subtitle", { email }),
+      )}
+      <div className="space-y-4">
+        <p className="text-sm text-fg-secondary">{t("verifyEmail.body")}</p>
+
+        {resendVerificationMutation.isSuccess ? (
+          <p className="text-sm text-emerald-500">{t("verifyEmail.resent")}</p>
+        ) : (
+          <button
+            type="button"
+            disabled={resendVerificationMutation.isPending}
+            onClick={() => resendVerificationMutation.mutate({ email })}
+            className="text-sm text-accent-primary hover:text-accent-hover font-medium transition-colors disabled:opacity-60"
+          >
+            {resendVerificationMutation.isPending
+              ? t("verifyEmail.resending")
+              : t("verifyEmail.resend")}
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => {
+            setView("signIn");
+            setError("");
+          }}
+          className="w-full px-6 py-3 bg-accent-primary text-white font-semibold rounded-lg hover:bg-accent-secondary transition-colors"
+        >
+          {t("verifyEmail.backToSignIn")}
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className="dark fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
@@ -624,6 +659,7 @@ export function SignInModal({
 
         {view === "signIn" && renderSignIn()}
         {view === "signUp" && renderSignUp()}
+        {view === "verifyEmailSent" && renderVerifyEmailSent()}
         {view === "forgotPassword" && renderForgotPassword()}
         {view === "resetCode" && renderResetCode()}
         {view === "newPassword" && renderNewPassword()}

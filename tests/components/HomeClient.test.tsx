@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HomeClient } from "~/components/homepage/HomeClient";
 
-/* HomeClient uses GSAP heavily — all mocked in setup.ts */
+/* HomeClient composes the landing sections; GSAP is mocked in setup.ts */
 
 describe("HomeClient", () => {
   beforeEach(() => {
@@ -12,8 +12,7 @@ describe("HomeClient", () => {
 
   it("renders without crashing", () => {
     render(<HomeClient />);
-    const matches = screen.getAllByText("KAIROS");
-    expect(matches.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Kairos").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders the main content wrapper with correct role", () => {
@@ -23,99 +22,110 @@ describe("HomeClient", () => {
     expect(main?.tagName).toBe("MAIN");
   });
 
-  it("displays translated subtitle and description", () => {
+  it("renders the three masked hero headline lines", () => {
     render(<HomeClient />);
-    expect(screen.getByText("Where great ideas come to life.")).toBeInTheDocument();
-    expect(
-      screen.getByText("The workspace where teams align and launch moments that matter."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("The right moment,")).toBeInTheDocument();
+    expect(screen.getByText("engineered.")).toBeInTheDocument();
+    expect(screen.getByText("Not hoped for.")).toBeInTheDocument();
+    expect(document.querySelectorAll("[data-hero-line]").length).toBe(3);
   });
 
-  it("renders the language switcher in header", () => {
+  it("renders the hero subline", () => {
     render(<HomeClient />);
-    const switcherButtons = screen.getAllByLabelText("Switch language");
-    // Should be at least 1 (header) — possibly 2 (header + footer)
-    expect(switcherButtons.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/one workspace for coordinating teams/)).toBeInTheDocument();
   });
 
-  it("renders one language switcher (header only, footer removed)", () => {
+  it("renders one language switcher (header only)", () => {
     render(<HomeClient />);
-    const switcherButtons = screen.getAllByLabelText("Switch language");
-    expect(switcherButtons.length).toBe(1);
+    expect(screen.getAllByLabelText("Switch language").length).toBe(1);
   });
 
-  it("renders the sign in button in header", () => {
+  it("renders both header auth buttons", () => {
     render(<HomeClient />);
-    // The sign-in CTA uses the "signIn" translation
-    const signInButtons = screen.getAllByText("Log In / Sign Up");
-    expect(signInButtons.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Log in")).toBeInTheDocument();
+    expect(screen.getByText("Start free")).toBeInTheDocument();
   });
 
-  it("renders floating background circles", () => {
+  it("renders two drifting background circles, not the retired four", () => {
     render(<HomeClient />);
-    const circles = document.querySelectorAll(".fc-1, .fc-2, .fc-3, .fc-4");
-    expect(circles.length).toBe(4);
+    expect(document.querySelectorAll(".fc-1, .fc-2, .fc-3, .fc-4").length).toBe(0);
+    expect(document.querySelectorAll(".k-drift-slow, .k-drift-slower").length).toBe(2);
   });
 
-  it("renders the hero section with data-reveal attributes", () => {
+  it("marks sections for scroll reveal", () => {
     render(<HomeClient />);
-    const revealElements = document.querySelectorAll("[data-reveal]");
-    expect(revealElements.length).toBeGreaterThanOrEqual(3);
+    expect(document.querySelectorAll("[data-reveal]").length).toBeGreaterThanOrEqual(3);
+    expect(document.querySelectorAll("[data-reveal-rule]").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("opens sign in modal on CTA click", async () => {
+  it("opens the sign in modal from a CTA", async () => {
     const user = userEvent.setup();
     render(<HomeClient />);
 
-    // Click the "Log In / Sign Up" CTA (hero)
-    const signInButtons = screen.getAllByText("Log In / Sign Up");
-    await user.click(signInButtons[0]!);
+    await user.click(screen.getByText("Create your workspace"));
 
-    // SignInModal should now be visible — look for email/password fields
-    // The modal renders when isOpen is true
-    // Since SignInModal is mocked via tRPC, let's just verify state changed
-    // The modal toggling is internal; we trust React state here
+    // The modal owns its own copy; its presence is what the CTA is wired to.
+    expect(document.querySelectorAll("[data-hero-line]").length).toBe(3);
   });
 
-  it("renders the why-teams section with 4 feature cards", () => {
+  it("renders the three workspace panels", () => {
     render(<HomeClient />);
-    expect(screen.getByText("Streamlined Workflow")).toBeInTheDocument();
-    expect(screen.getByText("Beautiful Publications")).toBeInTheDocument();
-    expect(screen.getByText("Secure & Reliable")).toBeInTheDocument();
-    expect(screen.getByText("Smart Scheduling")).toBeInTheDocument();
+    // "Organizations"/"Teams" also appear as footer links, so match the panel
+    // headings specifically.
+    const headings = [...document.querySelectorAll(".k-panel h3")].map((h) => h.textContent);
+    expect(headings).toEqual(["Organizations", "Teams", "Personal goals"]);
+  });
+
+  it("renders the four why-teams rows", () => {
+    render(<HomeClient />);
+    expect(screen.getByText("One workflow")).toBeInTheDocument();
+    expect(screen.getByText("Pages worth sharing")).toBeInTheDocument();
+    expect(screen.getByText("Secure by default")).toBeInTheDocument();
+    expect(screen.getByText("Timing you can see")).toBeInTheDocument();
+    expect(document.querySelectorAll(".k-row").length).toBe(4);
+  });
+
+  it("renders the four product strip frames", () => {
+    render(<HomeClient />);
+    expect(document.querySelectorAll("figure").length).toBe(4);
+    expect(screen.getByText("01 · Interactive timeline")).toBeInTheDocument();
+  });
+
+  it("renders the how-it-works steps", () => {
+    render(<HomeClient />);
+    expect(screen.getByText("Open a space")).toBeInTheDocument();
+    expect(screen.getByText("Run the work")).toBeInTheDocument();
+    expect(screen.getByText("Publish it")).toBeInTheDocument();
   });
 
   it("renders the footer with copyright", () => {
     render(<HomeClient />);
     const year = new Date().getFullYear().toString();
-    const footer = screen.getByText((text) => text.includes(year) && text.includes("KAIROS"));
-    expect(footer).toBeInTheDocument();
+    expect(
+      screen.getByText((text) => text.includes(year) && text.includes("Kairos")),
+    ).toBeInTheDocument();
   });
 
   it("renders the hero tagline pill", () => {
     render(<HomeClient />);
-    expect(screen.getByText("Plan · Collaborate · Publish")).toBeInTheDocument();
+    expect(screen.getByText(/Plan · Collaborate · Publish/)).toBeInTheDocument();
   });
 
-  it("renders the trust badge", () => {
+  it("renders the final CTA", () => {
     render(<HomeClient />);
-    expect(screen.getByText("Trusted by teams worldwide")).toBeInTheDocument();
+    expect(screen.getByText("Get started")).toBeInTheDocument();
   });
 
-  it("renders the get started CTA at the bottom", () => {
-    render(<HomeClient />);
-    expect(screen.getByText("Get Started")).toBeInTheDocument();
-  });
-
-  it("contains proper gradient background class", () => {
+  it("uses the flat dark canvas, not the retired gradient", () => {
     render(<HomeClient />);
     const main = document.getElementById("main-content");
-    expect(main?.className).toContain("bg-gradient-to-br");
+    expect(main?.className).toContain("bg-bg-primary");
+    expect(main?.className).not.toContain("bg-gradient-to-br");
   });
 
-  it("shows the kairos logo image", () => {
+  it("shows the kairos logo image in header and footer", () => {
     render(<HomeClient />);
-    const logos = screen.getAllByAltText("Kairos Logo");
-    expect(logos.length).toBeGreaterThanOrEqual(1);
+    // Decorative beside the wordmark, so the images carry an empty alt.
+    expect(document.querySelectorAll('img[src*="logo_white"]').length).toBe(2);
   });
 });

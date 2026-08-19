@@ -1,5 +1,5 @@
 import { type InferInsertModel, type InferSelectModel, sql } from "drizzle-orm";
-import { index, timestamp, varchar, integer, boolean } from "drizzle-orm/pg-core";
+import { index, timestamp, varchar, integer, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { createTable, orgRoleEnum } from "./enums";
 import { users } from "./users";
 
@@ -51,6 +51,11 @@ export const organizationMembers = createTable(
   (t) => [
     index("org_member_org_idx").on(t.organizationId),
     index("org_member_user_idx").on(t.userId),
+    // One membership per person per organization. There was no constraint, so the
+    // check-then-insert in `join` and `acceptInvite` could race into two rows for
+    // the same user — and with the permission columns now authoritative, two rows
+    // means two different answers to "what may this person do here".
+    uniqueIndex("org_member_unique").on(t.organizationId, t.userId),
   ]
 );
 

@@ -5,7 +5,7 @@ import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import Credentials from "next-auth/providers/credentials";
 import { cookies } from "next/headers";
 import { env } from "~/env"
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import * as argon2 from "argon2";
 import { decodeAccountSwitchCookie, getCookieFromHeader, ACCOUNT_SWITCH_COOKIE } from "~/server/accountSwitch";
 import {
@@ -26,6 +26,9 @@ import {
 
 
 import { getClientIp } from "~/server/clientIp";
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("auth");
 import { db } from "~/server/db";
 import {
   accounts,
@@ -34,6 +37,16 @@ import {
   verificationTokens,
 } from "~/server/db/schema";
 
+
+/**
+ * Failed sign-ins before the account is locked, and for how long.
+ *
+ * Higher than the 5-attempt sliding window on purpose: the window handles bursts,
+ * while this is the backstop for attempts spread out over hours or across deploys.
+ * Set too low, a forgetful user locks themselves out of their own account.
+ */
+const MAX_LOGIN_FAILURES = 10;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
 
 declare module "next-auth" {
   interface Session extends DefaultSession {
@@ -85,10 +98,33 @@ export const authConfig = {
       name: "account-switch",
       credentials: {
         userId: { label: "User ID", type: "text" },
+        password: { label: "Password", type: "password" },
       },
+      /**
+       * Switch to another account that has signed in on this browser.
+       *
+       * This used to accept a bare `userId` and hand back a full session — a
+       * password-free login whose only credential was a cookie that survived
+       * sign-out. Anyone with access to the browser profile could enumerate
+       * previous users and become any of them. A Google-style switcher is only
+       * safe with the re-authentication step, so that step is now mandatory:
+       *
+       *   1. the cookie must still list the target, un-expired (the cookie is
+       *      HMAC-signed, so it establishes *which* accounts may be offered — it
+       *      is not by itself authorization to enter one);
+       *   2. the caller must present that account's password.
+       *
+       * Accounts with no password (OAuth-only) cannot re-authenticate here at
+       * all and are refused, which sends the UI down the full sign-out and
+       * sign-in path — a fresh OAuth round-trip, which is the equivalent proof.
+       */
       async authorize(credentials, request) {
         const userId = credentials?.userId;
+        const password = credentials?.password;
         if (typeof userId !== "string" || !userId) {
+          return null;
+        }
+        if (typeof password !== "string" || password.length === 0) {
           return null;
         }
 
@@ -104,13 +140,49 @@ export const authConfig = {
           return null;
         }
 
+        // Same limiter as sign-in. Without it this endpoint would be a quieter
+        // way to brute-force a password: the attacker already knows the userId is
+        // valid, and each attempt costs the server 64MB of Argon2.
+        const userKey = createAuthRateLimitKey("account_switch", userId);
+        const ipKey = createAuthRateLimitKey(
+          "account_switch_ip",
+          getClientIp(request),
+        );
+        const [userBudget, ipBudget] = await Promise.all([
+          checkAuthRateLimit(userKey),
+          checkAuthRateLimit(ipKey),
+        ]);
+        if (!userBudget.allowed || !ipBudget.allowed) {
+          return null;
+        }
+
         const user = await db.query.users.findFirst({
           where: eq(users.id, userId),
         });
 
-        if (!user) {
+        if (!user?.password) {
+          // No stored password: either the row is gone or this is an OAuth-only
+          // account. Either way there is nothing to verify against here.
+          await Promise.all([
+            recordAuthFailure(userKey),
+            recordAuthFailure(ipKey),
+          ]);
           return null;
         }
+
+        const valid = await argon2.verify(user.password, password);
+        if (!valid) {
+          await Promise.all([
+            recordAuthFailure(userKey),
+            recordAuthFailure(ipKey),
+          ]);
+          return null;
+        }
+
+        await Promise.all([
+          clearAuthAttempts(userKey),
+          clearAuthAttempts(ipKey),
+        ]);
 
         return {
           id: user.id,
@@ -152,7 +224,7 @@ export const authConfig = {
         if (!emailBudget.allowed || !ipBudget.allowed) {
           // Deliberately the same generic failure as a wrong password: telling a
           // caller they've been throttled confirms the account exists.
-          console.warn(`[auth] sign-in throttled for ${email}`);
+          log.warn("sign-in throttled", { email });
           return null;
         }
 
@@ -170,22 +242,70 @@ export const authConfig = {
           return null;
         }
 
+        // Durable lockout, on top of the in-memory window above. Without this a
+        // restart or a second instance resets the attacker's budget; the columns
+        // do not. Mirrors the reset-PIN lockout in `note.resetPasswordWithPin`.
+        const now = new Date();
+        if (user.loginLockedUntil && now < user.loginLockedUntil) {
+          log.warn("sign-in locked out", { email });
+          return null;
+        }
+
         const isPasswordValid = await argon2.verify(
           user.password,
           credentials.password as string
         );
 
         if (!isPasswordValid) {
+          const failedAttempts = user.loginFailedAttempts + 1;
+
           await Promise.all([
             recordAuthFailure(emailKey),
             recordAuthFailure(ipKey),
+            db
+              .update(users)
+              .set({
+                loginFailedAttempts: failedAttempts,
+                loginLastFailedAt: now,
+                // The window limiter already slows a burst; this catches the
+                // patient attacker who spreads attempts across restarts.
+                loginLockedUntil:
+                  failedAttempts >= MAX_LOGIN_FAILURES
+                    ? new Date(now.getTime() + LOGIN_LOCKOUT_MS)
+                    : user.loginLockedUntil,
+              })
+              .where(eq(users.id, user.id)),
           ]);
+          return null;
+        }
+
+        // The password is right, but an unconfirmed address is not yet proven to
+        // belong to this person. Refusing here is what stops someone registering
+        // an address they do not control and sitting on the account.
+        //
+        // Not counted as a failed attempt — the credential was correct, and
+        // charging the limiter would let a confirmed-but-forgotten account lock
+        // itself out while the user hunts for the email.
+        if (!user.emailVerified) {
+          log.warn("sign-in refused, email not confirmed", { email });
           return null;
         }
 
         await Promise.all([
           clearAuthAttempts(emailKey),
           clearAuthAttempts(ipKey),
+          // Only clear the durable counter when the sign-in actually succeeds, so
+          // a few mistyped passwords don't accumulate toward a lockout forever.
+          user.loginFailedAttempts > 0 || user.loginLockedUntil
+            ? db
+                .update(users)
+                .set({
+                  loginFailedAttempts: 0,
+                  loginLockedUntil: null,
+                  loginLastFailedAt: null,
+                })
+                .where(eq(users.id, user.id))
+            : Promise.resolve(),
         ]);
 
         return {
@@ -206,15 +326,81 @@ export const authConfig = {
   }),
   
   callbacks: {
-    async signIn({ user }) {
-      // Ensure the authenticated user exists in the app DB on every sign-in
-      // (moved from protectedProcedure to avoid per-request DB checks).
+    async signIn({ user, account, profile }) {
       const userId = user.id;
       const email = user.email;
       const name = user.name;
       const image = user.image;
 
-      if (typeof userId === "string" && typeof email === "string" && email.length > 0) {
+      if (typeof email !== "string" || email.length === 0) return false;
+
+      const isOAuth = account?.type === "oauth" || account?.type === "oidc";
+
+      if (isOAuth) {
+        // ── OAuth account linking ────────────────────────────────────────────
+        //
+        // `allowDangerousEmailAccountLinking` is still on, because turning it off
+        // reintroduces the OAuthAccountNotLinked failure the comment on the Google
+        // provider describes. What was missing is the condition that makes the
+        // linking safe, and this is it.
+        //
+        // The attack it blocks: register `victim@company.com` with a password of
+        // your choosing, wait for the real owner to sign in with Google, and the
+        // provider identity attaches to your pre-existing row — your password now
+        // opens their account. It works only because the row you created was never
+        // confirmed to be yours.
+        //
+        // So: a provider identity may only attach to a row that is already
+        // verified, and the provider must itself assert the address is verified.
+        // Anything else is refused rather than linked.
+        const providerVerifiesEmail = (() => {
+          const claim = (profile as { email_verified?: unknown } | undefined)
+            ?.email_verified;
+          // Google sends a boolean; some providers send the string "true"; Entra on
+          // the `common` tenant sends nothing at all, which counts as "not
+          // asserted" and therefore only ever links to already-verified rows.
+          return claim === true || claim === "true";
+        })();
+
+        // A provider account already stored for this identity means this is a
+        // returning user, not a new link, so there is nothing to decide.
+        const linkedAlready =
+          account?.provider && account?.providerAccountId
+            ? await db.query.accounts.findFirst({
+                where: and(
+                  eq(accounts.provider, account.provider),
+                  eq(accounts.providerAccountId, account.providerAccountId),
+                ),
+                columns: { userId: true },
+              })
+            : undefined;
+
+        const existingByEmail = await db.query.users.findFirst({
+          where: eq(users.email, email),
+          columns: { id: true, emailVerified: true },
+        });
+
+        if (!linkedAlready && existingByEmail && !existingByEmail.emailVerified) {
+          log.warn("refused OAuth link into unverified account", { email });
+          return false;
+        }
+
+        // The provider vouching for the address is proof, so record it. This also
+        // upgrades rows created before verification existed.
+        if (providerVerifiesEmail) {
+          const target = linkedAlready?.userId ?? existingByEmail?.id;
+          if (target) {
+            await db
+              .update(users)
+              .set({ emailVerified: new Date(), updatedAt: new Date() })
+              .where(and(eq(users.id, target), isNull(users.emailVerified)));
+          }
+        }
+      }
+
+      // Ensure the authenticated user exists in the app DB on every sign-in
+      // (moved from protectedProcedure to avoid per-request DB checks).
+      if (typeof userId === "string") {
         const exists = await db.query.users.findFirst({
           where: eq(users.id, userId),
           columns: { id: true },
@@ -228,6 +414,10 @@ export const authConfig = {
               email,
               name: typeof name === "string" ? name : null,
               image: typeof image === "string" ? image : null,
+              // A provider-created account is verified by the provider; a
+              // credentials account gets here only after redeeming a token, and
+              // `auth.signup` has already written the row by then.
+              emailVerified: isOAuth ? new Date() : null,
             })
             .onConflictDoNothing({ target: users.id });
         }
@@ -245,17 +435,39 @@ export const authConfig = {
         token.image = user.image;
       }
 
-      // Allow `useSession().update(...)` to refresh token fields (e.g., image) on demand.
+      // `useSession().update(...)` lets the *client* hand values to this callback.
+      //
+      // This used to copy `email` and `name` straight from that payload into the
+      // token, and the `session` callback then copied them onto `session.user`.
+      // Any signed-in user could therefore call
+      // `update({ user: { email: "someone@else" } })` and make their session claim
+      // another identity — including to code that trusts `session.user.email`.
+      //
+      // So the client-supplied value is no longer trusted for anything identifying.
+      // `image` is accepted because it is cosmetic and is what the avatar upload
+      // flow needs to refresh immediately; `name` and `email` are re-read from the
+      // database by `token.id`, which is the only claim established at sign-in.
       if (trigger === "update") {
         const nextUser = (
-          session as
-            | { user?: { name?: unknown; email?: unknown; image?: unknown } }
-            | undefined
+          session as { user?: { image?: unknown } } | undefined
         )?.user;
 
-        if (typeof nextUser?.name === "string") token.name = nextUser.name;
-        if (typeof nextUser?.email === "string") token.email = nextUser.email;
         if (typeof nextUser?.image === "string") token.image = nextUser.image;
+
+        if (typeof token.id === "string") {
+          const fresh = await db.query.users.findFirst({
+            where: eq(users.id, token.id),
+            columns: { name: true, email: true, image: true },
+          });
+
+          if (fresh) {
+            token.name = fresh.name;
+            token.email = fresh.email;
+            // A client-supplied image only survives if the row has none yet, so a
+            // stale upload cannot mask what the database says.
+            if (typeof nextUser?.image !== "string") token.image = fresh.image;
+          }
+        }
       }
 
       return token;
@@ -297,7 +509,7 @@ export const authConfig = {
         store.delete(ACCOUNT_SWITCH_COOKIE);
       } catch (err) {
         // Never let cookie cleanup break sign-out itself.
-        console.error("[auth] failed to clear account-switch cookie", err);
+        log.error("failed to clear account-switch cookie", { err });
       }
     },
   },

@@ -12,7 +12,7 @@ import {
   publishUserEvent,
   publishNotificationToUser,
   publishConversationEvent,
-  publishBroadcast,
+  publishEventsFeedEvent,
 } from "~/server/redis/publisher";
 
 // -------------------------------------------------------------------------
@@ -71,12 +71,17 @@ export function emitNotification(userId: string, notif: SocketNewNotification) {
 // Event feed events (real-time updates without refresh)
 // -------------------------------------------------------------------------
 
+// Scoped to the feed room rather than broadcast to every connected socket.
+// `publishBroadcast` maps to `io.emit` on the WS server, so these two events used
+// to wake every client in the system — including everyone who has never opened the
+// events page — each time any event changed.
+
 export function emitEventDeleted(eventId: number) {
-  publishBroadcast("event:deleted", { eventId });
+  publishEventsFeedEvent("event:deleted", { eventId });
 }
 
 export function emitEventUpdated(eventId: number) {
-  publishBroadcast("event:updated", { eventId });
+  publishEventsFeedEvent("event:updated", { eventId });
 }
 
 // -------------------------------------------------------------------------

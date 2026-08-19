@@ -449,15 +449,21 @@ export function WorkspaceSettingsClient() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
+                        {/* The server only sends the access code to members who
+                            may add people — it is a permanent bearer credential
+                            for the whole workspace. For everyone else it arrives
+                            as null and the sharing controls simply aren't shown. */}
+                        {org.accessCode ? (
+                        <>
                         <button
-                          onClick={() => handleCopyCode(org.accessCode)}
+                          onClick={() => handleCopyCode(org.accessCode!)}
                           className="p-2 rounded-lg hover:bg-bg-tertiary text-fg-tertiary hover:text-fg-secondary transition min-h-11 min-w-11"
                           title={t("organizations.copyAccessCode")}
                         >
                           <Copy size={14} />
                         </button>
                         <button
-                          onClick={() => handleCopyJoinLink(org.accessCode)}
+                          onClick={() => handleCopyJoinLink(org.accessCode!)}
                           className="px-2.5 py-1.5 rounded-lg hover:bg-bg-tertiary text-xs text-fg-tertiary hover:text-fg-secondary transition"
                           title={t("organizations.copyJoinLink")}
                         >
@@ -471,6 +477,8 @@ export function WorkspaceSettingsClient() {
                           <QrCode size={13} />
                           {t("organizations.showQr")}
                         </button>
+                        </>
+                        ) : null}
                         {activeOrgId !== org.id && (
                           <button
                             onClick={() => setActiveOrg.mutate({ organizationId: org.id })}
@@ -494,7 +502,7 @@ export function WorkspaceSettingsClient() {
                         </button>
                       </div>
                     </div>
-                    {showInviteQrForCode === org.accessCode && (
+                    {org.accessCode && showInviteQrForCode === org.accessCode && (
                       <div className="mt-3 rounded-xl border border-white/[0.1] bg-bg-primary/60 p-3">
                         <p className="text-xs text-fg-tertiary mb-2">{t("organizations.scanQrHint")}</p>
                         <Image

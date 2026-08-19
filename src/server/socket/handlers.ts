@@ -5,6 +5,9 @@
  */
 
 import type { Socket, DefaultEventsMap } from "socket.io";
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("socket");
 
 export function handleConnection(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, { userId: string }>) {
   const userId: string | undefined = socket.data.userId;
@@ -13,7 +16,7 @@ export function handleConnection(socket: Socket<DefaultEventsMap, DefaultEventsM
     return;
   }
 
-  console.log(`[Socket.IO] client connected — userId=${userId}, socketId=${socket.id}`);
+  log.debug("client connected", { userId, socketId: socket.id });
 
   // Auto-join the user's private room for notifications / agent events.
   void socket.join(`user:${userId}`);
@@ -84,7 +87,7 @@ export function handleConnection(socket: Socket<DefaultEventsMap, DefaultEventsM
   // -----------------------------------------------------------------------
 
   socket.on("disconnect", (reason: string) => {
-    console.log(`[Socket.IO] client disconnected — userId=${userId}, reason=${reason}`);
+    log.debug("client disconnected", { userId, reason });
     // Rooms are automatically cleaned up by Socket.IO on disconnect.
   });
 }

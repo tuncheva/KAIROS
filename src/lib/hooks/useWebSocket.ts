@@ -71,6 +71,11 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           socket.emit("join:org", orgIdRef.current);
         }
 
+        // The public events feed. Joined here rather than on the feed page because
+        // this hook owns the `event:updated` / `event:deleted` listeners below, and
+        // they are what keep `getPublicEvents` fresh anywhere it is rendered.
+        socket.emit("join:events");
+
         // Reconnect catch-up: invalidate notification queries
         if (wasConnectedRef.current) {
           console.log("[ws] reconnected — invalidating queries for catch-up");

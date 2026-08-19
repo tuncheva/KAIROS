@@ -4,8 +4,26 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { organizations, organizationMembers, organizationRoles, organizationInvites, users, notifications } from "~/server/db/schema";
 import { flagsForRole } from "~/lib/permissions";
+import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/authRateLimit";
+import { getClientIp } from "~/server/clientIp";
+
+/**
+ * The access code is a bearer credential: anyone holding it can join the
+ * organization, permanently. Returning it to every member — including `guest` and
+ * the view-only `mentor` — let any member hand out standing access to the whole
+ * workspace. Only members who can actually add people should see it.
+ */
+function canSeeAccessCode(membership: {
+  role: string;
+  canAddMembers?: boolean;
+}): boolean {
+  return membership.role === "admin" || membership.canAddMembers === true;
+}
 import { eq, and, or, isNull, gt, lte, desc } from "drizzle-orm";
 import { emitNotification } from "~/server/socket/emit";
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("organization");
 
 
 function generateAccessCode(): string {
@@ -39,6 +57,7 @@ export const organizationRouter = createTRPCRouter({
       .select({
         organization: organizations,
         role: organizationMembers.role,
+        canAddMembers: organizationMembers.canAddMembers,
         joinedAt: organizationMembers.joinedAt,
       })
       .from(organizationMembers)
@@ -51,7 +70,7 @@ export const organizationRouter = createTRPCRouter({
     return memberships.map((m) => ({
       id: m.organization.id,
       name: m.organization.name,
-      accessCode: m.organization.accessCode,
+      accessCode: canSeeAccessCode(m) ? m.organization.accessCode : null,
       role: m.role,
       joinedAt: m.joinedAt,
       createdAt: m.organization.createdAt,
@@ -85,6 +104,7 @@ export const organizationRouter = createTRPCRouter({
         .select({
           organization: organizations,
           role: organizationMembers.role,
+          canAddMembers: organizationMembers.canAddMembers,
         })
         .from(organizationMembers)
         .innerJoin(
@@ -104,7 +124,9 @@ export const organizationRouter = createTRPCRouter({
           organization: {
             id: membership.organization.id,
             name: membership.organization.name,
-            accessCode: membership.organization.accessCode,
+            accessCode: canSeeAccessCode(membership)
+              ? membership.organization.accessCode
+              : null,
           },
           role: membership.role,
         };
@@ -115,6 +137,7 @@ export const organizationRouter = createTRPCRouter({
       .select({
         organization: organizations,
         role: organizationMembers.role,
+        canAddMembers: organizationMembers.canAddMembers,
       })
       .from(organizationMembers)
       .innerJoin(
@@ -130,7 +153,9 @@ export const organizationRouter = createTRPCRouter({
       organization: {
         id: fallback.organization.id,
         name: fallback.organization.name,
-        accessCode: fallback.organization.accessCode,
+        accessCode: canSeeAccessCode(fallback)
+          ? fallback.organization.accessCode
+          : null,
       },
       role: fallback.role,
     };
@@ -236,7 +261,7 @@ export const organizationRouter = createTRPCRouter({
           accessCode: organization.accessCode,
         };
       } catch (error) {
-        console.error("Error creating organization:", error);
+        log.error("failed to create organization", { err: error });
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to create organization",
@@ -253,6 +278,16 @@ export const organizationRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Access codes are a 12-character shared secret and this endpoint says
+      // whether a guess was right, so without a limit it is an oracle for
+      // enumerating them. Keyed on the caller and on client IP.
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("org_join", ctx.session.user.id),
+      );
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("org_join_ip", getClientIp(ctx.headers)),
+      );
+
       try {
         
         const [organization] = await ctx.db
@@ -348,7 +383,7 @@ export const organizationRouter = createTRPCRouter({
           organizationName: organization.name,
         };
       } catch (error) {
-        console.error("Error joining organization:", error);
+        log.error("failed to join organization", { err: error });
         if (error instanceof Error) {
           throw error;
         }

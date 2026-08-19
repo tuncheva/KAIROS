@@ -1,11 +1,18 @@
 import { z } from "zod";
 
 import { TRPCError } from "@trpc/server";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray, or } from "drizzle-orm";
 
 import type { TRPCContext } from "~/server/api/trpc";
 import { assertProjectAccess } from "~/server/api/authz";
-import { users, projects, tasks, notifications } from "~/server/db/schema";
+import {
+  users,
+  projects,
+  tasks,
+  notifications,
+  organizationMembers,
+  projectCollaborators,
+} from "~/server/db/schema";
 
 export type A1ReadToolName =
   | "getSessionContext"
@@ -145,6 +152,35 @@ export const listProjectsTool: A1Tool<
     }
 
     const limit = input.limit ?? 20;
+
+    // Filtering on `createdById` alone made the agent blind to every project the
+    // user is a member or collaborator on but did not create — which is exactly
+    // the collaborative case it exists to help with. It would answer "you have no
+    // projects" to someone working in a team workspace all day.
+    //
+    // The visible set matches what `assertProjectAccess` will allow: projects the
+    // user owns, projects in an organization they belong to, and projects they
+    // collaborate on directly.
+    const [memberships, collaborations] = await Promise.all([
+      ctx.db
+        .select({ organizationId: organizationMembers.organizationId })
+        .from(organizationMembers)
+        .where(eq(organizationMembers.userId, userId)),
+      ctx.db
+        .select({ projectId: projectCollaborators.projectId })
+        .from(projectCollaborators)
+        .where(eq(projectCollaborators.collaboratorId, userId)),
+    ]);
+
+    const orgIds = memberships.map((m) => m.organizationId);
+    const collabProjectIds = collaborations.map((c) => c.projectId);
+
+    const visible = or(
+      eq(projects.createdById, userId),
+      ...(orgIds.length ? [inArray(projects.organizationId, orgIds)] : []),
+      ...(collabProjectIds.length ? [inArray(projects.id, collabProjectIds)] : []),
+    );
+
     const rows = await ctx.db
       .select({
         id: projects.id,
@@ -155,7 +191,7 @@ export const listProjectsTool: A1Tool<
         organizationId: projects.organizationId,
       })
       .from(projects)
-      .where(eq(projects.createdById, userId))
+      .where(visible)
       .orderBy(desc(projects.createdAt))
       .limit(limit);
 

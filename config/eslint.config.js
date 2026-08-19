@@ -68,6 +68,18 @@ export function createEslintConfig({ tseslint, drizzle, nextPlugin, reactHooks }
       },
     },
     {
+      // Server code logs through `~/server/logger` (and `ws-server/logger` in the
+      // socket process), which applies levels and redaction. A bare console.* call
+      // bypasses both — that is how user ids, emails and raw errors ended up on
+      // stdout with no way to turn them off. The two logger modules are the
+      // console boundary and are exempt.
+      files: ["src/server/**/*.ts", "ws-server/**/*.ts"],
+      ignores: ["src/server/logger.ts", "ws-server/logger.ts"],
+      rules: {
+        "no-console": "error",
+      },
+    },
+    {
       linterOptions: {
         reportUnusedDisableDirectives: true,
       },

@@ -1,20 +1,29 @@
 import { getRequestConfig } from 'next-intl/server';
 import { cookies } from 'next/headers';
 import type { AbstractIntlMessages } from 'next-intl';
+import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from './locales';
 
-export const locales = ['en', 'bg', 'es', 'fr', 'de'] as const;
-export type Locale = (typeof locales)[number];
+// Re-exported so existing server-side importers keep working; client components
+// should import from `~/i18n/locales` directly.
+export * from './locales';
 
 export default getRequestConfig(async () => {
   const cookieStore = await cookies();
-  const locale = (cookieStore.get('NEXT_LOCALE')?.value ?? 'en') as Locale;
+
+  // The cookie is client-controlled, so it is validated rather than cast. Passing
+  // an unrecognised string through to next-intl used to leave it reporting a
+  // locale it had no messages for: the import below failed, the catch loaded
+  // English, and `locale` still claimed to be whatever the cookie said — so
+  // date and number formatting followed a locale the copy did not.
+  const cookieLocale = cookieStore.get('NEXT_LOCALE')?.value;
+  const locale: Locale = isSupportedLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE;
 
   let messages: AbstractIntlMessages = {};
   try {
     const messagesModule = await import(`./messages/${locale}.json`) as { default: AbstractIntlMessages };
     messages = messagesModule.default;
   } catch {
-    const fallbackModule = await import(`./messages/en.json`) as { default: AbstractIntlMessages };
+    const fallbackModule = await import(`./messages/${DEFAULT_LOCALE}.json`) as { default: AbstractIntlMessages };
     messages = fallbackModule.default;
   }
 

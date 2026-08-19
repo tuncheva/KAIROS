@@ -5,10 +5,11 @@ import { Check, ChevronDown, Globe } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useLocale, useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
+import { LOCALE_METADATA, locales, type Locale } from "~/i18n/locales";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
-type LanguageCode = "en" | "bg" | "es" | "fr" | "de";
+type LanguageCode = Locale;
 type DateFormatOption = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD";
 
 interface Language {
@@ -17,13 +18,13 @@ interface Language {
  flag: string;
 }
 
-const languages: Language[] = [
- { code: "en", name: "English", flag: "🇬🇧" },
- { code: "bg", name: "Български", flag: "🇧🇬" },
- { code: "es", name: "Español", flag: "🇪🇸" },
- { code: "fr", name: "Français", flag: "🇫🇷" },
- { code: "de", name: "Deutsch", flag: "🇩🇪" },
-];
+// Single source of truth in `~/i18n/locales`. Both this and `LanguageSwitcher` kept
+// their own copy of the list, which is how three half-translated locales stayed on
+// offer after the coverage gap was known.
+const languages: Language[] = locales.map((code) => ({
+ code,
+ ...LOCALE_METADATA[code],
+}));
 
 const timezones = [
  { value: "UTC", label: "UTC" },

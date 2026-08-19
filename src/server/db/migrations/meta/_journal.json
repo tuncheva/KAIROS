@@ -22,6 +22,27 @@
       "when": 1787097601000,
       "tag": "0021_sync_schema_drift",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787097602000,
+      "tag": "0022_login_lockout",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787097603000,
+      "tag": "0023_constraints_and_dead_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787097604000,
+      "tag": "0024_narrow_language_enum",
+      "breakpoints": true
     }
   ]
 }

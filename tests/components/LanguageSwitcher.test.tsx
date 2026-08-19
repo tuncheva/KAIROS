@@ -2,6 +2,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LanguageSwitcher } from "~/components/layout/LanguageSwitcher";
+import { LOCALE_METADATA, locales } from "~/i18n/locales";
+
+/**
+ * The switcher offers exactly the locales in `~/i18n/locales`, which is now `en`
+ * and `bg`. It used to hardcode all five, three of which were about half
+ * translated — choosing one produced a screen partly in that language and partly
+ * in English. These tests assert against the config rather than a literal list, so
+ * promoting a finished translation does not require editing them.
+ */
+const offeredNames = locales.map((code) => LOCALE_METADATA[code].name);
 
 describe("LanguageSwitcher", () => {
   beforeEach(() => {
@@ -40,12 +50,9 @@ describe("LanguageSwitcher", () => {
 
     await user.click(btn);
 
-    // All 5 languages should be visible
-    expect(screen.getByText("English")).toBeInTheDocument();
-    expect(screen.getByText("Български")).toBeInTheDocument();
-    expect(screen.getByText("Español")).toBeInTheDocument();
-    expect(screen.getByText("Français")).toBeInTheDocument();
-    expect(screen.getByText("Deutsch")).toBeInTheDocument();
+    for (const name of offeredNames) {
+      expect(screen.getByText(name)).toBeInTheDocument();
+    }
   });
 
   it("closes dropdown when clicking outside", async () => {
@@ -63,7 +70,7 @@ describe("LanguageSwitcher", () => {
 
     fireEvent.mouseDown(screen.getByTestId("outside"));
     await waitFor(() => {
-      expect(screen.queryByText("Español")).not.toBeInTheDocument();
+      expect(screen.queryByText("English")).not.toBeInTheDocument();
     });
   });
 
@@ -93,10 +100,13 @@ describe("LanguageSwitcher", () => {
     render(<LanguageSwitcher />);
     const btn = screen.getByLabelText("Switch language");
 
-    await user.click(btn);
-    await user.click(screen.getByText("Español"));
+    // Pick an offered locale other than the current one.
+    const target = locales.find((code) => code !== "en")!;
 
-    expect(document.cookie).toContain("NEXT_LOCALE=es");
+    await user.click(btn);
+    await user.click(screen.getByText(LOCALE_METADATA[target].name));
+
+    expect(document.cookie).toContain(`NEXT_LOCALE=${target}`);
     expect(reloadMock).toHaveBeenCalledTimes(1);
   });
 
@@ -118,18 +128,21 @@ describe("LanguageSwitcher", () => {
     expect(wrapper?.className).toContain("custom-test-class");
   });
 
-  it("displays all 5 language names in dropdown", async () => {
+  it("displays every offered language, and only those", async () => {
     const user = userEvent.setup();
     render(<LanguageSwitcher />);
     const btn = screen.getByLabelText("Switch language");
 
     await user.click(btn);
 
-    expect(screen.getByText("English")).toBeInTheDocument();
-    expect(screen.getByText("Български")).toBeInTheDocument();
-    expect(screen.getByText("Español")).toBeInTheDocument();
-    expect(screen.getByText("Français")).toBeInTheDocument();
-    expect(screen.getByText("Deutsch")).toBeInTheDocument();
+    for (const name of offeredNames) {
+      expect(screen.getByText(name)).toBeInTheDocument();
+    }
+
+    // The half-translated locales must not be offered.
+    for (const name of ["Español", "Français", "Deutsch"]) {
+      expect(screen.queryByText(name)).not.toBeInTheDocument();
+    }
   });
 
   it("dropdown has solid background (no transparency)", async () => {
