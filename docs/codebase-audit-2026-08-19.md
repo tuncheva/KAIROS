@@ -489,13 +489,60 @@ Only `useTranslations` and `useLocale` are imported from next-intl anywhere in `
 > other headers (HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy,
 > nosniff) are enforced now.
 >
-> Still open from weeks 3–4: **#12** (migration baseline) and **#13** (integration
-> harness) — both need a throwaway Postgres to be worth anything, and neither a
-> local instance nor Docker was available in this environment, so they were
-> deliberately not attempted rather than written unverified. Also still open:
-> `organization_roles` (the third permission system) is now unused but not deleted,
-> and the WS server still does its own raw-SQL membership checks rather than sharing
-> the helper.
+> **#12 is done and verified against the live Supabase database.** The baseline was
+> generated from `schema.ts`, applied to an isolated scratch schema on the live
+> instance (every `"public".` reference rewritten to the scratch schema first, so
+> `public` was never touched), and diffed column-by-column against production. The
+> migrations folder is now `0000_baseline` + `0020` + `0021`; 0002–0019 are deleted.
+> Result: **162 statements, 0 failures, 28 tables / 90 indexes / 49 foreign keys,
+> and zero column drift against production.** The baseline is dated to epoch+1 so
+> databases with existing history skip it and blank ones run it first — confirmed by
+> re-running `db:migrate` against the live DB and seeing no rows added. The
+> `postinstall: npm run db:generate` hook is removed.
+>
+> **Three things the live verification turned up that source reading could not.**
+>
+> 1. My own `0020` journal entry was dated *earlier* than the newest applied
+>    migration. Drizzle applies an entry only when its `when` exceeds
+>    `max(created_at)` in `drizzle.__drizzle_migrations`, so the backfill would have
+>    been **silently skipped**. Fixed by dating it against the live ledger.
+>
+> 2. `0020`’s "only touch all-false rows" guard was too narrow. Three organization
+>    **owners** hold `role='admin'` with only `can_add_members` and
+>    `can_assign_tasks` — a legacy insert path, not a deliberate revocation. Once the
+>    columns became authoritative they would have lost the ability to create or edit
+>    projects in their own organization. The admin branch now backfills any
+>    incomplete admin row. Applied: 4 rows changed, 0 flags revoked, all 10
+>    memberships now match their role template exactly.
+>
+> 3. **`schema.ts` and the deployed database had drifted, and it was breaking
+>    production.** `user.two_factor_secret` is declared in `schema.ts` and was never
+>    deployed. Drizzle’s relational API selects every declared column, so
+>    `db.query.users.findFirst()` failed outright with `column "two_factor_secret"
+>    does not exist` — on the signup path, both password-reset paths, `settings.get`,
+>    the note PIN path, and the inviter and notification lookups. **Signup and
+>    password recovery were broken.** `task_comments` was the same class of problem
+>    (declared and wired into `relations.ts`, never created). Migration `0021` adds
+>    both, tightens `organization_invites.email` to NOT NULL (verified zero null
+>    rows), and all three paths were re-tested against the live database afterwards.
+>    This is precisely the failure #12 predicted: nothing verified that the deployed
+>    schema matched `schema.ts`.
+>
+> **Reverse drift, left deliberately for a product decision.** The database holds
+> objects `schema.ts` does not declare, some with data: `ai_conversations` (2 rows),
+> `ai_messages` (2 rows), `agent_write_plans`, `agent_write_plan_applies`,
+> `ai_daily_budget`, `ai_usage_events` (all empty), plus `event.event_type` (9 rows
+> populated), `event.stream_*` (1 row), and `organization_invites.token_hash` /
+> `used_at` / `used_by_user_id` (unused). Dropping them is not a sync — it needs
+> someone who knows whether that data still matters.
+>
+> Still open from weeks 3–4: **#13** (integration harness) — `createCallerFactory`
+> against a real database. The scratch-schema technique proven here for #12 is the
+> way to do it without a container: provision the baseline into a throwaway schema,
+> point the connection’s `search_path` at it, run the callers, drop it. Also still
+> open: `organization_roles` (the third permission system) is now unused but not
+> deleted, and the WS server still does its own raw-SQL membership checks rather
+> than sharing the helper.
 >
 > **Status — `pnpm check` and `pnpm test` now pass.** Both were red before this work:
 > lint reported 109 errors and 42 tests failed. `pnpm check` exits 0 (0 errors,
@@ -525,7 +572,7 @@ Write an integration test for each as you fix it — that bootstraps #13's harne
 **Weeks 3–4 — structural.**
 
 12. **#4 + #16 + #17: one authorization model** (L) — *done.* The role vocabulary was kept at five values with the boolean columns as the source of truth; instead of `orgMemberProcedure` in `trpc.ts`, the membership load lives in `assertProjectPermission` / `assertOrgPermission` in `authz.ts`, since almost every mutation resolves its organization from a project rather than from the caller's active org. `mentor` and `canDeleteTasks` are now real.
-13. **#12 Migration baseline** (M) — regenerate from empty, prove it applies to a blank Postgres, drop the `postinstall` hook.
+13. **#12 Migration baseline** (M) — *done and verified against the live database.* Squashed to `0000_baseline` + `0020` + `0021`, proven to provision a blank schema (162 statements, 0 failures, 0 drift vs production), `postinstall` hook removed. See the status note above for the three live-only defects this surfaced, including the broken signup path.
 14. **#13 Real test harness** (L) — `createCallerFactory` + containerised Postgres; delete the source-grep tests as their real replacements land.
 15. **#18 Redis rate limiting** (S) — *done*, via a shared `src/server/slidingWindow.ts` that both limiters use; Redis when `REDIS_NATIVE_URL` is set, per-process memory otherwise. The whole limiter API became async as a result. **#21 security headers** (M) — *done*, report-only CSP (see above). **#24 reset-code invalidation** (S) — *done*; the per-IP dimension the finding asked for is now on every auth limiter, not just reset.
 

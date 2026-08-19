@@ -1,1 +1,0 @@
-DO $$ BEGIN ALTER TABLE "user" ADD COLUMN "notes_keep_unlocked_until_close" boolean DEFAULT false NOT NULL; EXCEPTION WHEN duplicate_column THEN NULL; END $$;

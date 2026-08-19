@@ -1,6 +1,6 @@
 {
-  "id": "bd6f2843-255a-4af8-bb5f-87d960c19ccc",
-  "prevId": "866885ce-4e92-4529-839f-ef2e07e7c11e",
+  "id": "aa000000-0000-4000-a000-000000000021",
+  "prevId": "aa000000-0000-4000-a000-000000000020",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2127,6 +2127,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "calendar_date": {
+          "name": "calendar_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -2182,6 +2188,21 @@
           "columns": [
             {
               "expression": "notebook_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "note_calendar_date_idx": {
+          "name": "note_calendar_date_idx",
+          "columns": [
+            {
+              "expression": "calendar_date",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

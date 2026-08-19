@@ -21,8 +21,7 @@
     "start": "node --import tsx server.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "postinstall": "npm run db:generate"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.2",
