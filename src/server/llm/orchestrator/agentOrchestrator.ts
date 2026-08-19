@@ -4,7 +4,7 @@ import { eq, desc, and } from "drizzle-orm";
 
 import { env } from "~/env";
 import type { TRPCContext } from "~/server/api/trpc";
-import { assertProjectAccess } from "~/server/api/authz";
+import { assertProjectAccess, assertProjectPermission } from "~/server/api/authz";
 import { a1WorkspaceConciergeProfile } from "~/server/llm/profiles/a1WorkspaceConcierge";
 import { a2TaskPlannerProfile } from "~/server/llm/profiles/a2TaskPlanner";
 import {
@@ -539,7 +539,13 @@ export const agentOrchestrator = {
     // Name-based resolution above is already constrained to the caller's own
     // projects; this covers the id-supplied paths.
     if (typeof resolvedProjectId === "number") {
-      await assertProjectAccess(input.ctx, resolvedProjectId, "write");
+      // The agent is a client of the same permission model as the UI, not a way
+      // around it: drafting a task plan requires the capability to create tasks.
+      await assertProjectPermission(
+        input.ctx,
+        resolvedProjectId,
+        "canAssignTasks",
+      );
     }
 
     const draftId = createDraftId();
@@ -723,6 +729,21 @@ export const agentOrchestrator = {
 
     // Re-check access at apply time: membership or collaborator permission may
     // have been revoked between draft and apply.
+    //
+    // Checked per operation kind rather than as a single "write" grant, so a plan
+    // that includes deletions needs `canDeleteTasks` exactly as `task.delete`
+    // does. Otherwise the agent would be a way to launder a capability the caller
+    // does not have.
+    if (plan.creates.length > 0) {
+      await assertProjectPermission(input.ctx, targetProjectId, "canAssignTasks");
+    }
+    if (plan.updates.length > 0 || plan.statusChanges.length > 0) {
+      await assertProjectPermission(input.ctx, targetProjectId, "canEditProjects");
+    }
+    if (plan.deletes.length > 0) {
+      await assertProjectPermission(input.ctx, targetProjectId, "canDeleteTasks");
+    }
+    // An empty plan still needs basic write access to be a legitimate request.
     await assertProjectAccess(input.ctx, targetProjectId, "write");
 
     const createdTaskIds: number[] = [];
@@ -948,7 +969,7 @@ export const agentOrchestrator = {
         const projectId = requireProjectId(input.scope);
 
         // Caller-supplied scope — authorize before persisting a draft against it.
-        await assertProjectAccess(input.ctx, projectId, "write");
+        await assertProjectPermission(input.ctx, projectId, "canAssignTasks");
 
         const computedPlanHash = computePlanHash(parseResult.data);
         const plan: TaskPlanDraft = {

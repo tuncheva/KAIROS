@@ -456,6 +456,47 @@ Only `useTranslations` and `useLocale` are imported from next-intl anywhere in `
 > imports are written `from"motion/react"` with no space, which the original grep
 > missed. Only five dependencies were genuinely unused.
 >
+> **Status — weeks 3–4 partially implemented.** #4, #16, #17, #18, #21 and the
+> remainder of #24 are done, with 36 new behavioural tests in
+> `tests/server/permissions.test.ts`. `pnpm test` is 52 files / 1005 tests green
+> and `pnpm check` exits 0.
+>
+> The permission model was settled as: **the eight boolean columns on
+> `organization_members` are the single source of truth**, a role is only a
+> template applied when a membership is created or its role changed, and an
+> unrecognised role now fails **closed**. `src/lib/permissions.ts` was rewritten
+> around that and the client-facing shape is derived from the flags, so the browser
+> cannot disagree with the server. `src/server/api/authz.ts` grew
+> `assertProjectPermission`, `assertOrgPermission` and `requireMembership`; the
+> four copy-pasted blocks in `task.ts` are gone, and the agent apply path now
+> checks a capability per operation kind so the LLM cannot launder a permission the
+> caller lacks. Deliberate behaviour changes: `mentor` and `guest` are read-only on
+> the server; `canDeleteTasks` is enforced with **no owner override** (an explicit
+> decision — flags win inside an organization); project deletion tracks
+> `canDeleteTasks`; being a task's assignee no longer implies permission to move it.
+>
+> Migration `0020_backfill_member_permissions.sql` backfills flags from role for
+> existing rows and **must be applied** — `join` and `acceptInvite` used to insert
+> every flag as `false`, so without it existing contributors look view-only.
+> `membershipHasFlag` carries a compatibility shim (all-false rows fall back to the
+> role template) so the deploy is safe in either order; it can be deleted once the
+> migration has run everywhere.
+>
+> #21 ships the CSP as **Report-Only** by default. The allowlist was derived from
+> reading the source, not from watching a browser, and an enforced CSP that has
+> never been exercised against Maps, UploadThing and GSAP is an outage waiting to
+> happen. Exercise those paths, fix what is reported, then set `CSP_ENFORCE=1`. The
+> other headers (HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy,
+> nosniff) are enforced now.
+>
+> Still open from weeks 3–4: **#12** (migration baseline) and **#13** (integration
+> harness) — both need a throwaway Postgres to be worth anything, and neither a
+> local instance nor Docker was available in this environment, so they were
+> deliberately not attempted rather than written unverified. Also still open:
+> `organization_roles` (the third permission system) is now unused but not deleted,
+> and the WS server still does its own raw-SQL membership checks rather than sharing
+> the helper.
+>
 > **Status — `pnpm check` and `pnpm test` now pass.** Both were red before this work:
 > lint reported 109 errors and 42 tests failed. `pnpm check` exits 0 (0 errors,
 > 0 warnings) and `pnpm test` exits 0 (50 files, 955 tests). The 42 test failures were
@@ -483,10 +524,10 @@ Write an integration test for each as you fix it — that bootstraps #13's harne
 
 **Weeks 3–4 — structural.**
 
-12. **#4 + #16 + #17: one authorization model** (L) — settle the role vocabulary, add `orgMemberProcedure` to `trpc.ts`, and convert every mutation to the shared helper. This is where the `mentor` role and the `canDeleteTasks` flag finally become real. Do it after week 1 so the shared helper already exists and is tested.
+12. **#4 + #16 + #17: one authorization model** (L) — *done.* The role vocabulary was kept at five values with the boolean columns as the source of truth; instead of `orgMemberProcedure` in `trpc.ts`, the membership load lives in `assertProjectPermission` / `assertOrgPermission` in `authz.ts`, since almost every mutation resolves its organization from a project rather than from the caller's active org. `mentor` and `canDeleteTasks` are now real.
 13. **#12 Migration baseline** (M) — regenerate from empty, prove it applies to a blank Postgres, drop the `postinstall` hook.
 14. **#13 Real test harness** (L) — `createCallerFactory` + containerised Postgres; delete the source-grep tests as their real replacements land.
-15. **#18 Redis rate limiting** (S), **#21 security headers** (M), **#24 reset-code invalidation** (S).
+15. **#18 Redis rate limiting** (S) — *done*, via a shared `src/server/slidingWindow.ts` that both limiters use; Redis when `REDIS_NATIVE_URL` is set, per-process memory otherwise. The whole limiter API became async as a result. **#21 security headers** (M) — *done*, report-only CSP (see above). **#24 reset-code invalidation** (S) — *done*; the per-IP dimension the finding asked for is now on every auth limiter, not just reset.
 
 **Ongoing.** #23 translations, #25 component extraction (opportunistically, when touching those files), #26–#32.
 

@@ -1,6 +1,7 @@
  import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { assertOrgPermission, assertProjectPermission } from "~/server/api/authz";
 import { projects, tasks, projectCollaborators, users, organizationMembers, notifications } from "~/server/db/schema";
 import { eq, and, desc, inArray, isNull, sql, ne, or } from "drizzle-orm";
 import { emitNotification } from "~/server/socket/emit";
@@ -50,6 +51,17 @@ export const projectRouter = createTRPCRouter({
       if (process.env.NODE_ENV !== "production") {
         console.log("Creating project - User ID:", ctx.session.user.id);
         console.log("User's organization membership:", membership);
+      }
+
+      // A project created inside an organization requires `canCreateProjects`.
+      // Outside one the user is creating in their personal space, which needs no
+      // organization permission.
+      if (membership) {
+        await assertOrgPermission(
+          ctx,
+          membership.organizationId,
+          "canCreateProjects",
+        );
       }
 
       const [project] = await ctx.db
@@ -693,6 +705,16 @@ export const projectRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN", message: "Only the project owner can delete this project" });
       }
 
+      // Ownership is necessary but not sufficient inside an organization: the
+      // permission columns are the source of truth, so a member whose capability
+      // was revoked cannot delete a project they once created.
+      //
+      // No `canDeleteProjects` column exists, so this uses `canDeleteTasks` — the
+      // one destructive capability that is a column. A contributor may edit a
+      // project without being able to destroy it, which matches both the original
+      // role matrix and the client-side shape in `~/lib/permissions`.
+      await assertProjectPermission(ctx, input.id, "canDeleteTasks");
+
       await ctx.db.delete(projects).where(eq(projects.id, input.id));
 
       return { success: true };
@@ -713,6 +735,8 @@ export const projectRouter = createTRPCRouter({
       if (project.createdById !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only the project owner can archive this project" });
       }
+
+      await assertProjectPermission(ctx, input.projectId, "canEditProjects");
 
       await ctx.db
         .update(projects)
@@ -737,6 +761,8 @@ export const projectRouter = createTRPCRouter({
       if (project.createdById !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only the project owner can reopen this project" });
       }
+
+      await assertProjectPermission(ctx, input.projectId, "canEditProjects");
 
       await ctx.db
         .update(projects)

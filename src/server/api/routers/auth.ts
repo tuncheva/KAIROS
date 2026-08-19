@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { sendWelcomeEmail, sendPasswordResetCode } from "~/server/email";
 import crypto from "node:crypto";
 import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/authRateLimit";
+import { getClientIp } from "~/server/clientIp";
 
 function generateResetCode(): string {
   const buf = crypto.randomBytes(4);
@@ -26,8 +27,12 @@ export const authRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { email, password, name } = input;
 
-      // Rate limit by email to prevent signup spam
-      consumeAuthRateLimit(createAuthRateLimitKey("signup", email));
+      // Rate limit by email to prevent signup spam, and by IP so one source
+      // cannot enumerate addresses by signing up as each of them in turn.
+      await consumeAuthRateLimit(createAuthRateLimitKey("signup", email));
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("signup_ip", getClientIp(ctx.headers)),
+      );
 
       const existingUser = await ctx.db.query.users.findFirst({
         where: eq(users.email, email),
@@ -81,7 +86,17 @@ export const authRouter = createTRPCRouter({
       const { email } = input;
 
       // Rate limit password reset requests to prevent email spam
-      consumeAuthRateLimit(createAuthRateLimitKey("reset_request", email));
+      // Two dimensions, deliberately.
+      //
+      // Keyed on email alone, five requests locked a *specific user* out of
+      // password recovery for fifteen minutes at a time — a denial of service
+      // against the victim, using a limiter meant to protect them. The IP key is
+      // what actually costs an attacker something, while the email key still caps
+      // how much mail one address can be sent.
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("reset_request_ip", getClientIp(ctx.headers)),
+      );
+      await consumeAuthRateLimit(createAuthRateLimitKey("reset_request", email));
 
       // Always return success to prevent email enumeration
       const user = await ctx.db.query.users.findFirst({
@@ -144,7 +159,10 @@ export const authRouter = createTRPCRouter({
       const { email, code } = input;
 
       // Rate limit code verification to prevent brute-force attacks
-      consumeAuthRateLimit(createAuthRateLimitKey("verify_code", email));
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("verify_code_ip", getClientIp(ctx.headers)),
+      );
+      await consumeAuthRateLimit(createAuthRateLimitKey("verify_code", email));
 
       const resetCode = await ctx.db.query.passwordResetCodes.findFirst({
         where: and(
@@ -177,7 +195,10 @@ export const authRouter = createTRPCRouter({
       const { email, code, newPassword } = input;
 
       // Rate limit password resets
-      consumeAuthRateLimit(createAuthRateLimitKey("reset_password", email));
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("reset_password_ip", getClientIp(ctx.headers)),
+      );
+      await consumeAuthRateLimit(createAuthRateLimitKey("reset_password", email));
 
       // Verify the code again
       const resetCode = await ctx.db.query.passwordResetCodes.findFirst({

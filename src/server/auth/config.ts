@@ -23,15 +23,9 @@ import {
  * That's acceptable here because the per-email limit is the real guard and this
  * is a second axis, but it does mean the IP limit should not be relied on alone.
  */
-function getClientIp(request: Request | undefined): string {
-  const forwarded = request?.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  return request?.headers.get("x-real-ip") ?? "unknown";
-}
 
+
+import { getClientIp } from "~/server/clientIp";
 import { db } from "~/server/db";
 import {
   accounts,
@@ -150,7 +144,12 @@ export const authConfig = {
         const emailKey = createAuthRateLimitKey("login", email);
         const ipKey = createAuthRateLimitKey("login_ip", getClientIp(request));
 
-        if (!checkAuthRateLimit(emailKey).allowed || !checkAuthRateLimit(ipKey).allowed) {
+        const [emailBudget, ipBudget] = await Promise.all([
+          checkAuthRateLimit(emailKey),
+          checkAuthRateLimit(ipKey),
+        ]);
+
+        if (!emailBudget.allowed || !ipBudget.allowed) {
           // Deliberately the same generic failure as a wrong password: telling a
           // caller they've been throttled confirms the account exists.
           console.warn(`[auth] sign-in throttled for ${email}`);
@@ -164,8 +163,10 @@ export const authConfig = {
         if (!user?.password) {
           // Count misses too, so the endpoint can't be used to enumerate which
           // addresses have credentials accounts.
-          recordAuthFailure(emailKey);
-          recordAuthFailure(ipKey);
+          await Promise.all([
+            recordAuthFailure(emailKey),
+            recordAuthFailure(ipKey),
+          ]);
           return null;
         }
 
@@ -175,13 +176,17 @@ export const authConfig = {
         );
 
         if (!isPasswordValid) {
-          recordAuthFailure(emailKey);
-          recordAuthFailure(ipKey);
+          await Promise.all([
+            recordAuthFailure(emailKey),
+            recordAuthFailure(ipKey),
+          ]);
           return null;
         }
 
-        clearAuthAttempts(emailKey);
-        clearAuthAttempts(ipKey);
+        await Promise.all([
+          clearAuthAttempts(emailKey),
+          clearAuthAttempts(ipKey),
+        ]);
 
         return {
           id: user.id,

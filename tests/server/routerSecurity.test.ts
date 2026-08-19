@@ -102,8 +102,15 @@ describe("Task Router — Permission Checks", () => {
     expect(taskSource).toContain("createdById === ctx.session.user.id");
   });
 
-  it("checks collaborator write permission", () => {
-    expect(taskSource).toContain('permission, "write"');
+  it("delegates authorization to the shared permission helper", () => {
+    // The inline "owner → org member → write collaborator" block that used to be
+    // copy-pasted into four mutations here now lives in `~/server/api/authz`,
+    // where it is covered by real behavioural tests
+    // (tests/server/permissions.test.ts). Asserting on this file's source text
+    // could never have detected a missing check in the first place; what it can
+    // still usefully catch is a mutation quietly stopping calling the helper.
+    expect(taskSource).toContain('from "~/server/api/authz"');
+    expect(taskSource).toContain("assertProjectPermission(ctx");
   });
 
   it("logs task activity on create", () => {

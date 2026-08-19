@@ -2,12 +2,30 @@
 
 import { useMemo } from "react";
 import { api } from "~/trpc/react";
-import { getPermissions, type RolePermissions, type OrgRole } from "~/lib/permissions";
+import {
+  getPermissions,
+  permissionsFromFlags,
+  personalModePermissions,
+  type OrgRole,
+  type RolePermissions,
+} from "~/lib/permissions";
 
 /**
- * Client-side hook that returns the current user's role and permissions
- * within the active organization. Returns full write permissions when
- * in personal mode (no org) or when profile is still loading.
+ * The current user's permissions inside their active organization.
+ *
+ * This is presentation only — it decides which controls to render and whether to
+ * show the view-only banner. Every mutation is authorized again on the server
+ * against the same permission columns (`~/server/api/authz`), so a client that
+ * lies to itself here gains nothing.
+ *
+ * Two behaviours changed when the permission model was unified:
+ *
+ *  - While the profile query is in flight this used to return **admin**
+ *    permissions, so a view-only user saw every edit control until the query
+ *    landed. It now returns no permissions until the answer is known; read
+ *    `isLoading` if you want to render a skeleton instead of a disabled control.
+ *  - Permissions come from the membership row's flag columns when the server
+ *    provides them, falling back to the role template only for older payloads.
  */
 export function useRolePermissions(): {
   role: OrgRole | null;
@@ -22,12 +40,20 @@ export function useRolePermissions(): {
   const role = (profile?.role as OrgRole | null) ?? null;
 
   const permissions = useMemo(() => {
-    // Personal mode or no org → full permissions
-    if (!profile?.organization || profile.usageMode === "personal") {
-      return getPermissions("admin");
+    // Fail closed until we know who this is. `isLoading` distinguishes "not yet
+    // known" from "genuinely has no permissions".
+    if (isLoading || !profile) return getPermissions(null);
+
+    // Outside an organization the user is working on their own data, where
+    // ownership rather than org role is the authority.
+    if (!profile.organization || profile.usageMode === "personal") {
+      return personalModePermissions();
     }
+
+    if (profile.permissions) return permissionsFromFlags(profile.permissions);
+
     return getPermissions(role);
-  }, [profile, role]);
+  }, [isLoading, profile, role]);
 
   return { role, permissions, isLoading };
 }

@@ -29,7 +29,7 @@ import { consumeRateLimit, checkRateLimit } from "~/server/rateLimit";
  * Confirm/Apply procedures are NOT rate-limited since they don't call the LLM.
  */
 const rateLimitedProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  consumeRateLimit(ctx.session.user.id);
+  await consumeRateLimit(ctx.session.user.id);
   return next();
 });
 
@@ -38,7 +38,7 @@ export const agentRouter = createTRPCRouter({
   /**
    * Check the caller's remaining AI request quota.
    */
-  rateLimitStatus: protectedProcedure.query(({ ctx }) => {
+  rateLimitStatus: protectedProcedure.query(async ({ ctx }) => {
     return checkRateLimit(ctx.session.user.id);
   }),
   /**

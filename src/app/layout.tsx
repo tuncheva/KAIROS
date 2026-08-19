@@ -2,6 +2,7 @@ import "~/styles/globals.css";
 import "react-chat-elements/dist/main.css";
 
 import { type Metadata } from "next";
+import { headers } from "next/headers";
 import { Nunito_Sans } from "next/font/google";
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
@@ -43,10 +44,16 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
 
+  // Per-response CSP nonce, set by `src/proxy.ts`. Next.js stamps its own script
+  // tags automatically; the hand-written theme script below needs it applied by
+  // hand or the CSP will refuse to run it.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang={locale} className={`${sans.variable} ${display.variable}`} suppressHydrationWarning>
       <head>
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
 (function() {
