@@ -20,7 +20,7 @@ function canSeeAccessCode(membership: {
   return membership.role === "admin" || membership.canAddMembers === true;
 }
 import { eq, and, or, isNull, gt, lte, desc } from "drizzle-orm";
-import { emitNotification } from "~/server/socket/emit";
+import { emitNotification } from "~/server/ws/emit";
 import { createLogger } from "~/server/logger";
 
 const log = createLogger("organization");

@@ -127,7 +127,7 @@ Add to `ws-server/index.ts` event handlers:
 - `call:reject` — Target user declined.
 - `call:end` — Either party ended the call.
 
-Add to `src/server/socket/emit.ts`:
+Add to `src/server/ws/emit.ts`:
 ```ts
 export function emitCallEvent(userIds: string[], payload: CallEventPayload) {
   for (const uid of userIds) {
@@ -209,10 +209,10 @@ Create `src/components/chat/IncomingCallBanner.tsx`:
 | **Create** | `src/components/chat/VideoCallOverlay.tsx` — LiveKit room UI |
 | **Create** | `src/components/chat/IncomingCallBanner.tsx` — Incoming call notification |
 | **Modify** | `src/server/api/root.ts` — Register `callRouter` |
-| **Modify** | `src/server/socket/emit.ts` — Add `emitCallEvent` |
+| **Modify** | `src/server/ws/emit.ts` — Add `emitCallEvent` |
 | **Modify** | `ws-server/index.ts` — Handle `call:*` events |
 | **Modify** | `src/components/chat/ChatClient.tsx` — Add call button + call state |
-| **Modify** | `src/lib/hooks/useWebSocket.ts` — Listen to `call:*` events |
+| **Modify** | `src/hooks/useWebSocket.ts` — Listen to `call:*` events |
 | **Modify** | `src/env.js` — Add `LIVEKIT_*` env vars |
 | **Modify** | `.env` — Add LiveKit credentials |
 

@@ -56,18 +56,18 @@ This document explains the **exact WebSocket implementation in this repository**
 
 ### Client hooks (Socket.io client + lifecycle)
 
-- Token fetch/cache (React Query): [`src/lib/hooks/useWsToken.ts`](../../src/lib/hooks/useWsToken.ts:1)
-  - Fetch token: [`fetch(/api/ws/token)`](../../src/lib/hooks/useWsToken.ts:11)
-  - `staleTime: 90_000` to refetch before 120s expiry: [`staleTime`](../../src/lib/hooks/useWsToken.ts:24)
+- Token fetch/cache (React Query): [`src/hooks/useWsToken.ts`](../../src/hooks/useWsToken.ts:1)
+  - Fetch token: [`fetch(/api/ws/token)`](../../src/hooks/useWsToken.ts:11)
+  - `staleTime: 90_000` to refetch before 120s expiry: [`staleTime`](../../src/hooks/useWsToken.ts:24)
 
-- Socket connection + listeners: [`src/lib/hooks/useWebSocket.ts`](../../src/lib/hooks/useWebSocket.ts:1)
-  - Creates Socket.io connection with `auth` **as a function** so reconnections always use latest token: [`auth: (cb) => cb({ token: tokenRef.current })`](../../src/lib/hooks/useWebSocket.ts:44)
-  - Reconnection policy: [`reconnectionDelay`](../../src/lib/hooks/useWebSocket.ts:51)
-  - Auto-join workspace on connect/reconnect: [`socket.emit(join:workspace)`](../../src/lib/hooks/useWebSocket.ts:61)
-  - Reconnect catch-up invalidation: [`wasConnected` branch invalidates notifications](../../src/lib/hooks/useWebSocket.ts:68)
-  - Event listeners (see event list below): [`socket.on(notification:new, ...)`](../../src/lib/hooks/useWebSocket.ts:92)
-  - Room join/leave for project-scoped events: [`useProjectRoom()`](../../src/lib/hooks/useWebSocket.ts:205)
-  - Uses a module-level singleton for cross-hook access: [`globalSocket`](../../src/lib/hooks/useWebSocket.ts:11)
+- Socket connection + listeners: [`src/hooks/useWebSocket.ts`](../../src/hooks/useWebSocket.ts:1)
+  - Creates Socket.io connection with `auth` **as a function** so reconnections always use latest token: [`auth: (cb) => cb({ token: tokenRef.current })`](../../src/hooks/useWebSocket.ts:44)
+  - Reconnection policy: [`reconnectionDelay`](../../src/hooks/useWebSocket.ts:51)
+  - Auto-join workspace on connect/reconnect: [`socket.emit(join:workspace)`](../../src/hooks/useWebSocket.ts:61)
+  - Reconnect catch-up invalidation: [`wasConnected` branch invalidates notifications](../../src/hooks/useWebSocket.ts:68)
+  - Event listeners (see event list below): [`socket.on(notification:new, ...)`](../../src/hooks/useWebSocket.ts:92)
+  - Room join/leave for project-scoped events: [`useProjectRoom()`](../../src/hooks/useWebSocket.ts:205)
+  - Uses a module-level singleton for cross-hook access: [`globalSocket`](../../src/hooks/useWebSocket.ts:11)
 
 - Mount point ensuring no SSR issues: [`src/components/layout/WebSocketInitializer.tsx`](../../src/components/layout/WebSocketInitializer.tsx:1)
   - Note about `dynamic(..., { ssr: false })` lives here: [`WebSocketInitializer`](../../src/components/layout/WebSocketInitializer.tsx:5)
@@ -196,22 +196,22 @@ This is intentionally **not callable by the browser**.
 
 **Token caching**
 
-- `useWsToken` uses React Query with `staleTime: 90s` so it refreshes before the server’s 120s TTL: [`staleTime: 90_000`](../../src/lib/hooks/useWsToken.ts:27)
+- `useWsToken` uses React Query with `staleTime: 90s` so it refreshes before the server’s 120s TTL: [`staleTime: 90_000`](../../src/hooks/useWsToken.ts:27)
 
 **Socket creation**
 
-- Socket connects only after a token is present (`hasToken` gate): [`if (!enabled || !hasToken) return`](../../src/lib/hooks/useWebSocket.ts:35)
+- Socket connects only after a token is present (`hasToken` gate): [`if (!enabled || !hasToken) return`](../../src/hooks/useWebSocket.ts:35)
 
 **Critical detail: auth function**
 
 - Socket.io client auth is provided as a function so reconnections always use latest token:
-  - [`auth: (cb) => cb({ token: tokenRef.current })`](../../src/lib/hooks/useWebSocket.ts:44)
+  - [`auth: (cb) => cb({ token: tokenRef.current })`](../../src/hooks/useWebSocket.ts:44)
 
 **Reconnect catch-up**
 
 Redis pub/sub does not queue missed messages. On reconnect, this repo forces a refresh:
 
-- On reconnect (not initial connect), invalidate notifications queries: [`if (wasConnected) ... invalidateQueries`](../../src/lib/hooks/useWebSocket.ts:68)
+- On reconnect (not initial connect), invalidate notifications queries: [`if (wasConnected) ... invalidateQueries`](../../src/hooks/useWebSocket.ts:68)
 
 ### 3.5 Heartbeat / keepalive
 
@@ -220,7 +220,7 @@ This implementation relies on **Socket.io’s built-in ping/pong heartbeat** (no
 No explicit `ping`/`pong` events are implemented; stability is achieved via:
 
 - Socket.io transport handling (websocket + polling): [`transports`](../../ws-server/index.ts:68)
-- Reconnect policy on the client: [`reconnectionDelay` settings](../../src/lib/hooks/useWebSocket.ts:51)
+- Reconnect policy on the client: [`reconnectionDelay` settings](../../src/hooks/useWebSocket.ts:51)
 
 ### 3.6 Scaling and multi-instance behavior
 
@@ -237,12 +237,12 @@ If `REDIS_NATIVE_URL` is not set, the system runs in **single-instance mode** (d
 
 ### 3.7 Event catalog (what the client listens for)
 
-All listeners live in [`useWebSocket()`](../../src/lib/hooks/useWebSocket.ts:14). They do **React Query invalidations**, not direct UI state updates.
+All listeners live in [`useWebSocket()`](../../src/hooks/useWebSocket.ts:14). They do **React Query invalidations**, not direct UI state updates.
 
 #### Universal bell refresh
 
 - `notification:new` (generic)
-  - Listener: [`socket.on('notification:new', ...)`](../../src/lib/hooks/useWebSocket.ts:98)
+  - Listener: [`socket.on('notification:new', ...)`](../../src/hooks/useWebSocket.ts:98)
   - Published via server helper: [`publishNotificationToUser()` emits notification:new](../../src/server/redis/publisher.ts:105)
 
 This is the key simplification: adding a new notification type generally only requires server-side DB write + `publishNotificationToUser`.
@@ -250,25 +250,25 @@ This is the key simplification: adding a new notification type generally only re
 #### Invite events (legacy + invites list)
 
 - `notification:invite`, `notification:invite-accepted`, `notification:invite-declined`, `notification:invite-revoked`
-  - Listeners: [`notification:invite*`](../../src/lib/hooks/useWebSocket.ts:107)
+  - Listeners: [`notification:invite*`](../../src/hooks/useWebSocket.ts:107)
   - Example publisher usage: [`notifyTenantInviteReceived()` publishes notification:invite](../../src/server/notifications/invites.ts:28)
 
 #### Project room events
 
 - `task:created`, `task:updated`, `task:deleted`
-  - Listeners: [`task:* listeners`](../../src/lib/hooks/useWebSocket.ts:135)
+  - Listeners: [`task:* listeners`](../../src/hooks/useWebSocket.ts:135)
 - `comment:added`
-  - Listener: [`socket.on('comment:added', ...)`](../../src/lib/hooks/useWebSocket.ts:179)
+  - Listener: [`socket.on('comment:added', ...)`](../../src/hooks/useWebSocket.ts:179)
 
 #### User room events
 
 - `task:assigned`
-  - Listener: [`socket.on('task:assigned')`](../../src/lib/hooks/useWebSocket.ts:172)
+  - Listener: [`socket.on('task:assigned')`](../../src/hooks/useWebSocket.ts:172)
 
 #### Tenant room events
 
 - `workspace:member_joined`
-  - Listener: [`socket.on('workspace:member_joined')`](../../src/lib/hooks/useWebSocket.ts:187)
+  - Listener: [`socket.on('workspace:member_joined')`](../../src/hooks/useWebSocket.ts:187)
 
 ---
 
@@ -295,12 +295,12 @@ This is the **prescriptive alignment checklist**. Treat each item as required un
 ### C. Client connection behavior
 
 - [ ] Fetch and cache token using React Query with refresh-before-expiry:
-  - [ ] `staleTime` < token TTL, match `90s` vs `120s`: [`staleTime: 90_000`](../../src/lib/hooks/useWsToken.ts:27)
+  - [ ] `staleTime` < token TTL, match `90s` vs `120s`: [`staleTime: 90_000`](../../src/hooks/useWsToken.ts:27)
 - [ ] Create Socket.io client with `auth` as a function:
-  - [ ] [`auth: (cb) => cb({ token: tokenRef.current })`](../../src/lib/hooks/useWebSocket.ts:44)
+  - [ ] [`auth: (cb) => cb({ token: tokenRef.current })`](../../src/hooks/useWebSocket.ts:44)
   - This prevents stale tokens on reconnection.
-- [ ] On connect, always join the workspace room (see rooms section): [`socket.emit('join:workspace', workspaceId)`](../../src/lib/hooks/useWebSocket.ts:64)
-- [ ] On reconnect, invalidate notifications to catch up: [`if (wasConnected) invalidateQueries`](../../src/lib/hooks/useWebSocket.ts:68)
+- [ ] On connect, always join the workspace room (see rooms section): [`socket.emit('join:workspace', workspaceId)`](../../src/hooks/useWebSocket.ts:64)
+- [ ] On reconnect, invalidate notifications to catch up: [`if (wasConnected) invalidateQueries`](../../src/hooks/useWebSocket.ts:68)
 
 ### D. Rooms and authorization
 
@@ -325,7 +325,7 @@ This is the **prescriptive alignment checklist**. Treat each item as required un
 - [ ] Standardize on event envelope `{ event, payload }` for app->WS transport: [`{ event, payload }`](../../src/server/redis/publisher.ts:59)
 - [ ] Implement `notification:new` universally for bell refresh:
   - [ ] Server publishes via [`publishNotificationToUser()`](../../src/server/redis/publisher.ts:113)
-  - [ ] Client listens and invalidates notification queries: [`notification:new listener`](../../src/lib/hooks/useWebSocket.ts:98)
+  - [ ] Client listens and invalidates notification queries: [`notification:new listener`](../../src/hooks/useWebSocket.ts:98)
 
 ---
 
@@ -336,11 +336,11 @@ This is the **prescriptive alignment checklist**. Treat each item as required un
 Likely causes:
 
 - Client never joined the right room:
-  - Workspace-scoped events require `join:workspace`: [`socket.emit('join:workspace', workspaceId)`](../../src/lib/hooks/useWebSocket.ts:64)
-  - Project-scoped events require calling [`useProjectRoom()`](../../src/lib/hooks/useWebSocket.ts:205)
+  - Workspace-scoped events require `join:workspace`: [`socket.emit('join:workspace', workspaceId)`](../../src/hooks/useWebSocket.ts:64)
+  - Project-scoped events require calling [`useProjectRoom()`](../../src/hooks/useWebSocket.ts:205)
 - Server disconnected the socket due to failed auth or unauthorized join:
   - Unauthorized join triggers disconnect: [`socket.disconnect(true)`](../../ws-server/rooms.ts:99)
-  - Token issues surface as `connect_error` with `WS_UNAUTHORIZED`: [`connect_error handler`](../../src/lib/hooks/useWebSocket.ts:88)
+  - Token issues surface as `connect_error` with `WS_UNAUTHORIZED`: [`connect_error handler`](../../src/hooks/useWebSocket.ts:88)
 
 Diagnostics:
 
@@ -369,13 +369,13 @@ Diagnostics:
 Likely causes:
 
 - Client uses static `auth: { token }` instead of auth callback; token expires and reconnects keep failing.
-  - Required pattern: [`auth: (cb) => cb({ token: tokenRef.current })`](../../src/lib/hooks/useWebSocket.ts:44)
+  - Required pattern: [`auth: (cb) => cb({ token: tokenRef.current })`](../../src/hooks/useWebSocket.ts:44)
 - Token cache not refreshing before expiry.
-  - Required: [`staleTime: 90_000`](../../src/lib/hooks/useWsToken.ts:27)
+  - Required: [`staleTime: 90_000`](../../src/hooks/useWsToken.ts:27)
 
 Diagnostics:
 
-- Observe `connect_error` messages: [`console.warn('[ws] connect_error', err.message)`](../../src/lib/hooks/useWebSocket.ts:88)
+- Observe `connect_error` messages: [`console.warn('[ws] connect_error', err.message)`](../../src/hooks/useWebSocket.ts:88)
 
 ### 5.4 Notifications appear only after clicking the bell
 
@@ -396,7 +396,7 @@ Cause:
 
 Fix:
 
-- Add or correct invalidations in [`useWebSocket()`](../../src/lib/hooks/useWebSocket.ts:92).
+- Add or correct invalidations in [`useWebSocket()`](../../src/hooks/useWebSocket.ts:92).
 
 ---
 
@@ -406,8 +406,8 @@ Fix:
    - Next.js: [`pnpm dev`](../../package.json:21)
    - WS server: [`pnpm ws:dev`](../../package.json:22)
 2. Ensure env vars are set (see repo doc): [`docs/websockets/README_websockets.md`](../../docs/websockets/README_websockets.md:47)
-3. Load a workspace page; confirm in console you see connection log: [`[ws] connected`](../../src/lib/hooks/useWebSocket.ts:61)
-4. Trigger an action that creates a notification and confirm `notification:new` invalidates notification queries: [`notification:new listener`](../../src/lib/hooks/useWebSocket.ts:98)
+3. Load a workspace page; confirm in console you see connection log: [`[ws] connected`](../../src/hooks/useWebSocket.ts:61)
+4. Trigger an action that creates a notification and confirm `notification:new` invalidates notification queries: [`notification:new listener`](../../src/hooks/useWebSocket.ts:98)
 
 ---
 
@@ -417,7 +417,7 @@ Fix:
   - Enforced by WS server fatal exit: [`WS_SECRET missing`](../../ws-server/index.ts:14)
   - Enforced by token endpoint 503: [`WS_SECRET missing or too short`](../../src/app/api/ws/token/route.ts:18)
 - `WS_PORT` (WS server listens here): [`WS_PORT`](../../ws-server/index.ts:10)
-- `NEXT_PUBLIC_WS_URL` (client connects here): [`WS_URL`](../../src/lib/hooks/useWebSocket.ts:9)
+- `NEXT_PUBLIC_WS_URL` (client connects here): [`WS_URL`](../../src/hooks/useWebSocket.ts:9)
 - `REDIS_NATIVE_URL` (enables multi-instance, redis adapter, pub/sub): [`REDIS_NATIVE_URL`](../../ws-server/index.ts:12)
 - `WS_INTERNAL_URL` (publisher fallback target): [`WS_INTERNAL_URL`](../../src/server/redis/publisher.ts:5)
 

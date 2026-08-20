@@ -34,6 +34,12 @@ export const THEME_INIT_SCRIPT = `
     // Prevent accent color flash
     var accent = sessionStorage.getItem('user-accent') || 'purple';
     document.documentElement.dataset.accent = accent;
+
+    // Landing intro: decided here so the curtain is painted with the first
+    // frame instead of flashing in after hydration. It plays on every load;
+    // the only opt-out is a reduced-motion preference.
+    var motionOk = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.documentElement.dataset.kairosIntro = motionOk ? 'play' : 'seen';
   } catch (e) {}
 })();
 `;
@@ -44,7 +50,7 @@ export const THEME_INIT_SCRIPT = `
  * Regenerate by running the CSP test — it prints the expected value on failure.
  */
 export const THEME_INIT_SCRIPT_HASH =
-  "sha256-1ED2BQT1KA6wA2mE6j0qcqq2UcxdEOdigzNhW+wl6Ek=";
+  "sha256-xhY9v3jFmOlgwvq4OZzg4awAiwAZ0PY0mJYqcfFxtLg=";
 
 /**
  * The same hash as a `script-src` source expression.

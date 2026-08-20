@@ -9,10 +9,11 @@ const CLEAR_MS = 2500;
 const UNMOUNT_MS = 3200;
 
 /**
- * First-load wordmark curtain. It sits *above* an already-rendered, already
- * interactive page — nothing is deferred behind it. It plays once per session
- * (gated pre-paint by the head script in `layout.tsx`, which also skips it
- * under reduced motion), and any input during playback jumps to the end.
+ * Wordmark curtain. It sits *above* an already-rendered, already interactive
+ * page — nothing is deferred behind it. It plays on every landing (the decision
+ * is made pre-paint by the theme init script in `layout.tsx`, which is also
+ * what skips it under reduced motion), and any input during playback jumps to
+ * the end.
  */
 export function LandingIntro({ onClear }: { onClear: () => void }) {
     const [mounted, setMounted] = useState(true);
@@ -22,7 +23,8 @@ export function LandingIntro({ onClear }: { onClear: () => void }) {
     useEffect(() => {
         const root = document.documentElement;
 
-        // The head script already decided; a repeat visit never plays.
+        // The head script already decided — the only case that skips is a
+        // reduced-motion preference.
         if (root.dataset.kairosIntro !== "play") {
             clearedRef.current = true;
             setMounted(false);
@@ -30,18 +32,11 @@ export function LandingIntro({ onClear }: { onClear: () => void }) {
             return;
         }
 
-        try {
-            sessionStorage.setItem("kairos-intro-seen", "1");
-        } catch {
-            /* private mode — the intro simply plays again next load */
-        }
-
         let unmountTimer: ReturnType<typeof setTimeout>;
 
         const clear = () => {
             if (clearedRef.current) return;
             clearedRef.current = true;
-            root.dataset.kairosIntro = "seen";
             onClear();
         };
 

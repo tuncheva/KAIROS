@@ -756,7 +756,7 @@ Jobs needed:
 
 ### 7.1 Real-time event emission
 
-KAIROS has a publisher-based socket pipeline via helpers in [`src/server/socket/emit.ts`](src/server/socket/emit.ts:1).
+KAIROS has a publisher-based socket pipeline via helpers in [`src/server/ws/emit.ts`](src/server/ws/emit.ts:1).
 
 Add new emits (plan only):
 
@@ -773,7 +773,7 @@ Rooming strategy:
 
 ### 7.2 Notifications
 
-Use existing notifications table and emit helper; see [`src/server/db/schemas/notifications.ts`](src/server/db/schemas/notifications.ts:6) and emitter [`src/server/socket/emit.ts`](src/server/socket/emit.ts:66).
+Use existing notifications table and emit helper; see [`src/server/db/schemas/notifications.ts`](src/server/db/schemas/notifications.ts:6) and emitter [`src/server/ws/emit.ts`](src/server/ws/emit.ts:66).
 
 Trigger notifications (MVP):
 

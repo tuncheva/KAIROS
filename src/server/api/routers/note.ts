@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { protectedProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { stickyNotes, users, notebooks, noteShares, notifications } from "~/server/db/schema";
 import { eq, and } from "drizzle-orm";
-import { emitNotification } from "~/server/socket/emit";
+import { emitNotification } from "~/server/ws/emit";
 import * as argon2 from "argon2";
 import { encryptContent, decryptContent } from "~/server/security/encryption";
 import {

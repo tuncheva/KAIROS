@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { notifications } from "~/server/db/schema";
 import { eq, and, desc, count } from "drizzle-orm";
-import { emitNotification } from "~/server/socket/emit";
+import { emitNotification } from "~/server/ws/emit";
 
 /**
  * Cap on `getAll`. The notification bell shows a short list, so there is no

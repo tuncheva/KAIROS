@@ -4,7 +4,7 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { assertOrgPermission, assertProjectPermission } from "~/server/api/authz";
 import { projects, tasks, projectCollaborators, users, organizationMembers, notifications } from "~/server/db/schema";
 import { eq, and, desc, inArray, isNull, sql, ne, or } from "drizzle-orm";
-import { emitNotification } from "~/server/socket/emit";
+import { emitNotification } from "~/server/ws/emit";
 import { createLogger } from "~/server/logger";
 
 const log = createLogger("project");

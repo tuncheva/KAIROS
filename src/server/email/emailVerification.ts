@@ -25,6 +25,8 @@
  * hashed, which is a separate outstanding item.
  */
 
+import "server-only";
+
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { and, eq, lt } from "drizzle-orm";
 

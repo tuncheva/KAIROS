@@ -4,7 +4,7 @@ import { events, eventComments, eventLikes, eventRsvps, users, notifications } f
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { type NewEvent } from "~/server/db/schema";
 import { TRPCError } from "@trpc/server";
-import { emitNotification, emitEventDeleted, emitEventUpdated } from "~/server/socket/emit";
+import { emitNotification, emitEventDeleted, emitEventUpdated } from "~/server/ws/emit";
 import { createLogger } from "~/server/logger";
 
 const log = createLogger("event");

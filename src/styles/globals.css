@@ -2160,7 +2160,9 @@ summary,
   to { transform: translateY(-100%); }
 }
 
-/* Decided before first paint by the head script in `layout.tsx`. */
+/* Decided before first paint by the theme init script in `layout.tsx`, which
+   only marks the intro "seen" under a reduced-motion preference. This keeps the
+   server-rendered curtain from flashing before the component unmounts it. */
 html[data-kairos-intro="seen"] .k-intro { display: none; }
 
 .k-intro {

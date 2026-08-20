@@ -7,6 +7,8 @@
  * All publish calls are best-effort — errors are logged, never thrown.
  */
 
+import "server-only";
+
 const REDIS_NATIVE_URL = process.env.REDIS_NATIVE_URL;
 import { createLogger } from "~/server/logger";
 
