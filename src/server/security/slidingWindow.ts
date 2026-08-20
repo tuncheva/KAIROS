@@ -38,6 +38,8 @@
  * brute-force speed rather than correctness.
  */
 
+import "server-only";
+
 import { createLogger } from "~/server/logger";
 
 const REDIS_NATIVE_URL = process.env.REDIS_NATIVE_URL;

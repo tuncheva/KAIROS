@@ -6,7 +6,7 @@ import { Lock, Trash2, Eye, EyeOff, AlertCircle, RefreshCw, KeyRound, X } from "
 import { useTranslations } from "next-intl";
 import { useToast } from "~/components/providers/ToastProvider";
 import { cn } from "~/lib/utils";
-import { useDateFormat } from "~/lib/hooks/useDateFormat";
+import { useDateFormat } from "~/hooks/useDateFormat";
 
 export function NotesList() {
   const t = useTranslations("create");

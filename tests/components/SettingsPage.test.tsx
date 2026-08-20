@@ -7,7 +7,7 @@ import path from "path";
  * and legacy kairos-* classes have been removed, replaced with design tokens.
  */
 
-const settingsPagePath = path.resolve(__dirname, "../../src/app/settings/page.tsx");
+const settingsPagePath = path.resolve(__dirname, "../../src/app/(app)/settings/page.tsx");
 const settingsPageSource = fs.readFileSync(settingsPagePath, "utf-8");
 
 const profilePath = path.resolve(__dirname, "../../src/components/settings/ProfileSettingsClient.tsx");

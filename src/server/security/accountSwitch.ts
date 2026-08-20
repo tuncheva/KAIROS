@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createHmac, timingSafeEqual } from "crypto";
 
 export const ACCOUNT_SWITCH_COOKIE = "kairos.accounts";

@@ -18,6 +18,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "~": path.resolve(__dirname, "./src"),
+      // `server-only` exports a throwing build under the node/default export
+      // conditions that Vitest resolves with. In tests it is a no-op — see
+      // tests/stubs/server-only.ts.
+      "server-only": path.resolve(__dirname, "./tests/stubs/server-only.ts"),
     },
   },
 });

@@ -20,6 +20,8 @@
  *   LLM_ALTERNATE_MODEL  — alternate model (third tier)
  */
 
+import "server-only";
+
 import { createLogger } from "~/server/logger";
 
 const log = createLogger("llm");

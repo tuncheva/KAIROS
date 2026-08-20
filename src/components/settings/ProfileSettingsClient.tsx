@@ -7,7 +7,7 @@ import { useUploadThing } from "~/lib/uploadthing";
 import { useSession } from "next-auth/react";
 import { ImageUpload } from "~/components/ui/ImageUpload";
 import { useTranslations } from "next-intl";
-import { useDateFormat } from "~/lib/hooks/useDateFormat";
+import { useDateFormat } from "~/hooks/useDateFormat";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 

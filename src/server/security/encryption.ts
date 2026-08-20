@@ -26,6 +26,8 @@
  * whose first byte lands on any given value once in 256 notes. Base64 has no ':'
  * in its alphabet, so the prefix cannot occur in a legacy value at all.
  */
+
+import "server-only";
 import crypto from "node:crypto";
 
 const ALGORITHM = "aes-256-gcm";

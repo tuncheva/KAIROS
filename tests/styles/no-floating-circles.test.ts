@@ -10,10 +10,10 @@ import path from "path";
 const cssPath = path.resolve(__dirname, "../../src/styles/globals.css");
 const css = fs.readFileSync(cssPath, "utf-8");
 
-const createPagePath = path.resolve(__dirname, "../../src/app/create/page.tsx");
+const createPagePath = path.resolve(__dirname, "../../src/app/(app)/create/page.tsx");
 const createPageSource = fs.readFileSync(createPagePath, "utf-8");
 
-const publishPagePath = path.resolve(__dirname, "../../src/app/publish/page.tsx");
+const publishPagePath = path.resolve(__dirname, "../../src/app/(app)/publish/page.tsx");
 const publishPageSource = fs.readFileSync(publishPagePath, "utf-8");
 
 describe("Globals CSS – No Floating Circles", () => {

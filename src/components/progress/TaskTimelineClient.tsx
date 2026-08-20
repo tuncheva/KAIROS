@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { api } from "~/trpc/react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import { useRolePermissions } from "~/lib/useRolePermissions";
-import { useDateFormat } from "~/lib/hooks/useDateFormat";
+import { useRolePermissions } from "~/hooks/useRolePermissions";
+import { useDateFormat } from "~/hooks/useDateFormat";
 import { useTranslations } from "next-intl";
 import {
   Plus,

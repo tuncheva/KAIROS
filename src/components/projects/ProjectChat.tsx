@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType }
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
 import { useSocket } from "~/components/providers/SocketProvider";
-import { useSocketEvent } from "~/lib/useSocketEvent";
+import { useSocketEvent } from "~/hooks/useSocketEvent";
 import { MessageBox } from "react-chat-elements";
 import Image from "next/image";
 

@@ -10,7 +10,7 @@ import { Send, Paperclip, Search, MoreVertical, X, Plus, MessageCircle, Users, T
 import { useToast } from "~/components/providers/ToastProvider";
 import { useUploadThing } from "~/lib/uploadthing";
 import { useSocket } from "~/components/providers/SocketProvider";
-import { useSocketEvent } from "~/lib/useSocketEvent";
+import { useSocketEvent } from "~/hooks/useSocketEvent";
 
 type ChatMessage = RouterOutputs["chat"]["listMessages"]["messages"][number];
 type ParticipantSuggestion = RouterOutputs["chat"]["getParticipantSuggestions"];

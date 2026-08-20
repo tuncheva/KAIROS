@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
-import { useSocketEvent } from "~/lib/useSocketEvent";
+import { useSocketEvent } from "~/hooks/useSocketEvent";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 

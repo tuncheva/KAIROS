@@ -5,7 +5,7 @@ import { api } from "~/trpc/react";
 import { Bell, X, Calendar, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
-import { useSocketEvent } from "~/lib/useSocketEvent";
+import { useSocketEvent } from "~/hooks/useSocketEvent";
 
 interface Notification {
   id: string;
