@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useDateFormat } from "~/lib/hooks/useDateFormat";
+import { useDateFormat } from "~/hooks/useDateFormat";
 import {
   Heart,
   MessageCircle,
@@ -32,7 +32,7 @@ import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { CreateEventForm } from "~/components/events/CreateEventForm";
 import { EditEventForm } from "~/components/events/EditEventForm";
-import { useSocketEvent } from "~/lib/useSocketEvent";
+import { useSocketEvent } from "~/hooks/useSocketEvent";
 
 export const REGIONS = [
   { value: '', label: 'All Regions' },

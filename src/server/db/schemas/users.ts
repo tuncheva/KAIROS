@@ -25,13 +25,32 @@ export const users = createTable("user", (d) => ({
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     name: d.varchar({ length: 255 }),
-    email: d.varchar({ length: 255 }).notNull(),
-    emailVerified: d
-      .timestamp({
-        mode: "date",
-        withTimezone: true,
-      })
-      .$defaultFn(() => new Date()),
+    // Unique because every auth path resolves a user by email: signup does a
+    // check-then-insert with nothing to make it atomic, credentials login does a
+    // `findFirst`, and the OAuth adapter can create a second row for an address
+    // that already has a credentials account. Without the constraint, concurrent
+    // signups produce duplicate accounts and login then resolves to whichever row
+    // Postgres returns first.
+    //
+    // The constraint already exists in the deployed database as
+    // `user_email_unique` — it was applied out-of-band and was missing here, so a
+    // database provisioned from the migrations would not have had it.
+    email: d.varchar({ length: 255 }).notNull().unique(),
+    /**
+     * When the address was proven to belong to this user, or null if it has not
+     * been.
+     *
+     * This used to default to `new Date()`, so every row was born verified and
+     * the column carried no information. Combined with OAuth account linking,
+     * that was an account-takeover path: register `victim@company.com` with a
+     * password you choose, wait for the real owner to sign in with Google, and the
+     * provider identity attaches to your row. Credentials signup now leaves this
+     * null until a token is redeemed, and OAuth linking refuses unverified rows.
+     */
+    emailVerified: d.timestamp({
+      mode: "date",
+      withTimezone: true,
+    }),
     image: d.text(),
     usageMode: usageModeEnum("usage_mode"),
     activeOrganizationId: integer("active_organization_id"),
@@ -43,6 +62,19 @@ export const users = createTable("user", (d) => ({
     resetPinFailedAttempts: integer("reset_pin_failed_attempts").notNull().default(0),
     resetPinLockedUntil: timestamp("reset_pin_locked_until", { mode: "date", withTimezone: true }),
     resetPinLastFailedAt: timestamp("reset_pin_last_failed_at", { mode: "date", withTimezone: true }),
+
+    /**
+     * Durable failed-sign-in state, mirroring the reset-PIN lockout above.
+     *
+     * The sliding-window limiter is the first line of defence, but it lives in
+     * process memory unless `REDIS_NATIVE_URL` is configured — so a deploy, a
+     * restart, or a second instance hands an attacker a fresh budget. These columns
+     * survive all three, which is what makes the lockout real rather than
+     * advisory.
+     */
+    loginFailedAttempts: integer("login_failed_attempts").notNull().default(0),
+    loginLockedUntil: timestamp("login_locked_until", { mode: "date", withTimezone: true }),
+    loginLastFailedAt: timestamp("login_last_failed_at", { mode: "date", withTimezone: true }),
 
     bio: text("bio"),
 
@@ -88,7 +120,7 @@ export type UserSettings = {
   taskDueRemindersNotifications: boolean;
   marketingEmailsNotifications: boolean;
 
-  language: "en" | "bg" | "es" | "fr" | "de" | "it" | "pt" | "ja" | "ko" | "zh" | "ar";
+  language: "en" | "bg" | "es" | "fr" | "de";
   timezone: string;
   dateFormat: "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD";
 

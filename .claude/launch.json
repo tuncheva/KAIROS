@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "kairos-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:next"],
+      "port": 3000
+    }
+  ]
+}

@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Globe, ChevronDown, Check } from "lucide-react";
 import { useLocale } from "next-intl";
+import { LOCALE_METADATA, locales, type Locale } from "~/i18n/locales";
 
-type LanguageCode = "en" | "bg" | "es" | "fr" | "de";
+type LanguageCode = Locale;
 
 interface Language {
   code: LanguageCode;
@@ -12,13 +13,13 @@ interface Language {
   flag: string;
 }
 
-const languages: Language[] = [
-  { code: "en", name: "English", flag: "🇬🇧" },
-  { code: "bg", name: "Български", flag: "🇧🇬" },
-  { code: "es", name: "Español", flag: "🇪🇸" },
-  { code: "fr", name: "Français", flag: "🇫🇷" },
-  { code: "de", name: "Deutsch", flag: "🇩🇪" },
-];
+// Derived from `~/i18n/locales` rather than hardcoded. This list used to name all
+// five locales, three of which were about half translated — so choosing one gave a
+// screen partly in that language and partly in English.
+const languages: Language[] = locales.map((code) => ({
+  code,
+  ...LOCALE_METADATA[code],
+}));
 
 interface LanguageSwitcherProps {
   variant?: "compact" | "full";

@@ -63,7 +63,7 @@ export const calendarRouter = createTRPCRouter({
         )
         .orderBy(events.eventDate);
 
-      const notes = await ctx.db
+      const noteRows = await ctx.db
         .select({
           id: stickyNotes.id,
           title: stickyNotes.title,
@@ -87,6 +87,12 @@ export const calendarRouter = createTRPCRouter({
             ),
           ),
         );
+
+      // Expose only whether a note is locked, never the Argon2 hash itself.
+      const notes = noteRows.map(({ passwordHash, ...note }) => ({
+        ...note,
+        isPasswordProtected: !!passwordHash,
+      }));
 
       return {
         tasks: taskRows,

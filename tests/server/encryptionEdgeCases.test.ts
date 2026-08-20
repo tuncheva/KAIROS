@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { encryptContent, decryptContent } from "~/server/encryption";
+import { encryptContent, decryptContent } from "~/server/security/encryption";
 
 /**
  * Extended encryption tests — edge cases, security properties, and robustness.

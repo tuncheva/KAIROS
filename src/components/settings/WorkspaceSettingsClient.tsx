@@ -20,8 +20,9 @@ import {
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
-import { useSocketEvent } from "~/lib/useSocketEvent";
+import { useSocketEvent } from "~/hooks/useSocketEvent";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 
 // ---------------------------------------------------------------------------
 // Permission labels
@@ -448,15 +449,21 @@ export function WorkspaceSettingsClient() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
+                        {/* The server only sends the access code to members who
+                            may add people — it is a permanent bearer credential
+                            for the whole workspace. For everyone else it arrives
+                            as null and the sharing controls simply aren't shown. */}
+                        {org.accessCode ? (
+                        <>
                         <button
-                          onClick={() => handleCopyCode(org.accessCode)}
+                          onClick={() => handleCopyCode(org.accessCode!)}
                           className="p-2 rounded-lg hover:bg-bg-tertiary text-fg-tertiary hover:text-fg-secondary transition min-h-11 min-w-11"
                           title={t("organizations.copyAccessCode")}
                         >
                           <Copy size={14} />
                         </button>
                         <button
-                          onClick={() => handleCopyJoinLink(org.accessCode)}
+                          onClick={() => handleCopyJoinLink(org.accessCode!)}
                           className="px-2.5 py-1.5 rounded-lg hover:bg-bg-tertiary text-xs text-fg-tertiary hover:text-fg-secondary transition"
                           title={t("organizations.copyJoinLink")}
                         >
@@ -470,6 +477,8 @@ export function WorkspaceSettingsClient() {
                           <QrCode size={13} />
                           {t("organizations.showQr")}
                         </button>
+                        </>
+                        ) : null}
                         {activeOrgId !== org.id && (
                           <button
                             onClick={() => setActiveOrg.mutate({ organizationId: org.id })}
@@ -493,12 +502,15 @@ export function WorkspaceSettingsClient() {
                         </button>
                       </div>
                     </div>
-                    {showInviteQrForCode === org.accessCode && (
+                    {org.accessCode && showInviteQrForCode === org.accessCode && (
                       <div className="mt-3 rounded-xl border border-white/[0.1] bg-bg-primary/60 p-3">
                         <p className="text-xs text-fg-tertiary mb-2">{t("organizations.scanQrHint")}</p>
-                        <img
+                        <Image
                           src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(getJoinLink(org.accessCode))}`}
                           alt={t("organizations.qrAlt")}
+                          width={160}
+                          height={160}
+                          unoptimized
                           className="w-40 h-40 rounded-md border border-white/[0.08] bg-white"
                         />
                       </div>
@@ -667,7 +679,7 @@ export function WorkspaceSettingsClient() {
                       {emailLookupDebouncedEmail && !isLookingUpEmail && inviteEmailLookup && (
                         <div className="absolute left-0 right-0 top-full mt-1 z-10 p-2.5 rounded-lg border border-accent-primary/20 bg-bg-elevated shadow-lg flex items-center gap-2.5">
                           {inviteEmailLookup.image ? (
-                            <img src={inviteEmailLookup.image} alt="" className="w-8 h-8 rounded-full object-cover" />
+                            <Image src={inviteEmailLookup.image} alt="" width={32} height={32} unoptimized className="w-8 h-8 rounded-full object-cover" />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-accent-primary/15 flex items-center justify-center">
                               <span className="text-xs font-bold text-accent-primary">
@@ -827,7 +839,7 @@ export function WorkspaceSettingsClient() {
                         </div>
                         <button
                           onClick={() =>
-                            cancelInvite.mutate({ organizationId: activeOrgId!, inviteId: inv.id })
+                            cancelInvite.mutate({ organizationId: activeOrgId, inviteId: inv.id })
                           }
                           disabled={cancelInvite.isPending}
                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-fg-tertiary hover:text-red-400 transition min-h-11 min-w-11"
@@ -869,9 +881,12 @@ export function WorkspaceSettingsClient() {
                   >
                     <div className="flex items-center gap-3">
                       {member.image ? (
-                        <img
+                        <Image
                           src={member.image}
                           alt=""
+                          width={36}
+                          height={36}
+                          unoptimized
                           className="w-9 h-9 rounded-full object-cover"
                         />
                       ) : (
@@ -894,7 +909,7 @@ export function WorkspaceSettingsClient() {
                           value={member.role}
                           onChange={(e) => {
                             updateMemberRole.mutate({
-                              organizationId: activeOrgId!,
+                              organizationId: activeOrgId,
                               userId: member.id,
                               role: e.target.value as "admin" | "member" | "guest",
                             });
@@ -922,7 +937,7 @@ export function WorkspaceSettingsClient() {
                           onClick={() => {
                             if (confirm(t("members.removeConfirm", { name: member.name ?? member.email }))) {
                               removeMember.mutate({
-                                organizationId: activeOrgId!,
+                                organizationId: activeOrgId,
                                 userId: member.id,
                               });
                             }
@@ -1115,7 +1130,7 @@ export function WorkspaceSettingsClient() {
                             onClick={() => {
                                if (confirm(t("roles.deleteConfirm", { name: role.name }))) {
                                 deleteRole.mutate({
-                                  organizationId: activeOrgId!,
+                                  organizationId: activeOrgId,
                                   roleId: role.id,
                                 });
                               }

@@ -32,7 +32,7 @@ describe("SignInModal", () => {
 
   it("renders password input", () => {
     render(<SignInModal {...defaultProps} />);
-    const passInput = screen.getByPlaceholderText("••••••••");
+    const passInput = screen.getByPlaceholderText("Password");
     expect(passInput).toBeInTheDocument();
     expect(passInput).toHaveAttribute("type", "password");
   });
@@ -59,23 +59,22 @@ describe("SignInModal", () => {
     const user = userEvent.setup();
     render(<SignInModal {...defaultProps} />);
 
-    const passInput = screen.getByPlaceholderText("••••••••");
+    const passInput = screen.getByPlaceholderText("Password");
     await user.type(passInput, "secret123");
     expect(passInput).toHaveValue("secret123");
   });
 
-  it("has a toggle between sign in and sign up", () => {
+  it("has tabs for sign in and sign up", () => {
     render(<SignInModal {...defaultProps} />);
-    const toggleBtn = screen.getByText(/Don.t have an account/i);
-    expect(toggleBtn).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign up" })).toBeInTheDocument();
   });
 
   it("shows name field in sign up mode", async () => {
     const user = userEvent.setup();
     render(<SignInModal {...defaultProps} />);
 
-    const toggleBtn = screen.getByText(/Don.t have an account/i);
-    await user.click(toggleBtn);
+    await user.click(screen.getByRole("button", { name: "Sign up" }));
 
     expect(screen.getByPlaceholderText("Enter your full name")).toBeInTheDocument();
   });
@@ -84,7 +83,7 @@ describe("SignInModal", () => {
     const user = userEvent.setup();
     render(<SignInModal {...defaultProps} />);
 
-    await user.click(screen.getByText(/Don.t have an account/i));
+    await user.click(screen.getByRole("button", { name: "Sign up" }));
 
     expect(screen.getByText("Create your account")).toBeInTheDocument();
   });
@@ -108,13 +107,13 @@ describe("SignInModal", () => {
 
   it("renders with kairos design system classes", () => {
     render(<SignInModal {...defaultProps} />);
-    const modal = document.querySelector(".kairos-modal-content");
+    const modal = document.querySelector(".k-auth-shell");
     expect(modal).toBeInTheDocument();
   });
 
   it("has submit button for sign in", () => {
     render(<SignInModal {...defaultProps} />);
-    const submitBtn = screen.getByRole("button", { name: /Sign In/i });
+    const submitBtn = screen.getByRole("button", { name: "Sign In" });
     expect(submitBtn).toBeInTheDocument();
   });
 
@@ -123,18 +122,21 @@ describe("SignInModal", () => {
     expect(screen.getByText("Welcome Back")).toBeInTheDocument();
   });
 
-  it("shows toggle back to sign in from sign up", async () => {
+  it("tabs back to sign in from sign up", async () => {
     const user = userEvent.setup();
     render(<SignInModal {...defaultProps} />);
 
-    await user.click(screen.getByText(/Don.t have an account/i));
-    expect(screen.getByText(/Already have an account/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Sign up" }));
+    expect(screen.getByText("Create your account")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(screen.getByText("Welcome Back")).toBeInTheDocument();
   });
 
   it("renders terms and privacy notice", async () => {
     const user = userEvent.setup();
     render(<SignInModal {...defaultProps} />);
-    await user.click(screen.getByText(/Don.t have an account/i));
+    await user.click(screen.getByRole("button", { name: "Sign up" }));
     expect(screen.getByText(/Terms of Service/i)).toBeInTheDocument();
   });
 

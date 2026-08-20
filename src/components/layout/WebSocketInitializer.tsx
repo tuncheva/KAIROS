@@ -10,7 +10,7 @@
 
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
-import { useWebSocket } from "~/lib/hooks/useWebSocket";
+import { useWebSocket } from "~/hooks/useWebSocket";
 
 function WebSocketInitializerInner() {
   const { status, data: session } = useSession();

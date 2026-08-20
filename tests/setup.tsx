@@ -25,18 +25,69 @@ vi.mock("next/navigation", () => ({
 // Mock next/image
 vi.mock("next/image", () => ({
   default: (props: Record<string, unknown>) => {
-    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
-    const { fill, priority, ...rest } = props;
-    return <img {...(rest as React.ImgHTMLAttributes<HTMLImageElement>)} />;
+    // Strip next/image-only props that a plain <img> doesn't understand.
+    const rest = { ...props };
+    delete rest.fill;
+    delete rest.priority;
+    // `alt` first so a caller-supplied alt in `rest` still wins. Giving the mock
+    // a default alt is better than suppressing the lint rule — and the previous
+    // `jsx-a11y/alt-text` disable named a plugin this project doesn't install,
+    // which made ESLint hard-error on the unknown rule.
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img alt="" {...(rest as React.ImgHTMLAttributes<HTMLImageElement>)} />;
   },
 }));
 
 // Mock next-intl
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
-  useLocale: () => "en",
-  NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
+//
+// This resolves keys against the real en.json rather than echoing the key back.
+// Echoing meant components rendered "signIn.noAccount" while tests queried the
+// English copy they were originally written against, so every text-based query
+// failed. Resolving for real also means a test breaks if a translation key is
+// deleted or renamed, which is the behaviour you want.
+//
+// Async factory so the JSON import happens inside it — vi.mock is hoisted, so a
+// top-level import couldn't be referenced here.
+vi.mock("next-intl", async () => {
+  const messages = (
+    (await import("../src/i18n/messages/en.json")) as {
+      default: Record<string, unknown>;
+    }
+  ).default;
+
+  /** Walk a dotted key path; returns undefined unless it lands on a string. */
+  const resolve = (path: string): string | undefined => {
+    let current: unknown = messages;
+    for (const part of path.split(".")) {
+      if (typeof current !== "object" || current === null) return undefined;
+      current = (current as Record<string, unknown>)[part];
+    }
+    return typeof current === "string" ? current : undefined;
+  };
+
+  const useTranslations = (namespace?: string) => {
+    const t = (key: string, values?: Record<string, unknown>) => {
+      const namespaced = namespace ? `${namespace}.${key}` : key;
+      // Fall back to the bare key, then to the literal string, so a missing
+      // translation degrades to the old behaviour instead of throwing.
+      let message = resolve(namespaced) ?? resolve(key) ?? namespaced;
+
+      if (values) {
+        for (const [name, value] of Object.entries(values)) {
+          message = message.replaceAll(`{${name}}`, String(value));
+        }
+      }
+      return message;
+    };
+    return t;
+  };
+
+  return {
+    useTranslations,
+    useLocale: () => "en",
+    NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  };
+});
 
 // Mock next-auth/react
 vi.mock("next-auth/react", () => ({

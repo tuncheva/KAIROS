@@ -48,12 +48,6 @@ Stop juggling disconnected apps and platforms. KAIROS provides a complete ecosys
 
 ```
 KAIROS/
-├── config/                 # Configuration files
-│   ├── drizzle.config.ts   # Database/ORM configuration
-│   ├── eslint.config.js    # Linting rules
-│   ├── postcss.config.js   # PostCSS configuration
-│   ├── prettier.config.js  # Code formatting
-│   └── tailwind.config.js  # Tailwind CSS theme
 ├── public/                 # Static assets
 ├── src/
 │   ├── app/                # Next.js App Router pages
@@ -65,10 +59,14 @@ KAIROS/
 │   └── trpc/               # tRPC client setup
 ├── .env.example            # Environment template
 ├── .github/                # CI/CD and contribution guidelines
-├── *.config.js             # Thin wrappers (re-export from config/)
 ├── components.json         # shadcn/ui configuration
-├── next.config.js          # Next.js configuration
+├── drizzle.config.ts       # Database/ORM configuration
+├── eslint.config.js        # Linting rules
+├── next.config.ts          # Next.js configuration
 ├── package.json            # Dependencies & scripts
+├── postcss.config.js       # PostCSS configuration
+├── prettier.config.js      # Code formatting
+├── tailwind.config.js      # Tailwind CSS theme
 └── tsconfig.json           # TypeScript configuration
 ```
 

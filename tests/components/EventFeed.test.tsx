@@ -68,11 +68,11 @@ describe("EventFeed – Instagram Layout", () => {
     });
 
     it("EventCard has 'View all' comments toggle", () => {
-      expect(eventFeedSource).toContain("View all");
+      expect(eventFeedSource).toContain("viewAllComments");
     });
 
     it("Comment input shows 'Post' button text", () => {
-      expect(eventFeedSource).toContain('"Post"');
+      expect(eventFeedSource).toContain('t("post")');
     });
 
     it("Comment input uses borderless transparent style", () => {
@@ -85,7 +85,7 @@ describe("EventFeed – Instagram Layout", () => {
     });
 
     it("has RSVP reminder picker UI", () => {
-      expect(eventFeedSource).toContain("Get notified before event?");
+      expect(eventFeedSource).toContain("getNotified");
     });
 
     it("has reminder timing options (30 min, 1 hour, 1 day, etc.)", () => {
@@ -128,7 +128,7 @@ describe("CreateEventForm – Design Tokens", () => {
   });
 
   it("has a Publish Event submit button", () => {
-    expect(createFormSource).toContain("'Publish Event'");
+    expect(createFormSource).toContain("publishEvent");
   });
 
   it("uses accent-primary for submit button", () => {

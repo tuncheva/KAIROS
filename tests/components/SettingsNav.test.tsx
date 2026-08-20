@@ -3,18 +3,24 @@ import { render, screen } from "@testing-library/react";
 import { SettingsNav } from "~/components/layout/SettingsNav";
 
 describe("SettingsNav", () => {
-  const sections = ["profile", "notifications", "security", "language", "appearance"];
+  const sections = [
+    { id: "profile", label: "Profile" },
+    { id: "workspace", label: "Workspace" },
+    { id: "notifications", label: "Notifications" },
+    { id: "security", label: "Security" },
+    { id: "language", label: "Language" },
+    { id: "appearance", label: "Appearance" },
+  ];
 
   it("renders without crashing", () => {
     render(<SettingsNav activeSection="profile" />);
     expect(screen.getByRole("navigation", { name: "Settings" })).toBeInTheDocument();
   });
 
-  it("renders all 5 settings sections", () => {
+  it("renders all settings sections", () => {
     render(<SettingsNav activeSection="profile" />);
-    // useTranslations mock returns key, so labels will be section ids
     for (const section of sections) {
-      expect(screen.getByText(section)).toBeInTheDocument();
+      expect(screen.getByText(section.label)).toBeInTheDocument();
     }
   });
 
@@ -22,7 +28,7 @@ describe("SettingsNav", () => {
     const { container } = render(<SettingsNav activeSection="security" />);
     const activeLink = container.querySelector('[aria-current="page"]');
     expect(activeLink).not.toBeNull();
-    expect(activeLink?.textContent).toContain("security");
+    expect(activeLink?.textContent).toContain("Security");
   });
 
   it("does not use kairos-* legacy classes", () => {
@@ -59,8 +65,8 @@ describe("SettingsNav", () => {
   it("each section links to correct settings URL", () => {
     render(<SettingsNav activeSection="profile" />);
     for (const section of sections) {
-      const link = screen.getByText(section).closest("a");
-      expect(link?.getAttribute("href")).toBe(`/settings?section=${section}`);
+      const link = screen.getByText(section.label).closest("a");
+      expect(link?.getAttribute("href")).toBe(`/settings?section=${section.id}`);
     }
   });
 

@@ -25,7 +25,16 @@ const ISODateTimeStringSchema = z
   .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}.*Z)?$/)
   .describe("ISO 8601 UTC timestamp, e.g. 2026-02-09T07:03:00.000Z, or date-only 2026-02-09");
 
-export const TaskCreateDraftSchema = z
+/**
+ * The fields the model is responsible for on a created task.
+ *
+ * Note what is absent: `clientRequestId`. Requiring the model to mint a unique
+ * id per task made every plan a coin flip — a duplicate or a too-short string
+ * failed validation for the whole plan, and the id carries no meaning the model
+ * could reason about. The server assigns it at draft time; see
+ * {@link TaskCreateDraftSchema}.
+ */
+export const TaskCreateModelSchema = z
   .object({
     title: z.string().min(1).max(256),
     description: z.string().max(5000).default(""),
@@ -37,10 +46,14 @@ export const TaskCreateDraftSchema = z
       .default([]),
     orderIndex: z.number().int().min(0).optional(),
     dueDate: ISODateTimeStringSchema.nullable().optional(),
-    /** Required for idempotency; must be unique per project for a given plan */
-    clientRequestId: z.string().min(8).max(128),
   })
   .strip();
+
+/** A created task as persisted: the model's fields plus the server's idempotency key. */
+export const TaskCreateDraftSchema = TaskCreateModelSchema.extend({
+  /** Required for idempotency; unique per project for a given plan. Server-assigned. */
+  clientRequestId: z.string().min(8).max(128),
+}).strip();
 
 export const TaskUpdateDraftSchema = z
   .object({
@@ -88,10 +101,55 @@ export const TaskPlanDiffPreviewSchema = z
 export const TaskPlannerScopeSchema = z
   .object({
     orgId: z.union([z.string(), z.number()]).optional(),
-    projectId: z.number().int().positive(),
+    /**
+     * Server-assigned. Optional only for the one plan that never reaches apply:
+     * when no project could be resolved, A2 returns a questions-only plan that is
+     * not persisted. Apply compares this against the draft's own `projectId`
+     * column, so an absent value there fails closed.
+     */
+    projectId: z.number().int().positive().optional(),
   })
   .strip();
 
+/**
+ * The plan shape the model is asked to produce.
+ *
+ * `scope` is absent on purpose. It used to be required, which meant the model
+ * had to echo back a project id it was only ever told in passing: get it wrong
+ * and apply refused the plan ("Plan scope does not match"), omit it and the
+ * whole response failed validation. The project is resolved by the server before
+ * the model is called, so the server fills it in — see {@link TaskPlanDraftSchema}.
+ */
+export const TaskPlanModelOutputSchema = z
+  .object({
+    // Use .catch() to default to "task_planner" if the LLM omits or returns wrong value
+    agentId: z.literal("task_planner").catch("task_planner"),
+
+    creates: z.array(TaskCreateModelSchema).max(30).default([]),
+    updates: z.array(TaskUpdateDraftSchema).max(50).default([]),
+    statusChanges: z.array(TaskStatusChangeDraftSchema).max(50).default([]),
+    deletes: z.array(TaskDeleteDraftSchema).max(10).default([]),
+
+    orderingRationale: z.string().max(2000).optional(),
+    assigneeRationale: z.string().max(2000).optional(),
+
+    risks: z.array(z.string().min(1).max(300)).max(20).default([]),
+    questionsForUser: z.array(z.string().min(1).max(300)).max(10).default([]),
+
+    diffPreview: TaskPlanDiffPreviewSchema.default({
+      creates: [],
+      updates: [],
+      statusChanges: [],
+      deletes: [],
+    }),
+  })
+  // Use strip() instead of strict() — LLMs sometimes add extra keys like "type"
+  // that would cause validation to fail. strip() silently removes unknown keys.
+  .strip();
+
+export type TaskPlanModelOutput = z.infer<typeof TaskPlanModelOutputSchema>;
+
+/** The plan as persisted and applied: model output plus the server's scope and ids. */
 export const TaskPlanDraftSchema = z
   .object({
     // Use .catch() to default to "task_planner" if the LLM omits or returns wrong value

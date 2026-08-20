@@ -1,5 +1,7 @@
 /**
- * Prettier Configuration Wrapper
- * Re-exports config from config/ folder for tooling compatibility.
+ * Prettier Configuration
+ * @type {import('prettier').Config & import('prettier-plugin-tailwindcss').PluginOptions}
  */
-export { default } from "./config/prettier.config.js";
+export default {
+  plugins: ["prettier-plugin-tailwindcss"],
+};

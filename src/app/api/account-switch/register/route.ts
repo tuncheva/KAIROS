@@ -4,10 +4,11 @@ import { env } from "~/env";
 import { auth } from "~/server/auth";
 import {
   ACCOUNT_SWITCH_COOKIE,
+  ACCOUNT_SWITCH_ENTRY_TTL_MS,
   decodeAccountSwitchCookie,
   encodeAccountSwitchCookie,
   type AccountSwitchEntry,
-} from "~/server/accountSwitch";
+} from "~/server/security/accountSwitch";
 
 export async function POST() {
   if (!env.AUTH_SECRET) {
@@ -31,6 +32,7 @@ export async function POST() {
     name: user.name ?? null,
     image: user.image ?? null,
     lastUsed: Date.now(),
+    expiresAt: Date.now() + ACCOUNT_SWITCH_ENTRY_TTL_MS,
   };
 
   const merged = [
@@ -47,7 +49,10 @@ export async function POST() {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    // Matches the per-entry deadline stamped into the payload above. The payload
+    // is the authority; this just stops the browser holding a cookie whose every
+    // entry has already expired.
+    maxAge: ACCOUNT_SWITCH_ENTRY_TTL_MS / 1000,
   });
 
   return NextResponse.json({ ok: true });

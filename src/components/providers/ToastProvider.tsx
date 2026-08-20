@@ -57,20 +57,8 @@ class ToastManager {
   };
 }
 
-function toastClasses(kind: ToastKind) {
-  switch (kind) {
-    case "success":
-      return "bg-success/10 border-success/30 text-success";
-    case "error":
-      return "bg-error/10 border-error/30 text-error";
-    case "info":
-    default:
-      return "bg-info/10 border-info/30 text-info";
-  }
-}
-
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [, setToasts] = useState<Toast[]>([]);
 
   const managerRef = useRef<ToastManager | null>(null);
   managerRef.current ??= new ToastManager(setToasts, 3000);
@@ -80,7 +68,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return () => manager?.dispose();
   }, []);
 
-  const remove = useCallback((id: string) => managerRef.current?.remove(id), []);
   const push = useCallback(
     (kind: ToastKind, message: string) => managerRef.current?.push(kind, message),
     []

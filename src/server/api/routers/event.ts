@@ -4,7 +4,10 @@ import { events, eventComments, eventLikes, eventRsvps, users, notifications } f
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { type NewEvent } from "~/server/db/schema";
 import { TRPCError } from "@trpc/server";
-import { emitNotification, emitEventDeleted, emitEventUpdated } from "~/server/socket/emit";
+import { emitNotification, emitEventDeleted, emitEventUpdated } from "~/server/ws/emit";
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("event");
 
 const createEventSchema = z.object({
   title: z.string().min(1, "Title is required").max(256),
@@ -488,7 +491,7 @@ export const eventRouter = createTRPCRouter({
     .input(sendRemindersSchema)
     .mutation(async ({ ctx: _ctx }) => {
       if (process.env.NODE_ENV !== "production") {
-        console.log(`[Reminder Service] Running reminder check at ${new Date().toISOString()}`);
+        log.debug("running reminder check");
       }
       return { success: true, message: "Reminder check initiated." };
     }),

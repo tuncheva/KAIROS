@@ -11,7 +11,7 @@ import {
   users,
 } from "~/server/db/schema";
 import { and, asc, desc, eq, inArray, lt, or, sql, isNull } from "drizzle-orm";
-import { emitNewMessage, emitConversationUpdated, emitNotification } from "~/server/socket/emit";
+import { emitNewMessage, emitConversationUpdated, emitNotification } from "~/server/ws/emit";
 
 async function assertProjectAccess(ctx: TRPCContext, projectId: number) {
   if (!ctx.session?.user?.id) throw new TRPCError({ code: "UNAUTHORIZED" });

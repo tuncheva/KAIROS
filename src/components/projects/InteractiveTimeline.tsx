@@ -82,7 +82,6 @@ export function InteractiveTimeline({
  const [editingCompletionNoteTaskId, setEditingCompletionNoteTaskId] = useState<number | null>(null);
  const [editCompletionNote, setEditCompletionNote] = useState<string>("");
  
- const scrollContainerRef = useRef<HTMLDivElement>(null);
  const taskRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
  const rafRef = useRef<number | null>(null);

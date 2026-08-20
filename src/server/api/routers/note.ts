@@ -3,10 +3,42 @@ import { TRPCError } from "@trpc/server";
 import crypto from "node:crypto";
 import { protectedProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { stickyNotes, users, notebooks, noteShares, notifications } from "~/server/db/schema";
-import { eq, and, or } from "drizzle-orm";
-import { emitNotification } from "~/server/socket/emit";
+import { eq, and } from "drizzle-orm";
+import { emitNotification } from "~/server/ws/emit";
 import * as argon2 from "argon2";
-import { encryptContent, decryptContent } from "~/server/encryption";
+import { encryptContent, decryptContent } from "~/server/security/encryption";
+import {
+  consumeAuthRateLimit,
+  createAuthRateLimitKey,
+} from "~/server/security/authRateLimit";
+import { getClientIp } from "~/server/http/clientIp";
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("note");
+
+/**
+ * Throttle a note-password attempt before any Argon2 work happens.
+ *
+ * Two reasons, both from audit finding #8. The obvious one is that an unbounded
+ * number of attempts turns the note password into a guessing oracle. The less
+ * obvious one is cost: every verify runs Argon2id at `memoryCost: 65536`, so a few
+ * hundred concurrent attempts is 64MB each — a memory-exhaustion denial of service
+ * against the app server, reachable by any signed-in user.
+ *
+ * Keyed on the note *and* the caller, and separately on client IP, so one user
+ * hammering one note cannot deny everyone else access to their own notes.
+ */
+async function throttleNotePasswordAttempt(
+  ctx: { session: { user: { id: string } }; headers: Headers },
+  noteId: number,
+): Promise<void> {
+  await consumeAuthRateLimit(
+    createAuthRateLimitKey("note_password", `${ctx.session.user.id}:${noteId}`),
+  );
+  await consumeAuthRateLimit(
+    createAuthRateLimitKey("note_password_ip", getClientIp(ctx.headers)),
+  );
+}
 
 const ARGON2_OPTS = {
   type: argon2.argon2id,
@@ -34,10 +66,10 @@ export const noteRouter = createTRPCRouter({
           passwordSalt = crypto.randomBytes(32).toString("hex");
           passwordHash = await argon2.hash(input.password, ARGON2_OPTS);
           if (process.env.NODE_ENV !== "production") {
-            console.log("Password Hashed Successfully.");
+            log.debug("Password Hashed Successfully.");
           }
         } catch (hashError) {
-          console.error("❌ Hashing Error:", hashError); 
+          log.error("failed to hash note password", { err: hashError });
           throw new TRPCError({ 
             code: "INTERNAL_SERVER_ERROR", 
             message: "Failed to secure note password." 
@@ -63,7 +95,7 @@ export const noteRouter = createTRPCRouter({
         }).returning();
 
         if (!newNote) {
-          console.error("❌ Insertion failed, returned no note.");
+          log.error("❌ Insertion failed, returned no note.");
           throw new TRPCError({ 
             code: "INTERNAL_SERVER_ERROR", 
             message: "Note creation failed unexpectedly." 
@@ -71,12 +103,12 @@ export const noteRouter = createTRPCRouter({
         }
 
         if (process.env.NODE_ENV !== "production") {
-          console.log("Note Inserted Successfully. New ID:", newNote.id);
+          log.debug("note created", { noteId: newNote.id });
         }
         return newNote;
 
       } catch (dbError) {
-        console.error("Database Insertion Error:", dbError); 
+        log.error("note insert failed", { err: dbError });
         throw new TRPCError({ 
           code: "INTERNAL_SERVER_ERROR", 
           message: "Database insertion failed. Check your schema and database logs." 
@@ -118,7 +150,10 @@ export const noteRouter = createTRPCRouter({
             createdAt: n.createdAt,
             updatedAt: n.updatedAt,
             notebookId: n.notebookId,
-            passwordHash: n.passwordHash,
+            // Only the boolean, never the hash: the client needs to know a note
+            // is locked, and shipping the Argon2 hash to the browser hands out
+            // material for offline cracking.
+            isPasswordProtected: true,
             shareStatus: n.shareStatus,
             sharedWith,
             // content intentionally omitted
@@ -126,7 +161,12 @@ export const noteRouter = createTRPCRouter({
           };
         }
 
-        return { ...n, sharedWith };
+        // Drop the credential columns even on unprotected notes, so this
+        // endpoint can never return them regardless of the branch taken.
+        const { passwordHash, passwordSalt, ...rest } = n;
+        void passwordHash;
+        void passwordSalt;
+        return { ...rest, isPasswordProtected: false, sharedWith };
       });
     }),
 
@@ -152,9 +192,12 @@ export const noteRouter = createTRPCRouter({
         .innerJoin(users, eq(stickyNotes.createdById, users.id))
         .where(eq(noteShares.sharedWithId, ctx.session.user.id));
 
-      return shares.map((s) => ({
+      // Strip the hash before it leaves the server — this endpoint previously
+      // shipped the owner's note-password hash to every user it was shared with.
+      return shares.map(({ passwordHash, ...s }) => ({
         ...s,
-        content: s.passwordHash ? null : s.content,
+        isPasswordProtected: !!passwordHash,
+        content: passwordHash ? null : s.content,
       }));
     }),
 
@@ -411,6 +454,8 @@ export const noteRouter = createTRPCRouter({
           };
         }
 
+        await throttleNotePasswordAttempt(ctx, input.id);
+
         const isMatch = await argon2.verify(
           note.passwordHash,
           input.attemptedPassword
@@ -474,14 +519,37 @@ export const noteRouter = createTRPCRouter({
         }
       }
 
-      // Re-encrypt if the note is password-protected and password is provided
       let storedContent = input.content;
-      if (note.passwordHash && note.passwordSalt && input.password) {
-        // Verify password matches before re-encrypting
+
+      if (note.passwordHash) {
+        // A password-protected note must never be written as plaintext.
+        //
+        // Previously, omitting `password` fell through and stored the new content
+        // unencrypted into a row that still had passwordHash/passwordSalt set.
+        // That both silently removed the encryption and bricked the note: every
+        // read path then ran decryptContent() over plaintext and threw, so the
+        // note became permanently unreadable through the UI. Anyone holding a
+        // write share could trigger it too, without ever knowing the password.
+        if (!input.password) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "This note is password protected. Unlock it with its password before saving changes.",
+          });
+        }
+
+        if (!note.passwordSalt) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Note is password protected but has no salt; it needs to be re-saved.",
+          });
+        }
+
         const isMatch = await argon2.verify(note.passwordHash, input.password);
         if (!isMatch) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Incorrect note password." });
         }
+
         storedContent = encryptContent(input.content, input.password, note.passwordSalt);
       }
 
@@ -543,6 +611,8 @@ export const noteRouter = createTRPCRouter({
           message: "Note is not password protected."
         });
       }
+
+      await throttleNotePasswordAttempt(ctx, input.noteId);
 
       const isMatch = await argon2.verify(note.passwordHash, input.password);
 

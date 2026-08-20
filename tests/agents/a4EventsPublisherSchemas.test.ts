@@ -75,8 +75,14 @@ describe("EventCreateSchema", () => {
   });
 
   it("rejects missing clientRequestId", () => {
-    const { clientRequestId, ...rest } = validCreate;
-    const result = EventCreateSchema.safeParse(rest);
+    const result = EventCreateSchema.safeParse({
+      title: validCreate.title,
+      description: validCreate.description,
+      eventDate: validCreate.eventDate,
+      region: validCreate.region,
+      enableRsvp: validCreate.enableRsvp,
+      sendReminders: validCreate.sendReminders,
+    });
     expect(result.success).toBe(false);
   });
 
@@ -89,8 +95,14 @@ describe("EventCreateSchema", () => {
   });
 
   it("defaults enableRsvp to false when omitted", () => {
-    const { enableRsvp, ...rest } = validCreate;
-    const result = EventCreateSchema.safeParse(rest);
+    const result = EventCreateSchema.safeParse({
+      title: validCreate.title,
+      description: validCreate.description,
+      eventDate: validCreate.eventDate,
+      region: validCreate.region,
+      sendReminders: validCreate.sendReminders,
+      clientRequestId: validCreate.clientRequestId,
+    });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.enableRsvp).toBe(false);

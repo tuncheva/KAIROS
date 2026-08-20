@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
+import { useSocket } from "~/components/providers/SocketProvider";
+import { useSocketEvent } from "~/hooks/useSocketEvent";
 import { MessageBox } from "react-chat-elements";
 import Image from "next/image";
 
@@ -41,26 +43,47 @@ export function ProjectChat({ projectId, currentUserId }: { projectId: number; c
 
   const otherUsers: ChatUser[] = useMemo(() => listUsers.data ?? [], [listUsers.data]);
 
-  const getOrCreate = api.chat.getOrCreateProjectConversation.useMutation({
+  // Destructure `mutate`: react-query keeps it referentially stable, whereas the
+  // mutation object is recreated on every render. Depending on the object below
+  // is what made this effect re-fire endlessly.
+  const { mutate: openConversation } = api.chat.getOrCreateProjectConversation.useMutation({
     onSuccess: (data) => {
       setConversationId(data.conversationId);
     },
   });
 
+  // Tracks the (project, user) pair we have already opened a conversation for.
+  //
+  // The previous version guarded only on `isPending` while depending on the
+  // mutation object, so each settled mutation re-ran the effect and fired
+  // another one: an unbounded loop of getOrCreateProjectConversation calls for
+  // as long as the tab stayed open, each doing an access check plus several
+  // more queries.
+  const requestedPairRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!selectedUserId || getOrCreate.isPending) {
-      if (!selectedUserId) setConversationId(null);
+    if (!selectedUserId) {
+      requestedPairRef.current = null;
+      setConversationId(null);
       return;
     }
 
-    void getOrCreate.mutateAsync({ projectId, otherUserId: selectedUserId });
-  }, [selectedUserId, projectId, getOrCreate.isPending, getOrCreate]);
+    const pairKey = `${projectId}:${selectedUserId}`;
+    if (requestedPairRef.current === pairKey) return;
+    requestedPairRef.current = pairKey;
+
+    setConversationId(null);
+    openConversation({ projectId, otherUserId: selectedUserId });
+  }, [selectedUserId, projectId, openConversation]);
 
   const messagesQuery = api.chat.listMessages.useInfiniteQuery(
     { conversationId: conversationId ?? -1, limit: 50 },
     {
       enabled: conversationId !== null,
-      refetchInterval: 500,
+      // New messages arrive over the socket (see the message:new handler below).
+      // This is only a fallback for a dropped connection — it used to be 500ms,
+      // i.e. two requests per second per open chat.
+      refetchInterval: 60_000,
       refetchOnWindowFocus: true,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     },
@@ -70,6 +93,71 @@ export function ProjectChat({ projectId, currentUserId }: { projectId: number; c
     () => messagesQuery.data?.pages.flatMap((p) => p.messages) ?? [],
     [messagesQuery.data],
   );
+
+  // ---------------------------------------------------------------------------
+  // Real-time delivery (replaces the 500ms poll this component used to run)
+  // ---------------------------------------------------------------------------
+  const socket = useSocket();
+
+  useEffect(() => {
+    if (!socket || conversationId === null) return;
+    socket.emit("join:conversation", conversationId);
+    return () => {
+      socket.emit("leave:conversation", conversationId);
+    };
+  }, [socket, conversationId]);
+
+  const handleNewMessage = useCallback(
+    (data: {
+      messageId: number;
+      conversationId: number;
+      senderId: string;
+      body: string;
+      senderName: string | null;
+      senderImage: string | null;
+      createdAt: string | Date;
+    }) => {
+      if (data.conversationId !== conversationId) return;
+      // Our own messages are already in the cache via the optimistic update.
+      if (data.senderId === currentUserId) return;
+
+      utils.chat.listMessages.setInfiniteData(
+        { conversationId: data.conversationId, limit: 50 },
+        (old) => {
+          if (!old) return old;
+          // The server also fans out to each participant's user room, so the same
+          // message can arrive twice.
+          const seen = new Set(old.pages.flatMap((p) => p.messages.map((m) => m.id)));
+          if (seen.has(data.messageId)) return old;
+
+          const lastPageIdx = old.pages.length - 1;
+          return {
+            ...old,
+            pages: old.pages.map((page, i) =>
+              i === lastPageIdx
+                ? {
+                    ...page,
+                    messages: [
+                      ...page.messages,
+                      {
+                        id: data.messageId,
+                        body: data.body,
+                        createdAt: new Date(data.createdAt),
+                        senderId: data.senderId,
+                        senderName: data.senderName,
+                        senderImage: data.senderImage,
+                      },
+                    ],
+                  }
+                : page,
+            ),
+          };
+        },
+      );
+    },
+    [conversationId, currentUserId, utils.chat.listMessages],
+  );
+  useSocketEvent("message:new", handleNewMessage);
 
   const sendMessage = api.chat.sendMessage.useMutation({
     onMutate: async (variables) => {

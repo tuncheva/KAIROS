@@ -36,18 +36,23 @@
 
 ## 1) What agents Kairos can contain (based on current codebase)
 
-Kairos currently implements a single agent: `"project-planning"` in [`AgentId`](src/agents/core/AgentDefinition.ts).
+Kairos currently ships four agents, identified by the [`AgentId`](src/server/llm/orchestrator/shared.ts) union (`workspace_concierge`, `task_planner`, `notes_vault`, `events_publisher`).
 
-The architecture supports many more agents because the system is built around:
+The architecture supports many more agents because each follows the same draft → confirm → apply lifecycle, built from shared pieces:
 
-- Agent interface: [`AgentDefinition`](src/agents/core/AgentDefinition.ts)
-- Runtime context: [`AgentContext`](src/agents/core/AgentContext.ts)
-- Tool abstraction + registry: [`ToolDefinition`](src/agents/core/ToolDefinition.ts)
-- Execution + persistence: [`AgentRunner`](src/agents/core/AgentRunner.ts)
-- Agent registry: [`agentRegistry`](src/agents/registry/agentRegistry.ts)
+- Agent IDs + shared types: [`shared.ts`](src/server/llm/orchestrator/shared.ts)
+- Orchestration (routing + apply): [`agentOrchestrator.ts`](src/server/llm/orchestrator/agentOrchestrator.ts)
+- Model client (structured JSON via Zod): [`modelClient.ts`](src/server/llm/core/modelClient.ts)
+- Context builders: [`src/server/llm/context/`](src/server/llm/context)
+- Profiles, prompts and schemas: [`src/server/llm/profiles/`](src/server/llm/profiles), [`src/server/llm/prompts/`](src/server/llm/prompts), [`src/server/llm/schemas/`](src/server/llm/schemas)
 
-### Existing agent today
-- **Project Planning Agent** — implemented in [`ProjectPlanningAgent`](src/agents/agents/ProjectPlanningAgent.ts) and exposed via tRPC in [`agentRouter`](src/server/api/routers/agent.ts).
+### Existing agents today
+- **A1 Workspace Concierge** — [`a1Concierge.ts`](src/server/llm/orchestrator/a1Concierge.ts)
+- **A2 Task Planner** — [`a2TaskPlanner.ts`](src/server/llm/orchestrator/a2TaskPlanner.ts)
+- **A3 Notes Vault** — [`a3NotesVault.ts`](src/server/llm/orchestrator/a3NotesVault.ts)
+- **A4 Events Publisher** — [`a4EventsPublisher.ts`](src/server/llm/orchestrator/a4EventsPublisher.ts)
+
+All exposed via tRPC in [`agentRouter`](src/server/api/routers/agent.ts).
 
 ### Recommended agent catalog (roadmap)
 These map cleanly to your existing data model/routers (projects/tasks/notes/chat/org/notifications):
@@ -82,7 +87,7 @@ Your current agent pattern is:
 
 1. Fetch context using tools (permission-checked DB reads/writes)
 2. Build a prompt
-3. Call [`LLMClient.generateStructured()`](src/agents/llm/LLMClient.ts)
+3. Call [`chatCompletion()`](src/server/llm/core/modelClient.ts)
 4. Parse JSON and validate via Zod
 5. Optionally write back using tools
 
@@ -215,7 +220,7 @@ Gemma is capable, but licensing restrictions may be problematic depending on you
 
 ## 6) How to implement these in Kairos
 
-Right now, your server only has an OpenAI-backed implementation: [`OpenAILLMClient`](src/agents/llm/OpenAILLMClient.ts).
+Right now, the model client is a raw-`fetch`, OpenAI-compatible client with a model fallback chain: [`modelClient.ts`](src/server/llm/core/modelClient.ts).
 
 To run “free models”, add additional `LLMClient` adapters that talk to local servers:
 
@@ -227,7 +232,7 @@ To run “free models”, add additional `LLMClient` adapters that talk to local
 - Run Ollama locally.
 - Implement `OllamaLLMClient` via HTTP.
 
-Then in [`getLLMClient()`](src/server/api/routers/agent.ts) choose based on env, e.g. `LLM_PROVIDER`.
+Then select the client based on env (see [`modelClient.ts`](src/server/llm/core/modelClient.ts) and `docs/agent-env-vars.md`), e.g. `LLM_BASE_URL`.
 
 ---
 

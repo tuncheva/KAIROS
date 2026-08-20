@@ -1,17 +1,27 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { env } from "~/env";
+import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 import { inArray } from "drizzle-orm";
 import {
   ACCOUNT_SWITCH_COOKIE,
   decodeAccountSwitchCookie,
-} from "~/server/accountSwitch";
+} from "~/server/security/accountSwitch";
 
 export async function GET() {
   if (!env.AUTH_SECRET) {
     return NextResponse.json({ accounts: [] });
+  }
+
+  // This endpoint discloses the email, name and user id of every account that
+  // has signed in on this browser, and those ids are exactly what the
+  // `account-switch` credentials provider accepts. It must never answer an
+  // unauthenticated request.
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const secret = env.AUTH_SECRET;
@@ -31,7 +41,12 @@ export async function GET() {
     .where(inArray(users.id, userIds));
 
   const existingUserIds = new Set(existingUsers.map(u => u.id));
-  const filteredAccounts = accounts.filter(a => existingUserIds.has(a.userId));
+  const filteredAccounts = accounts.filter(
+    // Drop rows whose user no longer exists, and the caller's own entry: the
+    // switcher only ever offers *other* accounts, so returning the current one
+    // discloses nothing the client needs and widens what a leaked response says.
+    (a) => existingUserIds.has(a.userId) && a.userId !== session.user.id,
+  );
 
   return NextResponse.json({ accounts: filteredAccounts });
 }

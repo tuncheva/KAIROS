@@ -6,8 +6,6 @@ import { api } from "~/trpc/react";
 import { useTranslations } from "next-intl";
 import { useToast } from "~/components/providers/ToastProvider";
 
-type Translator = (key: string, values?: Record<string, unknown>) => string;
-
 export function CreateNoteForm() {
   const t = useTranslations("create");
   const tCalendar = useTranslations("notes.calendar");

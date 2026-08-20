@@ -36,7 +36,7 @@ describe("Root Layout", () => {
 });
 
 describe("Create Page", () => {
-  const page = readPage("create/page.tsx");
+  const page = readPage("(app)/create/page.tsx");
 
   it("has authentication guard", () => {
     expect(page).toMatch(/auth|session|redirect/i);
@@ -52,7 +52,7 @@ describe("Create Page", () => {
 });
 
 describe("Calendar Page", () => {
-  const page = readPage("calendar/page.tsx");
+  const page = readPage("(app)/calendar/page.tsx");
 
   it("has authentication guard", () => {
     expect(page).toMatch(/auth|session|redirect/i);
@@ -68,7 +68,7 @@ describe("Calendar Page", () => {
 });
 
 describe("Notes Page", () => {
-  const page = readPage("notes/page.tsx");
+  const page = readPage("(app)/notes/page.tsx");
 
   it("has authentication guard", () => {
     expect(page).toMatch(/auth|session|redirect/i);
@@ -80,7 +80,7 @@ describe("Notes Page", () => {
 });
 
 describe("Projects Page", () => {
-  const page = readPage("projects/page.tsx");
+  const page = readPage("(app)/projects/page.tsx");
 
   it("has authentication guard", () => {
     expect(page).toMatch(/auth|session|redirect/i);
@@ -92,7 +92,7 @@ describe("Projects Page", () => {
 });
 
 describe("Progress Page", () => {
-  const page = readPage("progress/page.tsx");
+  const page = readPage("(app)/progress/page.tsx");
 
   it("has authentication guard", () => {
     expect(page).toMatch(/auth|session|redirect/i);
@@ -104,7 +104,7 @@ describe("Progress Page", () => {
 });
 
 describe("Settings Page", () => {
-  const page = readPage("settings/page.tsx");
+  const page = readPage("(app)/settings/page.tsx");
 
   it("is a server component that delegates to client components", () => {
     expect(page).toContain("ProfileSettingsClient");
@@ -122,7 +122,7 @@ describe("Settings Page", () => {
 });
 
 describe("Publish Page", () => {
-  const page = readPage("publish/page.tsx");
+  const page = readPage("(app)/publish/page.tsx");
 
   it("uses bg-bg-primary background", () => {
     expect(page).toContain("bg-bg-primary");
@@ -134,7 +134,7 @@ describe("Publish Page", () => {
 });
 
 describe("Orgs Page", () => {
-  const page = readPage("orgs/page.tsx");
+  const page = readPage("(app)/orgs/page.tsx");
 
   it("has authentication guard", () => {
     expect(page).toMatch(/auth|session|redirect/i);
@@ -159,13 +159,13 @@ describe("Not Found Page", () => {
 
 describe("All Protected Pages — Auth Guard Consistency", () => {
   const protectedPages = [
-    "create/page.tsx",
-    "calendar/page.tsx",
-    "notes/page.tsx",
-    "projects/page.tsx",
-    "progress/page.tsx",
-    "orgs/page.tsx",
-    "chat/page.tsx",
+    "(app)/create/page.tsx",
+    "(app)/calendar/page.tsx",
+    "(app)/notes/page.tsx",
+    "(app)/projects/page.tsx",
+    "(app)/progress/page.tsx",
+    "(app)/orgs/page.tsx",
+    "(app)/chat/page.tsx",
   ];
 
   for (const pagePath of protectedPages) {

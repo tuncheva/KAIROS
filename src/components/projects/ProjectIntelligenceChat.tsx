@@ -1,10 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useAgentStream,
+  type AgentTurnPayload,
+} from "~/hooks/useAgentStream";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil } from "lucide-react";
-import { useDateFormat } from "~/lib/hooks/useDateFormat";
+import { useDateFormat } from "~/hooks/useDateFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -142,9 +146,6 @@ function clampText(s: string, max = 20_000): string {
   if (s.length <= max) return s;
   return s.slice(0, max);
 }
-
-const GREETING_PATTERNS =
-  /^\s*(hi|hello|hey|howdy|yo|hola|sup|what'?s\s*up|good\s*(morning|afternoon|evening|day)|greetings|salut|bonjour|hallo|привет|здравейте|здрасти|здравей)\b/i;
 
 /** Replace the LAST thinking/sub-agent sentinel in messages with a real message. */
 function replaceThinking(
@@ -436,14 +437,6 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
     refetchOnWindowFocus: true,
   });
 
-  /* ---- Greeting responses (i18n) ---- */
-  const greetingResponses = [
-    t("greeting1"),
-    t("greeting2"),
-    t("greeting3"),
-    t("greeting4"),
-  ];
-
   const suggestedQuestions = [
     t("suggestedQ1"),
     t("suggestedQ2"),
@@ -451,36 +444,254 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
     t("suggestedQ4"),
   ];
 
-  function getGreetingResponse(): string {
-    return greetingResponses[
-      Math.floor(Math.random() * greetingResponses.length)
-    ]!;
-  }
+  /* ---------- Agent turn ---------- */
 
-  /** Show popup when a TOO_MANY_REQUESTS error is caught from any agent mutation. */
-  const handleRateLimitError = useCallback((err: unknown): boolean => {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("reached your limit") || msg.includes("TOO_MANY_REQUESTS")) {
-      setRateLimitPopup({ show: true, message: msg });
-      void rateLimitQuery.refetch();
-      return true;
-    }
-    return false;
-  }, [rateLimitQuery]);
+  /**
+   * One user message is one server round trip.
+   *
+   * This component used to be the orchestrator: it pattern-matched the message
+   * for "note"/"event" substrings and called a write agent directly, answered
+   * greetings from a local array, and chained a second mutation whenever A1
+   * returned a handoff. All of that now happens server-side in `runAgentTurn`,
+   * where A1 — which handles every language and actually reads the workspace —
+   * makes the routing decision.
+   */
 
-  /* ---------- A1 Mutation (general workspace chat) ---------- */
+  const [progressLabel, setProgressLabel] = useState<string | null>(null);
+  const conversationIdRef = useRef<string | undefined>(undefined);
 
-  const a1Mutation = api.agent.projectChatbot.useMutation({
-    onMutate: ({ message }) => {
-      // Do not append messages here; handleSend() owns optimistic UI.
-      // This prevents duplicate user messages / thinking indicators and makes tests deterministic.
-      void message;
+  /** Render a sub-agent's plan into chat text, previews and action buttons. */
+  const buildPlanMessage = useCallback(
+    (payload: AgentTurnPayload): Omit<ChatMsg & { role: "agent" }, "role"> => {
+      const summary = payload.a1.answer?.summary;
+      const msgId = generateMsgId();
+      const plan = payload.plan;
+
+      if (!plan) {
+        const text = [
+          summary,
+          ...(payload.a1.answer?.details ?? []).map((d) => `• ${d}`),
+          payload.handoffError,
+        ]
+          .filter(Boolean)
+          .join("\n");
+        return { text: text || t("noResponse"), createdAt: new Date(), msgId };
+      }
+
+      if (plan.kind === "tasks") {
+        const p = plan.plan as TaskPlannerDraftResponse["plan"];
+        const questions = p?.questionsForUser ?? [];
+        if (questions.length > 0) {
+          return {
+            text: `${t("needMoreInfo")}\n${questions.map((q) => `• ${q}`).join("\n")}`,
+            createdAt: new Date(),
+            msgId,
+          };
+        }
+
+        const creates = p?.creates?.length ?? 0;
+        const updates = p?.updates?.length ?? 0;
+        const statusChanges = p?.statusChanges?.length ?? 0;
+        const deletes = p?.deletes?.length ?? 0;
+        const total = creates + updates + statusChanges + deletes;
+
+        if (total === 0) {
+          return { text: t("noChanges"), createdAt: new Date(), msgId };
+        }
+
+        const diffLines: string[] = [];
+        for (const c of p?.diffPreview?.creates ?? []) diffLines.push(`+ ${c}`);
+        for (const u of p?.diffPreview?.updates ?? []) diffLines.push(`~ ${u}`);
+        for (const c of p?.diffPreview?.statusChanges ?? []) diffLines.push(`→ ${c}`);
+        for (const d of p?.diffPreview?.deletes ?? []) diffLines.push(`- ${d}`);
+
+        const ops = [
+          creates > 0 ? t("createOps", { count: creates }) : null,
+          updates > 0 ? t("updateOps", { count: updates }) : null,
+          statusChanges > 0
+            ? `${statusChanges} status change${statusChanges > 1 ? "s" : ""}`
+            : null,
+          deletes > 0 ? t("deleteOps", { count: deletes }) : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+        const inlineTasks: InlineTask[] = (
+          (p?.creates ?? []) as Array<{ title?: string; priority?: string }>
+        )
+          .filter((c) => typeof c?.title === "string")
+          .map((c) => ({ title: c.title!, priority: c.priority }));
+
+        return {
+          text: [ops, diffLines.join("\n"), t("clickConfirm")]
+            .filter(Boolean)
+            .join("\n"),
+          createdAt: new Date(),
+          msgId,
+          actions: [{ type: "task_confirm" as const, draftId: plan.draftId }],
+          inlineTasks: inlineTasks.length > 0 ? inlineTasks : undefined,
+        };
+      }
+
+      if (plan.kind === "notes") {
+        const p = plan.plan as NotesDraftResponse["plan"];
+        const operations = Array.isArray(p?.operations) ? p.operations : [];
+        const blocked = Array.isArray(p?.blocked) ? p.blocked : [];
+
+        const counts = (type: string) =>
+          operations.filter(
+            (o) => (o as Record<string, unknown>)?.type === type,
+          ).length;
+        const creates = counts("create");
+        const updates = counts("update");
+        const deletes = counts("delete");
+
+        const headline =
+          creates > 0
+            ? t("noteCreate")
+            : updates > 0
+              ? t("noteUpdate")
+              : deletes > 0
+                ? t("noteDelete")
+                : t("noNoteChanges");
+
+        const ops = [
+          creates > 0 ? t("createOps", { count: creates }) : null,
+          updates > 0 ? t("updateOps", { count: updates }) : null,
+          deletes > 0 ? t("deleteOps", { count: deletes }) : null,
+          blocked.length > 0 ? t("blockedOps", { count: blocked.length }) : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+        const notePreviews: NotePreviewItem[] = operations.map((o) => {
+          const op = o as Record<string, unknown>;
+          return {
+            kind: (op.type as "create" | "update" | "delete") ?? "create",
+            content:
+              (op.content as string) ?? (op.nextContent as string) ?? undefined,
+            noteId: (op.noteId as number) ?? undefined,
+            reason: (op.reason as string) ?? undefined,
+          };
+        });
+
+        return {
+          text: [headline, ops, operations.length > 0 ? t("editThenApply") : ""]
+            .filter(Boolean)
+            .join("\n"),
+          createdAt: new Date(),
+          msgId,
+          actions:
+            operations.length > 0
+              ? [{ type: "notes_direct_apply" as const, draftId: plan.draftId }]
+              : undefined,
+          notePreviews: notePreviews.length > 0 ? notePreviews : undefined,
+        };
+      }
+
+      const p = plan.plan as EventsDraftResponse["plan"];
+      const questions = Array.isArray(p?.questionsForUser)
+        ? p.questionsForUser
+        : [];
+      if (questions.length > 0) {
+        return {
+          text: `${t("needMoreInfo")}\n${questions.map((q) => `• ${q}`).join("\n")}`,
+          createdAt: new Date(),
+          msgId,
+        };
+      }
+
+      const creates = Array.isArray(p?.creates) ? p.creates.length : 0;
+      const updates = Array.isArray(p?.updates) ? p.updates.length : 0;
+      const deletes = Array.isArray(p?.deletes) ? p.deletes.length : 0;
+      const hasOps = creates + updates + deletes > 0;
+
+      const ops = [
+        creates > 0 ? t("createOps", { count: creates }) : null,
+        updates > 0 ? t("updateOps", { count: updates }) : null,
+        deletes > 0 ? t("deleteOps", { count: deletes }) : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+
+      const eventPreviews: EventPreviewItem[] = [
+        ...(Array.isArray(p?.creates)
+          ? (p.creates as Array<Record<string, unknown>>).map((c) => ({
+              kind: "create" as const,
+              title: c.title as string | undefined,
+              description: c.description as string | undefined,
+              eventDate: c.eventDate as string | undefined,
+              region: c.region as string | undefined,
+            }))
+          : []),
+        ...(Array.isArray(p?.updates)
+          ? (p.updates as Array<Record<string, unknown>>).map((u) => ({
+              kind: "update" as const,
+              eventId: u.eventId as number | undefined,
+              title: (u.patch as Record<string, unknown> | undefined)?.title as
+                | string
+                | undefined,
+              description: (u.patch as Record<string, unknown> | undefined)
+                ?.description as string | undefined,
+              eventDate: (u.patch as Record<string, unknown> | undefined)
+                ?.eventDate as string | undefined,
+              reason: u.reason as string | undefined,
+            }))
+          : []),
+        ...(Array.isArray(p?.deletes)
+          ? (p.deletes as Array<Record<string, unknown>>).map((d) => ({
+              kind: "delete" as const,
+              eventId: d.eventId as number | undefined,
+              reason: d.reason as string | undefined,
+            }))
+          : []),
+      ];
+
+      return {
+        text: [
+          p?.summary ?? summary ?? "",
+          ops || t("noChanges"),
+          hasOps ? t("editThenApply") : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        createdAt: new Date(),
+        msgId,
+        actions: hasOps
+          ? [{ type: "events_direct_apply" as const, draftId: plan.draftId }]
+          : undefined,
+        eventPreviews: eventPreviews.length > 0 ? eventPreviews : undefined,
+      };
     },
-    onError: (err) => {
-      if (handleRateLimitError(err)) {
+    [generateMsgId, t],
+  );
+
+  const { send: sendTurn } = useAgentStream({
+    onToolCall: (name) => setProgressLabel(t("lookingUp", { tool: name })),
+    onSubAgent: (agent) => {
+      setProgressLabel(t("subAgentWorking", { agent }));
+      // Swap the dots for the sub-agent bar: a handoff has actually happened.
+      setMessages((prev) =>
+        replaceThinking(prev, {
+          text: SUBAGENT_SENTINEL,
+          createdAt: new Date(),
+        }),
+      );
+    },
+    onResult: (payload) => {
+      conversationIdRef.current = payload.conversationId;
+      setProgressLabel(null);
+      setMessages((prev) => replaceThinking(prev, buildPlanMessage(payload)));
+      if (payload.plan?.kind === "tasks") void utils.task.invalidate();
+    },
+    onError: (message, isRateLimit) => {
+      setProgressLabel(null);
+      if (isRateLimit) {
+        setRateLimitPopup({ show: true, message });
+        void rateLimitQuery.refetch();
         setMessages((prev) =>
           replaceThinking(prev, {
-            text: "You\u2019ve reached your daily message limit.",
+            text: t("dailyLimitReached"),
             createdAt: new Date(),
           }),
         );
@@ -488,382 +699,80 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
       }
       setMessages((prev) =>
         replaceThinking(prev, {
-          text: t("somethingWentWrong", { error: err.message }),
+          text: t("somethingWentWrong", { error: message }),
           createdAt: new Date(),
         }),
-      );
-    },
-    onSuccess: (data) => {
-      const output = (data as unknown as { outputJson?: unknown })
-        .outputJson as
-        | {
-            answer?: { summary: string; details?: string[] };
-            handoff?: {
-              targetAgent: string;
-              userIntent: string;
-              context?: Record<string, unknown>;
-            };
-            draftPlan?: {
-              proposedChanges?: Array<{ summary: string }>;
-            };
-          }
-        | undefined;
-
-      /* ---- A1 returned a handoff to task_planner → auto-execute ---- */
-      if (output?.handoff?.targetAgent === "task_planner") {
-        setMessages((prev) =>
-          replaceThinking(prev, {
-            text: t("handoffTaskPlanner"),
-            createdAt: new Date(),
-          }),
-        );
-        // Add a sub-agent working indicator and run the pipeline
-        setMessages((prev) => [
-          ...prev,
-          { role: "agent", text: SUBAGENT_SENTINEL, createdAt: new Date() },
-        ]);
-        void runTaskPlannerPipeline(
-          output.handoff.userIntent,
-          output.handoff.context,
-        );
-        return;
-      }
-
-      /* ---- A1 returned a handoff to notes_vault → run notes draft ---- */
-      if (output?.handoff?.targetAgent === "notes_vault") {
-        setMessages((prev) =>
-          replaceThinking(prev, {
-            text: THINKING_SENTINEL,
-            createdAt: new Date(),
-          }),
-        );
-        void (async () => {
-          try {
-            const res = (await notesDraftMutation.mutateAsync({
-              message: clampText(output!.handoff!.userIntent),
-              handoffContext: output!.handoff!.context,
-            })) as NotesDraftResponse;
-
-            const plan = res?.plan;
-            const draftId = res?.draftId ?? "";
-            const operations = Array.isArray(plan?.operations) ? plan.operations : [];
-            const blocked = Array.isArray(plan?.blocked) ? plan.blocked : [];
-
-            const creates = operations.filter((o) => (o as Record<string, unknown>)?.type === "create").length;
-            const updates = operations.filter((o) => (o as Record<string, unknown>)?.type === "update").length;
-            const deletes = operations.filter((o) => (o as Record<string, unknown>)?.type === "delete").length;
-
-            const chatbotSummary = creates > 0 ? t("noteCreate") : updates > 0 ? t("noteUpdate") : deletes > 0 ? t("noteDelete") : t("noNoteChanges");
-            const ops = [
-              creates > 0 ? t("createOps", { count: creates }) : null,
-              updates > 0 ? t("updateOps", { count: updates }) : null,
-              deletes > 0 ? t("deleteOps", { count: deletes }) : null,
-              blocked.length > 0 ? t("blockedOps", { count: blocked.length }) : null,
-            ].filter(Boolean).join(" \u00b7 ");
-
-            // Friendly message with edit hint
-            const agentText = [chatbotSummary, ops, operations.length > 0 ? "👇 You can edit the content below, then click **Apply** when ready!" : ""].filter(Boolean).join("\n");
-
-            // Build note previews from operations
-            const notePreviews: NotePreviewItem[] = operations.map((o) => {
-              const op = o as Record<string, unknown>;
-              return {
-                kind: (op.type as "create" | "update" | "delete") ?? "create",
-                content: (op.content as string) ?? (op.nextContent as string) ?? undefined,
-                noteId: (op.noteId as number) ?? undefined,
-                reason: (op.reason as string) ?? undefined,
-              };
-            });
-
-            const msgId = generateMsgId();
-            setMessages((prev) =>
-              replaceThinking(prev, {
-                text: agentText,
-                createdAt: new Date(),
-                msgId,
-                actions: operations.length > 0 && draftId ? [{ type: "notes_direct_apply" as const, draftId }] : undefined,
-                notePreviews: notePreviews.length > 0 ? notePreviews : undefined,
-              }),
-            );
-          } catch (err) {
-            const errMsg = err instanceof Error ? err.message : "Notes request failed";
-            setMessages((prev) =>
-              replaceThinking(prev, {
-                text: t("somethingWentWrong", { error: errMsg }),
-                createdAt: new Date(),
-              }),
-            );
-          }
-        })();
-        return;
-      }
-
-      /* ---- A1 returned a handoff to events_publisher → run events draft ---- */
-      if (output?.handoff?.targetAgent === "events_publisher") {
-        setMessages((prev) =>
-          replaceThinking(prev, {
-            text: THINKING_SENTINEL,
-            createdAt: new Date(),
-          }),
-        );
-        void (async () => {
-          try {
-            const res = (await eventsDraftMutation.mutateAsync({
-              message: clampText(output!.handoff!.userIntent),
-              handoffContext: output!.handoff!.context,
-            })) as EventsDraftResponse;
-
-            const plan = res?.plan;
-            const draftId = res?.draftId ?? "";
-            const creates = Array.isArray(plan?.creates) ? plan.creates.length : 0;
-            const updates = Array.isArray(plan?.updates) ? plan.updates.length : 0;
-            const deletes = Array.isArray(plan?.deletes) ? plan.deletes.length : 0;
-            const questions = Array.isArray(plan?.questionsForUser) ? plan.questionsForUser : [];
-
-            let agentText: string;
-            if (questions.length > 0) {
-              agentText = `${t("needMoreInfo")}\n${questions.map((q) => `\u2022 ${q}`).join("\n")}`;
-            } else {
-              const summaryLine = plan?.summary ?? "Here\u2019s what I\u2019ll do:";
-              const ops = [
-                creates > 0 ? t("createOps", { count: creates }) : null,
-                updates > 0 ? t("updateOps", { count: updates }) : null,
-                deletes > 0 ? t("deleteOps", { count: deletes }) : null,
-              ].filter(Boolean).join(" \u00b7 ");
-              // Friendly message with edit hint
-              agentText = [summaryLine, ops || t("noChanges"), creates + updates + deletes > 0 ? "👇 You can edit the details below, then click **Apply** when ready!" : ""].filter(Boolean).join("\n");
-            }
-
-            const hasOps = creates + updates + deletes > 0;
-
-            // Build event previews from plan data
-            const eventPreviews: EventPreviewItem[] = [
-              ...(Array.isArray(plan?.creates) ? (plan.creates as Array<Record<string, unknown>>).map((c) => ({
-                kind: "create" as const,
-                title: c.title as string | undefined,
-                description: c.description as string | undefined,
-                eventDate: c.eventDate as string | undefined,
-                region: c.region as string | undefined,
-              })) : []),
-              ...(Array.isArray(plan?.updates) ? (plan.updates as Array<Record<string, unknown>>).map((u) => ({
-                kind: "update" as const,
-                eventId: u.eventId as number | undefined,
-                title: (u.patch as Record<string, unknown> | undefined)?.title as string | undefined,
-                description: (u.patch as Record<string, unknown> | undefined)?.description as string | undefined,
-                eventDate: (u.patch as Record<string, unknown> | undefined)?.eventDate as string | undefined,
-                reason: u.reason as string | undefined,
-              })) : []),
-              ...(Array.isArray(plan?.deletes) ? (plan.deletes as Array<Record<string, unknown>>).map((d) => ({
-                kind: "delete" as const,
-                eventId: d.eventId as number | undefined,
-                reason: d.reason as string | undefined,
-              })) : []),
-            ];
-
-            const msgId = generateMsgId();
-            setMessages((prev) =>
-              replaceThinking(prev, {
-                text: agentText,
-                createdAt: new Date(),
-                msgId,
-                actions: hasOps && draftId ? [{ type: "events_direct_apply" as const, draftId }] : undefined,
-                eventPreviews: eventPreviews.length > 0 ? eventPreviews : undefined,
-              }),
-            );
-          } catch (err) {
-            const errMsg = err instanceof Error ? err.message : "Events request failed";
-            setMessages((prev) =>
-              replaceThinking(prev, {
-                text: t("somethingWentWrong", { error: errMsg }),
-                createdAt: new Date(),
-              }),
-            );
-          }
-        })();
-        return;
-      }
-
-      const agentText = output?.answer?.summary
-        ? [
-            output.answer.summary,
-            ...(output.answer.details ?? []).map((d) => `\u2022 ${d}`),
-          ].join("\n")
-        : output?.handoff
-          ? `I can hand this off to ${output.handoff.targetAgent}: ${output.handoff.userIntent}`
-          : output?.draftPlan?.proposedChanges?.length
-            ? output.draftPlan.proposedChanges
-                .map((c) => `\u2022 ${c.summary}`)
-                .join("\n")
-            : t("noResponse");
-
-      setMessages((prev) =>
-        replaceThinking(prev, { text: agentText, createdAt: new Date() }),
       );
     },
   });
 
   /* ---------- Notes & Events mutations ---------- */
 
-  const notesDraftMutation = api.agent.notesVaultDraft.useMutation();
   const notesConfirmMutation = api.agent.notesVaultConfirm.useMutation();
   const notesApplyMutation = api.agent.notesVaultApply.useMutation();
 
-  const eventsDraftMutation = api.agent.eventsPublisherDraft.useMutation();
   const eventsConfirmMutation = api.agent.eventsPublisherConfirm.useMutation();
   const eventsApplyMutation = api.agent.eventsPublisherApply.useMutation();
 
   /* ---------- Task Planner mutations ---------- */
 
-  const taskDraftMutation = api.agent.taskPlannerDraft.useMutation();
   const taskConfirmMutation = api.agent.taskPlannerConfirm.useMutation();
   const taskApplyMutation = api.agent.taskPlannerApply.useMutation();
 
-  /* ---------- Intent detection ---------- */
+  /* ---------- Rehydration ---------- */
 
-  // Client-side intent detection is used only as a fast-path hint.
-  // A1 is the authoritative orchestrator and handles all languages.
-
-  const isNotesIntent = useCallback((text: string) => {
-    const t = text.toLowerCase();
-    return (
-      t.includes("note") ||
-      t.includes("notes") ||
-      t.includes("sticky") ||
-      t.includes("vault") ||
-      t.includes("summarize my notes") ||
-      t.includes("organize my notes")
-    );
-  }, []);
-
-  const isEventsIntent = useCallback((text: string) => {
-    const t = text.toLowerCase();
-    return (
-      t.includes("event") ||
-      t.includes("events") ||
-      t.includes("rsvp") ||
-      t.includes("publish") ||
-      t.includes("create an event") ||
-      t.includes("schedule an event") ||
-      t.includes("organize an event")
-    );
-  }, []);
-
-  /* ---------- Task Planner Pipeline (draft only → preview for user) ---------- */
-
-  const runTaskPlannerPipeline = useCallback(
-    async (
-      userMessage: string,
-      handoffContext?: Record<string, unknown>,
-    ) => {
-      // Sub-agent working indicator is already inserted by the caller.
-      // Keep this function pure to avoid duplicate "thinking" bubbles.
-
-      try {
-        /* Step 1: Draft only — do NOT auto-confirm or auto-apply */
-        const draftRes = (await taskDraftMutation.mutateAsync({
-          message: clampText(userMessage),
-          scope: projectId ? { projectId } : undefined,
-          handoffContext,
-        })) as TaskPlannerDraftResponse;
-
-        const plan = draftRes?.plan;
-        const draftId = draftRes?.draftId ?? "";
-
-        const creates = Array.isArray(plan?.creates)
-          ? plan.creates.length
-          : 0;
-        const updates = Array.isArray(plan?.updates)
-          ? plan.updates.length
-          : 0;
-        const statusChanges = Array.isArray(plan?.statusChanges)
-          ? plan.statusChanges.length
-          : 0;
-        const deletes = Array.isArray(plan?.deletes)
-          ? plan.deletes.length
-          : 0;
-        const questions = Array.isArray(plan?.questionsForUser)
-          ? plan.questionsForUser
-          : [];
-
-        // If the planner has questions, show them and stop
-        if (questions.length > 0) {
-          const qText = `${t("needMoreInfo")}\n${questions.map((q) => `\u2022 ${q}`).join("\n")}`;
-          setMessages((prev) =>
-            replaceThinking(prev, { text: qText, createdAt: new Date() }),
-          );
-          return;
-        }
-
-        const totalOps = creates + updates + statusChanges + deletes;
-
-        if (totalOps === 0 || !draftId) {
-          setMessages((prev) =>
-            replaceThinking(prev, {
-              text: t("noChanges"),
-              createdAt: new Date(),
-            }),
-          );
-          return;
-        }
-
-        // Build a diff summary from the plan's diffPreview
-        const diffLines: string[] = [];
-        if (plan?.diffPreview) {
-          for (const c of plan.diffPreview.creates ?? []) diffLines.push(`+ ${c}`);
-          for (const u of plan.diffPreview.updates ?? []) diffLines.push(`~ ${u}`);
-          for (const s of plan.diffPreview.statusChanges ?? []) diffLines.push(`\u2192 ${s}`);
-          for (const d of plan.diffPreview.deletes ?? []) diffLines.push(`- ${d}`);
-        }
-
-        const ops = [
-          creates > 0 ? t("createOps", { count: creates }) : null,
-          updates > 0 ? t("updateOps", { count: updates }) : null,
-          statusChanges > 0 ? `${statusChanges} status change${statusChanges > 1 ? "s" : ""}` : null,
-          deletes > 0 ? t("deleteOps", { count: deletes }) : null,
-        ].filter(Boolean).join(" \u00b7 ");
-
-        const agentText = [
-          ops,
-          diffLines.length > 0 ? diffLines.join("\n") : null,
-          t("clickConfirm"),
-          t("taskPlannerModifyHint") || "Want to modify? Tell me what to change.",
-        ].filter(Boolean).join("\n");
-
-        // Extract task titles from the draft plan for inline display
-        const inlineTasks: InlineTask[] = Array.isArray(plan?.creates)
-          ? (plan.creates as Array<{ title?: string; priority?: string }>)
-              .filter((c) => typeof c?.title === "string")
-              .map((c) => ({
-                title: c.title!,
-                priority: c.priority,
-              }))
-          : [];
-
-        setMessages((prev) =>
-          replaceThinking(prev, {
-            text: agentText,
-            createdAt: new Date(),
-            actions: [{ type: "task_confirm" as const, draftId }],
-            inlineTasks: inlineTasks.length > 0 ? inlineTasks : undefined,
-          }),
-        );
-      } catch (err) {
-        const errMsg =
-          err instanceof Error ? err.message : "Unknown error";
-        setMessages((prev) =>
-          replaceThinking(prev, {
-            text: t("taskPlannerFailed", { error: errMsg }),
-            createdAt: new Date(),
-          }),
-        );
-      }
-    },
-    [
-      projectId,
-      t,
-      taskDraftMutation,
-    ],
+  /**
+   * Restore the last conversation on mount.
+   *
+   * The transcript used to live only in component state, so a reload lost it and
+   * the assistant lost every reference a follow-up depended on. Assistant turns
+   * are stored as the JSON A1 produced, which is why they are re-rendered from
+   * `summary`/`details` here rather than read back as display text.
+   *
+   * Action buttons are deliberately not restored: their drafts may have been
+   * applied or expired since, and a button that fails on click is worse than no
+   * button. The user can ask again.
+   */
+  const historyQuery = api.agent.latestConversation.useQuery(
+    { projectId },
+    { refetchOnWindowFocus: false, staleTime: Infinity },
   );
+
+  const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    const data = historyQuery.data;
+    if (!data?.conversationId || data.messages.length === 0) return;
+
+    hydratedRef.current = true;
+    conversationIdRef.current = data.conversationId;
+
+    setMessages(
+      data.messages.map((m): ChatMsg => {
+        if (m.role === "user") {
+          return { role: "user", text: m.content, createdAt: m.createdAt };
+        }
+
+        let text = m.content;
+        try {
+          const parsed = JSON.parse(m.content) as {
+            answer?: { summary?: string; details?: string[] };
+          };
+          if (parsed.answer?.summary) {
+            text = [
+              parsed.answer.summary,
+              ...(parsed.answer.details ?? []).map((d) => `• ${d}`),
+            ].join("\n");
+          }
+        } catch {
+          // Older rows, or a turn stored as plain text: show it as-is.
+        }
+
+        return { role: "agent", text, createdAt: m.createdAt };
+      }),
+    );
+  }, [historyQuery.data, projectId]);
 
   /* ---------- Scrolling ---------- */
 
@@ -888,286 +797,20 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
       if (!msg) return;
 
       setDraft("");
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", text: msg, createdAt: new Date() },
+        { role: "agent", text: THINKING_SENTINEL, createdAt: new Date() },
+      ]);
+      setProgressLabel(null);
 
-      // Client-side greeting detection — instant response, no API call
-      if (GREETING_PATTERNS.test(msg) && msg.split(/\s+/).length <= 3) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "user", text: msg, createdAt: new Date() },
-          {
-            role: "agent",
-            text: getGreetingResponse(),
-            createdAt: new Date(),
-          },
-        ]);
-        return;
-      }
-
-      const run = async () => {
-        /* ---- Events path (fast-path: needs confirm/apply UI) ---- */
-        if (isEventsIntent(msg)) {
-          setMessages((prev) => [
-            ...prev,
-            { role: "user", text: msg, createdAt: new Date() },
-            {
-              role: "agent",
-              text: THINKING_SENTINEL,
-              createdAt: new Date(),
-            },
-          ]);
-
-          try {
-            const res = (await eventsDraftMutation.mutateAsync({
-              message: clampText(msg),
-            })) as EventsDraftResponse;
-
-            const plan = res?.plan;
-            const draftId = res?.draftId ?? "";
-
-            const creates = Array.isArray(plan?.creates)
-              ? plan.creates.length
-              : 0;
-            const updates = Array.isArray(plan?.updates)
-              ? plan.updates.length
-              : 0;
-            const deletes = Array.isArray(plan?.deletes)
-              ? plan.deletes.length
-              : 0;
-            const questions = Array.isArray(plan?.questionsForUser)
-              ? plan.questionsForUser
-              : [];
-
-            let agentText: string;
-            if (questions.length > 0) {
-              agentText = `${t("needMoreInfo")}\n${questions.map((q) => `\u2022 ${q}`).join("\n")}`;
-            } else {
-              const summaryLine =
-                plan?.summary ?? "Here\u2019s what I\u2019ll do:";
-              const ops = [
-                creates > 0 ? t("createOps", { count: creates }) : null,
-                updates > 0 ? t("updateOps", { count: updates }) : null,
-                deletes > 0 ? t("deleteOps", { count: deletes }) : null,
-              ]
-                .filter(Boolean)
-                .join(" \u00b7 ");
-              agentText = [
-                summaryLine,
-                ops || t("noChanges"),
-                creates + updates + deletes > 0 ? "👇 You can edit the details below, then click **Apply** when ready!" : "",
-              ]
-                .filter(Boolean)
-                .join("\n");
-            }
-
-            const hasOps = creates + updates + deletes > 0;
-
-            // Build event previews from plan data
-            const eventPreviews: EventPreviewItem[] = [
-              ...(Array.isArray(plan?.creates) ? (plan.creates as Array<Record<string, unknown>>).map((c) => ({
-                kind: "create" as const,
-                title: c.title as string | undefined,
-                description: c.description as string | undefined,
-                eventDate: c.eventDate as string | undefined,
-                region: c.region as string | undefined,
-              })) : []),
-              ...(Array.isArray(plan?.updates) ? (plan.updates as Array<Record<string, unknown>>).map((u) => ({
-                kind: "update" as const,
-                eventId: u.eventId as number | undefined,
-                title: (u.patch as Record<string, unknown> | undefined)?.title as string | undefined,
-                description: (u.patch as Record<string, unknown> | undefined)?.description as string | undefined,
-                eventDate: (u.patch as Record<string, unknown> | undefined)?.eventDate as string | undefined,
-                reason: u.reason as string | undefined,
-              })) : []),
-              ...(Array.isArray(plan?.deletes) ? (plan.deletes as Array<Record<string, unknown>>).map((d) => ({
-                kind: "delete" as const,
-                eventId: d.eventId as number | undefined,
-                reason: d.reason as string | undefined,
-              })) : []),
-            ];
-
-            const msgId = generateMsgId();
-            setMessages((prev) =>
-              replaceThinking(prev, {
-                text: agentText,
-                createdAt: new Date(),
-                msgId,
-                actions:
-                  hasOps && draftId
-                    ? [{ type: "events_direct_apply", draftId }]
-                    : undefined,
-                eventPreviews: eventPreviews.length > 0 ? eventPreviews : undefined,
-              }),
-            );
-          } catch (err) {
-            if (!handleRateLimitError(err)) {
-              const errMsg =
-                err instanceof Error ? err.message : "Events request failed";
-              setMessages((prev) =>
-                replaceThinking(prev, {
-                  text: t("somethingWentWrong", { error: errMsg }),
-                  createdAt: new Date(),
-                }),
-              );
-            } else {
-              setMessages((prev) =>
-                replaceThinking(prev, {
-                  text: "You\u2019ve reached your daily message limit.",
-                  createdAt: new Date(),
-                }),
-              );
-            }
-          }
-
-          return;
-        }
-
-        /* ---- Notes path (fast-path: needs confirm/apply UI) ---- */
-        if (isNotesIntent(msg)) {
-          setMessages((prev) => [
-            ...prev,
-            { role: "user", text: msg, createdAt: new Date() },
-            {
-              role: "agent",
-              text: THINKING_SENTINEL,
-              createdAt: new Date(),
-            },
-          ]);
-
-          try {
-            const res = (await notesDraftMutation.mutateAsync({
-              message: clampText(msg),
-            })) as NotesDraftResponse;
-
-            const plan = res?.plan;
-            const draftId = res?.draftId ?? "";
-
-            const operations = Array.isArray(plan?.operations)
-              ? plan.operations
-              : [];
-            const blocked = Array.isArray(plan?.blocked) ? plan.blocked : [];
-
-            const creates = operations.filter(
-              (o) =>
-                (o as Record<string, unknown>)?.type === "create",
-            ).length;
-            const updates = operations.filter(
-              (o) =>
-                (o as Record<string, unknown>)?.type === "update",
-            ).length;
-            const deletes = operations.filter(
-              (o) =>
-                (o as Record<string, unknown>)?.type === "delete",
-            ).length;
-
-            const chatbotSummary =
-              creates > 0
-                ? t("noteCreate")
-                : updates > 0
-                  ? t("noteUpdate")
-                  : deletes > 0
-                    ? t("noteDelete")
-                    : t("noNoteChanges");
-
-            const ops = [
-              creates > 0 ? t("createOps", { count: creates }) : null,
-              updates > 0 ? t("updateOps", { count: updates }) : null,
-              deletes > 0 ? t("deleteOps", { count: deletes }) : null,
-              blocked.length > 0
-                ? t("blockedOps", { count: blocked.length })
-                : null,
-            ]
-              .filter(Boolean)
-              .join(" \u00b7 ");
-
-            const agentText = [
-              chatbotSummary,
-              ops,
-              operations.length > 0 ? "👇 You can edit the content below, then click **Apply** when ready!" : "",
-            ]
-              .filter(Boolean)
-              .join("\n");
-
-            const shouldShowConfirm = operations.length > 0;
-
-            // Build note previews from operations
-            const notePreviews: NotePreviewItem[] = operations.map((o) => {
-              const op = o as Record<string, unknown>;
-              return {
-                kind: (op.type as "create" | "update" | "delete") ?? "create",
-                content: (op.content as string) ?? (op.nextContent as string) ?? undefined,
-                noteId: (op.noteId as number) ?? undefined,
-                reason: (op.reason as string) ?? undefined,
-              };
-            });
-
-            const msgId = generateMsgId();
-            setMessages((prev) =>
-              replaceThinking(prev, {
-                text: agentText,
-                createdAt: new Date(),
-                msgId,
-                actions:
-                  shouldShowConfirm && draftId
-                    ? [{ type: "notes_direct_apply", draftId }]
-                    : undefined,
-                notePreviews: notePreviews.length > 0 ? notePreviews : undefined,
-              }),
-            );
-          } catch (err) {
-            if (!handleRateLimitError(err)) {
-              const errMsg =
-                err instanceof Error ? err.message : "Notes request failed";
-              setMessages((prev) =>
-                replaceThinking(prev, {
-                  text: t("somethingWentWrong", { error: errMsg }),
-                  createdAt: new Date(),
-                }),
-              );
-            } else {
-              setMessages((prev) =>
-                replaceThinking(prev, {
-                  text: "You\u2019ve reached your daily message limit.",
-                  createdAt: new Date(),
-                }),
-              );
-            }
-          }
-
-          return;
-        }
-
-        /* ---- Default: A1 central orchestrator (handles all routing) ---- */
-        setMessages((prev) => [
-          ...prev,
-          { role: "user", text: msg, createdAt: new Date() },
-          { role: "agent", text: THINKING_SENTINEL, createdAt: new Date() },
-        ]);
-
-        // Build conversation history from messages state (filter sentinels, take last 16)
-        const history = messages
-          .filter(
-            (m) =>
-              m.text !== THINKING_SENTINEL && m.text !== SUBAGENT_SENTINEL,
-          )
-          .slice(-16)
-          .map((m) => ({
-            role: (m.role === "user" ? "user" : "assistant") as
-              | "user"
-              | "assistant",
-            content: m.text,
-          }));
-
-        await a1Mutation.mutateAsync({
-          projectId,
-          message: clampText(msg),
-          conversationHistory: history.length > 0 ? history : undefined,
-        });
-      };
-
-      void run();
+      void sendTurn({
+        message: clampText(msg),
+        projectId,
+        conversationId: conversationIdRef.current,
+      });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [projectId, t],
+    [projectId, sendTurn],
   );
 
   const isThinking =
@@ -1394,9 +1037,13 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
                         {isThinkingMsg ? (
                           <div className="kairos-chat-response text-sm leading-relaxed py-1">
                             <span className="sr-only">
-                              {t("thinking")}
+                              {progressLabel ?? t("thinking")}
                             </span>
-                            <ThinkingDots />
+                            {progressLabel ? (
+                              <SubAgentWorking label={progressLabel} />
+                            ) : (
+                              <ThinkingDots />
+                            )}
                           </div>
                         ) : isSubAgentMsg ? (
                           <div className="kairos-chat-response text-sm leading-relaxed py-1">
@@ -1404,7 +1051,7 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
                               {t("taskPlannerWorking")}
                             </span>
                             <SubAgentWorking
-                              label={t("taskPlannerWorking")}
+                              label={progressLabel ?? t("taskPlannerWorking")}
                             />
                           </div>
                         ) : (

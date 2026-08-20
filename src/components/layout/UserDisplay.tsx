@@ -23,6 +23,12 @@ export function UserDisplay() {
  const tOrg = useT("org");
  const [isOpen, setIsOpen] = useState(false);
  const [storedAccounts, setStoredAccounts] = useState<StoredAccount[]>([]);
+ // Switching accounts requires re-authentication, so picking an account opens a
+ // password prompt rather than signing in directly.
+ const [pendingAccount, setPendingAccount] = useState<StoredAccount | null>(null);
+ const [switchPassword, setSwitchPassword] = useState("");
+ const [switchError, setSwitchError] = useState<string | null>(null);
+ const [isSwitching, setIsSwitching] = useState(false);
  const dropdownRef = useRef<HTMLDivElement>(null);
 
  const { status } = useSession();
@@ -81,6 +87,9 @@ export function UserDisplay() {
  const handleClickOutside = (event: MouseEvent) => {
  if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
  setIsOpen(false);
+ setPendingAccount(null);
+ setSwitchPassword("");
+ setSwitchError(null);
  }
  };
 
@@ -104,22 +113,58 @@ export function UserDisplay() {
  await signOut({ callbackUrl:"/?switchAccount=1" });
  };
 
- const handleSwitchToAccount = async (account: StoredAccount) => {
- await utils.settings.get.cancel();
- await utils.user.getCurrentUser.cancel();
- await utils.organization.getActive.cancel();
- await utils.organization.listMine.cancel();
+ const beginSwitchToAccount = (account: StoredAccount) => {
+ setPendingAccount(account);
+ setSwitchPassword("");
+ setSwitchError(null);
+ };
+
+ const cancelSwitch = () => {
+ setPendingAccount(null);
+ setSwitchPassword("");
+ setSwitchError(null);
+ };
+
+ /**
+  * Hand the switch off to a full sign-in.
+  *
+  * Used when the target account has no password (OAuth-only), where a fresh
+  * provider round-trip is the re-authentication.
+  */
+ const switchViaFullSignIn = async (account: StoredAccount) => {
+ const encoded = encodeURIComponent(account.email);
+ await signOut({ callbackUrl: `/?switchAccount=1&email=${encoded}` });
+ };
+
+ const handleSwitchToAccount = async (account: StoredAccount, password: string) => {
+ if (!password) {
+ setSwitchError(tSettings("security.switchPasswordRequired"));
+ return;
+ }
+
+ setIsSwitching(true);
+ setSwitchError(null);
 
  const result = await signIn("account-switch", {
  userId: account.userId,
+ password,
  redirect: false,
  });
 
  if (result?.error) {
- const encoded = encodeURIComponent(account.email);
- await signOut({ callbackUrl: `/?switchAccount=1&email=${encoded}` });
+ // The server cannot distinguish "wrong password" from "no password on this
+ // account" without telling an attacker which accounts are OAuth-only, so the
+ // message stays generic and offers the full sign-in route as the way out.
+ setIsSwitching(false);
+ setSwitchPassword("");
+ setSwitchError(tSettings("security.switchFailed"));
  return;
  }
+
+ await utils.settings.get.cancel();
+ await utils.user.getCurrentUser.cancel();
+ await utils.organization.getActive.cancel();
+ await utils.organization.listMine.cancel();
 
  window.location.href ="/";
  };
@@ -245,10 +290,60 @@ export function UserDisplay() {
  <div className="px-3 pt-2 pb-1 text-xs font-medium text-fg-tertiary">
  {tSettings("security.changeAccount")}
  </div>
- {otherAccounts.map((acct) => (
+ {pendingAccount ? (
+ <form
+ className="px-3 py-2.5 space-y-2"
+ onSubmit={(e) => {
+ e.preventDefault();
+ void handleSwitchToAccount(pendingAccount, switchPassword);
+ }}
+ >
+ <div className="text-xs text-fg-secondary truncate">
+ {tSettings("security.switchConfirmFor", { email: pendingAccount.email })}
+ </div>
+ <input
+ type="password"
+ autoFocus
+ autoComplete="current-password"
+ value={switchPassword}
+ onChange={(e) => setSwitchPassword(e.target.value)}
+ placeholder={tSettings("security.switchPasswordLabel")}
+ className="w-full px-2.5 py-1.5 text-sm rounded-lg bg-bg-secondary/60 text-fg-primary border border-border-light/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary"
+ />
+ {switchError ? (
+ <div className="text-xs text-red-500">{switchError}</div>
+ ) : null}
+ <div className="flex items-center gap-2">
+ <button
+ type="submit"
+ disabled={isSwitching}
+ className="flex-1 px-2.5 py-1.5 text-sm rounded-lg bg-accent-primary text-white disabled:opacity-60"
+ >
+ {isSwitching
+ ? tSettings("security.switching")
+ : tSettings("security.switchConfirm")}
+ </button>
+ <button
+ type="button"
+ onClick={cancelSwitch}
+ className="px-2.5 py-1.5 text-sm rounded-lg text-fg-secondary hover:bg-bg-secondary/60"
+ >
+ {tSettings("security.switchCancel")}
+ </button>
+ </div>
+ <button
+ type="button"
+ onClick={() => void switchViaFullSignIn(pendingAccount)}
+ className="w-full text-left text-xs text-fg-secondary hover:text-fg-primary underline"
+ >
+ {tSettings("security.switchUseOtherMethod")}
+ </button>
+ </form>
+ ) : (
+ otherAccounts.map((acct) => (
  <button
  key={acct.email}
- onClick={() => handleSwitchToAccount(acct)}
+ onClick={() => beginSwitchToAccount(acct)}
  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-fg-primary hover:bg-bg-secondary/60 rounded-xl transition-colors"
  role="menuitem"
  >
@@ -265,7 +360,8 @@ export function UserDisplay() {
  )}
  <span className="truncate">{acct.name?.trim() ? acct.name : tSettings("security.account")}</span>
  </button>
- ))}
+ ))
+ )}
 
  <button
  onClick={handleSwitchAccount}

@@ -5,12 +5,6 @@ import { SideNav } from "~/components/layout/SideNav";
 import fs from "node:fs";
 import path from "node:path";
 
-// Mock A1ChatWidgetOverlay
-vi.mock("~/components/chat/A1ChatWidgetOverlay", () => ({
-  A1ChatWidgetOverlay: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen ? <div data-testid="a1-widget">Chat Widget</div> : null,
-}));
-
 describe("SideNav", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -29,18 +23,17 @@ describe("SideNav", () => {
 
   it("contains nav items with correct translated labels", () => {
     render(<SideNav />);
-    // useTranslations mock returns the key itself
-    // Home was removed — these are the remaining nav items
-    expect(screen.getAllByText("create").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("projects").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("notes").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("progress").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("events").length).toBeGreaterThanOrEqual(1);
+    // Labels resolve to real English copy via the next-intl mock
+    expect(screen.getAllByText("Create").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Projects").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Notes").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Progress").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Events").length).toBeGreaterThanOrEqual(1);
   });
 
   it("contains settings nav item", () => {
     render(<SideNav />);
-    expect(screen.getAllByText("settings").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Settings").length).toBeGreaterThanOrEqual(1);
   });
 
   it("does not use legacy card classes in tooltips", () => {
@@ -78,16 +71,21 @@ describe("SideNav", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("chat button opens A1 widget", async () => {
+  it("chat button dispatches kairos:openAI event", async () => {
     const user = userEvent.setup();
+    const handler = vi.fn();
+    window.addEventListener("kairos:openAI", handler);
+
     render(<SideNav />);
 
-    // Find the Chat button in desktop sidebar
-    const chatBtns = screen.getAllByLabelText("Chat");
+    // Find the Chat/AI button in desktop sidebar
+    const chatBtns = screen.getAllByLabelText("Kairos AI");
     expect(chatBtns.length).toBeGreaterThanOrEqual(1);
 
     await user.click(chatBtns[0]!);
-    expect(screen.getByTestId("a1-widget")).toBeInTheDocument();
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener("kairos:openAI", handler);
   });
 
   it("uses elegant icon set (no legacy icon names in DOM)", () => {

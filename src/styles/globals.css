@@ -632,27 +632,6 @@ summary,
   }
 }
 
-@keyframes line-reveal {
-  from {
-    transform: scaleX(0);
-    opacity: 0;
-  }
-  to {
-    transform: scaleX(1);
-    opacity: 1;
-  }
-}
-
-@keyframes shimmer-pan {
-  /* Asymmetrical diagonal travel (not vertical) */
-  0% {
-    background-position: -40% 140%;
-  }
-  100% {
-    background-position: 160% -60%;
-  }
-}
-
 .kairos-title {
   letter-spacing: 0.02em;
   font-family: var(--font-display), var(--font-sans);
@@ -704,36 +683,6 @@ summary,
 
 .kairos-glass-button:active {
   transform: translateY(0);
-}
-
-.kairos-title-gradient {
-  /* Mostly white text with a subtle purple shimmer passing through */
-  background-image: linear-gradient(
-    118deg,
-    rgba(255, 255, 255, 0.98) 0%,
-    rgba(255, 255, 255, 0.98) 38%,
-    rgb(var(--accent-primary)) 51%,
-    rgba(255, 255, 255, 0.98) 63%,
-    rgba(255, 255, 255, 0.98) 100%
-  );
-  background-size: 260% 220%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-
-  /* Slower + smoother shimmer. Slightly longer duration + "ease" to avoid a constant-speed look. */
-  will-change: background-position;
-  animation: shimmer-pan 16s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-.kairos-underline {
-  transform-origin: left center;
-  transform: scaleX(0);
-  opacity: 0;
-
-  /* Slightly longer reveal for a calmer landing animation */
-  will-change: transform, opacity;
-  animation: line-reveal 950ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes slideIn {
@@ -2114,4 +2063,430 @@ summary,
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Landing page (pinned-editorial redesign)
+
+   Hover/continuous motion lives here as CSS; scroll-driven reveals
+   are GSAP + ScrollTrigger in `src/components/homepage/`. Accent is
+   always `--accent-primary` so the page follows `data-accent`.
+   ───────────────────────────────────────────────────────────── */
+
+@keyframes k-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* Two identical halves, so landing on -50% puts the seam back at the start. */
+.k-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: k-marquee 30s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-marquee-track { animation: none; }
+}
+
+@keyframes k-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -24px) scale(1.05); }
+}
+
+.k-drift-slow { animation: k-drift 16s ease-in-out infinite; }
+.k-drift-slower { animation: k-drift 22s ease-in-out infinite; }
+
+/* Pill buttons. No white: the solid button warms to the lighter accent, the
+   ghost picks up an accent border and a faint accent wash. No fill wipe, no
+   lift, no glow — the only travel is the arrow. */
+.k-btn {
+  transition: background-color 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-ghost {
+  transition: border-color 0.35s, color 0.35s, background-color 0.35s;
+}
+.k-btn svg,
+.k-ghost svg {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* `:not(:disabled)` throughout, so a disabled button does not react. */
+.k-btn:hover:not(:disabled) {
+  background-color: rgb(var(--accent-secondary));
+}
+.k-ghost:hover:not(:disabled) {
+  border-color: rgb(var(--accent-primary) / 0.6);
+  color: #fff;
+  background-color: rgb(var(--accent-primary) / 0.08);
+}
+
+/* `.k-brand-mark` opts a third-party logo out — the Google mark holds still. */
+.k-btn:hover:not(:disabled) svg:not(.k-brand-mark),
+.k-ghost:hover:not(:disabled) svg:not(.k-brand-mark) {
+  transform: translateX(4px);
+}
+
+/* Nav links — a hairline draws in from the left and retracts to the right. */
+.k-nav { position: relative; transition: color 0.3s; }
+.k-nav::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 1px;
+  background: rgb(var(--accent-primary));
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-nav:hover { color: #fff; }
+.k-nav:hover::after { transform: scaleX(1); transform-origin: left center; }
+
+/* "Why teams stay" rows — the row slides right as the arrow arrives */
+.k-row { transition: background-color 0.4s, padding-left 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.k-row:hover { background: rgb(var(--accent-primary) / 0.05); padding-left: 28px; }
+.k-row:hover .k-arrow { transform: translateX(0); opacity: 1; }
+.k-arrow {
+  transform: translateX(-10px);
+  opacity: 0;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s;
+}
+
+/* Striped stand-in for product screenshots */
+.k-ph {
+  background-image: repeating-linear-gradient(
+    115deg,
+    rgb(255 255 255 / 0.045) 0 8px,
+    transparent 8px 18px
+  );
+}
+
+/* ─── Editorial blocks (workspaces + how it works) ─── */
+
+/* A block whose accent panel wipes up from the bottom edge on hover. Content
+   is lifted above the wipe; the arrow sits above both. */
+.k-block {
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-block > * { position: relative; z-index: 1; }
+.k-block::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: rgb(var(--accent-primary) / 0.2);
+  border-top: 1px solid rgb(var(--accent-primary) / 0.45);
+  transform: translateY(101%);
+  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-block:hover::before { transform: translateY(0); }
+.k-block:hover { transform: translateY(-6px); }
+
+/* The arrow shares the card's top-right slot with the tag rather than being
+   absolutely positioned over it — the two cross-fade on hover, so they can
+   never overlap. */
+.k-card-arrow {
+  color: rgb(var(--accent-secondary));
+  opacity: 0;
+  transform: translate(-8px, 8px);
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s;
+}
+.k-block:hover .k-card-arrow { transform: translate(0, 0); opacity: 1; }
+
+.k-block .k-card-num,
+.k-block .k-step-num {
+  transition: color 0.8s, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-block .k-card-tag { transition: opacity 0.5s; }
+.k-block .k-card-body,
+.k-block .k-step-body { transition: color 0.8s; }
+.k-block:hover .k-card-num,
+.k-block:hover .k-step-num {
+  color: rgb(var(--accent-secondary) / 0.85);
+  transform: translateY(-4px);
+}
+.k-block:hover .k-card-tag { opacity: 0; }
+.k-block:hover .k-card-body,
+.k-block:hover .k-step-body { color: rgb(255 255 255 / 0.82); }
+
+/* Workspace cards — resting colours; everything that lifts them is hover-only
+   (see .k-block above), so nothing stays highlighted once the cursor leaves. */
+.k-card {
+  background: #0c0c12;
+  color: #fff;
+}
+
+.k-card .k-card-num { color: rgb(255 255 255 / 0.3); }
+.k-card .k-card-tag { color: rgb(255 255 255 / 0.35); }
+.k-card .k-card-body { color: rgb(168 168 182); }
+
+/* Read-progress rail on the bottom edge of the sticky header */
+.k-prog {
+  position: absolute;
+  inset: auto 0 -2px;
+  height: 2px;
+  background: rgb(255 255 255 / 0.08);
+}
+.k-prog > i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: rgb(var(--accent-primary));
+}
+
+/* ─── Intro curtain (wordmark on first load) ─── */
+
+@keyframes k-intro-blur-in {
+  to { opacity: 1; filter: blur(0); }
+}
+@keyframes k-intro-load {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes k-intro-word-out {
+  to { opacity: 0; transform: translateY(-24px); }
+}
+@keyframes k-intro-lift {
+  to { transform: translateY(-100%); }
+}
+
+/* Decided before first paint by the theme init script in `layout.tsx`, which
+   only marks the intro "seen" under a reduced-motion preference. This keeps the
+   server-rendered curtain from flashing before the component unmounts it. */
+html[data-kairos-intro="seen"] .k-intro { display: none; }
+
+.k-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #0a0a10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  animation: k-intro-lift 0.9s cubic-bezier(0.7, 0, 0.2, 1) 2.3s both;
+}
+
+.k-intro-word {
+  display: flex;
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 400;
+  font-size: 80px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: #fff;
+  animation: k-intro-word-out 0.6s cubic-bezier(0.7, 0, 0.2, 1) 2.1s both;
+}
+
+.k-intro-ch {
+  display: block;
+  opacity: 0;
+  filter: blur(12px);
+  animation: k-intro-blur-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.k-intro-ch:nth-child(1) { animation-delay: 0.1s; }
+.k-intro-ch:nth-child(2) { animation-delay: 0.22s; }
+.k-intro-ch:nth-child(3) { animation-delay: 0.34s; }
+.k-intro-ch:nth-child(4) { animation-delay: 0.46s; }
+.k-intro-ch:nth-child(5) { animation-delay: 0.58s; }
+.k-intro-ch:nth-child(6) { animation-delay: 0.7s; }
+
+.k-intro-track {
+  width: 200px;
+  height: 2px;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.1);
+  overflow: hidden;
+}
+.k-intro-fill {
+  height: 100%;
+  width: 100%;
+  background: rgb(var(--accent-primary));
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: k-intro-load 1.7s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both;
+}
+
+/* Skipping mid-flight jumps straight to the end state. */
+.k-intro.k-intro-skip,
+.k-intro.k-intro-skip * {
+  animation: none !important;
+}
+.k-intro.k-intro-skip { transform: translateY(-100%); }
+
+@media (max-width: 640px) {
+  .k-intro-word { font-size: 52px; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Auth split panel (sign in / sign up modal)
+
+   Shares the landing page's `k-` vocabulary: underline-only fields,
+   an animated tab dot and per-child stagger on view switches. Accent
+   is always `--accent-primary`, so the panel follows `data-accent`.
+   ───────────────────────────────────────────────────────────── */
+
+@keyframes k-auth-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes k-auth-pop {
+  from { opacity: 0; transform: scale(0.86); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes k-auth-slide-l {
+  from { opacity: 0; transform: translateX(-26px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes k-auth-slide-r {
+  from { opacity: 0; transform: translateX(26px); }
+  to { opacity: 1; transform: none; }
+}
+
+.k-auth-from-left { animation: k-auth-slide-l 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.k-auth-from-right { animation: k-auth-slide-r 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* The view body fades up, then staggers its own children in behind it. */
+.k-auth-body { animation: k-auth-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.k-auth-body > * { animation: k-auth-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.k-auth-body > *:nth-child(1) { animation-delay: 0.02s; }
+.k-auth-body > *:nth-child(2) { animation-delay: 0.06s; }
+.k-auth-body > *:nth-child(3) { animation-delay: 0.1s; }
+.k-auth-body > *:nth-child(4) { animation-delay: 0.14s; }
+.k-auth-body > *:nth-child(5) { animation-delay: 0.18s; }
+.k-auth-body > *:nth-child(6) { animation-delay: 0.22s; }
+.k-auth-body > *:nth-child(7) { animation-delay: 0.26s; }
+.k-auth-body > *:nth-child(8) { animation-delay: 0.3s; }
+
+.k-auth-pop { animation: k-auth-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Underline field */
+.k-auth-fld {
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 0;
+  padding: 13px 0;
+  color: #fff;
+  font-family: inherit;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-auth-fld::placeholder { color: rgb(255 255 255 / 0.3); }
+.k-auth-fld:focus { border-bottom-color: rgb(var(--accent-primary)); }
+.k-auth-fld:focus::placeholder { color: rgb(255 255 255 / 0.18); }
+.k-auth-fld:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Wrapper that owns the underline when a field sits next to the eye toggle. */
+.k-auth-fld-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+  transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-auth-fld-row:focus-within { border-bottom-color: rgb(var(--accent-primary)); }
+.k-auth-fld-row .k-auth-fld { border-bottom: none; }
+
+/* One digit of the reset code */
+.k-auth-box {
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 0;
+  padding: 10px 0;
+  text-align: center;
+  color: #fff;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-auth-box:focus { border-bottom-color: rgb(var(--accent-primary)); }
+
+.k-auth-eye {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: rgb(255 255 255 / 0.35);
+  transition: color 0.25s;
+}
+.k-auth-eye:hover { color: #fff; }
+
+.k-auth-lnk {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.25s;
+}
+.k-auth-lnk:hover { color: #fff; }
+.k-auth-lnk:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Sign in / sign up tabs and the dot that travels between them */
+.k-auth-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 0 0 14px;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 22px;
+  line-height: 1;
+  color: rgb(255 255 255 / 0.42);
+  cursor: pointer;
+  transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-auth-tab[data-on="true"] { color: #fff; }
+
+.k-auth-rail {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  display: flex;
+  justify-content: center;
+  transition: transform 0.45s cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+[data-auth-pos="signUp"] .k-auth-rail { transform: translateX(100%); }
+.k-auth-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgb(var(--accent-primary));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .k-auth-body,
+  .k-auth-body > *,
+  .k-auth-from-left,
+  .k-auth-from-right,
+  .k-auth-pop {
+    animation: none !important;
+  }
+}
+
+/* The split panel itself — enter animation only; the layout is Tailwind. */
+@keyframes k-auth-shell-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.k-auth-shell {
+  animation: k-auth-shell-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.55);
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-auth-shell { animation: none; }
 }

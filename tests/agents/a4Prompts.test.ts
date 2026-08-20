@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { getA4SystemPrompt } from "~/server/llm/prompts/a4Prompts";
+import type { A4ContextPack } from "~/server/llm/context/a4ContextBuilder";
 
 describe("A4 System Prompt", () => {
-  const mockContext: import("~/server/llm/context/a4ContextBuilder").A4ContextPack = {
+  const mockContext: A4ContextPack = {
     events: [
       {
         id: 1,

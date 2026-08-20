@@ -1,6 +1,8 @@
 
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { assertProjectPermission } from "~/server/api/authz";
 import { tasks, projects, projectCollaborators, taskActivityLog, organizationMembers, users, organizations, events } from "~/server/db/schema";
 import { eq, and, desc, sql, isNull, gte, lte, isNotNull, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -21,63 +23,10 @@ export const taskRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      
-      const [project] = await ctx.db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, input.projectId));
-
-      if (!project) {
-        throw new Error("Project not found");
-      }
-
-      const isOwner = project.createdById === ctx.session.user.id;
-      
-     
-      let isOrgMember = false;
-      let canAssignTasks = false;
-      if (project.organizationId) {
-        const [membership] = await ctx.db
-          .select()
-          .from(organizationMembers)
-          .where(
-            and(
-              eq(organizationMembers.organizationId, project.organizationId),
-              eq(organizationMembers.userId, ctx.session.user.id)
-            )
-          );
-        isOrgMember = !!membership;
-        canAssignTasks = membership?.canAssignTasks ?? false;
-        
-        // Check if user is org owner
-        const [org] = await ctx.db
-          .select()
-          .from(organizations)
-          .where(eq(organizations.id, project.organizationId));
-        const isOrgOwner = org?.createdById === ctx.session.user.id;
-        
-        if (!isOwner && !isOrgOwner && !canAssignTasks) {
-          throw new Error("Only the organization owner or authorized members can create tasks");
-        }
-      }
-
-      if (!isOwner && !isOrgMember) {
-       
-        const [collaboration] = await ctx.db
-          .select()
-          .from(projectCollaborators)
-          .where(
-            and(
-              eq(projectCollaborators.projectId, input.projectId),
-              eq(projectCollaborators.collaboratorId, ctx.session.user.id),
-              eq(projectCollaborators.permission, "write")
-            )
-          );
-
-        if (!collaboration) {
-          throw new Error("You don't have permission to create tasks in this project");
-        }
-      }
+      // Creating a task in an organization project requires `canAssignTasks`.
+      // This replaces ~40 lines of inline checks that were copy-pasted into four
+      // mutations in this file and had drifted apart; see `~/server/api/authz`.
+      await assertProjectPermission(ctx, input.projectId, "canAssignTasks");
 
       
       // PERF + correctness: avoid loading all tasks and avoid race conditions on orderIndex.
@@ -145,60 +94,22 @@ export const taskRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      
       const [task] = await ctx.db
         .select()
         .from(tasks)
         .where(eq(tasks.id, input.taskId));
 
       if (!task) {
-        throw new Error("Task not found");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
       }
 
-     
-      const [project] = await ctx.db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, task.projectId));
-
-      if (!project) {
-        throw new Error("Project not found");
-      }
-
-      const isOwner = project.createdById === ctx.session.user.id;
-      const isAssignee = task.assignedToId === ctx.session.user.id;
-      
-      
-      let isOrgMember = false;
-      if (project.organizationId) {
-        const [membership] = await ctx.db
-          .select()
-          .from(organizationMembers)
-          .where(
-            and(
-              eq(organizationMembers.organizationId, project.organizationId),
-              eq(organizationMembers.userId, ctx.session.user.id)
-            )
-          );
-        isOrgMember = !!membership;
-      }
-
-      if (!isOwner && !isAssignee && !isOrgMember) {
-        const [collaboration] = await ctx.db
-          .select()
-          .from(projectCollaborators)
-          .where(
-            and(
-              eq(projectCollaborators.projectId, task.projectId),
-              eq(projectCollaborators.collaboratorId, ctx.session.user.id),
-              eq(projectCollaborators.permission, "write")
-            )
-          );
-
-        if (!collaboration) {
-          throw new Error("You don't have permission to update this task");
-        }
-      }
+      // Moving a task through its statuses is editing the project's work.
+      //
+      // Being the assignee no longer grants this on its own: a view-only member
+      // who happens to be assigned a task must not be able to change it, which
+      // is the whole point of the role. Every writing role has
+      // `canEditProjects`, so assignees who are contributors are unaffected.
+      await assertProjectPermission(ctx, task.projectId, "canEditProjects");
 
       const oldStatus = task.status;
       
@@ -263,59 +174,16 @@ export const taskRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      
       const [task] = await ctx.db
         .select()
         .from(tasks)
         .where(eq(tasks.id, input.taskId));
 
       if (!task) {
-        throw new Error("Task not found");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
       }
 
-     
-      const [project] = await ctx.db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, task.projectId));
-
-      if (!project) {
-        throw new Error("Project not found");
-      }
-
-      const isOwner = project.createdById === ctx.session.user.id;
-      
-      
-      let isOrgMember = false;
-      if (project.organizationId) {
-        const [membership] = await ctx.db
-          .select()
-          .from(organizationMembers)
-          .where(
-            and(
-              eq(organizationMembers.organizationId, project.organizationId),
-              eq(organizationMembers.userId, ctx.session.user.id)
-            )
-          );
-        isOrgMember = !!membership;
-      }
-
-      if (!isOwner && !isOrgMember) {
-        const [collaboration] = await ctx.db
-          .select()
-          .from(projectCollaborators)
-          .where(
-            and(
-              eq(projectCollaborators.projectId, task.projectId),
-              eq(projectCollaborators.collaboratorId, ctx.session.user.id),
-              eq(projectCollaborators.permission, "write")
-            )
-          );
-
-        if (!collaboration) {
-          throw new Error("You don't have permission to update this task");
-        }
-      }
+      await assertProjectPermission(ctx, task.projectId, "canEditProjects");
 
       const updateData: {
         updatedAt: Date;
@@ -358,59 +226,23 @@ export const taskRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ taskId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-     
       const [task] = await ctx.db
         .select()
         .from(tasks)
         .where(eq(tasks.id, input.taskId));
 
       if (!task) {
-        throw new Error("Task not found");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
       }
 
-     
-      const [project] = await ctx.db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, task.projectId));
-
-      if (!project) {
-        throw new Error("Project not found");
-      }
-
-      const isOwner = project.createdById === ctx.session.user.id;
-      
-      
-      let isOrgMember = false;
-      if (project.organizationId) {
-        const [membership] = await ctx.db
-          .select()
-          .from(organizationMembers)
-          .where(
-            and(
-              eq(organizationMembers.organizationId, project.organizationId),
-              eq(organizationMembers.userId, ctx.session.user.id)
-            )
-          );
-        isOrgMember = !!membership;
-      }
-
-      if (!isOwner && !isOrgMember) {
-        const [collaboration] = await ctx.db
-          .select()
-          .from(projectCollaborators)
-          .where(
-            and(
-              eq(projectCollaborators.projectId, task.projectId),
-              eq(projectCollaborators.collaboratorId, ctx.session.user.id),
-              eq(projectCollaborators.permission, "write")
-            )
-          );
-
-        if (!collaboration) {
-          throw new Error("You don't have permission to delete this task");
-        }
-      }
+      // `canDeleteTasks` has existed as a column since organizations shipped and
+      // was set on membership creation, but nothing ever read it — any org member
+      // could delete any task. This is the check that makes it real.
+      //
+      // The flag is deliberately not implied by having created the task: it is
+      // false in the contributor template, so deleting is a capability an admin
+      // grants rather than something every member has.
+      await assertProjectPermission(ctx, task.projectId, "canDeleteTasks");
 
       await ctx.db.delete(tasks).where(eq(tasks.id, input.taskId));
 
@@ -425,14 +257,14 @@ export const taskRouter = createTRPCRouter({
     .input(z.object({ taskId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const [task] = await ctx.db.select().from(tasks).where(eq(tasks.id, input.taskId));
-      if (!task) throw new Error("Task not found");
+      if (!task) throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
 
       const [project] = await ctx.db
         .select()
         .from(projects)
         .where(eq(projects.id, task.projectId));
 
-      if (!project) throw new Error("Project not found");
+      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
 
       const isProjectOwner = project.createdById === ctx.session.user.id;
 
@@ -460,7 +292,7 @@ export const taskRouter = createTRPCRouter({
       }
 
       if (!isProjectOwner && !isOrgOwnerOrAdmin) {
-        throw new Error("Only project owner or org admin/owner can discard tasks");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only the project owner or an org admin can discard tasks" });
       }
 
       await ctx.db.delete(tasks).where(eq(tasks.id, input.taskId));
@@ -475,14 +307,14 @@ export const taskRouter = createTRPCRouter({
     .input(z.object({ taskId: z.number(), completionNote: z.string().max(2000).nullable() }))
     .mutation(async ({ ctx, input }) => {
       const [task] = await ctx.db.select().from(tasks).where(eq(tasks.id, input.taskId));
-      if (!task) throw new Error("Task not found");
+      if (!task) throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
 
       const [project] = await ctx.db
         .select()
         .from(projects)
         .where(eq(projects.id, task.projectId));
 
-      if (!project) throw new Error("Project not found");
+      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
 
       const isProjectOwner = project.createdById === ctx.session.user.id;
       const isCompleter = task.completedById === ctx.session.user.id;
@@ -510,7 +342,7 @@ export const taskRouter = createTRPCRouter({
       }
 
       if (!isCompleter && !isProjectOwner && !isOrgOwnerOrAdmin) {
-        throw new Error("Not allowed to edit completion note");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not allowed to edit this completion note" });
       }
 
       await ctx.db
@@ -541,7 +373,7 @@ export const taskRouter = createTRPCRouter({
         .from(projects)
         .where(eq(projects.id, input.projectId));
 
-      if (!project) throw new Error("Project not found");
+      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
 
       const isOwner = project.createdById === ctx.session.user.id;
 
@@ -571,7 +403,7 @@ export const taskRouter = createTRPCRouter({
             )
           )
           .limit(1);
-        if (!collaboration) throw new Error("Access denied");
+        if (!collaboration) throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this project" });
       }
 
       const creatorUsers = alias(users, "creator_users");
@@ -618,7 +450,7 @@ export const taskRouter = createTRPCRouter({
         .limit(1);
 
       if (!task) {
-        throw new Error("Task not found");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
       }
 
       // Check project access (owner, org member, or collaborator)
@@ -629,7 +461,7 @@ export const taskRouter = createTRPCRouter({
         .limit(1);
 
       if (!project) {
-        throw new Error("Project not found");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
       }
 
       const isOwner = project.createdById === ctx.session.user.id;
@@ -662,7 +494,7 @@ export const taskRouter = createTRPCRouter({
       const isCollaborator = !!collab;
 
       if (!isOwner && !hasOrgAccess && !isCollaborator) {
-        throw new Error("You don't have access to this task");
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this task" });
       }
 
       const activities = await ctx.db
@@ -689,7 +521,7 @@ export const taskRouter = createTRPCRouter({
         .limit(1);
 
       if (!project) {
-        throw new Error("Project not found");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
       }
 
       const isOwner = project.createdById === ctx.session.user.id;
@@ -721,7 +553,7 @@ export const taskRouter = createTRPCRouter({
         .limit(1);
 
       if (!isOwner && !hasOrgAccess && !collaboration) {
-        throw new Error("Access denied - You don't have permission to view this project");
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to view this project" });
       }
 
       const limit = input.limit ?? 25;

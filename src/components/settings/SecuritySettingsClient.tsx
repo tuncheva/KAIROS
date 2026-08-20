@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Shield } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
@@ -59,20 +58,11 @@ export function SecuritySettingsClient() {
 
  const deleteAllData = api.settings.deleteAllData.useMutation();
 
- const twoFactorEnabled = data?.twoFactorEnabled ?? false;
  const notesKeepUnlockedUntilClose = data?.notesKeepUnlockedUntilClose ?? false;
  const hasResetPin = !!data?.resetPinHint || (data?.resetPinFailedAttempts ?? 0) >= 0;
 
  const isBusy =
  isLoading || updateSecurity.isPending || updateResetPin.isPending || deleteAllData.isPending;
-
- const onToggle2fa = async () => {
- try {
- await updateSecurity.mutateAsync({ twoFactorEnabled: !twoFactorEnabled });
- } catch {
- // Error displayed via updateSecurity.error in the UI
- }
- };
 
  const onToggleKeepUnlocked = async () => {
  try {
@@ -113,59 +103,6 @@ export function SecuritySettingsClient() {
  </div>
 
  <div className="space-y-8">
- {/* Two-Factor Authentication Card */}
- <div className="mb-8">
- <div className="bg-bg-secondary rounded-[10px] overflow-hidden border border-white/[0.06]">
- <div className="flex items-center justify-between pl-[16px] pr-[18px] py-[11px]">
- <div className="flex items-center gap-[13px]">
- <div className="w-[30px] h-[30px] rounded-full bg-bg-tertiary flex items-center justify-center">
- <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
- <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1ZM12 7C13.1 7 14 7.9 14 9C14 10.1 13.1 11 12 11C10.9 11 10 10.1 10 9C10 7.9 10.9 7 12 7ZM18 11C18 11.55 17.55 12 17 12C16.45 12 16 11.55 16 11C16 10.45 16.45 10 17 10C17.55 10 18 10.45 18 11Z" 
- fill="currentColor" className="text-fg-secondary"/>
- </svg>
- </div>
- <div className="flex-1">
- <div className="text-[17px] leading-[1.235] tracking-[-0.016em] text-fg-primary font-[590] mb-[1px]">
-  {t("twoFactor")}
- </div>
- <div className="text-[13px] leading-[1.3846] tracking-[-0.006em] text-fg-tertiary">
-  {t("twoFactorDesc")}
- </div>
- </div>
- </div>
- <button
- type="button"
- role="switch"
- aria-checked={twoFactorEnabled}
- disabled={isBusy}
- onClick={() => onToggle2fa()}
- className={`relative inline-flex h-[31px] w-[51px] flex-shrink-0 rounded-full border transition-colors duration-200 focus:outline-none ${
- isBusy ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
- } ${
- twoFactorEnabled
- ? "border-transparent"
- : "border-gray-300/30 dark:border-gray-600/50"
- } ${
- !twoFactorEnabled ? "bg-bg-tertiary" : ""
- }`}
- style={twoFactorEnabled ? { backgroundColor: `rgb(var(--accent-primary))` } : undefined}
- >
- <span
- className={`pointer-events-none inline-block h-[27px] w-[27px] transform rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] transition-transform duration-200 ease-in-out ${
- twoFactorEnabled ? "translate-x-[20px]" : "translate-x-[1px]"
- }`}
- />
- </button>
- </div>
- {updateSecurity.error && (
- <div className="pl-[16px] pr-[18px] pb-[11px]">
- <p className="text-[13px] leading-[1.3846] tracking-[-0.006em] text-red-600 dark:text-red-400">
- {updateSecurity.error.message}
- </p>
- </div>
- )}
- </div>
- </div>
 
  {/* Notes Security Card */}
  <div className="mb-8">
@@ -211,6 +148,13 @@ export function SecuritySettingsClient() {
  />
  </button>
  </div>
+ {updateSecurity.error && (
+ <div className="pl-[16px] pr-[18px] pb-[11px]">
+ <p className="text-[13px] leading-[1.3846] tracking-[-0.006em] text-red-600 dark:text-red-400">
+ {updateSecurity.error.message}
+ </p>
+ </div>
+ )}
  </div>
  </div>
 

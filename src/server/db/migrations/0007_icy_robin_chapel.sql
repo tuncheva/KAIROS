@@ -1,2 +1,0 @@
-DO $$ BEGIN CREATE TYPE "public"."project_status" AS ENUM('active', 'archived'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
-DO $$ BEGIN ALTER TABLE "projects" ADD COLUMN "status" "project_status" DEFAULT 'active' NOT NULL; EXCEPTION WHEN duplicate_column THEN NULL; END $$;

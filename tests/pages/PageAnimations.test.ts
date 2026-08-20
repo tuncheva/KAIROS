@@ -10,12 +10,12 @@ import path from "path";
 const pagesDir = path.resolve(__dirname, "../../src/app");
 
 const pageFiles = [
-  "create/page.tsx",
-  "projects/page.tsx",
-  "progress/page.tsx",
-  "publish/page.tsx",
-  "orgs/page.tsx",
-  "chat/page.tsx",
+  "(app)/create/page.tsx",
+  "(app)/projects/page.tsx",
+  "(app)/progress/page.tsx",
+  "(app)/publish/page.tsx",
+  "(app)/orgs/page.tsx",
+  "(app)/chat/page.tsx",
   "not-found.tsx",
 ];
 
@@ -29,23 +29,24 @@ describe("Page animations", () => {
     });
   }
 
-  it("HomeClient has GSAP reveal animations", () => {
+  it("the landing page marks elements for scroll reveal", () => {
     const homeClientPath = path.resolve(
       __dirname,
       "../../src/components/homepage/HomeClient.tsx",
     );
     const content = fs.readFileSync(homeClientPath, "utf-8");
-    expect(content).toContain("data-reveal");
-    expect(content).toContain("gsap.fromTo");
+    expect(content).toContain("useLandingReveals");
   });
 
-  it("HomeClient imports gsap and ScrollTrigger", () => {
-    const homeClientPath = path.resolve(
+  it("landing reveals run on gsap + ScrollTrigger", () => {
+    const revealsPath = path.resolve(
       __dirname,
-      "../../src/components/homepage/HomeClient.tsx",
+      "../../src/components/homepage/useLandingReveals.ts",
     );
-    const content = fs.readFileSync(homeClientPath, "utf-8");
+    const content = fs.readFileSync(revealsPath, "utf-8");
     expect(content).toContain("import { gsap }");
     expect(content).toContain("import { ScrollTrigger }");
+    expect(content).toContain("data-reveal");
   });
+
 });

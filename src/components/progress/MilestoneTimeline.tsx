@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
-import { useDateFormat } from "~/lib/hooks/useDateFormat";
+import { useDateFormat } from "~/hooks/useDateFormat";
 import {
   Calendar,
   User,

@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { api } from "~/trpc/react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import { useRolePermissions } from "~/lib/useRolePermissions";
-import { useDateFormat } from "~/lib/hooks/useDateFormat";
+import { useRolePermissions } from "~/hooks/useRolePermissions";
+import { useDateFormat } from "~/hooks/useDateFormat";
 import { useTranslations } from "next-intl";
 import {
   Plus,
@@ -21,14 +21,12 @@ import {
   ChevronDown,
   Trash2,
   AlertTriangle,
-  Filter,
   X,
   Clock,
   CheckSquare,
   AlertCircle,
   Zap,
-  GripVertical,
-  LayoutGrid,
+  type LucideIcon,
 } from "lucide-react";
 import { MilestoneTimeline } from "./MilestoneTimeline";
 
@@ -253,143 +251,6 @@ const STATUS_LABEL_KEY: Record<TaskStatus, string> = {
   completed: "status.completed",
   blocked: "status.blocked",
 };
-
-/* ─── Timeline Entry ─── */
-function TimelineEntry({
-  entry,
-  isLast,
-  onToggleDone,
-  onDelete,
-  isToggling,
-  isDeleting,
-  canDelete,
-  taskCurrentStatus,
-}: {
-  entry: OrgActivityEntry;
-  isLast: boolean;
-  onToggleDone: (taskId: number, currentlyDone: boolean) => void;
-  onDelete: (taskId: number) => void;
-  isToggling: boolean;
-  isDeleting: boolean;
-  canDelete: boolean;
-  taskCurrentStatus: TaskStatus | undefined;
-}) {
-  const t = useTranslations("progress.tasks");
-  const entryRef = useRef<HTMLDivElement>(null);
-  const { formatDate: formatDatePref } = useDateFormat();
-
-  const date = new Date(entry.createdAt);
-  const dateStr = formatDatePref(date, "short").toUpperCase();
-  // Use the REAL current task status from DB, not the historical activity entry value
-  const isCompleted = taskCurrentStatus === "completed";
-
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
-  return (
-    <div
-      ref={entryRef}
-      className="relative flex gap-3 sm:gap-4"
-    >
-      {/* Vertical line + circle with tick */}
-      <div className="flex flex-col items-center">
-        <button
-          type="button"
-          onClick={() => onToggleDone(entry.taskId, isCompleted)}
-          disabled={isToggling}
-          className={`w-7 h-7 rounded-full flex-shrink-0 z-10 transition-all duration-200 cursor-pointer flex items-center justify-center border-2 ${
-            isCompleted
-              ? "bg-emerald-500 border-emerald-500 text-white"
-              : "bg-white dark:bg-[#1a1625] border-slate-300 dark:border-slate-600 hover:border-emerald-400 dark:hover:border-emerald-400"
-          }`}
-          title={isCompleted ? t("markAsPending") : t("markAsDone")}
-        >
-          {isToggling ? (
-            <Loader2 size={13} className="animate-spin" />
-          ) : (
-            <Check size={13} className={isCompleted ? "text-white" : "text-slate-400 dark:text-slate-500"} />
-          )}
-        </button>
-        {!isLast && (
-          <div className="w-px flex-1 min-h-[40px] bg-slate-200 dark:bg-white/[0.08]" />
-        )}
-      </div>
-
-      {/* Card */}
-      <div className="flex-1 pb-4 -mt-0.5">
-        <div className={`rounded-lg border p-3.5 sm:p-4 transition-all duration-200 ${
-          isCompleted
-            ? "border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-500/[0.04]"
-            : "border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#1a1625] hover:border-slate-300 dark:hover:border-white/[0.1]"
-        }`}>
-          {/* Top row: date + actions */}
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-medium text-fg-tertiary tracking-wide">{dateStr}</span>
-            <div className="flex items-center gap-1">
-              {canDelete && (
-                <>
-                  {confirmDelete ? (
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => { onDelete(entry.taskId); setConfirmDelete(false); }}
-                        disabled={isDeleting}
-                        className="px-2 py-0.5 rounded bg-red-500/15 text-red-400 text-[10px] font-bold hover:bg-red-500/25 transition-colors"
-                      >
-                        {isDeleting ? <Loader2 size={10} className="animate-spin" /> : t("common.delete")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDelete(false)}
-                        className="px-2 py-0.5 rounded bg-bg-tertiary/50 text-fg-tertiary text-[10px] font-bold hover:text-fg-secondary transition-colors"
-                      >
-                        {t("common.cancel")}
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDelete(true)}
-                      className="p-1 rounded text-fg-quaternary hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                      title={t("deleteTask")}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Title */}
-          <h4 className={`text-sm font-semibold mb-1 leading-snug ${
-            isCompleted ? "text-fg-tertiary line-through" : "text-fg-primary"
-          }`}>
-            {entry.taskTitle}
-          </h4>
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-fg-tertiary">
-              {entry.projectTitle}
-              {entry.user ? ` · ${entry.user.name ?? t("unknown")}` : ""}
-            </p>
-            {entry.assignee && (
-              <div className="flex items-center gap-1.5 ml-2 flex-shrink-0" title={entry.assignee.name ?? t("assigned")}>
-                <div className="w-5 h-5 rounded-full overflow-hidden bg-accent-primary/20 flex-shrink-0">
-                  {entry.assignee.image ? (
-                    <Image src={entry.assignee.image} alt={entry.assignee.name ?? ""} width={20} height={20} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-accent-primary to-accent-secondary">
-                      <User size={10} className="text-white" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ─── AI Generated Tasks Preview ─── */
 function AiDraftPreview({
@@ -1177,7 +1038,7 @@ function TaskStatusCard({
 }: {
   title: string;
   count: number;
-  icon: any;
+  icon: LucideIcon;
   color: string;
 }) {
   return (
@@ -1458,10 +1319,10 @@ export function TaskTimelineClient() {
   /* Status toggle mutation */
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const updateStatus = typedApi.task.updateStatus.useMutation({
-    onSuccess: async () => {
+    onSuccess: () => {
       setTogglingId(null);
       // Invalidate only the activity feed - projects will update via socket or next interaction
-      await utils.task.getOrgActivity.invalidate();
+      void utils.task.getOrgActivity.invalidate();
     },
     onError: () => {
       setTogglingId(null);
@@ -1479,10 +1340,10 @@ export function TaskTimelineClient() {
   /* Delete mutation */
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const deleteTask = typedApi.task.delete.useMutation({
-    onSuccess: async () => {
+    onSuccess: () => {
       setDeletingId(null);
       // Invalidate only the activity feed - projects will update via socket or next interaction
-      await utils.task.getOrgActivity.invalidate();
+      void utils.task.getOrgActivity.invalidate();
     },
     onError: (err) => {
       setDeletingId(null);

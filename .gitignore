@@ -44,3 +44,5 @@ yarn-error.log*
 
 # idea files
 .idea
+# Build transcript, was committed by accident (UTF-16, truncated)
+build.log

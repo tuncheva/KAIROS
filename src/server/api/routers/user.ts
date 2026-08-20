@@ -103,6 +103,19 @@ export const userRouter = createTRPCRouter({
           organization: organizations,
           role: organizationMembers.role,
           joinedAt: organizationMembers.joinedAt,
+          // The eight permission columns are the source of truth for
+          // authorization (see `~/lib/permissions`). Returning them lets the
+          // client render from the same values the server authorizes on, rather
+          // than re-deriving them from the role and drifting when an admin has
+          // adjusted an individual flag.
+          canAddMembers: organizationMembers.canAddMembers,
+          canAssignTasks: organizationMembers.canAssignTasks,
+          canCreateProjects: organizationMembers.canCreateProjects,
+          canDeleteTasks: organizationMembers.canDeleteTasks,
+          canKickMembers: organizationMembers.canKickMembers,
+          canManageRoles: organizationMembers.canManageRoles,
+          canEditProjects: organizationMembers.canEditProjects,
+          canViewAnalytics: organizationMembers.canViewAnalytics,
         })
         .from(organizationMembers)
         .innerJoin(
@@ -133,6 +146,18 @@ export const userRouter = createTRPCRouter({
         })),
         organization: activeMembership?.organization ?? null,
         role: activeMembership?.role ?? null,
+        permissions: activeMembership
+          ? {
+              canAddMembers: activeMembership.canAddMembers,
+              canAssignTasks: activeMembership.canAssignTasks,
+              canCreateProjects: activeMembership.canCreateProjects,
+              canDeleteTasks: activeMembership.canDeleteTasks,
+              canKickMembers: activeMembership.canKickMembers,
+              canManageRoles: activeMembership.canManageRoles,
+              canEditProjects: activeMembership.canEditProjects,
+              canViewAnalytics: activeMembership.canViewAnalytics,
+            }
+          : null,
       };
     }),
 

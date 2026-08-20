@@ -5,7 +5,7 @@ import { api } from "~/trpc/react";
 import { Bell, X, Calendar, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
-import { useSocketEvent } from "~/lib/useSocketEvent";
+import { useSocketEvent } from "~/hooks/useSocketEvent";
 
 interface Notification {
   id: string;
@@ -34,16 +34,22 @@ export function NotificationSystem() {
 
   const utils = api.useUtils();
 
+  // Delivery is push-based: the `notification:new` socket event below refetches
+  // both queries. The interval is only a safety net for a dropped socket, so it
+  // is long — at 15s it was effectively the primary transport, and doubled the
+  // request rate for every signed-in user.
+  const NOTIFICATION_FALLBACK_POLL_MS = 120_000;
+
   const { data: storedNotifications, refetch } = api.notification.getAll.useQuery(undefined, {
     refetchOnWindowFocus: true,
     refetchOnMount: true,
-    refetchInterval: 15_000, // Fallback polling every 15s in case WebSocket misses events
+    refetchInterval: NOTIFICATION_FALLBACK_POLL_MS,
   });
 
   // Separate unread count query for faster badge updates
   const { data: serverUnreadCount } = api.notification.getUnreadCount.useQuery(undefined, {
     refetchOnWindowFocus: true,
-    refetchInterval: 15_000,
+    refetchInterval: NOTIFICATION_FALLBACK_POLL_MS,
   });
 
   // Real-time notification push via Socket.IO — show floating popup + refetch
@@ -54,7 +60,7 @@ export function NotificationSystem() {
       void utils.notification.getUnreadCount.invalidate();
 
       // Show floating popup for the incoming notification
-      if (data && data.title) {
+      if (data?.title) {
         const floatId = `float-${Date.now()}-${Math.random()}`;
         const notif: FloatingNotif = {
           id: floatId,
@@ -94,8 +100,9 @@ export function NotificationSystem() {
 
   // Cleanup timers on unmount
   useEffect(() => {
+    const timers = floatingTimers.current;
     return () => {
-      floatingTimers.current.forEach((t) => clearTimeout(t));
+      timers.forEach((t) => clearTimeout(t));
     };
   }, []);
 

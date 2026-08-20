@@ -11,7 +11,7 @@ interface SettingsNavProps {
   variant?: "card" | "embedded";
 }
 
-export function SettingsNav({ activeSection, variant = "card" }: SettingsNavProps) {
+export function SettingsNav({ activeSection }: SettingsNavProps) {
   const useT = useTranslations as unknown as (namespace: string) => Translator;
   const t = useT("settings.nav");
   

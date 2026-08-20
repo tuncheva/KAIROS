@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { useDateFormat } from "~/lib/hooks/useDateFormat";
+import { useDateFormat } from "~/hooks/useDateFormat";
+import Image from "next/image";
 import {
   Search,
   Plus,
@@ -21,8 +22,6 @@ import {
   Share2,
   BookOpen,
   StickyNote,
-  ArrowRight,
-  ChevronDown,
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
@@ -62,7 +61,10 @@ export function NotesDashboard() {
   // ---- Password state ----
   const [passwordInputs, setPasswordInputs] = useState<Record<number, string>>({});
   const [showPasswords, setShowPasswords] = useState<Record<number, boolean>>({});
-  const [unlockedNotes, setUnlockedNotes] = useState<Record<number, { unlocked: boolean; content: string }>>({});
+  // `password` is retained in memory after a successful unlock so a later save
+  // can re-encrypt with it: the server refuses to write a password-protected
+  // note without its password (writing plaintext would strip the encryption).
+  const [unlockedNotes, setUnlockedNotes] = useState<Record<number, { unlocked: boolean; content: string; password: string }>>({});
   const [passwordErrors, setPasswordErrors] = useState<Record<number, string>>({});
   const unlockAttemptsRef = useRef<Record<number, number>>({});
   const [showResetPromptModal, setShowResetPromptModal] = useState<number | null>(null);
@@ -192,7 +194,7 @@ export function NotesDashboard() {
       if (data.valid && data.content) {
         setUnlockedNotes((prev) => ({
           ...prev,
-          [variables.noteId]: { unlocked: true, content: data.content },
+          [variables.noteId]: { unlocked: true, content: data.content, password: variables.password },
         }));
         setPasswordInputs((prev) => ({ ...prev, [variables.noteId]: "" }));
         setPasswordErrors((prev) => ({ ...prev, [variables.noteId]: "" }));
@@ -321,7 +323,7 @@ export function NotesDashboard() {
   }, []);
 
   // ---- Filtered notes ----
-  const allNotes = notes ?? [];
+  const allNotes = useMemo(() => notes ?? [], [notes]);
   const filteredNotes = useMemo(() => {
     let result = allNotes;
 
@@ -474,7 +476,7 @@ export function NotesDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filteredNotes.map((note) => {
                   const unlockedState = unlockedNotes[note.id];
-                  const isLocked = !!note.passwordHash && !unlockedState?.unlocked;
+                  const isLocked = note.isPasswordProtected && !unlockedState?.unlocked;
                   const rawContent = unlockedState?.content ?? note.content ?? "";
                   const title = note.title ?? rawContent.split("\n")[0]?.trim().substring(0, 60) ?? "";
                   const preview = rawContent.split("\n").slice(note.title ? 0 : 1).join("\n").trim().substring(0, 120);
@@ -534,7 +536,7 @@ export function NotesDashboard() {
                                   className="w-5 h-5 rounded-full border-2 border-bg-primary bg-accent-primary/20 flex items-center justify-center overflow-hidden"
                                 >
                                   {u.image ? (
-                                    <img src={u.image} alt={u.name ?? ""} className="w-full h-full object-cover" />
+                                    <Image src={u.image} alt={u.name ?? ""} width={20} height={20} unoptimized className="w-full h-full object-cover" />
                                   ) : (
                                     <span className="text-[8px] font-bold text-accent-primary">
                                       {(u.name ?? u.email)?.[0]?.toUpperCase() ?? "?"}
@@ -735,7 +737,7 @@ export function NotesDashboard() {
               {selectedSharedNoteId && (() => {
                 const sn = sharedNotes?.find((n) => n.id === selectedSharedNoteId);
                 if (!sn) return null;
-                const canEdit = sn.permission === "write" && !sn.passwordHash;
+                const canEdit = sn.permission === "write" && !sn.isPasswordProtected;
                 return (
                   <div className="mb-6 p-5 rounded-xl border border-accent-primary/20 bg-bg-secondary space-y-4">
                     <div className="flex items-center justify-between">
@@ -817,10 +819,10 @@ export function NotesDashboard() {
                         <span className="text-xs text-fg-tertiary">{formatTime(note.createdAt)}</span>
                       </div>
                       <h3 className="text-sm font-bold text-fg-primary mb-2 group-hover:text-accent-primary transition-colors line-clamp-1">
-                        {note.passwordHash ? t("encryptedNote") : title}
+                        {note.isPasswordProtected ? t("encryptedNote") : title}
                       </h3>
                       <p className="text-fg-tertiary text-xs leading-relaxed mb-4 line-clamp-3">
-                        {note.passwordHash ? t("passwordProtected") : (preview || t("noContent"))}
+                        {note.isPasswordProtected ? t("passwordProtected") : (preview || t("noContent"))}
                       </p>
                       <div className="flex items-center gap-2 text-fg-tertiary">
                         <Users size={12} />
@@ -944,7 +946,7 @@ export function NotesDashboard() {
                         if (!v) { setNewCalendarDate(null); return; }
                         // Create a local date (midday) to avoid timezone shifting.
                         const [y, m, d] = v.split("-").map(Number);
-                        setNewCalendarDate(new Date(y!, (m! - 1), d!, 12, 0, 0));
+                        setNewCalendarDate(new Date(y!, (m! - 1), d, 12, 0, 0));
                       }}
                       className="w-full px-3 py-2 bg-bg-primary rounded-lg text-sm text-fg-primary border border-white/[0.06] focus:outline-none focus:ring-2 focus:ring-accent-primary/30"
                     />
@@ -989,7 +991,7 @@ export function NotesDashboard() {
         const note = allNotes.find((n) => n.id === selectedNoteId);
         if (!note) return null;
         const unlockedState = unlockedNotes[note.id];
-        const isLocked = !!note.passwordHash && !unlockedState?.unlocked;
+        const isLocked = note.isPasswordProtected && !unlockedState?.unlocked;
 
         return (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={closeExpandedNote}>
@@ -1101,7 +1103,7 @@ export function NotesDashboard() {
                     onClick={() => {
                       const content = editingContent[note.id] ?? (unlockedState?.content ?? note.content ?? "");
                       const title = editingTitle[note.id] ?? note.title ?? "";
-                      updateNote.mutate({ id: note.id, content, title: title || undefined });
+                      updateNote.mutate({ id: note.id, content, title: title || undefined, password: unlockedState?.password });
                     }}
                     disabled={updateNote.isPending}
                     className="w-full mt-4 kairos-neon-btn text-white font-bold py-3 rounded-xl disabled:opacity-50 text-sm"
@@ -1155,11 +1157,11 @@ export function NotesDashboard() {
                     {shareSuggestions.map((m) => (
                       <button
                         key={m.id}
-                        onClick={() => { setShareEmail(m.email!); setShowShareSuggestions(false); }}
+                        onClick={() => { setShareEmail(m.email); setShowShareSuggestions(false); }}
                         className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.06] transition text-left"
                       >
                         {m.image ? (
-                          <img src={m.image} alt="" className="w-7 h-7 rounded-full object-cover" />
+                          <Image src={m.image} alt="" width={28} height={28} unoptimized className="w-7 h-7 rounded-full object-cover" />
                         ) : (
                           <div className="w-7 h-7 rounded-full bg-accent-primary/15 flex items-center justify-center text-[10px] font-bold text-accent-primary">
                             {(m.name ?? m.email)?.[0]?.toUpperCase()}
@@ -1177,7 +1179,7 @@ export function NotesDashboard() {
                 {shareEmailDebounced && !isShareLookingUp && shareEmailLookup && (
                   <div className="absolute left-0 right-0 top-full mt-1 z-10 p-2.5 rounded-lg border border-accent-primary/20 bg-bg-elevated shadow-lg flex items-center gap-2.5">
                     {shareEmailLookup.image ? (
-                      <img src={shareEmailLookup.image} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      <Image src={shareEmailLookup.image} alt="" width={32} height={32} unoptimized className="w-8 h-8 rounded-full object-cover" />
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-accent-primary/15 flex items-center justify-center">
                         <span className="text-xs font-bold text-accent-primary">
@@ -1212,7 +1214,12 @@ export function NotesDashboard() {
                 <option value="write">{t("sharing.edit")}</option>
               </select>
               <button
-                onClick={() => { shareEmail.trim() && shareNote.mutate({ noteId: shareModalNoteId, email: shareEmail, permission: sharePermission }); setShowShareSuggestions(false); }}
+                onClick={() => {
+                  if (shareEmail.trim()) {
+                    shareNote.mutate({ noteId: shareModalNoteId, email: shareEmail, permission: sharePermission });
+                  }
+                  setShowShareSuggestions(false);
+                }}
                 disabled={!shareEmail.trim() || shareNote.isPending}
                 className="px-4 py-2 kairos-neon-btn text-white text-sm font-medium rounded-lg disabled:opacity-50"
               >
@@ -1228,7 +1235,7 @@ export function NotesDashboard() {
                   <div key={s.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-bg-primary/50">
                     <div className="flex items-center gap-2.5">
                       {s.userImage ? (
-                        <img src={s.userImage} alt="" className="w-7 h-7 rounded-full object-cover" />
+                        <Image src={s.userImage} alt="" width={28} height={28} unoptimized className="w-7 h-7 rounded-full object-cover" />
                       ) : (
                         <div className="w-7 h-7 rounded-full bg-accent-primary/15 flex items-center justify-center text-[10px] font-bold text-accent-primary">
                           {(s.userName ?? s.userEmail)?.[0]?.toUpperCase()}
@@ -1240,7 +1247,7 @@ export function NotesDashboard() {
                       </div>
                     </div>
                     <button
-                      onClick={() => unshareNote.mutate({ noteId: shareModalNoteId!, userId: s.userId })}
+                      onClick={() => unshareNote.mutate({ noteId: shareModalNoteId, userId: s.userId })}
                       className="p-1 rounded text-fg-tertiary hover:text-red-400 transition"
                     >
                       <X size={14} />
@@ -1366,7 +1373,7 @@ export function NotesDashboard() {
                   if (!resetPinInput.trim()) { setResetPinError(t("password.passwordRequired")); return; }
                   if (!newPasswordInput || !confirmNewPasswordInput) { setResetPinError(t("password.passwordRequired")); return; }
                   if (newPasswordInput !== confirmNewPasswordInput) { setResetPinError(t("password.passwordsMismatch")); return; }
-                  resetPasswordWithPin.mutate({ noteId: showResetModal!, resetPin: resetPinInput.trim(), newPassword: newPasswordInput });
+                  resetPasswordWithPin.mutate({ noteId: showResetModal, resetPin: resetPinInput.trim(), newPassword: newPasswordInput });
                 }}
                 disabled={resetPasswordWithPin.isPending}
                 className="flex-1 px-4 py-3 kairos-neon-btn text-white font-bold rounded-xl text-sm disabled:opacity-50"

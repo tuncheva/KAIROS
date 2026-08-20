@@ -1,3 +1,5 @@
+import "server-only";
+
 import NextAuth from "next-auth";
 import { cache } from "react";
 

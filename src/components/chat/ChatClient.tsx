@@ -10,7 +10,7 @@ import { Send, Paperclip, Search, MoreVertical, X, Plus, MessageCircle, Users, T
 import { useToast } from "~/components/providers/ToastProvider";
 import { useUploadThing } from "~/lib/uploadthing";
 import { useSocket } from "~/components/providers/SocketProvider";
-import { useSocketEvent } from "~/lib/useSocketEvent";
+import { useSocketEvent } from "~/hooks/useSocketEvent";
 
 type ChatMessage = RouterOutputs["chat"]["listMessages"]["messages"][number];
 type ParticipantSuggestion = RouterOutputs["chat"]["getParticipantSuggestions"];
@@ -49,7 +49,7 @@ export function ChatClient({ userId }: { userId: string }) {
   // Get all conversations (real-time updates via Socket.IO)
   const conversationsQuery = api.chat.listAllConversations.useQuery(undefined);
 
-  const conversations = conversationsQuery.data ?? [];
+  const conversations = useMemo(() => conversationsQuery.data ?? [], [conversationsQuery.data]);
 
   // Allow deep-linking into a conversation via URL: /chat?conversationId=123
   useEffect(() => {

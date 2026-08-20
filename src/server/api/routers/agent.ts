@@ -2,6 +2,11 @@ import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { agentOrchestrator } from "~/server/llm/orchestrator/agentOrchestrator";
+import { runAgentTurn } from "~/server/llm/orchestrator/handoff";
+import {
+  findLatestConversation,
+  loadConversation,
+} from "~/server/llm/conversations";
 import {
   GenerateTaskDraftsInputSchema,
   ExtractTasksFromPdfInputSchema,
@@ -21,7 +26,7 @@ import {
   EventsPublisherConfirmInputSchema,
   EventsPublisherApplyInputSchema,
 } from "~/server/llm/schemas/a4EventsPublisherSchemas";
-import { consumeRateLimit, checkRateLimit } from "~/server/rateLimit";
+import { consumeRateLimit, checkRateLimit } from "~/server/security/rateLimit";
 
 /**
  * Rate-limited protected procedure — consumes one AI request from the user's
@@ -29,7 +34,7 @@ import { consumeRateLimit, checkRateLimit } from "~/server/rateLimit";
  * Confirm/Apply procedures are NOT rate-limited since they don't call the LLM.
  */
 const rateLimitedProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  consumeRateLimit(ctx.session.user.id);
+  await consumeRateLimit(ctx.session.user.id);
   return next();
 });
 
@@ -38,7 +43,7 @@ export const agentRouter = createTRPCRouter({
   /**
    * Check the caller's remaining AI request quota.
    */
-  rateLimitStatus: protectedProcedure.query(({ ctx }) => {
+  rateLimitStatus: protectedProcedure.query(async ({ ctx }) => {
     return checkRateLimit(ctx.session.user.id);
   }),
   /**
@@ -79,6 +84,10 @@ export const agentRouter = createTRPCRouter({
   /**
    * A1 Project Chatbot — can run either project-scoped or workspace-scoped.
    * Used by the Project Intelligence UI with a project picker.
+   *
+   * Non-streaming sibling of `POST /api/ai/chat`. Both run the same
+   * {@link runAgentTurn}, so a handoff is executed server-side and the caller
+   * gets one result; the route exists only to report progress while it happens.
    */
   projectChatbot: rateLimitedProcedure
     .input(
@@ -97,13 +106,37 @@ export const agentRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return agentOrchestrator.draft({
+      return runAgentTurn({
         ctx,
-        agentId: "workspace_concierge",
         message: input.message,
         scope: input.projectId ? { projectId: input.projectId } : undefined,
         conversationHistory: input.conversationHistory,
       });
+    }),
+
+  /**
+   * Rehydrate a stored conversation after a reload.
+   */
+  conversation: protectedProcedure
+    .input(z.object({ conversationId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      return loadConversation(ctx, input.conversationId, ctx.session.user.id);
+    }),
+
+  /** The caller's most recent conversation for this scope, if there is one. */
+  latestConversation: protectedProcedure
+    .input(z.object({ projectId: z.number().optional() }))
+    .query(async ({ ctx, input }) => {
+      const conversationId = await findLatestConversation(
+        ctx,
+        ctx.session.user.id,
+        input.projectId ?? null,
+      );
+      if (!conversationId) return { conversationId: null, messages: [] };
+      return {
+        conversationId,
+        messages: await loadConversation(ctx, conversationId, ctx.session.user.id),
+      };
     }),
 
   // -------------------------------------------------------------------------

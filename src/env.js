@@ -4,31 +4,49 @@ import { z } from "zod";
 export const env = createEnv({
 
   server: {
-    AUTH_SECRET: z.string().optional(),
+    // ---------------------------------------------------------------------
+    // Required. These were all `.optional()`, which defeated the point of
+    // validating: a deploy missing its auth secret or database URL booted
+    // successfully and failed later in confusing ways — the DB layer silently
+    // substituted a hardcoded localhost connection string. Fail fast instead.
+    //
+    // Set SKIP_ENV_VALIDATION=1 for lint/typecheck/CI steps that don't need a
+    // real environment.
+    // ---------------------------------------------------------------------
+
+    // 32-char floor mirrors the check ws-server already enforced on its own
+    // secret; a short secret weakens JWT and cookie signing.
+    AUTH_SECRET: z.string().min(32),
+    DATABASE_URL: z.string().url(),
+    WS_SECRET: z.string().min(32),
+
+    // ---------------------------------------------------------------------
+    // Optional: these features degrade cleanly when unset.
+    // ---------------------------------------------------------------------
     AUTH_DISCORD_ID: z.string().optional(),
     AUTH_DISCORD_SECRET: z.string().optional(),
     AUTH_GOOGLE_ID: z.string().optional(),
     AUTH_GOOGLE_SECRET: z.string().optional(),
     AUTH_MICROSOFT_ID: z.string().optional(),
     AUTH_MICROSOFT_SECRET: z.string().optional(),
-    DATABASE_URL: z.string().optional(),
 
-    // LLM Agent System (OpenAI-compatible — can point to HuggingFace, OpenAI, etc.)
+    // LLM Agent System (any OpenAI-compatible /chat/completions endpoint).
+    //
+    // Optional so the app still boots with the AI disabled, but every agent
+    // call fails without LLM_API_KEY — the model client logs a warning at
+    // startup rather than letting that surface as a vague chat error.
     LLM_BASE_URL: z.string().url().optional(),
     LLM_API_KEY: z.string().optional(),
-    LLM_DEFAULT_MODEL: z.string().optional(),
+    LLM_MODEL: z.string().optional(),
+    /** Only tried when the primary model fails retriably. Empty = no fallback. */
     LLM_FALLBACK_MODEL: z.string().optional(),
-    LLM_ALTERNATE_MODEL: z.string().optional(),
+    /** AI requests per user per rolling 24h window. */
+    AI_RATE_LIMIT: z.coerce.number().int().positive().default(50),
 
     // Email (Resend)
     RESEND_API_KEY: z.string().optional(),
     RESEND_FROM_EMAIL: z.string().optional(),
 
-    // Used for building absolute URLs in emails
-    NEXT_PUBLIC_APP_URL: z.string().optional(),
-
-    // WebSocket (standalone WS server)
-    WS_SECRET: z.string().optional(),
     WS_INTERNAL_URL: z.string().optional(),
 
     NODE_ENV: z
@@ -39,6 +57,11 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: z.string().optional(),
     NEXT_PUBLIC_WS_URL: z.string().optional(),
+    // Declared here rather than under `server`: the NEXT_PUBLIC_ prefix means
+    // Next inlines it into the client bundle, so validating it as a server-only
+    // variable was checking it in the wrong scope. Client vars stay readable on
+    // the server, so existing server-side reads are unaffected.
+    NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   },
 
 
@@ -54,9 +77,9 @@ export const env = createEnv({
 
     LLM_BASE_URL: process.env.LLM_BASE_URL,
     LLM_API_KEY: process.env.LLM_API_KEY,
-    LLM_DEFAULT_MODEL: process.env.LLM_DEFAULT_MODEL,
+    LLM_MODEL: process.env.LLM_MODEL,
     LLM_FALLBACK_MODEL: process.env.LLM_FALLBACK_MODEL,
-    LLM_ALTERNATE_MODEL: process.env.LLM_ALTERNATE_MODEL,
+    AI_RATE_LIMIT: process.env.AI_RATE_LIMIT,
 
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,

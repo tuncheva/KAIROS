@@ -1,5 +1,8 @@
 /**
- * PostCSS Configuration Wrapper
- * Re-exports config from config/ folder for tooling compatibility.
+ * PostCSS Configuration
  */
-export { default } from "./config/postcss.config.js";
+export default {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};

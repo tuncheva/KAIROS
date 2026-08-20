@@ -25,14 +25,14 @@ export type NotesVaultContextPack = {
 function normalizeHandoff(handoffContext?: Record<string, unknown>): NotesVaultHandoffContext {
   if (!handoffContext || typeof handoffContext !== "object") return {};
 
-  const unlockedNotesRaw = (handoffContext as Record<string, unknown>)["unlockedNotes"];
+  const unlockedNotesRaw = (handoffContext).unlockedNotes;
   if (!Array.isArray(unlockedNotesRaw)) return {};
 
   const unlockedNotes: Array<{ noteId: number; content: string }> = [];
   for (const item of unlockedNotesRaw) {
     if (!item || typeof item !== "object") continue;
-    const noteId = (item as Record<string, unknown>)["noteId"];
-    const content = (item as Record<string, unknown>)["content"];
+    const noteId = (item as Record<string, unknown>).noteId;
+    const content = (item as Record<string, unknown>).content;
     if (typeof noteId === "number" && Number.isInteger(noteId) && noteId > 0 && typeof content === "string" && content.length > 0) {
       unlockedNotes.push({ noteId, content });
     }

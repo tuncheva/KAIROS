@@ -3,8 +3,27 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { organizations, organizationMembers, organizationRoles, organizationInvites, users, notifications } from "~/server/db/schema";
+import { flagsForRole } from "~/lib/permissions";
+import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/security/authRateLimit";
+import { getClientIp } from "~/server/http/clientIp";
+
+/**
+ * The access code is a bearer credential: anyone holding it can join the
+ * organization, permanently. Returning it to every member — including `guest` and
+ * the view-only `mentor` — let any member hand out standing access to the whole
+ * workspace. Only members who can actually add people should see it.
+ */
+function canSeeAccessCode(membership: {
+  role: string;
+  canAddMembers?: boolean;
+}): boolean {
+  return membership.role === "admin" || membership.canAddMembers === true;
+}
 import { eq, and, or, isNull, gt, lte, desc } from "drizzle-orm";
-import { emitNotification } from "~/server/socket/emit";
+import { emitNotification } from "~/server/ws/emit";
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("organization");
 
 
 function generateAccessCode(): string {
@@ -38,6 +57,7 @@ export const organizationRouter = createTRPCRouter({
       .select({
         organization: organizations,
         role: organizationMembers.role,
+        canAddMembers: organizationMembers.canAddMembers,
         joinedAt: organizationMembers.joinedAt,
       })
       .from(organizationMembers)
@@ -50,7 +70,7 @@ export const organizationRouter = createTRPCRouter({
     return memberships.map((m) => ({
       id: m.organization.id,
       name: m.organization.name,
-      accessCode: m.organization.accessCode,
+      accessCode: canSeeAccessCode(m) ? m.organization.accessCode : null,
       role: m.role,
       joinedAt: m.joinedAt,
       createdAt: m.organization.createdAt,
@@ -84,6 +104,7 @@ export const organizationRouter = createTRPCRouter({
         .select({
           organization: organizations,
           role: organizationMembers.role,
+          canAddMembers: organizationMembers.canAddMembers,
         })
         .from(organizationMembers)
         .innerJoin(
@@ -103,7 +124,9 @@ export const organizationRouter = createTRPCRouter({
           organization: {
             id: membership.organization.id,
             name: membership.organization.name,
-            accessCode: membership.organization.accessCode,
+            accessCode: canSeeAccessCode(membership)
+              ? membership.organization.accessCode
+              : null,
           },
           role: membership.role,
         };
@@ -114,6 +137,7 @@ export const organizationRouter = createTRPCRouter({
       .select({
         organization: organizations,
         role: organizationMembers.role,
+        canAddMembers: organizationMembers.canAddMembers,
       })
       .from(organizationMembers)
       .innerJoin(
@@ -129,7 +153,9 @@ export const organizationRouter = createTRPCRouter({
       organization: {
         id: fallback.organization.id,
         name: fallback.organization.name,
-        accessCode: fallback.organization.accessCode,
+        accessCode: canSeeAccessCode(fallback)
+          ? fallback.organization.accessCode
+          : null,
       },
       role: fallback.role,
     };
@@ -205,22 +231,22 @@ export const organizationRouter = createTRPCRouter({
           .returning();
 
         if (!organization) {
-          throw new Error("Failed to create organization");
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create organization",
+          });
         }
 
         
+        // Flags come from the role template rather than being hand-listed, so
+        // there is exactly one definition of what a role can do
+        // (`~/lib/permissions`). The eight columns are what the server authorizes
+        // on, so every membership insert must populate them.
         await ctx.db.insert(organizationMembers).values({
           organizationId: organization.id,
           userId: ctx.session.user.id,
           role: "admin",
-          canAddMembers: true,
-          canAssignTasks: true,
-          canCreateProjects: true,
-          canDeleteTasks: true,
-          canKickMembers: true,
-          canManageRoles: true,
-          canEditProjects: true,
-          canViewAnalytics: true,
+          ...flagsForRole("admin"),
         });
 
         
@@ -235,8 +261,11 @@ export const organizationRouter = createTRPCRouter({
           accessCode: organization.accessCode,
         };
       } catch (error) {
-        console.error("Error creating organization:", error);
-        throw new Error("Failed to create organization");
+        log.error("failed to create organization", { err: error });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create organization",
+        });
       }
     }),
 
@@ -249,6 +278,16 @@ export const organizationRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Access codes are a 12-character shared secret and this endpoint says
+      // whether a guess was right, so without a limit it is an oracle for
+      // enumerating them. Keyed on the caller and on client IP.
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("org_join", ctx.session.user.id),
+      );
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("org_join_ip", getClientIp(ctx.headers)),
+      );
+
       try {
         
         const [organization] = await ctx.db
@@ -282,12 +321,15 @@ export const organizationRouter = createTRPCRouter({
         }
 
         
+        // This used to insert every flag as false regardless of role, which is
+        // why nothing could safely read the columns: a "worker" joining by access
+        // code arrived with no capabilities at all. Derive them from the role.
+        const joinRole = input.role ?? "worker";
         await ctx.db.insert(organizationMembers).values({
           organizationId: organization.id,
           userId: ctx.session.user.id,
-          role: input.role ?? "worker",
-          canAddMembers: false,
-          canAssignTasks: false,
+          role: joinRole,
+          ...flagsForRole(joinRole),
         });
 
         
@@ -341,11 +383,14 @@ export const organizationRouter = createTRPCRouter({
           organizationName: organization.name,
         };
       } catch (error) {
-        console.error("Error joining organization:", error);
+        log.error("failed to join organization", { err: error });
         if (error instanceof Error) {
           throw error;
         }
-        throw new Error("Failed to join organization");
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to join organization",
+        });
       }
     }),
 
@@ -492,7 +537,14 @@ export const organizationRouter = createTRPCRouter({
         .limit(1);
 
       if (!membership) {
-        throw new Error("You are not a member of this organization");
+        // TRPCError, not a bare Error: a bare throw reaches the client as HTTP 500
+        // with the message masked to "Internal server error" in production, so the
+        // user sees nothing actionable and monitoring records an authz denial as a
+        // server fault.
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You are not a member of this organization",
+        });
       }
 
       if (membership.role === "admin") {
@@ -514,9 +566,11 @@ export const organizationRouter = createTRPCRouter({
             );
 
           if (admins.length === 1) {
-            throw new Error(
-              "You cannot leave as you are the only admin. Please transfer ownership or delete the organization.",
-            );
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "You cannot leave as you are the only admin. Please transfer ownership or delete the organization.",
+            });
           }
         }
       }
@@ -581,7 +635,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin" || !caller.canManageRoles) {
+      if (caller?.role !== "admin" || !caller.canManageRoles) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "You do not have permission to update member permissions",
@@ -618,7 +672,11 @@ export const organizationRouter = createTRPCRouter({
       z.object({
         organizationId: z.number(),
         userId: z.string(),
-        role: z.enum(["admin", "member", "guest"]),
+        // Every value of `org_role`. `worker` is the access-code join flow's name
+        // for `member` and `mentor` is the view-only role the UI surfaces; both
+        // were previously unassignable through role management even though the
+        // join flow could produce them.
+        role: z.enum(["admin", "member", "guest", "worker", "mentor"]),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -634,7 +692,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin" || !caller.canManageRoles) {
+      if (caller?.role !== "admin" || !caller.canManageRoles) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only admins with role management permission can change member roles",
@@ -668,41 +726,11 @@ export const organizationRouter = createTRPCRouter({
         });
       }
 
-      // Determine permissions based on the template role
-      const permissionsByRole = {
-        admin: {
-          canAddMembers: true,
-          canAssignTasks: true,
-          canCreateProjects: true,
-          canDeleteTasks: true,
-          canKickMembers: true,
-          canManageRoles: true,
-          canEditProjects: true,
-          canViewAnalytics: true,
-        },
-        member: {
-          canAddMembers: false,
-          canAssignTasks: true,
-          canCreateProjects: true,
-          canDeleteTasks: false,
-          canKickMembers: false,
-          canManageRoles: false,
-          canEditProjects: true,
-          canViewAnalytics: true,
-        },
-        guest: {
-          canAddMembers: false,
-          canAssignTasks: false,
-          canCreateProjects: false,
-          canDeleteTasks: false,
-          canKickMembers: false,
-          canManageRoles: false,
-          canEditProjects: false,
-          canViewAnalytics: false,
-        },
-      } as const;
-
-      const permissions = permissionsByRole[input.role];
+      // The role is a template for the eight permission columns, which are what
+      // the server actually authorizes on. This local copy of the templates was
+      // one of three definitions in the codebase; `~/lib/permissions` is now the
+      // only one.
+      const permissions = flagsForRole(input.role);
 
       await ctx.db
         .update(organizationMembers)
@@ -740,7 +768,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin" || !caller.canKickMembers) {
+      if (caller?.role !== "admin" || !caller.canKickMembers) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "You do not have permission to remove members",
@@ -898,7 +926,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin" || !caller.canManageRoles) {
+      if (caller?.role !== "admin" || !caller.canManageRoles) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only admins with role management permission can create roles",
@@ -944,7 +972,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin" || !caller.canManageRoles) {
+      if (caller?.role !== "admin" || !caller.canManageRoles) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only admins with role management permission can delete roles",
@@ -1062,6 +1090,18 @@ export const organizationRouter = createTRPCRouter({
       const dbRole: ValidRole = validRoles.includes(input.role as ValidRole)
         ? (input.role as ValidRole)
         : "member";
+
+      // SECURITY: inviting an admin is role management, not member management.
+      // The caller check above admits any member holding `canAddMembers`, so
+      // without this a delegated inviter could invite an address they control as
+      // "admin" and escalate to full org control. Mirrors the guard in
+      // `updateMemberRole`.
+      if (dbRole === "admin" && !(caller.role === "admin" && caller.canManageRoles)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins with role management permission can invite admins",
+        });
+      }
 
       const [invite] = await ctx.db
         .insert(organizationInvites)
@@ -1226,12 +1266,12 @@ export const organizationRouter = createTRPCRouter({
       }
 
       // Add as member
+      const invitedRole = invite.role ?? "member";
       await ctx.db.insert(organizationMembers).values({
         organizationId: invite.organizationId,
         userId: ctx.session.user.id,
-        role: invite.role ?? "member",
-        canAddMembers: false,
-        canAssignTasks: false,
+        role: invitedRole,
+        ...flagsForRole(invitedRole),
       });
 
       // Mark invite as accepted
@@ -1400,7 +1440,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin") {
+      if (caller?.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only admins can view invites",
@@ -1438,7 +1478,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin") {
+      if (caller?.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only admins can view invite history",
@@ -1473,7 +1513,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || caller.role !== "admin") {
+      if (caller?.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only admins can cancel invites",

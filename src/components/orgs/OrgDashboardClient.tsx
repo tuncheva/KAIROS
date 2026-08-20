@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
-import { useSocketEvent } from "~/lib/useSocketEvent";
+import { useSocketEvent } from "~/hooks/useSocketEvent";
 
 function roleLabel(role: string, tOrg: (key: string) => string) {
   if (role === "admin") return tOrg("roleAdmin");

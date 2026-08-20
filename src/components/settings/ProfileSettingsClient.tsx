@@ -7,7 +7,7 @@ import { useUploadThing } from "~/lib/uploadthing";
 import { useSession } from "next-auth/react";
 import { ImageUpload } from "~/components/ui/ImageUpload";
 import { useTranslations } from "next-intl";
-import { useDateFormat } from "~/lib/hooks/useDateFormat";
+import { useDateFormat } from "~/hooks/useDateFormat";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -115,9 +115,9 @@ export function ProfileSettingsClient({ user }: ProfileSettingsClientProps) {
  // Without this, places like the event comment composer can keep showing the old avatar.
  void updateSession?.({ user: { image: data.imageUrl } });
  },
- onError: (error) => {
- setIsUploading(false);
- },
+  onError: () => {
+    setIsUploading(false);
+  },
  });
 
  const handleImageUpload = async (file: File) => {
@@ -135,9 +135,9 @@ export function ProfileSettingsClient({ user }: ProfileSettingsClientProps) {
  image: url,
  filename: file.name,
  });
- } catch (error) {
- setIsUploading(false);
- }
+    } catch {
+      setIsUploading(false);
+    }
  };
 
  const handleSubmit = (e: React.FormEvent) => {

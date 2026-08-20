@@ -6,7 +6,7 @@ import { Lock, Trash2, Eye, EyeOff, AlertCircle, RefreshCw, KeyRound, X } from "
 import { useTranslations } from "next-intl";
 import { useToast } from "~/components/providers/ToastProvider";
 import { cn } from "~/lib/utils";
-import { useDateFormat } from "~/lib/hooks/useDateFormat";
+import { useDateFormat } from "~/hooks/useDateFormat";
 
 export function NotesList() {
   const t = useTranslations("create");
@@ -16,7 +16,10 @@ export function NotesList() {
   const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<number, boolean>>({});
   const [passwordInputs, setPasswordInputs] = useState<Record<number, string>>({});
-  const [unlockedNotes, setUnlockedNotes] = useState<Record<number, { unlocked: boolean; content: string }>>({});
+  // `password` is retained in memory after a successful unlock so a later save
+  // can re-encrypt with it: the server refuses to write a password-protected
+  // note without its password (writing plaintext would strip the encryption).
+  const [unlockedNotes, setUnlockedNotes] = useState<Record<number, { unlocked: boolean; content: string; password: string }>>({});
   const [passwordErrors, setPasswordErrors] = useState<Record<number, string>>({});
   const unlockAttemptsRef = useRef<Record<number, number>>({});
 
@@ -93,6 +96,7 @@ export function NotesList() {
           [variables.noteId]: {
             unlocked: true,
             content: data.content,
+            password: variables.password,
           },
         }));
         setPasswordInputs((prev) => ({ ...prev, [variables.noteId]: "" }));
@@ -168,14 +172,6 @@ export function NotesList() {
     setShowPasswords((prev) => ({ ...prev, [noteId]: !prev[noteId] }));
   };
 
-  const handleResetRequest = (noteId: number) => {
-    setShowResetModal(noteId);
-    setResetPinInput("");
-    setResetPinError(null);
-    setNewPasswordInput("");
-    setConfirmNewPasswordInput("");
-  };
-
   const openResetPromptAfterFailedUnlock = (noteId: number) => {
     setShowResetPromptModal(noteId);
   };
@@ -247,7 +243,7 @@ export function NotesList() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {allNotes.map((note, index) => {
                 const unlockedState = unlockedNotes[note.id];
-                const isLocked = !!note.passwordHash && !unlockedState?.unlocked;
+                const isLocked = note.isPasswordProtected && !unlockedState?.unlocked;
                 const rawContent = unlockedState?.content ?? note.content ?? "";
                 const titleCandidate = rawContent.split("\n")[0]?.trim();
                 const firstLine =
@@ -309,7 +305,7 @@ export function NotesList() {
         const note = allNotes.find((n) => n.id === selectedNoteId);
         if (!note) return null;
         const unlockedState = unlockedNotes[note.id];
-        const isLocked = !!note.passwordHash && !unlockedState?.unlocked;
+        const isLocked = note.isPasswordProtected && !unlockedState?.unlocked;
 
         return (
           <div
@@ -367,6 +363,7 @@ export function NotesList() {
                     updateNote.mutate({
                       id: note.id,
                       content,
+                      password: unlockedState?.password,
                       calendarDate: editAddToCalendar ? (editCalendarDate ?? null) : null,
                     });
                   }}
@@ -753,7 +750,7 @@ function UnlockedNoteContent(props: UnlockedNoteContentProps) {
                   return;
                 }
                 const [y, m, d] = v.split("-").map(Number);
-                onCalendarDateChange(new Date(y!, (m! - 1), d!, 12, 0, 0));
+                onCalendarDateChange(new Date(y!, (m! - 1), d, 12, 0, 0));
               }}
               className="w-full px-3 py-2 bg-bg-primary rounded-lg text-sm text-fg-primary border border-white/[0.06] focus:outline-none focus:ring-2 focus:ring-accent-primary/30"
             />

@@ -7,33 +7,54 @@
  * All publish calls are best-effort — errors are logged, never thrown.
  */
 
+import "server-only";
+
 const REDIS_NATIVE_URL = process.env.REDIS_NATIVE_URL;
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("publisher");
 const WS_INTERNAL_URL =
   process.env.WS_INTERNAL_URL ?? "http://localhost:3001";
 const WS_SECRET = process.env.WS_SECRET ?? "";
 
 // ── Redis client (lazy init) ─────────────────────────────────────────
 
-let redisPublisher: {
+/**
+ * Minimal structural type for the parts of `redis` this module uses.
+ *
+ * `redis` is an optional peer dependency that may not be installed, so the
+ * dynamic import below cannot be type-resolved. Absorbing it into `unknown` and
+ * casting once against this shape keeps the `any` from leaking into every
+ * downstream call.
+ */
+interface RedisClientLike {
   publish: (channel: string, message: string) => Promise<number>;
-} | null = null;
+  connect: () => Promise<unknown>;
+}
+
+interface RedisModuleLike {
+  createClient: (options: { url: string }) => RedisClientLike;
+}
+
+let redisPublisher: RedisClientLike | null = null;
 let redisInitializing = false;
 
-async function getRedisPublisher() {
+async function getRedisPublisher(): Promise<RedisClientLike | null> {
   if (redisPublisher) return redisPublisher;
   if (!REDIS_NATIVE_URL || redisInitializing) return null;
 
   redisInitializing = true;
   try {
-    // @ts-expect-error -- redis is an optional peer dependency
-    const { createClient } = await import("redis");
+    // @ts-expect-error -- redis is an optional peer dependency, may not be installed
+    const mod: unknown = await import("redis");
+    const { createClient } = mod as RedisModuleLike;
     const client = createClient({ url: REDIS_NATIVE_URL });
     await client.connect();
     redisPublisher = client;
-    console.log("[publisher] Redis publisher connected");
+    log.info("redis publisher connected");
     return redisPublisher;
   } catch (err) {
-    console.error("[publisher] Failed to connect Redis publisher", err);
+    log.error("failed to connect redis publisher", { err });
     redisInitializing = false;
     return null;
   }
@@ -42,7 +63,7 @@ async function getRedisPublisher() {
 // ── core publish ─────────────────────────────────────────────────────
 
 async function publish(
-  scope: "user" | "org" | "project" | "conversation",
+  scope: "user" | "org" | "project" | "conversation" | "feed",
   id: string,
   event: string,
   payload: unknown,
@@ -60,7 +81,7 @@ async function publish(
         return;
       }
     } catch (err) {
-      console.error("[publisher] Redis publish failed, falling back to HTTP", err);
+      log.warn("redis publish failed, falling back to HTTP", { err });
     }
   }
 
@@ -75,16 +96,14 @@ async function publish(
       body: JSON.stringify({ room, event, payload }),
     });
     if (!res.ok) {
-      console.error(
-        `[publisher] HTTP fallback failed: ${res.status} ${res.statusText}`,
-      );
+      log.error("HTTP fallback failed", {
+        status: res.status,
+        statusText: res.statusText,
+      });
     }
   } catch (err) {
     if (process.env.NODE_ENV !== "production") {
-      console.warn(
-        "[publisher] HTTP fallback failed (WS server may not be running)",
-        (err as Error).message,
-      );
+      log.warn("HTTP fallback failed (WS server may not be running)", { err });
     }
   }
 }
@@ -152,19 +171,33 @@ export function publishConversationEvent(
 }
 
 /**
+ * Publish to the public events feed.
+ *
+ * Events are public content — region-scoped, no organization — so this room needs
+ * no authorization to join. What it does buy is scope: only sockets that have
+ * actually opened the feed receive the invalidation, instead of every connected
+ * client in the system receiving every event change.
+ */
+export function publishEventsFeedEvent(event: string, payload: unknown): void {
+  void publish("feed", "events", event, payload);
+}
+
+/**
  * Broadcast to all connected clients (publishes to each scope).
  * For events that need global broadcast, publish to a well-known room.
  */
 export function publishBroadcast(event: string, payload: unknown): void {
-  // Use the internal emit endpoint with a special "broadcast" room
-  // The WS server's /internal/emit already supports io.to(room)
-  // For true broadcast we emit to a room that all clients join isn't practical,
-  // so we use a direct HTTP call that hits io.emit (all sockets)
-  const body = JSON.stringify({ room: "__broadcast__", event, payload });
-
+  // Redis and the HTTP endpoint are alternatives, not a pair. This previously
+  // published via Redis *and then unconditionally* POSTed, so with Redis
+  // configured every broadcast was delivered to every client twice.
   if (REDIS_NATIVE_URL) {
     void publish("user", "__broadcast__", event, payload);
+    return;
   }
+
+  // HTTP fallback (dev / no Redis). The WS server maps the "__broadcast__" room
+  // to io.emit, since having every client join a shared room isn't practical.
+  const body = JSON.stringify({ room: "__broadcast__", event, payload });
 
   void fetch(`${WS_INTERNAL_URL}/internal/emit`, {
     method: "POST",
@@ -175,7 +208,7 @@ export function publishBroadcast(event: string, payload: unknown): void {
     body,
   }).catch((err: Error) => {
     if (process.env.NODE_ENV !== "production") {
-      console.warn("[publisher] broadcast HTTP fallback failed", err.message);
+      log.warn("broadcast HTTP fallback failed", { err });
     }
   });
 }

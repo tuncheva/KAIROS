@@ -37,7 +37,6 @@ export const settingsRouter = createTRPCRouter({
           activityTracking: true,
           dataCollection: true,
         
-          twoFactorEnabled: true,
 
           notesKeepUnlockedUntilClose: true,
 
@@ -94,7 +93,9 @@ export const settingsRouter = createTRPCRouter({
  
   updateLanguageRegion: protectedProcedure
     .input(z.object({
-      language: z.enum(["en", "bg", "es", "fr", "de", "it", "pt", "ja", "ko", "zh", "ar"]).optional(),
+      // Matches `languageEnum`, which now lists only locales that have a message
+      // file. Accepting `ja` here stored a preference nothing could honour.
+      language: z.enum(["en", "bg", "es", "fr", "de"]).optional(),
       timezone: z.string().optional(),
       dateFormat: z.enum(["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"]).optional(),
     }))
@@ -112,7 +113,6 @@ export const settingsRouter = createTRPCRouter({
   updateSecurity: protectedProcedure
     .input(
       z.object({
-        twoFactorEnabled: z.boolean().optional(),
         notesKeepUnlockedUntilClose: z.boolean().optional(),
       })
     )
@@ -194,7 +194,6 @@ export const settingsRouter = createTRPCRouter({
       showOnlineStatus: z.boolean().optional(),
       activityTracking: z.boolean().optional(),
       dataCollection: z.boolean().optional(),
-      twoFactorEnabled: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.update(users)
