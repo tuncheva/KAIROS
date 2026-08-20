@@ -42,7 +42,7 @@ export function SiteFooter() {
                 <div className="grid grid-cols-2 gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
                     <div className="col-span-2 lg:col-span-1">
                         <div className="flex items-center gap-2.5">
-                            <span className="flex h-[26px] w-[26px] items-center justify-center rounded-lg bg-[linear-gradient(140deg,rgb(var(--accent-primary)),rgb(var(--accent-secondary)))]">
+                            <span className="flex h-[26px] w-[26px] items-center justify-center">
                                 <Image
                                     src="/logo_white.png"
                                     alt=""
@@ -51,7 +51,7 @@ export function SiteFooter() {
                                     className="h-[15px] w-[15px] object-contain"
                                 />
                             </span>
-                            <span className="font-display text-[21px] text-fg-primary">Kairos</span>
+                            <span className="font-display text-[21px] uppercase tracking-[0.06em] text-fg-primary">Kairos</span>
                         </div>
                         <p className="mt-4 max-w-[280px] text-sm leading-[1.7] text-[rgb(140,140,152)]">
                             {t("footerTagline")}
