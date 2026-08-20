@@ -83,3 +83,19 @@ export async function consumeRateLimit(
   const { count, oldest } = await recordHit(key(userId), WINDOW_MS, now);
   return { ...toStatus(count, oldest, now), allowed: true };
 }
+
+/**
+ * Record a model call the user did not directly ask for.
+ *
+ * One chat message can cost several completions: a JSON repair round, a retry
+ * after truncation, or each iteration of the tool loop. Those were invisible to
+ * the limiter, so a 50/day budget could bill three times that upstream.
+ *
+ * Deliberately records without checking. Refusing here would abort a request
+ * that is already half-done — the budget is enforced at the door, in
+ * {@link consumeRateLimit}, and the overshoot is bounded by the loop's own
+ * iteration cap.
+ */
+export async function recordExtraAiCall(userId: string): Promise<void> {
+  await recordHit(key(userId), WINDOW_MS, Date.now());
+}

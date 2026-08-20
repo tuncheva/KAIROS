@@ -2078,52 +2078,70 @@ summary,
   to { transform: translateX(-50%); }
 }
 
+/* Two identical halves, so landing on -50% puts the seam back at the start. */
+.k-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: k-marquee 30s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-marquee-track { animation: none; }
+}
+
 @keyframes k-drift {
   0%, 100% { transform: translate(0, 0) scale(1); }
   50% { transform: translate(30px, -24px) scale(1.05); }
 }
 
-.k-marquee-track {
-  display: flex;
-  width: max-content;
-  animation: k-marquee 26s linear infinite;
-}
-
 .k-drift-slow { animation: k-drift 16s ease-in-out infinite; }
 .k-drift-slower { animation: k-drift 22s ease-in-out infinite; }
 
-/* Solid pill button */
+/* Pill buttons. No white: the solid button warms to the lighter accent, the
+   ghost picks up an accent border and a faint accent wash. No fill wipe, no
+   lift, no glow — the only travel is the arrow. */
 .k-btn {
-  transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s,
-    box-shadow 0.3s, transform 0.3s;
+  transition: background-color 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.k-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 40px -12px rgb(var(--accent-primary) / 0.6);
+.k-ghost {
+  transition: border-color 0.35s, color 0.35s, background-color 0.35s;
 }
-.k-btn:active { transform: translateY(0); }
+.k-btn svg,
+.k-ghost svg {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
-/* Ghost pill button */
-.k-ghost { transition: border-color 0.3s, color 0.3s, background-color 0.3s; }
-.k-ghost:hover {
+/* `:not(:disabled)` throughout, so a disabled button does not react. */
+.k-btn:hover:not(:disabled) {
+  background-color: rgb(var(--accent-secondary));
+}
+.k-ghost:hover:not(:disabled) {
   border-color: rgb(var(--accent-primary) / 0.6);
   color: #fff;
-  background: rgb(var(--accent-primary) / 0.08);
+  background-color: rgb(var(--accent-primary) / 0.08);
 }
 
-.k-nav { transition: color 0.25s; }
+/* `.k-brand-mark` opts a third-party logo out — the Google mark holds still. */
+.k-btn:hover:not(:disabled) svg:not(.k-brand-mark),
+.k-ghost:hover:not(:disabled) svg:not(.k-brand-mark) {
+  transform: translateX(4px);
+}
+
+/* Nav links — a hairline draws in from the left and retracts to the right. */
+.k-nav { position: relative; transition: color 0.3s; }
+.k-nav::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 1px;
+  background: rgb(var(--accent-primary));
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
 .k-nav:hover { color: #fff; }
-
-/* Workspace panels */
-.k-panel {
-  transition: border-color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.5s;
-}
-.k-panel:hover {
-  border-color: rgb(var(--accent-primary) / 0.35);
-  transform: translateY(-4px);
-  background: #0f0f16;
-}
+.k-nav:hover::after { transform: scaleX(1); transform-origin: left center; }
 
 /* "Why teams stay" rows — the row slides right as the arrow arrives */
 .k-row { transition: background-color 0.4s, padding-left 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -2142,6 +2160,82 @@ summary,
     rgb(255 255 255 / 0.045) 0 8px,
     transparent 8px 18px
   );
+}
+
+/* ─── Editorial blocks (workspaces + how it works) ─── */
+
+/* A block whose accent panel wipes up from the bottom edge on hover. Content
+   is lifted above the wipe; the arrow sits above both. */
+.k-block {
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-block > * { position: relative; z-index: 1; }
+.k-block::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: rgb(var(--accent-primary) / 0.2);
+  border-top: 1px solid rgb(var(--accent-primary) / 0.45);
+  transform: translateY(101%);
+  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-block:hover::before { transform: translateY(0); }
+.k-block:hover { transform: translateY(-6px); }
+
+/* The arrow shares the card's top-right slot with the tag rather than being
+   absolutely positioned over it — the two cross-fade on hover, so they can
+   never overlap. */
+.k-card-arrow {
+  color: rgb(var(--accent-secondary));
+  opacity: 0;
+  transform: translate(-8px, 8px);
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s;
+}
+.k-block:hover .k-card-arrow { transform: translate(0, 0); opacity: 1; }
+
+.k-block .k-card-num,
+.k-block .k-step-num {
+  transition: color 0.8s, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-block .k-card-tag { transition: opacity 0.5s; }
+.k-block .k-card-body,
+.k-block .k-step-body { transition: color 0.8s; }
+.k-block:hover .k-card-num,
+.k-block:hover .k-step-num {
+  color: rgb(var(--accent-secondary) / 0.85);
+  transform: translateY(-4px);
+}
+.k-block:hover .k-card-tag { opacity: 0; }
+.k-block:hover .k-card-body,
+.k-block:hover .k-step-body { color: rgb(255 255 255 / 0.82); }
+
+/* Workspace cards — resting colours; everything that lifts them is hover-only
+   (see .k-block above), so nothing stays highlighted once the cursor leaves. */
+.k-card {
+  background: #0c0c12;
+  color: #fff;
+}
+
+.k-card .k-card-num { color: rgb(255 255 255 / 0.3); }
+.k-card .k-card-tag { color: rgb(255 255 255 / 0.35); }
+.k-card .k-card-body { color: rgb(168 168 182); }
+
+/* Read-progress rail on the bottom edge of the sticky header */
+.k-prog {
+  position: absolute;
+  inset: auto 0 -2px;
+  height: 2px;
+  background: rgb(255 255 255 / 0.08);
+}
+.k-prog > i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: rgb(var(--accent-primary));
 }
 
 /* ─── Intro curtain (wordmark on first load) ─── */

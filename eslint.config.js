@@ -40,7 +40,10 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-unused-vars": [
         "warn",
-        { argsIgnorePattern: "^_" },
+        // `varsIgnorePattern` covers the omit-a-property destructure —
+        // `const { planHash: _previous, ...rest } = plan` — which is the
+        // idiomatic way to drop a key without mutating the original.
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
       "@typescript-eslint/require-await": "off",
       // rules-of-hooks is an error: it catches genuinely broken hook usage

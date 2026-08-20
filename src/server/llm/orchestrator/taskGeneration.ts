@@ -25,10 +25,7 @@ import {
 } from "~/server/llm/prompts/a1Prompts";
 
 import {
-  chatCompletion,
-} from "~/server/llm/core/modelClient";
-import {
-  parseAndValidate,
+  completeJson,
 } from "~/server/llm/core/jsonRepair";
 import {
   extractTextFromPdf,
@@ -145,7 +142,7 @@ export const taskGeneration = {
     const draftId = createDraftId();
 
     try {
-      const llmResponse = await chatCompletion({
+      const parseResult = await completeJson({
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -155,16 +152,11 @@ export const taskGeneration = {
               `Analyze the project description and generate a comprehensive task breakdown for "${project.title}".`,
           },
         ],
+        schema: TaskGenerationOutputSchema,
         temperature: 0.3,
-        jsonMode: true,
-        maxTokens: 4096,
+        purpose: "taskGeneration.fromDescription",
+        userId,
       });
-
-      // 7. Parse + validate
-      const parseResult = await parseAndValidate(
-        llmResponse.content,
-        TaskGenerationOutputSchema,
-      );
 
       if (!parseResult.success) {
         throw new TRPCError({
@@ -289,7 +281,7 @@ export const taskGeneration = {
     const draftId = createDraftId();
 
     try {
-      const llmResponse = await chatCompletion({
+      const parseResult = await completeJson({
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -299,16 +291,14 @@ export const taskGeneration = {
               `Extract actionable tasks from this PDF document for the project "${project.title}".`,
           },
         ],
+        schema: TaskGenerationOutputSchema,
         temperature: 0.3,
-        jsonMode: true,
-        maxTokens: 4096,
+        // A 20-task extraction plus this model's reasoning overruns the default
+        // budget; completeJson doubles it once more if even this truncates.
+        maxTokens: 12_000,
+        purpose: "taskGeneration.fromPdf",
+        userId,
       });
-
-      // 7. Parse + validate
-      const parseResult = await parseAndValidate(
-        llmResponse.content,
-        TaskGenerationOutputSchema,
-      );
 
       if (!parseResult.success) {
         throw new TRPCError({

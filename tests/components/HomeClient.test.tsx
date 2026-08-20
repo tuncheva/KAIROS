@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { gsap } from "gsap";
 import { HomeClient } from "~/components/homepage/HomeClient";
 
 /* HomeClient composes the landing sections; GSAP is mocked in setup.ts */
@@ -72,7 +73,7 @@ describe("HomeClient", () => {
     render(<HomeClient />);
     // "Organizations"/"Teams" also appear as footer links, so match the panel
     // headings specifically.
-    const headings = [...document.querySelectorAll(".k-panel h3")].map((h) => h.textContent);
+    const headings = [...document.querySelectorAll(".k-card h3")].map((h) => h.textContent);
     expect(headings).toEqual(["Organizations", "Teams", "Personal goals"]);
   });
 
@@ -106,9 +107,62 @@ describe("HomeClient", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the hero tagline pill", () => {
+  it("renders the three workspace cards with no sticky highlight state", () => {
     render(<HomeClient />);
-    expect(screen.getByText(/Plan · Collaborate · Publish/)).toBeInTheDocument();
+    expect(document.querySelectorAll(".k-card").length).toBe(3);
+    // The accent is hover-only, so nothing carries a persistent lit flag.
+    expect(document.querySelectorAll(".k-card[data-on]").length).toBe(0);
+  });
+
+  it("renders the read-progress rail in the header", () => {
+    render(<HomeClient />);
+    expect(document.querySelectorAll("header .k-prog").length).toBe(1);
+  });
+
+  it("renders the statement marquee as two identical looping halves", () => {
+    render(<HomeClient />);
+    expect(document.querySelectorAll(".k-marquee-track").length).toBe(1);
+    expect(screen.getAllByText("timing.").length).toBe(6);
+  });
+
+  it("labels the product strip frames as placeholders", () => {
+    render(<HomeClient />);
+    expect(screen.getByText(/drop real product screenshots here/)).toBeInTheDocument();
+  });
+
+  it("shows the uppercase wordmark beside a bare logo mark in the header", () => {
+    render(<HomeClient />);
+    const header = document.querySelector("header");
+    expect(header?.textContent).toContain("KAIROS");
+    // The logo is no longer boxed in a gradient tile.
+    expect(header?.querySelectorAll("[class*=linear-gradient]").length).toBe(0);
+  });
+
+  it("runs the header edge to edge rather than capping it mid-screen", () => {
+    render(<HomeClient />);
+    const bar = document.querySelector("header > div");
+    expect(bar?.className).not.toContain("max-w-");
+  });
+
+  it("scrolls in-page nav links to their section instead of jumping", async () => {
+    const user = userEvent.setup();
+    render(<HomeClient />);
+
+    await user.click(screen.getByText("Workspaces", { selector: "a" }));
+
+    // The click is handled here — a tween to the section, not a browser jump.
+    const scrollTween = vi.mocked(gsap.to).mock.calls.find(
+      ([target, vars]) => target === window && (vars as { scrollTo?: unknown }).scrollTo,
+    );
+    expect(scrollTween).toBeDefined();
+    expect(window.location.hash).toBe("#workspaces");
+  });
+
+  it("keeps every top-nav item an in-page anchor, so none reload the page", () => {
+    render(<HomeClient />);
+    const hrefs = [...document.querySelectorAll("header nav a")].map((a) => a.getAttribute("href"));
+    expect(hrefs).toEqual(["#workspaces", "#product", "#why", "#footer"]);
+    expect(document.getElementById("footer")).toBeInTheDocument();
   });
 
   it("renders the final CTA", () => {

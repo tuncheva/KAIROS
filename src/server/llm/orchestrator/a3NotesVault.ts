@@ -5,7 +5,6 @@
 import {
   TRPCError,
 } from "@trpc/server";
-import crypto from "node:crypto";
 import {
   eq,
   and,
@@ -30,10 +29,7 @@ import {
 } from "~/server/llm/prompts/a3Prompts";
 
 import {
-  chatCompletion,
-} from "~/server/llm/core/modelClient";
-import {
-  parseAndValidate,
+  completeJson,
 } from "~/server/llm/core/jsonRepair";
 
 import {
@@ -64,16 +60,17 @@ export const a3NotesVault = {
 
     const systemPrompt = getA3SystemPrompt(contextPack);
 
-    const llmResponse = await chatCompletion({
+    const parseResult = await completeJson({
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: input.message },
       ],
+      schema: NotesVaultDraftSchema,
       temperature: 0.2,
-      jsonMode: true,
+      purpose: "a3.draft",
+      userId,
     });
 
-    const parseResult = await parseAndValidate(llmResponse.content, NotesVaultDraftSchema);
     if (!parseResult.success) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -159,6 +156,10 @@ export const a3NotesVault = {
 
     let plan = NotesVaultDraftSchema.parse(JSON.parse(draft.planJson) as unknown);
 
+    // The hash the confirmation token is minted against. It must match whatever
+    // ends up in the `planHash` column, or apply rejects every edited plan.
+    let effectivePlanHash = draft.planHash;
+
     // Apply user edits if provided
     if (input.edits && input.edits.length > 0) {
       const updatedOperations = [...plan.operations];
@@ -173,28 +174,39 @@ export const a3NotesVault = {
           // Don't allow editing delete operations
         }
       }
-      plan = { ...plan, operations: updatedOperations };
-      
-      // Recompute plan hash for edited plan
-      const newPlanHash = crypto.createHash("sha256").update(JSON.stringify(plan)).digest("hex").slice(0, 16);
-      
+
+      // Re-hash exactly the way the draft did: `computePlanHash` over the plan
+      // *without* its own `planHash` field, then embed the result. A local
+      // `crypto.createHash(JSON.stringify(...)).slice(0, 16)` here produced a
+      // value the apply path could never reproduce, and — because the token was
+      // still minted from the stale `draft.planHash` below — every edited plan
+      // failed apply with "Plan hash mismatch".
+      const { planHash: _previous, ...edited } = {
+        ...plan,
+        operations: updatedOperations,
+      };
+      effectivePlanHash = computePlanHash(edited);
+      plan = { ...edited, planHash: effectivePlanHash };
+
       // Update the stored draft with edited plan
       await input.ctx.db
         .update(agentNotesVaultDrafts)
         .set({
           planJson: JSON.stringify(plan),
-          planHash: newPlanHash,
+          planHash: effectivePlanHash,
           updatedAt: new Date(),
         })
         .where(eq(agentNotesVaultDrafts.id, draft.id));
     }
 
     const confirmationToken =
-      draft.confirmationToken ??
+      // A token minted before an edit is bound to the pre-edit hash, so it is
+      // only reusable when the plan did not change.
+      (input.edits?.length ? null : draft.confirmationToken) ??
       mintConfirmationToken({
         userId,
         draftId: draft.id,
-        planHash: draft.planHash,
+        planHash: effectivePlanHash,
         expiresAt: Date.now() + 10 * 60 * 1000,
       });
 

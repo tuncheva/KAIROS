@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
@@ -9,9 +9,44 @@ import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligen
  * string. The tests below assert against that English copy.
  */
 
+/**
+ * Build a fake SSE response for `POST /api/ai/chat`.
+ *
+ * `events: null` leaves the stream open forever, which is how the in-flight
+ * (thinking) state is exercised.
+ */
+function mockAgentStream(events: Array<[string, unknown]> | null) {
+  return vi.fn().mockImplementation(() => {
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        if (events === null) return; // never closes
+        const encoder = new TextEncoder();
+        for (const [event, data] of events) {
+          controller.enqueue(
+            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+          );
+        }
+        controller.close();
+      },
+    });
+    return Promise.resolve(
+      new Response(body, {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      }),
+    );
+  });
+}
+
 describe("ProjectIntelligenceChat", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: a turn that never completes, so nothing races the assertions.
+    vi.stubGlobal("fetch", mockAgentStream(null));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   /* ---- Basic rendering ---- */
@@ -83,9 +118,15 @@ describe("ProjectIntelligenceChat", () => {
     expect(screen.getByText("Hello")).toBeInTheDocument();
   });
 
-  /* ---- Greeting detection ---- */
+  /* ---- Routing ---- */
 
-  it("shows greeting response for simple greetings instead of API call", async () => {
+  /**
+   * Greetings used to be answered locally from a random pick of four English
+   * strings, and any message containing "note" or "event" was routed straight to
+   * a write agent on a substring match. Every message now goes to the server,
+   * where A1 decides — which is what makes routing work in Bulgarian too.
+   */
+  it("sends greetings to the server rather than answering locally", async () => {
     const user = userEvent.setup();
     render(<ProjectIntelligenceChat />);
 
@@ -93,11 +134,57 @@ describe("ProjectIntelligenceChat", () => {
     await user.type(input, "hi");
     await user.click(screen.getByText("Send"));
 
-    // Should show user message
     expect(screen.getByText("hi")).toBeInTheDocument();
-    // Should show an agent greeting
-    const agentMessages = document.querySelectorAll(".kairos-chat-response");
-    expect(agentMessages.length).toBeGreaterThan(0);
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/ai/chat",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("sends messages mentioning notes or events through the same endpoint", async () => {
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat />);
+
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
+    await user.type(input, "what events are coming up?");
+    await user.click(screen.getByText("Send"));
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      message: "what events are coming up?",
+    });
+  });
+
+  it("renders the answer from a completed turn", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockAgentStream([
+        ["start", { conversationId: "conv_1" }],
+        [
+          "result",
+          {
+            draftId: "draft_1",
+            conversationId: "conv_1",
+            latencyMs: 10,
+            a1: {
+              intent: { type: "answer" },
+              answer: { summary: "Theatre is on track.", details: ["10 tasks"] },
+            },
+          },
+        ],
+      ]),
+    );
+
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat />);
+
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
+    await user.type(input, "status?");
+    await user.click(screen.getByText("Send"));
+
+    expect(await screen.findByText(/Theatre is on track/)).toBeInTheDocument();
   });
 
   /* ---- Thinking indicator ---- */

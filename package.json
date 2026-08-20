@@ -16,6 +16,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "lint": "eslint .",
+    "llm:probe": "dotenv -e .env -- tsx scripts/llm-probe.ts",
     "lint:fix": "eslint . --fix",
     "preview": "next build && node --import tsx server.ts",
     "start": "node --import tsx server.ts",

@@ -46,3 +46,23 @@ export const agentNotesVaultDraftStatusEnum = pgEnum(
   "agent_notes_vault_draft_status",
   ["draft", "confirmed", "applied", "expired"] as const,
 );
+export const agentEventsPublisherDraftStatusEnum = pgEnum(
+  "agent_events_publisher_draft_status",
+  ["draft", "confirmed", "applied", "expired"] as const,
+);
+
+/**
+ * Roles an AI message can have.
+ *
+ * `system` is here because the type already existed in the database from an
+ * earlier, abandoned AI schema — attached to no column, but with this shape.
+ * Declaring three values while the type had four would have shown up as drift on
+ * every `db:generate`, so the schema matches what is actually there. Nothing
+ * writes `system`: system prompts are rebuilt per turn, not stored.
+ */
+export const aiMessageRoleEnum = pgEnum("ai_message_role", [
+  "user",
+  "assistant",
+  "tool",
+  "system",
+] as const);

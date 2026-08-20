@@ -50,15 +50,7 @@ export function Hero({ onSignIn, ready }: { onSignIn: () => void; ready: boolean
             ref={rootRef}
             className="relative mx-auto flex w-full max-w-[1280px] flex-col justify-center px-6 pt-[120px] pb-[90px] lg:min-h-[720px] lg:px-12"
         >
-            <div
-                data-hero-up
-                className="inline-flex translate-y-11 self-start items-center gap-2.5 rounded-full border border-accent-primary/30 bg-accent-primary/[0.09] px-4 py-[7px] font-mono text-[11px] uppercase tracking-[0.2em] text-accent-secondary opacity-0 blur-[8px]"
-            >
-                <span className="h-[5px] w-[5px] rounded-full bg-accent-primary" />
-                {t("heroTagline")}
-            </div>
-
-            <h1 className="mt-[34px] max-w-[1174px] font-display text-[clamp(3rem,9.4vw,8rem)] leading-[0.92] font-normal tracking-[-0.02em] text-fg-primary">
+            <h1 className="max-w-[1174px] font-display text-[clamp(3rem,9.4vw,8rem)] leading-[0.92] font-normal tracking-[-0.02em] text-fg-primary">
                 <span data-hero-line className="block overflow-hidden">
                     <span className="block translate-y-[110%]">{t("heroLine1")}</span>
                 </span>

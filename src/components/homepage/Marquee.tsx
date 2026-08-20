@@ -2,42 +2,43 @@
 
 import { useTranslations } from "next-intl";
 
-const DOT = <span className="text-accent-primary">·</span>;
-
 /**
+ * Statement marquee — one phrase, set in the display face, drifting on a
+ * continuous 30s loop rather than anything scroll-linked.
+ *
  * The track is exactly two identical halves, so translating it -50% lands on a
- * seam that is invisible. Each half repeats the phrase twice to overrun a wide
- * viewport.
+ * seam that is invisible. Each half repeats the phrase three times to overrun a
+ * wide viewport; only the first repeat carries the accent, so the colour reads
+ * as a beat in the loop rather than a pattern.
+ *
+ * Under reduced motion the track holds still (see `.k-marquee-track` in
+ * `globals.css`) — the phrase is still legible, it just does not travel.
  */
 export function Marquee() {
     const t = useTranslations("home");
 
     const half = (
-        <div className="flex items-center gap-10 pr-10 font-display text-[34px] whitespace-nowrap text-[rgb(120,120,134)]">
-            {[0, 1].map((i) => (
-                <div key={i} className="flex items-center gap-10">
-                    <span>{t("marqueePlan")}</span>
-                    {DOT}
-                    <span>{t("marqueeCollaborate")}</span>
-                    {DOT}
-                    <span>{t("marqueePublish")}</span>
-                    {DOT}
-                    <span className="italic text-accent-tertiary">{t("marqueeTiming")}</span>
-                    {DOT}
-                </div>
+        <span className="flex items-center gap-16 pr-16 font-display text-[clamp(1.75rem,3.4vw,2.5rem)] leading-[1.05] whitespace-nowrap text-[rgb(196,196,208)]">
+            {[0, 1, 2].map((i) => (
+                <span key={i}>
+                    {t("marqueeLead")}{" "}
+                    <em className={`italic ${i === 0 ? "text-accent-primary" : ""}`}>
+                        {t("marqueeAccent")}
+                    </em>
+                </span>
             ))}
-        </div>
+        </span>
     );
 
     return (
-        <div
+        <section
             aria-hidden="true"
-            className="overflow-hidden border-y border-white/[0.07] bg-accent-primary/[0.04] py-[22px]"
+            className="overflow-hidden border-y border-white/[0.08] pt-11 pb-[46px]"
         >
             <div className="k-marquee-track">
                 {half}
                 {half}
             </div>
-        </div>
+        </section>
     );
 }

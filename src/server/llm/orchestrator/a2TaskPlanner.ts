@@ -10,6 +10,7 @@
 import {
   TRPCError,
 } from "@trpc/server";
+import crypto from "node:crypto";
 import {
   eq,
   and,
@@ -25,6 +26,7 @@ import {
 
 import {
   TaskPlanDraftSchema,
+  TaskPlanModelOutputSchema,
   type TaskPlanDraft,
 } from "~/server/llm/schemas/a2TaskPlannerSchemas";
 
@@ -37,14 +39,14 @@ import {
 } from "~/server/llm/prompts/a2Prompts";
 
 import {
-  chatCompletion,
-} from "~/server/llm/core/modelClient";
+  A1_READ_TOOLS,
+} from "~/server/llm/tools/a1/readTools";
+
 import {
-  parseAndValidate,
+  completeJson,
 } from "~/server/llm/core/jsonRepair";
 
 import {
-  projects,
   tasks,
   taskActivityLog,
   agentTaskPlannerDrafts,
@@ -84,10 +86,14 @@ export const a2TaskPlanner = {
     }
 
     if (!resolvedProjectId && requestedName) {
-      const userProjects = await input.ctx.db
-        .select({ id: projects.id, title: projects.title })
-        .from(projects)
-        .where(eq(projects.createdById, userId));
+      // Every project the caller can reach, not just the ones they created.
+      // Filtering on `createdById` made A2 blind to org and collaborator
+      // projects — so A1, whose `listProjects` sees them, would hand off a
+      // shared project by name and A2 would answer "which project?" forever.
+      // Reusing the tool keeps the two agents on one definition of visibility.
+      const userProjects = await A1_READ_TOOLS.listProjects.execute(input.ctx, {
+        limit: 50,
+      });
 
       const norm = (s: string) => s.trim().toLowerCase();
       // Exact match first
@@ -144,16 +150,17 @@ export const a2TaskPlanner = {
 
     const systemPrompt = getA2SystemPrompt(contextPack);
 
-    const llmResponse = await chatCompletion({
+    const parseResult = await completeJson({
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: input.message },
       ],
+      schema: TaskPlanModelOutputSchema,
       temperature: 0.2,
-      jsonMode: true,
+      purpose: "a2.draft",
+      userId,
     });
 
-    const parseResult = await parseAndValidate(llmResponse.content, TaskPlanDraftSchema);
     if (!parseResult.success) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -161,8 +168,23 @@ export const a2TaskPlanner = {
       });
     }
 
-    const planHash = computePlanHash(parseResult.data);
-    const plan: TaskPlanDraft = { ...parseResult.data, planHash };
+    // Everything the model must not be trusted to produce is filled in here:
+    // the project the plan applies to (already resolved and authorized above)
+    // and one idempotency key per created task.
+    const draftPlan: TaskPlanDraft = {
+      ...parseResult.data,
+      scope: {
+        orgId: input.scope?.orgId,
+        projectId: resolvedProjectId,
+      },
+      creates: parseResult.data.creates.map((c) => ({
+        ...c,
+        clientRequestId: crypto.randomUUID(),
+      })),
+    };
+
+    const planHash = computePlanHash(draftPlan);
+    const plan: TaskPlanDraft = { ...draftPlan, planHash };
 
     // Check if the plan has actual operations that require a project
     const hasOperations =

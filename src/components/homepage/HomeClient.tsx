@@ -7,7 +7,7 @@ import { LandingIntro } from "~/components/homepage/LandingIntro";
 import { SiteHeader } from "~/components/homepage/SiteHeader";
 import { Hero } from "~/components/homepage/Hero";
 import { Marquee } from "~/components/homepage/Marquee";
-import { WorkspacesPinned } from "~/components/homepage/WorkspacesPinned";
+import { Workspaces } from "~/components/homepage/Workspaces";
 import { ProductStrip } from "~/components/homepage/ProductStrip";
 import { HowItWorks } from "~/components/homepage/HowItWorks";
 import { WhyTeams } from "~/components/homepage/WhyTeams";
@@ -16,6 +16,7 @@ import { Testimonial } from "~/components/homepage/Testimonial";
 import { FinalCta } from "~/components/homepage/FinalCta";
 import { SiteFooter } from "~/components/homepage/SiteFooter";
 import { useLandingReveals } from "~/components/homepage/useLandingReveals";
+import { useSmoothAnchors } from "~/components/homepage/useSmoothAnchors";
 
 /**
  * Pre-auth landing page. Composition only — each section owns its own markup
@@ -34,6 +35,7 @@ export function HomeClient() {
     }, [setTheme]);
 
     useLandingReveals(rootRef);
+    useSmoothAnchors(rootRef);
 
     const openModal = useCallback(() => setIsModalOpen(true), []);
     const handleIntroClear = useCallback(() => setIntroCleared(true), []);
@@ -68,7 +70,7 @@ export function HomeClient() {
                 <SiteHeader onSignIn={openModal} />
                 <Hero onSignIn={openModal} ready={introCleared} />
                 <Marquee />
-                <WorkspacesPinned />
+                <Workspaces />
                 <ProductStrip />
                 <HowItWorks />
                 <WhyTeams />

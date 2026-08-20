@@ -9,19 +9,12 @@ const mockContext: A1ContextPack = {
     name: "Alice",
     activeOrganizationId: 1,
   },
-  projects: [
-    { id: 1, title: "Project Alpha", description: "First project", status: "active" },
-  ],
-  tasks: [
-    { id: 1, projectId: 1, title: "Fix bug", status: "todo", priority: "high", dueDate: null },
-  ],
-  notifications: [
-    { id: 1, type: "info", title: "Welcome", message: "Hello!", read: false },
-  ],
+  projects: [{ id: 1, title: "Project Alpha", status: "active" }],
+  scopedProjectId: null,
   now: new Date().toISOString(),
 };
 
-describe("A1 System Prompt — enhanced", () => {
+describe("A1 System Prompt", () => {
   it("returns a non-empty string", () => {
     const prompt = getA1SystemPrompt(mockContext);
     expect(typeof prompt).toBe("string");
@@ -33,34 +26,54 @@ describe("A1 System Prompt — enhanced", () => {
     expect(prompt.toLowerCase()).toContain("concierge");
   });
 
-  it("includes warm / friendly tone guidance", () => {
-    const prompt = getA1SystemPrompt(mockContext);
-    expect(prompt.toLowerCase()).toContain("warm");
-  });
-
-  it("includes response formatting section", () => {
-    const prompt = getA1SystemPrompt(mockContext);
-    expect(prompt.toLowerCase()).toContain("formatting");
-  });
-
-  it("includes prioritize guidance", () => {
-    const prompt = getA1SystemPrompt(mockContext);
-    expect(prompt.toLowerCase()).toContain("prioriti");
-  });
-
-  it("includes project context", () => {
+  it("seeds the project list so the model can resolve ids", () => {
     const prompt = getA1SystemPrompt(mockContext);
     expect(prompt).toContain("Project Alpha");
+    expect(prompt).toContain('"id": 1');
   });
 
-  it("handles empty arrays gracefully", () => {
-    const empty: A1ContextPack = {
-      ...mockContext,
-      projects: [],
-      tasks: [],
-      notifications: [],
-    };
-    const prompt = getA1SystemPrompt(empty);
+  it("tells the model to fetch rather than guess", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    expect(prompt).toContain("only see what you fetch");
+    expect(prompt).toContain("getProjectDetail");
+  });
+
+  it("names a handoff target for each write agent", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    for (const agent of ["task_planner", "notes_vault", "events_publisher"]) {
+      expect(prompt).toContain(agent);
+    }
+  });
+
+  it("states the scope guard and the language rule", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    expect(prompt).toContain(
+      "Sorry, I am not designed for these type of questions.",
+    );
+    expect(prompt).toContain("English or Bulgarian");
+  });
+
+  /**
+   * The workspace snapshot used to be pasted into the prompt on every turn, so
+   * the prefix changed with the data and could never be cached. Tools replaced
+   * it; a task list reappearing here means that regressed.
+   */
+  it("does not embed task or notification data", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    expect(prompt).not.toContain('"tasks"');
+    expect(prompt).not.toContain('"notifications"');
+  });
+
+  it("points at the scoped project when the UI has one open", () => {
+    const scoped = getA1SystemPrompt({ ...mockContext, scopedProjectId: 7 });
+    expect(scoped).toContain("currently viewing project 7");
+
+    const unscoped = getA1SystemPrompt(mockContext);
+    expect(unscoped).toContain("No project is currently in view");
+  });
+
+  it("handles an empty workspace gracefully", () => {
+    const prompt = getA1SystemPrompt({ ...mockContext, projects: [] });
     expect(typeof prompt).toBe("string");
     expect(prompt.length).toBeGreaterThan(50);
   });

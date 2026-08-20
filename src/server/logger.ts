@@ -75,8 +75,29 @@ const SENSITIVE_KEY_PATTERNS = [
 
 const REDACTED = "[redacted]";
 
+/**
+ * Exact key names that survive the pattern match above.
+ *
+ * `token` is in the sensitive list to catch auth material, which also caught
+ * every LLM usage metric — `promptTokens` and friends came out as `[redacted]`,
+ * making the model client's cost and latency logging useless. These are counts,
+ * not credentials, and they are the whole point of that log line.
+ */
+const METRIC_KEY_ALLOWLIST = new Set([
+  "prompttokens",
+  "completiontokens",
+  "totaltokens",
+  "cachedprompttokens",
+  "prompt_tokens",
+  "completion_tokens",
+  "total_tokens",
+  "maxtokens",
+  "max_tokens",
+]);
+
 function isSensitiveKey(key: string): boolean {
   const lower = key.toLowerCase();
+  if (METRIC_KEY_ALLOWLIST.has(lower)) return false;
   return SENSITIVE_KEY_PATTERNS.some((pattern) => lower.includes(pattern));
 }
 

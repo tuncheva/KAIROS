@@ -43,6 +43,20 @@
       "when": 1787097604000,
       "tag": "0024_narrow_language_enum",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787218060489,
+      "tag": "0025_agent_events_publisher_drafts",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787218869190,
+      "tag": "0026_ai_conversations",
+      "breakpoints": true
     }
   ]
 }

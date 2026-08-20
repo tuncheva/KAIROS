@@ -28,10 +28,7 @@ import {
   getA4SystemPrompt,
 } from "~/server/llm/prompts/a4Prompts";
 import {
-  chatCompletion,
-} from "~/server/llm/core/modelClient";
-import {
-  parseAndValidate,
+  completeJson,
 } from "~/server/llm/core/jsonRepair";
 
 import {
@@ -39,6 +36,8 @@ import {
   eventComments,
   eventLikes,
   eventRsvps,
+  agentEventsPublisherDrafts,
+  agentEventsPublisherApplies,
 } from "~/server/db/schema";
 import {
   createDraftId,
@@ -47,17 +46,37 @@ import {
   mintConfirmationToken,
   readConfirmationToken,
 } from "./shared";
+
 /**
- * In-memory draft store for A4.
+ * Load a draft and assert it belongs to the caller.
  *
- * Unlike the task planner, event drafts are not persisted — they live only until
- * confirm/apply, so a process restart discards them. Moved here with the agent that
- * owns it; nothing else ever read it.
+ * Drafts used to live in a module-level `Map`, so they vanished on restart and
+ * were invisible to every other instance. They are rows now, like A2's and A3's.
  */
-const a4DraftStore = new Map<
-  string,
-  { userId: string; plan: EventsPublisherDraft }
->();
+async function loadDraft(ctx: TRPCContext, draftId: string, userId: string) {
+  const [draft] = await ctx.db
+    .select({
+      id: agentEventsPublisherDrafts.id,
+      userId: agentEventsPublisherDrafts.userId,
+      planJson: agentEventsPublisherDrafts.planJson,
+      planHash: agentEventsPublisherDrafts.planHash,
+      status: agentEventsPublisherDrafts.status,
+      confirmationToken: agentEventsPublisherDrafts.confirmationToken,
+    })
+    .from(agentEventsPublisherDrafts)
+    .where(eq(agentEventsPublisherDrafts.id, draftId))
+    .limit(1);
+
+  if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+  if (draft.userId !== userId) throw new TRPCError({ code: "FORBIDDEN" });
+  return draft;
+}
+
+/** Hash a plan the same way `notesVaultDraft` does: over the plan minus its own hash. */
+function hashPlan(plan: EventsPublisherDraft): string {
+  const { planHash: _embedded, ...rest } = plan;
+  return computePlanHash(rest);
+}
 
 export const a4EventsPublisher = {
   async eventsPublisherDraft(input: {
@@ -71,19 +90,17 @@ export const a4EventsPublisher = {
     const contextPack = await buildA4Context({ ctx: input.ctx });
     const systemPrompt = getA4SystemPrompt(contextPack);
 
-    const llmResponse = await chatCompletion({
+    const parseResult = await completeJson({
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: input.message },
       ],
+      schema: EventsPublisherDraftSchema,
       temperature: 0.2,
-      jsonMode: true,
+      purpose: "a4.draft",
+      userId,
     });
 
-    const parseResult = await parseAndValidate(
-      llmResponse.content,
-      EventsPublisherDraftSchema,
-    );
     if (!parseResult.success) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -105,12 +122,19 @@ export const a4EventsPublisher = {
       ),
     };
 
-    guardedPlan.planHash = computePlanHash(guardedPlan);
+    const planHash = hashPlan(guardedPlan);
+    const plan: EventsPublisherDraft = { ...guardedPlan, planHash };
 
-    // Persist draft in memory (could be DB-backed like A2/A3)
-    a4DraftStore.set(draftId, { userId, plan: guardedPlan });
+    await input.ctx.db.insert(agentEventsPublisherDrafts).values({
+      id: draftId,
+      userId,
+      message: input.message,
+      planJson: JSON.stringify(plan),
+      planHash,
+      status: "draft",
+    });
 
-    return { draftId, plan: guardedPlan };
+    return { draftId, plan };
   },
 
   async eventsPublisherConfirm(input: {
@@ -130,12 +154,18 @@ export const a4EventsPublisher = {
     };
   }> {
     const userId = requireUserId(input.ctx);
-    const stored = a4DraftStore.get(input.draftId);
-    if (stored?.userId !== userId) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+    const draft = await loadDraft(input.ctx, input.draftId, userId);
+
+    if (draft.status === "applied" || draft.status === "expired") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Draft is not confirmable (status=${draft.status})`,
+      });
     }
 
-    let plan = stored.plan;
+    let plan = EventsPublisherDraftSchema.parse(
+      JSON.parse(draft.planJson) as unknown,
+    );
 
     // Apply user edits if provided
     if (input.edits && input.edits.length > 0) {
@@ -174,17 +204,31 @@ export const a4EventsPublisher = {
       }
       
       plan = { ...plan, creates: updatedCreates, updates: updatedUpdates };
-      // Update stored plan
-      a4DraftStore.set(input.draftId, { ...stored, plan });
     }
 
-    const planHash = computePlanHash(plan);
+    // Recomputed after edits so the token, the stored row and the plan always
+    // agree — apply compares all three and refuses on any divergence.
+    const planHash = hashPlan(plan);
+    plan = { ...plan, planHash };
+
     const token = mintConfirmationToken({
       userId,
       draftId: input.draftId,
       planHash,
       expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
     });
+
+    await input.ctx.db
+      .update(agentEventsPublisherDrafts)
+      .set({
+        planJson: JSON.stringify(plan),
+        planHash,
+        status: "confirmed",
+        confirmationToken: token,
+        confirmedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(agentEventsPublisherDrafts.id, input.draftId));
 
     return {
       confirmationToken: token,
@@ -218,14 +262,24 @@ export const a4EventsPublisher = {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Confirmation token expired" });
     }
 
-    const stored = a4DraftStore.get(input.draftId);
-    if (stored?.userId !== userId) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+    const draft = await loadDraft(input.ctx, input.draftId, userId);
+    if (draft.status !== "confirmed") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Draft is not applicable (status=${draft.status})`,
+      });
+    }
+    if (draft.planHash !== tokenPayload.planHash) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Plan was modified after confirmation" });
+    }
+    if (draft.confirmationToken !== input.confirmationToken) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Confirmation token mismatch" });
     }
 
-    const plan = stored.plan;
-    const currentHash = computePlanHash(plan);
-    if (currentHash !== tokenPayload.planHash) {
+    const plan = EventsPublisherDraftSchema.parse(
+      JSON.parse(draft.planJson) as unknown,
+    );
+    if (hashPlan(plan) !== draft.planHash) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Plan was modified after confirmation" });
     }
 
@@ -260,8 +314,14 @@ export const a4EventsPublisher = {
     }
 
     // Updates
+    //
+    // Every mutation below is scoped by `createdById` as well as by id. Draft
+    // time filtered these against the 30-event context pack, but that is a
+    // relevance filter, not an authorization boundary: it runs before the plan
+    // round-trips through storage, and it only ever saw a slice of the table.
+    // A2 re-checks permissions at apply time for the same reason.
     for (const update of plan.updates) {
-      await db
+      const patched = await db
         .update(eventsTable)
         .set({
           ...(update.patch.title !== undefined && { title: update.patch.title }),
@@ -271,14 +331,25 @@ export const a4EventsPublisher = {
           ...(update.patch.enableRsvp !== undefined && { enableRsvp: update.patch.enableRsvp }),
           ...(update.patch.sendReminders !== undefined && { sendReminders: update.patch.sendReminders }),
         })
-        .where(eq(eventsTable.id, update.eventId));
-      results.updatedEventIds.push(update.eventId);
+        .where(
+          and(
+            eq(eventsTable.id, update.eventId),
+            eq(eventsTable.createdById, userId),
+          ),
+        )
+        .returning({ id: eventsTable.id });
+      if (patched[0]) results.updatedEventIds.push(update.eventId);
     }
 
     // Deletes
     for (const del of plan.deletes) {
-      await db.delete(eventsTable).where(eq(eventsTable.id, del.eventId));
-      results.deletedEventIds.push(del.eventId);
+      const removed = await db
+        .delete(eventsTable)
+        .where(
+          and(eq(eventsTable.id, del.eventId), eq(eventsTable.createdById, userId)),
+        )
+        .returning({ id: eventsTable.id });
+      if (removed[0]) results.deletedEventIds.push(del.eventId);
     }
 
     // Comments add
@@ -292,9 +363,21 @@ export const a4EventsPublisher = {
     }
 
     // Comments remove
+    //
+    // Scoped to the caller's own comments. Deleting by id alone let any user
+    // remove anybody's comment simply by naming its id — the model was never
+    // required to justify the target, and nothing downstream checked.
     for (const comment of plan.comments.remove) {
-      await db.delete(eventComments).where(eq(eventComments.id, comment.commentId));
-      results.commentsRemoved++;
+      const removed = await db
+        .delete(eventComments)
+        .where(
+          and(
+            eq(eventComments.id, comment.commentId),
+            eq(eventComments.createdById, userId),
+          ),
+        )
+        .returning({ id: eventComments.id });
+      if (removed[0]) results.commentsRemoved++;
     }
 
     // RSVPs
@@ -340,8 +423,17 @@ export const a4EventsPublisher = {
       results.likesToggled++;
     }
 
-    // Cleanup draft
-    a4DraftStore.delete(input.draftId);
+    await db.insert(agentEventsPublisherApplies).values({
+      draftId: draft.id,
+      userId,
+      planHash: draft.planHash,
+      resultJson: JSON.stringify(results),
+    });
+
+    await db
+      .update(agentEventsPublisherDrafts)
+      .set({ status: "applied", appliedAt: new Date(), updatedAt: new Date() })
+      .where(eq(agentEventsPublisherDrafts.id, draft.id));
 
     return { applied: true as const, results };
   },

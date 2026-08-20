@@ -28,13 +28,6 @@ import {
   type A1Output,
 } from "~/server/llm/schemas/a1WorkspaceConciergeSchemas";
 import {
-  type TaskPlanDraft,
-} from "~/server/llm/schemas/a2TaskPlannerSchemas";
-import {
-  type NotesVaultDraft,
-} from "~/server/llm/schemas/a3NotesVaultSchemas";
-
-import {
   createLogger,
 } from "~/server/logger";
 
@@ -56,11 +49,20 @@ export interface AgentDraftInput {
     projectId?: string | number;
   };
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>;
+  /** Cancels the upstream model call when the client disconnects. */
+  signal?: AbortSignal;
+  /** Fires as each tool starts, so a streaming caller can show real progress. */
+  onToolCall?: (name: string) => void;
 }
 
 export interface AgentDraftResult {
   draftId: string;
-  outputJson: A1Output | TaskPlanDraft | NotesVaultDraft;
+  /**
+   * Always A1's output. It used to be a union with the A2 and A3 plan types,
+   * because this entry point also ran a duplicate task planner; that branch was
+   * unreachable and is gone, so callers no longer have to narrow.
+   */
+  outputJson: A1Output;
 }
 
 export interface TaskDraftInput {

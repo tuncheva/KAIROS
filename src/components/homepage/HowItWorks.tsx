@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { ArrowUpRight } from "lucide-react";
 
 const STEPS = [
     { n: "01", titleKey: "howOpenTitle", bodyKey: "howOpenBody" },
@@ -9,8 +10,8 @@ const STEPS = [
 ] as const;
 
 /**
- * Three columns split by hairline verticals. Below `lg` the verticals become
- * horizontals — the same rule, rotated with the stack.
+ * Three solid blocks separated by a hairline gap rather than borders, each
+ * carrying the same accent wipe as the workspace cards above.
  */
 export function HowItWorks() {
     const t = useTranslations("home");
@@ -20,26 +21,28 @@ export function HowItWorks() {
             <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent-primary">
                 {t("howLabel")}
             </div>
-            <div className="mt-11 grid grid-cols-1 border-t border-white/10 lg:grid-cols-3">
-                {STEPS.map((step, i) => (
+            <div className="mt-11 grid grid-cols-1 gap-px lg:grid-cols-3">
+                {STEPS.map((step) => (
                     <div
                         key={step.n}
-                        data-reveal
-                        className={[
-                            "border-b border-white/10 py-9 lg:border-b-0",
-                            i < STEPS.length - 1 ? "lg:border-r lg:border-white/10" : "",
-                            i === 0 ? "lg:pr-8" : i === STEPS.length - 1 ? "lg:pl-8" : "lg:px-8",
-                        ].join(" ")}
+                        className="k-block flex min-h-[300px] flex-col justify-between bg-[#0c0c12] px-8 pt-9 pb-9"
                     >
-                        <div className="font-display text-[60px] leading-none text-accent-primary/50">
-                            {step.n}
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="k-step-num font-display text-[72px] leading-none text-white/30">
+                                {step.n}
+                            </div>
+                            <span className="k-card-arrow shrink-0" aria-hidden="true">
+                                <ArrowUpRight size={22} strokeWidth={1.5} />
+                            </span>
                         </div>
-                        <h3 className="mt-5 mb-2.5 text-[21px] font-bold text-fg-primary">
-                            {t(step.titleKey)}
-                        </h3>
-                        <p className="text-base leading-[1.7] text-[rgb(170,170,182)]">
-                            {t(step.bodyKey)}
-                        </p>
+                        <div>
+                            <h3 className="mb-2.5 text-[21px] font-bold text-fg-primary">
+                                {t(step.titleKey)}
+                            </h3>
+                            <p className="k-step-body text-base leading-[1.7] text-[rgb(178,178,190)]">
+                                {t(step.bodyKey)}
+                            </p>
+                        </div>
                     </div>
                 ))}
             </div>

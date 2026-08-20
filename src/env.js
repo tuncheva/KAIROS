@@ -30,12 +30,18 @@ export const env = createEnv({
     AUTH_MICROSOFT_ID: z.string().optional(),
     AUTH_MICROSOFT_SECRET: z.string().optional(),
 
-    // LLM Agent System (OpenAI-compatible — can point to HuggingFace, OpenAI, etc.)
+    // LLM Agent System (any OpenAI-compatible /chat/completions endpoint).
+    //
+    // Optional so the app still boots with the AI disabled, but every agent
+    // call fails without LLM_API_KEY — the model client logs a warning at
+    // startup rather than letting that surface as a vague chat error.
     LLM_BASE_URL: z.string().url().optional(),
     LLM_API_KEY: z.string().optional(),
-    LLM_DEFAULT_MODEL: z.string().optional(),
+    LLM_MODEL: z.string().optional(),
+    /** Only tried when the primary model fails retriably. Empty = no fallback. */
     LLM_FALLBACK_MODEL: z.string().optional(),
-    LLM_ALTERNATE_MODEL: z.string().optional(),
+    /** AI requests per user per rolling 24h window. */
+    AI_RATE_LIMIT: z.coerce.number().int().positive().default(50),
 
     // Email (Resend)
     RESEND_API_KEY: z.string().optional(),
@@ -71,9 +77,9 @@ export const env = createEnv({
 
     LLM_BASE_URL: process.env.LLM_BASE_URL,
     LLM_API_KEY: process.env.LLM_API_KEY,
-    LLM_DEFAULT_MODEL: process.env.LLM_DEFAULT_MODEL,
+    LLM_MODEL: process.env.LLM_MODEL,
     LLM_FALLBACK_MODEL: process.env.LLM_FALLBACK_MODEL,
-    LLM_ALTERNATE_MODEL: process.env.LLM_ALTERNATE_MODEL,
+    AI_RATE_LIMIT: process.env.AI_RATE_LIMIT,
 
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,

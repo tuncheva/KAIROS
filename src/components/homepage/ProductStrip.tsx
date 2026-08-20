@@ -40,10 +40,28 @@ export function ProductStrip() {
                     invalidateOnRefresh: true,
                 },
             });
+            // Alternate frames drift against the horizontal travel, so the row
+            // reads as depth rather than one rigid strip.
+            const figures = gsap.utils.toArray<HTMLElement>(track.children);
+            const drift = gsap.to(figures, {
+                y: (i: number) => (i % 2 === 0 ? 22 : -22),
+                ease: "none",
+                scrollTrigger: {
+                    trigger: section,
+                    start: "top bottom",
+                    end: "bottom top",
+                    scrub: true,
+                    invalidateOnRefresh: true,
+                },
+            });
+
             return () => {
                 tween.scrollTrigger?.kill();
                 tween.kill();
+                drift.scrollTrigger?.kill();
+                drift.kill();
                 gsap.set(track, { x: 0 });
+                gsap.set(figures, { y: 0 });
             };
         });
 
@@ -90,6 +108,10 @@ export function ProductStrip() {
                     ))}
                 </div>
             </div>
+
+            <p className="mx-auto mt-[22px] w-full max-w-[1280px] px-6 font-mono text-[11px] text-[rgb(95,95,108)] lg:px-12">
+                {t("stripPlaceholderNote")}
+            </p>
         </section>
     );
 }
