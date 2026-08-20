@@ -4,14 +4,14 @@ import { users, passwordResetCodes } from "~/server/db/schema";
 import { eq, and, gt } from "drizzle-orm";
 import * as argon2 from "argon2";
 import { TRPCError } from "@trpc/server";
-import { sendWelcomeEmail, sendPasswordResetCode, sendEmailVerification } from "~/server/email";
+import { sendWelcomeEmail, sendPasswordResetCode, sendEmailVerification } from "~/server/email/email";
 import {
   consumeVerificationToken,
   issueVerificationToken,
-} from "~/server/emailVerification";
+} from "~/server/email/emailVerification";
 import crypto from "node:crypto";
-import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/authRateLimit";
-import { getClientIp } from "~/server/clientIp";
+import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/security/authRateLimit";
+import { getClientIp } from "~/server/http/clientIp";
 import { createLogger } from "~/server/logger";
 
 const log = createLogger("auth.router");

@@ -16,7 +16,7 @@ import { SocketProvider } from "~/components/providers/SocketProvider";
 import WebSocketInitializer from "~/components/layout/WebSocketInitializer";
 import { GlobalAIWidget } from "~/components/layout/GlobalAIWidget";
 import { headers } from "next/headers";
-import { THEME_INIT_SCRIPT } from "~/server/themeInitScript";
+import { THEME_INIT_SCRIPT } from "~/server/http/themeInitScript";
 
 export const metadata: Metadata = {
   title: "KAIROS",
@@ -71,7 +71,7 @@ export default async function RootLayout({
       <head>
         {/* Applies the saved theme before first paint. Allowed by hash rather
             than nonce; the script text and its hash live together in
-            `~/server/themeInitScript` with a test keeping them in step. */}
+            `~/server/http/themeInitScript` with a test keeping them in step. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="min-h-dvh bg-bg-primary text-fg-primary font-sans antialiased" suppressHydrationWarning>

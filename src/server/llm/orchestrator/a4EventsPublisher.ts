@@ -29,10 +29,10 @@ import {
 } from "~/server/llm/prompts/a4Prompts";
 import {
   chatCompletion,
-} from "~/server/llm/llm/modelClient";
+} from "~/server/llm/core/modelClient";
 import {
   parseAndValidate,
-} from "~/server/llm/llm/jsonRepair";
+} from "~/server/llm/core/jsonRepair";
 
 import {
   events as eventsTable,

@@ -8,7 +8,7 @@ import { inArray } from "drizzle-orm";
 import {
   ACCOUNT_SWITCH_COOKIE,
   decodeAccountSwitchCookie,
-} from "~/server/accountSwitch";
+} from "~/server/security/accountSwitch";
 
 export async function GET() {
   if (!env.AUTH_SECRET) {

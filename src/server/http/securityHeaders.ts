@@ -8,10 +8,10 @@
  *
  * Split across two mechanisms for a reason:
  *
- *  - The headers with no per-request component are static, and live in
- *    `config/next.config.js` via `staticSecurityHeaders()`.
+ *  - The headers with no per-request component are static, and are applied
+ *    in `src/proxy.ts` via `staticSecurityHeaders()`.
  *  - The CSP needs a fresh nonce per response, so it is built in the proxy
- *    (`src/proxy.ts`), which is the only place that sees each request.
+ *    (`src/proxy.ts`) too — the only place that sees each request.
  *
  ## Enforced, with a rollback switch
  *
@@ -27,7 +27,7 @@
  *  1. The inline theme script was given the per-response nonce. That produced both
  *     a CSP violation and a React hydration mismatch (`nonce="…"` server,
  *     `nonce=""` client), because React does not carry `nonce` into the client
- *     tree. It is allowed by hash now — see `~/server/themeInitScript`.
+ *     tree. It is allowed by hash now — see `~/server/http/themeInitScript`.
  *  2. `next-themes` injects a *second* inline script that nothing had accounted
  *     for. It takes a `nonce` prop, now threaded through `ThemeProvider`.
  *
@@ -40,7 +40,7 @@
  * source it names.
  */
 
-import { THEME_INIT_SCRIPT_SHA256 } from "~/server/themeInitScript";
+import { THEME_INIT_SCRIPT_SHA256 } from "~/server/http/themeInitScript";
 
 /** Origins the browser genuinely needs to reach, by directive. */
 const ALLOWLIST = {
@@ -137,7 +137,7 @@ export function contentSecurityPolicy(nonce: string): string {
       `'nonce-${nonce}'`,
       // The theme-flash script is static and allowed by hash instead. A nonce on it
       // caused both a CSP violation and a React hydration mismatch, because React
-      // does not carry `nonce` into the client tree — see `~/server/themeInitScript`.
+      // does not carry `nonce` into the client tree — see `~/server/http/themeInitScript`.
       THEME_INIT_SCRIPT_SHA256,
       "'strict-dynamic'",
       ...ALLOWLIST.maps,

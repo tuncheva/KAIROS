@@ -4,7 +4,7 @@ import {
   contentSecurityPolicy,
   cspHeaderName,
   staticSecurityHeaders,
-} from "~/server/securityHeaders";
+} from "~/server/http/securityHeaders";
 
 /**
  * Centralized Next.js proxy for route protection and security headers.
@@ -19,7 +19,7 @@ import {
  *
  * Every response leaves here with the security headers attached — including
  * redirects, so a browser following one still gets the framing and transport
- * rules. See `~/server/securityHeaders` for what is set and why the CSP starts in
+ * rules. See `~/server/http/securityHeaders` for what is set and why the CSP starts in
  * report-only mode.
  */
 

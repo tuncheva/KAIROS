@@ -5,19 +5,19 @@ import {
   THEME_INIT_SCRIPT,
   THEME_INIT_SCRIPT_HASH,
   THEME_INIT_SCRIPT_SHA256,
-} from "~/server/themeInitScript";
+} from "~/server/http/themeInitScript";
 import {
   contentSecurityPolicy,
   cspHeaderName,
   isCspEnforced,
   staticSecurityHeaders,
-} from "~/server/securityHeaders";
+} from "~/server/http/securityHeaders";
 
 /**
  * Tests for the Content-Security-Policy.
  *
  * The hash test is the important one: the inline theme script is allowed by hash
- * rather than nonce (see `~/server/themeInitScript` for why), and a hash that has
+ * rather than nonce (see `~/server/http/themeInitScript` for why), and a hash that has
  * drifted from the script silently blocks it. This recomputes the pair, and fails
  * with the value to paste in.
  */

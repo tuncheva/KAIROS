@@ -26,10 +26,10 @@ import {
 
 import {
   chatCompletion,
-} from "~/server/llm/llm/modelClient";
+} from "~/server/llm/core/modelClient";
 import {
   parseAndValidate,
-} from "~/server/llm/llm/jsonRepair";
+} from "~/server/llm/core/jsonRepair";
 import {
   extractTextFromPdf,
 } from "~/server/llm/pdf/pdfExtractor";

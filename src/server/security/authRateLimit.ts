@@ -6,7 +6,7 @@
  * so signup, password-reset requests, code verification and sign-in each get
  * their own budget.
  *
- * State lives in `~/server/slidingWindow`, which is Redis-backed when
+ * State lives in `~/server/security/slidingWindow`, which is Redis-backed when
  * `REDIS_NATIVE_URL` is set. It used to be a module-level `Map`: with more than
  * one app instance the effective limit multiplied by instance count, and every
  * deploy handed attackers a fresh budget.
@@ -14,7 +14,7 @@
 
 import { TRPCError } from "@trpc/server";
 
-import { clearWindow, readWindow, recordHit } from "~/server/slidingWindow";
+import { clearWindow, readWindow, recordHit } from "~/server/security/slidingWindow";
 
 // ---------------------------------------------------------------------------
 // Configuration

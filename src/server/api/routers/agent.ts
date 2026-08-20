@@ -21,7 +21,7 @@ import {
   EventsPublisherConfirmInputSchema,
   EventsPublisherApplyInputSchema,
 } from "~/server/llm/schemas/a4EventsPublisherSchemas";
-import { consumeRateLimit, checkRateLimit } from "~/server/rateLimit";
+import { consumeRateLimit, checkRateLimit } from "~/server/security/rateLimit";
 
 /**
  * Rate-limited protected procedure — consumes one AI request from the user's

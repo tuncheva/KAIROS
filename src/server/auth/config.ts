@@ -7,13 +7,13 @@ import { cookies } from "next/headers";
 import { env } from "~/env"
 import { and, eq, isNull } from "drizzle-orm";
 import * as argon2 from "argon2";
-import { decodeAccountSwitchCookie, getCookieFromHeader, ACCOUNT_SWITCH_COOKIE } from "~/server/accountSwitch";
+import { decodeAccountSwitchCookie, getCookieFromHeader, ACCOUNT_SWITCH_COOKIE } from "~/server/security/accountSwitch";
 import {
   checkAuthRateLimit,
   clearAuthAttempts,
   createAuthRateLimitKey,
   recordAuthFailure,
-} from "~/server/authRateLimit";
+} from "~/server/security/authRateLimit";
 
 /**
  * Best-effort client IP for rate limiting.
@@ -25,7 +25,7 @@ import {
  */
 
 
-import { getClientIp } from "~/server/clientIp";
+import { getClientIp } from "~/server/http/clientIp";
 import { createLogger } from "~/server/logger";
 
 const log = createLogger("auth");

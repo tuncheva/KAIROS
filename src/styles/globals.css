@@ -2226,3 +2226,171 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
 @media (max-width: 640px) {
   .k-intro-word { font-size: 52px; }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Auth split panel (sign in / sign up modal)
+
+   Shares the landing page's `k-` vocabulary: underline-only fields,
+   an animated tab dot and per-child stagger on view switches. Accent
+   is always `--accent-primary`, so the panel follows `data-accent`.
+   ───────────────────────────────────────────────────────────── */
+
+@keyframes k-auth-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes k-auth-pop {
+  from { opacity: 0; transform: scale(0.86); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes k-auth-slide-l {
+  from { opacity: 0; transform: translateX(-26px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes k-auth-slide-r {
+  from { opacity: 0; transform: translateX(26px); }
+  to { opacity: 1; transform: none; }
+}
+
+.k-auth-from-left { animation: k-auth-slide-l 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.k-auth-from-right { animation: k-auth-slide-r 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* The view body fades up, then staggers its own children in behind it. */
+.k-auth-body { animation: k-auth-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.k-auth-body > * { animation: k-auth-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.k-auth-body > *:nth-child(1) { animation-delay: 0.02s; }
+.k-auth-body > *:nth-child(2) { animation-delay: 0.06s; }
+.k-auth-body > *:nth-child(3) { animation-delay: 0.1s; }
+.k-auth-body > *:nth-child(4) { animation-delay: 0.14s; }
+.k-auth-body > *:nth-child(5) { animation-delay: 0.18s; }
+.k-auth-body > *:nth-child(6) { animation-delay: 0.22s; }
+.k-auth-body > *:nth-child(7) { animation-delay: 0.26s; }
+.k-auth-body > *:nth-child(8) { animation-delay: 0.3s; }
+
+.k-auth-pop { animation: k-auth-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Underline field */
+.k-auth-fld {
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 0;
+  padding: 13px 0;
+  color: #fff;
+  font-family: inherit;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-auth-fld::placeholder { color: rgb(255 255 255 / 0.3); }
+.k-auth-fld:focus { border-bottom-color: rgb(var(--accent-primary)); }
+.k-auth-fld:focus::placeholder { color: rgb(255 255 255 / 0.18); }
+.k-auth-fld:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Wrapper that owns the underline when a field sits next to the eye toggle. */
+.k-auth-fld-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+  transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-auth-fld-row:focus-within { border-bottom-color: rgb(var(--accent-primary)); }
+.k-auth-fld-row .k-auth-fld { border-bottom: none; }
+
+/* One digit of the reset code */
+.k-auth-box {
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 0;
+  padding: 10px 0;
+  text-align: center;
+  color: #fff;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-auth-box:focus { border-bottom-color: rgb(var(--accent-primary)); }
+
+.k-auth-eye {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: rgb(255 255 255 / 0.35);
+  transition: color 0.25s;
+}
+.k-auth-eye:hover { color: #fff; }
+
+.k-auth-lnk {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.25s;
+}
+.k-auth-lnk:hover { color: #fff; }
+.k-auth-lnk:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Sign in / sign up tabs and the dot that travels between them */
+.k-auth-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 0 0 14px;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 22px;
+  line-height: 1;
+  color: rgb(255 255 255 / 0.42);
+  cursor: pointer;
+  transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-auth-tab[data-on="true"] { color: #fff; }
+
+.k-auth-rail {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  display: flex;
+  justify-content: center;
+  transition: transform 0.45s cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+[data-auth-pos="signUp"] .k-auth-rail { transform: translateX(100%); }
+.k-auth-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgb(var(--accent-primary));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .k-auth-body,
+  .k-auth-body > *,
+  .k-auth-from-left,
+  .k-auth-from-right,
+  .k-auth-pop {
+    animation: none !important;
+  }
+}
+
+/* The split panel itself — enter animation only; the layout is Tailwind. */
+@keyframes k-auth-shell-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.k-auth-shell {
+  animation: k-auth-shell-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.55);
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-auth-shell { animation: none; }
+}

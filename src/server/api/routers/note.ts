@@ -6,12 +6,12 @@ import { stickyNotes, users, notebooks, noteShares, notifications } from "~/serv
 import { eq, and } from "drizzle-orm";
 import { emitNotification } from "~/server/socket/emit";
 import * as argon2 from "argon2";
-import { encryptContent, decryptContent } from "~/server/encryption";
+import { encryptContent, decryptContent } from "~/server/security/encryption";
 import {
   consumeAuthRateLimit,
   createAuthRateLimitKey,
-} from "~/server/authRateLimit";
-import { getClientIp } from "~/server/clientIp";
+} from "~/server/security/authRateLimit";
+import { getClientIp } from "~/server/http/clientIp";
 import { createLogger } from "~/server/logger";
 
 const log = createLogger("note");

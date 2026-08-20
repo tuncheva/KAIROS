@@ -8,7 +8,7 @@ import {
   decodeAccountSwitchCookie,
   encodeAccountSwitchCookie,
   type AccountSwitchEntry,
-} from "~/server/accountSwitch";
+} from "~/server/security/accountSwitch";
 
 export async function POST() {
   if (!env.AUTH_SECRET) {

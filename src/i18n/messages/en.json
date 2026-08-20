@@ -995,6 +995,7 @@
         "subtitle": "Join the Kairos workspace today.",
         "fullNameLabel": "Full Name",
         "fullNamePlaceholder": "Enter your full name",
+        "passwordPlaceholder": "Password — 8 characters minimum",
         "submit": "Create Account",
         "creatingAccount": "Creating Account...",
         "hasAccount": "Already have an account?",
@@ -1019,6 +1020,8 @@
         "subtitle": "We sent an 8-digit code to {email}",
         "label": "Reset Code",
         "helperText": "Check your email for the code",
+        "expiry": "Eight digits · expires in 15 minutes",
+        "resend": "Resend code",
         "submit": "Verify Code",
         "invalid": "Invalid or expired reset code. Please try again."
       },
@@ -1029,13 +1032,51 @@
         "successSubtitle": "Your password has been updated successfully",
         "newPasswordLabel": "New Password",
         "confirmPasswordLabel": "Confirm Password",
+        "newPasswordPlaceholder": "New password",
+        "confirmPasswordPlaceholder": "Confirm new password",
         "submit": "Reset Password",
         "resetting": "Resetting...",
         "redirecting": "Redirecting to sign in...",
+        "continueToSignIn": "Continue to sign in",
         "minLength": "Password must be at least 8 characters",
         "mismatch": "Passwords do not match",
         "failed": "Failed to reset password. Please try again."
       },
+      "verifyEmail": {
+        "title": "Check your email.",
+        "subtitle": "We sent a verification link to {email}.",
+        "body": "Open the link to activate your account, then come back and sign in.",
+        "resend": "Resend the email",
+        "resending": "Sending…",
+        "resent": "Sent — check your inbox again.",
+        "backToSignIn": "Back to sign in"
+      },
+      "done": {
+        "title": "Password updated.",
+        "subtitle": "You can sign in with your new password now."
+      },
+      "steps": {
+        "signIn": "Sign in",
+        "signUp": "Create account",
+        "verifyEmail": "Almost there",
+        "forgotPassword": "Step 1 of 3",
+        "resetCode": "Step 2 of 3",
+        "newPassword": "Step 3 of 3",
+        "done": "All set"
+      },
+      "tabs": {
+        "signIn": "Sign in",
+        "signUp": "Sign up"
+      },
+      "brand": {
+        "taglineLead": "The right moment,",
+        "taglineAccent": "engineered.",
+        "blurb": "One workspace for coordinating teams, running projects and publishing the events that come out of them.",
+        "statWorkspaces": "Workspace types",
+        "statLanguages": "Languages",
+        "statOnePlace": "Place for all of it"
+      },
+      "close": "Close",
       "backToSignIn": "Back to Sign In",
       "google": "Google",
       "orContinueWith": "Or continue with"

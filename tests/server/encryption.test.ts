@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import nodeCrypto from "node:crypto";
-import { encryptContent, decryptContent } from "~/server/encryption";
+import { encryptContent, decryptContent } from "~/server/security/encryption";
 
 describe("Encryption — AES-256-GCM", () => {
   const password = "strong-password-123";

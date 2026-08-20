@@ -8,7 +8,7 @@ import {
   issueVerificationToken,
   verificationHashesMatch,
   verificationIdentifier,
-} from "~/server/emailVerification";
+} from "~/server/email/emailVerification";
 import type { db as Database } from "~/server/db";
 
 /**

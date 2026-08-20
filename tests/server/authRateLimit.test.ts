@@ -5,7 +5,7 @@ import {
   clearAuthAttempts,
   createAuthRateLimitKey,
   recordAuthFailure,
-} from "~/server/authRateLimit";
+} from "~/server/security/authRateLimit";
 
 /**
  * Behavioural tests for the auth rate limiter.
@@ -15,7 +15,7 @@ import {
  * all — unbounded password guessing, and unbounded Argon2id work (64MB per
  * attempt) as a side effect.
  *
- * The limiter is now backed by `~/server/slidingWindow`, so the whole API is
+ * The limiter is now backed by `~/server/security/slidingWindow`, so the whole API is
  * async. With `REDIS_NATIVE_URL` unset — as it is under test — the store falls
  * back to per-process memory, which is what these assertions exercise. Every
  * test still uses a unique key to stay independent of the others.

@@ -6,7 +6,7 @@ import {
   encodeAccountSwitchCookie,
   getCookieFromHeader,
   type AccountSwitchEntry,
-} from "~/server/accountSwitch";
+} from "~/server/security/accountSwitch";
 
 /**
  * Behavioural tests for the account-switch cookie.

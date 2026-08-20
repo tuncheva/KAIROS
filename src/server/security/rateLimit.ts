@@ -6,7 +6,7 @@
  * task generation, PDF extraction. Confirm and apply are not limited: they only
  * write the already-generated plan and cost nothing at the model.
  *
- * State lives in `~/server/slidingWindow`, which is Redis-backed when
+ * State lives in `~/server/security/slidingWindow`, which is Redis-backed when
  * `REDIS_NATIVE_URL` is set. It used to be a module-level `Map`, which meant the
  * limit multiplied by instance count and reset on deploy — for a limiter whose job
  * is capping spend, that was the weakest link.
@@ -14,7 +14,7 @@
 
 import { TRPCError } from "@trpc/server";
 
-import { readWindow, recordHit } from "~/server/slidingWindow";
+import { readWindow, recordHit } from "~/server/security/slidingWindow";
 
 // ---------------------------------------------------------------------------
 // Configuration

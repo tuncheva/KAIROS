@@ -4,8 +4,8 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { organizations, organizationMembers, organizationRoles, organizationInvites, users, notifications } from "~/server/db/schema";
 import { flagsForRole } from "~/lib/permissions";
-import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/authRateLimit";
-import { getClientIp } from "~/server/clientIp";
+import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/security/authRateLimit";
+import { getClientIp } from "~/server/http/clientIp";
 
 /**
  * The access code is a bearer credential: anyone holding it can join the
