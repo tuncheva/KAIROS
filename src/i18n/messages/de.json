@@ -1,5 +1,6 @@
 {
   "nav": {
+    "dashboard": "Dashboard",
     "home": "Startseite",
     "create": "Erstellen",
     "publish": "Veröffentlichen",
@@ -587,61 +588,61 @@
     "editThenApply": "Sie können die Details unten bearbeiten und dann auf Übernehmen klicken.",
     "title": "KAIROS AI",
     "subtitle": "Arbeitsbereich-Assistent",
-    "thinking": "Denke nach\u2026",
+    "thinking": "Denke nach…",
     "info": "Info",
     "hide": "Ausblenden",
     "send": "Senden",
-    "placeholder": "Nachricht an KAIROS AI\u2026",
-    "disclaimer": "KI-gest\u00fctzter Arbeitsbereich-Assistent. \u00dcberpr\u00fcfe kritische Entscheidungen unabh\u00e4ngig.",
+    "placeholder": "Nachricht an KAIROS AI…",
+    "disclaimer": "KI-gestützter Arbeitsbereich-Assistent. Überprüfe kritische Entscheidungen unabhängig.",
     "emptyTitle": "Stelle eine Frage zu deinem Arbeitsbereich oder deinen Projekten.",
     "emptySubtitle": "Ich kann Fortschritt analysieren, Risiken identifizieren, Aufgaben planen, Notizen verwalten und mehr.",
-    "infoDesc": "Projekt-KI-Assistent. Antworten basieren auf verf\u00fcgbaren Daten \u2014 \u00fcberpr\u00fcfe kritische Entscheidungen.",
-    "infoCaps": "F\u00e4higkeiten: Arbeitsbereich-Fragen, Projektanalyse, Aufgabenplanung, Notizverwaltung, Terminplanung.",
-    "handoffTaskPlanner": "Ich \u00fcbergebe das an den Aufgabenplanungs-Agenten, um Ihre Aufgaben zu erstellen. Einen Moment.",
-    "taskPlannerWorking": "Der Aufgabenplaner arbeitet\u2026",
+    "infoDesc": "Projekt-KI-Assistent. Antworten basieren auf verfügbaren Daten — überprüfe kritische Entscheidungen.",
+    "infoCaps": "Fähigkeiten: Arbeitsbereich-Fragen, Projektanalyse, Aufgabenplanung, Notizverwaltung, Terminplanung.",
+    "handoffTaskPlanner": "Ich übergebe das an den Aufgabenplanungs-Agenten, um Ihre Aufgaben zu erstellen. Einen Moment.",
+    "taskPlannerWorking": "Der Aufgabenplaner arbeitet…",
     "taskPlannerDone": "Ihre Aufgaben wurden erfolgreich erstellt! {count} Aufgaben sind jetzt auf Ihrem Projektboard bereit.",
-    "taskPlannerDoneNoCount": "Ihre \u00c4nderungen wurden erfolgreich angewendet! Pr\u00fcfen Sie Ihr Projektboard f\u00fcr die Aktualisierungen.",
+    "taskPlannerDoneNoCount": "Ihre Änderungen wurden erfolgreich angewendet! Prüfen Sie Ihr Projektboard für die Aktualisierungen.",
     "taskPlannerPlanReady": "Der Aufgabenplaner hat einen Plan vorbereitet:",
     "taskPlannerFailed": "Der Aufgabenplaner hat ein Problem festgestellt: {error}",
-    "confirmTaskPlan": "Aufgabenplan best\u00e4tigen",
+    "confirmTaskPlan": "Aufgabenplan bestätigen",
     "applyTaskPlan": "Aufgabenplan anwenden",
-    "confirm": "Best\u00e4tigen",
-    "confirming": "Best\u00e4tigung\u2026",
+    "confirm": "Bestätigen",
+    "confirming": "Bestätigung…",
     "apply": "Anwenden",
-    "applying": "Anwendung\u2026",
-    "confirmEvents": "Eventplan best\u00e4tigen",
+    "applying": "Anwendung…",
+    "confirmEvents": "Eventplan bestätigen",
     "applyEvents": "Eventplan anwenden",
     "somethingWentWrong": "Etwas ist schiefgelaufen: {error}",
-    "noResponse": "Ich konnte keine Antwort generieren. K\u00f6nntest du deine Frage umformulieren?",
-    "alreadyConfirmed": "Bereits best\u00e4tigt \u2014 verwende Anwenden zum Ausf\u00fchren.",
-    "confirmFailed": "Best\u00e4tigung fehlgeschlagen: {error}",
+    "noResponse": "Ich konnte keine Antwort generieren. Könntest du deine Frage umformulieren?",
+    "alreadyConfirmed": "Bereits bestätigt — verwende Anwenden zum Ausführen.",
+    "confirmFailed": "Bestätigung fehlgeschlagen: {error}",
     "applyFailed": "Anwendung fehlgeschlagen: {error}",
-    "notesDone": "Fertig! \u00c4nderungen erfolgreich angewendet.",
-    "notesConfirmed": "Best\u00e4tigt. {summary}",
-    "eventsConfirmed": "Eventplan best\u00e4tigt. {summary}",
+    "notesDone": "Fertig! Änderungen erfolgreich angewendet.",
+    "notesConfirmed": "Bestätigt. {summary}",
+    "eventsConfirmed": "Eventplan bestätigt. {summary}",
     "eventsDone": "Eventplan erfolgreich angewendet.",
     "readyToApply": "Bereit zum Anwenden.",
     "copyTooltip": "Klicken zum Kopieren",
     "suggestedQ1": "Was ist der Status meiner Projekte?",
-    "suggestedQ2": "Zeige mir \u00fcberf\u00e4llige Aufgaben",
-    "suggestedQ3": "Was sind die gr\u00f6\u00dften Risiken?",
+    "suggestedQ2": "Zeige mir überfällige Aufgaben",
+    "suggestedQ3": "Was sind die größten Risiken?",
     "suggestedQ4": "Fasse den Fortschritt dieser Woche zusammen",
-    "greeting1": "Hey! Ich bin hier, um zu helfen. Frag mich alles \u00fcber deinen Arbeitsbereich, Projekte, Aufgaben oder Termine.",
-    "greeting2": "Hallo! Bereit zu helfen bei allem rund um den Arbeitsbereich \u2014 Projekte, Aufgaben, Notizen, Termine.",
+    "greeting1": "Hey! Ich bin hier, um zu helfen. Frag mich alles über deinen Arbeitsbereich, Projekte, Aufgaben oder Termine.",
+    "greeting2": "Hallo! Bereit zu helfen bei allem rund um den Arbeitsbereich — Projekte, Aufgaben, Notizen, Termine.",
     "greeting3": "Hallo! Frag mich gerne zu deinen Projekten, verfolge den Fortschritt, verwalte Notizen oder plane Termine.",
     "greeting4": "Hey! Wie kann ich dir helfen? Ich kann Fragen zu deinem Arbeitsbereich beantworten, Projekte analysieren, Notizen verwalten und mehr.",
     "createOps": "Erstellen {count}",
     "updateOps": "Aktualisieren {count}",
-    "deleteOps": "L\u00f6schen {count}",
+    "deleteOps": "Löschen {count}",
     "blockedOps": "Blockiert {count}",
-    "statusChangeOps": "Status\u00e4nderungen {count}",
-    "noChanges": "Keine \u00c4nderungen n\u00f6tig.",
-    "clickConfirm": "Klicke auf **Best\u00e4tigen** um fortzufahren.",
+    "statusChangeOps": "Statusänderungen {count}",
+    "noChanges": "Keine Änderungen nötig.",
+    "clickConfirm": "Klicke auf **Bestätigen** um fortzufahren.",
     "needMoreInfo": "Ich brauche noch ein paar Informationen:",
-    "noteCreate": "Ich erstelle die Notiz f\u00fcr dich.",
+    "noteCreate": "Ich erstelle die Notiz für dich.",
     "noteUpdate": "Ich aktualisiere deine Notiz.",
     "noteDelete": "Ich entferne diese Notiz.",
-    "noNoteChanges": "Keine \u00c4nderungen basierend auf deiner Anfrage n\u00f6tig."
+    "noNoteChanges": "Keine Änderungen basierend auf deiner Anfrage nötig."
   },
   "staticPages": {
     "backHome": "Zurück zur Startseite",
@@ -657,5 +658,100 @@
     "termsBody": "Unsere Nutzungsbedingungen werden vorbereitet und hier veröffentlicht.",
     "securityTitle": "Sicherheit",
     "securityBody": "Eine Darstellung, wie Kairos deine Daten schützt, wird vorbereitet und hier veröffentlicht."
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "Guten Morgen, {name}",
+      "afternoon": "Guten Tag, {name}",
+      "evening": "Guten Abend, {name}"
+    },
+    "greetingPlain": {
+      "morning": "Guten Morgen",
+      "afternoon": "Guten Tag",
+      "evening": "Guten Abend"
+    },
+    "summaryEmpty": "Noch ist nichts geplant. Erstelle ein Projekt, um die Arbeit zu verfolgen.",
+    "summary": "{due, plural, =0 {Heute ist nichts fällig} one {Eine Aufgabe ist heute fällig} other {# Aufgaben sind heute fällig}}, {overdue, plural, =0 {nichts überfällig} one {eine überfällig} other {# überfällig}} in {projects, plural, =0 {keinen Projekten} one {einem Projekt} other {# Projekten}}.",
+    "stats": {
+      "dueToday": "Heute fällig",
+      "overdue": "Überfällig",
+      "openThisWeek": "Diese Woche offen",
+      "completed": "Abgeschlossen"
+    },
+    "today": {
+      "title": "Heute fällig",
+      "action": "Alle Aufgaben",
+      "empty": "Heute ist nichts fällig.",
+      "complete": "Als erledigt markieren",
+      "reopen": "Aufgabe wieder öffnen"
+    },
+    "week": {
+      "title": "Rest der Woche",
+      "action": "Kalender öffnen",
+      "today": "HEUTE"
+    },
+    "activity": {
+      "title": "Letzte Aktivität",
+      "action": "Fortschritt",
+      "someone": "Jemand",
+      "aTask": "eine Aufgabe",
+      "actions": {
+        "completed": "{user} hat {task} in {project} abgeschlossen",
+        "created": "{user} hat {task} in {project} erstellt",
+        "updated": "{user} hat {task} in {project} aktualisiert",
+        "deleted": "{user} hat {task} in {project} gelöscht"
+      }
+    },
+    "workspace": {
+      "title": "Fortschritt im Workspace",
+      "done": "{count} erledigt",
+      "active": "{count} aktiv",
+      "todo": "{count} offen",
+      "ofTasks": "{done} von {total} Aufgaben",
+      "dayGone": "{percent}% des Tages vorbei"
+    },
+    "projects": {
+      "title": "Projekte",
+      "action": "Alle ansehen",
+      "untitled": "Unbenanntes Projekt",
+      "noTasks": "Keine Aufgaben",
+      "open": "{count} offen",
+      "empty": "Erstelle dein erstes Projekt",
+      "health": {
+        "onTrack": "Im Plan",
+        "inProgress": "In Arbeit",
+        "atRisk": "Gefährdet",
+        "empty": "Keine Aufgaben"
+      }
+    },
+    "notes": {
+      "title": "Notizen",
+      "action": "Neue Notiz",
+      "private": "Privat",
+      "shared": "Geteilt",
+      "untitled": "Unbenannte Notiz",
+      "empty": "Schreibe deine erste Notiz"
+    },
+    "status": {
+      "done": "Erledigt",
+      "overdue": "Überfällig",
+      "inProgress": "In Arbeit",
+      "todo": "Zu erledigen"
+    },
+    "firstRun": {
+      "tag": "Erster Start",
+      "title": "Noch ist nichts geplant.",
+      "body": "Erstelle ein Projekt, um Arbeit zu verfolgen, oder tritt einem bestehenden mit dessen Zugangscode bei.",
+      "createProject": "Projekt erstellen",
+      "or": "oder",
+      "joinCode": "Mit Code beitreten",
+      "codeLabel": "Zugangscode",
+      "codePlaceholder": "______",
+      "joined": "Du bist dem Arbeitsbereich beigetreten.",
+      "step1": "Benenne das Projekt und setze die erste Frist.",
+      "step2": "Lade Leute mit einem einzigen Zugangscode ein.",
+      "step3": "Aufgaben, Notizen und Fortschritt landen auf diesem Dashboard.",
+      "aside": "Der innere Bogen verfolgt den Tag selbst — ein leeres Dashboard zeigt also trotzdem, wie viel Zeit bleibt."
+    }
   }
 }

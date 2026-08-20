@@ -48,6 +48,7 @@
   --color-warning: rgb(var(--warning));
   --color-error: rgb(var(--error));
   --color-info: rgb(var(--info));
+  --color-dash-day: rgb(var(--dash-day));
 
   /* Semantic event colors */
   --color-event-active: rgb(var(--event-active));
@@ -128,6 +129,10 @@
   --error-light: 254 226 226;
   --info: 59 130 246;
   --info-light: 219 234 254;
+
+  /* Dashboard: the cyan "day elapsed" arc, distinct from the accent so the
+     workspace ring can carry two unrelated readings at once. */
+  --dash-day: 8 145 178;
   
   /* Semantic Event Colors */
   --event-active: var(--brand-purple);
@@ -255,6 +260,9 @@
   --error-light: 127 29 29;
   --info: 96 165 250;
   --info-light: 30 58 138;
+
+  /* Dashboard: cyan "day elapsed" arc — see the light-mode note above. */
+  --dash-day: 34 211 238;
   
   /* Semantic Event Colors - Dark */
   --event-active: var(--brand-purple);
@@ -2489,4 +2497,64 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .k-auth-shell { animation: none; }
+}
+
+/* ==========================================================================
+   Dashboard entrance motion
+   --------------------------------------------------------------------------
+   Design 7A stages the dashboard in: each block rises on a soft ease while the
+   numbers count up and the rings sweep out. The delays live on the elements as
+   inline `animation-delay`, so these are just the curves.
+   ========================================================================== */
+
+@keyframes dash-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dash-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dash-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.dash-rise {
+  animation: dash-rise 0.75s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.dash-fade {
+  animation: dash-fade 0.6s ease-out both;
+}
+
+.dash-grow {
+  transform-origin: left center;
+  animation: dash-grow 0.8s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-rise,
+  .dash-fade,
+  .dash-grow {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }

@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   Briefcase,
+  LayoutDashboard,
   BookText,
   TrendingUp,
   Building2,
@@ -45,8 +46,9 @@ export function SideNav() {
   const action = searchParams?.get("action");
 
   const mainNavItems = [
-    { href: "/create", icon: SquarePen, label: t("create") },
+    { href: "/dashboard", icon: LayoutDashboard, label: t("dashboard") },
     { href: "/projects", icon: Briefcase, label: t("projects") },
+    { href: "/create", icon: SquarePen, label: t("create") },
     { href: "/notes", icon: BookText, label: t("notes") },
     { href: "/progress", icon: TrendingUp, label: t("progress") },
     { href: "/calendar", icon: CalendarCheck, label: t("calendar") },
@@ -71,6 +73,9 @@ export function SideNav() {
   ];
 
   const isItemActive = (href: string): boolean => {
+    if (href === "/dashboard") {
+      return pathname === "/dashboard";
+    }
     if (href === "/create") {
       return pathname === "/create" && !action;
     }

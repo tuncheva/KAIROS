@@ -1,5 +1,6 @@
 {
   "nav": {
+    "dashboard": "Dashboard",
     "home": "Home",
     "create": "Create",
     "publish": "Publish",
@@ -528,8 +529,7 @@
       "caramel": "Caramel",
       "mint": "Mint",
       "sky": "Sky",
-      "strawberry": "Strawberry"
-      ,
+      "strawberry": "Strawberry",
       "currentTheme": "Current Theme",
       "systemWithTheme": "System ({mode})"
     },
@@ -943,7 +943,6 @@
     "eventManager": "Event Manager",
     "techLead": "Tech Lead",
     "searchCity": "Search a city in Bulgaria…",
-    "allRegions": "All Regions",
     "validation": {
       "imageType": "Please upload an image file",
       "imageSize": "Image must be 4MB or less",
@@ -1162,18 +1161,18 @@
     "editThenApply": "You can edit the details below, then click Apply when ready.",
     "title": "KAIROS AI",
     "subtitle": "Workspace Concierge",
-    "thinking": "Thinking\u2026",
+    "thinking": "Thinking…",
     "info": "Info",
     "hide": "Hide",
     "send": "Send",
-    "placeholder": "Message KAIROS AI\u2026",
+    "placeholder": "Message KAIROS AI…",
     "disclaimer": "AI-powered workspace assistant. Verify critical decisions independently.",
     "emptyTitle": "Ask a question about your workspace or projects.",
     "emptySubtitle": "I can analyze progress, identify risks, plan tasks, manage notes, and more.",
-    "infoDesc": "Project-scoped AI assistant. Answers are best-effort based on available data \u2014 verify critical decisions.",
+    "infoDesc": "Project-scoped AI assistant. Answers are best-effort based on available data — verify critical decisions.",
     "infoCaps": "Capabilities: workspace Q&A, project analysis, task planning, notes management, event scheduling.",
-    "handoffTaskPlanner": "I\u2019m going to hand this off to the Task Planning Agent to build your tasks. One moment.",
-    "taskPlannerWorking": "Task Planner is working\u2026",
+    "handoffTaskPlanner": "I’m going to hand this off to the Task Planning Agent to build your tasks. One moment.",
+    "taskPlannerWorking": "Task Planner is working…",
     "taskPlannerDone": "Your tasks have been successfully created! {count} tasks are now ready on your project board.",
     "taskPlannerDoneNoCount": "Your changes have been successfully applied! Check your project board for the updates.",
     "taskPlannerPlanReady": "The Task Planner prepared a plan:",
@@ -1182,14 +1181,14 @@
     "confirmTaskPlan": "Confirm Task Plan",
     "applyTaskPlan": "Apply Task Plan",
     "confirm": "Confirm",
-    "confirming": "Confirming\u2026",
+    "confirming": "Confirming…",
     "apply": "Apply",
-    "applying": "Applying\u2026",
+    "applying": "Applying…",
     "confirmEvents": "Confirm Event Plan",
     "applyEvents": "Apply Event Plan",
     "somethingWentWrong": "Something went wrong: {error}",
-    "noResponse": "I couldn\u2019t generate a response for that. Could you try rephrasing your question?",
-    "alreadyConfirmed": "Already confirmed \u2014 use Apply to execute.",
+    "noResponse": "I couldn’t generate a response for that. Could you try rephrasing your question?",
+    "alreadyConfirmed": "Already confirmed — use Apply to execute.",
     "confirmFailed": "Confirm failed: {error}",
     "applyFailed": "Apply failed: {error}",
     "notesDone": "Done! Changes applied successfully.",
@@ -1198,12 +1197,12 @@
     "eventsDone": "Event plan applied successfully.",
     "readyToApply": "Ready to apply.",
     "copyTooltip": "Click to copy",
-    "suggestedQ1": "What\u2019s the status of my projects?",
+    "suggestedQ1": "What’s the status of my projects?",
     "suggestedQ2": "Show me overdue tasks",
     "suggestedQ3": "What are the biggest risks?",
-    "suggestedQ4": "Summarize this week\u2019s progress",
-    "greeting1": "Hey! I\u2019m here to help. Ask me anything about your workspace, projects, tasks, or events.",
-    "greeting2": "Hi there! Ready to help with anything workspace-related \u2014 projects, tasks, notes, events, you name it.",
+    "suggestedQ4": "Summarize this week’s progress",
+    "greeting1": "Hey! I’m here to help. Ask me anything about your workspace, projects, tasks, or events.",
+    "greeting2": "Hi there! Ready to help with anything workspace-related — projects, tasks, notes, events, you name it.",
     "greeting3": "Hello! Feel free to ask me about your projects, track progress, manage notes, or plan events.",
     "greeting4": "Hey! What can I help you with? I can answer questions about your workspace, analyze projects, manage notes, and more.",
     "createOps": "Create {count}",
@@ -1214,9 +1213,9 @@
     "noChanges": "No changes needed.",
     "clickConfirm": "Click **Confirm** to proceed.",
     "needMoreInfo": "I need a bit more information:",
-    "noteCreate": "I\u2019ll create the note for you.",
-    "noteUpdate": "I\u2019ll update your note.",
-    "noteDelete": "I\u2019ll remove that note.",
+    "noteCreate": "I’ll create the note for you.",
+    "noteUpdate": "I’ll update your note.",
+    "noteDelete": "I’ll remove that note.",
     "noNoteChanges": "No changes needed based on your request.",
     "direct": {
       "failedToSendMessage": "Failed to send message",
@@ -1300,5 +1299,100 @@
     "termsBody": "Our terms of service are being prepared and will be published here.",
     "securityTitle": "Security",
     "securityBody": "A write-up of how Kairos protects your data is being prepared and will be published here."
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "Good morning, {name}",
+      "afternoon": "Good afternoon, {name}",
+      "evening": "Good evening, {name}"
+    },
+    "greetingPlain": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "summaryEmpty": "Nothing is scheduled yet. Create a project to start tracking work.",
+    "summary": "{due, plural, =0 {Nothing is due today} one {One task is due today} other {# tasks are due today}}, {overdue, plural, =0 {nothing overdue} one {one overdue} other {# overdue}} across {projects, plural, =0 {no projects} one {one project} other {# projects}}.",
+    "stats": {
+      "dueToday": "Due today",
+      "overdue": "Overdue",
+      "openThisWeek": "Open this week",
+      "completed": "Completed"
+    },
+    "today": {
+      "title": "Due today",
+      "action": "All tasks",
+      "empty": "Nothing due today.",
+      "complete": "Mark complete",
+      "reopen": "Reopen task"
+    },
+    "week": {
+      "title": "Rest of the week",
+      "action": "Open calendar",
+      "today": "TODAY"
+    },
+    "activity": {
+      "title": "Recent activity",
+      "action": "Progress feed",
+      "someone": "Someone",
+      "aTask": "a task",
+      "actions": {
+        "completed": "{user} completed {task} in {project}",
+        "created": "{user} created {task} in {project}",
+        "updated": "{user} updated {task} in {project}",
+        "deleted": "{user} deleted {task} in {project}"
+      }
+    },
+    "workspace": {
+      "title": "Workspace progress",
+      "done": "{count} done",
+      "active": "{count} active",
+      "todo": "{count} to do",
+      "ofTasks": "{done} of {total} tasks",
+      "dayGone": "{percent}% of today gone"
+    },
+    "projects": {
+      "title": "Projects",
+      "action": "View all",
+      "untitled": "Untitled project",
+      "noTasks": "No tasks",
+      "open": "{count} open",
+      "empty": "Create your first project",
+      "health": {
+        "onTrack": "On track",
+        "inProgress": "In progress",
+        "atRisk": "At risk",
+        "empty": "No tasks"
+      }
+    },
+    "notes": {
+      "title": "Notes",
+      "action": "New note",
+      "private": "Private",
+      "shared": "Shared",
+      "untitled": "Untitled note",
+      "empty": "Write your first note"
+    },
+    "status": {
+      "done": "Done",
+      "overdue": "Overdue",
+      "inProgress": "In progress",
+      "todo": "To do"
+    },
+    "firstRun": {
+      "tag": "First run",
+      "title": "Nothing is scheduled yet.",
+      "body": "Create a project to start tracking work, or join one that already exists with its access code.",
+      "createProject": "Create a project",
+      "or": "or",
+      "joinCode": "Join with code",
+      "codeLabel": "Access code",
+      "codePlaceholder": "______",
+      "joined": "You joined the workspace.",
+      "step1": "Name the project and set its first deadline.",
+      "step2": "Invite people with one access code.",
+      "step3": "Tasks, notes and progress land on this dashboard.",
+      "aside": "The inner arc tracks the day itself, so an empty dashboard still tells you how much time is left."
+    }
   }
 }

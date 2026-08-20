@@ -1,5 +1,6 @@
 {
   "nav": {
+    "dashboard": "Tableau de bord",
     "home": "Accueil",
     "create": "Créer",
     "publish": "Publier",
@@ -89,14 +90,16 @@
       "back": "Retour",
       "lastUpdate": "Dernière mise à jour",
       "taskCompletion": "Achèvement des tâches",
-      "activityCategories": "Catégories d’activité"    },
+      "activityCategories": "Catégories d’activité"
+    },
     "activityTrend": {
       "title": "Tendance d'activité",
       "subtitle": "Tâches créées et terminées au fil du temps"
     },
     "createdVsCompleted": {
       "title": "Créées vs Terminées",
-      "subtitle": "Comparaison de la création et de l'achèvement des tâches"    }
+      "subtitle": "Comparaison de la création et de l'achèvement des tâches"
+    }
   },
   "home": {
     "title": "KAIROS",
@@ -584,62 +587,62 @@
     "dailyLimitReached": "Vous avez atteint votre limite quotidienne de messages.",
     "editThenApply": "Vous pouvez modifier les détails ci-dessous, puis cliquer sur Appliquer.",
     "title": "KAIROS AI",
-    "subtitle": "Assistant d\u2019espace de travail",
-    "thinking": "R\u00e9flexion\u2026",
+    "subtitle": "Assistant d’espace de travail",
+    "thinking": "Réflexion…",
     "info": "Info",
     "hide": "Masquer",
     "send": "Envoyer",
-    "placeholder": "Message \u00e0 KAIROS AI\u2026",
-    "disclaimer": "Assistant d\u2019espace de travail aliment\u00e9 par l\u2019IA. V\u00e9rifiez les d\u00e9cisions critiques de mani\u00e8re ind\u00e9pendante.",
+    "placeholder": "Message à KAIROS AI…",
+    "disclaimer": "Assistant d’espace de travail alimenté par l’IA. Vérifiez les décisions critiques de manière indépendante.",
     "emptyTitle": "Posez une question sur votre espace de travail ou vos projets.",
-    "emptySubtitle": "Je peux analyser la progression, identifier les risques, planifier des t\u00e2ches, g\u00e9rer des notes et plus encore.",
-    "infoDesc": "Assistant IA de projet. Les r\u00e9ponses sont approximatives bas\u00e9es sur les donn\u00e9es disponibles \u2014 v\u00e9rifiez les d\u00e9cisions critiques.",
-    "infoCaps": "Capacit\u00e9s : questions sur l\u2019espace de travail, analyse de projets, planification de t\u00e2ches, gestion de notes, planification d\u2019\u00e9v\u00e9nements.",
-    "handoffTaskPlanner": "Je transmets cela \u00e0 l\u2019Agent de Planification des T\u00e2ches pour cr\u00e9er vos t\u00e2ches. Un instant.",
-    "taskPlannerWorking": "Le Planificateur de T\u00e2ches travaille\u2026",
-    "taskPlannerDone": "Vos t\u00e2ches ont \u00e9t\u00e9 cr\u00e9\u00e9es avec succ\u00e8s\u00a0! {count} t\u00e2ches sont pr\u00eates sur votre tableau de projet.",
-    "taskPlannerDoneNoCount": "Vos modifications ont \u00e9t\u00e9 appliqu\u00e9es avec succ\u00e8s\u00a0! Consultez votre tableau de projet pour les mises \u00e0 jour.",
-    "taskPlannerPlanReady": "Le Planificateur de t\u00e2ches a pr\u00e9par\u00e9 un plan :",
-    "taskPlannerFailed": "Le Planificateur de t\u00e2ches a rencontr\u00e9 un probl\u00e8me : {error}",
+    "emptySubtitle": "Je peux analyser la progression, identifier les risques, planifier des tâches, gérer des notes et plus encore.",
+    "infoDesc": "Assistant IA de projet. Les réponses sont approximatives basées sur les données disponibles — vérifiez les décisions critiques.",
+    "infoCaps": "Capacités : questions sur l’espace de travail, analyse de projets, planification de tâches, gestion de notes, planification d’événements.",
+    "handoffTaskPlanner": "Je transmets cela à l’Agent de Planification des Tâches pour créer vos tâches. Un instant.",
+    "taskPlannerWorking": "Le Planificateur de Tâches travaille…",
+    "taskPlannerDone": "Vos tâches ont été créées avec succès ! {count} tâches sont prêtes sur votre tableau de projet.",
+    "taskPlannerDoneNoCount": "Vos modifications ont été appliquées avec succès ! Consultez votre tableau de projet pour les mises à jour.",
+    "taskPlannerPlanReady": "Le Planificateur de tâches a préparé un plan :",
+    "taskPlannerFailed": "Le Planificateur de tâches a rencontré un problème : {error}",
     "confirmTaskPlan": "Confirmer le plan",
     "applyTaskPlan": "Appliquer le plan",
     "confirm": "Confirmer",
-    "confirming": "Confirmation\u2026",
+    "confirming": "Confirmation…",
     "apply": "Appliquer",
-    "applying": "Application\u2026",
-    "confirmEvents": "Confirmer le plan d\u2019\u00e9v\u00e9nement",
-    "applyEvents": "Appliquer le plan d\u2019\u00e9v\u00e9nement",
-    "somethingWentWrong": "Quelque chose s\u2019est mal pass\u00e9 : {error}",
-    "noResponse": "Je n\u2019ai pas pu g\u00e9n\u00e9rer de r\u00e9ponse. Pourriez-vous reformuler votre question ?",
-    "alreadyConfirmed": "D\u00e9j\u00e0 confirm\u00e9 \u2014 utilisez Appliquer pour ex\u00e9cuter.",
-    "confirmFailed": "\u00c9chec de la confirmation : {error}",
-    "applyFailed": "\u00c9chec de l\u2019application : {error}",
-    "notesDone": "Termin\u00e9 ! Modifications appliqu\u00e9es avec succ\u00e8s.",
-    "notesConfirmed": "Confirm\u00e9. {summary}",
-    "eventsConfirmed": "Plan d\u2019\u00e9v\u00e9nement confirm\u00e9. {summary}",
-    "eventsDone": "Plan d\u2019\u00e9v\u00e9nement appliqu\u00e9 avec succ\u00e8s.",
-    "readyToApply": "Pr\u00eat \u00e0 appliquer.",
+    "applying": "Application…",
+    "confirmEvents": "Confirmer le plan d’événement",
+    "applyEvents": "Appliquer le plan d’événement",
+    "somethingWentWrong": "Quelque chose s’est mal passé : {error}",
+    "noResponse": "Je n’ai pas pu générer de réponse. Pourriez-vous reformuler votre question ?",
+    "alreadyConfirmed": "Déjà confirmé — utilisez Appliquer pour exécuter.",
+    "confirmFailed": "Échec de la confirmation : {error}",
+    "applyFailed": "Échec de l’application : {error}",
+    "notesDone": "Terminé ! Modifications appliquées avec succès.",
+    "notesConfirmed": "Confirmé. {summary}",
+    "eventsConfirmed": "Plan d’événement confirmé. {summary}",
+    "eventsDone": "Plan d’événement appliqué avec succès.",
+    "readyToApply": "Prêt à appliquer.",
     "copyTooltip": "Cliquer pour copier",
     "suggestedQ1": "Quel est le statut de mes projets ?",
-    "suggestedQ2": "Montre-moi les t\u00e2ches en retard",
+    "suggestedQ2": "Montre-moi les tâches en retard",
     "suggestedQ3": "Quels sont les plus grands risques ?",
-    "suggestedQ4": "R\u00e9sume la progression de cette semaine",
-    "greeting1": "Salut ! Je suis l\u00e0 pour aider. Posez-moi n\u2019importe quelle question sur votre espace de travail, projets, t\u00e2ches ou \u00e9v\u00e9nements.",
-    "greeting2": "Bonjour ! Pr\u00eat \u00e0 aider pour tout ce qui concerne l\u2019espace de travail \u2014 projets, t\u00e2ches, notes, \u00e9v\u00e9nements.",
-    "greeting3": "Bonjour ! N\u2019h\u00e9sitez pas \u00e0 me poser des questions sur vos projets, suivre la progression, g\u00e9rer des notes ou planifier des \u00e9v\u00e9nements.",
-    "greeting4": "Salut ! En quoi puis-je vous aider ? Je peux r\u00e9pondre \u00e0 des questions sur votre espace de travail, analyser des projets, g\u00e9rer des notes et plus.",
-    "createOps": "Cr\u00e9er {count}",
-    "updateOps": "Mettre \u00e0 jour {count}",
+    "suggestedQ4": "Résume la progression de cette semaine",
+    "greeting1": "Salut ! Je suis là pour aider. Posez-moi n’importe quelle question sur votre espace de travail, projets, tâches ou événements.",
+    "greeting2": "Bonjour ! Prêt à aider pour tout ce qui concerne l’espace de travail — projets, tâches, notes, événements.",
+    "greeting3": "Bonjour ! N’hésitez pas à me poser des questions sur vos projets, suivre la progression, gérer des notes ou planifier des événements.",
+    "greeting4": "Salut ! En quoi puis-je vous aider ? Je peux répondre à des questions sur votre espace de travail, analyser des projets, gérer des notes et plus.",
+    "createOps": "Créer {count}",
+    "updateOps": "Mettre à jour {count}",
     "deleteOps": "Supprimer {count}",
-    "blockedOps": "Bloqu\u00e9es {count}",
+    "blockedOps": "Bloquées {count}",
     "statusChangeOps": "Changements de statut {count}",
-    "noChanges": "Aucun changement n\u00e9cessaire.",
+    "noChanges": "Aucun changement nécessaire.",
     "clickConfirm": "Cliquez sur **Confirmer** pour continuer.",
-    "needMoreInfo": "J\u2019ai besoin d\u2019un peu plus d\u2019informations :",
-    "noteCreate": "Je vais cr\u00e9er la note pour vous.",
-    "noteUpdate": "Je vais mettre \u00e0 jour votre note.",
+    "needMoreInfo": "J’ai besoin d’un peu plus d’informations :",
+    "noteCreate": "Je vais créer la note pour vous.",
+    "noteUpdate": "Je vais mettre à jour votre note.",
     "noteDelete": "Je vais supprimer cette note.",
-    "noNoteChanges": "Aucun changement n\u00e9cessaire selon votre demande."
+    "noNoteChanges": "Aucun changement nécessaire selon votre demande."
   },
   "staticPages": {
     "backHome": "Retour à l'accueil",
@@ -655,5 +658,100 @@
     "termsBody": "Nos conditions d'utilisation sont en préparation et seront publiées ici.",
     "securityTitle": "Sécurité",
     "securityBody": "Une présentation de la façon dont Kairos protège vos données est en préparation et sera publiée ici."
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "Bonjour, {name}",
+      "afternoon": "Bon après-midi, {name}",
+      "evening": "Bonsoir, {name}"
+    },
+    "greetingPlain": {
+      "morning": "Bonjour",
+      "afternoon": "Bon après-midi",
+      "evening": "Bonsoir"
+    },
+    "summaryEmpty": "Rien n'est encore planifié. Créez un projet pour suivre le travail.",
+    "summary": "{due, plural, =0 {Rien n'est prévu aujourd'hui} one {Une tâche est due aujourd'hui} other {# tâches sont dues aujourd'hui}}, {overdue, plural, =0 {rien en retard} one {une en retard} other {# en retard}} dans {projects, plural, =0 {aucun projet} one {un projet} other {# projets}}.",
+    "stats": {
+      "dueToday": "Dues aujourd'hui",
+      "overdue": "En retard",
+      "openThisWeek": "Ouvertes cette semaine",
+      "completed": "Terminées"
+    },
+    "today": {
+      "title": "Dues aujourd'hui",
+      "action": "Toutes les tâches",
+      "empty": "Rien de prévu aujourd'hui.",
+      "complete": "Marquer comme terminée",
+      "reopen": "Réouvrir la tâche"
+    },
+    "week": {
+      "title": "Reste de la semaine",
+      "action": "Ouvrir le calendrier",
+      "today": "AUJOURD'HUI"
+    },
+    "activity": {
+      "title": "Activité récente",
+      "action": "Progression",
+      "someone": "Quelqu'un",
+      "aTask": "une tâche",
+      "actions": {
+        "completed": "{user} a terminé {task} dans {project}",
+        "created": "{user} a créé {task} dans {project}",
+        "updated": "{user} a mis à jour {task} dans {project}",
+        "deleted": "{user} a supprimé {task} dans {project}"
+      }
+    },
+    "workspace": {
+      "title": "Progression de l'espace",
+      "done": "{count} terminées",
+      "active": "{count} en cours",
+      "todo": "{count} à faire",
+      "ofTasks": "{done} sur {total} tâches",
+      "dayGone": "{percent}% de la journée écoulée"
+    },
+    "projects": {
+      "title": "Projets",
+      "action": "Tout voir",
+      "untitled": "Projet sans titre",
+      "noTasks": "Aucune tâche",
+      "open": "{count} ouvertes",
+      "empty": "Créez votre premier projet",
+      "health": {
+        "onTrack": "Dans les temps",
+        "inProgress": "En cours",
+        "atRisk": "À risque",
+        "empty": "Aucune tâche"
+      }
+    },
+    "notes": {
+      "title": "Notes",
+      "action": "Nouvelle note",
+      "private": "Privée",
+      "shared": "Partagée",
+      "untitled": "Note sans titre",
+      "empty": "Écrivez votre première note"
+    },
+    "status": {
+      "done": "Terminée",
+      "overdue": "En retard",
+      "inProgress": "En cours",
+      "todo": "À faire"
+    },
+    "firstRun": {
+      "tag": "Premier lancement",
+      "title": "Rien n'est encore planifié.",
+      "body": "Créez un projet pour commencer à suivre le travail, ou rejoignez-en un existant avec son code d'accès.",
+      "createProject": "Créer un projet",
+      "or": "ou",
+      "joinCode": "Rejoindre avec un code",
+      "codeLabel": "Code d'accès",
+      "codePlaceholder": "______",
+      "joined": "Vous avez rejoint l'espace de travail.",
+      "step1": "Nommez le projet et fixez sa première échéance.",
+      "step2": "Invitez des personnes avec un seul code d'accès.",
+      "step3": "Tâches, notes et progression arrivent sur ce tableau de bord.",
+      "aside": "L'arc intérieur suit la journée elle-même : un tableau de bord vide indique encore le temps restant."
+    }
   }
 }
