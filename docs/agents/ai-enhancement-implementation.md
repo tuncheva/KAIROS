@@ -2,6 +2,7 @@
 
 Date: 2026-08-21
 Plan: [`ai-agent-enhancement-plan.md`](plans/ai-agent-enhancement-plan.md)
+Roadmap page: [`kairos-agent-roadmap.html`](kairos-agent-roadmap.html) ([published](https://claude.ai/code/artifact/1d47f112-6393-444e-9c00-debe0d62a9ae))
 
 Implements all seven tracks of the plan. This document is the map from plan item
 to code, plus the setup steps the new features need.

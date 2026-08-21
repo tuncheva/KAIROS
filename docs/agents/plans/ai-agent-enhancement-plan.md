@@ -4,6 +4,10 @@ Date: 2026-08-21
 Status: proposal
 Scope: `src/server/llm/**`, `src/app/api/ai/**`, `src/components/chat/**`, agent-adjacent DB schema
 
+> **Shareable version:** [`kairos-agent-roadmap.html`](../kairos-agent-roadmap.html) —
+> the same plan as a single designed page, published at
+> <https://claude.ai/code/artifact/1d47f112-6393-444e-9c00-debe0d62a9ae>.
+
 ---
 
 ## 0. Baseline — what already exists
