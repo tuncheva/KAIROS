@@ -264,7 +264,37 @@
       "notifications": "Benachrichtigungen",
       "security": "Sicherheit",
       "language": "Sprache",
-      "appearance": "Erscheinungsbild"
+      "appearance": "Erscheinungsbild",
+      "ai": "KI-Assistent"
+    },
+    "ai": {
+      "title": "KI-Assistent",
+      "subtitle": "Bestimmen Sie, was der Assistent von sich aus tut und was er sich über Sie merkt.",
+      "loading": "Wird geladen…",
+      "proactiveTitle": "Proaktive Hinweise",
+      "proactiveDescription": "Lassen Sie den Assistenten sich melden, wenn etwas Aufmerksamkeit braucht. Standardmäßig aus.",
+      "dailyBriefTitle": "Tagesüberblick",
+      "dailyBriefDescription": "Eine Nachricht pro Morgen: was fällig ist, was sich verzögert hat, was gefährdet ist.",
+      "riskRadarTitle": "Risiko-Radar",
+      "riskRadarDescription": "Benachrichtige mich, wenn ein Projekt aus dem Ruder läuft — überfällige Aufgaben, nicht zugewiesene Arbeit, stockender Fortschritt.",
+      "atHour": "Um",
+      "enableToggle": "Aktivieren",
+      "previewBrief": "Schick mir jetzt einen",
+      "sending": "Wird gesendet…",
+      "lastFailed": "Letzter Lauf fehlgeschlagen: {error}",
+      "memoryTitle": "Woran sich der Assistent erinnert",
+      "memoryDescription": "Nur was Sie ihn zu merken gebeten haben. Löschen Sie alles, was er besser vergessen sollte.",
+      "memoryEmpty": "Noch nichts. Sagen Sie im Chat „merk dir, dass…“, dann erscheint es hier.",
+      "forget": "Vergessen",
+      "forgetEverything": "Alles vergessen",
+      "usageTitle": "Nutzung",
+      "usageDescription": "Ihr Budget an KI-Anfragen und wie sich der Assistent schlägt.",
+      "quotaRemaining": "Verbleibende Anfragen heute",
+      "quotaSystem": "Verbleibende proaktive Läufe",
+      "tokens30d": "Token, 30 Tage",
+      "dismissalRate": "Verworfene Befunde",
+      "agent": "Agent",
+      "samples": "Messwerte"
     }
   },
   "create": {
@@ -528,7 +558,9 @@
     "menu": "Menü",
     "lightMode": "Zum hellen Modus wechseln",
     "darkMode": "Zum dunklen Modus wechseln",
-    "copyFailed": "Kopieren fehlgeschlagen"
+    "copyFailed": "Kopieren fehlgeschlagen",
+    "accept": "Annehmen",
+    "decline": "Ablehnen"
   },
   "org": {
     "accessCode": "Org-Code",
@@ -547,6 +579,8 @@
     "organization": "Organisation",
     "personalWorkspace": "Persönlicher Arbeitsbereich",
     "personalHint": "Tritt einer Organisation bei, um im Team zu arbeiten",
+    "switchWorkspace": "Arbeitsbereich wechseln",
+    "personalSubtitle": "Nur du",
     "inviteWithQr": "Per QR einladen",
     "inviteQrTitle": "Zum Workspace einladen",
     "inviteQrHint": "Lass den Code mit dem Handy scannen. Er läuft bald ab und gilt nur einmal.",
@@ -570,7 +604,11 @@
     "joinGoToDashboard": "Zum Dashboard",
     "joining": "Beitreten...",
     "joinedOrg": "{name} beigetreten!",
-    "inviteQrRevoked": "Einladungscode widerrufen"
+    "inviteQrRevoked": "Einladungscode widerrufen",
+    "loadingOrgs": "Organisationen werden geladen…",
+    "inviteDeclined": "Einladung abgelehnt",
+    "pendingInvitations": "Offene Einladungen",
+    "invitedAs": "Du wurdest eingeladen als"
   },
   "ai": {
     "title": "KI-Aufgabengenerator",
@@ -607,6 +645,30 @@
       "medium": "Mittel",
       "high": "Hoch",
       "urgent": "Dringend"
+    },
+    "insights": {
+      "title": "Braucht Aufmerksamkeit",
+      "loading": "Projekte werden geprüft…",
+      "allClear": "Im Moment braucht nichts Ihre Aufmerksamkeit.",
+      "count": "{count} offen",
+      "dismiss": "Verwerfen",
+      "openProject": "Projekt öffnen"
+    },
+    "palette": {
+      "title": "Befehlspalette",
+      "placeholder": "Suchen — oder den Assistenten alles fragen…",
+      "askAssistant": "Assistenten fragen: „{query}“",
+      "noResults": "Keine Treffer.",
+      "enter": "Eingabe",
+      "project": "Projekt",
+      "dashboard": "Übersicht",
+      "projects": "Projekte",
+      "tasks": "Aufgaben",
+      "calendar": "Kalender",
+      "notes": "Notizen",
+      "events": "Veranstaltungen",
+      "assistant": "Assistent",
+      "settings": "Einstellungen"
     }
   },
   "chat": {

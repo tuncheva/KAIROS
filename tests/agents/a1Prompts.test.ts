@@ -11,6 +11,8 @@ const mockContext: A1ContextPack = {
   },
   projects: [{ id: 1, title: "Project Alpha", status: "active" }],
   scopedProjectId: null,
+  locale: "en",
+  memory: [],
   now: new Date().toISOString(),
 };
 
@@ -50,7 +52,55 @@ describe("A1 System Prompt", () => {
     expect(prompt).toContain(
       "Sorry, I am not designed for these type of questions.",
     );
-    expect(prompt).toContain("English or Bulgarian");
+    // Five locales ship message files, so five are offered. The prompt used to
+    // hardcode "English or Bulgarian" and refuse the other three outright.
+    for (const language of ["English", "Bulgarian", "Spanish", "French", "German"]) {
+      expect(prompt).toContain(language);
+    }
+  });
+
+  /**
+   * The reply language falls back to the user's saved preference rather than
+   * being guessed from the message, which is what made the other three locales
+   * unreachable: a Spanish speaker writing a project name in English got English.
+   */
+  it("names the user's saved locale as the fallback reply language", () => {
+    const spanish = getA1SystemPrompt({ ...mockContext, locale: "es" });
+    expect(spanish).toContain("Otherwise reply in Spanish");
+
+    const bulgarian = getA1SystemPrompt({ ...mockContext, locale: "bg" });
+    expect(bulgarian).toContain("Otherwise reply in Bulgarian");
+  });
+
+  it("offers search before drill-down", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    expect(prompt).toContain("searchWorkspace");
+  });
+
+  it("names org_admin as a handoff target now that A5 exists", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    expect(prompt).toContain("org_admin");
+  });
+
+  it("omits the memory block entirely when there is nothing remembered", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    expect(prompt).not.toContain("What you know about this user");
+  });
+
+  it("includes remembered facts when there are any", () => {
+    const prompt = getA1SystemPrompt({
+      ...mockContext,
+      memory: [
+        {
+          id: 1,
+          key: "sprint_cadence",
+          value: "Sprints run Monday to Friday.",
+          updatedAt: new Date(),
+        },
+      ],
+    });
+    expect(prompt).toContain("What you know about this user");
+    expect(prompt).toContain("Sprints run Monday to Friday.");
   });
 
   /**

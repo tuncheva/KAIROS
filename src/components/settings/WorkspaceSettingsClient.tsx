@@ -20,6 +20,7 @@ import {
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
+import { useSwitchOrganization } from "~/hooks/useSwitchOrganization";
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
@@ -241,20 +242,9 @@ export function WorkspaceSettingsClient() {
     onError: (e) => toast.error(e.message),
   });
 
-  const setActiveOrg = api.organization.setActive.useMutation({
-    onSuccess: async () => {
-      await Promise.all([
-        utils.organization.getActive.invalidate(),
-        utils.organization.getMembers.invalidate(),
-        utils.organization.getRoles.invalidate(),
-        utils.organization.getInvites.invalidate(),
-        utils.organization.getInviteHistory.invalidate(),
-        utils.organization.getProjectInviteCandidates.invalidate(),
-        utils.user.getProfile.invalidate(),
-      ]);
-      toast.success(t("messages.organizationSwitched"));
-    },
-    onError: (e) => toast.error(e.message),
+  const setActiveOrg = useSwitchOrganization({
+    onSwitched: () => toast.success(t("messages.organizationSwitched")),
+    onError: (message) => toast.error(message),
   });
 
   const leaveOrg = api.organization.leave.useMutation({

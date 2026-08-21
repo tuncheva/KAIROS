@@ -59,12 +59,51 @@ import {
   mintConfirmationToken,
   readConfirmationToken,
 } from "./shared";
+/**
+ * The plan a refinement is revising, as JSON, or null.
+ *
+ * Never throws. A stale or foreign draft id means "no prior plan", so the turn
+ * degrades to a normal draft rather than failing — the user asked for a change,
+ * and answering with a fresh plan beats answering with an error.
+ */
+async function loadRefinablePlan(
+  ctx: TRPCContext,
+  draftId: string,
+  userId: string,
+): Promise<string | null> {
+  const [row] = await ctx.db
+    .select({
+      planJson: agentTaskPlannerDrafts.planJson,
+      status: agentTaskPlannerDrafts.status,
+      userId: agentTaskPlannerDrafts.userId,
+    })
+    .from(agentTaskPlannerDrafts)
+    .where(eq(agentTaskPlannerDrafts.id, draftId))
+    .limit(1);
+
+  if (row?.userId !== userId) return null;
+  if (row.status === "applied" || row.status === "expired") return null;
+
+  return row.planJson;
+}
+
 export const a2TaskPlanner = {
   async taskPlannerDraft(input: {
     ctx: TRPCContext;
     message: string;
     scope?: { orgId?: string | number; projectId?: number };
     handoffContext?: Record<string, unknown>;
+    /**
+     * E-3 — the plan this message is refining.
+     *
+     * "Change the third one's due date to Friday and drop the seventh" used to
+     * produce a brand-new plan from the original request, losing every edit the
+     * user had already accepted and often renumbering the items they were
+     * referring to. With the prior plan in context the model revises it instead,
+     * and the resulting hash is recomputed so the confirmation token binds to
+     * what the user actually last saw.
+     */
+    priorDraftId?: string;
   }): Promise<{ draftId: string; plan: TaskPlanDraft }> {
     const userId = requireUserId(input.ctx);
 
@@ -150,14 +189,30 @@ export const a2TaskPlanner = {
 
     const systemPrompt = getA2SystemPrompt(contextPack);
 
+    // E-3: load the plan being refined, if any. Scoped to the caller and to
+    // drafts that have not been applied — refining something already written to
+    // the database is not a refinement, it is a second change, and it should go
+    // through a fresh plan so the diff the user approves is honest.
+    const priorPlanJson = input.priorDraftId
+      ? await loadRefinablePlan(input.ctx, input.priorDraftId, userId)
+      : null;
+
     const parseResult = await completeJson({
       messages: [
         { role: "system", content: systemPrompt },
+        ...(priorPlanJson
+          ? [
+              {
+                role: "system" as const,
+                content: `The user is refining this existing plan. Return the COMPLETE revised plan — every item they did not ask you to change must survive unchanged, with the same wording. Do not start over.\n\n${priorPlanJson}`,
+              },
+            ]
+          : []),
         { role: "user", content: input.message },
       ],
       schema: TaskPlanModelOutputSchema,
       temperature: 0.2,
-      purpose: "a2.draft",
+      purpose: input.priorDraftId ? "a2.refine" : "a2.draft",
       userId,
     });
 

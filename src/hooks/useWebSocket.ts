@@ -22,7 +22,7 @@ let listenerCount = 0;
 interface UseWebSocketOptions {
   enabled?: boolean;
   /** Current workspace/org ID to auto-join on connect */
-  orgId?: string | null;
+  orgId?: string | number | null;
 }
 
 export function useWebSocket(options: UseWebSocketOptions = {}) {
@@ -179,10 +179,20 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     };
   }, [enabled, hasToken, queryClient]);
 
-  // Re-join org room when orgId changes
+  // Re-join org room when orgId changes.
+  //
+  // The cleanup is the important half: without it a workspace switch joined the
+  // new organisation's room while staying in the old one, so the socket kept
+  // receiving events for a workspace the user had left. `globalSocket` is read
+  // into a local so the leave is emitted on the same socket the join was.
   useEffect(() => {
-    if (!globalSocket?.connected || !orgId) return;
-    globalSocket.emit("join:org", orgId);
+    const socket = globalSocket;
+    if (!socket?.connected || !orgId) return;
+
+    socket.emit("join:org", orgId);
+    return () => {
+      socket.emit("leave:org", orgId);
+    };
   }, [orgId]);
 
   return globalSocket;

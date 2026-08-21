@@ -541,7 +541,8 @@
       "notifications": "Notifications",
       "security": "Security",
       "language": "Language",
-      "appearance": "Appearance"
+      "appearance": "Appearance",
+      "ai": "AI assistant"
     },
     "workspace": {
       "organizations": {
@@ -640,6 +641,35 @@
         "cancel": "Cancel",
         "join": "Join"
       }
+    },
+    "ai": {
+      "title": "AI assistant",
+      "subtitle": "Control what the assistant does on its own, and what it remembers about you.",
+      "loading": "Loading…",
+      "proactiveTitle": "Proactive updates",
+      "proactiveDescription": "Let the assistant reach out when something needs attention. Off by default.",
+      "dailyBriefTitle": "Daily brief",
+      "dailyBriefDescription": "One message each morning: what's due, what slipped, what's at risk.",
+      "riskRadarTitle": "Risk radar",
+      "riskRadarDescription": "Notify me when a project starts going wrong — overdue clusters, unassigned work, stalled progress.",
+      "atHour": "At",
+      "enableToggle": "Enable",
+      "previewBrief": "Send me one now",
+      "sending": "Sending…",
+      "lastFailed": "Last run failed: {error}",
+      "memoryTitle": "What the assistant remembers",
+      "memoryDescription": "Only things you asked it to remember. Delete anything you'd rather it forgot.",
+      "memoryEmpty": "Nothing yet. Say \"remember that…\" in a chat and it will show up here.",
+      "forget": "Forget",
+      "forgetEverything": "Forget everything",
+      "usageTitle": "Usage",
+      "usageDescription": "Your AI request budget and how the assistant has been performing.",
+      "quotaRemaining": "Requests left today",
+      "quotaSystem": "Proactive runs left",
+      "tokens30d": "Tokens, 30 days",
+      "dismissalRate": "Findings dismissed",
+      "agent": "Agent",
+      "samples": "Samples"
     }
   },
   "create": {
@@ -1115,6 +1145,8 @@
     "organization": "Organization",
     "personalWorkspace": "Personal Workspace",
     "personalHint": "Join an organization to collaborate with a team",
+    "switchWorkspace": "Switch workspace",
+    "personalSubtitle": "Only you",
     "pendingInvitations": "Pending Invitations",
     "invitedAs": "You've been invited as",
     "joining": "Joining...",
@@ -1141,7 +1173,8 @@
     "joinCta": "Join workspace",
     "joinDecline": "Not now",
     "joinGoToDashboard": "Go to dashboard",
-    "inviteQrRevoked": "Invite code revoked"
+    "inviteQrRevoked": "Invite code revoked",
+    "loadingOrgs": "Loading organizations…"
   },
   "ai": {
     "title": "AI Task Generator",
@@ -1178,6 +1211,30 @@
       "medium": "Medium",
       "high": "High",
       "urgent": "Urgent"
+    },
+    "insights": {
+      "title": "Needs attention",
+      "loading": "Checking your projects…",
+      "allClear": "Nothing needs your attention right now.",
+      "count": "{count} open",
+      "dismiss": "Dismiss",
+      "openProject": "Open project"
+    },
+    "palette": {
+      "title": "Command palette",
+      "placeholder": "Search, or ask the assistant anything…",
+      "askAssistant": "Ask the assistant: \"{query}\"",
+      "noResults": "Nothing matched.",
+      "enter": "Enter",
+      "project": "Project",
+      "dashboard": "Dashboard",
+      "projects": "Projects",
+      "tasks": "Tasks",
+      "calendar": "Calendar",
+      "notes": "Notes",
+      "events": "Events",
+      "assistant": "Assistant",
+      "settings": "Settings"
     }
   },
   "chat": {

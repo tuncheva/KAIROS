@@ -11,6 +11,7 @@
  *   a2TaskPlanner.ts      draft / confirm / apply a plan of task changes
  *   a3NotesVault.ts       draft / confirm / apply note changes
  *   a4EventsPublisher.ts  draft / confirm / apply event changes
+ *   a5OrgAdmin.ts         draft / confirm / apply membership and role changes
  *   taskGeneration.ts     prompt or PDF -> candidate tasks
  *
  * The exported shape is deliberately identical, so `routers/agent.ts` and the tests
@@ -30,6 +31,9 @@ import {
   a4EventsPublisher,
 } from "./a4EventsPublisher";
 import {
+  a5OrgAdmin,
+} from "./a5OrgAdmin";
+import {
   taskGeneration,
 } from "./taskGeneration";
 export type {
@@ -46,4 +50,5 @@ export const agentOrchestrator = {
   ...a1Concierge,
   ...taskGeneration,
   ...a4EventsPublisher,
+  ...a5OrgAdmin,
 };

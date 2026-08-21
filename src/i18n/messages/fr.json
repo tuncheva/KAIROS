@@ -264,7 +264,37 @@
       "notifications": "Notifications",
       "security": "Sécurité",
       "language": "Langue",
-      "appearance": "Apparence"
+      "appearance": "Apparence",
+      "ai": "Assistant IA"
+    },
+    "ai": {
+      "title": "Assistant IA",
+      "subtitle": "Choisissez ce que l'assistant fait de lui-même et ce qu'il retient de vous.",
+      "loading": "Chargement…",
+      "proactiveTitle": "Alertes proactives",
+      "proactiveDescription": "Laissez l'assistant vous prévenir quand quelque chose demande votre attention. Désactivé par défaut.",
+      "dailyBriefTitle": "Brief quotidien",
+      "dailyBriefDescription": "Un message chaque matin : ce qui est à rendre, ce qui a glissé, ce qui est à risque.",
+      "riskRadarTitle": "Radar des risques",
+      "riskRadarDescription": "Prévenez-moi quand un projet dérape : tâches en retard, travail non attribué, progression à l'arrêt.",
+      "atHour": "À",
+      "enableToggle": "Activer",
+      "previewBrief": "Envoyez-m'en un maintenant",
+      "sending": "Envoi…",
+      "lastFailed": "La dernière exécution a échoué : {error}",
+      "memoryTitle": "Ce que l'assistant retient",
+      "memoryDescription": "Uniquement ce que vous lui avez demandé de retenir. Supprimez tout ce qu'il vaut mieux oublier.",
+      "memoryEmpty": "Rien pour l'instant. Dites « retiens que… » dans une conversation et cela apparaîtra ici.",
+      "forget": "Oublier",
+      "forgetEverything": "Tout oublier",
+      "usageTitle": "Utilisation",
+      "usageDescription": "Votre budget de requêtes IA et les performances de l'assistant.",
+      "quotaRemaining": "Requêtes restantes aujourd'hui",
+      "quotaSystem": "Exécutions proactives restantes",
+      "tokens30d": "Jetons, 30 jours",
+      "dismissalRate": "Constats écartés",
+      "agent": "Agent",
+      "samples": "Échantillons"
     }
   },
   "create": {
@@ -528,7 +558,9 @@
     "menu": "Menu",
     "lightMode": "Passer en mode clair",
     "darkMode": "Passer en mode sombre",
-    "copyFailed": "Échec de la copie"
+    "copyFailed": "Échec de la copie",
+    "accept": "Accepter",
+    "decline": "Refuser"
   },
   "org": {
     "accessCode": "Code de l’organisation",
@@ -547,6 +579,8 @@
     "organization": "Organisation",
     "personalWorkspace": "Espace personnel",
     "personalHint": "Rejoignez une organisation pour collaborer en équipe",
+    "switchWorkspace": "Changer d’espace",
+    "personalSubtitle": "Vous uniquement",
     "inviteWithQr": "Inviter par QR",
     "inviteQrTitle": "Inviter dans l'espace de travail",
     "inviteQrHint": "Faites-le scanner avec un téléphone. Le code expire vite et ne sert qu'une fois.",
@@ -570,7 +604,11 @@
     "joinGoToDashboard": "Aller au tableau de bord",
     "joining": "Adhésion...",
     "joinedOrg": "Vous avez rejoint {name} !",
-    "inviteQrRevoked": "Code d'invitation révoqué"
+    "inviteQrRevoked": "Code d'invitation révoqué",
+    "loadingOrgs": "Chargement des organisations…",
+    "inviteDeclined": "Invitation refusée",
+    "pendingInvitations": "Invitations en attente",
+    "invitedAs": "Vous avez été invité en tant que"
   },
   "ai": {
     "title": "Générateur de tâches IA",
@@ -607,6 +645,30 @@
       "medium": "Moyenne",
       "high": "Haute",
       "urgent": "Urgente"
+    },
+    "insights": {
+      "title": "Demande votre attention",
+      "loading": "Analyse de vos projets…",
+      "allClear": "Rien ne demande votre attention pour le moment.",
+      "count": "{count} en cours",
+      "dismiss": "Écarter",
+      "openProject": "Ouvrir le projet"
+    },
+    "palette": {
+      "title": "Palette de commandes",
+      "placeholder": "Cherchez, ou demandez ce que vous voulez à l'assistant…",
+      "askAssistant": "Demander à l'assistant : « {query} »",
+      "noResults": "Aucun résultat.",
+      "enter": "Entrée",
+      "project": "Projet",
+      "dashboard": "Tableau de bord",
+      "projects": "Projets",
+      "tasks": "Tâches",
+      "calendar": "Calendrier",
+      "notes": "Notes",
+      "events": "Événements",
+      "assistant": "Assistant",
+      "settings": "Paramètres"
     }
   },
   "chat": {

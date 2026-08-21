@@ -10,15 +10,24 @@ import { useCallback, useRef, useState } from "react";
  * dots. This surfaces what the server is actually doing: which tool is running,
  * which sub-agent took over, and finally the result.
  *
- * Only progress streams, not answer tokens: A1 returns one JSON object carrying
- * the handoff decision and the draft id behind the Apply button, and a partial
- * JSON object is not renderable.
+ * G-1: the answer text now streams too. A1 still returns one JSON object — the
+ * handoff decision and the draft id behind the Apply button live in it — but the
+ * server scans that JSON as it is generated and forwards `answer.summary` as
+ * `answer_delta` frames, so the reply appears while the structure is still being
+ * written. `onResult` remains authoritative; a caller may ignore the deltas
+ * entirely and behave exactly as it did before.
  */
 
 export interface AgentPlan {
-  kind: "tasks" | "notes" | "events";
+  kind: "tasks" | "notes" | "events" | "org";
   draftId: string;
   plan: Record<string, unknown>;
+}
+
+export interface AgentCitation {
+  label: string;
+  /** "kind:id" — e.g. `task:42`. See `citationHref`. */
+  ref: string;
 }
 
 export interface AgentTurnPayload {
@@ -26,17 +35,53 @@ export interface AgentTurnPayload {
   a1: {
     intent: { type: string; scope?: { projectId?: string | number } };
     answer?: { summary: string; details?: string[] };
+    /** E-1: a question back, instead of a guess. */
+    clarify?: { question: string; options?: string[] };
     handoff?: { targetAgent: string; userIntent: string };
+    handoffs?: Array<{ targetAgent: string; userIntent: string }>;
+    citations?: AgentCitation[];
+    followUps?: string[];
   };
+  /** E-2: every plan produced this turn. */
+  plans: AgentPlan[];
+  /** The first plan, for callers that only render one. */
   plan?: AgentPlan;
-  handoffError?: string;
+  handoffErrors: string[];
   conversationId: string;
   latencyMs: number;
+}
+
+/**
+ * Turn a citation ref into a link the user can follow.
+ *
+ * G-3: the model has always produced these and the UI rendered them nowhere.
+ * Trust in an answer comes from being able to go and check it, so an
+ * unrecognised ref returns null and is rendered as plain text rather than as a
+ * link that goes nowhere.
+ */
+export function citationHref(ref: string): string | null {
+  const [kind, id] = ref.split(":");
+  if (!kind || !id || !/^\d+$/.test(id)) return null;
+
+  switch (kind) {
+    case "task":
+      return `/tasks/${id}`;
+    case "project":
+      return `/projects/${id}`;
+    case "note":
+      return `/notes?note=${id}`;
+    case "event":
+      return `/events/${id}`;
+    default:
+      return null;
+  }
 }
 
 export interface AgentStreamHandlers {
   onToolCall?: (name: string) => void;
   onSubAgent?: (agent: string) => void;
+  /** G-1: a run of answer text. Append it; do not replace. */
+  onAnswerDelta?: (text: string) => void;
   onResult: (payload: AgentTurnPayload) => void;
   onError: (message: string, isRateLimit: boolean) => void;
 }
@@ -45,6 +90,13 @@ interface SendOptions {
   message: string;
   projectId?: number;
   conversationId?: string;
+  /**
+   * E-3: the unapplied task plan still on screen.
+   *
+   * Send it whenever a plan is rendered and not yet applied, so "make the third
+   * one urgent" revises that plan rather than drafting a second one beside it.
+   */
+  priorTaskDraftId?: string;
 }
 
 /** Split an SSE buffer into complete `event:`/`data:` frames. */
@@ -100,6 +152,7 @@ export function useAgentStream(handlers: AgentStreamHandlers) {
           message: opts.message,
           projectId: opts.projectId,
           conversationId: opts.conversationId,
+          priorTaskDraftId: opts.priorTaskDraftId,
         }),
         signal: controller.signal,
       });
@@ -164,6 +217,11 @@ export function useAgentStream(handlers: AgentStreamHandlers) {
             case "sub_agent":
               handlersRef.current.onSubAgent?.(
                 (payload as { agent: string }).agent,
+              );
+              break;
+            case "answer_delta":
+              handlersRef.current.onAnswerDelta?.(
+                (payload as { text: string }).text,
               );
               break;
             case "result":

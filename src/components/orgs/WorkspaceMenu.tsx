@@ -6,6 +6,11 @@ import { Building2, Check, ChevronDown, QrCode, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
+import { useToast } from "~/components/providers/ToastProvider";
+import {
+  useSwitchOrganization,
+  useSwitchToPersonal,
+} from "~/hooks/useSwitchOrganization";
 import { api } from "~/trpc/react";
 
 /**
@@ -32,26 +37,27 @@ function monogram(name: string): string {
  */
 export function WorkspaceMenu() {
   const t = useTranslations("org");
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const utils = api.useUtils();
   const activeQuery = api.organization.getActive.useQuery();
   const orgsQuery = api.organization.listMine.useQuery(undefined, {
     enabled: open,
   });
 
-  const setActive = api.organization.setActive.useMutation({
-    onSuccess: async () => {
-      await Promise.all([
-        utils.organization.getActive.invalidate(),
-        utils.organization.listMine.invalidate(),
-        utils.user.getProfile.invalidate(),
-      ]);
-      setOpen(false);
-    },
+  const setActive = useSwitchOrganization({
+    onSwitched: () => setOpen(false),
+    onError: (message) => toast.error(message),
   });
+
+  const setPersonal = useSwitchToPersonal({
+    onSwitched: () => setOpen(false),
+    onError: (message) => toast.error(message),
+  });
+
+  const isSwitching = setActive.isPending || setPersonal.isPending;
 
   useEffect(() => {
     if (!open) return;
@@ -132,10 +138,45 @@ export function WorkspaceMenu() {
             className="absolute left-0 z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-border-light/60 bg-bg-surface shadow-2xl"
           >
             <div className="px-3 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wider text-fg-tertiary">
-              {t("switchOrg")}
+              {t("switchWorkspace")}
             </div>
 
             <div className="max-h-64 overflow-auto py-1">
+              {/* Your own space is a destination, not just the state you are in
+                  before joining somewhere — so it belongs in the list you can
+                  switch to, above the organisations. */}
+              <button
+                type="button"
+                role="menuitem"
+                disabled={isSwitching}
+                onClick={() => setPersonal.mutate()}
+                className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors ${
+                  isPersonal ? "bg-accent-primary/10" : "hover:bg-bg-elevated"
+                }`}
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-bg-secondary text-fg-tertiary">
+                  <User size={14} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm text-fg-primary">
+                    {t("personalWorkspace")}
+                  </span>
+                  <span className="block text-[11px] text-fg-tertiary">
+                    {t("personalSubtitle")}
+                  </span>
+                </span>
+                {isPersonal ? (
+                  <Check size={15} className="shrink-0 text-accent-primary" />
+                ) : null}
+              </button>
+
+              {(orgsQuery.data?.length ?? 0) > 0 ? (
+                <div
+                  aria-hidden="true"
+                  className="my-1 border-t border-border-light/40"
+                />
+              ) : null}
+
               {(orgsQuery.data ?? []).map((org) => {
                 const isActive = active?.organization?.id === org.id;
                 return (
@@ -143,7 +184,7 @@ export function WorkspaceMenu() {
                     key={org.id}
                     type="button"
                     role="menuitem"
-                    disabled={setActive.isPending}
+                    disabled={isSwitching}
                     onClick={() => setActive.mutate({ organizationId: org.id })}
                     className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors ${
                       isActive ? "bg-accent-primary/10" : "hover:bg-bg-elevated"

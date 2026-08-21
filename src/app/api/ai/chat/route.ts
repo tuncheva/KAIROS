@@ -6,11 +6,22 @@
  * that silence gets longer, and the "thinking" dots said nothing about what was
  * happening.
  *
- * What streams here is *progress*, not answer tokens. A1's contract is a single
- * JSON object — it carries the handoff decision and the draft id that renders the
- * Apply button — and half of a JSON object is not something the UI can display.
- * So the events report which tool is running and which sub-agent took over, and
- * the finished object arrives in one `result` event.
+ * Events, in the order they arrive:
+ *
+ *   start        the conversation id
+ *   tool_call    a lookup began, by name
+ *   answer_delta a run of answer text (G-1)
+ *   sub_agent    a write agent took over
+ *   result       the complete, validated object
+ *
+ * `answer_delta` deserves a note. A1's contract is a single JSON object — it
+ * carries the handoff decision and the draft id that renders the Apply button —
+ * so half an object is not something the UI can display, and for a long time
+ * only *progress* streamed while the answer itself landed in one piece after up
+ * to ninety seconds. The deltas are produced by scanning the model's JSON as it
+ * arrives and decoding `answer.summary` out of it, so the text appears while the
+ * structure is still being written. `result` remains authoritative: a client may
+ * ignore the deltas entirely and behave exactly as before.
  *
  * Confirm and apply stay on tRPC: they never call the model, so they have
  * nothing to stream.
@@ -27,7 +38,9 @@ import { runAgentTurn } from "~/server/llm/orchestrator/handoff";
 import {
   appendMessage,
   ensureConversation,
+  ensureTitle,
   loadHistory,
+  maybeSummarize,
 } from "~/server/llm/conversations";
 
 // The custom Node server in server.ts keeps connections open for as long as the
@@ -43,6 +56,8 @@ interface ChatRequestBody {
   message?: unknown;
   conversationId?: unknown;
   projectId?: unknown;
+  /** E-3: the unapplied task plan still on screen, if any. */
+  priorTaskDraftId?: unknown;
 }
 
 function sse(event: string, data: unknown): string {
@@ -78,6 +93,8 @@ export async function POST(request: Request) {
       : null;
   const requestedConversationId =
     typeof body.conversationId === "string" ? body.conversationId : undefined;
+  const priorTaskDraftId =
+    typeof body.priorTaskDraftId === "string" ? body.priorTaskDraftId : undefined;
 
   // Same door as the tRPC procedures: one AI request off the caller's daily
   // budget, refused before any model call.
@@ -122,17 +139,24 @@ export async function POST(request: Request) {
           ctx,
           message,
           scope: projectId ? { projectId } : undefined,
-          conversationHistory: history,
+          conversationHistory: history.messages,
+          conversationSummary: history.summary,
+          priorTaskDraftId,
           signal: request.signal,
           onToolCall: (name) => send("tool_call", { name }),
           onSubAgent: (agent) => send("sub_agent", { agent }),
+          // G-1: the answer arrives as text while the rest of the object is
+          // still being generated. The `result` event still carries the whole
+          // validated object — this is the same bytes, seen earlier.
+          onAnswerDelta: (text) => send("answer_delta", { text }),
         });
 
         const latencyMs = Date.now() - startedAt;
         send("result", { ...result, conversationId, latencyMs });
 
         // Persist after the response is on its way — the user should not wait on
-        // a write they cannot see.
+        // a write they cannot see. The title and the rolling summary are model
+        // calls of their own, so they especially belong here.
         after(async () => {
           try {
             await appendMessage(ctx, {
@@ -142,12 +166,21 @@ export async function POST(request: Request) {
               // and what the next turn should see — not the rendered bubble.
               content: JSON.stringify(result.a1),
               agentId: "workspace_concierge",
-              draftId: result.plan?.draftId ?? null,
+              draftId: result.plans[0]?.draftId ?? null,
               latencyMs,
             });
           } catch (err) {
             log.error("failed to persist assistant message", { err });
           }
+
+          // Independent of each other and of the write above: one failing must
+          // not skip the other.
+          await Promise.allSettled([
+            history.messages.length === 0
+              ? ensureTitle(ctx, conversationId, message)
+              : Promise.resolve(),
+            maybeSummarize(ctx, conversationId),
+          ]);
         });
       } catch (err) {
         log.error("agent turn failed", { err });

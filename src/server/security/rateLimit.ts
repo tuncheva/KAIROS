@@ -99,3 +99,54 @@ export async function consumeRateLimit(
 export async function recordExtraAiCall(userId: string): Promise<void> {
   await recordHit(key(userId), WINDOW_MS, Date.now());
 }
+
+// ---------------------------------------------------------------------------
+// B-4 — the system budget
+// ---------------------------------------------------------------------------
+
+/**
+ * Scheduled runs are metered separately from what the user asks for.
+ *
+ * A daily brief that quietly ate one of the user's 50 requests would be a
+ * feature charging the person it was supposed to help — and worse, it would do
+ * it before they woke up, so the budget they found at 9am would already be down.
+ * Proactive work therefore draws on its own window and can never touch the
+ * interactive one.
+ *
+ * The reverse also holds: a user who exhausts their interactive budget still
+ * gets tomorrow's brief.
+ */
+const MAX_SYSTEM_REQUESTS_PER_WINDOW = parseInt(
+  process.env.AI_SYSTEM_RATE_LIMIT ?? "20",
+  10,
+);
+
+function systemKey(userId: string): string {
+  return `ai:system:${userId}`;
+}
+
+export async function checkSystemRateLimit(
+  userId: string,
+): Promise<RateLimitStatus> {
+  const now = Date.now();
+  const { count, oldest } = await readWindow(systemKey(userId), WINDOW_MS, now);
+  return {
+    allowed: count < MAX_SYSTEM_REQUESTS_PER_WINDOW,
+    remaining: Math.max(0, MAX_SYSTEM_REQUESTS_PER_WINDOW - count),
+    limit: MAX_SYSTEM_REQUESTS_PER_WINDOW,
+    resetsAt: new Date((oldest ?? now) + WINDOW_MS),
+  };
+}
+
+/**
+ * Consume one scheduled run.
+ *
+ * Returns `false` rather than throwing: a scheduler iterating hundreds of users
+ * wants to skip this one and carry on, not unwind a batch.
+ */
+export async function consumeSystemRateLimit(userId: string): Promise<boolean> {
+  const status = await checkSystemRateLimit(userId);
+  if (!status.allowed) return false;
+  await recordHit(systemKey(userId), WINDOW_MS, Date.now());
+  return true;
+}

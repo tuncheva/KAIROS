@@ -48,6 +48,10 @@ function buildFallbackResponse(input: AgentDraftInput): A1Output {
         "• If you want tasks created, say ‘create tasks for …’ and I’ll hand it off to the Task Planner",
       ],
     },
+    // Normalized by `A1OutputSchema`'s transform on the happy path; set here
+    // because a hand-built fallback never passes through it.
+    handoff: undefined,
+    handoffs: [],
     citations: [{ label: "fallback", ref: "ai_unavailable" }],
   };
 }
@@ -86,6 +90,17 @@ export const a1Concierge = {
         userId,
         messages: [
           { role: "system", content: systemPrompt },
+          // Kept as a separate turn rather than spliced into the system prompt,
+          // which stays byte-identical across turns so the provider can cache it.
+          ...(input.conversationSummary
+            ? [
+                {
+                  role: "system" as const,
+                  content: `Earlier in this conversation:
+${input.conversationSummary}`,
+                },
+              ]
+            : []),
           ...historyMessages,
           { role: "user", content: input.message },
         ],
@@ -97,6 +112,7 @@ export const a1Concierge = {
         purpose: "a1.draft",
         signal: input.signal,
         onToolCall: input.onToolCall,
+        onAnswerDelta: input.onAnswerDelta,
       });
 
       if (loopResult.exhausted) {
@@ -126,6 +142,8 @@ export const a1Concierge = {
               "I encountered an error processing your request. Please try rephrasing.",
             details: [parseResult.error],
           },
+          handoff: undefined,
+          handoffs: [],
         };
       }
     } catch (err) {

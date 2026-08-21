@@ -7,6 +7,7 @@ import { SettingsNav } from "~/components/layout/SettingsNav";
 import { ProfileSettingsClient } from "~/components/settings/ProfileSettingsClient";
 import { AppearanceSettings } from "~/components/settings/AppearanceSettings";
 import { LanguageSettingsClient } from "~/components/settings/LanguageSettingsClient";
+import { AiSettingsClient } from "~/components/settings/AiSettingsClient";
 import { NotificationSettingsClient } from "~/components/settings/NotificationSettingsClient";
 import { SecuritySettingsClient } from "~/components/settings/SecuritySettingsClient";
 import { WorkspaceSettingsClient } from "~/components/settings/WorkspaceSettingsClient";
@@ -51,6 +52,7 @@ export default async function SettingsPage({
   { id: "notifications", label: t("nav.notifications") },
   { id: "security", label: t("nav.security") },
   { id: "language", label: t("nav.language") },
+  { id: "ai", label: t("nav.ai") },
   { id: "appearance", label: t("nav.appearance") },
   ].map((item) => (
   <Link
@@ -87,6 +89,7 @@ export default async function SettingsPage({
  {activeSection === "notifications" && <NotificationSettingsClient />}
  {activeSection === "security" && <SecuritySettingsClient />}
  {activeSection === "language" && <LanguageSettingsClient />}
+ {activeSection === "ai" && <AiSettingsClient />}
  {activeSection === "appearance" && <AppearanceSettings />}
  </div>
  </div>

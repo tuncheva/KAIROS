@@ -264,7 +264,37 @@
       "notifications": "Notificaciones",
       "security": "Seguridad",
       "language": "Idioma",
-      "appearance": "Apariencia"
+      "appearance": "Apariencia",
+      "ai": "Asistente de IA"
+    },
+    "ai": {
+      "title": "Asistente de IA",
+      "subtitle": "Controla qué hace el asistente por su cuenta y qué recuerda sobre ti.",
+      "loading": "Cargando…",
+      "proactiveTitle": "Avisos proactivos",
+      "proactiveDescription": "Deja que el asistente te avise cuando algo necesite atención. Desactivado por defecto.",
+      "dailyBriefTitle": "Resumen diario",
+      "dailyBriefDescription": "Un mensaje cada mañana: qué vence, qué se ha retrasado y qué está en riesgo.",
+      "riskRadarTitle": "Radar de riesgos",
+      "riskRadarDescription": "Avísame cuando un proyecto empiece a ir mal: tareas vencidas, trabajo sin asignar, progreso detenido.",
+      "atHour": "A las",
+      "enableToggle": "Activar",
+      "previewBrief": "Envíame uno ahora",
+      "sending": "Enviando…",
+      "lastFailed": "La última ejecución falló: {error}",
+      "memoryTitle": "Lo que recuerda el asistente",
+      "memoryDescription": "Solo lo que le pediste recordar. Elimina cualquier cosa que prefieras que olvide.",
+      "memoryEmpty": "Nada todavía. Di «recuerda que…» en un chat y aparecerá aquí.",
+      "forget": "Olvidar",
+      "forgetEverything": "Olvidarlo todo",
+      "usageTitle": "Uso",
+      "usageDescription": "Tu presupuesto de peticiones de IA y el rendimiento del asistente.",
+      "quotaRemaining": "Peticiones restantes hoy",
+      "quotaSystem": "Ejecuciones proactivas restantes",
+      "tokens30d": "Tokens, 30 días",
+      "dismissalRate": "Hallazgos descartados",
+      "agent": "Agente",
+      "samples": "Muestras"
     }
   },
   "create": {
@@ -528,7 +558,9 @@
     "menu": "Menú",
     "lightMode": "Cambiar a modo claro",
     "darkMode": "Cambiar a modo oscuro",
-    "copyFailed": "No se pudo copiar"
+    "copyFailed": "No se pudo copiar",
+    "accept": "Aceptar",
+    "decline": "Rechazar"
   },
   "org": {
     "accessCode": "Código de la org",
@@ -547,6 +579,8 @@
     "organization": "Organización",
     "personalWorkspace": "Espacio personal",
     "personalHint": "Únete a una organización para colaborar en equipo",
+    "switchWorkspace": "Cambiar de espacio",
+    "personalSubtitle": "Solo tú",
     "inviteWithQr": "Invitar con QR",
     "inviteQrTitle": "Invitar al espacio de trabajo",
     "inviteQrHint": "Pide que lo escaneen con el móvil. El código caduca pronto y solo sirve una vez.",
@@ -570,7 +604,11 @@
     "joinGoToDashboard": "Ir al panel",
     "joining": "Uniéndose...",
     "joinedOrg": "¡Te has unido a {name}!",
-    "inviteQrRevoked": "Código de invitación revocado"
+    "inviteQrRevoked": "Código de invitación revocado",
+    "loadingOrgs": "Cargando organizaciones…",
+    "inviteDeclined": "Invitación rechazada",
+    "pendingInvitations": "Invitaciones pendientes",
+    "invitedAs": "Te han invitado como"
   },
   "ai": {
     "title": "Generador de tareas con IA",
@@ -607,6 +645,30 @@
       "medium": "Media",
       "high": "Alta",
       "urgent": "Urgente"
+    },
+    "insights": {
+      "title": "Requiere atención",
+      "loading": "Revisando tus proyectos…",
+      "allClear": "Ahora mismo no hay nada que requiera tu atención.",
+      "count": "{count} abiertos",
+      "dismiss": "Descartar",
+      "openProject": "Abrir proyecto"
+    },
+    "palette": {
+      "title": "Paleta de comandos",
+      "placeholder": "Busca o pregunta lo que quieras al asistente…",
+      "askAssistant": "Preguntar al asistente: «{query}»",
+      "noResults": "Sin coincidencias.",
+      "enter": "Intro",
+      "project": "Proyecto",
+      "dashboard": "Panel",
+      "projects": "Proyectos",
+      "tasks": "Tareas",
+      "calendar": "Calendario",
+      "notes": "Notas",
+      "events": "Eventos",
+      "assistant": "Asistente",
+      "settings": "Ajustes"
     }
   },
   "chat": {

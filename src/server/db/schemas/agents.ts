@@ -1,10 +1,19 @@
 import { sql } from "drizzle-orm";
-import { index, text, timestamp, varchar, integer } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/pg-core";
 import {
   createTable,
   agentTaskPlannerDraftStatusEnum,
   agentNotesVaultDraftStatusEnum,
   agentEventsPublisherDraftStatusEnum,
+  agentOrgAdminDraftStatusEnum,
   aiMessageRoleEnum,
 } from "./enums";
 import { users } from "./users";
@@ -194,6 +203,18 @@ export const aiConversations = createTable(
       onDelete: "set null",
     }),
     title: varchar("title", { length: 256 }),
+    /**
+     * Rolling summary of the turns that have aged out of the replay window.
+     *
+     * History used to be the last 16 messages, replayed raw: past that, the
+     * beginning of a long thread simply vanished mid-conversation, and the model
+     * would re-ask something it had already been told. What is folded in here is
+     * regenerated as the conversation grows, so the replayed context stays
+     * bounded without losing what was established early.
+     */
+    summary: text("summary"),
+    /** How many messages the current `summary` already covers. */
+    summarizedThroughId: integer("summarized_through_id"),
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
     updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   }),
@@ -228,5 +249,174 @@ export const aiMessages = createTable(
   (t) => [
     index("ai_message_conversation_idx").on(t.conversationId),
     index("ai_message_created_idx").on(t.createdAt),
+  ],
+);
+
+/**
+ * C-2 — durable facts the assistant may carry between conversations.
+ *
+ * Deliberately small, typed, and owned by the user. The rule that keeps this
+ * trustworthy is that nothing writes here by inference: a row exists only
+ * because the user asked for it in as many words, through the `rememberFact`
+ * tool. Everything is listed and deletable in settings, because a memory you
+ * cannot inspect is a memory you cannot trust.
+ *
+ * `key` is the dedupe handle — asserting a new sprint cadence replaces the old
+ * one rather than accumulating two contradictory rows for the model to pick
+ * between.
+ */
+export const aiUserMemory = createTable(
+  "ai_user_memory",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Short stable handle, e.g. "sprint_cadence". Unique per user. */
+    key: varchar("key", { length: 64 }).notNull(),
+    /** The fact itself, in the user's own terms. */
+    value: text("value").notNull(),
+    /** Which conversation it came from, for "why does it think that?". */
+    sourceConversationId: varchar("source_conversation_id", { length: 80 }),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("ai_memory_user_idx").on(t.userId),
+    uniqueIndex("ai_memory_user_key_unique").on(t.userId, t.key),
+  ],
+);
+
+/**
+ * B-4 — which proactive runs a user has opted into.
+ *
+ * Off by default, one row per user per kind, created only when the user turns
+ * the feature on. An assistant that starts speaking unprompted because it was
+ * deployed is not a feature, it is a notification storm — so the absence of a
+ * row means silence.
+ *
+ * `lastRunAt` is what the scheduler reads to decide whether this user is due;
+ * `lastError` exists so a run that has been failing for a week is visible
+ * without trawling logs.
+ */
+export const aiSchedules = createTable(
+  "ai_schedules",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** "daily_brief" | "risk_radar". Kept as text so adding a kind is not a migration. */
+    kind: varchar("kind", { length: 40 }).notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    /** Local hour of day (0-23) the user wants it. Interpreted in UTC for now. */
+    hourUtc: integer("hour_utc").notNull().default(7),
+    lastRunAt: timestamp("last_run_at", { mode: "date", withTimezone: true }),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("ai_schedule_user_idx").on(t.userId),
+    index("ai_schedule_due_idx").on(t.enabled, t.hourUtc),
+    uniqueIndex("ai_schedule_user_kind_unique").on(t.userId, t.kind),
+  ],
+);
+
+/**
+ * B-2/B-3 — findings a scheduled watcher produced, and what became of them.
+ *
+ * Stored rather than fired straight into notifications for two reasons: the same
+ * risk must not be re-reported every morning until it is fixed, and dismissal
+ * rate is the metric that decides whether proactive AI is earning its place. A
+ * finding nobody ever acts on is noise, and this table is how that becomes
+ * visible instead of anecdotal.
+ */
+export const aiFindings = createTable(
+  "ai_findings",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    projectId: integer("project_id").references(() => projects.id, {
+      onDelete: "cascade",
+    }),
+    /** Stable identity for the finding, so the same risk is not raised twice. */
+    fingerprint: varchar("fingerprint", { length: 128 }).notNull(),
+    kind: varchar("kind", { length: 40 }).notNull(),
+    severity: varchar("severity", { length: 16 }).notNull().default("info"),
+    title: varchar("title", { length: 256 }).notNull(),
+    detail: text("detail").notNull(),
+    /** A2/A3/A4 draft id that fixes this, when the watcher could draft one. */
+    suggestedDraftId: varchar("suggested_draft_id", { length: 80 }),
+    status: varchar("status", { length: 16 }).notNull().default("open"),
+    dismissedAt: timestamp("dismissed_at", { mode: "date", withTimezone: true }),
+    resolvedAt: timestamp("resolved_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("ai_finding_user_idx").on(t.userId),
+    index("ai_finding_status_idx").on(t.status),
+    uniqueIndex("ai_finding_fingerprint_unique").on(t.userId, t.fingerprint),
+  ],
+);
+
+/**
+ * E-4 — A5 org admin drafts.
+ *
+ * Same shape as A2/A3/A4 so all four agents have one storage story, one hashing
+ * story and one audit story. What differs is upstream: A5's plan schema marks
+ * every operation dangerous, and its apply re-checks the caller's capability
+ * flags per operation rather than once per plan — a role change is the one write
+ * in KAIROS that can hand someone else the ability to make more of them.
+ */
+export const agentOrgAdminDrafts = createTable(
+  "agent_org_admin_drafts",
+  (d) => ({
+    id: varchar("id", { length: 80 }).primaryKey(),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    message: text("message").notNull(),
+    planJson: text("plan_json").notNull(),
+    planHash: varchar("plan_hash", { length: 64 }).notNull(),
+    status: agentOrgAdminDraftStatusEnum("status").notNull().default("draft"),
+    confirmationToken: text("confirmation_token"),
+    confirmedAt: timestamp("confirmed_at", { mode: "date", withTimezone: true }),
+    appliedAt: timestamp("applied_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }),
+  }),
+  (t) => [
+    index("a5_draft_user_idx").on(t.userId),
+    index("a5_draft_status_idx").on(t.status),
+    index("a5_draft_plan_hash_idx").on(t.planHash),
+  ],
+);
+
+export const agentOrgAdminApplies = createTable(
+  "agent_org_admin_applies",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    draftId: varchar("draft_id", { length: 80 })
+      .notNull()
+      .references(() => agentOrgAdminDrafts.id, { onDelete: "cascade" }),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    planHash: varchar("plan_hash", { length: 64 }).notNull(),
+    resultJson: text("result_json").notNull(),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("a5_apply_draft_idx").on(t.draftId),
+    index("a5_apply_user_idx").on(t.userId),
   ],
 );

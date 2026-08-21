@@ -65,6 +65,28 @@ function getModelChain(): string[] {
   );
 }
 
+/**
+ * The cheap chain, for work that does not need the reasoning model.
+ *
+ * Conversation titles, rolling summaries, JSON repair and intent classification
+ * are all short, mechanical, and were being served by the same model that plans
+ * a thirty-task backlog. Falls back to the strong chain when `LLM_MODEL_FAST` is
+ * unset, so tiering is an optimisation and never a hard dependency.
+ */
+function getFastModelChain(): string[] {
+  const fast = env.LLM_MODEL_FAST;
+  if (typeof fast === "string" && fast.length > 0) {
+    return [fast, ...getModelChain()];
+  }
+  return getModelChain();
+}
+
+/** Resolve the model chain for one request: explicit pin, then tier, then default. */
+function resolveChain(req: ChatRequest): string[] {
+  if (req.model) return [req.model];
+  return req.tier === "fast" ? getFastModelChain() : getModelChain();
+}
+
 /** True when the AI features have enough configuration to run at all. */
 export function isLlmConfigured(): boolean {
   return Boolean(getBaseUrl() && getApiKey() && getModelChain().length > 0);
@@ -97,6 +119,12 @@ export interface ChatRequest {
   messages: ChatMessage[];
   /** Pin a model and skip the fallback chain. */
   model?: string;
+  /**
+   * Which model chain to use. "fast" prefers `LLM_MODEL_FAST` for short,
+   * mechanical work; omit (or "strong") for planning and analysis. Ignored when
+   * `model` pins one explicitly.
+   */
+  tier?: "fast" | "strong";
   temperature?: number;
   maxTokens?: number;
   /** Ask for `response_format: json_object`. Ignored when `tools` is set. */
@@ -477,7 +505,7 @@ async function singleCompletion(
 export async function chatCompletion(req: ChatRequest): Promise<ChatResponse> {
   assertConfigured();
 
-  const chain = req.model ? [req.model] : getModelChain();
+  const chain = resolveChain(req);
   let lastError: unknown;
 
   for (const model of chain) {
@@ -606,7 +634,7 @@ export async function* streamCompletion(
 ): AsyncGenerator<StreamEvent, void, undefined> {
   assertConfigured();
 
-  const chain = req.model ? [req.model] : getModelChain();
+  const chain = resolveChain(req);
   const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   let lastError: unknown;
 

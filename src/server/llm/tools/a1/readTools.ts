@@ -3,7 +3,6 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { eq, and, desc, inArray, or, sql } from "drizzle-orm";
 
-import type { TRPCContext } from "~/server/api/trpc";
 import { assertProjectAccess } from "~/server/api/authz";
 import {
   users,
@@ -17,32 +16,49 @@ import {
   events,
 } from "~/server/db/schema";
 
-export type A1ReadToolName =
-  | "getSessionContext"
-  | "listOrganizations"
-  | "listProjects"
-  | "getProjectDetail"
-  | "listTasks"
-  | "getTaskDetail"
-  | "listNotifications"
-  | "listEventsPublic";
+import { forgetFactTool, rememberFactTool } from "~/server/llm/memory";
+import { searchWorkspaceTool } from "./searchTools";
+import type { A1ReadToolName, A1Tool } from "./types";
+import {
+  getCalendarRangeTool,
+  getProjectHealthTool,
+  getTaskActivityTool,
+  getWorkloadByAssigneeTool,
+  listEventRsvpsTool,
+  listMyWorkTool,
+  listNotesMetadataTool,
+  listOrgMembersTool,
+  listProjectCollaboratorsTool,
+  listTaskCommentsTool,
+} from "./workspaceTools";
 
-export interface A1Tool<TName extends A1ReadToolName, TInput, TOutput> {
-  name: TName;
-  inputSchema: z.ZodType<TInput>;
-  execute: (ctx: TRPCContext, input: TInput) => Promise<TOutput>;
-  outputSchema: z.ZodType<TOutput>;
-}
+// The name union and tool shape moved to `./types` once the surface outgrew one
+// file. Re-exported here because the profile and the tool definitions already
+// import them from this module.
+export type { A1ReadToolName, A1Tool };
 
 export type A1ReadToolsMap = {
   getSessionContext: typeof getSessionContextTool;
   listOrganizations: typeof listOrganizationsTool;
+  listOrgMembers: typeof listOrgMembersTool;
   listProjects: typeof listProjectsTool;
   getProjectDetail: typeof getProjectDetailTool;
+  getProjectHealth: typeof getProjectHealthTool;
+  listProjectCollaborators: typeof listProjectCollaboratorsTool;
   listTasks: typeof listTasksTool;
   getTaskDetail: typeof getTaskDetailTool;
+  listTaskComments: typeof listTaskCommentsTool;
+  getTaskActivity: typeof getTaskActivityTool;
+  listMyWork: typeof listMyWorkTool;
+  getWorkloadByAssignee: typeof getWorkloadByAssigneeTool;
+  getCalendarRange: typeof getCalendarRangeTool;
   listNotifications: typeof listNotificationsTool;
   listEventsPublic: typeof listEventsPublicTool;
+  listEventRsvps: typeof listEventRsvpsTool;
+  listNotesMetadata: typeof listNotesMetadataTool;
+  searchWorkspace: typeof searchWorkspaceTool;
+  rememberFact: typeof rememberFactTool;
+  forgetFact: typeof forgetFactTool;
 };
 
 // ---- getSessionContext
@@ -613,10 +629,23 @@ export const listEventsPublicTool: A1Tool<
 export const A1_READ_TOOLS: A1ReadToolsMap = {
   getSessionContext: getSessionContextTool,
   listOrganizations: listOrganizationsTool,
+  listOrgMembers: listOrgMembersTool,
   listProjects: listProjectsTool,
   getProjectDetail: getProjectDetailTool,
+  getProjectHealth: getProjectHealthTool,
+  listProjectCollaborators: listProjectCollaboratorsTool,
   listTasks: listTasksTool,
   getTaskDetail: getTaskDetailTool,
+  listTaskComments: listTaskCommentsTool,
+  getTaskActivity: getTaskActivityTool,
+  listMyWork: listMyWorkTool,
+  getWorkloadByAssignee: getWorkloadByAssigneeTool,
+  getCalendarRange: getCalendarRangeTool,
   listNotifications: listNotificationsTool,
   listEventsPublic: listEventsPublicTool,
+  listEventRsvps: listEventRsvpsTool,
+  listNotesMetadata: listNotesMetadataTool,
+  searchWorkspace: searchWorkspaceTool,
+  rememberFact: rememberFactTool,
+  forgetFact: forgetFactTool,
 };

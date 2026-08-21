@@ -4,9 +4,33 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { agentOrchestrator } from "~/server/llm/orchestrator/agentOrchestrator";
 import { runAgentTurn } from "~/server/llm/orchestrator/handoff";
 import {
+  deleteConversation,
   findLatestConversation,
+  listConversations,
   loadConversation,
 } from "~/server/llm/conversations";
+import {
+  OrgAdminApplyInputSchema,
+  OrgAdminConfirmInputSchema,
+  OrgAdminDraftInputSchema,
+} from "~/server/llm/schemas/a5OrgAdminSchemas";
+import { clearMemory, deleteFact, loadUserMemory } from "~/server/llm/memory";
+import { getAiMetrics } from "~/server/llm/observability";
+import {
+  undoAvailability,
+  undoNoteApply,
+  undoTaskApply,
+} from "~/server/llm/undo";
+import {
+  dismissFinding,
+  findingStats,
+  listOpenFindings,
+  suggestedFixFor,
+  type FindingKind,
+} from "~/server/llm/scheduled/riskRadar";
+import { runBriefNow } from "~/server/llm/scheduled/runner";
+import { aiSchedules } from "~/server/db/schema";
+import { and, eq } from "drizzle-orm";
 import {
   GenerateTaskDraftsInputSchema,
   ExtractTasksFromPdfInputSchema,
@@ -26,7 +50,11 @@ import {
   EventsPublisherConfirmInputSchema,
   EventsPublisherApplyInputSchema,
 } from "~/server/llm/schemas/a4EventsPublisherSchemas";
-import { consumeRateLimit, checkRateLimit } from "~/server/security/rateLimit";
+import {
+  checkRateLimit,
+  checkSystemRateLimit,
+  consumeRateLimit,
+} from "~/server/security/rateLimit";
 
 /**
  * Rate-limited protected procedure — consumes one AI request from the user's
@@ -151,6 +179,7 @@ export const agentRouter = createTRPCRouter({
         message: input.message,
         scope: input.scope,
         handoffContext: input.handoffContext,
+        priorDraftId: input.priorDraftId,
       });
     }),
 
@@ -271,5 +300,229 @@ export const agentRouter = createTRPCRouter({
         draftId: input.draftId,
         confirmationToken: input.confirmationToken,
       });
+    }),
+
+  // -------------------------------------------------------------------------
+  // A5 Org Admin (E-4)
+  // -------------------------------------------------------------------------
+
+  orgAdminDraft: rateLimitedProcedure
+    .input(OrgAdminDraftInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return agentOrchestrator.orgAdminDraft({
+        ctx,
+        message: input.message,
+        organizationId: input.organizationId,
+      });
+    }),
+
+  orgAdminConfirm: protectedProcedure
+    .input(OrgAdminConfirmInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return agentOrchestrator.orgAdminConfirm({ ctx, draftId: input.draftId });
+    }),
+
+  orgAdminApply: protectedProcedure
+    .input(OrgAdminApplyInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return agentOrchestrator.orgAdminApply({
+        ctx,
+        draftId: input.draftId,
+        confirmationToken: input.confirmationToken,
+      });
+    }),
+
+  // -------------------------------------------------------------------------
+  // C-2 Assistant memory
+  // -------------------------------------------------------------------------
+
+  /** Everything the assistant is remembering, for Settings → AI Memory. */
+  memory: protectedProcedure.query(async ({ ctx }) => {
+    return loadUserMemory(ctx, ctx.session.user.id);
+  }),
+
+  forgetMemory: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await deleteFact(ctx, ctx.session.user.id, input.id);
+      return { forgotten: true };
+    }),
+
+  clearMemory: protectedProcedure.mutation(async ({ ctx }) => {
+    await clearMemory(ctx, ctx.session.user.id);
+    return { cleared: true };
+  }),
+
+  // -------------------------------------------------------------------------
+  // C-3 Conversation history
+  // -------------------------------------------------------------------------
+
+  conversations: protectedProcedure
+    .input(
+      z.object({ limit: z.number().int().min(1).max(50).optional() }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      return listConversations(ctx, ctx.session.user.id, input?.limit ?? 30);
+    }),
+
+  deleteConversation: protectedProcedure
+    .input(z.object({ conversationId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await deleteConversation(ctx, input.conversationId, ctx.session.user.id);
+      return { deleted: true };
+    }),
+
+  // -------------------------------------------------------------------------
+  // B-2 / B-3 Risk radar findings
+  // -------------------------------------------------------------------------
+
+  findings: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await listOpenFindings(ctx, ctx.session.user.id);
+    // The suggested fix is derived rather than stored: it is a function of the
+    // finding kind, so storing it would mean a migration every time the wording
+    // improves.
+    return rows.map((row) => ({
+      ...row,
+      suggestedFix: suggestedFixFor({
+        kind: row.kind as FindingKind,
+        severity: "info",
+        projectId: row.projectId,
+        title: row.title,
+        detail: row.detail,
+        fingerprint: row.fingerprint,
+        taskIds: [],
+      }),
+    }));
+  }),
+
+  dismissFinding: protectedProcedure
+    .input(z.object({ findingId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await dismissFinding(ctx, ctx.session.user.id, input.findingId);
+      return { dismissed: true };
+    }),
+
+  /**
+   * Dismissal rate is the metric that decides whether proactive AI stays on.
+   * Surfaced in the product rather than buried in a log.
+   */
+  findingStats: protectedProcedure.query(async ({ ctx }) => {
+    return findingStats(ctx, ctx.session.user.id);
+  }),
+
+  // -------------------------------------------------------------------------
+  // B-4 Proactive schedules
+  // -------------------------------------------------------------------------
+
+  schedules: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select()
+      .from(aiSchedules)
+      .where(eq(aiSchedules.userId, ctx.session.user.id));
+
+    // A missing row means off. Returned explicitly so the settings UI does not
+    // have to encode "absent means disabled" itself.
+    const byKind = new Map(rows.map((r) => [r.kind, r]));
+    return (["daily_brief", "risk_radar"] as const).map((kind) => {
+      const row = byKind.get(kind);
+      return {
+        kind,
+        enabled: row?.enabled ?? false,
+        hourUtc: row?.hourUtc ?? 7,
+        lastRunAt: row?.lastRunAt ?? null,
+        lastError: row?.lastError ?? null,
+      };
+    });
+  }),
+
+  setSchedule: protectedProcedure
+    .input(
+      z.object({
+        kind: z.enum(["daily_brief", "risk_radar"]),
+        enabled: z.boolean(),
+        hourUtc: z.number().int().min(0).max(23).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [existing] = await ctx.db
+        .select({ id: aiSchedules.id })
+        .from(aiSchedules)
+        .where(
+          and(eq(aiSchedules.userId, userId), eq(aiSchedules.kind, input.kind)),
+        )
+        .limit(1);
+
+      if (existing) {
+        await ctx.db
+          .update(aiSchedules)
+          .set({
+            enabled: input.enabled,
+            ...(input.hourUtc !== undefined ? { hourUtc: input.hourUtc } : {}),
+            updatedAt: new Date(),
+          })
+          .where(eq(aiSchedules.id, existing.id));
+      } else {
+        await ctx.db.insert(aiSchedules).values({
+          userId,
+          kind: input.kind,
+          enabled: input.enabled,
+          hourUtc: input.hourUtc ?? 7,
+        });
+      }
+
+      return { ok: true };
+    }),
+
+  /** "Show me what a brief looks like" — costs one system-budget request. */
+  previewBrief: protectedProcedure.mutation(async ({ ctx }) => {
+    const sent = await runBriefNow(ctx.session.user.id);
+    return {
+      sent: sent > 0,
+      message:
+        sent > 0
+          ? "Sent — check your notifications."
+          : "Nothing needs your attention right now, so there is no brief to send.",
+    };
+  }),
+
+  // -------------------------------------------------------------------------
+  // G-5 Undo
+  // -------------------------------------------------------------------------
+
+  undoAvailability: protectedProcedure
+    .input(z.object({ draftId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      return undoAvailability(ctx, ctx.session.user.id, input.draftId);
+    }),
+
+  undoApply: protectedProcedure
+    .input(
+      z.object({
+        draftId: z.string().min(1),
+        kind: z.enum(["tasks", "notes"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return input.kind === "tasks"
+        ? undoTaskApply(ctx, ctx.session.user.id, input.draftId)
+        : undoNoteApply(ctx, ctx.session.user.id, input.draftId);
+    }),
+
+  // -------------------------------------------------------------------------
+  // F-3 Observability
+  // -------------------------------------------------------------------------
+
+  metrics: protectedProcedure
+    .input(
+      z.object({ days: z.number().int().min(1).max(90).optional() }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const [metrics, interactive, system] = await Promise.all([
+        getAiMetrics(ctx, ctx.session.user.id, input?.days ?? 30),
+        checkRateLimit(ctx.session.user.id),
+        checkSystemRateLimit(ctx.session.user.id),
+      ]);
+      return { ...metrics, quota: { interactive, system } };
     }),
 });

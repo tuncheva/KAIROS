@@ -40,8 +40,20 @@ export const env = createEnv({
     LLM_MODEL: z.string().optional(),
     /** Only tried when the primary model fails retriably. Empty = no fallback. */
     LLM_FALLBACK_MODEL: z.string().optional(),
+    /**
+     * Cheap model for short, mechanical work — conversation titles, rolling
+     * summaries, JSON repair. Unset falls back to LLM_MODEL, so tiering is an
+     * optimisation rather than a requirement.
+     */
+    LLM_MODEL_FAST: z.string().optional(),
     /** AI requests per user per rolling 24h window. */
     AI_RATE_LIMIT: z.coerce.number().int().positive().default(50),
+    /**
+     * Scheduled (proactive) AI runs per user per rolling 24h window. Kept
+     * separate from AI_RATE_LIMIT so a daily brief can never consume budget the
+     * user was going to spend on their own questions.
+     */
+    AI_SYSTEM_RATE_LIMIT: z.coerce.number().int().positive().default(20),
 
     // Email (Resend)
     RESEND_API_KEY: z.string().optional(),
@@ -79,7 +91,9 @@ export const env = createEnv({
     LLM_API_KEY: process.env.LLM_API_KEY,
     LLM_MODEL: process.env.LLM_MODEL,
     LLM_FALLBACK_MODEL: process.env.LLM_FALLBACK_MODEL,
+    LLM_MODEL_FAST: process.env.LLM_MODEL_FAST,
     AI_RATE_LIMIT: process.env.AI_RATE_LIMIT,
+    AI_SYSTEM_RATE_LIMIT: process.env.AI_SYSTEM_RATE_LIMIT,
 
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,

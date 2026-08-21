@@ -414,7 +414,19 @@ function NotePreviewCard({
 /*  Main Component                                                    */
 /* ------------------------------------------------------------------ */
 
-export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMessage?: () => void }) {
+export function ProjectIntelligenceChat(props: {
+  projectId?: number;
+  onAgentMessage?: () => void;
+  /**
+   * D-1/D-2 — a message to send as soon as the chat mounts.
+   *
+   * Set by the command palette and by the "fix this" buttons on risk findings,
+   * so acting on a nudge costs one click rather than retyping the problem back
+   * to the assistant that just reported it. Sent once: re-firing it on every
+   * render would loop the turn.
+   */
+  prefill?: string;
+}) {
   const { projectId } = props;
   const t = useTranslations("chat");
   const utils = api.useUtils();
@@ -470,8 +482,13 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
       if (!plan) {
         const text = [
           summary,
+          // E-1: a clarifying question is an answer, not a failure — render the
+          // question and the options it offered rather than "no response".
+          payload.a1.clarify?.question,
+          ...(payload.a1.clarify?.options ?? []).map((o) => `• ${o}`),
           ...(payload.a1.answer?.details ?? []).map((d) => `• ${d}`),
-          payload.handoffError,
+          // E-2: a turn can now fail more than one handoff, so this is a list.
+          ...(payload.handoffErrors ?? []),
         ]
           .filter(Boolean)
           .join("\n");
@@ -791,6 +808,8 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
 
   /* ---------- Send handler ---------- */
 
+  const prefillSent = useRef(false);
+
   const handleSend = useCallback(
     (text: string) => {
       const msg = text.trim();
@@ -812,6 +831,20 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
     },
     [projectId, sendTurn],
   );
+
+  /**
+   * D-1/D-2 — send the prefilled message once, on mount.
+   *
+   * Guarded by a ref rather than by a dependency array: `handleSend` is
+   * recreated on most renders, and depending on it would re-send the message
+   * every time the conversation state changed.
+   */
+  useEffect(() => {
+    if (!props.prefill || prefillSent.current) return;
+    prefillSent.current = true;
+    handleSend(props.prefill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.prefill]);
 
   const isThinking =
     messages.length > 0 &&

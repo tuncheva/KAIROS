@@ -15,6 +15,7 @@ import { Server, type DefaultEventsMap } from "socket.io";
 import { verifyWsTicket } from "./auth";
 import { registerRoomHandlers, type WsSocketData } from "./rooms";
 import { createLogger } from "./logger";
+import { startScheduler } from "./scheduler";
 
 const log = createLogger("ws");
 
@@ -217,4 +218,16 @@ io.on("connection", (socket) => {
 
 httpServer.listen(WS_PORT, () => {
   log.info("websocket server listening", { port: WS_PORT, corsOrigin: CORS_ORIGIN });
+
+  // B-0: this is the only long-lived process in the deployment, so the clock for
+  // proactive AI lives here. It calls into the Next.js app rather than running
+  // the agents itself — see ws-server/scheduler.ts.
+  const stopScheduler = startScheduler();
+
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.once(signal, () => {
+      stopScheduler();
+      httpServer.close(() => process.exit(0));
+    });
+  }
 });

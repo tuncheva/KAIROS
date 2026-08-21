@@ -180,25 +180,45 @@ export const organizationRouter = createTRPCRouter({
 
   getActive: protectedProcedure.query(async ({ ctx }) => {
     let activeOrganizationId: number | null = null;
+    let usageMode: (typeof users.$inferSelect)["usageMode"] = null;
 
     try {
-      const user = await ctx.db
+      const [user] = await ctx.db
         .select({
           activeOrganizationId: users.activeOrganizationId,
+          usageMode: users.usageMode,
         })
         .from(users)
         .where(eq(users.id, ctx.session.user.id))
         .limit(1);
 
-      activeOrganizationId = user[0]?.activeOrganizationId ?? null;
+      activeOrganizationId = user?.activeOrganizationId ?? null;
+      usageMode = user?.usageMode ?? null;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (!message.includes("active_organization_id")) {
         throw err;
       }
       // Backwards-compat: DB may not have been migrated yet.
+      const [user] = await ctx.db
+        .select({ usageMode: users.usageMode })
+        .from(users)
+        .where(eq(users.id, ctx.session.user.id))
+        .limit(1);
+
       activeOrganizationId = null;
+      usageMode = user?.usageMode ?? null;
     }
+
+    // Working personally is an answer, not a missing one.
+    //
+    // The membership fallback below used to run unconditionally, so
+    // `user.setPersonalMode` — which clears `activeOrganizationId` and sets
+    // `usageMode` to "personal" — was overruled on the very next read by
+    // whichever membership the database happened to return first. Personal
+    // workspace was therefore a one-way door: reachable at onboarding, and
+    // never again once you belonged to an organisation.
+    if (usageMode === "personal") return null;
 
     if (activeOrganizationId) {
       const [membership] = await ctx.db
@@ -232,6 +252,10 @@ export const organizationRouter = createTRPCRouter({
       }
     }
 
+    // No active organisation recorded — someone who has never switched, or whose
+    // stored organisation they are no longer a member of. Ordered so the answer
+    // is the same on every call: an unordered `limit(1)` let the workspace name
+    // flip between memberships as the planner changed its mind.
     const [fallback] = await ctx.db
       .select({
         organization: organizations,
@@ -244,6 +268,7 @@ export const organizationRouter = createTRPCRouter({
         eq(organizationMembers.organizationId, organizations.id),
       )
       .where(eq(organizationMembers.userId, ctx.session.user.id))
+      .orderBy(organizationMembers.joinedAt, organizationMembers.id)
       .limit(1);
 
     if (!fallback) return null;

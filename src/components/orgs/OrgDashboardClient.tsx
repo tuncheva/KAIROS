@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
 import { useToast } from "~/components/providers/ToastProvider";
+import { useSwitchOrganization } from "~/hooks/useSwitchOrganization";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
 
 function roleLabel(role: string, tOrg: (key: string) => string) {
@@ -43,12 +44,8 @@ export function OrgDashboardClient() {
   );
   useSocketEvent("notification:new", handleNotification);
 
-  const setActive = api.organization.setActive.useMutation({
-    onSuccess: async () => {
-      await utils.organization.getActive.invalidate();
-      await utils.organization.listMine.invalidate();
-      await utils.user.getProfile.invalidate();
-    },
+  const setActive = useSwitchOrganization({
+    onError: (message) => toast.error(message),
   });
 
   const acceptInvite = api.organization.acceptInvite.useMutation({

@@ -198,6 +198,13 @@ export const TaskPlannerDraftInputSchema = z
       })
       .optional(),
     handoffContext: z.record(z.unknown()).optional(),
+    /**
+     * E-3 — the draft this message refines.
+     *
+     * Set when the user replies to a plan with a change ("push the third one to
+     * Friday") rather than with a new request. See `a2TaskPlanner.taskPlannerDraft`.
+     */
+    priorDraftId: z.string().min(1).optional(),
   })
   .strict();
 
