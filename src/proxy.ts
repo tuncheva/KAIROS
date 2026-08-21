@@ -72,6 +72,14 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/trpc")) return true;
   if (pathname.startsWith("/api/account-switch")) return true;
   if (pathname.startsWith("/api/uploadthing")) return true;
+  // Machine-to-machine routes. These carry no session cookie by design — they
+  // authenticate with the shared ws credential, compared in constant time inside
+  // the route handler, and a missing credential closes them rather than opening
+  // them.
+  // Without this the cookie gate redirected the ws-server's scheduler POST to
+  // `/`, which fetch followed to a 200 HTML page — so every tick logged
+  // "could not reach the app" while the app was up and the sweep never ran.
+  if (pathname.startsWith("/api/internal")) return true;
   if (pathname.startsWith("/_next")) return true;
   if (isStaticAsset(pathname)) return true;
   return false;

@@ -36,6 +36,27 @@ const log = createLogger("llm");
 // ---------------------------------------------------------------------------
 
 const DEFAULT_TIMEOUT_MS = 120_000;
+/**
+ * How long a *streamed* request may stay silent before we call the endpoint dead.
+ *
+ * An endpoint that accepted the request but is not serving it sends nothing at
+ * all — NVIDIA's gateway sits on such a request for a full 300s before returning
+ * 504 — so the total budget is the wrong instrument for spotting it.
+ *
+ * Streaming only, and that restriction is load-bearing. Measured against this
+ * provider:
+ *
+ * - `stream: true`  — headers at 0.6s, generation ran to 79s. Silence is signal.
+ * - `stream: false` — headers at 40.04s, body complete at 40.05s. The gateway
+ *   withholds headers until generation finishes, so "time to first byte" *is*
+ *   "time to full answer" and any guard short enough to be useful would kill
+ *   healthy calls.
+ *
+ * Non-streaming requests therefore keep the total budget as their only clock; a
+ * dead endpoint is caught there by {@link chatCompletion} moving to the next
+ * model in the chain rather than by a shorter deadline.
+ */
+const FIRST_BYTE_TIMEOUT_MS = 20_000;
 const MAX_ATTEMPTS_PER_MODEL = 3;
 const BACKOFF_BASE_MS = 500;
 const BACKOFF_CAP_MS = 8_000;
@@ -49,6 +70,30 @@ const BACKOFF_CAP_MS = 8_000;
  * visible character — at 64 tokens this model produced zero content.
  */
 const DEFAULT_MAX_TOKENS = 8192;
+
+/**
+ * Per-model `chat_template_kwargs`.
+ *
+ * Hybrid-thinking models gate their reasoning behind a chat-template flag, and
+ * the flag is *not* portable between them: NVIDIA's own snippets ask for
+ * `{thinking, reasoning_effort}` on DeepSeek V4 Flash and `{enable_thinking}` on
+ * Nemotron 3. Sending the wrong key fails silently — the template ignores it and
+ * the model answers with no reasoning at all — so the mapping stays explicit per
+ * model rather than one global shape that is wrong for half the chain.
+ *
+ * Matched by prefix, so a dated build ("…-0731") inherits its family's entry. An
+ * unlisted model gets nothing, which is correct for a plain instruct model.
+ */
+const CHAT_TEMPLATE_KWARGS: ReadonlyArray<
+  readonly [prefix: string, kwargs: Record<string, unknown>]
+> = [
+  ["deepseek-ai/deepseek-v4-flash", { thinking: true, reasoning_effort: "high" }],
+  ["nvidia/nemotron-3", { enable_thinking: true }],
+];
+
+function chatTemplateKwargsFor(model: string): Record<string, unknown> | undefined {
+  return CHAT_TEMPLATE_KWARGS.find(([prefix]) => model.startsWith(prefix))?.[1];
+}
 
 function getBaseUrl(): string {
   return (env.LLM_BASE_URL ?? "").replace(/\/+$/, "");
@@ -177,6 +222,33 @@ export class TruncatedResponseError extends Error {
   }
 }
 
+/**
+ * The request ran out of time.
+ *
+ * `name` is set explicitly because {@link isRetriable} classifies on it, and an
+ * `AbortController` aborted with `new Error("TimeoutError")` yields an error
+ * whose name is plain `"Error"` — the message says "TimeoutError" but nothing
+ * reads the message, so such a timeout was silently treated as non-retriable.
+ *
+ * `phase` distinguishes "the endpoint never answered" from "generation ran long",
+ * which are different faults with different fixes.
+ */
+export class LlmTimeoutError extends Error {
+  readonly phase: "first-byte" | "total";
+  readonly waitedMs: number;
+
+  constructor(phase: "first-byte" | "total", waitedMs: number) {
+    super(
+      phase === "first-byte"
+        ? `LLM sent no response headers within ${String(waitedMs)}ms — the endpoint accepted the request but is not serving it`
+        : `LLM request exceeded its ${String(waitedMs)}ms budget`,
+    );
+    this.name = "TimeoutError";
+    this.phase = phase;
+    this.waitedMs = waitedMs;
+  }
+}
+
 /** An upstream HTTP failure, carrying the status so callers can branch on it. */
 export class LlmHttpError extends Error {
   readonly status: number;
@@ -298,6 +370,13 @@ function buildBody(
     max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
   };
 
+  const templateKwargs = chatTemplateKwargsFor(model);
+  if (templateKwargs) {
+    // Top level, not nested: the OpenAI SDK's `extra_body` merges its keys into
+    // the request root, and that is the shape the NIM reads off the wire.
+    body.chat_template_kwargs = templateKwargs;
+  }
+
   if (stream) {
     body.stream = true;
     // Without this a streamed call reports no usage at all, so streaming would
@@ -334,12 +413,37 @@ function buildBody(
  */
 const RETRIABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
+/**
+ * Errors that doom every model in the chain equally.
+ *
+ * A malformed request or a bad key fails identically on the fallback, so trying
+ * it only doubles the user's wait. Everything else — a timeout, a 404 for a model
+ * this account cannot reach, an upstream 5xx — is a property of *that model's*
+ * endpoint, and the fallback exists precisely for it.
+ *
+ * This distinction is why a stalled primary used to surface as a 500 with the
+ * fallback never attempted: the chain threw on the first non-retriable error
+ * instead of advancing.
+ */
+function isFatalForChain(err: unknown): boolean {
+  if (err instanceof LlmHttpError) {
+    return err.status === 400 || err.status === 401 || err.status === 403;
+  }
+  // Truncation says the request was too big for the budget, not that the endpoint
+  // is unhealthy; the caller retries with a larger budget instead.
+  if (err instanceof TruncatedResponseError) return true;
+  // The caller hung up. Nobody is waiting for a fallback answer.
+  if (err instanceof Error && err.name === "AbortError") return true;
+  return false;
+}
+
 function isRetriable(err: unknown): boolean {
   if (err instanceof LlmHttpError) return RETRIABLE_STATUS.has(err.status);
   if (err instanceof TruncatedResponseError) return false;
   if (err instanceof Error) {
-    // AbortSignal.timeout raises TimeoutError; fetch raises TypeError on a
-    // dropped connection or DNS failure.
+    // `LlmTimeoutError` sets name = "TimeoutError", as does the DOMException from
+    // `AbortSignal.timeout`; fetch raises TypeError on a dropped connection or
+    // DNS failure. All are worth one more attempt.
     if (err.name === "TimeoutError") return true;
     if (err.name === "TypeError") return true;
   }
@@ -381,17 +485,37 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 /**
- * Combine the caller's signal with a timeout.
+ * Combine the caller's signal with a total budget and a first-byte budget.
  *
  * `AbortSignal.any` is not available on every Node version this runs on, so wire
  * it manually and hand back a disposer to avoid leaking listeners.
+ *
+ * Call {@link Deadlines.firstByteReceived} as soon as response headers arrive.
+ * That cancels the short first-byte guard and leaves only the total budget, so a
+ * slow *answer* is never mistaken for a dead *endpoint*.
  */
+interface Deadlines {
+  signal: AbortSignal;
+  firstByteReceived: () => void;
+  dispose: () => void;
+}
+
 function withTimeout(
   timeoutMs: number,
   external?: AbortSignal,
-): { signal: AbortSignal; dispose: () => void } {
+  firstByteMs = FIRST_BYTE_TIMEOUT_MS,
+): Deadlines {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(new Error("TimeoutError")), timeoutMs);
+  const total = setTimeout(
+    () => controller.abort(new LlmTimeoutError("total", timeoutMs)),
+    timeoutMs,
+  );
+  // Never let the first-byte guard outlive the total budget it sits inside.
+  const firstByteBudget = Math.min(firstByteMs, timeoutMs);
+  let firstByte: ReturnType<typeof setTimeout> | undefined = setTimeout(
+    () => controller.abort(new LlmTimeoutError("first-byte", firstByteBudget)),
+    firstByteBudget,
+  );
 
   const onAbort = () => controller.abort(external?.reason);
   if (external) {
@@ -401,8 +525,15 @@ function withTimeout(
 
   return {
     signal: controller.signal,
+    firstByteReceived: () => {
+      if (firstByte !== undefined) {
+        clearTimeout(firstByte);
+        firstByte = undefined;
+      }
+    },
     dispose: () => {
-      clearTimeout(timer);
+      clearTimeout(total);
+      if (firstByte !== undefined) clearTimeout(firstByte);
       external?.removeEventListener("abort", onAbort);
     },
   };
@@ -441,7 +572,13 @@ async function singleCompletion(
   model: string,
 ): Promise<ChatResponse> {
   const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const { signal, dispose } = withTimeout(timeoutMs, req.signal);
+  // No first-byte guard here: this provider withholds headers on a non-streamed
+  // request until generation is complete, so there is no early signal to read.
+  const { signal, firstByteReceived, dispose } = withTimeout(
+    timeoutMs,
+    req.signal,
+    timeoutMs,
+  );
   const startedAt = Date.now();
 
   try {
@@ -454,6 +591,9 @@ async function singleCompletion(
       body: JSON.stringify(buildBody(req, model, false)),
       signal,
     });
+    // Headers are in, so the endpoint is alive; the rest of the wait is
+    // generation and belongs to the total budget alone.
+    firstByteReceived();
 
     if (!res.ok) throw await toHttpError(res);
 
@@ -514,7 +654,19 @@ export async function chatCompletion(req: ChatRequest): Promise<ChatResponse> {
         return await singleCompletion(req, model);
       } catch (err) {
         lastError = err;
-        if (!isRetriable(err)) throw err;
+        if (isFatalForChain(err)) throw err;
+        // Model-specific but not worth a second shot at the same endpoint: move
+        // down the chain rather than abandoning the turn.
+        if (!isRetriable(err)) {
+          log.warn("model failed unretriably, advancing the chain", { model, err });
+          break;
+        }
+        // A gateway that never sent a byte will not send one on attempt two.
+        // Hammering it costs the whole budget and reaches the fallback too late.
+        if (err instanceof LlmTimeoutError && err.phase === "first-byte") {
+          log.warn("endpoint sent no first byte, advancing the chain", { model, err });
+          break;
+        }
 
         const isLastAttempt = attempt === MAX_ATTEMPTS_PER_MODEL - 1;
         if (isLastAttempt) {
@@ -640,7 +792,7 @@ export async function* streamCompletion(
 
   for (const model of chain) {
     for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_MODEL; attempt++) {
-      const { signal, dispose } = withTimeout(timeoutMs, req.signal);
+      const { signal, firstByteReceived, dispose } = withTimeout(timeoutMs, req.signal);
       const startedAt = Date.now();
 
       let res: Response;
@@ -655,12 +807,21 @@ export async function* streamCompletion(
           body: JSON.stringify(buildBody(req, model, true)),
           signal,
         });
+        // Headers are in — from here the stream owns the total budget.
+        firstByteReceived();
         if (!res.ok) throw await toHttpError(res);
         if (!res.body) throw new Error("LLM returned no response body");
       } catch (err) {
         dispose();
         lastError = err;
-        if (!isRetriable(err)) throw err;
+        if (isFatalForChain(err)) throw err;
+        if (!isRetriable(err)) break;
+        // Streamed calls get a real first-byte signal, so silence here is a
+        // reliable "not serving" and the fallback should be tried at once.
+        if (err instanceof LlmTimeoutError && err.phase === "first-byte") {
+          log.warn("stream sent no first byte, advancing the chain", { model, err });
+          break;
+        }
         if (attempt < MAX_ATTEMPTS_PER_MODEL - 1) {
           await sleep(
             err instanceof LlmHttpError && err.retryAfterMs !== undefined

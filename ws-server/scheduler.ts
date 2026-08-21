@@ -68,11 +68,35 @@ export function startScheduler(): () => void {
         method: "POST",
         headers: { "x-ws-secret": secret, "Content-Type": "application/json" },
         body: "{}",
+        // Do not follow redirects. A redirect here always means the request
+        // never reached the route — the app's proxy bounced it to the sign-in
+        // page — and following it turns that into a 200 full of HTML, which then
+        // fails as a JSON parse error and reads like the app being down.
+        redirect: "manual",
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
 
+      if (res.status >= 300 && res.status < 400) {
+        log.error(
+          "scheduled sweep was redirected; the endpoint is behind the auth gate",
+          { status: res.status, location: res.headers.get("location") },
+        );
+        return;
+      }
+
       if (!res.ok) {
         log.warn("scheduled sweep returned an error", { status: res.status });
+        return;
+      }
+
+      // Guard the parse rather than letting a stray HTML body surface as an
+      // opaque "Unexpected token '<'".
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        log.error("scheduled sweep returned a non-JSON body", {
+          status: res.status,
+          contentType,
+        });
         return;
       }
 
