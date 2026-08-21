@@ -7,7 +7,6 @@ import {
   Users,
   Shield,
   Mail,
-  Copy,
   QrCode,
   LogOut,
   Trash2,
@@ -21,6 +20,7 @@ import {
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
+import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 
@@ -94,6 +94,7 @@ export function WorkspaceSettingsClient() {
   const toast = useToast();
   const utils = api.useUtils();
   const t = useTranslations("settings.workspace");
+  const tOrg = useTranslations("org");
 
   // ---- Organization state ----
   const [showCreateOrg, setShowCreateOrg] = useState(false);
@@ -105,7 +106,7 @@ export function WorkspaceSettingsClient() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
   const [bulkInviteInput, setBulkInviteInput] = useState("");
-  const [showInviteQrForCode, setShowInviteQrForCode] = useState<string | null>(null);
+  const [inviteQrForOrgId, setInviteQrForOrgId] = useState<number | null>(null);
   const [emailLookupDebouncedEmail, setEmailLookupDebouncedEmail] = useState("");
 
   // ---- Custom role creation state ----
@@ -359,31 +360,6 @@ export function WorkspaceSettingsClient() {
     return status;
   };
 
-  const handleCopyCode = async (code: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      toast.success(t("messages.accessCodeCopied"));
-    } catch {
-      toast.error(t("messages.copyFailed"));
-    }
-  };
-
-  const handleCopyJoinLink = async (code: string) => {
-    try {
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const joinLink = `${origin}/settings?section=workspace&joinCode=${encodeURIComponent(code)}`;
-      await navigator.clipboard.writeText(joinLink);
-      toast.success(t("messages.joinLinkCopied"));
-    } catch {
-      toast.error(t("messages.copyFailed"));
-    }
-  };
-
-  const getJoinLink = (code: string) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return `${origin}/settings?section=workspace&joinCode=${encodeURIComponent(code)}`;
-  };
-
   const toggleSection = (id: string) => {
     setExpandedSection((prev) => (prev === id ? null : id));
   };
@@ -449,35 +425,18 @@ export function WorkspaceSettingsClient() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        {/* The server only sends the access code to members who
-                            may add people — it is a permanent bearer credential
-                            for the whole workspace. For everyone else it arrives
-                            as null and the sharing controls simply aren't shown. */}
-                        {org.accessCode ? (
-                        <>
-                        <button
-                          onClick={() => handleCopyCode(org.accessCode!)}
-                          className="p-2 rounded-lg hover:bg-bg-tertiary text-fg-tertiary hover:text-fg-secondary transition min-h-11 min-w-11"
-                          title={t("organizations.copyAccessCode")}
-                        >
-                          <Copy size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleCopyJoinLink(org.accessCode!)}
-                          className="px-2.5 py-1.5 rounded-lg hover:bg-bg-tertiary text-xs text-fg-tertiary hover:text-fg-secondary transition"
-                          title={t("organizations.copyJoinLink")}
-                        >
-                          {t("organizations.copyJoinLink")}
-                        </button>
-                        <button
-                          onClick={() => setShowInviteQrForCode((prev) => (prev === org.accessCode ? null : org.accessCode))}
-                          className="px-2.5 py-1.5 rounded-lg hover:bg-bg-tertiary text-xs text-fg-tertiary hover:text-fg-secondary transition inline-flex items-center gap-1.5"
-                          title={t("organizations.showQr")}
-                        >
-                          <QrCode size={13} />
-                          {t("organizations.showQr")}
-                        </button>
-                        </>
+                        {/* Only members who may add people get an invite
+                            control, and what it opens is a token that expires —
+                            not the workspace's permanent access code. */}
+                        {org.canInvite ? (
+                          <button
+                            onClick={() => setInviteQrForOrgId(org.id)}
+                            className="px-2.5 py-1.5 rounded-lg hover:bg-bg-tertiary text-xs text-fg-tertiary hover:text-fg-secondary transition inline-flex items-center gap-1.5"
+                            title={tOrg("inviteWithQr")}
+                          >
+                            <QrCode size={13} />
+                            {tOrg("inviteWithQr")}
+                          </button>
                         ) : null}
                         {activeOrgId !== org.id && (
                           <button
@@ -502,19 +461,6 @@ export function WorkspaceSettingsClient() {
                         </button>
                       </div>
                     </div>
-                    {org.accessCode && showInviteQrForCode === org.accessCode && (
-                      <div className="mt-3 rounded-xl border border-white/[0.1] bg-bg-primary/60 p-3">
-                        <p className="text-xs text-fg-tertiary mb-2">{t("organizations.scanQrHint")}</p>
-                        <Image
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(getJoinLink(org.accessCode))}`}
-                          alt={t("organizations.qrAlt")}
-                          width={160}
-                          height={160}
-                          unoptimized
-                          className="w-40 h-40 rounded-md border border-white/[0.08] bg-white"
-                        />
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -1169,6 +1115,14 @@ export function WorkspaceSettingsClient() {
           )}
         </section>
       )}
+
+      {inviteQrForOrgId !== null ? (
+        <InviteQrDialog
+          organizationId={inviteQrForOrgId}
+          organizationName={myOrgs?.find((o) => o.id === inviteQrForOrgId)?.name}
+          onClose={() => setInviteQrForOrgId(null)}
+        />
+      ) : null}
     </div>
   );
 }

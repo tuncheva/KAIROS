@@ -70,16 +70,21 @@ describe("contentSecurityPolicy", () => {
   });
 
   it("allows the hosts the app actually loads from", () => {
-    // Derived from reading the source: Maps SDK, UploadThing, Google avatars, the QR
-    // endpoint used in workspace settings.
+    // Derived from reading the source: Maps SDK, UploadThing, Google avatars.
     for (const host of [
       "https://maps.googleapis.com",
       "https://uploadthing.com",
       "https://lh3.googleusercontent.com",
-      "https://api.qrserver.com",
     ]) {
       expect(policy).toContain(host);
     }
+  });
+
+  it("no longer reaches a third party to draw invite QR codes", () => {
+    // Invite links are bearer credentials for a workspace. They were being handed
+    // to api.qrserver.com on every render; the codes are rendered on our own
+    // server now, so the host has no business being reachable.
+    expect(policy).not.toContain("api.qrserver.com");
   });
 
   it("names the websocket origin in connect-src", () => {

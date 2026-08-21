@@ -1095,7 +1095,8 @@
     "copied": "Копирано",
     "menu": "Меню",
     "lightMode": "Превключи към светъл режим",
-    "darkMode": "Превключи към тъмен режим"
+    "darkMode": "Превключи към тъмен режим",
+    "copyFailed": "Копирането е неуспешно"
   },
   "org": {
     "accessCode": "Код на организацията",
@@ -1117,7 +1118,29 @@
     "invitedAs": "Поканени сте като",
     "joining": "Присъединяване...",
     "joinedOrg": "Присъединихте се към {name}!",
-    "inviteDeclined": "Поканата е отказана"
+    "inviteDeclined": "Поканата е отказана",
+    "inviteWithQr": "Покана с QR",
+    "inviteQrTitle": "Покана към работното пространство",
+    "inviteQrHint": "Нека сканират това с телефона си. Кодът изтича скоро и работи само веднъж.",
+    "inviteQrExpiresIn": "Изтича след {time}",
+    "inviteQrRefreshing": "Генериране на нов код…",
+    "inviteQrCopyLink": "Копирай връзката",
+    "inviteQrCopyCode": "Копирай кода",
+    "inviteQrRegenerate": "Нов код",
+    "inviteQrRevoke": "Отмени",
+    "joinTitle": "Присъединяване",
+    "joinChecking": "Проверка на поканата…",
+    "joinInvalid": "Този код за покана е невалиден.",
+    "joinExpired": "Този код за покана е изтекъл.",
+    "joinRevoked": "Този код за покана е заменен с нов.",
+    "joinUsed": "Този код за покана вече е използван.",
+    "joinAskForFresh": "Поискайте нов QR код и сканирайте отново.",
+    "joinAlreadyMember": "Вече сте член на {name}.",
+    "joinAsRole": "Ще се присъедините като {role}.",
+    "joinCta": "Присъедини се",
+    "joinDecline": "Не сега",
+    "joinGoToDashboard": "Към таблото",
+    "inviteQrRevoked": "Кодът за покана е отменен"
   },
   "ai": {
     "title": "AI Генератор на задачи",

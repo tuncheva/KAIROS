@@ -1095,7 +1095,8 @@
     "copied": "Copied",
     "menu": "Menu",
     "lightMode": "Switch to light mode",
-    "darkMode": "Switch to dark mode"
+    "darkMode": "Switch to dark mode",
+    "copyFailed": "Couldn't copy"
   },
   "org": {
     "accessCode": "Org code",
@@ -1117,7 +1118,29 @@
     "invitedAs": "You've been invited as",
     "joining": "Joining...",
     "joinedOrg": "Joined {name}!",
-    "inviteDeclined": "Invite declined"
+    "inviteDeclined": "Invite declined",
+    "inviteWithQr": "Invite with QR",
+    "inviteQrTitle": "Invite to workspace",
+    "inviteQrHint": "Have them scan this with their phone. The code expires shortly and works only once.",
+    "inviteQrExpiresIn": "Expires in {time}",
+    "inviteQrRefreshing": "Generating a new code…",
+    "inviteQrCopyLink": "Copy invite link",
+    "inviteQrCopyCode": "Copy code",
+    "inviteQrRegenerate": "New code",
+    "inviteQrRevoke": "Revoke",
+    "joinTitle": "Join workspace",
+    "joinChecking": "Checking this invite…",
+    "joinInvalid": "This invite code isn't valid.",
+    "joinExpired": "This invite code has expired.",
+    "joinRevoked": "This invite code has been replaced by a newer one.",
+    "joinUsed": "This invite code has already been used.",
+    "joinAskForFresh": "Ask for a fresh QR code and scan it again.",
+    "joinAlreadyMember": "You're already a member of {name}.",
+    "joinAsRole": "You'll join as {role}.",
+    "joinCta": "Join workspace",
+    "joinDecline": "Not now",
+    "joinGoToDashboard": "Go to dashboard",
+    "inviteQrRevoked": "Invite code revoked"
   },
   "ai": {
     "title": "AI Task Generator",

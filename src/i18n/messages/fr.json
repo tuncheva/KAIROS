@@ -527,7 +527,8 @@
     "copied": "Copié",
     "menu": "Menu",
     "lightMode": "Passer en mode clair",
-    "darkMode": "Passer en mode sombre"
+    "darkMode": "Passer en mode sombre",
+    "copyFailed": "Échec de la copie"
   },
   "org": {
     "accessCode": "Code de l’organisation",
@@ -544,7 +545,31 @@
     "roleMentor": "Mentor",
     "organization": "Organisation",
     "personalWorkspace": "Espace personnel",
-    "personalHint": "Rejoignez une organisation pour collaborer en équipe"
+    "personalHint": "Rejoignez une organisation pour collaborer en équipe",
+    "inviteWithQr": "Inviter par QR",
+    "inviteQrTitle": "Inviter dans l'espace de travail",
+    "inviteQrHint": "Faites-le scanner avec un téléphone. Le code expire vite et ne sert qu'une fois.",
+    "inviteQrExpiresIn": "Expire dans {time}",
+    "inviteQrRefreshing": "Génération d'un nouveau code…",
+    "inviteQrCopyLink": "Copier le lien d'invitation",
+    "inviteQrCopyCode": "Copier le code",
+    "inviteQrRegenerate": "Nouveau code",
+    "inviteQrRevoke": "Révoquer",
+    "joinTitle": "Rejoindre l'espace de travail",
+    "joinChecking": "Vérification de l'invitation…",
+    "joinInvalid": "Ce code d'invitation n'est pas valide.",
+    "joinExpired": "Ce code d'invitation a expiré.",
+    "joinRevoked": "Ce code d'invitation a été remplacé par un nouveau.",
+    "joinUsed": "Ce code d'invitation a déjà été utilisé.",
+    "joinAskForFresh": "Demandez un nouveau QR code et scannez-le à nouveau.",
+    "joinAlreadyMember": "Vous êtes déjà membre de {name}.",
+    "joinAsRole": "Vous rejoindrez en tant que {role}.",
+    "joinCta": "Rejoindre",
+    "joinDecline": "Pas maintenant",
+    "joinGoToDashboard": "Aller au tableau de bord",
+    "joining": "Adhésion...",
+    "joinedOrg": "Vous avez rejoint {name} !",
+    "inviteQrRevoked": "Code d'invitation révoqué"
   },
   "ai": {
     "title": "Générateur de tâches IA",

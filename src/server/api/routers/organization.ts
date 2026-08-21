@@ -1,25 +1,33 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { organizations, organizationMembers, organizationRoles, organizationInvites, users, notifications } from "~/server/db/schema";
+import { createTRPCRouter, protectedProcedure, type TRPCContext } from "~/server/api/trpc";
+import { organizations, organizationMembers, organizationRoles, organizationInvites, organizationJoinCodes, users, notifications, type OrganizationJoinCode } from "~/server/db/schema";
 import { flagsForRole } from "~/lib/permissions";
 import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/security/authRateLimit";
 import { getClientIp } from "~/server/http/clientIp";
+import {
+  JOIN_CODE_TTL_MS,
+  buildJoinUrl,
+  generateJoinToken,
+  renderJoinQrSvg,
+  resolveOrigin,
+} from "~/server/orgs/joinCodes";
 
 /**
- * The access code is a bearer credential: anyone holding it can join the
- * organization, permanently. Returning it to every member — including `guest` and
- * the view-only `mentor` — let any member hand out standing access to the whole
- * workspace. Only members who can actually add people should see it.
+ * Who may hand out access to the workspace.
+ *
+ * Invites are a bearer credential, so this is deliberately narrower than
+ * membership: the view-only `mentor` and `guest` roles can see the workspace but
+ * must not be able to grow it.
  */
-function canSeeAccessCode(membership: {
+function canInvite(membership: {
   role: string;
   canAddMembers?: boolean;
 }): boolean {
   return membership.role === "admin" || membership.canAddMembers === true;
 }
-import { eq, and, or, isNull, gt, lte, desc } from "drizzle-orm";
+import { eq, and, or, isNull, gt, lte, desc, sql } from "drizzle-orm";
 import { emitNotification } from "~/server/ws/emit";
 import { createLogger } from "~/server/logger";
 
@@ -51,6 +59,99 @@ function generateAccessCode(): string {
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** The caller's membership, once it has been established they may invite. */
+type InviteContext = {
+  organizationId: number;
+  organizationName: string;
+};
+
+/**
+ * Resolve which organisation an invite action targets and check the caller may
+ * grow it. Omitting `organizationId` means "the one I am working in".
+ */
+async function requireInviteRights(
+  ctx: TRPCContext & { session: { user: { id: string } } },
+  organizationId: number | null,
+): Promise<InviteContext> {
+  const conditions = [eq(organizationMembers.userId, ctx.session.user.id)];
+  if (organizationId !== null) {
+    conditions.push(eq(organizationMembers.organizationId, organizationId));
+  } else {
+    // No explicit target: fall back to the user's active organisation so the
+    // topbar can offer an invite without knowing an id.
+    const [user] = await ctx.db
+      .select({ activeOrganizationId: users.activeOrganizationId })
+      .from(users)
+      .where(eq(users.id, ctx.session.user.id))
+      .limit(1);
+
+    if (!user?.activeOrganizationId) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "No active organization to invite into.",
+      });
+    }
+    conditions.push(
+      eq(organizationMembers.organizationId, user.activeOrganizationId),
+    );
+  }
+
+  const [membership] = await ctx.db
+    .select({
+      organizationId: organizationMembers.organizationId,
+      organizationName: organizations.name,
+      role: organizationMembers.role,
+      canAddMembers: organizationMembers.canAddMembers,
+    })
+    .from(organizationMembers)
+    .innerJoin(
+      organizations,
+      eq(organizationMembers.organizationId, organizations.id),
+    )
+    .where(and(...conditions))
+    .limit(1);
+
+  if (!membership) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You are not a member of this organization",
+    });
+  }
+
+  if (!canInvite(membership)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You do not have permission to invite people to this organization",
+    });
+  }
+
+  return {
+    organizationId: membership.organizationId,
+    organizationName: membership.organizationName,
+  };
+}
+
+/** Shape a stored token into what the invite dialog needs to render it. */
+async function describeJoinCode(
+  headers: Headers | undefined,
+  code: OrganizationJoinCode,
+  organizationName: string,
+) {
+  const url = buildJoinUrl(resolveOrigin(headers), code.code);
+
+  return {
+    code: code.code,
+    url,
+    qrSvg: await renderJoinQrSvg(url),
+    expiresAt: code.expiresAt,
+    ttlMs: JOIN_CODE_TTL_MS,
+    maxUses: code.maxUses,
+    usedCount: code.usedCount,
+    role: code.role,
+    organizationName,
+  };
+}
+
 export const organizationRouter = createTRPCRouter({
   listMine: protectedProcedure.query(async ({ ctx }) => {
     const memberships = await ctx.db
@@ -70,7 +171,7 @@ export const organizationRouter = createTRPCRouter({
     return memberships.map((m) => ({
       id: m.organization.id,
       name: m.organization.name,
-      accessCode: canSeeAccessCode(m) ? m.organization.accessCode : null,
+      canInvite: canInvite(m),
       role: m.role,
       joinedAt: m.joinedAt,
       createdAt: m.organization.createdAt,
@@ -124,11 +225,9 @@ export const organizationRouter = createTRPCRouter({
           organization: {
             id: membership.organization.id,
             name: membership.organization.name,
-            accessCode: canSeeAccessCode(membership)
-              ? membership.organization.accessCode
-              : null,
           },
           role: membership.role,
+          canInvite: canInvite(membership),
         };
       }
     }
@@ -153,11 +252,9 @@ export const organizationRouter = createTRPCRouter({
       organization: {
         id: fallback.organization.id,
         name: fallback.organization.name,
-        accessCode: canSeeAccessCode(fallback)
-          ? fallback.organization.accessCode
-          : null,
       },
       role: fallback.role,
+      canInvite: canInvite(fallback),
     };
   }),
 
@@ -1571,5 +1668,339 @@ export const organizationRouter = createTRPCRouter({
         .where(eq(organizationInvites.id, input.inviteId));
 
       return { success: true };
+    }),
+
+  // ---------------------------------------------------------------------------
+  // Join QR codes
+  //
+  // The permanent `accessCode` is no longer how people get in. A member who may
+  // add people mints a short-lived token, the app renders it as a QR, and the
+  // token dies on a timer or on first use — so a photograph of the screen is not
+  // a standing key to the workspace.
+  // ---------------------------------------------------------------------------
+
+  /** The current live QR for an organisation, or null if none is outstanding. */
+  getJoinQr: protectedProcedure
+    .input(z.object({ organizationId: z.number().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const membership = await requireInviteRights(
+        ctx,
+        input?.organizationId ?? null,
+      );
+
+      const [code] = await ctx.db
+        .select()
+        .from(organizationJoinCodes)
+        .where(
+          and(
+            eq(organizationJoinCodes.organizationId, membership.organizationId),
+            isNull(organizationJoinCodes.revokedAt),
+            gt(organizationJoinCodes.expiresAt, new Date()),
+            sql`${organizationJoinCodes.usedCount} < ${organizationJoinCodes.maxUses}`,
+          ),
+        )
+        .orderBy(desc(organizationJoinCodes.createdAt))
+        .limit(1);
+
+      if (!code) return null;
+
+      return describeJoinCode(ctx.headers, code, membership.organizationName);
+    }),
+
+  /**
+   * Mint a fresh QR, retiring whatever was outstanding.
+   *
+   * Rotation revokes rather than reuses, so "show the code again" and "let the
+   * old scan still work" can never be the same action by accident.
+   */
+  rotateJoinQr: protectedProcedure
+    .input(
+      z
+        .object({
+          organizationId: z.number().optional(),
+          role: z.enum(["worker", "mentor"]).optional(),
+          maxUses: z.number().int().min(1).max(100).optional(),
+        })
+        .optional(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const membership = await requireInviteRights(
+        ctx,
+        input?.organizationId ?? null,
+      );
+
+      await ctx.db
+        .update(organizationJoinCodes)
+        .set({ revokedAt: new Date() })
+        .where(
+          and(
+            eq(organizationJoinCodes.organizationId, membership.organizationId),
+            isNull(organizationJoinCodes.revokedAt),
+          ),
+        );
+
+      const token = generateJoinToken();
+      const [created] = await ctx.db
+        .insert(organizationJoinCodes)
+        .values({
+          organizationId: membership.organizationId,
+          code: token,
+          role: input?.role ?? "worker",
+          createdById: ctx.session.user.id,
+          expiresAt: new Date(Date.now() + JOIN_CODE_TTL_MS),
+          maxUses: input?.maxUses ?? 1,
+        })
+        .returning();
+
+      if (!created) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create join code",
+        });
+      }
+
+      return describeJoinCode(ctx.headers, created, membership.organizationName);
+    }),
+
+  /** Kill the outstanding QR without minting a replacement. */
+  revokeJoinQr: protectedProcedure
+    .input(z.object({ organizationId: z.number().optional() }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const membership = await requireInviteRights(
+        ctx,
+        input?.organizationId ?? null,
+      );
+
+      await ctx.db
+        .update(organizationJoinCodes)
+        .set({ revokedAt: new Date() })
+        .where(
+          and(
+            eq(organizationJoinCodes.organizationId, membership.organizationId),
+            isNull(organizationJoinCodes.revokedAt),
+          ),
+        );
+
+      return { success: true };
+    }),
+
+  /**
+   * What a scanned token points at, before the scanner commits to joining.
+   *
+   * Deliberately says only whether the token is usable and, if so, which
+   * organisation it opens — never why a bad token is bad beyond a coarse reason,
+   * so this cannot be used to probe which tokens once existed.
+   */
+  peekJoinQr: protectedProcedure
+    .input(z.object({ code: z.string().min(1).max(64) }))
+    .query(async ({ ctx, input }) => {
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("org_join_peek", ctx.session.user.id),
+      );
+
+      const [row] = await ctx.db
+        .select({
+          joinCode: organizationJoinCodes,
+          organizationName: organizations.name,
+        })
+        .from(organizationJoinCodes)
+        .innerJoin(
+          organizations,
+          eq(organizationJoinCodes.organizationId, organizations.id),
+        )
+        .where(eq(organizationJoinCodes.code, input.code.toUpperCase()))
+        .limit(1);
+
+      if (!row) return { status: "invalid" as const };
+
+      const { joinCode } = row;
+      if (joinCode.revokedAt) return { status: "revoked" as const };
+      if (joinCode.expiresAt.getTime() <= Date.now()) {
+        return { status: "expired" as const };
+      }
+      if (joinCode.usedCount >= joinCode.maxUses) {
+        return { status: "used" as const };
+      }
+
+      const [existingMember] = await ctx.db
+        .select({ id: organizationMembers.id })
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, joinCode.organizationId),
+            eq(organizationMembers.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+
+      return {
+        status: "valid" as const,
+        organizationId: joinCode.organizationId,
+        organizationName: row.organizationName,
+        role: joinCode.role,
+        expiresAt: joinCode.expiresAt,
+        alreadyMember: !!existingMember,
+      };
+    }),
+
+  /** Redeem a scanned token. */
+  joinWithQr: protectedProcedure
+    .input(z.object({ code: z.string().min(1).max(64) }))
+    .mutation(async ({ ctx, input }) => {
+      // Same reasoning as `join`: this endpoint says whether a guess was right,
+      // so it is an enumeration oracle without a limit on both the caller and
+      // the source address.
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("org_join", ctx.session.user.id),
+      );
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("org_join_ip", getClientIp(ctx.headers)),
+      );
+
+      const code = input.code.toUpperCase();
+
+      const [candidate] = await ctx.db
+        .select()
+        .from(organizationJoinCodes)
+        .where(eq(organizationJoinCodes.code, code))
+        .limit(1);
+
+      if (
+        !candidate ||
+        candidate.revokedAt ||
+        candidate.expiresAt.getTime() <= Date.now() ||
+        candidate.usedCount >= candidate.maxUses
+      ) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "This invite code is no longer valid. Ask for a fresh QR code.",
+        });
+      }
+
+      const [existingMember] = await ctx.db
+        .select({ id: organizationMembers.id })
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, candidate.organizationId),
+            eq(organizationMembers.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (existingMember) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You are already a member of this organization.",
+        });
+      }
+
+      // Claim a use with a conditional update rather than a read-then-write, so
+      // two people scanning the same single-use QR at once cannot both win.
+      const claimed = await ctx.db
+        .update(organizationJoinCodes)
+        .set({ usedCount: sql`${organizationJoinCodes.usedCount} + 1` })
+        .where(
+          and(
+            eq(organizationJoinCodes.id, candidate.id),
+            isNull(organizationJoinCodes.revokedAt),
+            gt(organizationJoinCodes.expiresAt, new Date()),
+            sql`${organizationJoinCodes.usedCount} < ${organizationJoinCodes.maxUses}`,
+          ),
+        )
+        .returning({ id: organizationJoinCodes.id });
+
+      if (claimed.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "This invite code is no longer valid. Ask for a fresh QR code.",
+        });
+      }
+
+      const [organization] = await ctx.db
+        .select()
+        .from(organizations)
+        .where(eq(organizations.id, candidate.organizationId))
+        .limit(1);
+
+      if (!organization) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Organization not found",
+        });
+      }
+
+      const joinRole = candidate.role === "mentor" ? "mentor" : "worker";
+
+      try {
+        await ctx.db.insert(organizationMembers).values({
+          organizationId: organization.id,
+          userId: ctx.session.user.id,
+          role: joinRole,
+          ...flagsForRole(joinRole),
+        });
+      } catch (error) {
+        // Hand the use back so a failed insert does not burn a single-use QR.
+        await ctx.db
+          .update(organizationJoinCodes)
+          .set({ usedCount: sql`greatest(${organizationJoinCodes.usedCount} - 1, 0)` })
+          .where(eq(organizationJoinCodes.id, candidate.id));
+        throw error;
+      }
+
+      await ctx.db
+        .update(users)
+        .set({ usageMode: "organization", activeOrganizationId: organization.id })
+        .where(eq(users.id, ctx.session.user.id));
+
+      const [joiner] = await ctx.db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, ctx.session.user.id))
+        .limit(1);
+      const joinerName = joiner?.name ?? "Someone";
+
+      const orgAdmins = await ctx.db
+        .select({ userId: organizationMembers.userId })
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, organization.id),
+            eq(organizationMembers.role, "admin"),
+          ),
+        );
+
+      for (const admin of orgAdmins) {
+        if (admin.userId === ctx.session.user.id) continue;
+        const message = `${joinerName} joined "${organization.name}" by scanning an invite QR`;
+        const [notif] = await ctx.db
+          .insert(notifications)
+          .values({
+            userId: admin.userId,
+            type: "system",
+            title: "New Member Joined",
+            message,
+            link: "/settings?section=workspace",
+            read: false,
+          })
+          .returning();
+
+        if (notif) {
+          emitNotification(admin.userId, {
+            id: notif.id,
+            type: "system",
+            title: "New Member Joined",
+            message,
+            link: "/settings?section=workspace",
+          });
+        }
+      }
+
+      return {
+        success: true,
+        organizationId: organization.id,
+        organizationName: organization.name,
+        role: joinRole,
+      };
     }),
 });

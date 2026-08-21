@@ -135,9 +135,9 @@ export function OrgSwitcher() {
                       {isActive ? tOrg("active") : tOrg("setActive")}
                     </div>
                   </div>
-                  <div className="shrink-0 text-xs font-mono tracking-[0.15em] text-fg-tertiary">
-                    {org.accessCode}
-                  </div>
+                  {isActive ? (
+                    <Check size={14} className="shrink-0 text-accent-primary" />
+                  ) : null}
                 </button>
               );
             })}

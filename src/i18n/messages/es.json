@@ -527,7 +527,8 @@
     "copied": "Copiado",
     "menu": "Menú",
     "lightMode": "Cambiar a modo claro",
-    "darkMode": "Cambiar a modo oscuro"
+    "darkMode": "Cambiar a modo oscuro",
+    "copyFailed": "No se pudo copiar"
   },
   "org": {
     "accessCode": "Código de la org",
@@ -544,7 +545,31 @@
     "roleMentor": "Mentor",
     "organization": "Organización",
     "personalWorkspace": "Espacio personal",
-    "personalHint": "Únete a una organización para colaborar en equipo"
+    "personalHint": "Únete a una organización para colaborar en equipo",
+    "inviteWithQr": "Invitar con QR",
+    "inviteQrTitle": "Invitar al espacio de trabajo",
+    "inviteQrHint": "Pide que lo escaneen con el móvil. El código caduca pronto y solo sirve una vez.",
+    "inviteQrExpiresIn": "Caduca en {time}",
+    "inviteQrRefreshing": "Generando un código nuevo…",
+    "inviteQrCopyLink": "Copiar enlace de invitación",
+    "inviteQrCopyCode": "Copiar código",
+    "inviteQrRegenerate": "Código nuevo",
+    "inviteQrRevoke": "Revocar",
+    "joinTitle": "Unirse al espacio de trabajo",
+    "joinChecking": "Comprobando la invitación…",
+    "joinInvalid": "Este código de invitación no es válido.",
+    "joinExpired": "Este código de invitación ha caducado.",
+    "joinRevoked": "Este código de invitación ha sido sustituido por uno nuevo.",
+    "joinUsed": "Este código de invitación ya se ha usado.",
+    "joinAskForFresh": "Pide un código QR nuevo y vuelve a escanearlo.",
+    "joinAlreadyMember": "Ya eres miembro de {name}.",
+    "joinAsRole": "Te unirás como {role}.",
+    "joinCta": "Unirse",
+    "joinDecline": "Ahora no",
+    "joinGoToDashboard": "Ir al panel",
+    "joining": "Uniéndose...",
+    "joinedOrg": "¡Te has unido a {name}!",
+    "inviteQrRevoked": "Código de invitación revocado"
   },
   "ai": {
     "title": "Generador de tareas con IA",

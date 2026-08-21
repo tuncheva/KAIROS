@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { KairosMark } from "~/components/layout/KairosMark";
 import {
   Briefcase,
   LayoutDashboard,
@@ -176,10 +177,8 @@ export function SideNav() {
   return (
     <>
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-bg-primary/95 backdrop-blur-md shadow-sm px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center shadow-lg shadow-accent-primary/25">
-            <span className="text-white font-bold text-sm">K</span>
-          </div>
+        <div className="flex items-center gap-2.5">
+          <KairosMark size={28} />
           <h1 className="text-lg font-semibold text-fg-primary font-display tracking-[-0.02em]">KAIROS</h1>
         </div>
         <button
@@ -324,9 +323,7 @@ export function SideNav() {
       >
         <div className="flex items-center justify-between gap-3 whitespace-nowrap px-[18px] pb-[22px]">
           <span className="flex items-center gap-3.5">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-accent-primary to-accent-secondary shadow-sm shadow-accent-primary/25">
-              <span className="text-[11px] font-bold text-white">K</span>
-            </span>
+            <KairosMark size={26} />
             <span className={`font-display text-[15px] font-semibold tracking-[0.18em] text-fg-primary ${labelClass}`}>
               KAIROS
             </span>

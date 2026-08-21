@@ -527,7 +527,8 @@
     "copied": "Kopiert",
     "menu": "Menü",
     "lightMode": "Zum hellen Modus wechseln",
-    "darkMode": "Zum dunklen Modus wechseln"
+    "darkMode": "Zum dunklen Modus wechseln",
+    "copyFailed": "Kopieren fehlgeschlagen"
   },
   "org": {
     "accessCode": "Org-Code",
@@ -544,7 +545,31 @@
     "roleMentor": "Mentor",
     "organization": "Organisation",
     "personalWorkspace": "Persönlicher Arbeitsbereich",
-    "personalHint": "Tritt einer Organisation bei, um im Team zu arbeiten"
+    "personalHint": "Tritt einer Organisation bei, um im Team zu arbeiten",
+    "inviteWithQr": "Per QR einladen",
+    "inviteQrTitle": "Zum Workspace einladen",
+    "inviteQrHint": "Lass den Code mit dem Handy scannen. Er läuft bald ab und gilt nur einmal.",
+    "inviteQrExpiresIn": "Läuft ab in {time}",
+    "inviteQrRefreshing": "Neuer Code wird erstellt…",
+    "inviteQrCopyLink": "Einladungslink kopieren",
+    "inviteQrCopyCode": "Code kopieren",
+    "inviteQrRegenerate": "Neuer Code",
+    "inviteQrRevoke": "Widerrufen",
+    "joinTitle": "Workspace beitreten",
+    "joinChecking": "Einladung wird geprüft…",
+    "joinInvalid": "Dieser Einladungscode ist ungültig.",
+    "joinExpired": "Dieser Einladungscode ist abgelaufen.",
+    "joinRevoked": "Dieser Einladungscode wurde durch einen neuen ersetzt.",
+    "joinUsed": "Dieser Einladungscode wurde bereits verwendet.",
+    "joinAskForFresh": "Bitte um einen neuen QR-Code und scanne ihn erneut.",
+    "joinAlreadyMember": "Du bist bereits Mitglied von {name}.",
+    "joinAsRole": "Du trittst bei als {role}.",
+    "joinCta": "Workspace beitreten",
+    "joinDecline": "Jetzt nicht",
+    "joinGoToDashboard": "Zum Dashboard",
+    "joining": "Beitreten...",
+    "joinedOrg": "{name} beigetreten!",
+    "inviteQrRevoked": "Einladungscode widerrufen"
   },
   "ai": {
     "title": "KI-Aufgabengenerator",

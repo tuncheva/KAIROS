@@ -1,5 +1,8 @@
 import { beforeAll, afterAll, expect, it } from "vitest";
 import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
+
+import * as schema from "~/server/db/schema";
 
 import {
   addMember,
@@ -212,20 +215,154 @@ describeIntegration("organization authorization", () => {
     ).resolves.toBeTruthy();
   });
 
-  it("hides the access code from members who cannot add people", async () => {
+  it("never sends the access code to the client", async () => {
     // Finding #28: the code is a permanent bearer credential for the workspace and
-    // was returned to every member, including guests and view-only mentors.
+    // was returned to every member, including guests and view-only mentors. It is
+    // no longer part of the payload at all — invites are short-lived QR tokens.
     const owner = await makeUser(h.db);
     const mentor = await makeUser(h.db);
     const org = await makeOrganization(h.db, owner.id);
     await addMember(h.db, org.id, owner.id, "admin");
     await addMember(h.db, org.id, mentor.id, "mentor");
 
-    const asMentor = await h.caller(mentor.id).organization.listMine();
-    expect(asMentor.find((o) => o.id === org.id)?.accessCode).toBeNull();
-
     const asAdmin = await h.caller(owner.id).organization.listMine();
-    expect(asAdmin.find((o) => o.id === org.id)?.accessCode).toBe(org.accessCode);
+    expect(JSON.stringify(asAdmin)).not.toContain(org.accessCode);
+
+    // Who may hand out access is still role-gated: a view-only mentor cannot.
+    expect(asAdmin.find((o) => o.id === org.id)?.canInvite).toBe(true);
+    const asMentor = await h.caller(mentor.id).organization.listMine();
+    expect(asMentor.find((o) => o.id === org.id)?.canInvite).toBe(false);
+  });
+});
+
+describeIntegration("organization join QR codes", () => {
+  it("refuses to mint a QR for a member who cannot add people", async () => {
+    const owner = await makeUser(h.db);
+    const mentor = await makeUser(h.db);
+    const org = await makeOrganization(h.db, owner.id);
+    await addMember(h.db, org.id, owner.id, "admin");
+    await addMember(h.db, org.id, mentor.id, "mentor");
+
+    await expectForbidden(
+      h.caller(mentor.id).organization.rotateJoinQr({ organizationId: org.id }),
+    );
+    await expectForbidden(
+      h.caller(mentor.id).organization.getJoinQr({ organizationId: org.id }),
+    );
+  });
+
+  it("refuses to mint a QR for a non-member", async () => {
+    const owner = await makeUser(h.db);
+    const outsider = await makeUser(h.db);
+    const org = await makeOrganization(h.db, owner.id);
+    await addMember(h.db, org.id, owner.id, "admin");
+
+    await expectForbidden(
+      h.caller(outsider.id).organization.rotateJoinQr({ organizationId: org.id }),
+    );
+  });
+
+  it("retires the previous token when a new one is minted", async () => {
+    const owner = await makeUser(h.db);
+    const scanner = await makeUser(h.db);
+    const org = await makeOrganization(h.db, owner.id);
+    await addMember(h.db, org.id, owner.id, "admin");
+
+    const first = await h
+      .caller(owner.id)
+      .organization.rotateJoinQr({ organizationId: org.id });
+    const second = await h
+      .caller(owner.id)
+      .organization.rotateJoinQr({ organizationId: org.id });
+
+    expect(second.code).not.toBe(first.code);
+
+    // A photograph of the previous QR is worthless the moment it rotates.
+    await expect(
+      h.caller(scanner.id).organization.peekJoinQr({ code: first.code }),
+    ).resolves.toMatchObject({ status: "revoked" });
+
+    // And the live one is the one the dialog would show.
+    const current = await h
+      .caller(owner.id)
+      .organization.getJoinQr({ organizationId: org.id });
+    expect(current?.code).toBe(second.code);
+  });
+
+  it("rejects an expired token", async () => {
+    const owner = await makeUser(h.db);
+    const scanner = await makeUser(h.db);
+    const org = await makeOrganization(h.db, owner.id);
+    await addMember(h.db, org.id, owner.id, "admin");
+
+    const qr = await h
+      .caller(owner.id)
+      .organization.rotateJoinQr({ organizationId: org.id });
+
+    await h.db
+      .update(schema.organizationJoinCodes)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schema.organizationJoinCodes.code, qr.code));
+
+    await expect(
+      h.caller(scanner.id).organization.peekJoinQr({ code: qr.code }),
+    ).resolves.toMatchObject({ status: "expired" });
+
+    await expect(
+      h.caller(scanner.id).organization.joinWithQr({ code: qr.code }),
+    ).rejects.toBeInstanceOf(TRPCError);
+
+    // An expired token is also not what `getJoinQr` hands the dialog.
+    await expect(
+      h.caller(owner.id).organization.getJoinQr({ organizationId: org.id }),
+    ).resolves.toBeNull();
+  });
+
+  it("lets exactly one person through a single-use token", async () => {
+    const owner = await makeUser(h.db);
+    const first = await makeUser(h.db);
+    const second = await makeUser(h.db);
+    const org = await makeOrganization(h.db, owner.id);
+    await addMember(h.db, org.id, owner.id, "admin");
+
+    const qr = await h
+      .caller(owner.id)
+      .organization.rotateJoinQr({ organizationId: org.id });
+
+    await expect(
+      h.caller(first.id).organization.joinWithQr({ code: qr.code }),
+    ).resolves.toMatchObject({ organizationId: org.id, role: "worker" });
+
+    await expect(
+      h.caller(second.id).organization.joinWithQr({ code: qr.code }),
+    ).rejects.toBeInstanceOf(TRPCError);
+
+    await expect(
+      h.caller(second.id).organization.peekJoinQr({ code: qr.code }),
+    ).resolves.toMatchObject({ status: "used" });
+  });
+
+  it("honours the role the token was minted for", async () => {
+    const owner = await makeUser(h.db);
+    const scanner = await makeUser(h.db);
+    const org = await makeOrganization(h.db, owner.id);
+    await addMember(h.db, org.id, owner.id, "admin");
+
+    const qr = await h
+      .caller(owner.id)
+      .organization.rotateJoinQr({ organizationId: org.id, role: "mentor" });
+
+    await expect(
+      h.caller(scanner.id).organization.joinWithQr({ code: qr.code }),
+    ).resolves.toMatchObject({ role: "mentor" });
+  });
+
+  it("reports an unknown token as invalid without saying more", async () => {
+    const scanner = await makeUser(h.db);
+
+    await expect(
+      h.caller(scanner.id).organization.peekJoinQr({ code: "NOTAREALTOKEN" }),
+    ).resolves.toEqual({ status: "invalid" });
   });
 });
 

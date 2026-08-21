@@ -2,7 +2,7 @@ import { auth } from "~/server/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { SideNav } from "~/components/layout/SideNav";
-import { UserDisplay } from "~/components/layout/UserDisplay";
+import { TopBar } from "~/components/layout/TopBar";
 import { SettingsNav } from "~/components/layout/SettingsNav";
 import { ProfileSettingsClient } from "~/components/settings/ProfileSettingsClient";
 import { AppearanceSettings } from "~/components/settings/AppearanceSettings";
@@ -40,26 +40,7 @@ export default async function SettingsPage({
 
   <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0">
  {/* Header */}
-  <header className="sticky top-16 lg:top-0 z-30 bg-bg-primary/95 backdrop-blur-md border-b border-slate-200 dark:border-white/[0.06]">
- <div className="px-4 sm:px-6 py-4 flex justify-between items-center">
- <div className="flex items-center gap-3">
- <div className="hidden sm:flex w-10 h-10 flex-shrink-0 items-center justify-center rounded-xl bg-bg-secondary border border-slate-200 dark:border-white/[0.06]">
- <Settings size={20} className="text-fg-tertiary" />
- </div>
- <div>
- <h1 className="text-[22px] font-[590] leading-[1.1] tracking-[-0.016em] text-fg-primary font-[system-ui,Kairos,sans-serif]">
- {t("title")}
- </h1>
- <p className="text-[13px] leading-[1.3] tracking-[-0.006em] text-fg-tertiary font-[system-ui,Kairos,sans-serif] mt-[2px]">
- {t("subtitle")}
- </p>
- </div>
- </div>
- <div className="flex items-center gap-3">
- <UserDisplay />
- </div>
- </div>
- </header>
+ <TopBar title={t("title")} />
 
   <div className="lg:hidden border-b border-slate-200 dark:border-white/[0.06]">
   <div className="px-4 py-3 overflow-x-auto">

@@ -2,11 +2,10 @@ import Link from "next/link";
 import { auth } from "~/server/auth";
 import { UserDisplay } from "~/components/layout/UserDisplay";
 import { SideNav } from "~/components/layout/SideNav";
+import { TopBar } from "~/components/layout/TopBar";
 import { CreateNoteForm } from "~/components/notes/CreateNoteForm";
 import { CreateProjectContainer } from "~/components/projects/CreateProjectContainer";
 import { NotesList } from "~/components/notes/NotesList";
-import { NotificationSystem } from "~/components/notifications/NotificationSystem";
-import { WorkspaceIndicator } from "~/components/orgs/WorkspaceIndicator";
 import { OnboardingGate } from "~/components/auth/OnboardingGate";
 import { TaskTimelineClient } from "~/components/progress/TaskTimelineClient";
 import { LogIn, ArrowRight, FolderKanban, StickyNote } from "lucide-react";
@@ -68,48 +67,15 @@ export default async function CreatePage({
       <SideNav />
 
       <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0 relative z-10 kairos-page-enter">
-        <header className="sticky top-16 lg:top-0 z-30 topbar-solid shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 flex flex-wrap justify-between items-center gap-3">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className={
-                    "w-10 h-10 rounded-xl flex items-center justify-center shadow-sm " +
-                    (shouldShowProjectManagement
-                      ? "bg-accent-primary"
-                      : shouldShowNoteForm
-                        ? "bg-warning"
-                        : "bg-gradient-to-br from-accent-primary to-accent-secondary")
-                  }
-                >
-                  {shouldShowProjectManagement ? (
-                    <FolderKanban className="text-white" size={22} />
-                  ) : shouldShowNoteForm ? (
-                    <StickyNote className="text-white" size={22} />
-                  ) : (
-                    <Image src="/workspace.png" alt="Workspace" width={28} height={28} className="invert dark:invert-0" />
-                  )}
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-fg-primary tracking-[-0.02em] font-display">
-                    {shouldShowProjectManagement
-                      ? tNav("projects")
-                      : shouldShowNoteForm
-                        ? tNav("notes")
-                        : tCreate("title")}
-                  </h1>
-                </div>
-              </div>
-              
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
-              <WorkspaceIndicator compact />
-              <div className="hidden sm:block h-6 w-px bg-border-medium mx-2"></div>
-              <NotificationSystem />
-              <UserDisplay />
-            </div>
-          </div>
-        </header>
+        <TopBar
+          title={
+            shouldShowProjectManagement
+              ? tNav("projects")
+              : shouldShowNoteForm
+                ? tNav("notes")
+                : tCreate("title")
+          }
+        />
 
         <main id="main-content" className="flex-1 w-full px-4 sm:px-6 md:px-8 py-5 sm:py-6 overflow-auto relative pb-24 lg:pb-6">
           <div className="max-w-7xl mx-auto w-full space-y-4">
