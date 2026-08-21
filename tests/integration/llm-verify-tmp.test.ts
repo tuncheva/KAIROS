@@ -28,7 +28,7 @@ async function main() {
   await chatCompletion({
     messages: [{ role: "user", content: "hi" }],
     model: NEMO,
-    maxTokens: 16,
+    maxTokens: 512,
     purpose: "verify.nemo",
   });
   console.log("   nemotron  ->", JSON.stringify(seen.at(-1)?.chat_template_kwargs));
@@ -38,7 +38,7 @@ async function main() {
     await chatCompletion({
       messages: [{ role: "user", content: "hi" }],
       model: DEEPSEEK,
-      maxTokens: 16,
+      maxTokens: 512,
       timeoutMs: 3_000,
       purpose: "verify.deepseek-body",
     });
@@ -57,7 +57,7 @@ async function main() {
             await chatCompletion({
               messages: [{ role: "user", content: "hi" }],
               model: "meta/llama-3.1-8b-instruct",
-              maxTokens: 8,
+              maxTokens: 512,
               purpose: "verify.llama",
             });
           } catch {}
@@ -77,7 +77,7 @@ async function main() {
     for await (const ev of streamCompletion({
       messages: [{ role: "user", content: "hi" }],
       model: DEEPSEEK,
-      maxTokens: 16,
+      maxTokens: 512,
       purpose: "verify.firstbyte",
     })) {
       if (ev.type === "done") console.log("   unexpectedly completed");
@@ -109,7 +109,7 @@ async function main() {
   const t2 = Date.now();
   const res = await chatCompletion({
     messages: [{ role: "user", content: "Reply with one word: ready" }],
-    maxTokens: 32,
+    maxTokens: 512,
     purpose: "verify.chain.sync",
   });
   console.log(
