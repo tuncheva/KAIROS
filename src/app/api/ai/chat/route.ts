@@ -35,6 +35,8 @@ import type { TRPCContext } from "~/server/api/trpc";
 import { createLogger } from "~/server/logger";
 import { consumeRateLimit } from "~/server/security/rateLimit";
 import { runAgentTurn } from "~/server/llm/orchestrator/handoff";
+import { isPinnable } from "~/server/llm/agents/registry";
+import type { TargetAgent } from "~/server/llm/schemas/a1WorkspaceConciergeSchemas";
 import {
   appendMessage,
   ensureConversation,
@@ -58,6 +60,8 @@ interface ChatRequestBody {
   projectId?: unknown;
   /** E-3: the unapplied task plan still on screen, if any. */
   priorTaskDraftId?: unknown;
+  /** A sub-agent the user pinned in the picker. Omit for Auto. */
+  agentId?: unknown;
 }
 
 function sse(event: string, data: unknown): string {
@@ -95,6 +99,16 @@ export async function POST(request: Request) {
     typeof body.conversationId === "string" ? body.conversationId : undefined;
   const priorTaskDraftId =
     typeof body.priorTaskDraftId === "string" ? body.priorTaskDraftId : undefined;
+
+  // An unrecognised agent id falls back to Auto rather than 400-ing. The id is a
+  // routing preference, not a request the turn depends on, and a stale pin from
+  // an older client should degrade to the default rather than break the chat.
+  // `isPinnable` is what guarantees the value reaching `runHandoff`'s exhaustive
+  // switch is one that switch handles.
+  const pinnedAgent =
+    typeof body.agentId === "string" && isPinnable(body.agentId)
+      ? (body.agentId as TargetAgent)
+      : undefined;
 
   // Same door as the tRPC procedures: one AI request off the caller's daily
   // budget, refused before any model call.
@@ -142,6 +156,7 @@ export async function POST(request: Request) {
           conversationHistory: history.messages,
           conversationSummary: history.summary,
           priorTaskDraftId,
+          pinnedAgent,
           signal: request.signal,
           onToolCall: (name) => send("tool_call", { name }),
           onSubAgent: (agent) => send("sub_agent", { agent }),
@@ -165,7 +180,9 @@ export async function POST(request: Request) {
               // Store the structured output, which is what the model produced
               // and what the next turn should see — not the rendered bubble.
               content: JSON.stringify(result.a1),
-              agentId: "workspace_concierge",
+              // On a pinned turn A1 never ran, so attributing the message to it
+              // would make the history claim a model call that did not happen.
+              agentId: pinnedAgent ?? "workspace_concierge",
               draftId: result.plans[0]?.draftId ?? null,
               latencyMs,
             });

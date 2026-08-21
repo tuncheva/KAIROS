@@ -215,6 +215,13 @@ export const aiConversations = createTable(
     summary: text("summary"),
     /** How many messages the current `summary` already covers. */
     summarizedThroughId: integer("summarized_through_id"),
+    /**
+     * The sub-agent the user pinned for this thread, if any.
+     *
+     * NULL means Auto — A1 routes, which is the default and what every
+     * conversation created before the picker existed will read as.
+     */
+    pinnedAgentId: varchar("pinned_agent_id", { length: 40 }),
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
     updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   }),
@@ -273,10 +280,20 @@ export const aiUserMemory = createTable(
       .varchar("user_id", { length: 255 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    /** Short stable handle, e.g. "sprint_cadence". Unique per user. */
+    /** Short stable handle, e.g. "sprint_cadence". Unique per user *and scope*. */
     key: varchar("key", { length: 64 }).notNull(),
     /** The fact itself, in the user's own terms. */
     value: text("value").notNull(),
+    /**
+     * Who this fact is for: `'global'`, or an agent id.
+     *
+     * A non-null sentinel rather than a nullable `agent_id` on purpose. Postgres
+     * treats NULLs as distinct in a unique index, so a nullable column would let
+     * two global rows share a key — and the upsert in `rememberFact` reads at
+     * most one, so the second would be written and then silently never used.
+     * `NULLS NOT DISTINCT` would also work on 15+ but buys nothing here.
+     */
+    scope: varchar("scope", { length: 40 }).default("global").notNull(),
     /** Which conversation it came from, for "why does it think that?". */
     sourceConversationId: varchar("source_conversation_id", { length: 80 }),
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
@@ -284,7 +301,7 @@ export const aiUserMemory = createTable(
   }),
   (t) => [
     index("ai_memory_user_idx").on(t.userId),
-    uniqueIndex("ai_memory_user_key_unique").on(t.userId, t.key),
+    uniqueIndex("ai_memory_user_scope_key_unique").on(t.userId, t.scope, t.key),
   ],
 );
 

@@ -1477,5 +1477,33 @@
       "step3": "Tasks, notes and progress land on this dashboard.",
       "aside": "The inner arc tracks the day itself, so an empty dashboard still tells you how much time is left."
     }
+  },
+  "agents": {
+    "chooseAgent": "Choose an agent",
+    "auto": "Auto",
+    "autoDescription": "Routes your message to the right specialist, and can use several in one turn.",
+    "scheduled": "Runs on a schedule",
+    "needsApproval": "Changes need your approval",
+    "tools": "Tools",
+    "memory": "Memory",
+    "toolCount": "{count} tools",
+    "operations": "What it can change",
+    "noToolsExplanation": "This agent does not look things up as it goes. It receives the data it needs up front, then proposes a plan you approve.",
+    "usedThisTurn": "{count} lookups this turn",
+    "autoToolsHint": "Select an agent to see what it can do.",
+    "addCustomTool": "Add your own tool",
+    "addCustomToolSoon": "Coming soon — connect your own endpoint or MCP server.",
+    "memoryEmpty": "Nothing remembered yet. Add a preference here, or just tell the assistant to remember something.",
+    "addFact": "Add a fact",
+    "factScope": "Applies to",
+    "factKey": "Handle",
+    "factValue": "What to remember",
+    "factValuePlaceholder": "Sprints run Monday to Friday.",
+    "scopeGlobal": "Every agent",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "forget": "Forget",
+    "loading": "Loading…"
   }
 }

@@ -14,7 +14,17 @@ import {
   OrgAdminConfirmInputSchema,
   OrgAdminDraftInputSchema,
 } from "~/server/llm/schemas/a5OrgAdminSchemas";
-import { clearMemory, deleteFact, loadUserMemory } from "~/server/llm/memory";
+import {
+  clearMemory,
+  deleteFact,
+  FactKeySchema,
+  FactValueSchema,
+  GLOBAL_SCOPE,
+  loadAllUserMemory,
+  upsertFact,
+} from "~/server/llm/memory";
+import { AGENTS, getAgent } from "~/server/llm/agents/registry";
+import { toolDefinitionsFor } from "~/server/llm/tools/a1/toolDefinitions";
 import { getAiMetrics } from "~/server/llm/observability";
 import {
   undoAvailability,
@@ -333,13 +343,81 @@ export const agentRouter = createTRPCRouter({
     }),
 
   // -------------------------------------------------------------------------
+  // Agent roster and tool inspector
+  // -------------------------------------------------------------------------
+
+  /**
+   * Every agent, with what it can actually do.
+   *
+   * Static data — no database, no session-specific content — but a procedure
+   * rather than a client constant because the tool descriptions are the same
+   * strings the model is given, and duplicating them into the bundle would let
+   * the two drift the moment a description is reworded.
+   *
+   * `tools` is only ever non-empty for A1. The write agents receive a pre-built
+   * context pack rather than calling tools, so listing anything there would be
+   * describing a mechanism that does not exist; they report `operations`
+   * instead. See the note in `agents/registry.ts`.
+   */
+  agents: protectedProcedure.query(() => {
+    return AGENTS.map((agent) => ({
+      id: agent.id,
+      name: agent.name,
+      description: agent.description,
+      kind: agent.kind,
+      writes: agent.writes,
+      operations: agent.operations,
+      tools: toolDefinitionsFor(agent.tools).map((def) => ({
+        name: def.name,
+        description: def.description,
+        parameters: def.parameters,
+      })),
+    }));
+  }),
+
+  // -------------------------------------------------------------------------
   // C-2 Assistant memory
   // -------------------------------------------------------------------------
 
-  /** Everything the assistant is remembering, for Settings → AI Memory. */
+  /**
+   * Everything the assistant is remembering, for Settings → AI Memory.
+   *
+   * Every scope, not just the global one: the editor has to be able to show and
+   * delete a fact scoped to an agent the user is not currently talking to, or
+   * that fact becomes unreachable from the UI that promised it was inspectable.
+   */
   memory: protectedProcedure.query(async ({ ctx }) => {
-    return loadUserMemory(ctx, ctx.session.user.id);
+    return loadAllUserMemory(ctx, ctx.session.user.id);
   }),
+
+  /**
+   * Write a fact by hand.
+   *
+   * Until now a fact could only appear because the model called `rememberFact`
+   * mid-conversation, so a user who knew exactly what they wanted remembered
+   * still had to say it out loud and hope. The cap and scope rules live in
+   * `upsertFact`, shared with the tool, so the two paths cannot diverge.
+   */
+  upsertMemory: protectedProcedure
+    .input(
+      z.object({
+        key: FactKeySchema,
+        value: FactValueSchema,
+        // Validated against the registry here, unlike the tool: this input comes
+        // from a picker with a known list, so an unknown scope is a bug or a
+        // tampered request rather than a model being loose with a string.
+        scope: z
+          .string()
+          .max(40)
+          .default(GLOBAL_SCOPE)
+          .refine((s) => s === GLOBAL_SCOPE || Boolean(getAgent(s)), {
+            message: "Unknown agent scope.",
+          }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return upsertFact(ctx, ctx.session.user.id, input);
+    }),
 
   forgetMemory: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))

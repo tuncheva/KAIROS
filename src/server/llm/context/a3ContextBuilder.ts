@@ -1,6 +1,7 @@
 import type { TRPCContext } from "~/server/api/trpc";
 import { stickyNotes } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
+import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 
 export type NotesVaultHandoffContext = {
   unlockedNotes?: Array<{ noteId: number; content: string }>;
@@ -20,6 +21,8 @@ export type NotesVaultContextPack = {
      */
     unlockedContent?: string;
   }>;
+  /** Global facts plus any the user set for the Notes Vault specifically. */
+  memory: MemoryFact[];
 };
 
 function normalizeHandoff(handoffContext?: Record<string, unknown>): NotesVaultHandoffContext {
@@ -70,6 +73,7 @@ export async function buildA3Context(input: {
 
   return {
     userId,
+    memory: await loadUserMemory(input.ctx, userId, "notes_vault"),
     notes: notes.map((n) => {
       const isLocked = Boolean(n.passwordHash);
       if (!isLocked) {

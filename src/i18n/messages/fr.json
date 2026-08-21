@@ -843,5 +843,33 @@
       "step3": "Tâches, notes et progression arrivent sur ce tableau de bord.",
       "aside": "L'arc intérieur suit la journée elle-même : un tableau de bord vide indique encore le temps restant."
     }
+  },
+  "agents": {
+    "chooseAgent": "Choisir un agent",
+    "auto": "Automatique",
+    "autoDescription": "Dirige votre message vers le bon spécialiste et peut en solliciter plusieurs à la fois.",
+    "scheduled": "S'exécute selon un horaire",
+    "needsApproval": "Les modifications nécessitent votre approbation",
+    "tools": "Outils",
+    "memory": "Mémoire",
+    "toolCount": "{count} outils",
+    "operations": "Ce qu'il peut modifier",
+    "noToolsExplanation": "Cet agent ne fait pas de recherches en cours de route. Il reçoit les données nécessaires en amont, puis propose un plan que vous approuvez.",
+    "usedThisTurn": "{count} recherches ce tour-ci",
+    "autoToolsHint": "Sélectionnez un agent pour voir ce qu'il peut faire.",
+    "addCustomTool": "Ajouter votre propre outil",
+    "addCustomToolSoon": "Bientôt disponible — connectez votre propre point de terminaison ou serveur MCP.",
+    "memoryEmpty": "Rien de mémorisé pour l'instant. Ajoutez une préférence ici, ou demandez simplement à l'assistant de retenir quelque chose.",
+    "addFact": "Ajouter un fait",
+    "factScope": "S'applique à",
+    "factKey": "Identifiant",
+    "factValue": "Ce qu'il faut retenir",
+    "factValuePlaceholder": "Les sprints vont du lundi au vendredi.",
+    "scopeGlobal": "Tous les agents",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "cancel": "Annuler",
+    "forget": "Oublier",
+    "loading": "Chargement…"
   }
 }

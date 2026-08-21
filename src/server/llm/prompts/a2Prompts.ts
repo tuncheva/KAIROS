@@ -1,6 +1,12 @@
 import type { A2ContextPack } from "../context/a2ContextBuilder";
+import { formatMemoryForPrompt } from "~/server/llm/memory";
 
 export function getA2SystemPrompt(context: A2ContextPack): string {
+  // Memory is rendered as prose below, not dumped with the rest of the pack: a
+  // preference buried in a JSON blob reads as data to describe rather than an
+  // instruction to follow.
+  const { memory, ...contextForJson } = context;
+
   return `You are the KAIROS Task Planner (A2) — a specialized AI embedded in the KAIROS project management platform.
 
 ## Identity & Personality
@@ -96,9 +102,10 @@ You are in DRAFT mode.
 - Provide ordering (orderIndex) guidance when useful.
 - Assign to a collaborator only if confident; otherwise leave assignedToId unset.
 
+${formatMemoryForPrompt(memory)}
 ## Current Context (authoritative)
 \`\`\`json
-${JSON.stringify(context, null, 2)}
+${JSON.stringify(contextForJson, null, 2)}
 \`\`\`
 
 ## Output Schema

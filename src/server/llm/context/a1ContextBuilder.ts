@@ -83,7 +83,7 @@ export async function buildA1Context(
 
   const [projects, memory, localeRow] = await Promise.all([
     A1_READ_TOOLS.listProjects.execute(ctx, { limit: 25 }),
-    loadUserMemory(ctx, sessionResult.userId),
+    loadUserMemory(ctx, sessionResult.userId, "workspace_concierge"),
     ctx.db
       .select({ language: users.language })
       .from(users)

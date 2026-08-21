@@ -12,6 +12,7 @@
  */
 
 import type { A5ContextPack } from "~/server/llm/context/a5ContextBuilder";
+import { formatMemoryForPrompt } from "~/server/llm/memory";
 
 export function getA5SystemPrompt(context: A5ContextPack): string {
   return `You are the KAIROS Org Admin — the agent that proposes changes to organization membership, roles and permissions.
@@ -50,6 +51,7 @@ Every operation carries a \`rationale\`: one sentence, in the user's terms, that
 ## Language
 Reply in the language the user wrote in. Keep every string value in the plan in that language, including rationales and warnings.
 
+${formatMemoryForPrompt(context.memory)}
 ## Organizations you may act in
 \`\`\`json
 ${JSON.stringify(context.organizations, null, 2)}

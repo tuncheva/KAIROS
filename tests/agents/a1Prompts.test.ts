@@ -95,12 +95,47 @@ describe("A1 System Prompt", () => {
           id: 1,
           key: "sprint_cadence",
           value: "Sprints run Monday to Friday.",
+          scope: "global",
           updatedAt: new Date(),
         },
       ],
     });
     expect(prompt).toContain("What you know about this user");
     expect(prompt).toContain("Sprints run Monday to Friday.");
+  });
+
+  /**
+   * A fact set for one agent must not read as a general truth: the model has to
+   * be able to tell "they always want Bulgarian" from "when *you* draft tasks,
+   * use Bulgarian", or it will apply the second everywhere.
+   */
+  it("separates agent-scoped facts from global ones", () => {
+    const prompt = getA1SystemPrompt({
+      ...mockContext,
+      memory: [
+        {
+          id: 1,
+          key: "sprint_cadence",
+          value: "Sprints run Monday to Friday.",
+          scope: "global",
+          updatedAt: new Date(),
+        },
+        {
+          id: 2,
+          key: "task_language",
+          value: "Write task titles in Bulgarian.",
+          scope: "task_planner",
+          updatedAt: new Date(),
+        },
+      ],
+    });
+    expect(prompt).toContain("They set these for you in particular");
+    expect(prompt).toContain("Write task titles in Bulgarian.");
+    // The global fact must not have migrated under the scoped heading.
+    const scopedHeadingAt = prompt.indexOf("They set these for you in particular");
+    expect(prompt.indexOf("Sprints run Monday to Friday.")).toBeLessThan(
+      scopedHeadingAt,
+    );
   });
 
   /**

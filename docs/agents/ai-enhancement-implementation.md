@@ -16,11 +16,17 @@ to code, plus the setup steps the new features need.
 
 ## Setup required before any of this runs
 
-**1. Push the schema.** Six new tables and one new enum:
+**1. Apply the schema.** Five new tables, two new columns, and one new enum, all
+in `0028_ai_agent_tables`:
 
 ```bash
-pnpm db:push
+pnpm db:migrate
 ```
+
+Use `db:migrate`, not `db:push`. The repo tracks migrations in a journal; `push`
+diffs the schema and applies the result *without* recording it, which desyncs
+`drizzle.__drizzle_migrations` from `meta/_journal.json`. `0028` is additive —
+five `CREATE TABLE`s, two nullable `ADD COLUMN`s, one enum, indexes, no drops.
 
 | Table | For |
 |---|---|
@@ -188,13 +194,31 @@ is a schema change, not a code change.
 
 - `pnpm typecheck` — clean
 - `pnpm lint` — 0 errors
-- `pnpm test` — 1631 passing, 189 of them new
+- `pnpm test` — 1635 passing, 189 of them new
 - `pnpm build` — succeeds
 
-One pre-existing failure remains in `tests/components/SettingsPage.test.tsx`,
-caused by commit `3c16a69` (the TopBar refactor) and untouched by this work. It
-asserts on source text rather than behaviour, which the codebase audit already
-flagged as a pattern (#13).
+**Cleaned up after the NVIDIA endpoint fix (`1488d18`).** That commit left three
+things behind, all since resolved:
+
+- Two temporary debug files — `scripts/verify-tmp.ts` and
+  `tests/integration/llm-verify-tmp.test.ts` — each opening "Deleted after
+  running" and together accounting for 29 lint errors. Deleted. The second was
+  picked up by `vitest.integration.config.ts` and called the live provider behind
+  a 600s timeout; it never ran in `pnpm test`, which excludes `tests/integration/`.
+- Their only real coverage — per-model `chat_template_kwargs` — was `console.log`,
+  not assertion. Replaced with three mocked cases in `tests/agents/modelClient.test.ts`
+  that assert the wire body. This is worth pinning because the failure is silent:
+  the wrong key is ignored by the template and the model simply stops reasoning.
+- `tests/agents/modelClient.test.ts` still encoded the pre-`isFatalForChain`
+  contract, asserting that 404 and 422 fail after one attempt. They now advance the
+  chain — which is the entire point of the fix, since a 404 means *that model* is
+  unreachable and the fallback exists for exactly that. Split into two cases.
+
+The `tests/components/SettingsPage.test.tsx` failure this document previously
+listed as outstanding is also fixed: the mobile settings *button* became a
+scrolling section nav in `3c16a69`, so the assertion was retargeted at the current
+markup. It still asserts on source text rather than behaviour — the pattern the
+codebase audit flagged (#13) — and is a candidate for rewriting.
 
 ## Known gaps
 

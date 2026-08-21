@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Minus, X, Maximize2, Minimize2, GripVertical, Sparkles } from "lucide-react";
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
+import { AgentWorkspace } from "~/components/agents/AgentWorkspace";
 
 /* ────────────── types ────────────── */
 interface Rect {
@@ -342,9 +343,19 @@ export function A1ChatWidgetOverlay(props: {
       </div>
 
       {/* ─── body ─── */}
+      {/*
+        Maximising is not just a bigger chat: it is where the agent picker, the
+        tool inspector and the memory editor live. At the floating size there is
+        no room for three panes, and the quick-ask surface people already use
+        should not change shape because a feature was added elsewhere.
+      */}
       {!minimised && (
         <div className="flex-1 min-h-0 overflow-hidden">
-          <ProjectIntelligenceChat projectId={props.projectId} />
+          {maximised ? (
+            <AgentWorkspace projectId={props.projectId} />
+          ) : (
+            <ProjectIntelligenceChat projectId={props.projectId} />
+          )}
         </div>
       )}
 

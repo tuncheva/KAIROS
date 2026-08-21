@@ -48,8 +48,11 @@ describe("Settings Page – No White Borders", () => {
     expect(settingsPageSource).toContain('min-h-screen bg-bg-primary');
   });
 
-  it("mobile settings button uses subtle border", () => {
-    expect(settingsPageSource).toContain("border border-slate-200 dark:border-white/[0.06]");
+  // The mobile settings *button* became a scrolling section nav in the TopBar
+  // refactor (3c16a69); the border moved to its wrapper. What this guards is
+  // still the same: a subtle token border, never border-border-light.
+  it("mobile section nav uses subtle border", () => {
+    expect(settingsPageSource).toContain("lg:hidden border-b border-slate-200 dark:border-white/[0.06]");
     expect(settingsPageSource).not.toContain("border-border-light");
   });
 });

@@ -12,7 +12,6 @@ import { NotificationSettingsClient } from "~/components/settings/NotificationSe
 import { SecuritySettingsClient } from "~/components/settings/SecuritySettingsClient";
 import { WorkspaceSettingsClient } from "~/components/settings/WorkspaceSettingsClient";
 import { getTranslations } from "next-intl/server";
-import { Settings } from "lucide-react";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 

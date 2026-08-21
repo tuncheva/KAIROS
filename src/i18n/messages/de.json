@@ -843,5 +843,33 @@
       "step3": "Aufgaben, Notizen und Fortschritt landen auf diesem Dashboard.",
       "aside": "Der innere Bogen verfolgt den Tag selbst — ein leeres Dashboard zeigt also trotzdem, wie viel Zeit bleibt."
     }
+  },
+  "agents": {
+    "chooseAgent": "Agent auswählen",
+    "auto": "Automatisch",
+    "autoDescription": "Leitet Ihre Nachricht an den passenden Spezialisten weiter und kann mehrere gleichzeitig einsetzen.",
+    "scheduled": "Läuft nach Zeitplan",
+    "needsApproval": "Änderungen brauchen Ihre Freigabe",
+    "tools": "Werkzeuge",
+    "memory": "Gedächtnis",
+    "toolCount": "{count} Werkzeuge",
+    "operations": "Was es ändern kann",
+    "noToolsExplanation": "Dieser Agent schlägt nichts unterwegs nach. Er erhält die nötigen Daten vorab und schlägt dann einen Plan vor, den Sie freigeben.",
+    "usedThisTurn": "{count} Abfragen in diesem Zug",
+    "autoToolsHint": "Wählen Sie einen Agenten, um zu sehen, was er kann.",
+    "addCustomTool": "Eigenes Werkzeug hinzufügen",
+    "addCustomToolSoon": "Demnächst — verbinden Sie Ihren eigenen Endpunkt oder MCP-Server.",
+    "memoryEmpty": "Noch nichts gemerkt. Fügen Sie hier eine Präferenz hinzu oder sagen Sie dem Assistenten einfach, er soll sich etwas merken.",
+    "addFact": "Fakt hinzufügen",
+    "factScope": "Gilt für",
+    "factKey": "Kennung",
+    "factValue": "Was gemerkt werden soll",
+    "factValuePlaceholder": "Sprints laufen von Montag bis Freitag.",
+    "scopeGlobal": "Alle Agenten",
+    "save": "Speichern",
+    "saving": "Wird gespeichert…",
+    "cancel": "Abbrechen",
+    "forget": "Vergessen",
+    "loading": "Wird geladen…"
   }
 }

@@ -79,11 +79,18 @@ function Toggle({
 export function AiSettingsClient() {
   const useT = useTranslations as unknown as (ns: string) => Translator;
   const t = useT("settings.ai");
+  const tAgents = useT("agents");
 
   const utils = api.useUtils();
   const [previewMessage, setPreviewMessage] = useState<string | null>(null);
 
   const memory = api.agent.memory.useQuery(undefined, { retry: false });
+  // Only to turn a stored scope id into an agent name. Static, so it is fetched
+  // once and never refetched.
+  const agents = api.agent.agents.useQuery(undefined, {
+    retry: false,
+    staleTime: Infinity,
+  });
   const schedules = api.agent.schedules.useQuery(undefined, { retry: false });
   const metrics = api.agent.metrics.useQuery({ days: 30 }, { retry: false });
   const stats = api.agent.findingStats.useQuery(undefined, { retry: false });
@@ -212,8 +219,18 @@ export function AiSettingsClient() {
                   {/* The value verbatim: paraphrasing what it remembers would
                       defeat the point of showing it. */}
                   <p className="text-sm text-fg-primary">{fact.value}</p>
-                  <p className="mt-0.5 font-mono text-xs text-fg-quaternary">
-                    {fact.key}
+                  <p className="mt-0.5 text-xs text-fg-quaternary">
+                    {/* Which agent this applies to. A fact scoped to one agent
+                        reads as a general rule without this, and a user cannot
+                        correct a scope they cannot see. */}
+                    <span>
+                      {fact.scope === "global"
+                        ? tAgents("scopeGlobal")
+                        : (agents.data?.find((a) => a.id === fact.scope)?.name ??
+                          fact.scope)}
+                    </span>
+                    <span className="px-1">·</span>
+                    <span className="font-mono">{fact.key}</span>
                   </p>
                 </div>
                 <button

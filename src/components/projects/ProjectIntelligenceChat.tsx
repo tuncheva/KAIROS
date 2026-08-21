@@ -426,8 +426,17 @@ export function ProjectIntelligenceChat(props: {
    * render would loop the turn.
    */
   prefill?: string;
+  /**
+   * A sub-agent pinned in the workspace picker.
+   *
+   * Undefined is Auto — A1 routes and hands off, which is what every caller
+   * outside the expanded workspace passes and what this chat has always done.
+   */
+  pinnedAgentId?: string;
+  /** Tools the last turn called, so the workspace can render an audit trail. */
+  onToolsUsed?: (names: string[]) => void;
 }) {
-  const { projectId } = props;
+  const { projectId, pinnedAgentId } = props;
   const t = useTranslations("chat");
   const utils = api.useUtils();
 
@@ -471,6 +480,8 @@ export function ProjectIntelligenceChat(props: {
 
   const [progressLabel, setProgressLabel] = useState<string | null>(null);
   const conversationIdRef = useRef<string | undefined>(undefined);
+  /** Tool names this turn has called, in order. Reset when a turn starts. */
+  const toolsThisTurn = useRef<string[]>([]);
 
   /** Render a sub-agent's plan into chat text, previews and action buttons. */
   const buildPlanMessage = useCallback(
@@ -684,7 +695,14 @@ export function ProjectIntelligenceChat(props: {
   );
 
   const { send: sendTurn } = useAgentStream({
-    onToolCall: (name) => setProgressLabel(t("lookingUp", { tool: name })),
+    onToolCall: (name) => {
+      setProgressLabel(t("lookingUp", { tool: name }));
+      // The stream already reports every lookup; it was only ever used for a
+      // transient label that the next frame overwrote. Keeping the list turns
+      // the same frames into a record of what the answer was actually based on.
+      toolsThisTurn.current = [...toolsThisTurn.current, name];
+      props.onToolsUsed?.(toolsThisTurn.current);
+    },
     onSubAgent: (agent) => {
       setProgressLabel(t("subAgentWorking", { agent }));
       // Swap the dots for the sub-agent bar: a handoff has actually happened.
@@ -823,13 +841,20 @@ export function ProjectIntelligenceChat(props: {
       ]);
       setProgressLabel(null);
 
+      // A new turn starts a new audit trail; otherwise the chip under the answer
+      // would accumulate every lookup of the whole session.
+      toolsThisTurn.current = [];
+      props.onToolsUsed?.([]);
+
       void sendTurn({
         message: clampText(msg),
         projectId,
         conversationId: conversationIdRef.current,
+        agentId: pinnedAgentId,
       });
     },
-    [projectId, sendTurn],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projectId, pinnedAgentId, sendTurn],
   );
 
   /**

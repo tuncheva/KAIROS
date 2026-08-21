@@ -1,13 +1,8 @@
-type NotesVaultContextPack = {
-  userId: string;
-  notes: Array<{
-    id: number;
-    createdAt: string;
-    shareStatus: string;
-    isLocked: boolean;
-    unlockedContent?: string;
-  }>;
-};
+// Imported rather than restated. This file carried its own copy of the pack
+// type, which meant the builder could add a field the prompt could not see —
+// and structural typing made that silent rather than a compile error.
+import type { NotesVaultContextPack } from "../context/a3ContextBuilder";
+import { formatMemoryForPrompt } from "~/server/llm/memory";
 
 export function getA3SystemPrompt(context: NotesVaultContextPack): string {
   return [
@@ -86,6 +81,7 @@ export function getA3SystemPrompt(context: NotesVaultContextPack): string {
     "- For ORGANIZE: suggest logical groupings, tag suggestions, or content restructuring.",
     "- If the request is unclear, populate summary with a clarifying question instead of guessing.",
     "",
+    formatMemoryForPrompt(context.memory),
     "## AVAILABLE DATA",
     `- userId: ${context.userId}`,
     `- totalNotes: ${context.notes.length}`,

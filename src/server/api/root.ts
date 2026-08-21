@@ -12,6 +12,7 @@ import { authRouter } from "~/server/api/routers/auth";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { chatRouter } from "~/server/api/routers/chat";
 import { agentRouter } from "~/server/api/routers/agent";
+import { billingRouter } from "~/server/api/routers/billing";
 
 export const appRouter = createTRPCRouter({
   event: eventRouter,
@@ -26,6 +27,7 @@ export const appRouter = createTRPCRouter({
   notification: notificationRouter,
   chat: chatRouter,
   agent: agentRouter,
+  billing: billingRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -97,6 +97,14 @@ interface SendOptions {
    * one urgent" revises that plan rather than drafting a second one beside it.
    */
   priorTaskDraftId?: string;
+  /**
+   * A sub-agent the user pinned in the picker.
+   *
+   * Omitted means Auto, which is A1 routing exactly as it always has. The server
+   * validates the id and falls back to Auto if it does not recognise it, so a
+   * stale pin degrades rather than failing the turn.
+   */
+  agentId?: string;
 }
 
 /** Split an SSE buffer into complete `event:`/`data:` frames. */
@@ -153,6 +161,7 @@ export function useAgentStream(handlers: AgentStreamHandlers) {
           projectId: opts.projectId,
           conversationId: opts.conversationId,
           priorTaskDraftId: opts.priorTaskDraftId,
+          agentId: opts.agentId,
         }),
         signal: controller.signal,
       });

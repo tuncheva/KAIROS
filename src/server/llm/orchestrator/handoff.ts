@@ -26,6 +26,7 @@ import { createLogger } from "~/server/logger";
 import type {
   A1Output,
   HandoffPlan,
+  TargetAgent,
 } from "~/server/llm/schemas/a1WorkspaceConciergeSchemas";
 import type { TaskPlanDraft } from "~/server/llm/schemas/a2TaskPlannerSchemas";
 import type { NotesVaultDraft } from "~/server/llm/schemas/a3NotesVaultSchemas";
@@ -79,6 +80,15 @@ export interface AgentTurnInput extends Omit<AgentDraftInput, "agentId"> {
    * a second one beside it.
    */
   priorTaskDraftId?: string;
+  /**
+   * A sub-agent the user chose explicitly, bypassing A1's routing.
+   *
+   * Unset means Auto, which is the default and the path every existing caller
+   * takes. Validate with `isPinnable` before setting it: the value reaches
+   * `runHandoff`'s switch, and that switch is exhaustive over `TargetAgent`
+   * rather than defensive.
+   */
+  pinnedAgent?: TargetAgent;
 }
 
 function errorText(err: unknown): string {
@@ -153,6 +163,46 @@ async function runHandoff(
 }
 
 /**
+ * Run one sub-agent directly, because the user asked for it by name.
+ *
+ * A1 is skipped entirely rather than asked to route to a foregone conclusion:
+ * that is a model call whose answer is already known, and it could disagree.
+ *
+ * The synthetic `A1Output` is what keeps every caller working. `AgentTurnResult`
+ * promises an `a1` field, and the chat renders a plan the same way whether A1
+ * chose the agent or the user did. It carries no `answer` — inventing prose
+ * here would put words in A1's mouth that A1 never produced, and the UI already
+ * treats `answer` as optional and renders the plan instead.
+ *
+ * A failure is *not* swallowed the way it is in the Auto path. There, A1's answer
+ * is still worth delivering alongside "I couldn't draft that"; here the requested
+ * agent is the entire turn, so its failure is the turn's failure and the caller
+ * should see the real error.
+ */
+async function runPinnedTurn(
+  input: AgentTurnInput,
+  targetAgent: TargetAgent,
+): Promise<AgentTurnResult> {
+  log.debug("pinned turn, bypassing A1 routing", { targetAgent });
+
+  const handoff: HandoffPlan = {
+    targetAgent,
+    context: {},
+    userIntent: input.message,
+  };
+
+  const plan = await runHandoff(input, handoff, input.message);
+
+  const a1 = {
+    intent: { type: "handoff" as const, scope: {} },
+    handoff,
+    handoffs: [handoff],
+  } as A1Output;
+
+  return { draftId: plan.draftId, a1, plans: [plan], plan, handoffErrors: [] };
+}
+
+/**
  * Run A1, then whichever sub-agents it hands off to.
  *
  * A failing sub-agent does not fail the turn: A1's answer is already useful, and
@@ -163,6 +213,8 @@ async function runHandoff(
 export async function runAgentTurn(
   input: AgentTurnInput,
 ): Promise<AgentTurnResult> {
+  if (input.pinnedAgent) return runPinnedTurn(input, input.pinnedAgent);
+
   const { draftId, outputJson } = await a1Concierge.draft({
     ...input,
     agentId: "workspace_concierge",

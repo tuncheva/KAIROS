@@ -4,6 +4,7 @@ import type { A4ContextPack } from "~/server/llm/context/a4ContextBuilder";
 
 describe("A4 System Prompt", () => {
   const mockContext: A4ContextPack = {
+    memory: [],
     events: [
       {
         id: 1,

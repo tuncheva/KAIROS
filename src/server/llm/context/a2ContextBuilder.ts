@@ -2,6 +2,7 @@ import { eq, desc } from "drizzle-orm";
 
 import type { TRPCContext } from "~/server/api/trpc";
 import { projects, tasks, projectCollaborators, users } from "~/server/db/schema";
+import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 
 export interface A2ContextPack {
   session: {
@@ -32,6 +33,8 @@ export interface A2ContextPack {
     dueDate: Date | null;
   }>;
   handoffContext?: Record<string, unknown>;
+  /** Global facts plus any the user set for the Task Planner specifically. */
+  memory: MemoryFact[];
 }
 
 export async function buildA2Context(input: {
@@ -51,6 +54,8 @@ export async function buildA2Context(input: {
   const scope = input.scope ?? {};
   const projectId = scope.projectId;
 
+  const memory = await loadUserMemory(input.ctx, userId, "task_planner");
+
   // Minimal pack when projectId missing; include available projects so A2 can reference them.
   if (!projectId) {
     const userProjects = await input.ctx.db
@@ -65,6 +70,7 @@ export async function buildA2Context(input: {
       existingTasks: [],
       availableProjects: userProjects,
       handoffContext: input.handoffContext,
+      memory,
     };
   }
 
@@ -141,5 +147,6 @@ export async function buildA2Context(input: {
     collaborators: [...deduped.values()],
     existingTasks,
     handoffContext: input.handoffContext,
+    memory,
   };
 }

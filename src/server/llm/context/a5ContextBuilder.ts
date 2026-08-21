@@ -8,6 +8,7 @@
  * drafting something it was always going to be denied.
  */
 
+import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import "server-only";
 
 import { and, eq } from "drizzle-orm";
@@ -44,6 +45,8 @@ export interface A5Organization {
 export interface A5ContextPack {
   userId: string;
   organizations: A5Organization[];
+  /** Global facts plus any the user set for the Organization Admin specifically. */
+  memory: MemoryFact[];
   now: string;
 }
 
@@ -152,5 +155,10 @@ export async function buildA5Context(input: {
     });
   }
 
-  return { userId, organizations: result, now: new Date().toISOString() };
+  return {
+    userId,
+    organizations: result,
+    now: new Date().toISOString(),
+    memory: await loadUserMemory(ctx, userId, "org_admin"),
+  };
 }

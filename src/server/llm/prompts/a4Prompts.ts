@@ -1,4 +1,5 @@
 import type { A4ContextPack } from "../context/a4ContextBuilder";
+import { formatMemoryForPrompt } from "~/server/llm/memory";
 
 export function getA4SystemPrompt(context: A4ContextPack): string {
   const now = new Date();
@@ -165,9 +166,10 @@ You are in DRAFT mode.
 - RSVP changes: only set RSVP for events with enableRsvp=true.
 - Likes: only toggle — the system handles the current like state.
 
+${formatMemoryForPrompt(context.memory)}
 ## Current Context (authoritative — do NOT hallucinate data beyond this)
 \`\`\`json
-${JSON.stringify(context, null, 2)}
+${JSON.stringify({ ...context, memory: undefined }, null, 2)}
 \`\`\`
 
 ## ⚠️ FINAL CHECK BEFORE OUTPUT ⚠️

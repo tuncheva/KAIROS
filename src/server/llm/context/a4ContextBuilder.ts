@@ -1,3 +1,4 @@
+import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import type { TRPCContext } from "~/server/api/trpc";
 import { events, eventComments, eventLikes, users } from "~/server/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
@@ -20,6 +21,8 @@ export interface A4ContextEvent {
 export interface A4ContextPack {
   userId: string;
   events: A4ContextEvent[];
+  /** Global facts plus any the user set for the Events Publisher specifically. */
+  memory: MemoryFact[];
 }
 
 /**
@@ -55,6 +58,7 @@ export async function buildA4Context(input: {
 
   return {
     userId,
+    memory: await loadUserMemory(input.ctx, userId, "events_publisher"),
     events: rows.map((r) => ({
       id: r.id,
       title: r.title,

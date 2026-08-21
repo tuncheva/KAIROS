@@ -8,8 +8,7 @@ import { CreateProjectContainer } from "~/components/projects/CreateProjectConta
 import { NotesList } from "~/components/notes/NotesList";
 import { OnboardingGate } from "~/components/auth/OnboardingGate";
 import { TaskTimelineClient } from "~/components/progress/TaskTimelineClient";
-import { LogIn, ArrowRight, FolderKanban, StickyNote } from "lucide-react";
-import Image from "next/image";
+import { LogIn, ArrowRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 export default async function CreatePage({ 

@@ -843,5 +843,33 @@
       "step3": "Las tareas, notas y el progreso llegan a este panel.",
       "aside": "El arco interior sigue el propio día, así que un panel vacío aún te dice cuánto tiempo queda."
     }
+  },
+  "agents": {
+    "chooseAgent": "Elige un agente",
+    "auto": "Automático",
+    "autoDescription": "Dirige tu mensaje al especialista adecuado y puede usar varios a la vez.",
+    "scheduled": "Se ejecuta programado",
+    "needsApproval": "Los cambios requieren tu aprobación",
+    "tools": "Herramientas",
+    "memory": "Memoria",
+    "toolCount": "{count} herramientas",
+    "operations": "Qué puede cambiar",
+    "noToolsExplanation": "Este agente no consulta sobre la marcha. Recibe los datos que necesita de antemano y luego propone un plan que tú apruebas.",
+    "usedThisTurn": "{count} consultas en este turno",
+    "autoToolsHint": "Selecciona un agente para ver qué puede hacer.",
+    "addCustomTool": "Añade tu propia herramienta",
+    "addCustomToolSoon": "Próximamente: conecta tu propio endpoint o servidor MCP.",
+    "memoryEmpty": "Nada recordado todavía. Añade una preferencia aquí, o simplemente dile al asistente que recuerde algo.",
+    "addFact": "Añadir un dato",
+    "factScope": "Se aplica a",
+    "factKey": "Identificador",
+    "factValue": "Qué recordar",
+    "factValuePlaceholder": "Los sprints van de lunes a viernes.",
+    "scopeGlobal": "Todos los agentes",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "forget": "Olvidar",
+    "loading": "Cargando…"
   }
 }
