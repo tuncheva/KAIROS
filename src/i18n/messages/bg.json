@@ -13,7 +13,9 @@
     "quickActions": "Бързи действия",
     "newProject": "Нов проект",
     "calendar": "Календар",
-    "organizations": "Организации"
+    "organizations": "Организации",
+    "pinNavigation": "Закачи навигацията",
+    "unpinNavigation": "Откачи навигацията"
   },
   "calendar": {
     "filters": {

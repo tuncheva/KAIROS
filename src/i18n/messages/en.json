@@ -13,7 +13,9 @@
     "quickActions": "Quick Actions",
     "newProject": "New Project",
     "calendar": "Calendar",
-    "organizations": "Organizations"
+    "organizations": "Organizations",
+    "pinNavigation": "Pin navigation",
+    "unpinNavigation": "Unpin navigation"
   },
   "calendar": {
     "filters": {

@@ -1,7 +1,7 @@
 export default function PublishLoading() {
   return (
     <div className="min-h-screen bg-bg-primary">
-      <div className="lg:ml-16 pt-16 lg:pt-0">
+      <div className="rail-offset pt-16 lg:pt-0">
         <header className="sticky top-16 lg:top-0 z-30 bg-bg-primary border-b border-border-primary">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex justify-between items-center">
             <div className="h-7 w-32 bg-bg-secondary rounded animate-pulse" />

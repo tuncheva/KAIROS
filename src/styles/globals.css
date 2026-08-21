@@ -2558,3 +2558,33 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
     transform: none !important;
   }
 }
+
+/* ==========================================================================
+   Design 7A navigation rail
+   --------------------------------------------------------------------------
+   The rail sits at 64px and opens to 236px. Hover expansion floats over the
+   page, so only the *pinned* state feeds `--rail-w` and moves content — that
+   keeps a passing cursor from reflowing the whole dashboard. `SideNav` stamps
+   `data-rail-pinned` on <html>; the var and the rail read the same source.
+   ========================================================================== */
+
+:root {
+  --rail-w: 4rem;
+}
+
+:root[data-rail-pinned="true"] {
+  --rail-w: 14.75rem; /* 236px */
+}
+
+@media (min-width: 1024px) {
+  .rail-offset {
+    margin-left: var(--rail-w);
+    transition: margin-left 0.4s cubic-bezier(0.2, 0.8, 0.25, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-offset {
+    transition: none;
+  }
+}

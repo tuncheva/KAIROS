@@ -1,7 +1,7 @@
 export default function NotesLoading() {
   return (
     <div className="min-h-screen bg-bg-primary">
-      <div className="lg:ml-16 min-h-screen flex flex-col">
+      <div className="rail-offset min-h-screen flex flex-col">
         <header className="sticky top-0 z-30 bg-bg-primary/80 backdrop-blur-md border-b border-border-primary px-4 sm:px-8 py-3">
           <div className="flex justify-between items-center">
             <div className="space-y-1">

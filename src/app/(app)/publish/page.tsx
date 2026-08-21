@@ -235,7 +235,7 @@ export default function PublishPage() {
         <div className="min-h-screen bg-bg-primary">
             <SideNav />
 
-            <div className="lg:ml-16 pt-16 lg:pt-0 kairos-page-enter">
+            <div className="rail-offset pt-16 lg:pt-0 kairos-page-enter">
                 <header className="sticky top-16 lg:top-0 z-30 dark:bg-[#0A0A0C] bg-white border-b dark:border-white/5 border-slate-200">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
                         <h1 className="text-lg font-bold text-fg-primary tracking-tight">{t("title")}</h1>

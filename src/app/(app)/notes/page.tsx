@@ -20,7 +20,7 @@ export default async function NotesPage() {
     <OnboardingGate>
       <div className="min-h-screen bg-bg-primary">
         <SideNav />
-        <div className="lg:ml-16 min-h-screen flex flex-col pt-16 lg:pt-0 kairos-page-enter">
+        <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0 kairos-page-enter">
           <header className="sticky top-16 lg:top-0 z-30 topbar-solid">
             <div className="px-4 sm:px-8 py-3 flex justify-between items-center">
               <div className="flex items-center gap-4">

@@ -19,13 +19,58 @@ import {
   CalendarDays,
   CalendarCheck,
   Plus,
+  Pin,
 } from "lucide-react";
+
+const RAIL_PIN_KEY = "kairos:railPinned";
+
+/**
+ * Every rail row carries a 2px transparent left border so the active tint can
+ * fill it in without nudging the icon across.
+ */
+const railRowClass =
+  "flex w-full items-center gap-4 border-l-2 px-5 py-[11px] text-sm whitespace-nowrap";
+
+/** Labels sit in the clipped overflow; they fade in as the rail opens. */
+const RAIL_LABEL_HIDDEN =
+  "opacity-0 transition-opacity duration-300 group-hover/rail:opacity-100 group-focus-within/rail:opacity-100 motion-reduce:transition-none";
+const RAIL_LABEL_SHOWN = "opacity-100";
+
+function RailLink({
+  href,
+  icon: Icon,
+  label,
+  active,
+  labelClass,
+}: {
+  href: string;
+  icon: typeof CalendarDays;
+  label: string;
+  active: boolean;
+  labelClass: string;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`${railRowClass} transition-colors duration-300 ease-[cubic-bezier(0.2,0.8,0.25,1)] ${
+        active
+          ? "border-accent-primary bg-accent-primary/10 font-semibold text-fg-primary"
+          : "border-transparent text-fg-secondary hover:bg-fg-primary/5 hover:text-fg-primary"
+      }`}
+    >
+      <Icon size={20} className="shrink-0" />
+      <span className={labelClass}>{label}</span>
+    </Link>
+  );
+}
 
 export function SideNav() {
   const t = useTranslations("nav");
   const tCommon = useTranslations("common");
   const tOrg = useTranslations("org");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isRailPinned, setIsRailPinned] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const mobileNavId = "mobile-nav-menu";
@@ -42,6 +87,28 @@ export function SideNav() {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isMobileMenuOpen]);
+
+  // The pin survives navigation, so it is read back on mount rather than kept
+  // in a provider — nothing else in the tree needs it.
+  useEffect(() => {
+    setIsRailPinned(window.localStorage.getItem(RAIL_PIN_KEY) === "true");
+  }, []);
+
+  // `--rail-w` hangs off <html> so every page's `.rail-offset` shifts with the
+  // rail without threading the state through each layout.
+  useEffect(() => {
+    document.documentElement.dataset.railPinned = String(isRailPinned);
+  }, [isRailPinned]);
+
+  const togglePin = () => {
+    setIsRailPinned((pinned) => {
+      const next = !pinned;
+      window.localStorage.setItem(RAIL_PIN_KEY, String(next));
+      return next;
+    });
+  };
+
+  const labelClass = isRailPinned ? RAIL_LABEL_SHOWN : RAIL_LABEL_HIDDEN;
 
   const action = searchParams?.get("action");
 
@@ -246,79 +313,77 @@ export function SideNav() {
         </div>
       </nav>
 
-      <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-16 bg-bg-primary/95 backdrop-blur-md shadow-lg flex-col items-center py-8 gap-6 z-40" aria-label="Primary">
-        <div className="flex flex-col items-center gap-6">
-          {mainNavItems.map((item) => {
-            const isActive = isItemActive(item.href);
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-label={item.label}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors group relative ${
-                  isActive
-                    ? "bg-accent-primary/10 text-accent-primary ring-1 ring-accent-primary/25 shadow-sm"
-                    : "text-fg-secondary hover:bg-bg-secondary/60 hover:text-fg-primary"
-                }`}
-                title={item.label}
-              >
-                <item.icon size={20} />
-
-                <span className="absolute left-full ml-4 px-3 py-1.5 bg-bg-elevated border border-slate-200 dark:border-white/[0.06] text-fg-primary text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-
+      {/* Design 7A rail: 64px of icons that opens to 236px on hover, or stays
+          open when pinned. Only the pinned state moves the page (see
+          `--rail-w` in globals.css), so a passing cursor never reflows it. */}
+      <aside
+        className={`group/rail hidden lg:flex fixed left-0 top-0 bottom-0 z-40 flex-col gap-0.5 overflow-hidden border-r border-border-light/60 bg-bg-elevated py-5 transition-[width] duration-[400ms] ease-[cubic-bezier(0.2,0.8,0.25,1)] motion-reduce:transition-none ${
+          isRailPinned ? "w-[236px]" : "w-16 hover:w-[236px] focus-within:w-[236px]"
+        }`}
+        aria-label="Primary"
+      >
+        <div className="flex items-center justify-between gap-3 whitespace-nowrap px-[18px] pb-[22px]">
+          <span className="flex items-center gap-3.5">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-accent-primary to-accent-secondary shadow-sm shadow-accent-primary/25">
+              <span className="text-[11px] font-bold text-white">K</span>
+            </span>
+            <span className={`font-display text-[15px] font-semibold tracking-[0.18em] text-fg-primary ${labelClass}`}>
+              KAIROS
+            </span>
+          </span>
           <button
             type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent("kairos:openAI"))}
-            aria-label="Kairos AI"
-            title="Kairos AI"
-            className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors group relative text-fg-secondary hover:bg-bg-secondary/60 hover:text-fg-primary"
+            onClick={togglePin}
+            aria-pressed={isRailPinned}
+            aria-label={isRailPinned ? t("unpinNavigation") : t("pinNavigation")}
+            title={isRailPinned ? t("unpinNavigation") : t("pinNavigation")}
+            className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md border transition-colors ${labelClass} ${
+              isRailPinned
+                ? "border-accent-primary/40 text-accent-primary"
+                : "border-border-light/70 text-fg-tertiary hover:text-fg-primary"
+            }`}
           >
-            <Sparkles size={20} />
-            <span className="absolute left-full ml-4 px-3 py-1.5 bg-bg-elevated border border-slate-200 dark:border-white/[0.06] text-fg-primary text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
-              Kairos AI
-            </span>
+            <Pin size={13} className={isRailPinned ? "fill-current" : undefined} />
           </button>
         </div>
 
-        <div className="mt-auto flex flex-col items-center gap-4">
-          <Link
-            href={profileItem.href}
-            aria-label={profileItem.label}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors group relative ${
-              pathname === "/orgs"
-                ? "bg-accent-primary/10 text-accent-primary ring-1 ring-accent-primary/25 shadow-sm"
-                : "text-fg-secondary hover:bg-bg-secondary/60 hover:text-fg-primary"
-            }`}
-            title={profileItem.label}
-          >
-            <profileItem.icon size={20} />
-            <span className="absolute left-full ml-4 px-3 py-1.5 bg-bg-elevated border border-slate-200 dark:border-white/[0.06] text-fg-primary text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
-              {profileItem.label}
-            </span>
-          </Link>
+        {mainNavItems.map((item) => (
+          <RailLink
+            key={item.href}
+            href={item.href}
+            icon={item.icon}
+            label={item.label}
+            active={isItemActive(item.href)}
+            labelClass={labelClass}
+          />
+        ))}
 
-          <Link
-            href={settingsItem.href}
-            aria-label={settingsItem.label}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors group relative ${
-              pathname === "/settings"
-                ? "bg-accent-primary/10 text-accent-primary ring-1 ring-accent-primary/25 shadow-sm"
-                : "text-fg-secondary hover:bg-bg-secondary/60 hover:text-fg-primary"
-            }`}
-            title={settingsItem.label}
-          >
-            <settingsItem.icon size={20} />
-            <span className="absolute left-full ml-4 px-3 py-1.5 bg-bg-elevated border border-slate-200 dark:border-white/[0.06] text-fg-primary text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
-              {settingsItem.label}
-            </span>
-          </Link>
-        </div>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("kairos:openAI"))}
+          aria-label="Kairos AI"
+          className={`${railRowClass} border-transparent text-fg-secondary transition-colors duration-300 ease-[cubic-bezier(0.2,0.8,0.25,1)] hover:bg-fg-primary/5 hover:text-fg-primary`}
+        >
+          <Sparkles size={20} className="shrink-0" />
+          <span className={labelClass}>Kairos AI</span>
+        </button>
+
+        <div className="min-h-6 flex-1" />
+
+        <RailLink
+          href={profileItem.href}
+          icon={profileItem.icon}
+          label={profileItem.label}
+          active={pathname === "/orgs"}
+          labelClass={labelClass}
+        />
+        <RailLink
+          href={settingsItem.href}
+          icon={settingsItem.icon}
+          label={settingsItem.label}
+          active={pathname === "/settings"}
+          labelClass={labelClass}
+        />
       </aside>
     </>
   );

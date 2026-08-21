@@ -38,7 +38,7 @@ export default async function SettingsPage({
   <div className="w-full min-h-screen bg-bg-primary pb-24 lg:pb-0">
  <SideNav />
 
-  <div className="lg:ml-16 min-h-screen flex flex-col pt-16 lg:pt-0">
+  <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0">
  {/* Header */}
   <header className="sticky top-16 lg:top-0 z-30 bg-bg-primary/95 backdrop-blur-md border-b border-slate-200 dark:border-white/[0.06]">
  <div className="px-4 sm:px-6 py-4 flex justify-between items-center">

@@ -1,7 +1,7 @@
 export default function ChatLoading() {
   return (
     <div className="h-[100dvh] overflow-hidden bg-bg-primary">
-      <div className="lg:ml-16 h-[100dvh] overflow-hidden flex flex-col">
+      <div className="rail-offset h-[100dvh] overflow-hidden flex flex-col">
         <div className="flex-1 flex flex-col p-4 gap-4">
           <div className="h-8 w-48 bg-bg-secondary rounded animate-pulse" />
           <div className="flex-1 space-y-4">

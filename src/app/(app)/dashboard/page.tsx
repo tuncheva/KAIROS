@@ -22,7 +22,7 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-bg-primary">
       <SideNav />
 
-      <div className="lg:ml-16 min-h-screen flex flex-col pt-16 lg:pt-0 kairos-page-enter">
+      <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0 kairos-page-enter">
         <header className="sticky top-16 lg:top-0 z-30 topbar-solid">
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 md:px-8 sm:py-4">
             <WorkspaceIndicator compact />

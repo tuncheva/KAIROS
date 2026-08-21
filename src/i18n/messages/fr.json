@@ -12,7 +12,9 @@
     "chat": "Chat",
     "quickActions": "Actions rapides",
     "newProject": "Nouveau projet",
-    "calendar": "Calendrier"
+    "calendar": "Calendrier",
+    "pinNavigation": "Épingler la navigation",
+    "unpinNavigation": "Détacher la navigation"
   },
   "calendar": {
     "filters": {

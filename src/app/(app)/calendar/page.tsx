@@ -19,7 +19,7 @@ export default async function CalendarPage() {
     <div className="min-h-screen bg-bg-primary">
       <SideNav />
 
-      <div className="lg:ml-16 min-h-screen flex flex-col pt-16 lg:pt-0 kairos-page-enter">
+      <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0 kairos-page-enter">
         <header className="sticky top-16 lg:top-0 z-30 topbar-solid">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 flex flex-wrap justify-between items-center gap-3">
             <div className="flex items-center gap-3">

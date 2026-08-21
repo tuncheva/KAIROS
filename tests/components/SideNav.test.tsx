@@ -12,7 +12,8 @@ describe("SideNav", () => {
 
   it("renders without crashing", () => {
     render(<SideNav />);
-    expect(screen.getByText("KAIROS")).toBeInTheDocument();
+    // The wordmark appears twice: the mobile top bar and the desktop rail.
+    expect(screen.getAllByText("KAIROS").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders the desktop sidebar", () => {
@@ -133,5 +134,46 @@ describe("SideNav", () => {
     );
     expect(source).toContain("Settings");
     expect(source).not.toContain("SlidersHorizontal");
+  });
+  /* ---- Design 7A rail: hover expansion + pin ---- */
+
+  it("collapses the rail to 64px and expands it on hover", () => {
+    const { container } = render(<SideNav />);
+    const aside = container.querySelector('aside[aria-label="Primary"]')!;
+    expect(aside.className).toContain("w-16");
+    expect(aside.className).toContain("hover:w-[236px]");
+    // Keyboard users get the same expansion when a row takes focus.
+    expect(aside.className).toContain("focus-within:w-[236px]");
+  });
+
+  it("pins the rail open, stamps <html> and persists the choice", async () => {
+    const user = userEvent.setup();
+    window.localStorage.removeItem("kairos:railPinned");
+
+    const { container } = render(<SideNav />);
+    const aside = container.querySelector('aside[aria-label="Primary"]')!;
+    const pin = screen.getByRole("button", { name: "Pin navigation" });
+
+    expect(pin).toHaveAttribute("aria-pressed", "false");
+    expect(document.documentElement.dataset.railPinned).toBe("false");
+
+    await user.click(pin);
+
+    expect(aside.className).toContain("w-[236px]");
+    expect(aside.className).not.toContain("w-16");
+    // `--rail-w` hangs off this attribute, which is what shifts the page.
+    expect(document.documentElement.dataset.railPinned).toBe("true");
+    expect(window.localStorage.getItem("kairos:railPinned")).toBe("true");
+    expect(
+      screen.getByRole("button", { name: "Unpin navigation" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("restores a pinned rail from localStorage on mount", () => {
+    window.localStorage.setItem("kairos:railPinned", "true");
+    const { container } = render(<SideNav />);
+    const aside = container.querySelector('aside[aria-label="Primary"]')!;
+    expect(aside.className).toContain("w-[236px]");
+    window.localStorage.removeItem("kairos:railPinned");
   });
 });

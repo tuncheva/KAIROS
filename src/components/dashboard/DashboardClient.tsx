@@ -45,7 +45,7 @@ type ActivityRow = {
  */
 function useEntrance(active: boolean): number {
   const [progress, setProgress] = useState(0);
-  const frame = useRef<number>();
+  const frame = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (!active) return;
@@ -774,11 +774,20 @@ function WeekCell({
   );
 }
 
-/** Health colours the card's outline and its mini ring — nothing is filled in. */
-const PROJECT_TONE = {
-  onTrack: { border: "border-accent-primary/35 hover:border-accent-primary/70", ring: "stroke-accent-primary", text: "text-accent-secondary" },
-  inProgress: { border: "border-warning/30 hover:border-warning/60", ring: "stroke-warning", text: "text-warning" },
-  atRisk: { border: "border-error/35 hover:border-error/70", ring: "stroke-error", text: "text-error" },
+/**
+ * A card's own chrome — its outline and completion ring — is always the accent,
+ * so the projects rail belongs to whatever theme the user picked. Health is a
+ * separate reading and lives only in the status line beneath the title; letting
+ * it repaint the whole card made a project with one overdue task look like an
+ * error state rather than a project.
+ */
+const PROJECT_BORDER = "border-accent-primary/35 hover:border-accent-primary/70";
+const PROJECT_RING = "stroke-accent-primary";
+
+const PROJECT_HEALTH_TEXT = {
+  onTrack: "text-accent-secondary",
+  inProgress: "text-warning",
+  atRisk: "text-error",
 } as const;
 
 function ProjectCard({ project, progress }: { project: ProjectSummary; progress: number }) {
@@ -799,13 +808,12 @@ function ProjectCard({ project, progress }: { project: ProjectSummary; progress:
     );
   }
 
-  const tone = PROJECT_TONE[project.health];
   const percent = project.percent ?? 0;
 
   return (
     <Link
       href={projectHref(project.id)}
-      className={`flex items-center gap-4 rounded-[10px] border bg-bg-elevated px-[18px] py-4 transition-all duration-[400ms] hover:-translate-y-0.5 ${tone.border}`}
+      className={`flex items-center gap-4 rounded-[10px] border bg-bg-elevated px-[18px] py-4 transition-all duration-[400ms] hover:-translate-y-0.5 ${PROJECT_BORDER}`}
     >
       <span className="relative h-[46px] w-[46px] flex-none">
         <svg viewBox="0 0 46 46" className="block h-[46px] w-[46px]">
@@ -820,14 +828,14 @@ function ProjectCard({ project, progress }: { project: ProjectSummary; progress:
             strokeDasharray={RING_PROJECT}
             strokeDashoffset={dashOffset(RING_PROJECT, percent / 100, progress)}
             transform="rotate(-90 23 23)"
-            className={tone.ring}
+            className={PROJECT_RING}
           />
         </svg>
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-semibold text-fg-primary">{title}</span>
         <span
-          className={`mt-1 block font-mono text-[10px] uppercase tracking-[0.1em] ${tone.text}`}
+          className={`mt-1 block font-mono text-[10px] uppercase tracking-[0.1em] ${PROJECT_HEALTH_TEXT[project.health]}`}
         >
           {t(`projects.health.${project.health}`)} · {t("projects.open", { count: project.openCount })}
         </span>
