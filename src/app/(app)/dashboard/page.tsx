@@ -22,7 +22,6 @@ export default async function DashboardPage() {
 
       <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0 kairos-page-enter">
         <TopBar
-          title={tNav("dashboard")}
           actions={
             <Link
               href="/create?action=new_project"

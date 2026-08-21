@@ -135,7 +135,7 @@ export function JoinWithQrClient({ code }: { code: string }) {
         <Building2 size={24} className="text-accent-primary" />
       </div>
       <div className="space-y-1">
-        <p className="font-display text-lg font-semibold text-fg-primary">
+        <p className="text-lg font-semibold text-fg-primary">
           {result.organizationName}
         </p>
         <p className="text-sm text-fg-secondary">

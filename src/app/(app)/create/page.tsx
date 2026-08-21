@@ -20,7 +20,6 @@ export default async function CreatePage({
   const session = await auth();
   const tCreate = await getTranslations("create");
   const tAuth = await getTranslations("auth");
-  const tNav = await getTranslations("nav");
   const resolvedSearchParams = await searchParams;
   const action = resolvedSearchParams.action as string | undefined;
   
@@ -67,15 +66,7 @@ export default async function CreatePage({
       <SideNav />
 
       <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0 relative z-10 kairos-page-enter">
-        <TopBar
-          title={
-            shouldShowProjectManagement
-              ? tNav("projects")
-              : shouldShowNoteForm
-                ? tNav("notes")
-                : tCreate("title")
-          }
-        />
+        <TopBar />
 
         <main id="main-content" className="flex-1 w-full px-4 sm:px-6 md:px-8 py-5 sm:py-6 overflow-auto relative pb-24 lg:pb-6">
           <div className="max-w-7xl mx-auto w-full space-y-4">

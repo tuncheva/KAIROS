@@ -228,14 +228,13 @@ function FeedRightSidebar() {
 /* ─── Main Page ─── */
 export default function PublishPage() {
     const [selectedRegion, setSelectedRegion] = useState("");
-    const t = useTranslations("publish");
 
     return (
         <div className="min-h-screen bg-bg-primary">
             <SideNav />
 
             <div className="rail-offset pt-16 lg:pt-0 kairos-page-enter">
-                <TopBar title={t("title")} />
+                <TopBar />
 
                 <main
                     id="main-content"

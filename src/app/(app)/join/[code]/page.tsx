@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
 
 import { JoinWithQrClient } from "~/components/orgs/JoinWithQrClient";
 import { SideNav } from "~/components/layout/SideNav";
@@ -30,13 +29,12 @@ export default async function JoinPage({
     redirect(`/?callbackUrl=${encodeURIComponent(`/join/${code}`)}`);
   }
 
-  const t = await getTranslations("org");
 
   return (
     <div className="min-h-screen bg-bg-primary">
       <SideNav />
       <div className="rail-offset flex min-h-screen flex-col pt-16 lg:pt-0 kairos-page-enter">
-        <TopBar title={t("joinTitle")} />
+        <TopBar />
 
         <main id="main-content" className="w-full flex-1 overflow-auto pb-24 lg:pb-0">
           <div className="mx-auto max-w-lg px-6 py-12 md:px-8">

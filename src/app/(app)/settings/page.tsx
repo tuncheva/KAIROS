@@ -40,7 +40,7 @@ export default async function SettingsPage({
 
   <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0">
  {/* Header */}
- <TopBar title={t("title")} />
+ <TopBar />
 
   <div className="lg:hidden border-b border-slate-200 dark:border-white/[0.06]">
   <div className="px-4 py-3 overflow-x-auto">

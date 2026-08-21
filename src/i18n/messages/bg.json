@@ -1111,6 +1111,7 @@
     "roleAdmin": "Админ",
     "roleWorker": "Член",
     "roleMentor": "Ментор",
+    "roleGuest": "Гост",
     "organization": "Организация",
     "personalWorkspace": "Лично работно пространство",
     "personalHint": "Присъединете се към организация, за да работите в екип",

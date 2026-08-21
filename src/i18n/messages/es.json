@@ -543,6 +543,7 @@
     "roleAdmin": "Admin",
     "roleWorker": "Miembro",
     "roleMentor": "Mentor",
+    "roleGuest": "Invitado",
     "organization": "Organización",
     "personalWorkspace": "Espacio personal",
     "personalHint": "Únete a una organización para colaborar en equipo",

@@ -1111,6 +1111,7 @@
     "roleAdmin": "Admin",
     "roleWorker": "Member",
     "roleMentor": "Mentor",
+    "roleGuest": "Guest",
     "organization": "Organization",
     "personalWorkspace": "Personal Workspace",
     "personalHint": "Join an organization to collaborate with a team",
