@@ -732,7 +732,15 @@
     "noteCreate": "Je vais créer la note pour vous.",
     "noteUpdate": "Je vais mettre à jour votre note.",
     "noteDelete": "Je vais supprimer cette note.",
-    "noNoteChanges": "Aucun changement nécessaire selon votre demande."
+    "noNoteChanges": "Aucun changement nécessaire selon votre demande.",
+    "newChat": "Nouvelle discussion",
+    "newChatTooltip": "Supprimer cette discussion et recommencer",
+    "deleteChatTitle": "Supprimer cette discussion ?",
+    "deleteChatConfirmMessage": "Cette conversation et son historique seront définitivement supprimés, et l’assistant repartira d’un fil vierge. Les informations que vous lui avez demandé de retenir ne sont pas affectées.",
+    "deleteAndStartOver": "Supprimer et recommencer",
+    "deleting": "Suppression…",
+    "cancel": "Annuler",
+    "deleteChatFailed": "Impossible de supprimer la discussion : {error}"
   },
   "staticPages": {
     "backHome": "Retour à l'accueil",

@@ -732,7 +732,15 @@
     "noteCreate": "Crearé la nota por ti.",
     "noteUpdate": "Actualizaré tu nota.",
     "noteDelete": "Eliminaré esa nota.",
-    "noNoteChanges": "No se necesitan cambios según tu solicitud."
+    "noNoteChanges": "No se necesitan cambios según tu solicitud.",
+    "newChat": "Nuevo chat",
+    "newChatTooltip": "Eliminar este chat y empezar de nuevo",
+    "deleteChatTitle": "¿Eliminar este chat?",
+    "deleteChatConfirmMessage": "Esta conversación y su historial se eliminarán permanentemente, y el asistente empezará de nuevo con un hilo en blanco. Los datos que le pediste recordar no se ven afectados.",
+    "deleteAndStartOver": "Eliminar y empezar de nuevo",
+    "deleting": "Eliminando…",
+    "cancel": "Cancelar",
+    "deleteChatFailed": "No se pudo eliminar el chat: {error}"
   },
   "staticPages": {
     "backHome": "Volver al inicio",

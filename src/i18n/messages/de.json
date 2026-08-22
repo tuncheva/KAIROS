@@ -732,7 +732,15 @@
     "noteCreate": "Ich erstelle die Notiz für dich.",
     "noteUpdate": "Ich aktualisiere deine Notiz.",
     "noteDelete": "Ich entferne diese Notiz.",
-    "noNoteChanges": "Keine Änderungen basierend auf deiner Anfrage nötig."
+    "noNoteChanges": "Keine Änderungen basierend auf deiner Anfrage nötig.",
+    "newChat": "Neuer Chat",
+    "newChatTooltip": "Diesen Chat löschen und neu beginnen",
+    "deleteChatTitle": "Diesen Chat löschen?",
+    "deleteChatConfirmMessage": "Diese Unterhaltung und ihr Verlauf werden endgültig gelöscht, und der Assistent beginnt mit einem leeren Verlauf neu. Gemerkte Fakten bleiben erhalten.",
+    "deleteAndStartOver": "Löschen & neu beginnen",
+    "deleting": "Wird gelöscht…",
+    "cancel": "Abbrechen",
+    "deleteChatFailed": "Chat konnte nicht gelöscht werden: {error}"
   },
   "staticPages": {
     "backHome": "Zurück zur Startseite",

@@ -19,7 +19,11 @@ export function AIChatPageClient() {
 
   return (
     <div className="h-full w-full">
-      <ProjectIntelligenceChat prefill={prefill} />
+      {/*
+        A full page is where a thread accumulates, so it carries the
+        delete-and-start-over control. The compact floating widget does not.
+      */}
+      <ProjectIntelligenceChat prefill={prefill} showNewChat />
     </div>
   );
 }

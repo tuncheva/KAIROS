@@ -435,6 +435,14 @@ export function ProjectIntelligenceChat(props: {
   pinnedAgentId?: string;
   /** Tools the last turn called, so the workspace can render an audit trail. */
   onToolsUsed?: (names: string[]) => void;
+  /**
+   * Offer "delete this chat and start over" in the header.
+   *
+   * Opt-in. The expanded workspace is where a thread gets long enough to be
+   * worth throwing away; a destructive control should not appear on the compact
+   * quick-ask widget just because it was added elsewhere.
+   */
+  showNewChat?: boolean;
 }) {
   const { projectId, pinnedAgentId } = props;
   const t = useTranslations("chat");
@@ -448,6 +456,11 @@ export function ProjectIntelligenceChat(props: {
   // Track edits to draft previews (keyed by msgId + index)
   const [noteEdits, setNoteEdits] = useState<Record<string, Record<number, string>>>({});
   const [eventEdits, setEventEdits] = useState<Record<string, Record<number, { title?: string; description?: string }>>>({});
+
+  // Starting over deletes the stored thread, which nothing can undo — so it asks
+  // first, and reports a failed delete instead of pretending the chat is gone.
+  const [confirmNewChat, setConfirmNewChat] = useState(false);
+  const [newChatError, setNewChatError] = useState<string | null>(null);
 
   // Generate unique message IDs
   const generateMsgId = useCallback(() => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`, []);
@@ -694,7 +707,7 @@ export function ProjectIntelligenceChat(props: {
     [generateMsgId, t],
   );
 
-  const { send: sendTurn } = useAgentStream({
+  const { send: sendTurn, cancel: cancelTurn } = useAgentStream({
     onToolCall: (name) => {
       setProgressLabel(t("lookingUp", { tool: name }));
       // The stream already reports every lookup; it was only ever used for a
@@ -808,6 +821,58 @@ export function ProjectIntelligenceChat(props: {
       }),
     );
   }, [historyQuery.data, projectId]);
+
+  /* ---------- Start over ---------- */
+
+  const deleteConversationMutation = api.agent.deleteConversation.useMutation();
+
+  /**
+   * Throw the thread away — on the server as well as on screen.
+   *
+   * Clearing local state alone would not be starting over: the conversation id
+   * would still ride along with the next message, so the model would keep
+   * replaying a history the user believes they deleted. The row goes first and
+   * the screen is cleared only once it is gone, because a chat that looks empty
+   * while its history still feeds the next answer is the worst of both.
+   *
+   * `hydratedRef` is latched shut on the way out. Rehydration restores *the most
+   * recent* conversation, so the invalidate below would otherwise pour the
+   * previous thread straight into the empty one.
+   */
+  const startNewChat = useCallback(async () => {
+    const doomed = conversationIdRef.current;
+    setNewChatError(null);
+
+    if (doomed) {
+      try {
+        await deleteConversationMutation.mutateAsync({ conversationId: doomed });
+      } catch (err) {
+        setNewChatError(err instanceof Error ? err.message : String(err));
+        return;
+      }
+    }
+
+    // A turn still in flight would call onResult against the thread that no
+    // longer exists and re-seed conversationIdRef with its id.
+    cancelTurn();
+    hydratedRef.current = true;
+    conversationIdRef.current = undefined;
+
+    setMessages([]);
+    setDraft("");
+    setProgressLabel(null);
+    setNoteEdits({});
+    setEventEdits({});
+    toolsThisTurn.current = [];
+    props.onToolsUsed?.([]);
+    setConfirmNewChat(false);
+
+    if (doomed) {
+      void utils.agent.latestConversation.invalidate();
+      void utils.agent.conversations.invalidate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cancelTurn, deleteConversationMutation, utils]);
 
   /* ---------- Scrolling ---------- */
 
@@ -938,6 +1003,62 @@ export function ProjectIntelligenceChat(props: {
         </div>
       )}
 
+      {/* ---- Delete chat & start over confirmation ---- */}
+      {confirmNewChat && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="kairos-new-chat-title"
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border p-6 shadow-2xl"
+            style={{
+              backgroundColor: "rgb(var(--bg-primary))",
+              borderColor: "rgb(var(--border-medium))",
+            }}
+          >
+            <h3
+              id="kairos-new-chat-title"
+              className="mb-2 text-lg font-bold text-fg-primary"
+            >
+              {t("deleteChatTitle")}
+            </h3>
+            <p className="text-sm text-fg-secondary">
+              {t("deleteChatConfirmMessage")}
+            </p>
+            {newChatError && (
+              <p className="mt-3 text-xs text-red-400" role="alert">
+                {t("deleteChatFailed", { error: newChatError })}
+              </p>
+            )}
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmNewChat(false);
+                  setNewChatError(null);
+                }}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-surface"
+              >
+                {t("cancel")}
+              </button>
+              <button
+                type="button"
+                data-testid="new-chat-confirm"
+                onClick={() => void startNewChat()}
+                disabled={deleteConversationMutation.isPending}
+                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+              >
+                {deleteConversationMutation.isPending
+                  ? t("deleting")
+                  : t("deleteAndStartOver")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ---- Header ---- */}
       <div
         className="px-4 py-3 flex items-center justify-between gap-3 border-b"
@@ -975,14 +1096,37 @@ export function ProjectIntelligenceChat(props: {
           </div>
         </div>
 
-        <button
-          type="button"
-          className="text-xs px-2.5 py-1.5 rounded-lg text-fg-secondary transition-colors hover:text-fg-primary"
-          style={{ backgroundColor: "rgb(var(--bg-secondary))" }}
-          onClick={() => setShowAssumptions((v) => !v)}
-        >
-          {showAssumptions ? t("hide") : t("info")}
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {props.showNewChat && (
+            <button
+              type="button"
+              data-testid="new-chat"
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-fg-secondary transition-colors hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-40"
+              style={{ backgroundColor: "rgb(var(--bg-secondary))" }}
+              // Nothing on screen means nothing to start over from — and the
+              // stored thread, if any, is already empty.
+              disabled={messages.length === 0}
+              title={t("newChatTooltip")}
+              aria-label={t("newChatTooltip")}
+              onClick={() => {
+                setNewChatError(null);
+                setConfirmNewChat(true);
+              }}
+            >
+              <Trash2 size={12} />
+              <span className="hidden sm:inline">{t("newChat")}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="text-xs px-2.5 py-1.5 rounded-lg text-fg-secondary transition-colors hover:text-fg-primary"
+            style={{ backgroundColor: "rgb(var(--bg-secondary))" }}
+            onClick={() => setShowAssumptions((v) => !v)}
+          >
+            {showAssumptions ? t("hide") : t("info")}
+          </button>
+        </div>
       </div>
 
       {showAssumptions && (

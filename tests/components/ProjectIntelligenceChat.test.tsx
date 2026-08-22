@@ -315,4 +315,115 @@ describe("ProjectIntelligenceChat", () => {
     expect(screen.getByText(/Project-scoped AI assistant/)).toBeInTheDocument();
     expect(screen.getByText(/Capabilities: workspace Q&A/)).toBeInTheDocument();
   });
+
+  /* ---- Delete chat & start over ---- */
+
+  /**
+   * The control is opt-in. Every other mount of this chat — the compact floating
+   * widget, the project panels — should look exactly as it did, because a
+   * destructive one-click control does not belong on a 340px quick-ask surface.
+   */
+  it("hides the start-over control unless asked for", () => {
+    render(<ProjectIntelligenceChat />);
+    expect(screen.queryByTestId("new-chat")).not.toBeInTheDocument();
+  });
+
+  it("offers start-over but disables it on an empty thread", () => {
+    render(<ProjectIntelligenceChat showNewChat />);
+    expect(screen.getByTestId("new-chat")).toBeDisabled();
+  });
+
+  it("confirms before deleting, and clears the thread once confirmed", async () => {
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat showNewChat />);
+
+    await user.type(
+      screen.getByPlaceholderText(/Message KAIROS AI/),
+      "how are my projects?",
+    );
+    await user.click(screen.getByText("Send"));
+    expect(screen.getByText("how are my projects?")).toBeInTheDocument();
+
+    // Nothing is deleted on the first click: this cannot be undone.
+    await user.click(screen.getByTestId("new-chat"));
+    expect(screen.getByText("Delete this chat?")).toBeInTheDocument();
+    expect(screen.getByText("how are my projects?")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("new-chat-confirm"));
+
+    // Back to the empty state, dialog gone, and the message with it.
+    expect(
+      await screen.findByText("Ask a question about your workspace or projects."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("how are my projects?")).not.toBeInTheDocument();
+    expect(screen.queryByText("Delete this chat?")).not.toBeInTheDocument();
+  });
+
+  it("keeps the thread when the confirmation is cancelled", async () => {
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat showNewChat />);
+
+    await user.type(
+      screen.getByPlaceholderText(/Message KAIROS AI/),
+      "keep this",
+    );
+    await user.click(screen.getByText("Send"));
+
+    await user.click(screen.getByTestId("new-chat"));
+    await user.click(screen.getByText("Cancel"));
+
+    expect(screen.queryByText("Delete this chat?")).not.toBeInTheDocument();
+    expect(screen.getByText("keep this")).toBeInTheDocument();
+  });
+
+  /**
+   * The next turn must open a new conversation. If the deleted id were still in
+   * the ref, the server would be asked to continue a thread that no longer
+   * exists — the visible chat would be empty while the model replayed history
+   * the user believed they had thrown away.
+   */
+  it("does not send the deleted conversation id on the next turn", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockAgentStream([
+        ["start", { conversationId: "conv_1" }],
+        [
+          "result",
+          {
+            draftId: "draft_1",
+            conversationId: "conv_1",
+            latencyMs: 10,
+            a1: { intent: { type: "answer" }, answer: { summary: "All good." } },
+          },
+        ],
+      ]),
+    );
+
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat showNewChat />);
+
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
+    await user.type(input, "first");
+    await user.click(screen.getByText("Send"));
+    expect(await screen.findByText("All good.")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("new-chat"));
+    await user.click(screen.getByTestId("new-chat-confirm"));
+    await screen.findByText("Ask a question about your workspace or projects.");
+
+    await user.type(
+      screen.getByPlaceholderText(/Message KAIROS AI/),
+      "second",
+    );
+    await user.click(screen.getByText("Send"));
+
+    const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock
+      .calls as Array<[string, RequestInit]>;
+    const last = JSON.parse(calls[calls.length - 1]![1].body as string) as {
+      message: string;
+      conversationId?: string;
+    };
+    expect(last.message).toBe("second");
+    expect(last.conversationId).toBeUndefined();
+  });
 });

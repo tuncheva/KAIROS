@@ -74,6 +74,9 @@ export function AgentWorkspace({ projectId, prefill }: Props) {
           prefill={prefill}
           pinnedAgentId={activeAgentId ?? undefined}
           onToolsUsed={setToolsUsed}
+          // The expanded surface is where a thread runs long enough to be worth
+          // deleting, and where there is room for the control.
+          showNewChat
         />
       </main>
 
