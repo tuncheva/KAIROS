@@ -26,6 +26,34 @@ type Translator = (key: string, values?: Record<string, unknown>) => string;
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
+/**
+ * Message keys per schedule kind.
+ *
+ * A lookup rather than the pair of `kind === "daily_brief" ? … : …` ternaries
+ * that were here. With two kinds those read fine and silently mislabelled the
+ * third as a risk radar the moment one existed; a `Record` keyed by the union
+ * makes the compiler ask for the new strings instead.
+ */
+const SCHEDULE_LABELS = {
+  daily_brief: { title: "dailyBriefTitle", description: "dailyBriefDescription" },
+  risk_radar: { title: "riskRadarTitle", description: "riskRadarDescription" },
+  weekly_retro: {
+    title: "weeklyRetroTitle",
+    description: "weeklyRetroDescription",
+  },
+} as const;
+
+/** Sunday-first, matching `Date.getDay` and the stored `dayOfWeek`. */
+const WEEKDAY_KEYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+] as const;
+
 function Card({
   title,
   description,
@@ -127,18 +155,10 @@ export function AiSettingsClient() {
             >
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-fg-primary">
-                  {t(
-                    schedule.kind === "daily_brief"
-                      ? "dailyBriefTitle"
-                      : "riskRadarTitle",
-                  )}
+                  {t(SCHEDULE_LABELS[schedule.kind].title)}
                 </p>
                 <p className="text-xs text-fg-tertiary">
-                  {t(
-                    schedule.kind === "daily_brief"
-                      ? "dailyBriefDescription"
-                      : "riskRadarDescription",
-                  )}
+                  {t(SCHEDULE_LABELS[schedule.kind].description)}
                 </p>
                 {schedule.lastError ? (
                   <p className="mt-1 text-xs text-error">
@@ -148,6 +168,32 @@ export function AiSettingsClient() {
               </div>
 
               <div className="flex items-center gap-3">
+                {/* Only weekly kinds get a day. Rendering a disabled "every day"
+                    option for the daily ones would imply they could be changed. */}
+                {schedule.dayOfWeek !== null ? (
+                  <label className="flex items-center gap-2 text-xs text-fg-secondary">
+                    {t("onDay")}
+                    <select
+                      value={schedule.dayOfWeek}
+                      disabled={!schedule.enabled || setSchedule.isPending}
+                      onChange={(e) =>
+                        setSchedule.mutate({
+                          kind: schedule.kind,
+                          enabled: schedule.enabled,
+                          dayOfWeek: Number(e.target.value),
+                        })
+                      }
+                      className="rounded-md border border-border-medium bg-bg-elevated px-2 py-1 text-xs text-fg-primary disabled:opacity-50"
+                    >
+                      {WEEKDAY_KEYS.map((key, index) => (
+                        <option key={key} value={index}>
+                          {t(key)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+
                 <label className="flex items-center gap-2 text-xs text-fg-secondary">
                   {t("atHour")}
                   <select

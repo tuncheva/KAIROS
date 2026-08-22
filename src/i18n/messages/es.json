@@ -277,7 +277,17 @@
       "dailyBriefDescription": "Un mensaje cada mañana: qué vence, qué se ha retrasado y qué está en riesgo.",
       "riskRadarTitle": "Radar de riesgos",
       "riskRadarDescription": "Avísame cuando un proyecto empiece a ir mal: tareas vencidas, trabajo sin asignar, progreso detenido.",
+      "weeklyRetroTitle": "Resumen semanal",
+      "weeklyRetroDescription": "Un mensaje al final de la semana: qué se cerró, qué queda pendiente, qué se ha parado.",
       "atHour": "A las",
+      "onDay": "El",
+      "sunday": "domingo",
+      "monday": "lunes",
+      "tuesday": "martes",
+      "wednesday": "miércoles",
+      "thursday": "jueves",
+      "friday": "viernes",
+      "saturday": "sábado",
       "timeZoneHint": "Las horas son en {zone}, la zona horaria de tu perfil. Cámbiala en Idioma y región.",
       "enableToggle": "Activar",
       "previewBrief": "Envíame uno ahora",
@@ -919,6 +929,11 @@
     "trailDraftDetail": "{kind} · esperando tu aprobación",
     "trailAnswered": "Respondido",
     "trailLatency": "{ms}ms en el servidor",
-    "trailFailed": "El turno falló"
+    "trailFailed": "El turno falló",
+    "askKairos": "Preguntar a Kairos",
+    "dismissNudge": "Descartar",
+    "openFullPage": "Abrir página completa",
+    "emptyDescription": "Lee tus proyectos, tareas y notas. Todo lo que los cambiaría se redacta primero para tu aprobación.",
+    "trailSummary": "{count, plural, one {# consulta} other {# consultas}} · {seconds}s"
   }
 }

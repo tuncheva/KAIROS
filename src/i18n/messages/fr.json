@@ -277,7 +277,17 @@
       "dailyBriefDescription": "Un message chaque matin : ce qui est à rendre, ce qui a glissé, ce qui est à risque.",
       "riskRadarTitle": "Radar des risques",
       "riskRadarDescription": "Prévenez-moi quand un projet dérape : tâches en retard, travail non attribué, progression à l'arrêt.",
+      "weeklyRetroTitle": "Bilan hebdomadaire",
+      "weeklyRetroDescription": "Un message en fin de semaine : ce qui est terminé, ce qui reste, ce qui n'avance plus.",
       "atHour": "À",
+      "onDay": "Le",
+      "sunday": "dimanche",
+      "monday": "lundi",
+      "tuesday": "mardi",
+      "wednesday": "mercredi",
+      "thursday": "jeudi",
+      "friday": "vendredi",
+      "saturday": "samedi",
       "timeZoneHint": "Les heures sont en {zone}, le fuseau horaire de votre profil. Modifiable dans Langue et région.",
       "enableToggle": "Activer",
       "previewBrief": "Envoyez-m'en un maintenant",
@@ -919,6 +929,11 @@
     "trailDraftDetail": "{kind} · en attente de votre approbation",
     "trailAnswered": "Répondu",
     "trailLatency": "{ms}ms sur le serveur",
-    "trailFailed": "Le tour a échoué"
+    "trailFailed": "Le tour a échoué",
+    "askKairos": "Demander à Kairos",
+    "dismissNudge": "Masquer",
+    "openFullPage": "Ouvrir en pleine page",
+    "emptyDescription": "Lit vos projets, tâches et notes. Tout ce qui les modifierait est d'abord rédigé en brouillon pour votre approbation.",
+    "trailSummary": "{count, plural, one {# recherche} other {# recherches}} · {seconds}s"
   }
 }

@@ -18,6 +18,7 @@ import {
   isValidTimeZone,
   localDayKeyIn,
   localHourIn,
+  localWeekdayIn,
   supportedTimeZones,
 } from "~/lib/timezone";
 
@@ -105,6 +106,29 @@ describe("localDayKeyIn", () => {
     expect(localHourIn("Europe/Sofia", second)).toBe(3);
     expect(localDayKeyIn("Europe/Sofia", first)).toBe("2026-10-25");
     expect(localDayKeyIn("Europe/Sofia", second)).toBe("2026-10-25");
+  });
+});
+
+describe("localWeekdayIn", () => {
+  it("numbers the week from Sunday, matching Postgres and Date.getDay", () => {
+    // 2026-08-21 is a Friday.
+    expect(localWeekdayIn("UTC", new Date("2026-08-21T12:00:00Z"))).toBe(5);
+    expect(localWeekdayIn("UTC", new Date("2026-08-23T12:00:00Z"))).toBe(0);
+  });
+
+  it("reports the weekday where the user is, not where UTC is", () => {
+    // 22:00 UTC on Friday is already Saturday in Sofia. A "every Friday"
+    // retrospective must not fire on Saturday for a user two hours east.
+    const at = new Date("2026-08-21T22:00:00Z");
+    expect(localWeekdayIn("UTC", at)).toBe(5);
+    expect(localWeekdayIn("Europe/Sofia", at)).toBe(6);
+  });
+
+  it("reports the earlier weekday for zones behind UTC", () => {
+    // 02:00 UTC Saturday is still Friday evening in New York.
+    const at = new Date("2026-08-22T02:00:00Z");
+    expect(localWeekdayIn("UTC", at)).toBe(6);
+    expect(localWeekdayIn("America/New_York", at)).toBe(5);
   });
 });
 

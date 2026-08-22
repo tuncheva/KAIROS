@@ -118,6 +118,22 @@ export function localHourIn(timeZone: string, at: Date): number {
 }
 
 /**
+ * The day of the week (0 = Sunday … 6 = Saturday) at this instant, in this zone.
+ *
+ * Derived from the zone's own calendar parts rather than from `getUTCDay()`,
+ * because near midnight the two disagree: 22:00 UTC on a Friday is already
+ * Saturday in Sofia, and a "every Friday" schedule that consults UTC fires on
+ * the wrong day for everyone far enough east or west.
+ *
+ * `Date.UTC` is used purely as a civil-calendar function here — it converts a
+ * y/m/d triple to a weekday and no zone arithmetic is involved.
+ */
+export function localWeekdayIn(timeZone: string, at: Date): number {
+  const { year, month, day } = partsIn(timeZone, at);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
+/**
  * A stable identifier for "which day it is" in a zone, as `YYYY-MM-DD`.
  *
  * Used instead of a midnight `Date` to decide whether something already ran

@@ -652,7 +652,17 @@
       "dailyBriefDescription": "One message each morning: what's due, what slipped, what's at risk.",
       "riskRadarTitle": "Risk radar",
       "riskRadarDescription": "Notify me when a project starts going wrong — overdue clusters, unassigned work, stalled progress.",
+      "weeklyRetroTitle": "Weekly retrospective",
+      "weeklyRetroDescription": "One message at the end of the week: what closed, what carried over, what stopped moving.",
       "atHour": "At",
+      "onDay": "On",
+      "sunday": "Sunday",
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
       "timeZoneHint": "Times are in {zone}, your profile time zone. Change it in Language & region.",
       "enableToggle": "Enable",
       "previewBrief": "Send me one now",
@@ -1553,6 +1563,11 @@
     "trailDraftDetail": "{kind} · waiting for your approval",
     "trailAnswered": "Answered",
     "trailLatency": "{ms}ms on the server",
-    "trailFailed": "Turn failed"
+    "trailFailed": "Turn failed",
+    "askKairos": "Ask Kairos",
+    "dismissNudge": "Dismiss",
+    "openFullPage": "Open full page",
+    "emptyDescription": "Reads your projects, tasks and notes. Anything that would change them is drafted for your approval first.",
+    "trailSummary": "{count, plural, one {# lookup} other {# lookups}} · {seconds}s"
   }
 }

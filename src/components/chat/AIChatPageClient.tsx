@@ -346,7 +346,7 @@ export function AIChatPageClient() {
               aria-pressed={rightTab === id}
               className={`kairos-stamp flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[10px] transition-colors ${
                 rightTab === id
-                  ? "bg-accent-primary/12 text-accent-primary"
+                  ? "bg-accent-primary/10 text-accent-primary"
                   : "text-fg-tertiary hover:bg-bg-tertiary"
               }`}
             >

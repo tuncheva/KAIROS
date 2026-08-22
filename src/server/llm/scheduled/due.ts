@@ -10,11 +10,18 @@
 
 import "server-only";
 
-import { DEFAULT_TIME_ZONE, localDayKeyIn, localHourIn } from "~/lib/timezone";
+import {
+  DEFAULT_TIME_ZONE,
+  localDayKeyIn,
+  localHourIn,
+  localWeekdayIn,
+} from "~/lib/timezone";
 
 /** The parts of a schedule that decide whether it should run. */
 export interface DueCheck {
   hourLocal: number;
+  /** 0 = Sunday … 6 = Saturday, or null for every day. */
+  dayOfWeek?: number | null;
   lastRunAt: Date | null;
   timeZone: string | null;
 }
@@ -26,18 +33,30 @@ export interface DueCheck {
  * this is the decision the whole module exists to make, and it is the one that
  * was silently wrong for every user outside UTC.
  *
- * Two conditions, both evaluated in the user's own zone:
+ * Three conditions, all evaluated in the user's own zone:
  *
- * 1. The local hour has reached the hour they asked for.
- * 2. It has not already run on their current local day.
+ * 1. It is a day this schedule runs on — every day when `dayOfWeek` is null.
+ * 2. The local hour has reached the hour they asked for.
+ * 3. It has not already run on their current local day.
  *
- * The second compares calendar-day keys rather than an instant against a
+ * The third compares calendar-day keys rather than an instant against a
  * computed local midnight. On the two DST days a year those differ by an hour,
  * and an hour's error there is the difference between one brief and two — or
  * between one and none.
+ *
+ * Note what the weekday check does *not* do: it does not ask whether the
+ * schedule was missed. A weekly retrospective whose Friday sweep never ran does
+ * not go out on Saturday — it waits for the next Friday. That is deliberate. A
+ * retrospective is about a week, and one arriving a day late describes a window
+ * that has already moved; silence is the better failure.
  */
 export function isScheduleDue(schedule: DueCheck, now: Date): boolean {
   const zone = schedule.timeZone ?? DEFAULT_TIME_ZONE;
+
+  const runsToday =
+    schedule.dayOfWeek == null ||
+    schedule.dayOfWeek === localWeekdayIn(zone, now);
+  if (!runsToday) return false;
 
   if (localHourIn(zone, now) < schedule.hourLocal) return false;
   if (!schedule.lastRunAt) return true;

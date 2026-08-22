@@ -77,6 +77,27 @@ const rateLimitedProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   return next();
 });
 
+/**
+ * The schedules a user can turn on, and what they look like before they touch
+ * anything.
+ *
+ * Defaults live here rather than in the database because they are a product
+ * decision, not a storage one: `ai_schedules.dayOfWeek` is null-means-daily,
+ * which is the right default for a *column* and the wrong one for a
+ * retrospective. Friday at 16:00 is the end of a working week; Friday at 07:00
+ * would review a week that still has a day left in it.
+ */
+const SCHEDULE_KINDS = ["daily_brief", "risk_radar", "weekly_retro"] as const;
+
+const SCHEDULE_DEFAULTS: Record<
+  (typeof SCHEDULE_KINDS)[number],
+  { hourLocal: number; dayOfWeek: number | null }
+> = {
+  daily_brief: { hourLocal: 7, dayOfWeek: null },
+  risk_radar: { hourLocal: 7, dayOfWeek: null },
+  weekly_retro: { hourLocal: 16, dayOfWeek: 5 },
+};
+
 export const agentRouter = createTRPCRouter({
 
   /**
@@ -513,12 +534,17 @@ export const agentRouter = createTRPCRouter({
     // A missing row means off. Returned explicitly so the settings UI does not
     // have to encode "absent means disabled" itself.
     const byKind = new Map(rows.map((r) => [r.kind, r]));
-    return (["daily_brief", "risk_radar"] as const).map((kind) => {
+    return SCHEDULE_KINDS.map((kind) => {
       const row = byKind.get(kind);
+      const defaults = SCHEDULE_DEFAULTS[kind];
       return {
         kind,
         enabled: row?.enabled ?? false,
-        hourLocal: row?.hourLocal ?? 7,
+        hourLocal: row?.hourLocal ?? defaults.hourLocal,
+        // Null means daily. Weekly kinds default to their usual day rather than
+        // to null, so a user enabling the retrospective gets a Friday one rather
+        // than a daily one they then have to correct.
+        dayOfWeek: row?.dayOfWeek ?? defaults.dayOfWeek,
         timeZone,
         lastRunAt: row?.lastRunAt ?? null,
         lastError: row?.lastError ?? null,
@@ -529,9 +555,11 @@ export const agentRouter = createTRPCRouter({
   setSchedule: protectedProcedure
     .input(
       z.object({
-        kind: z.enum(["daily_brief", "risk_radar"]),
+        kind: z.enum(SCHEDULE_KINDS),
         enabled: z.boolean(),
         hourLocal: z.number().int().min(0).max(23).optional(),
+        /** 0 = Sunday … 6 = Saturday. Null means every day. */
+        dayOfWeek: z.number().int().min(0).max(6).nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -552,6 +580,9 @@ export const agentRouter = createTRPCRouter({
             ...(input.hourLocal !== undefined
               ? { hourLocal: input.hourLocal }
               : {}),
+            ...(input.dayOfWeek !== undefined
+              ? { dayOfWeek: input.dayOfWeek }
+              : {}),
             updatedAt: new Date(),
           })
           .where(eq(aiSchedules.id, existing.id));
@@ -560,7 +591,11 @@ export const agentRouter = createTRPCRouter({
           userId,
           kind: input.kind,
           enabled: input.enabled,
-          hourLocal: input.hourLocal ?? 7,
+          hourLocal: input.hourLocal ?? SCHEDULE_DEFAULTS[input.kind].hourLocal,
+          dayOfWeek:
+            input.dayOfWeek !== undefined
+              ? input.dayOfWeek
+              : SCHEDULE_DEFAULTS[input.kind].dayOfWeek,
         });
       }
 

@@ -277,7 +277,17 @@
       "dailyBriefDescription": "Eine Nachricht pro Morgen: was fällig ist, was sich verzögert hat, was gefährdet ist.",
       "riskRadarTitle": "Risiko-Radar",
       "riskRadarDescription": "Benachrichtige mich, wenn ein Projekt aus dem Ruder läuft — überfällige Aufgaben, nicht zugewiesene Arbeit, stockender Fortschritt.",
+      "weeklyRetroTitle": "Wochenrückblick",
+      "weeklyRetroDescription": "Eine Nachricht zum Wochenende: was abgeschlossen wurde, was offen bleibt, was stockt.",
       "atHour": "Um",
+      "onDay": "Am",
+      "sunday": "Sonntag",
+      "monday": "Montag",
+      "tuesday": "Dienstag",
+      "wednesday": "Mittwoch",
+      "thursday": "Donnerstag",
+      "friday": "Freitag",
+      "saturday": "Samstag",
       "timeZoneHint": "Zeiten gelten in {zone}, Ihrer Profil-Zeitzone. Änderbar unter Sprache & Region.",
       "enableToggle": "Aktivieren",
       "previewBrief": "Schick mir jetzt einen",
@@ -919,6 +929,11 @@
     "trailDraftDetail": "{kind} · wartet auf Ihre Freigabe",
     "trailAnswered": "Beantwortet",
     "trailLatency": "{ms}ms auf dem Server",
-    "trailFailed": "Zug fehlgeschlagen"
+    "trailFailed": "Zug fehlgeschlagen",
+    "askKairos": "Kairos fragen",
+    "dismissNudge": "Ausblenden",
+    "openFullPage": "Ganze Seite öffnen",
+    "emptyDescription": "Liest Ihre Projekte, Aufgaben und Notizen. Alles, was sie verändern würde, wird zuerst zur Freigabe entworfen.",
+    "trailSummary": "{count, plural, one {# Abfrage} other {# Abfragen}} · {seconds}s"
   }
 }

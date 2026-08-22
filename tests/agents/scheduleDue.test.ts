@@ -111,6 +111,94 @@ describe("isScheduleDue — the day", () => {
   });
 });
 
+describe("isScheduleDue — weekly schedules", () => {
+  /** The retrospective's shipped default: Friday at 16:00. */
+  function friday(overrides: Partial<Parameters<typeof isScheduleDue>[0]> = {}) {
+    return {
+      hourLocal: 16,
+      dayOfWeek: 5,
+      lastRunAt: null,
+      timeZone: "Europe/Sofia",
+      ...overrides,
+    };
+  }
+
+  it("fires on its day once the hour arrives", () => {
+    // 2026-08-21 is a Friday. 13:00 UTC is 16:00 Sofia in summer.
+    expect(isScheduleDue(friday(), new Date("2026-08-21T13:00:00Z"))).toBe(true);
+  });
+
+  it("does not fire on any other day", () => {
+    // Thursday and Saturday, both well past 16:00 locally.
+    expect(isScheduleDue(friday(), new Date("2026-08-20T18:00:00Z"))).toBe(false);
+    expect(isScheduleDue(friday(), new Date("2026-08-22T18:00:00Z"))).toBe(false);
+  });
+
+  it("does not fire before its hour on its own day", () => {
+    // Friday, but 09:00 Sofia.
+    expect(isScheduleDue(friday(), new Date("2026-08-21T06:00:00Z"))).toBe(false);
+  });
+
+  it("judges the weekday in the user's zone", () => {
+    // 22:00 UTC on Friday is Saturday 01:00 in Sofia — no longer its day, even
+    // though a UTC clock still says Friday.
+    expect(isScheduleDue(friday(), new Date("2026-08-21T22:00:00Z"))).toBe(false);
+
+    // And the mirror case: 02:00 UTC Saturday is still Friday 22:00 in New York.
+    const nyc = friday({ timeZone: "America/New_York", hourLocal: 20 });
+    expect(isScheduleDue(nyc, new Date("2026-08-22T02:00:00Z"))).toBe(true);
+  });
+
+  it("does not fire twice on the same Friday", () => {
+    const alreadyRan = friday({
+      lastRunAt: new Date("2026-08-21T13:00:00Z"),
+    });
+
+    expect(isScheduleDue(alreadyRan, new Date("2026-08-21T17:00:00Z"))).toBe(
+      false,
+    );
+  });
+
+  it("waits a whole week rather than catching up the next day", () => {
+    // A sweep that never ran on Friday does not deliver on Saturday. A
+    // retrospective describes a window that has since moved; late is worse than
+    // absent. Documented in `isScheduleDue` because it is a choice, not a gap.
+    const missedFriday = friday({
+      lastRunAt: new Date("2026-08-14T13:00:00Z"), // the previous Friday
+    });
+
+    expect(isScheduleDue(missedFriday, new Date("2026-08-22T13:00:00Z"))).toBe(
+      false,
+    );
+    expect(isScheduleDue(missedFriday, new Date("2026-08-28T13:00:00Z"))).toBe(
+      true,
+    );
+  });
+
+  it("treats a null dayOfWeek as every day", () => {
+    // The two shipped kinds have no day, and must keep behaving as they did
+    // before the column existed.
+    const daily = friday({ dayOfWeek: null });
+
+    expect(isScheduleDue(daily, new Date("2026-08-20T13:00:00Z"))).toBe(true);
+    expect(isScheduleDue(daily, new Date("2026-08-21T13:00:00Z"))).toBe(true);
+  });
+
+  it("treats an absent dayOfWeek as every day", () => {
+    // Rows read before the column was selected, and every call site that does
+    // not care, pass no key at all.
+    const noKey = { hourLocal: 7, lastRunAt: null, timeZone: "Europe/Sofia" };
+    expect(isScheduleDue(noKey, new Date("2026-08-20T05:00:00Z"))).toBe(true);
+  });
+
+  it("fires on Sunday when Sunday is the chosen day", () => {
+    // dayOfWeek 0 must not be confused with "unset" — the same trap as hour 0.
+    const sunday = friday({ dayOfWeek: 0 });
+    expect(isScheduleDue(sunday, new Date("2026-08-23T13:00:00Z"))).toBe(true);
+    expect(isScheduleDue(sunday, new Date("2026-08-21T13:00:00Z"))).toBe(false);
+  });
+});
+
 describe("isScheduleDue — degradation", () => {
   it("falls back to UTC when a user has no zone stored", () => {
     const noZone = { hourLocal: 7, lastRunAt: null, timeZone: null };

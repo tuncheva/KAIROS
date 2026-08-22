@@ -45,11 +45,17 @@ import {
   persistFindings,
   resolveStaleFindings,
 } from "./riskRadar";
+import {
+  collectRetroFacts,
+  fallbackRetro,
+  retroIsEmpty,
+  writeRetro,
+} from "./weeklyRetro";
 import { loadSystemUser, systemContextFor } from "./systemContext";
 
 const log = createLogger("llm.scheduled");
 
-export type ScheduleKind = "daily_brief" | "risk_radar";
+export type ScheduleKind = "daily_brief" | "risk_radar" | "weekly_retro";
 
 /** How many users are processed at once. */
 const CONCURRENCY = 4;
@@ -87,6 +93,7 @@ async function dueSchedules(now: Date) {
       userId: aiSchedules.userId,
       kind: aiSchedules.kind,
       hourLocal: aiSchedules.hourLocal,
+      dayOfWeek: aiSchedules.dayOfWeek,
       lastRunAt: aiSchedules.lastRunAt,
       timeZone: users.timezone,
     })
@@ -205,6 +212,65 @@ async function runRiskRadar(userId: string): Promise<number> {
   return 1;
 }
 
+/**
+ * Run one user's weekly retrospective.
+ *
+ * No radar pass, unlike the brief. The retrospective reports on findings that
+ * were already raised during the week rather than looking for new ones — a risk
+ * discovered while writing a review of the past seven days belongs in tomorrow's
+ * brief, where it is actionable, not in a document about a window that has closed.
+ */
+async function runWeeklyRetro(userId: string): Promise<number> {
+  const user = await loadSystemUser(userId);
+  if (!user) return 0;
+
+  const ctx = systemContextFor(user);
+  const facts = await collectRetroFacts(ctx, userId);
+
+  if (retroIsEmpty(facts)) {
+    log.debug("nothing to review", { userId });
+    return 0;
+  }
+
+  const allowed = await consumeSystemRateLimit(userId);
+  const message = allowed
+    ? await writeRetro({
+        facts,
+        userName: user.name,
+        locale: user.language as SupportedLocale,
+      })
+    : fallbackRetro(facts);
+
+  await notify({
+    userId,
+    title: "Your week in review",
+    message,
+    link: "/chat/ai",
+  });
+
+  log.info("sent weekly retro", {
+    userId,
+    completed: facts.completed,
+    withModel: allowed,
+  });
+
+  return 1;
+}
+
+/**
+ * What each kind of schedule actually runs.
+ *
+ * A map rather than a chain of conditionals. With two kinds a ternary was fine;
+ * the third is the point at which "add a kind" should mean "add a row here" and
+ * nothing else — and `Record<ScheduleKind, …>` makes the compiler say so if a
+ * kind is ever added without a runner.
+ */
+const RUNNERS: Record<ScheduleKind, (userId: string) => Promise<number>> = {
+  daily_brief: runDailyBrief,
+  risk_radar: runRiskRadar,
+  weekly_retro: runWeeklyRetro,
+};
+
 /** Process an array with a bounded number in flight. */
 async function mapLimit<T>(
   items: T[],
@@ -258,10 +324,20 @@ export async function runDueSchedules(now = new Date()): Promise<RunReport> {
     }
 
     try {
-      const sent =
-        schedule.kind === "daily_brief"
-          ? await runDailyBrief(schedule.userId)
-          : await runRiskRadar(schedule.userId);
+      // A row whose kind predates this deploy, or postdates it, is skipped
+      // rather than defaulted. `kind` is free text by design, so an unknown value
+      // is possible, and silently running the radar for it would be worse than
+      // doing nothing.
+      const run = RUNNERS[schedule.kind as ScheduleKind];
+      if (!run) {
+        log.warn("unknown schedule kind, skipping", {
+          userId: schedule.userId,
+          kind: schedule.kind,
+        });
+        return;
+      }
+
+      const sent = await run(schedule.userId);
 
       report.ran += 1;
       report.notificationsSent += sent;

@@ -13,7 +13,7 @@ import {
 } from "~/hooks/useAgentStream";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
-import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil, ArrowUp } from "lucide-react";
+import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil, ArrowUp, ArrowUpRight } from "lucide-react";
 import { useDateFormat } from "~/hooks/useDateFormat";
 import { humanizeToolName, type TrailEvent } from "~/components/chat/trail";
 
@@ -461,13 +461,18 @@ export function ProjectIntelligenceChat(props: {
   /**
    * How the thread is dressed.
    *
-   * `widget` is the rounded-bubble chat this component has always rendered, and
-   * is what the floating assistant and the project panels still get. `console`
-   * is the expanded AI page: answers run full-width under an agent byline
-   * instead of inside a bubble, and the composer carries the agent and scope
-   * pickers. Only the presentation differs — the turn itself is identical.
+   * `compact` is the rounded-bubble chat this component has always rendered and
+   * is still the default, so the project panels that embed it are untouched.
+   *
+   * `widget` and `console` are the two designed surfaces — the floating
+   * assistant and the full AI page. They share a shape: answers run full-width
+   * rather than in a bubble, and the composer is a panel that carries the agent
+   * and scope pickers instead of a bare pill. They differ only in density, and
+   * in the console additionally naming the specialist that answered.
+   *
+   * Only the presentation differs. The turn itself is identical in all three.
    */
-  variant?: "widget" | "console";
+  variant?: "compact" | "widget" | "console";
   /** The page draws its own header; the built-in one would be a second one. */
   hideHeader?: boolean;
   /**
@@ -485,11 +490,19 @@ export function ProjectIntelligenceChat(props: {
   onTrail?: (events: TrailEvent[]) => void;
   /** True while a turn is in flight. */
   onBusyChange?: (busy: boolean) => void;
-  /** Pickers rendered in the console composer's control row. */
+  /** Pickers rendered in the panel composer's control row. */
   composerControls?: ReactNode;
+  /**
+   * Rendered at the foot of the empty state — the widget's quota line and its
+   * "open full page" link. Supplied by the host because only the host knows
+   * where "full page" is from where it is mounted.
+   */
+  emptyStateFooter?: ReactNode;
 }) {
   const { projectId, pinnedAgentId } = props;
   const isConsole = props.variant === "console";
+  /** The two designed surfaces. See `variant`. */
+  const isPanel = isConsole || props.variant === "widget";
   const t = useTranslations("chat");
   // The console chrome has its own vocabulary — trail nodes, scope chips — and
   // keeping it out of the `chat` namespace stops the widget's message catalogue
@@ -590,8 +603,23 @@ export function ProjectIntelligenceChat(props: {
     [],
   );
 
+  /**
+   * One line of trail for the widget.
+   *
+   * The floating panel has no room for the full timeline the page renders, but
+   * "3 lookups · 5.4s" and the name of the last one is enough to tell a user
+   * that the answer came from their workspace rather than from thin air — and
+   * it is the same data, not a second, looser claim about it.
+   */
+  const [trailSummary, setTrailSummary] = useState<{
+    lastLabel: string;
+    lookups: number;
+    latencyMs: number;
+  } | null>(null);
+
   const resetTrail = useCallback(() => {
     trailRef.current = [];
+    setTrailSummary(null);
     props.onTrail?.([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -850,6 +878,13 @@ export function ProjectIntelligenceChat(props: {
         detail: tc("trailLatency", { ms: payload.latencyMs }),
       });
 
+      const lookups = trailRef.current.filter((e) => e.kind === "tool");
+      setTrailSummary({
+        lastLabel: lookups[lookups.length - 1]?.label ?? tc("trailStarted"),
+        lookups: lookups.length,
+        latencyMs: payload.latencyMs,
+      });
+
       props.onConversationChange?.(payload.conversationId);
       props.onBusyChange?.(false);
       setMessages((prev) =>
@@ -1051,6 +1086,17 @@ export function ProjectIntelligenceChat(props: {
 
   /* ---------- Scrolling ---------- */
 
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    // Collapse first: without it the box can grow but never shrink back when
+    // the draft is cleared or edited down.
+    el.style.height = "auto";
+    el.style.height = `${String(el.scrollHeight)}px`;
+  }, [draft]);
+
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const scrollToBottom = useCallback(() => {
     const el = scrollRef.current;
@@ -1088,6 +1134,7 @@ export function ProjectIntelligenceChat(props: {
 
       turnStartedAt.current = Date.now();
       trailRef.current = [];
+      setTrailSummary(null);
       props.onBusyChange?.(true);
       pushTrail({
         kind: "start",
@@ -1339,12 +1386,61 @@ export function ProjectIntelligenceChat(props: {
       <div
         ref={scrollRef}
         className={`flex-1 min-h-0 overflow-y-auto ${
-          isConsole ? "px-6 py-7 lg:px-10" : "px-4 py-6"
+          isConsole ? "px-6 py-7 lg:px-10" : isPanel ? "px-4 py-5" : "px-4 py-6"
         }`}
         style={{ backgroundColor: "rgb(var(--bg-primary))" }}
       >
-        <div className={isConsole ? "w-full space-y-7" : "w-full space-y-4"}>
-          {messages.length === 0 ? (
+        <div
+          className={
+            isConsole
+              ? "flex w-full flex-col gap-7"
+              : isPanel
+                ? "flex w-full flex-col gap-4"
+                : "w-full space-y-4"
+          }
+        >
+          {messages.length === 0 && isPanel ? (
+            /*
+             * A menu, not a greeting.
+             *
+             * The old empty state was an icon, two lines of copy and four
+             * pill-shaped chips. The chips were the only useful thing on it and
+             * were also the hardest to read — a suggestion is a sentence, and a
+             * sentence set in an 11px pill wraps badly and reads as decoration.
+             * Full-width rows give each one the line it needs and make it
+             * obvious they are pressable.
+             */
+            <div className="flex h-full flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <p className="text-[17px] font-semibold tracking-[-0.015em] text-fg-primary">
+                  {t("emptyTitle")}
+                </p>
+                <p className="text-[13px] leading-relaxed text-fg-tertiary">
+                  {tc("emptyDescription")}
+                </p>
+              </div>
+
+              <div className="flex flex-col overflow-hidden rounded-[10px] border border-border-medium/70">
+                {suggestedQuestions.map((q, qi) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => handleSend(q)}
+                    className={`flex items-center justify-between gap-2.5 bg-bg-secondary px-3.5 py-3 text-left text-[13px] text-fg-secondary transition-colors hover:bg-bg-tertiary hover:text-fg-primary ${
+                      qi > 0 ? "border-t border-border-medium/50" : ""
+                    }`}
+                  >
+                    {q}
+                    <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
+                  </button>
+                ))}
+              </div>
+
+              {props.emptyStateFooter && (
+                <div className="mt-auto">{props.emptyStateFooter}</div>
+              )}
+            </div>
+          ) : messages.length === 0 ? (
             <div className="py-8 text-center space-y-5">
               <div
                 className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mx-auto"
@@ -1411,7 +1507,7 @@ export function ProjectIntelligenceChat(props: {
                 >
                   <div
                     className={
-                      isConsole
+                      isPanel
                         ? m.role === "user"
                           ? // The console's user turn is a quiet raised card
                             // rather than an accent slab: on a full page the
@@ -1425,7 +1521,7 @@ export function ProjectIntelligenceChat(props: {
                           : "group max-w-[85%] rounded-2xl rounded-bl-md text-fg-primary px-4 py-2.5 shadow-sm"
                     }
                     style={
-                      isConsole
+                      isPanel
                         ? undefined
                         : {
                             backgroundColor:
@@ -2188,6 +2284,21 @@ export function ProjectIntelligenceChat(props: {
               );
             })
           )}
+          {/* The widget's one-line trail. The page renders the full timeline
+              in its right rail, so it would only be a duplicate there. */}
+          {props.variant === "widget" && trailSummary && (
+            <div className="kairos-stamp mt-1 flex items-center gap-2.5 text-[9.5px] text-fg-tertiary">
+              <span className="truncate">{trailSummary.lastLabel}</span>
+              <span className="h-px flex-1 bg-border-medium/60" />
+              <span className="shrink-0">
+                {tc("trailSummary", {
+                  count: trailSummary.lookups,
+                  seconds: (trailSummary.latencyMs / 1000).toFixed(1),
+                })}
+              </span>
+            </div>
+          )}
+
           <div className="h-2" />
         </div>
       </div>
@@ -2206,7 +2317,7 @@ export function ProjectIntelligenceChat(props: {
           handleSend(draft);
         }}
       >
-        {isConsole ? (
+        {isPanel ? (
           /*
            * The console composer.
            *
@@ -2221,9 +2332,14 @@ export function ProjectIntelligenceChat(props: {
            * The shortcut is spelled out beside the send button rather than left
            * to be discovered.
            */
-          <div className="w-full px-6 pt-4 pb-5 lg:px-10">
-            <div className="flex flex-col gap-3 rounded-xl border border-border-medium/70 bg-bg-secondary px-3.5 py-3 focus-within:border-accent-primary/40">
+          <div
+            className={
+              isConsole ? "w-full px-6 pt-4 pb-5 lg:px-10" : "w-full p-3"
+            }
+          >
+            <div className="flex flex-col gap-3 rounded-xl border border-border-medium/70 bg-bg-secondary px-3 py-2.5 focus-within:border-accent-primary/40">
               <textarea
+                ref={composerRef}
                 value={draft}
                 rows={1}
                 onChange={(e) => setDraft(e.target.value)}
@@ -2240,15 +2356,19 @@ export function ProjectIntelligenceChat(props: {
               <div className="flex flex-wrap items-center gap-2">
                 {props.composerControls}
 
-                <span className="kairos-stamp ml-auto hidden text-[10px] text-fg-tertiary sm:inline">
-                  {tc("sendShortcut")}
-                </span>
+                {isConsole && (
+                  <span className="kairos-stamp ml-auto hidden text-[10px] text-fg-tertiary sm:inline">
+                    {tc("sendShortcut")}
+                  </span>
+                )}
 
                 <button
                   type="submit"
                   aria-label={t("send")}
                   title={tc("sendShortcut")}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`${
+                    isConsole ? "" : "ml-auto "
+                  }flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
                   style={{
                     backgroundColor:
                       !isThinking && draft.trim()
@@ -2262,9 +2382,11 @@ export function ProjectIntelligenceChat(props: {
               </div>
             </div>
 
-            <p className="mt-2.5 px-0.5 text-[11.5px] leading-relaxed text-fg-tertiary">
-              {tc("composerDisclaimer")}
-            </p>
+            {isConsole && (
+              <p className="mt-2.5 px-0.5 text-[11.5px] leading-relaxed text-fg-tertiary">
+                {tc("composerDisclaimer")}
+              </p>
+            )}
           </div>
         ) : (
         <div className="w-full px-4 py-4">

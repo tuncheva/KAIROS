@@ -325,7 +325,12 @@ export const aiSchedules = createTable(
       .varchar("user_id", { length: 255 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    /** "daily_brief" | "risk_radar". Kept as text so adding a kind is not a migration. */
+    /**
+     * "daily_brief" | "risk_radar" | "weekly_retro".
+     *
+     * Kept as text so adding a kind is not a migration — which is exactly how the
+     * weekly retrospective was added.
+     */
     kind: varchar("kind", { length: 40 }).notNull(),
     enabled: boolean("enabled").notNull().default(false),
     /**
@@ -338,6 +343,18 @@ export const aiSchedules = createTable(
      * separate rename can follow once nothing is mid-flight against the old name.
      */
     hourLocal: integer("hour_utc").notNull().default(7),
+    /**
+     * Which weekday it runs on (0 = Sunday … 6 = Saturday), or NULL for daily.
+     *
+     * Nullable rather than defaulted so the two existing kinds keep their meaning
+     * without a backfill: every row written before the weekly retrospective
+     * existed is daily, and NULL says exactly that. A default of 0 would have
+     * silently converted every daily brief in the database into a Sunday-only one.
+     *
+     * Interpreted in the user's zone, like `hourLocal` — asking "is it Friday?"
+     * of a UTC clock is the same mistake, one dimension up.
+     */
+    dayOfWeek: integer("day_of_week"),
     lastRunAt: timestamp("last_run_at", { mode: "date", withTimezone: true }),
     lastError: text("last_error"),
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
