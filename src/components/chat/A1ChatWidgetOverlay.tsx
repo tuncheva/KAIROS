@@ -331,6 +331,7 @@ export function A1ChatWidgetOverlay(props: {
   return (
     <div
       ref={panelRef}
+      data-testid="ai-widget-panel"
       className="fixed z-50 flex flex-col overflow-hidden rounded-[14px] shadow-[0_24px_60px_rgba(0,0,0,.5)] transition-[height] duration-200 ease-out"
       style={{
         ...panelStyle,

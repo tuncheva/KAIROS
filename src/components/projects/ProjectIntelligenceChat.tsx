@@ -571,28 +571,45 @@ export function ProjectIntelligenceChat(props: {
   const toolsThisTurn = useRef<string[]>([]);
 
   /**
-   * The turn's audit trail.
+   * The session's audit trail.
    *
    * Kept in a ref and pushed out through `onTrail` rather than held in state:
    * the trail is rendered by the page's right rail, and re-rendering the whole
    * transcript on every tool frame in order to move a panel next door is waste.
    *
-   * `turnStartedAt` is stamped on send, so every node's elapsed time is measured
-   * from the moment the request left the browser. That includes network time,
-   * which is why the panel labels it as time-since-start rather than as a
-   * server-side duration it cannot actually observe.
+   * It accumulates for as long as the thread is open. The trail used to be
+   * wiped on every send, which meant the panel could only ever answer "what did
+   * the last message do" — and a user auditing an answer is usually looking at
+   * a claim made several messages back. Each event records its turn, so the
+   * panel can still separate them.
+   *
+   * `turnStartedAt` is re-stamped on send, so every node's elapsed time is
+   * measured from the moment *its own* request left the browser. That includes
+   * network time, which is why the panel labels it as time-since-start rather
+   * than as a server-side duration it cannot actually observe.
    */
   const trailRef = useRef<TrailEvent[]>([]);
   const turnStartedAt = useRef(0);
+  /** 1-based; incremented on send, so trail nodes can be grouped by turn. */
+  const turnIndex = useRef(0);
+  /** The message that opened the current turn, used as the group heading. */
+  const turnPrompt = useRef<string | undefined>(undefined);
 
   const pushTrail = useCallback(
-    (event: Omit<TrailEvent, "id" | "elapsedMs" | "at">) => {
+    (
+      event: Omit<
+        TrailEvent,
+        "id" | "elapsedMs" | "at" | "turnIndex" | "turnPrompt"
+      >,
+    ) => {
       const now = Date.now();
       trailRef.current = [
         ...trailRef.current,
         {
           ...event,
-          id: `${String(trailRef.current.length)}-${event.kind}`,
+          id: `${String(turnIndex.current)}-${String(trailRef.current.length)}-${event.kind}`,
+          turnIndex: turnIndex.current,
+          turnPrompt: turnPrompt.current,
           elapsedMs: now - turnStartedAt.current,
           at: new Date(now),
         },
@@ -619,6 +636,8 @@ export function ProjectIntelligenceChat(props: {
 
   const resetTrail = useCallback(() => {
     trailRef.current = [];
+    turnIndex.current = 0;
+    turnPrompt.current = undefined;
     setTrailSummary(null);
     props.onTrail?.([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -878,7 +897,11 @@ export function ProjectIntelligenceChat(props: {
         detail: tc("trailLatency", { ms: payload.latencyMs }),
       });
 
-      const lookups = trailRef.current.filter((e) => e.kind === "tool");
+      // Per-turn, unlike the trail itself: the widget chip is a claim about
+      // the answer just rendered, not about the session.
+      const lookups = trailRef.current.filter(
+        (e) => e.kind === "tool" && e.turnIndex === turnIndex.current,
+      );
       setTrailSummary({
         lastLabel: lookups[lookups.length - 1]?.label ?? tc("trailStarted"),
         lookups: lookups.length,
@@ -1132,8 +1155,11 @@ export function ProjectIntelligenceChat(props: {
       toolsThisTurn.current = [];
       props.onToolsUsed?.([]);
 
+      // The trail is *not* cleared here: it spans the thread, and a new turn
+      // opens a new group inside it rather than replacing it.
+      turnIndex.current += 1;
+      turnPrompt.current = msg;
       turnStartedAt.current = Date.now();
-      trailRef.current = [];
       setTrailSummary(null);
       props.onBusyChange?.(true);
       pushTrail({

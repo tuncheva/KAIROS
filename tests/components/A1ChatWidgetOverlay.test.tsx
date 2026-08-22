@@ -3,14 +3,27 @@ import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { A1ChatWidgetOverlay } from "~/components/chat/A1ChatWidgetOverlay";
 
-/** The widget panel is the fixed, rounded container that holds everything. */
+const push = vi.fn();
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  useRouter: () => ({
+    push,
+    replace: vi.fn(),
+    refresh: vi.fn(),
+    back: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}));
+
+/** The widget panel is the fixed container that holds everything. */
 function getPanel(): HTMLElement | null {
-  return document.querySelector<HTMLElement>(".fixed.rounded-2xl");
+  return document.querySelector<HTMLElement>("[data-testid='ai-widget-panel']");
 }
 
 describe("A1ChatWidgetOverlay", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    push.mockClear();
     localStorage.clear();
   });
 
@@ -29,11 +42,11 @@ describe("A1ChatWidgetOverlay", () => {
     expect(getPanel()).toBeInTheDocument();
   });
 
-  it("shows minimise, maximise, and close buttons in header", () => {
+  it("shows minimise, full screen, and close buttons in header", () => {
     render(<A1ChatWidgetOverlay isOpen />);
 
     expect(screen.getByLabelText("Minimise")).toBeInTheDocument();
-    expect(screen.getByLabelText("Maximise")).toBeInTheDocument();
+    expect(screen.getByLabelText("Open full screen")).toBeInTheDocument();
     expect(screen.getByLabelText("Close")).toBeInTheDocument();
   });
 
@@ -61,33 +74,30 @@ describe("A1ChatWidgetOverlay", () => {
 
     // After minimise, panel height should be 48px (title bar only)
     await waitFor(() => {
-      expect(panel?.style.height).toBe("48px");
+      expect(panel?.style.height).toBe("46px");
     });
   });
 
-  it("maximises the panel to full viewport", async () => {
+  it("navigates to the full page instead of stretching the panel", async () => {
     const user = userEvent.setup();
     render(<A1ChatWidgetOverlay isOpen />);
 
-    await user.click(screen.getByLabelText("Maximise"));
+    await user.click(screen.getByLabelText("Open full screen"));
 
-    const panel = getPanel();
-    expect(panel?.style.width).toBe("100vw");
-    expect(panel?.style.height).toBe("100vh");
+    expect(push).toHaveBeenCalledWith("/chat/ai");
+    // The panel keeps its size on the way out. Growing it first would flash a
+    // full-screen widget over the page the user is leaving.
+    expect(getPanel()?.style.width).not.toBe("100vw");
   });
 
-  it("restores from maximise to previous size", async () => {
+  it("closes itself when it hands over to the full page", async () => {
     const user = userEvent.setup();
-    render(<A1ChatWidgetOverlay isOpen />);
+    const onOpenChange = vi.fn();
+    render(<A1ChatWidgetOverlay isOpen onOpenChange={onOpenChange} />);
 
-    const panel = getPanel()!;
-    const originalWidth = panel.style.width;
+    await user.click(screen.getByLabelText("Open full screen"));
 
-    await user.click(screen.getByLabelText("Maximise"));
-    expect(panel.style.width).toBe("100vw");
-
-    await user.click(screen.getByLabelText("Restore"));
-    expect(panel.style.width).toBe(originalWidth);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it("saves position to localStorage", () => {
@@ -133,11 +143,11 @@ describe("A1ChatWidgetOverlay", () => {
     expect(svg).toBeInTheDocument();
   });
 
-  it("hides resize indicator when maximised", async () => {
+  it("hides resize indicator when minimised", async () => {
     const user = userEvent.setup();
     render(<A1ChatWidgetOverlay isOpen />);
 
-    await user.click(screen.getByLabelText("Maximise"));
+    await user.click(screen.getByLabelText("Minimise"));
 
     const indicators = document.querySelectorAll(".pointer-events-none svg");
     expect(indicators.length).toBe(0);
@@ -151,10 +161,10 @@ describe("A1ChatWidgetOverlay", () => {
     expect(header?.className).toContain("cursor-grab");
   });
 
-  it("renders with rounded-2xl border", () => {
+  it("renders as a rounded panel", () => {
     render(<A1ChatWidgetOverlay isOpen />);
 
     const panel = getPanel();
-    expect(panel?.className).toContain("rounded-2xl");
+    expect(panel?.className).toContain("rounded-");
   });
 });

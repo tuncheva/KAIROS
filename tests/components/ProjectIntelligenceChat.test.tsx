@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
+import type { TrailEvent } from "~/components/chat/trail";
 
 /**
  * The global next-intl mock (tests/setup.tsx) resolves keys against the real
@@ -36,6 +37,13 @@ function mockAgentStream(events: Array<[string, unknown]> | null) {
       }),
     );
   });
+}
+
+/** The trail as the panel last saw it. */
+function latestTrail(
+  onTrail: ReturnType<typeof vi.fn<(events: TrailEvent[]) => void>>,
+): TrailEvent[] {
+  return onTrail.mock.calls[onTrail.mock.calls.length - 1]![0];
 }
 
 describe("ProjectIntelligenceChat", () => {
@@ -425,5 +433,92 @@ describe("ProjectIntelligenceChat", () => {
     };
     expect(last.message).toBe("second");
     expect(last.conversationId).toBeUndefined();
+  });
+
+  /* ---- Session trail ---- */
+
+  /**
+   * The trail is the audit surface for the *thread*, not for the last message.
+   * It used to be wiped on every send, so asking a follow-up destroyed the
+   * evidence for the answer the user was still reading.
+   */
+  it("keeps earlier turns in the trail when a new turn starts", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockAgentStream([
+        ["tool_call", { name: "listProjects" }],
+        [
+          "result",
+          {
+            conversationId: "conv_1",
+            latencyMs: 10,
+            a1: { intent: { type: "answer" }, answer: { summary: "Answered." } },
+          },
+        ],
+      ]),
+    );
+
+    const onTrail = vi.fn<(events: TrailEvent[]) => void>();
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat onTrail={onTrail} />);
+
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
+    await user.type(input, "first");
+    await user.click(screen.getByText("Send"));
+    await screen.findByText("Answered.");
+
+    await user.type(screen.getByPlaceholderText(/Message KAIROS AI/), "second");
+    await user.click(screen.getByText("Send"));
+    await vi.waitFor(() => {
+      const latest = latestTrail(onTrail);
+      expect(latest.some((e) => e.turnIndex === 2)).toBe(true);
+    });
+
+    const trail = latestTrail(onTrail);
+
+    // Turn 1 survived in full: its start, its lookup and its answer.
+    const first = trail.filter((e) => e.turnIndex === 1);
+    expect(first.map((e) => e.kind)).toEqual(["start", "tool", "done"]);
+    expect(first.every((e) => e.turnPrompt === "first")).toBe(true);
+
+    // And turn 2 is a group of its own rather than an append to turn 1.
+    const second = trail.filter((e) => e.turnIndex === 2);
+    expect(second.length).toBeGreaterThan(0);
+    expect(second.every((e) => e.turnPrompt === "second")).toBe(true);
+
+    // Ids stay unique across the session, since the list is keyed by them.
+    expect(new Set(trail.map((e) => e.id)).size).toBe(trail.length);
+  });
+
+  it("clears the trail when the thread is thrown away", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockAgentStream([
+        ["tool_call", { name: "listProjects" }],
+        [
+          "result",
+          {
+            conversationId: "conv_1",
+            latencyMs: 10,
+            a1: { intent: { type: "answer" }, answer: { summary: "Answered." } },
+          },
+        ],
+      ]),
+    );
+
+    const onTrail = vi.fn<(events: TrailEvent[]) => void>();
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat showNewChat onTrail={onTrail} />);
+
+    await user.type(screen.getByPlaceholderText(/Message KAIROS AI/), "first");
+    await user.click(screen.getByText("Send"));
+    await screen.findByText("Answered.");
+
+    await user.click(screen.getByTestId("new-chat"));
+    await user.click(screen.getByTestId("new-chat-confirm"));
+
+    await vi.waitFor(() => {
+      expect(latestTrail(onTrail)).toHaveLength(0);
+    });
   });
 });

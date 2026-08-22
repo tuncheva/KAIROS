@@ -12,12 +12,18 @@ interface Props {
 }
 
 /**
- * What the assistant read this turn, in order, with what came back.
+ * What the assistant read this session, in order, with what came back.
  *
  * A timeline rather than a list: the ordering is the point. A user checking an
  * answer wants to know that the project list was read *before* the tasks were,
  * and that the handoff to a write agent happened after both — a bare set of
  * tool names cannot say that.
+ *
+ * The timeline covers the whole thread, split into one group per turn. Showing
+ * only the latest turn meant that the moment a user asked a follow-up, the
+ * evidence for the answer they were still reading was gone; grouping keeps the
+ * per-turn reading (each group's timings restart at its own send) without
+ * throwing the earlier turns away.
  *
  * The panel deliberately shows nothing until a turn has run. Rendering an empty
  * timeline with placeholder rows would suggest the assistant had done work it
@@ -34,6 +40,8 @@ export function TurnTrailPanel({ events, running }: Props) {
     done: "bg-emerald-400",
     error: "bg-red-400",
   };
+
+  const turns = groupByTurn(events);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -52,61 +60,87 @@ export function TurnTrailPanel({ events, running }: Props) {
             {t("trailEmpty")}
           </p>
         ) : (
-          <ol className="flex flex-col pb-6">
-            {events.map((event, index) => {
-              const isLast = index === events.length - 1;
+          <div className="flex flex-col pb-6">
+            {turns.map((turn, turnPos) => {
+              const isLastTurn = turnPos === turns.length - 1;
               return (
-                <li
-                  key={event.id}
-                  className="grid grid-cols-[14px_1fr] gap-3"
-                >
-                  {/* Rail: a hairline through the node, stopped at the last one
-                      so the timeline ends rather than trailing into nothing. */}
-                  <div className="relative flex justify-center">
-                    {!isLast && (
-                      <span className="absolute top-1.5 bottom-0 w-px bg-border-medium/60" />
-                    )}
-                    <span
-                      className={`relative mt-[5px] h-[7px] w-[7px] shrink-0 rounded-full ${dotClass[event.kind]} ${
-                        isLast && running ? "animate-pulse" : ""
-                      }`}
-                    />
-                  </div>
-
-                  <div className={isLast ? "" : "pb-4"}>
-                    <div className="flex items-baseline justify-between gap-2.5">
-                      <span
-                        className={`text-[13px] font-semibold ${
-                          event.kind === "draft"
-                            ? "text-cyan-300"
-                            : event.kind === "error"
-                              ? "text-red-400"
-                              : "text-fg-primary"
-                        }`}
-                      >
-                        {event.label}
+                <section key={turn.index} className="flex flex-col">
+                  {/* One heading per turn. The prompt is the useful label —
+                      "Turn 3" alone tells a user nothing about which question
+                      the group belongs to. */}
+                  <div className="flex items-baseline gap-2 pb-2.5">
+                    <span className="kairos-stamp shrink-0 text-[10px] text-fg-tertiary">
+                      {t("trailTurnHeading", { index: turn.index })}
+                    </span>
+                    {turn.prompt && (
+                      <span className="truncate text-[11px] text-fg-tertiary/80">
+                        {turn.prompt}
                       </span>
-                      <span className="kairos-mono shrink-0 text-[10.5px] text-fg-tertiary">
-                        {formatElapsed(event.elapsedMs)}
-                      </span>
-                    </div>
-
-                    {(event.detail ?? event.code) && (
-                      <div className="mt-0.5 text-xs text-fg-tertiary">
-                        {event.detail}
-                        {event.detail && event.code ? " · " : null}
-                        {event.code && (
-                          <span className="kairos-mono text-[10.5px]">
-                            {event.code}
-                          </span>
-                        )}
-                      </div>
                     )}
                   </div>
-                </li>
+
+                  <ol className={`flex flex-col ${isLastTurn ? "" : "pb-5"}`}>
+                    {turn.events.map((event, index) => {
+                      const isLast =
+                        isLastTurn && index === turn.events.length - 1;
+                      const endsGroup = index === turn.events.length - 1;
+                      return (
+                        <li
+                          key={event.id}
+                          className="grid grid-cols-[14px_1fr] gap-3"
+                        >
+                          {/* Rail: a hairline through the node, stopped at the
+                              very last one so the timeline ends rather than
+                              trailing into nothing. */}
+                          <div className="relative flex justify-center">
+                            {!isLast && (
+                              <span className="absolute top-1.5 bottom-0 w-px bg-border-medium/60" />
+                            )}
+                            <span
+                              className={`relative mt-[5px] h-[7px] w-[7px] shrink-0 rounded-full ${dotClass[event.kind]} ${
+                                isLast && running ? "animate-pulse" : ""
+                              }`}
+                            />
+                          </div>
+
+                          <div className={endsGroup ? "" : "pb-4"}>
+                            <div className="flex items-baseline justify-between gap-2.5">
+                              <span
+                                className={`text-[13px] font-semibold ${
+                                  event.kind === "draft"
+                                    ? "text-cyan-300"
+                                    : event.kind === "error"
+                                      ? "text-red-400"
+                                      : "text-fg-primary"
+                                }`}
+                              >
+                                {event.label}
+                              </span>
+                              <span className="kairos-mono shrink-0 text-[10.5px] text-fg-tertiary">
+                                {formatElapsed(event.elapsedMs)}
+                              </span>
+                            </div>
+
+                            {(event.detail ?? event.code) && (
+                              <div className="mt-0.5 text-xs text-fg-tertiary">
+                                {event.detail}
+                                {event.detail && event.code ? " · " : null}
+                                {event.code && (
+                                  <span className="kairos-mono text-[10.5px]">
+                                    {event.code}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </section>
               );
             })}
-          </ol>
+          </div>
         )}
       </div>
 
@@ -128,7 +162,37 @@ export function TurnTrailPanel({ events, running }: Props) {
   );
 }
 
-/** Time since the turn started, at the precision the number deserves. */
+interface TrailTurn {
+  index: number;
+  prompt?: string;
+  events: TrailEvent[];
+}
+
+/**
+ * Split a session's events into their turns, order preserved.
+ *
+ * A plain scan rather than a map keyed by `turnIndex`: the events arrive in
+ * order and the groups must render in that order, and a scan gets both without
+ * a second sort to keep correct.
+ */
+function groupByTurn(events: TrailEvent[]): TrailTurn[] {
+  const turns: TrailTurn[] = [];
+  for (const event of events) {
+    const current = turns[turns.length - 1];
+    if (current && current.index === event.turnIndex) {
+      current.events.push(event);
+      continue;
+    }
+    turns.push({
+      index: event.turnIndex,
+      prompt: event.turnPrompt,
+      events: [event],
+    });
+  }
+  return turns;
+}
+
+/** Time since the event's own turn started, at the precision it deserves. */
 function formatElapsed(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
@@ -146,6 +210,8 @@ function exportTrail(events: TrailEvent[]): void {
     [
       JSON.stringify(
         events.map((e) => ({
+          turn: e.turnIndex,
+          prompt: e.turnPrompt,
           kind: e.kind,
           label: e.label,
           detail: e.detail,
@@ -163,7 +229,7 @@ function exportTrail(events: TrailEvent[]): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `kairos-turn-${String(Date.now())}.json`;
+  link.download = `kairos-trail-${String(Date.now())}.json`;
   link.click();
   URL.revokeObjectURL(url);
 }
