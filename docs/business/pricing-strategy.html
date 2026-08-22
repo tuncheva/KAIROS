@@ -339,6 +339,78 @@
   .tier li.is-key { color: var(--ink); font-weight: 500; }
   .tier li.is-key::before { opacity: 1; }
 
+  .tier li.is-soon { color: var(--ink-faint); }
+  .tier li.is-soon::after {
+    content: "soon";
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--teal);
+    background: var(--teal-wash);
+    border-radius: 2px;
+    padding: 1px 4px;
+    margin-left: 6px;
+    vertical-align: 1px;
+  }
+
+  .tier-group {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 12px 0 -6px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule-soft);
+    list-style: none;
+  }
+  .tier-group::before { display: none; }
+  .tier ul > .tier-group:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+
+  /* ---- roadmap families ---- */
+
+  .families {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    margin: 30px 0 10px;
+    align-items: start;
+  }
+
+  .family {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--teal);
+    border-radius: 0 0 5px 5px;
+    padding: 20px 22px 22px;
+  }
+
+  .family h3 { margin: 0 0 4px; font-size: 19px; }
+
+  .family > p {
+    margin: 0 0 14px;
+    font-size: 14.5px;
+    color: var(--ink-faint);
+  }
+
+  .family dl { margin: 0; }
+
+  .family dt {
+    font-weight: 600;
+    font-size: 15px;
+    margin-top: 14px;
+  }
+  .family dl > dt:first-child { margin-top: 0; }
+
+  .family dd {
+    margin: 3px 0 0;
+    font-size: 14.5px;
+    color: var(--ink-soft);
+  }
+
+  .family dd code { font-size: 12px; }
+
   /* ---- comparison table ---- */
 
   .scroll {
@@ -624,14 +696,34 @@
         <div class="tier-price">€12 <span>/ user / month</span></div>
         <p class="tier-line">It starts noticing things before you do.</p>
         <ul>
+          <li class="tier-group">Runs without you</li>
           <li class="is-key">Daily Brief, on your schedule</li>
           <li class="is-key">Risk Radar with one-click fixes</li>
+          <li class="is-soon">Weekly retrospective, every Friday</li>
+          <li class="is-soon">Deadline watch with escalating nudges</li>
+          <li class="is-soon">Meeting prep before every event</li>
+          <li class="is-soon">Schedules you write yourself</li>
+
+          <li class="tier-group">Knows more about you</li>
           <li class="is-key">Per-agent memory</li>
+          <li class="is-soon">Unlimited conversation history</li>
+          <li class="is-soon">Document upload the agents can read</li>
+          <li class="is-soon">Standing instructions per workspace</li>
+
+          <li class="tier-group">Reaches further</li>
           <li>200 AI requests per day</li>
+          <li class="is-soon">Two-way calendar sync</li>
+          <li class="is-soon">Brief delivered to email or Slack</li>
+          <li class="is-soon">Reply by email to act</li>
+          <li class="is-soon">API keys and outbound webhooks</li>
+          <li>Your own tools, when they ship</li>
+
+          <li class="tier-group">Trust and control</li>
           <li>Pick a specialist directly</li>
           <li>See every lookup an answer used</li>
           <li>Undo applied changes</li>
-          <li>Your own tools, when they ship</li>
+          <li class="is-soon">Preview a plan's diff before applying</li>
+          <li class="is-soon">Export everything as Markdown, CSV or ICS</li>
         </ul>
       </article>
 
@@ -664,8 +756,11 @@
       <p class="eyebrow">Where each capability lands</p>
       <h2>The boundary, feature by feature</h2>
       <p>
-        Everything below already exists in the product except the two rows marked as
-        not yet built. Nothing here needs new agent work to sell.
+        The rows above the divider all exist in the shipped product — the launch
+        boundary can be drawn today without new agent work. The rows marked
+        <span class="tag tag--teal">not built</span> are the deliberate roadmap:
+        they are what keeps Pro worth renewing after the novelty of the Daily Brief
+        wears off, and each one is argued for in the next section.
       </p>
     </div>
 
@@ -764,8 +859,250 @@
             <td class="no">—</td>
             <td class="yes">Planned</td>
           </tr>
+          <tr>
+            <th scope="row">Weekly retrospective <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Deadline watch &amp; nudges <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Meeting prep briefs <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">User-defined schedules <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">3 schedules</td>
+            <td class="yes">10 schedules</td>
+          </tr>
+          <tr>
+            <th scope="row">Conversation history <span class="tag tag--teal">not built</span></th>
+            <td class="">30 days</td>
+            <td class="yes">Unlimited</td>
+            <td class="yes">Unlimited</td>
+          </tr>
+          <tr>
+            <th scope="row">Document upload &amp; recall <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Standing instructions <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Per workspace</td>
+            <td class="yes">Per workspace</td>
+          </tr>
+          <tr>
+            <th scope="row">Calendar sync <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Two-way</td>
+            <td class="yes">Two-way</td>
+          </tr>
+          <tr>
+            <th scope="row">Delivery to email / Slack <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Reply by email to act <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">API keys &amp; webhooks <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Plan diff preview <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Export (MD / CSV / ICS) <span class="tag tag--teal">not built</span></th>
+            <td class="">Manual copy</td>
+            <td class="yes">One click</td>
+            <td class="yes">One click</td>
+          </tr>
+          <tr>
+            <th scope="row">Priority model tier <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="no">—</td>
+            <td class="yes">Long turns</td>
+          </tr>
         </tbody>
       </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="measure">
+      <p class="eyebrow">What Pro grows into</p>
+      <h2>Four families, one argument each</h2>
+      <p>
+        The Daily Brief sells the first month. It does not sell the twelfth. A
+        subscription needs a reason to still be there at renewal, and the honest
+        version of that reason is that the agent has accumulated something the user
+        would lose by leaving — schedules it runs, documents it has read, instructions
+        it follows, places it reaches.
+      </p>
+      <p>
+        Everything below is unbuilt. The grouping matters more than the individual
+        items: each family extends the same boundary already drawn — <em>Pro is the
+        part that works without you</em> — rather than inventing a second axis of
+        value that would have to be explained separately.
+      </p>
+    </div>
+
+    <div class="families">
+
+      <article class="family">
+        <h3>More that runs unattended</h3>
+        <p>The scheduler exists. Only the Brief and the Radar ride on it.</p>
+        <dl>
+          <dt>Weekly retrospective</dt>
+          <dd>
+            Friday afternoon: what closed, what slipped, what has not moved in two
+            weeks. Same machinery as the Daily Brief on a different cadence and a
+            wider window — the cheapest genuinely new Pro feature on this page.
+          </dd>
+
+          <dt>Deadline watch</dt>
+          <dd>
+            Escalating nudges as a due date approaches, pitched at the task's actual
+            state rather than the calendar alone. A task with no activity and two days
+            left is a different message from one that is nearly done.
+          </dd>
+
+          <dt>Meeting prep</dt>
+          <dd>
+            Thirty minutes before an event, a short brief on the projects and people
+            it touches. This is the feature most likely to be described out loud to a
+            colleague, which makes it the best acquisition lever in the list.
+          </dd>
+
+          <dt>Schedules you write yourself</dt>
+          <dd>
+            A saved prompt on a cron of the user's choosing — "every Monday, list
+            unassigned tasks in Delta." Turns a fixed set of two proactive agents into
+            an open surface, and caps naturally at three schedules on Pro.
+          </dd>
+        </dl>
+      </article>
+
+      <article class="family">
+        <h3>More that it knows</h3>
+        <p>Memory is the switching cost. Free should have a little; Pro should compound.</p>
+        <dl>
+          <dt>Unlimited conversation history</dt>
+          <dd>
+            Free keeps 30 days. Pro keeps everything and can search it. Storage is
+            rows in Postgres, so this costs almost nothing to give and is felt
+            immediately the first time someone looks for a decision from last quarter.
+          </dd>
+
+          <dt>Documents the agents can read</dt>
+          <dd>
+            Upload a spec, a contract, a set of meeting notes; the agents cite it when
+            answering. This is the largest build on the page — it needs storage,
+            extraction and retrieval — and the one with the clearest willingness to
+            pay attached.
+          </dd>
+
+          <dt>Standing instructions</dt>
+          <dd>
+            Per-workspace rules the agents always follow: house terminology, a default
+            assignee, "never create tasks without an estimate." Distinct from
+            <code>perAgentMemory</code>, which records what the agent learned rather
+            than what the user decreed.
+          </dd>
+        </dl>
+      </article>
+
+      <article class="family">
+        <h3>More places it reaches</h3>
+        <p>An assistant confined to one browser tab is only useful when that tab is open.</p>
+        <dl>
+          <dt>Two-way calendar sync</dt>
+          <dd>
+            Google and Outlook. Events created in KAIROS appear on the real calendar
+            and the reverse. Also the precondition for meeting prep above — build once,
+            two features land.
+          </dd>
+
+          <dt>Delivery to email or Slack</dt>
+          <dd>
+            The brief should arrive where the morning already happens. Today it waits
+            in the app for someone to come and read it, which is the weakest possible
+            version of a proactive feature.
+          </dd>
+
+          <dt>Reply by email to act</dt>
+          <dd>
+            Answer the brief in a sentence and have the change applied. Note that
+            confirm-and-apply costs no inference, so the round trip that closes the
+            loop is the cheapest interaction in the product.
+          </dd>
+
+          <dt>API keys and outbound webhooks</dt>
+          <dd>
+            The complement to custom tools: today the agent can call out, but nothing
+            can call in. Pairs with per-key rate limits drawn from the same Redis
+            window the UI already uses.
+          </dd>
+        </dl>
+      </article>
+
+      <article class="family">
+        <h3>More reason to trust it</h3>
+        <p>Every one of these lowers the cost of letting an agent write to real data.</p>
+        <dl>
+          <dt>Plan diff preview</dt>
+          <dd>
+            Before confirming, show exactly which rows change and how. Undo answers
+            "that was wrong"; a diff prevents the moment. For a paid user acting on an
+            agent's judgment, prevention is worth more than reversal.
+          </dd>
+
+          <dt>Export</dt>
+          <dd>
+            Markdown, CSV and ICS, one click. Counter-intuitively a retention feature:
+            the easiest product to adopt is the one that is visibly easy to leave, and
+            an export button is a cheap answer to the procurement question.
+          </dd>
+
+          <dt>Custom tools</dt>
+          <dd>
+            Already flagged in <code>entitlements.ts</code> as
+            <code>customTools</code>. An HTTP endpoint or MCP server of the user's own,
+            registered into the same 21-tool surface the built-ins use.
+          </dd>
+        </dl>
+      </article>
+
+    </div>
+
+    <div class="measure">
+      <p class="caption">
+        If only three of these ship before launch, they should be the weekly
+        retrospective (cheapest), delivery to email or Slack (makes the Brief actually
+        proactive) and unlimited history (nearly free, and the first thing a returning
+        user notices). Documents and calendar sync are the second wave — both are real
+        engineering, and neither is needed to justify €12.
+      </p>
     </div>
   </section>
 
@@ -859,6 +1196,18 @@
       </div>
       <div class="assumption">
         <div class="assumption-claim">
+          The roadmap features are worth their build cost.
+        </div>
+        <div class="assumption-test">
+          <b>The risk</b>
+          Four families is a long list to promise and a slow list to ship. The failure
+          mode is selling a Pro tier that is mostly footnotes — announce only what is
+          built, and treat the rest as internal sequencing rather than marketing copy.
+          Nothing on that page should carry a date it cannot keep.
+        </div>
+      </div>
+      <div class="assumption">
+        <div class="assumption-claim">
           Proactivity is what people pay for.
         </div>
         <div class="assumption-test">
@@ -888,8 +1237,14 @@
         <li>
           <strong>Add the flags.</strong> Extend the <code>Entitlements</code>
           interface with one field per boundary in the table — scheduled agents, agent
-          pinning, undo, per-agent memory, request ceiling. Read them at each call
-          site now, while they all return true and nothing can break.
+          pinning, undo, per-agent memory, request ceiling. <code>customTools</code>
+          and <code>perAgentMemory</code> are already there; the shape is set. Add the
+          roadmap flags at the same time, even though nothing reads them yet
+          (<code>historyDays</code>, <code>maxSchedules</code>, <code>documents</code>,
+          <code>integrations</code>, <code>apiAccess</code>) — a flag added before its
+          feature costs one line and keeps the paywall decision out of the feature PR.
+          Read them at each call site now, while they all return true and nothing can
+          break.
         </li>
         <li>
           <strong>Fix the two blockers.</strong> A timezone column on

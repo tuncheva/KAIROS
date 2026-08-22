@@ -5,6 +5,7 @@ import { Brain, Wrench } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
+import { useEntitlement } from "~/hooks/useEntitlements";
 import { api } from "~/trpc/react";
 
 import { AUTO_AGENT, AgentPicker } from "./AgentPicker";
@@ -38,9 +39,7 @@ export function AgentWorkspace({ projectId, prefill }: Props) {
     // Static content — the roster does not change while the app is open.
     staleTime: Infinity,
   });
-  const entitlements = api.billing.entitlements.useQuery(undefined, {
-    staleTime: Infinity,
-  });
+  const canAddCustomTools = useEntitlement("customTools");
 
   const agents = agentsQuery.data ?? [];
   const activeAgentId = selected === AUTO_AGENT ? null : selected;
@@ -115,7 +114,7 @@ export function AgentWorkspace({ projectId, prefill }: Props) {
             <ToolInspector
               agent={inspected}
               used={toolsUsed}
-              canAddCustomTools={entitlements.data?.customTools ?? false}
+              canAddCustomTools={canAddCustomTools}
             />
           ) : (
             <MemoryPanel agents={agents} activeAgentId={activeAgentId} />

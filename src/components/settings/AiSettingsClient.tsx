@@ -151,20 +151,20 @@ export function AiSettingsClient() {
                 <label className="flex items-center gap-2 text-xs text-fg-secondary">
                   {t("atHour")}
                   <select
-                    value={schedule.hourUtc}
+                    value={schedule.hourLocal}
                     disabled={!schedule.enabled || setSchedule.isPending}
                     onChange={(e) =>
                       setSchedule.mutate({
                         kind: schedule.kind,
                         enabled: schedule.enabled,
-                        hourUtc: Number(e.target.value),
+                        hourLocal: Number(e.target.value),
                       })
                     }
                     className="rounded-md border border-border-medium bg-bg-elevated px-2 py-1 text-xs text-fg-primary disabled:opacity-50"
                   >
                     {HOURS.map((h) => (
                       <option key={h} value={h}>
-                        {String(h).padStart(2, "0")}:00 UTC
+                        {String(h).padStart(2, "0")}:00
                       </option>
                     ))}
                   </select>
@@ -178,13 +178,23 @@ export function AiSettingsClient() {
                     setSchedule.mutate({
                       kind: schedule.kind,
                       enabled: next,
-                      hourUtc: schedule.hourUtc,
+                      hourLocal: schedule.hourLocal,
                     })
                   }
                 />
               </div>
             </div>
           ))}
+
+          {/* Stated once rather than per row: the hour selects above are
+              meaningless without it, and the label used to read "UTC" — which
+              was accurate about the old behaviour and wrong about the user's
+              morning. */}
+          {schedules.data?.[0] ? (
+            <p className="text-xs text-fg-tertiary">
+              {t("timeZoneHint", { zone: schedules.data[0].timeZone })}
+            </p>
+          ) : null}
 
           <div className="flex items-center gap-3">
             <button

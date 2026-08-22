@@ -328,8 +328,16 @@ export const aiSchedules = createTable(
     /** "daily_brief" | "risk_radar". Kept as text so adding a kind is not a migration. */
     kind: varchar("kind", { length: 40 }).notNull(),
     enabled: boolean("enabled").notNull().default(false),
-    /** Local hour of day (0-23) the user wants it. Interpreted in UTC for now. */
-    hourUtc: integer("hour_utc").notNull().default(7),
+    /**
+     * Hour of day (0-23) the user wants it, in *their* zone.
+     *
+     * The physical column is still `hour_utc` — the name it was given when the
+     * value really was interpreted as UTC. Renaming the column is a migration
+     * that buys nothing at runtime, so the lie is corrected where it was
+     * actually read: `users.timezone` now decides what this hour means, and a
+     * separate rename can follow once nothing is mid-flight against the old name.
+     */
+    hourLocal: integer("hour_utc").notNull().default(7),
     lastRunAt: timestamp("last_run_at", { mode: "date", withTimezone: true }),
     lastError: text("last_error"),
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
@@ -337,7 +345,11 @@ export const aiSchedules = createTable(
   }),
   (t) => [
     index("ai_schedule_user_idx").on(t.userId),
-    index("ai_schedule_due_idx").on(t.enabled, t.hourUtc),
+    // Only `enabled` is still a SQL predicate: the hour comparison moved to JS
+    // when it became zone-dependent. The index is left covering both columns —
+    // the leading column is the one that filters, and dropping the trailing one
+    // is a migration with no measurable win at this table's size.
+    index("ai_schedule_due_idx").on(t.enabled, t.hourLocal),
     uniqueIndex("ai_schedule_user_kind_unique").on(t.userId, t.kind),
   ],
 );

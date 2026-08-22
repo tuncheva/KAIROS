@@ -16,18 +16,21 @@
  *   userbase silently never gets a brief.
  * - **The clock is idempotent-ish.** `lastRunAt` is written before the work, and
  *   a user who already ran today is skipped, so a scheduler that fires twice (a
- *   restart, an overlapping tick) does not produce two briefs.
+ *   restart, an overlapping tick) does not produce two briefs. "Today" means the
+ *   user's day, not UTC's.
  * - **Bounded concurrency.** These are model calls; a hundred at once would be a
  *   self-inflicted rate limit.
  */
 
 import "server-only";
 
-import { and, eq, isNull, lte, or } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "~/server/db";
-import { aiSchedules, notifications } from "~/server/db/schema";
+import { aiSchedules, notifications, users } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
+
+import { isScheduleDue } from "./due";
 import { consumeSystemRateLimit } from "~/server/security/rateLimit";
 import type { SupportedLocale } from "~/server/llm/context/a1ContextBuilder";
 
@@ -63,30 +66,36 @@ export interface RunReport {
 /**
  * Schedules that are due right now.
  *
- * "Due" means enabled, at or past the user's chosen hour, and not already run
- * today. The hour comparison is UTC — a deliberate simplification, and the one
- * thing in this module that should grow a real timezone column before this ships
- * to users outside a single region.
+ * "Due" means enabled, at or past the user's chosen hour *in the user's own
+ * zone*, and not already run on the user's current day.
+ *
+ * Both conditions used to be evaluated in SQL against UTC, which is what made a
+ * 07:00 brief arrive at 09:00 in Bulgaria and shift by an hour twice a year. They
+ * cannot stay in SQL: the comparison now depends on a per-row zone, and the DST
+ * arithmetic belongs to the IANA database rather than to a column of integers.
+ *
+ * So the query narrows to "enabled", and the two real predicates are applied in
+ * JS. That is affordable because the result is capped at 500 rows and the sweep
+ * runs hourly; the formatter cache in `~/lib/timezone` means each distinct zone
+ * is constructed once. If the userbase ever makes this the wrong trade, the fix
+ * is a `next_run_at` timestamp computed on write — not a return to UTC hours.
  */
-async function dueSchedules(nowUtcHour: number, startOfDay: Date) {
-  return db
+async function dueSchedules(now: Date) {
+  const rows = await db
     .select({
       id: aiSchedules.id,
       userId: aiSchedules.userId,
       kind: aiSchedules.kind,
+      hourLocal: aiSchedules.hourLocal,
+      lastRunAt: aiSchedules.lastRunAt,
+      timeZone: users.timezone,
     })
     .from(aiSchedules)
-    .where(
-      and(
-        eq(aiSchedules.enabled, true),
-        lte(aiSchedules.hourUtc, nowUtcHour),
-        or(
-          isNull(aiSchedules.lastRunAt),
-          lte(aiSchedules.lastRunAt, startOfDay),
-        ),
-      ),
-    )
+    .innerJoin(users, eq(aiSchedules.userId, users.id))
+    .where(eq(aiSchedules.enabled, true))
     .limit(500);
+
+  return rows.filter((row) => isScheduleDue(row, now));
 }
 
 async function notify(input: {
@@ -208,10 +217,7 @@ async function mapLimit<T>(
 }
 
 export async function runDueSchedules(now = new Date()): Promise<RunReport> {
-  const startOfDay = new Date(now);
-  startOfDay.setUTCHours(0, 0, 0, 0);
-
-  const due = await dueSchedules(now.getUTCHours(), startOfDay);
+  const due = await dueSchedules(now);
 
   const report: RunReport = {
     considered: due.length,
@@ -224,18 +230,24 @@ export async function runDueSchedules(now = new Date()): Promise<RunReport> {
 
   await mapLimit(due, CONCURRENCY, async (schedule) => {
     // Claim the slot before doing the work. A second scheduler tick that starts
-    // while this one is mid-flight will not find this row due, so the user gets
-    // one brief rather than two.
+    // while this one is mid-flight must not also run it.
+    //
+    // This is a compare-and-swap on `lastRunAt` rather than a re-test of the
+    // due-ness predicate. It has to be: due-ness now depends on the user's zone
+    // and is decided in JS, so it cannot be restated as a SQL `where` clause.
+    // Matching the exact value this sweep read is strictly stronger anyway — the
+    // update touches nothing if anyone else has advanced the row since, whatever
+    // their reason, and does not depend on both sites agreeing about when the
+    // day began.
     const claimed = await db
       .update(aiSchedules)
       .set({ lastRunAt: now, updatedAt: now, lastError: null })
       .where(
         and(
           eq(aiSchedules.id, schedule.id),
-          or(
-            isNull(aiSchedules.lastRunAt),
-            lte(aiSchedules.lastRunAt, startOfDay),
-          ),
+          schedule.lastRunAt === null
+            ? isNull(aiSchedules.lastRunAt)
+            : eq(aiSchedules.lastRunAt, schedule.lastRunAt),
         ),
       )
       .returning({ id: aiSchedules.id });

@@ -39,7 +39,8 @@ import {
   type FindingKind,
 } from "~/server/llm/scheduled/riskRadar";
 import { runBriefNow } from "~/server/llm/scheduled/runner";
-import { aiSchedules } from "~/server/db/schema";
+import { DEFAULT_TIME_ZONE } from "~/lib/timezone";
+import { aiSchedules, users } from "~/server/db/schema";
 import { and, eq } from "drizzle-orm";
 import {
   GenerateTaskDraftsInputSchema,
@@ -498,6 +499,17 @@ export const agentRouter = createTRPCRouter({
       .from(aiSchedules)
       .where(eq(aiSchedules.userId, ctx.session.user.id));
 
+    // The zone travels with the schedules rather than being fetched separately:
+    // an hour is meaningless without it, and every consumer of one needs the
+    // other to render an honest "07:00 in Europe/Sofia".
+    const [profile] = await ctx.db
+      .select({ timeZone: users.timezone })
+      .from(users)
+      .where(eq(users.id, ctx.session.user.id))
+      .limit(1);
+
+    const timeZone = profile?.timeZone ?? DEFAULT_TIME_ZONE;
+
     // A missing row means off. Returned explicitly so the settings UI does not
     // have to encode "absent means disabled" itself.
     const byKind = new Map(rows.map((r) => [r.kind, r]));
@@ -506,7 +518,8 @@ export const agentRouter = createTRPCRouter({
       return {
         kind,
         enabled: row?.enabled ?? false,
-        hourUtc: row?.hourUtc ?? 7,
+        hourLocal: row?.hourLocal ?? 7,
+        timeZone,
         lastRunAt: row?.lastRunAt ?? null,
         lastError: row?.lastError ?? null,
       };
@@ -518,7 +531,7 @@ export const agentRouter = createTRPCRouter({
       z.object({
         kind: z.enum(["daily_brief", "risk_radar"]),
         enabled: z.boolean(),
-        hourUtc: z.number().int().min(0).max(23).optional(),
+        hourLocal: z.number().int().min(0).max(23).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -536,7 +549,9 @@ export const agentRouter = createTRPCRouter({
           .update(aiSchedules)
           .set({
             enabled: input.enabled,
-            ...(input.hourUtc !== undefined ? { hourUtc: input.hourUtc } : {}),
+            ...(input.hourLocal !== undefined
+              ? { hourLocal: input.hourLocal }
+              : {}),
             updatedAt: new Date(),
           })
           .where(eq(aiSchedules.id, existing.id));
@@ -545,7 +560,7 @@ export const agentRouter = createTRPCRouter({
           userId,
           kind: input.kind,
           enabled: input.enabled,
-          hourUtc: input.hourUtc ?? 7,
+          hourLocal: input.hourLocal ?? 7,
         });
       }
 

@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useLocale, useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { LOCALE_METADATA, locales, type Locale } from "~/i18n/locales";
+import { guessTimeZone, supportedTimeZones } from "~/lib/timezone";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -26,14 +27,16 @@ const languages: Language[] = locales.map((code) => ({
  ...LOCALE_METADATA[code],
 }));
 
-const timezones = [
- { value: "UTC", label: "UTC" },
- { value: "Europe/Sofia", label: "Europe/Sofia (Bulgaria)" },
- { value: "Europe/Madrid", label: "Europe/Madrid (Spain)" },
- { value: "America/New_York", label: "America/New York" },
- { value: "Europe/London", label: "Europe/London" },
- { value: "Asia/Tokyo", label: "Asia/Tokyo" },
-] as const;
+// Every zone the runtime knows, not a curated six.
+//
+// The short list was defensible while this preference was cosmetic. It stopped
+// being cosmetic when the scheduler started reading it to decide when a user's
+// morning is: a list of six places means the daily brief is only correct for
+// people who happen to live in one of them, and everyone else silently keeps UTC.
+//
+// Computed once at module scope — `supportedValuesOf` returns ~420 strings and
+// the answer cannot change while the page is open.
+const timezones = supportedTimeZones();
 
 const dateFormats: { value: DateFormatOption; label: string }[] = [
  { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
@@ -82,9 +85,22 @@ export function LanguageSettingsClient() {
  const [dirty, setDirty] = useState(false);
 
  useEffect(() => {
- setTimezone(initialTimezone);
+ // Every account is born "UTC" — the column default — so a stored UTC is
+ // indistinguishable from a deliberate choice. Now that the scheduler reads this
+ // to decide when someone's morning is, leaving it at the default silently gives
+ // most users a brief at the wrong hour.
+ //
+ // So when the stored value is still the untouched default and the browser knows
+ // better, the browser's guess is offered *and* the form is marked dirty. It is
+ // deliberately not saved for them: an unprompted write to a preference nobody
+ // touched is worse than a visible one-click prompt, and marking it dirty is what
+ // stops the select from displaying a zone the database does not hold.
+ const guess = guessTimeZone();
+ const shouldSuggest = initialTimezone === "UTC" && guess !== "UTC";
+
+ setTimezone(shouldSuggest ? guess : initialTimezone);
  setDateFormat(initialDateFormat);
- setDirty(false);
+ setDirty(shouldSuggest);
  }, [initialTimezone, initialDateFormat]);
 
  const currentLanguage = (languages.find((lang) => lang.code === locale) ?? languages[0])!;
@@ -250,8 +266,8 @@ export function LanguageSettingsClient() {
  disabled={isBusy}
  >
  {timezones.map((tz) => (
- <option key={tz.value} value={tz.value} className="bg-bg-secondary text-fg-primary">
- {tz.label}
+ <option key={tz} value={tz} className="bg-bg-secondary text-fg-primary">
+ {tz.replace(/_/g, " ")}
  </option>
  ))}
  </select>

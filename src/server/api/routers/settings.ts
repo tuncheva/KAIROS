@@ -1,6 +1,7 @@
 
 
 import { z } from "zod";
+import { isValidTimeZone } from "~/lib/timezone";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { users, accounts, sessions } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
@@ -96,7 +97,15 @@ export const settingsRouter = createTRPCRouter({
       // Matches `languageEnum`, which now lists only locales that have a message
       // file. Accepting `ja` here stored a preference nothing could honour.
       language: z.enum(["en", "bg", "es", "fr", "de"]).optional(),
-      timezone: z.string().optional(),
+      // Validated rather than merely typed. This preference stopped being
+      // cosmetic when the scheduler began reading it: an unrecognised zone makes
+      // `Intl.DateTimeFormat` throw, and a zone that is really a fixed offset
+      // (`+02:00`) reinstates the seasonal drift the zone was introduced to fix.
+      // The picker only offers real zones, but this input is reachable without it.
+      timezone: z
+        .string()
+        .refine(isValidTimeZone, { message: "Unknown IANA time zone" })
+        .optional(),
       dateFormat: z.enum(["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {

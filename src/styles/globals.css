@@ -2588,3 +2588,43 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
     transition: none;
   }
 }
+
+/* ==========================================================================
+   Kairos AI console (/chat/ai)
+   ==========================================================================
+   The AI page is laid out as an audit console: threads on the left, the turn's
+   trail on the right. Its small-caps labels and stamps use the mono face the
+   dashboard already loads, so they read as machine output rather than as prose.
+   ========================================================================== */
+
+.kairos-mono {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-feature-settings: "tnum" 1;
+}
+
+/* A label stamp: uppercase, tracked out, mono. Used for section headings,
+   timestamps and status chips throughout the console. */
+.kairos-stamp {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+@keyframes kairos-console-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.kairos-console-rail {
+  animation: kairos-console-fade 0.45s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kairos-console-rail {
+    animation: none;
+  }
+}

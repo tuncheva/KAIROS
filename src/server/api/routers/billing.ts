@@ -16,7 +16,10 @@ export const billingRouter = createTRPCRouter({
    *
    * Everything is currently granted — see `billing/entitlements.ts`. The client
    * should still branch on these flags rather than assume, so that turning the
-   * constant into a real lookup needs no UI changes.
+   * constant into a real lookup needs no UI changes. Prefer the `useEntitlements`
+   * / `useEntitlement` hooks over calling this query directly: they fail closed
+   * while it is in flight, which a bare `data?.flag ?? false` at each call site
+   * only does if every call site remembers to.
    */
   entitlements: protectedProcedure.query(({ ctx }) => entitlementsFor(ctx)),
 });

@@ -1,14 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   useAgentStream,
   type AgentTurnPayload,
 } from "~/hooks/useAgentStream";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
-import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil } from "lucide-react";
+import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil, ArrowUp } from "lucide-react";
 import { useDateFormat } from "~/hooks/useDateFormat";
+import { humanizeToolName, type TrailEvent } from "~/components/chat/trail";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -47,6 +54,14 @@ type ChatMsg =
       text: string;
       createdAt: Date;
       msgId?: string; // unique ID for tracking edits
+      /**
+       * Which specialist produced this answer, when A1 handed off.
+       *
+       * Read off the turn payload rather than off the picker: the picker holds
+       * what the *next* message will be sent to, so using it for the byline
+       * would relabel every answer above the moment the user changed agent.
+       */
+      agentId?: string;
       actions?: Array<
         | { type: "notes_confirm"; draftId: string }
         | { type: "notes_apply"; draftId: string; confirmationToken: string }
@@ -443,9 +458,43 @@ export function ProjectIntelligenceChat(props: {
    * quick-ask widget just because it was added elsewhere.
    */
   showNewChat?: boolean;
+  /**
+   * How the thread is dressed.
+   *
+   * `widget` is the rounded-bubble chat this component has always rendered, and
+   * is what the floating assistant and the project panels still get. `console`
+   * is the expanded AI page: answers run full-width under an agent byline
+   * instead of inside a bubble, and the composer carries the agent and scope
+   * pickers. Only the presentation differs — the turn itself is identical.
+   */
+  variant?: "widget" | "console";
+  /** The page draws its own header; the built-in one would be a second one. */
+  hideHeader?: boolean;
+  /**
+   * Which stored thread to show.
+   *
+   * `undefined` keeps the original behaviour: rehydrate whichever conversation
+   * was the caller's most recent one for this scope. `null` is an explicitly
+   * empty thread — the user pressed "new conversation", and the previous thread
+   * must not be poured back into it. A string loads that specific thread.
+   */
+  conversationId?: string | null;
+  /** Fires when a turn creates or continues a thread, with its id. */
+  onConversationChange?: (id: string) => void;
+  /** The turn's audit trail, rebuilt from the stream as frames arrive. */
+  onTrail?: (events: TrailEvent[]) => void;
+  /** True while a turn is in flight. */
+  onBusyChange?: (busy: boolean) => void;
+  /** Pickers rendered in the console composer's control row. */
+  composerControls?: ReactNode;
 }) {
   const { projectId, pinnedAgentId } = props;
+  const isConsole = props.variant === "console";
   const t = useTranslations("chat");
+  // The console chrome has its own vocabulary — trail nodes, scope chips — and
+  // keeping it out of the `chat` namespace stops the widget's message catalogue
+  // from growing keys it never renders.
+  const tc = useTranslations("aiConsole");
   const utils = api.useUtils();
 
   const [draft, setDraft] = useState("");
@@ -469,6 +518,18 @@ export function ProjectIntelligenceChat(props: {
   const rateLimitQuery = api.agent.rateLimitStatus.useQuery(undefined, {
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
+  });
+
+  /**
+   * The agent roster, for the console byline.
+   *
+   * Static content the page has already fetched, so this resolves from cache;
+   * it is enabled only in the console because the widget never renders a
+   * byline and should not pay for the round trip.
+   */
+  const rosterQuery = api.agent.agents.useQuery(undefined, {
+    enabled: isConsole,
+    staleTime: Infinity,
   });
 
   const suggestedQuestions = [
@@ -495,6 +556,46 @@ export function ProjectIntelligenceChat(props: {
   const conversationIdRef = useRef<string | undefined>(undefined);
   /** Tool names this turn has called, in order. Reset when a turn starts. */
   const toolsThisTurn = useRef<string[]>([]);
+
+  /**
+   * The turn's audit trail.
+   *
+   * Kept in a ref and pushed out through `onTrail` rather than held in state:
+   * the trail is rendered by the page's right rail, and re-rendering the whole
+   * transcript on every tool frame in order to move a panel next door is waste.
+   *
+   * `turnStartedAt` is stamped on send, so every node's elapsed time is measured
+   * from the moment the request left the browser. That includes network time,
+   * which is why the panel labels it as time-since-start rather than as a
+   * server-side duration it cannot actually observe.
+   */
+  const trailRef = useRef<TrailEvent[]>([]);
+  const turnStartedAt = useRef(0);
+
+  const pushTrail = useCallback(
+    (event: Omit<TrailEvent, "id" | "elapsedMs" | "at">) => {
+      const now = Date.now();
+      trailRef.current = [
+        ...trailRef.current,
+        {
+          ...event,
+          id: `${String(trailRef.current.length)}-${event.kind}`,
+          elapsedMs: now - turnStartedAt.current,
+          at: new Date(now),
+        },
+      ];
+      props.onTrail?.(trailRef.current);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const resetTrail = useCallback(() => {
+    trailRef.current = [];
+    props.onTrail?.([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   /** Render a sub-agent's plan into chat text, previews and action buttons. */
   const buildPlanMessage = useCallback(
@@ -715,9 +816,11 @@ export function ProjectIntelligenceChat(props: {
       // the same frames into a record of what the answer was actually based on.
       toolsThisTurn.current = [...toolsThisTurn.current, name];
       props.onToolsUsed?.(toolsThisTurn.current);
+      pushTrail({ kind: "tool", label: humanizeToolName(name), code: name });
     },
     onSubAgent: (agent) => {
       setProgressLabel(t("subAgentWorking", { agent }));
+      pushTrail({ kind: "handoff", label: tc("trailHandoff"), code: agent });
       // Swap the dots for the sub-agent bar: a handoff has actually happened.
       setMessages((prev) =>
         replaceThinking(prev, {
@@ -729,11 +832,40 @@ export function ProjectIntelligenceChat(props: {
     onResult: (payload) => {
       conversationIdRef.current = payload.conversationId;
       setProgressLabel(null);
-      setMessages((prev) => replaceThinking(prev, buildPlanMessage(payload)));
+
+      // A draft is the only thing in a turn that can still change the
+      // workspace, so it gets its own node rather than being folded into
+      // "answered" — the trail is where a user checks what is pending.
+      for (const plan of payload.plans ?? []) {
+        pushTrail({
+          kind: "draft",
+          label: tc("trailDraft"),
+          detail: tc("trailDraftDetail", { kind: plan.kind }),
+          code: plan.draftId,
+        });
+      }
+      pushTrail({
+        kind: "done",
+        label: tc("trailAnswered"),
+        detail: tc("trailLatency", { ms: payload.latencyMs }),
+      });
+
+      props.onConversationChange?.(payload.conversationId);
+      props.onBusyChange?.(false);
+      setMessages((prev) =>
+        replaceThinking(prev, {
+          ...buildPlanMessage(payload),
+          agentId:
+            payload.a1.handoff?.targetAgent ??
+            payload.a1.handoffs?.[0]?.targetAgent,
+        }),
+      );
       if (payload.plan?.kind === "tasks") void utils.task.invalidate();
     },
     onError: (message, isRateLimit) => {
       setProgressLabel(null);
+      pushTrail({ kind: "error", label: tc("trailFailed"), detail: message });
+      props.onBusyChange?.(false);
       if (isRateLimit) {
         setRateLimitPopup({ show: true, message });
         void rateLimitQuery.refetch();
@@ -781,20 +913,61 @@ export function ProjectIntelligenceChat(props: {
    * applied or expired since, and a button that fails on click is worse than no
    * button. The user can ask again.
    */
-  const historyQuery = api.agent.latestConversation.useQuery(
+  /**
+   * `undefined` means "whichever thread was most recent", which is what every
+   * caller outside the AI page passes and what this component has always done.
+   * The page passes an explicit id — or `null` for a deliberately empty thread —
+   * so exactly one of the two queries below is ever enabled.
+   */
+  const pinnedConversationId = props.conversationId;
+  const wantsLatest = pinnedConversationId === undefined;
+
+  const latestQuery = api.agent.latestConversation.useQuery(
     { projectId },
-    { refetchOnWindowFocus: false, staleTime: Infinity },
+    { enabled: wantsLatest, refetchOnWindowFocus: false, staleTime: Infinity },
   );
+
+  const pinnedQuery = api.agent.conversation.useQuery(
+    { conversationId: pinnedConversationId ?? "" },
+    {
+      enabled: typeof pinnedConversationId === "string",
+      refetchOnWindowFocus: false,
+      staleTime: Infinity,
+    },
+  );
+
+  const historyData = wantsLatest
+    ? latestQuery.data
+    : typeof pinnedConversationId === "string" && pinnedQuery.data
+      ? { conversationId: pinnedConversationId, messages: pinnedQuery.data }
+      : undefined;
 
   const hydratedRef = useRef(false);
 
+  /**
+   * A pinned thread's id is known before its messages have loaded. Seeding it
+   * here means a message sent during that window continues the thread the user
+   * is looking at, rather than quietly forking a second one beside it.
+   */
+  useEffect(() => {
+    if (typeof pinnedConversationId === "string") {
+      conversationIdRef.current = pinnedConversationId;
+    } else if (pinnedConversationId === null) {
+      conversationIdRef.current = undefined;
+    }
+  }, [pinnedConversationId]);
+
   useEffect(() => {
     if (hydratedRef.current) return;
-    const data = historyQuery.data;
+    const data = historyData;
     if (!data?.conversationId || data.messages.length === 0) return;
 
     hydratedRef.current = true;
     conversationIdRef.current = data.conversationId;
+    // A restored thread is as much "the conversation you are in" as one you
+    // just started, so the page can name it in the header and highlight it in
+    // the rail without waiting for the next turn to tell it which one this is.
+    props.onConversationChange?.(data.conversationId);
 
     setMessages(
       data.messages.map((m): ChatMsg => {
@@ -820,7 +993,8 @@ export function ProjectIntelligenceChat(props: {
         return { role: "agent", text, createdAt: m.createdAt };
       }),
     );
-  }, [historyQuery.data, projectId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyData, projectId]);
 
   /* ---------- Start over ---------- */
 
@@ -865,6 +1039,7 @@ export function ProjectIntelligenceChat(props: {
     setEventEdits({});
     toolsThisTurn.current = [];
     props.onToolsUsed?.([]);
+    resetTrail();
     setConfirmNewChat(false);
 
     if (doomed) {
@@ -872,7 +1047,7 @@ export function ProjectIntelligenceChat(props: {
       void utils.agent.conversations.invalidate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cancelTurn, deleteConversationMutation, utils]);
+  }, [cancelTurn, deleteConversationMutation, resetTrail, utils]);
 
   /* ---------- Scrolling ---------- */
 
@@ -911,6 +1086,16 @@ export function ProjectIntelligenceChat(props: {
       toolsThisTurn.current = [];
       props.onToolsUsed?.([]);
 
+      turnStartedAt.current = Date.now();
+      trailRef.current = [];
+      props.onBusyChange?.(true);
+      pushTrail({
+        kind: "start",
+        label: tc("trailStarted"),
+        detail: pinnedAgentId ? undefined : tc("trailAutoRouting"),
+        code: pinnedAgentId,
+      });
+
       void sendTurn({
         message: clampText(msg),
         projectId,
@@ -919,7 +1104,7 @@ export function ProjectIntelligenceChat(props: {
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [projectId, pinnedAgentId, sendTurn],
+    [projectId, pinnedAgentId, pushTrail, sendTurn, tc],
   );
 
   /**
@@ -1060,6 +1245,7 @@ export function ProjectIntelligenceChat(props: {
       )}
 
       {/* ---- Header ---- */}
+      {!props.hideHeader && (
       <div
         className="px-4 py-3 flex items-center justify-between gap-3 border-b"
         style={{
@@ -1128,6 +1314,7 @@ export function ProjectIntelligenceChat(props: {
           </button>
         </div>
       </div>
+      )}
 
       {showAssumptions && (
         <div
@@ -1151,10 +1338,12 @@ export function ProjectIntelligenceChat(props: {
       {/* ---- Messages ---- */}
       <div
         ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto px-4 py-6"
+        className={`flex-1 min-h-0 overflow-y-auto ${
+          isConsole ? "px-6 py-7 lg:px-10" : "px-4 py-6"
+        }`}
         style={{ backgroundColor: "rgb(var(--bg-primary))" }}
       >
-        <div className="w-full space-y-4">
+        <div className={isConsole ? "w-full space-y-7" : "w-full space-y-4"}>
           {messages.length === 0 ? (
             <div className="py-8 text-center space-y-5">
               <div
@@ -1222,17 +1411,52 @@ export function ProjectIntelligenceChat(props: {
                 >
                   <div
                     className={
-                      m.role === "user"
-                        ? "group max-w-[85%] rounded-2xl rounded-br-md text-white px-4 py-2.5 shadow-sm"
-                        : "group max-w-[85%] rounded-2xl rounded-bl-md text-fg-primary px-4 py-2.5 shadow-sm"
+                      isConsole
+                        ? m.role === "user"
+                          ? // The console's user turn is a quiet raised card
+                            // rather than an accent slab: on a full page the
+                            // accent belongs to the assistant's identity and to
+                            // the controls that change the workspace, not to
+                            // every line the user has ever typed.
+                            "group max-w-[520px] rounded-xl rounded-br-sm border border-border-medium/60 bg-bg-tertiary px-4 py-3 text-fg-primary"
+                          : "group w-full max-w-[720px] text-fg-primary"
+                        : m.role === "user"
+                          ? "group max-w-[85%] rounded-2xl rounded-br-md text-white px-4 py-2.5 shadow-sm"
+                          : "group max-w-[85%] rounded-2xl rounded-bl-md text-fg-primary px-4 py-2.5 shadow-sm"
                     }
-                    style={{
-                      backgroundColor:
-                        m.role === "user"
-                          ? "rgb(var(--accent-primary))"
-                          : "rgb(var(--bg-secondary))",
-                    }}
+                    style={
+                      isConsole
+                        ? undefined
+                        : {
+                            backgroundColor:
+                              m.role === "user"
+                                ? "rgb(var(--accent-primary))"
+                                : "rgb(var(--bg-secondary))",
+                          }
+                    }
                   >
+                    {/* Console byline: who is answering, and how they got here.
+                        An answer that cannot be attributed cannot be checked. */}
+                    {isConsole && m.role === "agent" && (
+                      <div className="mb-3 flex flex-wrap items-center gap-2.5">
+                        <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[7px] bg-accent-primary/15 text-accent-primary">
+                          <Sparkles size={13} />
+                        </span>
+                        <span className="text-[13px] font-semibold text-fg-primary">
+                          {rosterQuery.data?.find(
+                            (a) => a.id === (m as { agentId?: string }).agentId,
+                          )?.name ?? t("title")}
+                        </span>
+                        <span className="kairos-stamp text-[10px] text-fg-tertiary">
+                          {(m as { agentId?: string }).agentId
+                            ? tc("bylineRouted")
+                            : pinnedAgentId
+                              ? tc("bylinePinned")
+                              : tc("bylineAuto")}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Message content */}
                     <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
@@ -1982,6 +2206,67 @@ export function ProjectIntelligenceChat(props: {
           handleSend(draft);
         }}
       >
+        {isConsole ? (
+          /*
+           * The console composer.
+           *
+           * A panel rather than a pill, because it carries more than text: who
+           * answers and what they can see are decisions about the *next*
+           * message, so they sit with the message being written rather than in
+           * a settings pane the user would have to go and find.
+           *
+           * Enter inserts a newline and ⌘/Ctrl+Enter sends. On a full page a
+           * prompt is routinely several lines long, and a composer where Enter
+           * fires the turn makes writing one an exercise in avoiding the key.
+           * The shortcut is spelled out beside the send button rather than left
+           * to be discovered.
+           */
+          <div className="w-full px-6 pt-4 pb-5 lg:px-10">
+            <div className="flex flex-col gap-3 rounded-xl border border-border-medium/70 bg-bg-secondary px-3.5 py-3 focus-within:border-accent-primary/40">
+              <textarea
+                value={draft}
+                rows={1}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    handleSend(draft);
+                  }
+                }}
+                placeholder={t("placeholder")}
+                className="max-h-40 min-h-[24px] w-full resize-none bg-transparent text-[14.5px] leading-relaxed text-fg-primary placeholder:text-fg-tertiary focus:outline-none"
+              />
+
+              <div className="flex flex-wrap items-center gap-2">
+                {props.composerControls}
+
+                <span className="kairos-stamp ml-auto hidden text-[10px] text-fg-tertiary sm:inline">
+                  {tc("sendShortcut")}
+                </span>
+
+                <button
+                  type="submit"
+                  aria-label={t("send")}
+                  title={tc("sendShortcut")}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{
+                    backgroundColor:
+                      !isThinking && draft.trim()
+                        ? "rgb(var(--accent-primary))"
+                        : "rgb(var(--bg-tertiary))",
+                  }}
+                  disabled={isThinking || !draft.trim()}
+                >
+                  <ArrowUp size={15} />
+                </button>
+              </div>
+            </div>
+
+            <p className="mt-2.5 px-0.5 text-[11.5px] leading-relaxed text-fg-tertiary">
+              {tc("composerDisclaimer")}
+            </p>
+          </div>
+        ) : (
         <div className="w-full px-4 py-4">
           <div
             className="flex items-end gap-2 rounded-[999px] px-3 py-2 shadow-sm"
@@ -2012,6 +2297,7 @@ export function ProjectIntelligenceChat(props: {
             {t("disclaimer")}
           </p>
         </div>
+        )}
       </form>
     </div>
   );
