@@ -4,6 +4,7 @@ import { getA3SystemPrompt } from "~/server/llm/prompts/a3Prompts";
 const mockContext = {
   userId: "user-1",
   memory: [],
+  locale: "en" as const,
   notes: [
     {
       id: 1,
@@ -66,6 +67,7 @@ describe("A3 System Prompt — enhanced", () => {
     const lockedOnly = {
       userId: "user-1",
       memory: [],
+      locale: "en" as const,
       notes: [
         {
           id: 2,
@@ -83,7 +85,7 @@ describe("A3 System Prompt — enhanced", () => {
   });
 
   it("handles empty notes array", () => {
-    const prompt = getA3SystemPrompt({ userId: "user-1", notes: [], memory: [] });
+    const prompt = getA3SystemPrompt({ userId: "user-1", notes: [], memory: [], locale: "en" });
     expect(typeof prompt).toBe("string");
     expect(prompt.length).toBeGreaterThan(50);
   });

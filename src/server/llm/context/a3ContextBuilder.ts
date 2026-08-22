@@ -1,6 +1,7 @@
 import type { TRPCContext } from "~/server/api/trpc";
 import { stickyNotes } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
+import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 
 export type NotesVaultHandoffContext = {
@@ -21,6 +22,11 @@ export type NotesVaultContextPack = {
      */
     unlockedContent?: string;
   }>;
+  /**
+   * The user's saved interface language — the fallback reply language when the
+   * message itself gives nothing to detect from.
+   */
+  locale: SupportedLocale;
   /** Global facts plus any the user set for the Notes Vault specifically. */
   memory: MemoryFact[];
 };
@@ -71,9 +77,15 @@ export async function buildA3Context(input: {
     },
   });
 
+  const [memory, locale] = await Promise.all([
+    loadUserMemory(input.ctx, userId, "notes_vault"),
+    resolveUserLocale(input.ctx, userId),
+  ]);
+
   return {
     userId,
-    memory: await loadUserMemory(input.ctx, userId, "notes_vault"),
+    locale,
+    memory,
     notes: notes.map((n) => {
       const isLocked = Boolean(n.passwordHash);
       if (!isLocked) {

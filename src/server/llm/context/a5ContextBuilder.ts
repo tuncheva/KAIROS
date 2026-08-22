@@ -8,6 +8,7 @@
  * drafting something it was always going to be denied.
  */
 
+import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import "server-only";
 
@@ -45,6 +46,11 @@ export interface A5Organization {
 export interface A5ContextPack {
   userId: string;
   organizations: A5Organization[];
+  /**
+   * The user's saved interface language — the fallback reply language when the
+   * message itself gives nothing to detect from.
+   */
+  locale: SupportedLocale;
   /** Global facts plus any the user set for the Organization Admin specifically. */
   memory: MemoryFact[];
   now: string;
@@ -155,10 +161,16 @@ export async function buildA5Context(input: {
     });
   }
 
+  const [memory, locale] = await Promise.all([
+    loadUserMemory(ctx, userId, "org_admin"),
+    resolveUserLocale(ctx, userId),
+  ]);
+
   return {
     userId,
     organizations: result,
     now: new Date().toISOString(),
-    memory: await loadUserMemory(ctx, userId, "org_admin"),
+    locale,
+    memory,
   };
 }

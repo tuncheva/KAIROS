@@ -4,6 +4,7 @@ import type { A2ContextPack } from "~/server/llm/context/a2ContextBuilder";
 
 const mockContext: A2ContextPack = {
   memory: [],
+  locale: "en",
   session: {
     userId: "user-1",
     activeOrganizationId: 1,

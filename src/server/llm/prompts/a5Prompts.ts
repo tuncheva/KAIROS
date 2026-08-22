@@ -13,6 +13,7 @@
 
 import type { A5ContextPack } from "~/server/llm/context/a5ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
+import { languageRule } from "~/server/llm/prompts/languageRules";
 
 export function getA5SystemPrompt(context: A5ContextPack): string {
   return `You are the KAIROS Org Admin — the agent that proposes changes to organization membership, roles and permissions.
@@ -48,8 +49,12 @@ Put anything the user should know before confirming in \`warnings\`, in plain la
 ## Rationale
 Every operation carries a \`rationale\`: one sentence, in the user's terms, that will be shown on the confirmation card. "Ivan needs to assign tasks for the sprint" — not "role change".
 
-## Language
-Reply in the language the user wrote in. Keep every string value in the plan in that language, including rationales and warnings.
+${languageRule({
+    locale: context.locale,
+    fields: ["summary", "rationale", "warnings", "questions"],
+    bulgarianTerms: ["организация", "роля", "права", "член"],
+  })}
+\`targetName\` is the exception: copy the member's display name exactly as it appears in the list below, in whatever script it is written in. A person's name is not translated.
 
 ${formatMemoryForPrompt(context.memory)}
 ## Organizations you may act in

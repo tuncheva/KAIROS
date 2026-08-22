@@ -16,23 +16,15 @@
  * facts they have asked the assistant to remember (C-2).
  */
 import type { TRPCContext } from "~/server/api/trpc";
-import { eq } from "drizzle-orm";
 
 import { assertProjectAccess } from "~/server/api/authz";
-import { users } from "~/server/db/schema";
+import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import { A1_READ_TOOLS } from "~/server/llm/tools/a1/readTools";
 
-/** The locales KAIROS ships message files for. */
-export type SupportedLocale = "en" | "bg" | "es" | "fr" | "de";
-
-export const LOCALE_NAMES: Record<SupportedLocale, string> = {
-  en: "English",
-  bg: "Bulgarian (български)",
-  es: "Spanish (español)",
-  fr: "French (français)",
-  de: "German (Deutsch)",
-};
+// The locale constants moved to `~/server/llm/locale` so every agent can reach
+// them, not just A1. Re-exported because importers still point here.
+export { LOCALE_NAMES, type SupportedLocale } from "~/server/llm/locale";
 
 export interface A1ContextPack {
   session: {
@@ -81,18 +73,10 @@ export async function buildA1Context(
     await assertProjectAccess(ctx, scopedProjectId, "read");
   }
 
-  const [projects, memory, localeRow] = await Promise.all([
+  const [projects, memory, locale] = await Promise.all([
     A1_READ_TOOLS.listProjects.execute(ctx, { limit: 25 }),
     loadUserMemory(ctx, sessionResult.userId, "workspace_concierge"),
-    ctx.db
-      .select({ language: users.language })
-      .from(users)
-      .where(eq(users.id, sessionResult.userId))
-      .limit(1)
-      .then((rows) => rows[0] ?? null)
-      // The column is `notNull` with a default, but a stale session against a
-      // pre-migration database should degrade to English rather than 500.
-      .catch(() => null),
+    resolveUserLocale(ctx, sessionResult.userId),
   ]);
 
   return {
@@ -108,7 +92,7 @@ export async function buildA1Context(
       status: p.status,
     })),
     scopedProjectId,
-    locale: (localeRow?.language ?? "en") as SupportedLocale,
+    locale,
     memory,
     now: new Date().toISOString(),
   };

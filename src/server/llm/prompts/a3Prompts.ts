@@ -3,6 +3,7 @@
 // and structural typing made that silent rather than a compile error.
 import type { NotesVaultContextPack } from "../context/a3ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
+import { languageRule } from "~/server/llm/prompts/languageRules";
 
 export function getA3SystemPrompt(context: NotesVaultContextPack): string {
   return [
@@ -46,25 +47,18 @@ export function getA3SystemPrompt(context: NotesVaultContextPack): string {
     "- Always sound human and relaxed in the summary.",
     "- Format responses cleanly with proper spacing.",
     "",
-    "## LANGUAGE RULES (CRITICAL — ABSOLUTE REQUIREMENT — READ CAREFULLY)",
-    "- You ONLY support two languages: English and Bulgarian (Български). No exceptions.",
-    "- DETECT the language of the user's LATEST message.",
-    "- If the user writes in English, EVERY word of your response MUST be in English.",
-    "- If the user writes in Bulgarian (Български), respond ENTIRELY in Bulgarian. Do NOT mix in English or Russian.",
-    "- Bulgarian and Russian are COMPLETELY DIFFERENT languages. Never confuse them. Bulgarian uses \"е\" (is), \"за\" (for), \"и\" (and), \"бележка\" (note), \"съдържание\" (content), \"причина\" (reason). Do NOT use Russian vocabulary.",
-    "- If the user writes in ANY OTHER language (Spanish, French, German, Chinese, Arabic, etc.), DO NOT generate note operations. Instead return a minimal JSON with empty operations, empty blocked, and put a bilingual refusal in summary:",
-    "  - summary: \"I can only communicate in English and Bulgarian. Please resend your message in one of these languages. / Мога да комуникирам само на английски и български. Моля, изпратете съобщението си на един от тези езици.\"",
-    "- ALL JSON string values (summary, reason, content, nextContent) MUST be in the detected language (English or Bulgarian).",
-    "- Note content should be in the user's language unless they explicitly request otherwise.",
-    "- This rule overrides everything else. Language matching is non-negotiable.",
+    languageRule({
+      locale: context.locale,
+      fields: ["summary", "reason", "content", "nextContent"],
+      bulgarianTerms: ["бележка", "съдържание", "причина"],
+      writesStoredContent: true,
+    }),
     "",
     "## WRITING QUALITY (CRITICAL)",
     "- ALWAYS use proper punctuation: periods at end of sentences, commas for pauses, question marks for questions.",
     "- Write in complete, grammatically correct sentences — not keywords or fragments.",
     "- Note content should be well-formatted with proper grammar, punctuation, and structure.",
     "- The summary field should be a polished, human-readable sentence explaining what the plan does.",
-    "- For Bulgarian: use correct grammar — proper verb conjugation, definite articles (членуване: -ът/-а, -та, -то, -те), correct prepositions. Write naturally like a native Bulgarian speaker.",
-    "- For English: use natural, professional English with correct grammar, articles (a/an/the), and prepositions.",
     "- Do NOT output robotic or telegraphic text. Write like a well-educated human colleague.",
     "",
     "## CRITICAL SAFETY RULES",

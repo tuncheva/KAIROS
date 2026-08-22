@@ -47,6 +47,15 @@ import {
 } from "~/server/llm/core/jsonRepair";
 
 import {
+  languageAnchorMessages,
+} from "~/server/llm/prompts/languageRules";
+
+import {
+  localized,
+  type LocalizedText,
+} from "~/server/llm/locale";
+
+import {
   tasks,
   taskActivityLog,
   agentTaskPlannerDrafts,
@@ -87,12 +96,30 @@ async function loadRefinablePlan(
   return row.planJson;
 }
 
+/**
+ * The last resort when the model drafted tasks with no project to put them in.
+ *
+ * Injected by this server, so it is the one sentence in an A2 reply the model did
+ * not write — and it used to be English regardless of who was reading it.
+ * Only used when the model asked nothing of its own; its own question is already
+ * in the right language.
+ */
+const NEEDS_PROJECT_QUESTION: LocalizedText = {
+  en: "Which project should I add these tasks to? Please specify the project name.",
+  bg: "В кой проект да добавя тези задачи? Моля, укажете името на проекта.",
+};
+
 export const a2TaskPlanner = {
   async taskPlannerDraft(input: {
     ctx: TRPCContext;
     message: string;
     scope?: { orgId?: string | number; projectId?: number };
     handoffContext?: Record<string, unknown>;
+    /**
+     * The user's own words this turn, when `message` is another agent's
+     * paraphrase of them. Used to pin the reply language, nothing else.
+     */
+    originalMessage?: string;
     /**
      * E-3 — the plan this message is refining.
      *
@@ -208,6 +235,7 @@ export const a2TaskPlanner = {
               },
             ]
           : []),
+        ...languageAnchorMessages(input.originalMessage, input.message),
         { role: "user", content: input.message },
       ],
       schema: TaskPlanModelOutputSchema,
@@ -251,16 +279,18 @@ export const a2TaskPlanner = {
     if (typeof resolvedProjectId !== "number" && hasOperations) {
       // The LLM generated tasks but we have no project to put them in.
       // Return the plan with a questionsForUser entry so the frontend stops the pipeline.
+      const modelQuestions = plan.questionsForUser ?? [];
       const planWithQuestion: TaskPlanDraft = {
         ...plan,
         creates: [],
         updates: [],
         statusChanges: [],
         deletes: [],
-        questionsForUser: [
-          ...(plan.questionsForUser ?? []),
-          "Which project should I add these tasks to? Please specify the project name.",
-        ],
+        // The model's own question, when it asked one, is already in the user's
+        // language. Only fall back to the canned sentence when there is nothing.
+        questionsForUser: modelQuestions.length
+          ? modelQuestions
+          : [localized(NEEDS_PROJECT_QUESTION, contextPack.locale)],
       };
       return { draftId, plan: planWithQuestion };
     }

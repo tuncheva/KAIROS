@@ -33,6 +33,8 @@ import {
 import { buildA5Context } from "~/server/llm/context/a5ContextBuilder";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 import { getA5SystemPrompt } from "~/server/llm/prompts/a5Prompts";
+import { languageAnchorMessages } from "~/server/llm/prompts/languageRules";
+import { localized, type LocalizedText } from "~/server/llm/locale";
 import {
   OrgAdminDraftSchema,
   type OrgAdminApplyOutput,
@@ -131,12 +133,26 @@ async function adminCount(
   return rows.filter((r) => flagsForRole(r.role).canManageRoles).length;
 }
 
+/**
+ * Written by this server, not the model — there is no model call on this path —
+ * so it needs its own translation rather than inheriting the reply language.
+ */
+const NO_ADMIN_RIGHTS_SUMMARY: LocalizedText = {
+  en: "You don't have permission to manage membership in any of your organizations, so there's nothing I can change here. An organization admin can grant you that.",
+  bg: "Нямате права да управлявате членството в нито една от вашите организации, затова тук няма какво да променя. Администратор на организацията може да ви ги даде.",
+};
+
 export const a5OrgAdmin = {
   async orgAdminDraft(input: {
     ctx: TRPCContext;
     message: string;
     organizationId?: number;
     handoffContext?: Record<string, unknown>;
+    /**
+     * The user's own words this turn, when `message` is another agent's
+     * paraphrase of them. Used to pin the reply language, nothing else.
+     */
+    originalMessage?: string;
   }): Promise<{ draftId: string; plan: OrgAdminDraft }> {
     const userId = requireUserId(input.ctx);
     const draftId = createDraftId();
@@ -150,8 +166,7 @@ export const a5OrgAdmin = {
     // a plausible plan for an organization the user cannot administer.
     if (contextPack.organizations.length === 0) {
       const plan: OrgAdminDraft = {
-        summary:
-          "You don't have permission to manage membership in any of your organizations, so there's nothing I can change here. An organization admin can grant you that.",
+        summary: localized(NO_ADMIN_RIGHTS_SUMMARY, contextPack.locale),
         roleChanges: [],
         permissionChanges: [],
         removals: [],
@@ -179,6 +194,7 @@ export const a5OrgAdmin = {
     const parseResult = await completeJson({
       messages: [
         { role: "system", content: systemPrompt },
+        ...languageAnchorMessages(input.originalMessage, input.message),
         { role: "user", content: input.message },
       ],
       schema: OrgAdminDraftSchema,

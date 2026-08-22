@@ -47,29 +47,50 @@ describe("A1 System Prompt", () => {
     }
   });
 
-  it("states the scope guard and the language rule", () => {
+  it("states the scope guard", () => {
     const prompt = getA1SystemPrompt(mockContext);
     expect(prompt).toContain(
       "Sorry, I am not designed for these type of questions.",
     );
-    // Five locales ship message files, so five are offered. The prompt used to
-    // hardcode "English or Bulgarian" and refuse the other three outright.
-    for (const language of ["English", "Bulgarian", "Spanish", "French", "German"]) {
-      expect(prompt).toContain(language);
-    }
   });
 
   /**
-   * The reply language falls back to the user's saved preference rather than
-   * being guessed from the message, which is what made the other three locales
-   * unreachable: a Spanish speaker writing a project name in English got English.
+   * The prompt used to enumerate the five locales with message files and imply
+   * the reply language was chosen from that list. It is not a list any more:
+   * the model mirrors whatever it was written to in, and the shipped locales
+   * only decide the fallback.
+   */
+  it("tells the model to mirror the message language rather than pick from a list", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    expect(prompt).toContain("Reply in the language of the user's latest message");
+    expect(prompt).toContain(
+      "including languages KAIROS has no interface translation for",
+    );
+    expect(prompt).toContain("Never refuse, defer or shorten a request because of the language");
+  });
+
+  /**
+   * The fallback exists for a message with nothing to detect from — "ok", an id,
+   * a button press — not as a whitelist. It is the user's saved preference so a
+   * Spanish speaker is not answered in English by default.
    */
   it("names the user's saved locale as the fallback reply language", () => {
     const spanish = getA1SystemPrompt({ ...mockContext, locale: "es" });
-    expect(spanish).toContain("Otherwise reply in Spanish");
+    expect(spanish).toContain("Fall back to Spanish (español)");
 
     const bulgarian = getA1SystemPrompt({ ...mockContext, locale: "bg" });
-    expect(bulgarian).toContain("Otherwise reply in Bulgarian");
+    expect(bulgarian).toContain("Fall back to Bulgarian (български)");
+  });
+
+  /**
+   * A1 is the only agent that sees what the user typed. If it translates the
+   * request on the way to a sub-agent, the sub-agent drafts in the wrong
+   * language and there is nothing downstream that can tell.
+   */
+  it("tells A1 to keep the handoff intent in the user's language", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    expect(prompt).toContain("written in the language the user used");
+    expect(prompt).toContain("Do not translate their request into English");
   });
 
   it("offers search before drill-down", () => {

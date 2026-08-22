@@ -33,6 +33,10 @@ import {
 } from "~/server/llm/core/jsonRepair";
 
 import {
+  languageAnchorMessages,
+} from "~/server/llm/prompts/languageRules";
+
+import {
   stickyNotes,
   agentNotesVaultDrafts,
   agentNotesVaultApplies,
@@ -49,6 +53,11 @@ export const a3NotesVault = {
     ctx: TRPCContext;
     message: string;
     handoffContext?: Record<string, unknown>;
+    /**
+     * The user's own words this turn, when `message` is another agent's
+     * paraphrase of them. Used to pin the reply language, nothing else.
+     */
+    originalMessage?: string;
   }): Promise<{ draftId: string; plan: NotesVaultDraft }> {
     const userId = requireUserId(input.ctx);
     const draftId = createDraftId();
@@ -63,6 +72,7 @@ export const a3NotesVault = {
     const parseResult = await completeJson({
       messages: [
         { role: "system", content: systemPrompt },
+        ...languageAnchorMessages(input.originalMessage, input.message),
         { role: "user", content: input.message },
       ],
       schema: NotesVaultDraftSchema,

@@ -32,6 +32,10 @@ import {
 } from "~/server/llm/core/jsonRepair";
 
 import {
+  languageAnchorMessages,
+} from "~/server/llm/prompts/languageRules";
+
+import {
   events as eventsTable,
   eventComments,
   eventLikes,
@@ -83,6 +87,11 @@ export const a4EventsPublisher = {
     ctx: TRPCContext;
     message: string;
     handoffContext?: Record<string, unknown>;
+    /**
+     * The user's own words this turn, when `message` is another agent's
+     * paraphrase of them. Used to pin the reply language, nothing else.
+     */
+    originalMessage?: string;
   }): Promise<{ draftId: string; plan: EventsPublisherDraft }> {
     const userId = requireUserId(input.ctx);
     const draftId = createDraftId();
@@ -93,6 +102,7 @@ export const a4EventsPublisher = {
     const parseResult = await completeJson({
       messages: [
         { role: "system", content: systemPrompt },
+        ...languageAnchorMessages(input.originalMessage, input.message),
         { role: "user", content: input.message },
       ],
       schema: EventsPublisherDraftSchema,

@@ -111,6 +111,13 @@ async function runHandoff(
   const message = handoff.userIntent || fallbackMessage;
   const handoffContext = handoff.context;
 
+  // The sub-agent detects its reply language from the message it is given, and
+  // that message is A1's paraphrase — so a paraphrase normalized to English
+  // silently answered a Bulgarian request in English. Every sub-agent also gets
+  // the user's own words, for language only. `undefined` when the paraphrase
+  // already *is* the user's words, so nothing is added where nothing is needed.
+  const originalMessage = message === fallbackMessage ? undefined : fallbackMessage;
+
   switch (handoff.targetAgent) {
     case "task_planner": {
       input.onSubAgent?.("task_planner");
@@ -125,6 +132,7 @@ async function runHandoff(
               : undefined,
         },
         handoffContext,
+        originalMessage,
         priorDraftId: input.priorTaskDraftId,
       });
       return { kind: "tasks", draftId: res.draftId, plan: res.plan };
@@ -136,6 +144,7 @@ async function runHandoff(
         ctx: input.ctx,
         message,
         handoffContext,
+        originalMessage,
       });
       return { kind: "notes", draftId: res.draftId, plan: res.plan };
     }
@@ -146,6 +155,7 @@ async function runHandoff(
         ctx: input.ctx,
         message,
         handoffContext,
+        originalMessage,
       });
       return { kind: "events", draftId: res.draftId, plan: res.plan };
     }
@@ -156,6 +166,7 @@ async function runHandoff(
         ctx: input.ctx,
         message,
         handoffContext,
+        originalMessage,
       });
       return { kind: "org", draftId: res.draftId, plan: res.plan };
     }
