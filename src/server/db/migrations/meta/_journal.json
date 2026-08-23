@@ -85,6 +85,13 @@
       "when": 1787961603000,
       "tag": "0011_warm_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787961604000,
+      "tag": "0012_flashy_lady_deathstrike",
+      "breakpoints": true
     }
   ]
 }

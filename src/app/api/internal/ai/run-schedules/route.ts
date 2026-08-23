@@ -26,7 +26,14 @@
 
 import crypto from "node:crypto";
 
+import type { TRPCContext } from "~/server/api/trpc";
+import { entitlementsFor } from "~/server/billing/entitlements";
+import { db } from "~/server/db";
 import { createLogger } from "~/server/logger";
+import {
+  cullExpiredHistory,
+  type CullReport,
+} from "~/server/llm/retention";
 import { runDueSchedules } from "~/server/llm/scheduled/runner";
 
 export const runtime = "nodejs";
@@ -57,7 +64,30 @@ export async function POST(request: Request) {
 
   try {
     const report = await runDueSchedules();
-    return Response.json({ ok: true, ...report });
+
+    // History retention rides along on this tick rather than getting a cron of
+    // its own. It is the same cadence, the same authentication, and the same
+    // "runs while nobody is watching" risk profile — a second scheduler would be
+    // a second thing to configure, monitor and forget.
+    //
+    // Its failure is reported but does not fail the request: a cull that did not
+    // run is a bounded amount of extra data kept for another hour, where a 500
+    // here would make the caller retry the briefs it has already sent.
+    let retention: CullReport | { error: string };
+    try {
+      retention = await cullExpiredHistory({
+        resolveHistoryDays: (userId) =>
+          entitlementsFor({
+            db,
+            session: { user: { id: userId } },
+          } as TRPCContext).historyDays,
+      });
+    } catch (err) {
+      log.error("history cull failed", { err });
+      retention = { error: "History cull failed" };
+    }
+
+    return Response.json({ ok: true, ...report, retention });
   } catch (err) {
     log.error("scheduled sweep failed", { err });
     return Response.json(

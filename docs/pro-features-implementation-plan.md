@@ -16,12 +16,12 @@
 
 | # | Feature | Phase | Est. | New table? | New dep? |
 |---|---|---|---|---|---|
-| 0 | Entitlement flags | 0 | 0.5d | no | no |
+| 0 | Entitlement flags | 0 | ~~0.5d~~ **done** | no | no |
 | 1 | Real timezones for schedules | 1 | ~~1d~~ **done** | no — column existed | no |
-| 2 | Weekly retrospective | 1 | 1.5d | no | no |
-| 3 | Standing instructions | 1 | 1d | no | no |
-| 4 | Export (MD / CSV / ICS) | 1 | 2d | no | no |
-| 5 | History retention split | 1 | 1.5d | no | no |
+| 2 | Weekly retrospective | 1 | ~~1.5d~~ **done** | 1 column | no |
+| 3 | Standing instructions | 1 | ~~1d~~ **done** | no | no |
+| 4 | Export (MD / CSV / ICS) | 1 | ~~2d~~ **done** | no | no |
+| 5 | History retention split | 1 | ~~1.5d~~ **done** | 1 index | no |
 | 6 | Deadline watch | 2 | 2d | no | no |
 | 7 | Brief to email | 2 | 2.5d | no | no |
 | 8 | User-defined schedules | 2 | 3d | yes | no |
@@ -86,7 +86,21 @@ behavioural diff.
 
 ---
 
-## Phase 1 — Cheap, shipped in a week (~7 days)
+## Phase 1 — Cheap, shipped in a week (~7 days) — ✅ complete
+
+> **Shipped.** Notes on what diverged from the sketches below are recorded under
+> each item. Three things are worth carrying into Phase 2:
+>
+> - **The `server-only` boundary bites once per feature.** `entitlements`,
+>   `timezone` and now `memoryScopes` all had to be split into a pure
+>   `~/lib/*` module because a client component needed a constant from a
+>   `server-only` file. `tsc` does not catch it — it surfaces at build time.
+>   Assume any new shared constant needs this split from the start.
+> - **The Drizzle journal trap fired on both migrations.** Generated `when`
+>   values were *lower* than the previous entry each time, which silently skips
+>   the migration. Check `meta/_journal.json` after every `db:generate`.
+> - **Both migrations are generated but NOT applied.** `pnpm db:migrate` still
+>   needs to run against the remote Supabase dev database.
 
 Everything here reuses machinery that already exists. No new tables, no new
 dependencies, no new external accounts.

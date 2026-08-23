@@ -30,42 +30,39 @@
 import "server-only";
 
 import { z } from "zod";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 
 import type { TRPCContext } from "~/server/api/trpc";
 import { aiUserMemory } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
+
+import {
+  GLOBAL_SCOPE,
+  INSTRUCTION_SCOPE,
+  MAX_AGENT_FACTS,
+  MAX_FACTS,
+  MAX_INSTRUCTIONS,
+  MAX_VALUE_CHARS,
+} from "~/lib/memoryScopes";
 
 import { requireUser } from "./tools/a1/scope";
 import type { A1Tool } from "./tools/a1/types";
 
 const log = createLogger("llm.memory");
 
-/** The scope value for facts that apply to every agent. */
-export const GLOBAL_SCOPE = "global";
-
 /**
- * How many global facts may exist per user.
- *
- * Chosen so the block stays a rounding error against a system prompt: twenty
- * facts at 200 characters is under 1.5 KB, which is smaller than the tool
- * definitions already in every request.
+ * Scope names and caps live in `~/lib/memoryScopes` so the settings UI can read
+ * the same values — this module is `server-only` and cannot be imported from a
+ * client component. Re-exported here because every existing caller imports them
+ * from this path.
  */
-export const MAX_FACTS = 20;
-
-/**
- * How many facts may exist per agent, on top of the global set.
- *
- * Deliberately smaller. The property worth preserving is not "20 rows" but "the
- * memory block never dominates the prompt", and only two scopes are ever loaded
- * at once — global plus the agent running. Ten keeps the worst case at 30 facts
- * (~6 KB) no matter how many agents accumulate memories, where a flat 20 per
- * scope across seven agents would have read as 140 rows to a reader of the
- * settings page while still only ever injecting 40.
- */
-export const MAX_AGENT_FACTS = 10;
-
-const MAX_VALUE_CHARS = 200;
+export {
+  GLOBAL_SCOPE,
+  INSTRUCTION_SCOPE,
+  MAX_AGENT_FACTS,
+  MAX_FACTS,
+  MAX_INSTRUCTIONS,
+} from "~/lib/memoryScopes";
 
 export interface MemoryFact {
   id: number;
@@ -96,8 +93,12 @@ export async function loadUserMemory(
   userId: string,
   agentId?: string,
 ): Promise<MemoryFact[]> {
-  const scopes =
-    agentId && agentId !== GLOBAL_SCOPE ? [GLOBAL_SCOPE, agentId] : [GLOBAL_SCOPE];
+  // Instructions load for every agent, always. They are the user's standing
+  // rules, so an agent that cannot see them is an agent that breaks them.
+  const scopes = [GLOBAL_SCOPE, INSTRUCTION_SCOPE];
+  if (agentId && agentId !== GLOBAL_SCOPE && agentId !== INSTRUCTION_SCOPE) {
+    scopes.push(agentId);
+  }
 
   return ctx.db
     .select(FACT_COLUMNS)
@@ -106,7 +107,7 @@ export async function loadUserMemory(
       and(eq(aiUserMemory.userId, userId), inArray(aiUserMemory.scope, scopes)),
     )
     .orderBy(asc(aiUserMemory.scope), asc(aiUserMemory.key))
-    .limit(MAX_FACTS + MAX_AGENT_FACTS);
+    .limit(MAX_FACTS + MAX_AGENT_FACTS + MAX_INSTRUCTIONS);
 }
 
 /**
@@ -137,14 +138,35 @@ export function formatMemoryForPrompt(facts: MemoryFact[]): string {
   if (!facts.length) return "";
 
   const global = facts.filter((f) => f.scope === GLOBAL_SCOPE);
-  const scoped = facts.filter((f) => f.scope !== GLOBAL_SCOPE);
+  const instructions = facts.filter((f) => f.scope === INSTRUCTION_SCOPE);
+  const scoped = facts.filter(
+    (f) => f.scope !== GLOBAL_SCOPE && f.scope !== INSTRUCTION_SCOPE,
+  );
 
-  const lines = [
-    "",
-    "## What you know about this user",
-    "Established in earlier conversations, and true unless they say otherwise:",
-    ...global.map((f) => `- ${f.value}`),
-  ];
+  const lines: string[] = [];
+
+  // Instructions come first, and are framed as rules rather than as knowledge.
+  // Both halves of that matter. A directive listed among facts reads as one more
+  // thing that happens to be true, and a model will trade "the user prefers X"
+  // away against a competing consideration in a way it will not trade away
+  // "always do X". Stated before the facts so a conflict resolves the right way.
+  if (instructions.length) {
+    lines.push(
+      "",
+      "## Rules this user has set",
+      "Follow these in every turn. They override your own defaults, and where they conflict with anything below, they win:",
+      ...instructions.map((f) => `- ${f.value}`),
+    );
+  }
+
+  if (global.length) {
+    lines.push(
+      "",
+      "## What you know about this user",
+      "Established in earlier conversations, and true unless they say otherwise:",
+      ...global.map((f) => `- ${f.value}`),
+    );
+  }
 
   // Kept as a separate heading rather than merged into one list: these were set
   // for *this* agent specifically, and a model that cannot tell the difference
@@ -156,6 +178,10 @@ export function formatMemoryForPrompt(facts: MemoryFact[]): string {
       ...scoped.map((f) => `- ${f.value}`),
     );
   }
+
+  // Every scope can be empty independently now, so the early return above is no
+  // longer enough to guarantee there is something to say.
+  if (!lines.length) return "";
 
   lines.push("");
   return lines.join("\n");
@@ -202,7 +228,12 @@ export async function upsertFact(
 ): Promise<UpsertResult> {
   const scope = input.scope?.trim() ?? GLOBAL_SCOPE;
   const isGlobal = scope === GLOBAL_SCOPE;
-  const limit = isGlobal ? MAX_FACTS : MAX_AGENT_FACTS;
+  const limit =
+    scope === INSTRUCTION_SCOPE
+      ? MAX_INSTRUCTIONS
+      : isGlobal
+        ? MAX_FACTS
+        : MAX_AGENT_FACTS;
 
   const [existing] = await ctx.db
     .select({ id: aiUserMemory.id })
@@ -298,6 +329,26 @@ export const rememberFactTool: A1Tool<
   outputSchema: z.custom<UpsertResult>(),
 
   async execute(ctx, input) {
+    // The one scope the model may not write.
+    //
+    // `scope` is a free string above, deliberately — an unknown scope stores an
+    // inert row rather than failing a turn. But `INSTRUCTION_SCOPE` is not inert:
+    // rows there are injected into every subsequent system prompt as rules that
+    // override the model's own defaults. A model that can write them can rewrite
+    // its own instructions, and a user who says "remember to always skip the
+    // estimate" would be handing it that ability by accident.
+    //
+    // Refused rather than silently rewritten to `global`, so the answer the user
+    // reads is true.
+    if (input.scope?.trim() === INSTRUCTION_SCOPE) {
+      return {
+        stored: false,
+        key: input.key,
+        message:
+          "Standing rules can only be set by you, in Settings → AI. I can remember it as a preference instead if you'd like.",
+      };
+    }
+
     return upsertFact(ctx, requireUser(ctx), input);
   },
 };
@@ -314,10 +365,19 @@ export const forgetFactTool: A1Tool<
   async execute(ctx, input) {
     const userId = requireUser(ctx);
 
+    // Deleting is gated for the same reason writing is, and it is the easier
+    // mistake to overlook: this tool matches on `key` across every scope, so
+    // without the exclusion a model asked to "forget the estimate thing" would
+    // quietly remove a standing rule the user set deliberately. Rules are
+    // removed in settings, by the person who wrote them.
     const deleted = await ctx.db
       .delete(aiUserMemory)
       .where(
-        and(eq(aiUserMemory.userId, userId), eq(aiUserMemory.key, input.key)),
+        and(
+          eq(aiUserMemory.userId, userId),
+          eq(aiUserMemory.key, input.key),
+          ne(aiUserMemory.scope, INSTRUCTION_SCOPE),
+        ),
       )
       .returning({ id: aiUserMemory.id });
 

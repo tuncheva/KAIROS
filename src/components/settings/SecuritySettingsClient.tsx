@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
+import { useEntitlements } from "~/hooks/useEntitlements";
 import { api } from "~/trpc/react";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
@@ -57,6 +58,12 @@ export function SecuritySettingsClient() {
  });
 
  const deleteAllData = api.settings.deleteAllData.useMutation();
+
+ // Which formats this plan includes. The server refuses the rest with a 403, so
+ // this only decides what to *offer* — a link that 403s would be worse than an
+ // absent one.
+ const { entitlements } = useEntitlements();
+ const exportFormats = entitlements.exportFormats;
 
  const notesKeepUnlockedUntilClose = data?.notesKeepUnlockedUntilClose ?? false;
  const hasResetPin = !!data?.resetPinHint || (data?.resetPinFailedAttempts ?? 0) >= 0;
@@ -296,6 +303,35 @@ export function SecuritySettingsClient() {
  >
   {t("signOut")}
  </button>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ {/* Export Card — deliberately adjacent to Delete Account.
+     "Take a copy" and "destroy it" are the two things a person wants in the
+     same moment, and offering only the second is how a product feels like a
+     trap. Plain anchors: the response carries Content-Disposition, so the
+     browser saves the file without any JavaScript involved. */}
+ <div className="mb-6">
+ <div className="bg-bg-secondary rounded-[10px] overflow-hidden border border-border-light">
+ <div className="pl-[16px] pr-[18px] py-[11px]">
+ <div className="text-[17px] leading-[1.235] tracking-[-0.016em] text-fg-primary font-[590] mb-[1px]">
+  {t("exportData")}
+ </div>
+ <div className="text-[13px] leading-[1.3846] tracking-[-0.006em] text-fg-tertiary mb-3">
+  {t("exportDataDesc")}
+ </div>
+ <div className="flex flex-wrap gap-2">
+ {exportFormats.map((format) => (
+ <a
+ key={format}
+ href={`/api/export/${format}`}
+ className="rounded-[8px] border border-border-medium px-3 py-1.5 text-[14px] font-[590] text-fg-primary transition-colors hover:bg-bg-tertiary"
+ >
+  {t(`export_${format}`)}
+ </a>
+ ))}
  </div>
  </div>
  </div>

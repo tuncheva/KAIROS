@@ -216,14 +216,17 @@ export const settingsRouter = createTRPCRouter({
     }),
 
 
-  requestDataExport: protectedProcedure
-    .mutation(async ({ ctx:_ctx }) => {
-  
-      return { 
-        success: true,
-        message: "Data export request received. You'll receive an email when it's ready."
-      };
-    }),
+  /**
+   * Export moved to `GET /api/export/{format}`.
+   *
+   * What was here returned `{ success: true, message: "You'll receive an email
+   * when it's ready" }` and did nothing else — no job, no email, no file. It had
+   * no callers, so nothing is broken by its removal; it is noted rather than
+   * silently deleted because "we already have an export endpoint" was true of the
+   * codebase and false of the product.
+   *
+   * A file download is not a tRPC shape: see the route handler for why.
+   */
 
  
   deleteAllData: protectedProcedure

@@ -20,6 +20,7 @@ import {
   FactKeySchema,
   FactValueSchema,
   GLOBAL_SCOPE,
+  INSTRUCTION_SCOPE,
   loadAllUserMemory,
   upsertFact,
 } from "~/server/llm/memory";
@@ -38,6 +39,7 @@ import {
   suggestedFixFor,
   type FindingKind,
 } from "~/server/llm/scheduled/riskRadar";
+import { searchMessages } from "~/server/llm/retention";
 import { runBriefNow } from "~/server/llm/scheduled/runner";
 import { DEFAULT_TIME_ZONE } from "~/lib/timezone";
 import { aiSchedules, users } from "~/server/db/schema";
@@ -428,13 +430,23 @@ export const agentRouter = createTRPCRouter({
         // Validated against the registry here, unlike the tool: this input comes
         // from a picker with a known list, so an unknown scope is a bug or a
         // tampered request rather than a model being loose with a string.
+        //
+        // `INSTRUCTION_SCOPE` is accepted here and refused in the tool. That
+        // asymmetry is the whole security model for standing rules: this
+        // procedure is only reachable from a signed-in person's own settings
+        // page, where the tool is reachable by anything the model decides to
+        // call mid-turn.
         scope: z
           .string()
           .max(40)
           .default(GLOBAL_SCOPE)
-          .refine((s) => s === GLOBAL_SCOPE || Boolean(getAgent(s)), {
-            message: "Unknown agent scope.",
-          }),
+          .refine(
+            (s) =>
+              s === GLOBAL_SCOPE ||
+              s === INSTRUCTION_SCOPE ||
+              Boolean(getAgent(s)),
+            { message: "Unknown agent scope." },
+          ),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -456,6 +468,30 @@ export const agentRouter = createTRPCRouter({
   // -------------------------------------------------------------------------
   // C-3 Conversation history
   // -------------------------------------------------------------------------
+
+  /**
+   * Search your own messages.
+   *
+   * The visible half of "unlimited history": keeping every message earns nothing
+   * if the only route back to a decision from last quarter is scrolling.
+   *
+   * Ownership is enforced inside `searchMessages` by joining through
+   * `ai_conversations.userId`, not by filtering on a caller-supplied id.
+   */
+  searchMessages: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().min(2).max(200),
+        limit: z.number().int().min(1).max(100).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return searchMessages({
+        userId: ctx.session.user.id,
+        query: input.query,
+        limit: input.limit,
+      });
+    }),
 
   conversations: protectedProcedure
     .input(

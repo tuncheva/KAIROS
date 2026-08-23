@@ -256,6 +256,24 @@ export const aiMessages = createTable(
   (t) => [
     index("ai_message_conversation_idx").on(t.conversationId),
     index("ai_message_created_idx").on(t.createdAt),
+    /**
+     * Full-text search over message bodies.
+     *
+     * The `'simple'` configuration, not `'english'`. English stemming applied to
+     * Bulgarian text is worse than no stemming — it mangles tokens it does not
+     * recognise — and this product's launch market writes in Cyrillic. `simple`
+     * lowercases and splits on word boundaries and does nothing language-specific,
+     * which is the only behaviour that is equally correct across all five locales.
+     *
+     * The configuration here must stay identical to the one in the query
+     * (`retention.ts`): Postgres will not use this index for a `to_tsvector` call
+     * with a different config, and the search would silently fall back to a
+     * sequential scan over every message in the table.
+     */
+    index("ai_message_content_fts_idx").using(
+      "gin",
+      sql`to_tsvector('simple', ${t.content})`,
+    ),
   ],
 );
 

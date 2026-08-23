@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 
+import {
+  GLOBAL_SCOPE,
+  INSTRUCTION_SCOPE,
+  MAX_INSTRUCTIONS,
+} from "~/lib/memoryScopes";
 import { api } from "~/trpc/react";
 
 /**
@@ -25,6 +30,27 @@ import { api } from "~/trpc/react";
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+/** Matches `FactValueSchema`'s ceiling, so the form cannot submit a rejected value. */
+const RULE_MAX_CHARS = 200;
+
+/**
+ * An unused storage key for a new rule.
+ *
+ * `key` is the dedupe handle on `ai_user_memory`, and for a remembered fact it is
+ * meaningful — asserting a new `sprint_cadence` should replace the old one. A rule
+ * has no such natural handle: its identity is its text. Deriving one by slugifying
+ * the text would silently overwrite when two rules start with the same few words,
+ * so the lowest free index is used instead and the user never sees it.
+ */
+function nextRuleKey(existing: string[]): string {
+  const taken = new Set(existing);
+  for (let i = 1; i <= 99; i += 1) {
+    const candidate = `rule_${String(i)}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return `rule_${String(Date.now())}`;
+}
 
 /**
  * Message keys per schedule kind.
@@ -111,6 +137,7 @@ export function AiSettingsClient() {
 
   const utils = api.useUtils();
   const [previewMessage, setPreviewMessage] = useState<string | null>(null);
+  const [draftRule, setDraftRule] = useState("");
 
   const memory = api.agent.memory.useQuery(undefined, { retry: false });
   // Only to turn a stored scope id into an agent name. Static, so it is fetched
@@ -123,8 +150,21 @@ export function AiSettingsClient() {
   const metrics = api.agent.metrics.useQuery({ days: 30 }, { retry: false });
   const stats = api.agent.findingStats.useQuery(undefined, { retry: false });
 
+  // Rules and facts share a table and a delete path but are two different things
+  // to a reader, so they are two different cards. Listing a rule among the facts
+  // labelled "instruction" would show the storage detail and hide the meaning.
+  const allMemory = memory.data ?? [];
+  const rules = allMemory.filter((f) => f.scope === INSTRUCTION_SCOPE);
+  const facts = allMemory.filter((f) => f.scope !== INSTRUCTION_SCOPE);
+
   const forget = api.agent.forgetMemory.useMutation({
     onSuccess: () => utils.agent.memory.invalidate(),
+  });
+  const addRule = api.agent.upsertMemory.useMutation({
+    onSuccess: async () => {
+      setDraftRule("");
+      await utils.agent.memory.invalidate();
+    },
   });
   const clearAll = api.agent.clearMemory.useMutation({
     onSuccess: () => utils.agent.memory.invalidate(),
@@ -258,15 +298,83 @@ export function AiSettingsClient() {
         </div>
       </Card>
 
+      {/* ---- Standing rules ----------------------------------------------- */}
+      <Card title={t("rulesTitle")} description={t("rulesDescription")}>
+        <div className="flex flex-col gap-3">
+          {rules.length ? (
+            <div className="flex flex-col gap-2">
+              {rules.map((rule) => (
+                <div
+                  key={rule.id}
+                  className="flex items-start justify-between gap-3 rounded-lg border border-border-light bg-bg-secondary p-3"
+                >
+                  <p className="min-w-0 text-sm text-fg-primary">{rule.value}</p>
+                  <button
+                    type="button"
+                    onClick={() => forget.mutate({ id: rule.id })}
+                    disabled={forget.isPending}
+                    className="shrink-0 rounded-md px-2 py-1 text-xs text-error transition-colors hover:bg-error/10 disabled:opacity-50"
+                  >
+                    {t("removeRule")}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-fg-tertiary">{t("rulesEmpty")}</p>
+          )}
+
+          {rules.length >= MAX_INSTRUCTIONS ? (
+            <p className="text-xs text-fg-tertiary">
+              {t("ruleLimit", { max: MAX_INSTRUCTIONS })}
+            </p>
+          ) : (
+            <form
+              className="flex flex-col gap-2 sm:flex-row"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const value = draftRule.trim();
+                if (value.length < 2) return;
+                addRule.mutate({
+                  key: nextRuleKey(rules.map((r) => r.key)),
+                  value,
+                  scope: INSTRUCTION_SCOPE,
+                });
+              }}
+            >
+              <input
+                value={draftRule}
+                onChange={(e) => setDraftRule(e.target.value)}
+                maxLength={RULE_MAX_CHARS}
+                placeholder={t("rulePlaceholder")}
+                disabled={addRule.isPending}
+                className="flex-1 rounded-md border border-border-medium bg-bg-elevated px-3 py-1.5 text-sm text-fg-primary disabled:opacity-50"
+              />
+              <button
+                type="submit"
+                disabled={addRule.isPending || draftRule.trim().length < 2}
+                className="shrink-0 rounded-lg border border-border-medium px-3 py-1.5 text-sm text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
+              >
+                {addRule.isPending ? t("sending") : t("addRule")}
+              </button>
+            </form>
+          )}
+
+          {/* Said plainly, because the alternative is a user wondering why the
+              assistant will not write a rule they asked it for. */}
+          <p className="text-xs text-fg-quaternary">{t("rulesOnlyYou")}</p>
+        </div>
+      </Card>
+
       {/* ---- Memory ------------------------------------------------------- */}
       <Card title={t("memoryTitle")} description={t("memoryDescription")}>
         {memory.isLoading ? (
           <p className="text-sm text-fg-tertiary">{t("loading")}</p>
-        ) : (memory.data?.length ?? 0) === 0 ? (
+        ) : facts.length === 0 ? (
           <p className="text-sm text-fg-tertiary">{t("memoryEmpty")}</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {memory.data?.map((fact) => (
+            {facts.map((fact) => (
               <div
                 key={fact.id}
                 className="flex items-start justify-between gap-3 rounded-lg border border-border-light bg-bg-secondary p-3"
@@ -280,7 +388,7 @@ export function AiSettingsClient() {
                         reads as a general rule without this, and a user cannot
                         correct a scope they cannot see. */}
                     <span>
-                      {fact.scope === "global"
+                      {fact.scope === GLOBAL_SCOPE
                         ? tAgents("scopeGlobal")
                         : (agents.data?.find((a) => a.id === fact.scope)?.name ??
                           fact.scope)}
