@@ -22,10 +22,10 @@
 | 3 | Standing instructions | 1 | ~~1d~~ **done** | no | no |
 | 4 | Export (MD / CSV / ICS) | 1 | ~~2d~~ **done** | no | no |
 | 5 | History retention split | 1 | ~~1.5d~~ **done** | 1 index | no |
-| 6 | Deadline watch | 2 | 2d | no | no |
-| 7 | Brief to email | 2 | 2.5d | no | no |
-| 8 | User-defined schedules | 2 | 3d | yes | no |
-| 9 | Per-plan rate ceilings | 2 | 1d | no | no |
+| 6 | Deadline watch | 2 | ~~2d~~ **done** | no | no |
+| 7 | Brief to email | 2 | ~~2.5d~~ **done** | 2 columns | no |
+| 8 | User-defined schedules | 2 | ~~3d~~ **done** | yes | no |
+| 9 | Per-plan rate ceilings | 2 | ~~1d~~ **done** | no | no |
 | 10 | Plan diff preview | 3 | 4d | no (1 column) | no |
 | 11 | API keys + webhooks | 3 | 5d | yes (2) | no |
 | 12 | Documents the agents read | 3 | 8d | yes (2) | pgvector |
@@ -259,7 +259,22 @@ paying for.
 
 ---
 
-## Phase 2 — Makes proactivity real (~8.5 days)
+## Phase 2 — Makes proactivity real (~8.5 days) — ✅ complete
+
+> **Shipped.** Two findings from this phase are worth carrying forward:
+>
+> - **A1 is not as read-only as its own comment claimed.** `draftToolAllowlist`
+>   includes `rememberFact` and `forgetFact`, which write to and delete from the
+>   caller's preference rows. Fine interactively; wrong on a timer, since
+>   `memory.ts`'s first rule is that nothing is written by inference.
+>   `customSchedules.ts` subtracts them, and the profile comment is corrected.
+> - **`runToolLoop` gates on `registry`, not on `tools`.** Filtering the
+>   definitions only changes what the model is *told about*; a name it produces
+>   anyway is looked up in the registry and runs. Both must be narrowed.
+>   Any future feature binding a reduced tool set needs the same pair.
+>
+> The Drizzle journal trap fired on both of this phase's migrations too — four
+> for four across Phases 1 and 2.
 
 Phase 1 makes Pro *bigger*. Phase 2 fixes the weakness the memo admits: a proactive
 assistant whose output waits in a tab for you to come and find it.

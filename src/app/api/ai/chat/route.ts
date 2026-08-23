@@ -33,6 +33,7 @@ import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import type { TRPCContext } from "~/server/api/trpc";
 import { createLogger } from "~/server/logger";
+import { entitlementsFor } from "~/server/billing/entitlements";
 import { consumeRateLimit } from "~/server/security/rateLimit";
 import { runAgentTurn } from "~/server/llm/orchestrator/handoff";
 import { isPinnable } from "~/server/llm/agents/registry";
@@ -110,17 +111,19 @@ export async function POST(request: Request) {
       ? (body.agentId as TargetAgent)
       : undefined;
 
+  // Built before the rate-limit gate rather than after: the ceiling is now the
+  // caller's plan ceiling, and resolving entitlements needs a context.
+  const ctx: TRPCContext = { db, session, headers: request.headers };
+
   // Same door as the tRPC procedures: one AI request off the caller's daily
   // budget, refused before any model call.
   try {
-    await consumeRateLimit(userId);
+    await consumeRateLimit(userId, entitlementsFor(ctx).aiRequestsPerDay);
   } catch (err) {
     const detail =
       err instanceof Error ? err.message : "Rate limit exceeded";
     return Response.json({ error: detail, code: "TOO_MANY_REQUESTS" }, { status: 429 });
   }
-
-  const ctx: TRPCContext = { db, session, headers: request.headers };
 
   const conversationId = await ensureConversation(ctx, {
     conversationId: requestedConversationId,

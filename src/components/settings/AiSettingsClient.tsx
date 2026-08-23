@@ -235,6 +235,26 @@ export function AiSettingsClient() {
                 ) : null}
 
                 <label className="flex items-center gap-2 text-xs text-fg-secondary">
+                  {t("deliverTo")}
+                  <select
+                    value={schedule.channel}
+                    disabled={!schedule.enabled || setSchedule.isPending}
+                    onChange={(e) =>
+                      setSchedule.mutate({
+                        kind: schedule.kind,
+                        enabled: schedule.enabled,
+                        channel: e.target.value as "app" | "email" | "both",
+                      })
+                    }
+                    className="rounded-md border border-border-medium bg-bg-elevated px-2 py-1 text-xs text-fg-primary disabled:opacity-50"
+                  >
+                    <option value="app">{t("channelApp")}</option>
+                    <option value="email">{t("channelEmail")}</option>
+                    <option value="both">{t("channelBoth")}</option>
+                  </select>
+                </label>
+
+                <label className="flex items-center gap-2 text-xs text-fg-secondary">
                   {t("atHour")}
                   <select
                     value={schedule.hourLocal}

@@ -25,7 +25,7 @@ import {
   type WeekDay,
 } from "./dashboardData";
 
-/** Project detail lives behind the create flow — see `ProjectsListWorkspace`. */
+/** Project detail lives behind the create flow — see `ProjectsWorkspace`. */
 const projectHref = (id: number) => `/create?action=new_project&projectId=${id}`;
 
 type ActivityRow = {

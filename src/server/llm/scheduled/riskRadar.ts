@@ -31,6 +31,8 @@ import { aiFindings, projects, tasks } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
 import { loadVisibleScope, visibleProjectsWhere } from "~/server/llm/tools/a1/scope";
 
+import { deadlineFindings } from "./deadlines";
+
 const log = createLogger("llm.riskRadar");
 
 export type FindingSeverity = "info" | "warning" | "critical";
@@ -41,7 +43,8 @@ export type FindingKind =
   | "stalled_project"
   | "missing_due_dates"
   | "blocked_tasks"
-  | "event_needs_detail";
+  | "event_needs_detail"
+  | "deadline_approaching";
 
 export interface Finding {
   kind: FindingKind;
@@ -194,6 +197,28 @@ export async function detectFindings(
     }
   }
 
+  // Deadline watch runs once across every visible task rather than inside the
+  // per-project loop: it is about the caller's own week, and a person's deadlines
+  // do not partition by project. It reuses `rows`, so it costs no extra query.
+  const deadlines = deadlineFindings({
+    tasks: rows,
+    projectNames: titleById,
+    userId,
+    now,
+  });
+  findings.push(...deadlines.findings);
+
+  // Logged rather than swallowed. A cap that silently truncates reads as
+  // "everything was covered" when it was not, and the number is the signal that
+  // the cap needs revisiting.
+  if (deadlines.omitted) {
+    log.info("deadline findings capped", {
+      userId,
+      shown: deadlines.findings.length,
+      omitted: deadlines.omitted,
+    });
+  }
+
   return findings;
 }
 
@@ -311,6 +336,16 @@ export function suggestedFixFor(finding: Finding): SuggestedFix | null {
       return {
         prompt: `Review the blocked tasks in project ${String(finding.projectId)} and suggest what would unblock each one.`,
         label: "Review blockers",
+      };
+    case "deadline_approaching":
+      return {
+        // Deliberately not "reschedule it". The finding fires while there is
+        // still time to act, so the useful first move is working out what the
+        // task actually needs — moving the date is what you do after deciding you
+        // cannot make it, and offering that as the one-click default teaches the
+        // user that the nudge means "give up".
+        prompt: `Task ${String(finding.taskIds[0] ?? 0)} is due very soon and not finished. Tell me what is left on it, and whether to split it, hand it over, or move the date.`,
+        label: "What does it need?",
       };
     // A stalled project needs a conversation, not a bulk edit. Offering a
     // one-click "fix" for it would be theatre.

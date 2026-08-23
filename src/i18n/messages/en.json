@@ -660,6 +660,10 @@
       "weeklyRetroTitle": "Weekly retrospective",
       "weeklyRetroDescription": "One message at the end of the week: what closed, what carried over, what stopped moving.",
       "atHour": "At",
+      "deliverTo": "Send to",
+      "channelApp": "In the app",
+      "channelEmail": "Email",
+      "channelBoth": "Both",
       "onDay": "On",
       "sunday": "Sunday",
       "monday": "Monday",
@@ -1583,5 +1587,121 @@
     "openFullPage": "Open full page",
     "emptyDescription": "Reads your projects, tasks and notes. Anything that would change them is drafted for your approval first.",
     "trailSummary": "{count, plural, one {# lookup} other {# lookups}} · {seconds}s"
+  },
+  "projects": {
+    "title": "Your projects",
+    "summary": "{shown} of {projects} projects · {done} of {tasks} tasks done",
+    "searchPlaceholder": "Search projects",
+    "sortLabel": "Sort",
+    "untitled": "Untitled project",
+    "noDescription": "No description",
+    "noMatch": "Nothing matches “{query}”.",
+    "noneInFilter": "No projects in this filter.",
+    "back": "All projects",
+    "openBoard": "Open board",
+    "deleted": "Project deleted.",
+    "colProject": "Project",
+    "colProgress": "Progress",
+    "colTeam": "Team",
+    "colUpdated": "Updated",
+    "filters": {
+      "all": "All",
+      "track": "On track",
+      "risk": "Needs attention",
+      "done": "Complete"
+    },
+    "sorts": {
+      "updated": "Updated",
+      "progress": "Progress",
+      "name": "Name"
+    },
+    "views": {
+      "list": "List",
+      "grid": "Grid"
+    },
+    "health": {
+      "empty": "No tasks",
+      "complete": "Complete",
+      "onTrack": "On track",
+      "inProgress": "In progress",
+      "atRisk": "At risk"
+    },
+    "stats": {
+      "active": "Active",
+      "tasks": "Tasks",
+      "completed": "Completed",
+      "overall": "Overall",
+      "progress": "Progress",
+      "done": "Done",
+      "inProgress": "In progress",
+      "todo": "To do"
+    },
+    "updated": {
+      "today": "TODAY",
+      "days": "{count} DAYS AGO",
+      "week": "1 WEEK AGO",
+      "weeks": "{count} WEEKS AGO",
+      "never": "NEVER"
+    },
+    "timeline": {
+      "label": "Timeline",
+      "count": "{count} events",
+      "empty": "Nothing recorded on this project yet.",
+      "today": "TODAY",
+      "yesterday": "YESTERDAY",
+      "now": "NOW",
+      "someone": "Someone",
+      "showEarlier": "Show earlier activity",
+      "hideEarlier": "Hide earlier activity",
+      "kinds": {
+        "all": "All activity",
+        "task": "Tasks",
+        "status": "Status",
+        "note": "Notes",
+        "due": "Due"
+      },
+      "verbs": {
+        "created": "created",
+        "completed": "completed",
+        "updated": "updated",
+        "moved": "moved",
+        "noted": "added a note to",
+        "deleted": "deleted",
+        "isDue": "is due"
+      }
+    },
+    "delete": {
+      "title": "Delete project",
+      "body": "This deletes the project and everything in it. It cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    },
+    "empty": {
+      "tag": "First project",
+      "title": "Nothing to show yet",
+      "body": "A project is where tasks, notes and deadlines live together. Create one and the list fills in from there.",
+      "cta": "Create a project"
+    },
+    "drawer": {
+      "open": "New project",
+      "title": "New project",
+      "name": "Project name",
+      "namePlaceholder": "Thesis, Q4 launch, apartment move…",
+      "description": "Description",
+      "descriptionPlaceholder": "What is this project for?",
+      "optional": "optional",
+      "visibility": "Visibility",
+      "private": "Private",
+      "canView": "Can view",
+      "canEdit": "Can edit",
+      "invite": "Invite a teammate",
+      "invitePlaceholder": "name@email.com",
+      "cancel": "Cancel",
+      "submit": "Create project",
+      "creating": "Creating…",
+      "created": "Created {title}.",
+      "close": "Close",
+      "permission": "Their permission"
+    }
   }
 }

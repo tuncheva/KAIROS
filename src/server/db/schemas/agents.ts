@@ -373,6 +373,28 @@ export const aiSchedules = createTable(
      * of a UTC clock is the same mistake, one dimension up.
      */
     dayOfWeek: integer("day_of_week"),
+    /**
+     * Where the result is delivered: `app` | `email` | `both`.
+     *
+     * Defaults to `app`, which is what every existing row means. Text rather than
+     * an enum for the same reason `kind` is: adding Slack should not be a
+     * migration, and the runner already has to tolerate a value it does not
+     * recognise.
+     */
+    channel: varchar("channel", { length: 16 }).notNull().default("app"),
+    /**
+     * Consecutive delivery failures on the chosen channel.
+     *
+     * Only meaningful for channels that can fail independently of the app — a
+     * bounced address, a revoked API key. Reset to zero on any success, so this
+     * counts a run of failures rather than a lifetime total: three in a row is
+     * evidence the address is dead, where three across six months is evidence of
+     * nothing.
+     *
+     * Without this, a mistyped address generates a bounce every single morning
+     * forever, and the only person who finds out is whoever reads the logs.
+     */
+    channelFailures: integer("channel_failures").notNull().default(0),
     lastRunAt: timestamp("last_run_at", { mode: "date", withTimezone: true }),
     lastError: text("last_error"),
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
@@ -386,6 +408,58 @@ export const aiSchedules = createTable(
     // is a migration with no measurable win at this table's size.
     index("ai_schedule_due_idx").on(t.enabled, t.hourLocal),
     uniqueIndex("ai_schedule_user_kind_unique").on(t.userId, t.kind),
+  ],
+);
+
+/**
+ * Schedules of the user's own devising.
+ *
+ * A separate table from `ai_schedules` rather than a nullable `prompt` column on
+ * it. The two are the same shape and different things: a built-in kind has a
+ * fixed fact-collection path in code and no prompt at all, where a custom one is
+ * a saved question and nothing else. Merging them would mean every read of either
+ * branches on which sort of row it found, and the runner's `RUNNERS` map — which
+ * exists so adding a kind is one line — would need a special case for "the kind
+ * that is actually a prompt".
+ *
+ * What these runs may do is the security-relevant part, and it is enforced in the
+ * runner rather than here: the prompt executes against A1's **read-only** tool
+ * set with no write tools bound. A schedule that fires while nobody is watching
+ * must not be able to create, change or delete anything, and A1's read-only
+ * invariant is exactly that property, already established and already tested.
+ */
+export const aiCustomSchedules = createTable(
+  "ai_custom_schedules",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** What the user calls it, for the settings list and the notification title. */
+    name: varchar("name", { length: 80 }).notNull(),
+    /**
+     * The question, in the user's own words.
+     *
+     * Bounded hard. This is injected into a prompt on a timer, so an unbounded
+     * column would be a way to make every future run arbitrarily expensive, and
+     * a schedule is meant to be a question rather than a document.
+     */
+    prompt: text("prompt").notNull(),
+    /** 0 = Sunday … 6 = Saturday, or NULL for daily. Same convention as `ai_schedules`. */
+    dayOfWeek: integer("day_of_week"),
+    hourLocal: integer("hour_local").notNull().default(8),
+    channel: varchar("channel", { length: 16 }).notNull().default("app"),
+    channelFailures: integer("channel_failures").notNull().default(0),
+    enabled: boolean("enabled").notNull().default(true),
+    lastRunAt: timestamp("last_run_at", { mode: "date", withTimezone: true }),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("ai_custom_schedule_user_idx").on(t.userId),
+    index("ai_custom_schedule_due_idx").on(t.enabled),
   ],
 );
 

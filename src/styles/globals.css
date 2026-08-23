@@ -2628,3 +2628,62 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
     animation: none;
   }
 }
+
+/* ==========================================================================
+   Projects — new-project drawer
+   --------------------------------------------------------------------------
+   The drawer slides in from the right over a fading scrim, and its fields
+   stagger in behind it on the same curve the dashboard uses for its blocks.
+   The delays live inline on the fields; these are just the curves.
+   ========================================================================== */
+
+@keyframes projects-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes projects-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes projects-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.projects-drawer {
+  animation: projects-drawer-in 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.projects-drawer-scrim {
+  animation: projects-scrim-in 0.35s ease-out both;
+}
+
+.projects-slide-in {
+  animation: projects-slide-in 0.5s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .projects-drawer,
+  .projects-drawer-scrim,
+  .projects-slide-in {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

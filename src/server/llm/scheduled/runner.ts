@@ -27,9 +27,18 @@ import "server-only";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "~/server/db";
-import { aiSchedules, notifications, users } from "~/server/db/schema";
+import {
+  aiCustomSchedules,
+  aiSchedules,
+  notifications,
+  users,
+} from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
 
+import { entitlementsFor } from "~/server/billing/entitlements";
+import { sendBriefEmail } from "~/server/email/email";
+
+import { runCustomSchedule } from "./customSchedules";
 import { isScheduleDue } from "./due";
 import { consumeSystemRateLimit } from "~/server/security/rateLimit";
 import type { SupportedLocale } from "~/server/llm/context/a1ContextBuilder";
@@ -60,6 +69,14 @@ export type ScheduleKind = "daily_brief" | "risk_radar" | "weekly_retro";
 /** How many users are processed at once. */
 const CONCURRENCY = 4;
 
+export interface CustomReport {
+  considered: number;
+  ran: number;
+  skippedOverCap: number;
+  failed: number;
+  notificationsSent: number;
+}
+
 export interface RunReport {
   considered: number;
   ran: number;
@@ -67,6 +84,8 @@ export interface RunReport {
   skippedAlreadyRan: number;
   failed: number;
   notificationsSent: number;
+  /** Present once the custom-schedule pass has run. */
+  custom?: CustomReport;
 }
 
 /**
@@ -94,6 +113,8 @@ async function dueSchedules(now: Date) {
       kind: aiSchedules.kind,
       hourLocal: aiSchedules.hourLocal,
       dayOfWeek: aiSchedules.dayOfWeek,
+      channel: aiSchedules.channel,
+      channelFailures: aiSchedules.channelFailures,
       lastRunAt: aiSchedules.lastRunAt,
       timeZone: users.timezone,
     })
@@ -120,6 +141,116 @@ async function notify(input: {
   });
 }
 
+/** Consecutive email failures before the channel is turned off. */
+const MAX_CHANNEL_FAILURES = 3;
+
+/** What one run needs to know about the row that asked for it. */
+interface RunTarget {
+  userId: string;
+  scheduleId: number | null;
+  channel: string;
+  channelFailures: number;
+}
+
+/**
+ * Put the result where the user asked for it.
+ *
+ * The reason this is not just `notify()` any more: a proactive feature whose
+ * output waits in a tab for someone to come and find it is the weakest possible
+ * version of proactive. Email is where the morning already happens.
+ *
+ * Three behaviours are worth stating, because each one is a decision rather than
+ * an implementation detail:
+ *
+ * - **A failed email still becomes an in-app notification.** If email was the
+ *   only channel and it bounced, silently dropping the brief would be the worst
+ *   outcome — the work was done, the budget was spent, and the user hears
+ *   nothing. The fallback means a delivery problem costs the *channel*, never the
+ *   message.
+ * - **Failures are counted, and three in a row disables the channel.** A mistyped
+ *   address otherwise generates a bounce every morning forever, visible only to
+ *   whoever reads the logs. The user is told in-app when this happens, because a
+ *   setting that turned itself off without saying so is indistinguishable from a
+ *   bug.
+ * - **A success resets the count.** Three failures spread over six months is
+ *   evidence of nothing; three consecutive is evidence the address is dead.
+ */
+async function deliver(
+  target: RunTarget,
+  input: { email: string | null; userName: string | null; title: string; message: string },
+): Promise<void> {
+  const wantsEmail = target.channel === "email" || target.channel === "both";
+  const wantsApp = target.channel === "app" || target.channel === "both";
+
+  let emailError: string | null = null;
+
+  if (wantsEmail) {
+    if (!input.email) {
+      emailError = "No email address on the account";
+    } else {
+      const sent = await sendBriefEmail({
+        email: input.email,
+        userName: input.userName ?? "there",
+        heading: input.title,
+        body: input.message,
+      });
+      if (!sent) emailError = "Email delivery failed";
+    }
+  }
+
+  // In-app when asked for, and always as the fallback when email was the only
+  // route and it did not work.
+  if (wantsApp || emailError) {
+    await notify({ userId: target.userId, title: input.title, message: input.message });
+  }
+
+  if (!wantsEmail || target.scheduleId === null) return;
+
+  if (emailError) {
+    const failures = target.channelFailures + 1;
+
+    if (failures >= MAX_CHANNEL_FAILURES) {
+      await db
+        .update(aiSchedules)
+        .set({
+          channel: "app",
+          channelFailures: 0,
+          lastError: `${emailError} ${String(failures)} times in a row — email delivery turned off`,
+          updatedAt: new Date(),
+        })
+        .where(eq(aiSchedules.id, target.scheduleId));
+
+      await notify({
+        userId: target.userId,
+        title: "Email delivery turned off",
+        message: `We could not deliver your brief by email ${String(failures)} times in a row, so it will arrive here instead. Check your address in Settings → AI.`,
+        link: "/settings",
+      });
+
+      log.warn("email channel disabled after repeated failures", {
+        userId: target.userId,
+        failures,
+      });
+      return;
+    }
+
+    await db
+      .update(aiSchedules)
+      .set({ channelFailures: failures, lastError: emailError, updatedAt: new Date() })
+      .where(eq(aiSchedules.id, target.scheduleId));
+    return;
+  }
+
+  // Only write on a change: the common case is zero staying zero, and a sweep
+  // should not issue an update per user per day to say nothing happened.
+  if (target.channelFailures > 0) {
+    await db
+      .update(aiSchedules)
+      .set({ channelFailures: 0, updatedAt: new Date() })
+      .where(eq(aiSchedules.id, target.scheduleId));
+  }
+}
+
 /**
  * Run one user's daily brief.
  *
@@ -127,7 +258,8 @@ async function notify(input: {
  * and findings are worth recording whether or not there is a sentence to wrap
  * around them today.
  */
-async function runDailyBrief(userId: string): Promise<number> {
+async function runDailyBrief(target: RunTarget): Promise<number> {
+  const { userId } = target;
   const user = await loadSystemUser(userId);
   if (!user) return 0;
 
@@ -162,11 +294,11 @@ async function runDailyBrief(userId: string): Promise<number> {
     : // Budget spent: send the facts without the prose rather than nothing.
       fallbackBrief(facts, findings);
 
-  await notify({
-    userId,
+  await deliver(target, {
+    email: user.email,
+    userName: user.name,
     title: "Your daily brief",
     message,
-    link: "/chat/ai",
   });
 
   log.info("sent daily brief", {
@@ -180,7 +312,8 @@ async function runDailyBrief(userId: string): Promise<number> {
 }
 
 /** Run the radar alone — findings, no brief. */
-async function runRiskRadar(userId: string): Promise<number> {
+async function runRiskRadar(target: RunTarget): Promise<number> {
+  const { userId } = target;
   const user = await loadSystemUser(userId);
   if (!user) return 0;
 
@@ -199,14 +332,14 @@ async function runRiskRadar(userId: string): Promise<number> {
   const notable = fresh.filter((f) => f.severity !== "info");
   if (!notable.length) return 0;
 
-  await notify({
-    userId,
+  await deliver(target, {
+    email: user.email,
+    userName: user.name,
     title:
       notable.length === 1
         ? notable[0]!.title
         : `${String(notable.length)} things need attention`,
     message: notable.map((f) => f.detail).join(" "),
-    link: "/chat/ai",
   });
 
   return 1;
@@ -220,7 +353,8 @@ async function runRiskRadar(userId: string): Promise<number> {
  * discovered while writing a review of the past seven days belongs in tomorrow's
  * brief, where it is actionable, not in a document about a window that has closed.
  */
-async function runWeeklyRetro(userId: string): Promise<number> {
+async function runWeeklyRetro(target: RunTarget): Promise<number> {
+  const { userId } = target;
   const user = await loadSystemUser(userId);
   if (!user) return 0;
 
@@ -241,11 +375,11 @@ async function runWeeklyRetro(userId: string): Promise<number> {
       })
     : fallbackRetro(facts);
 
-  await notify({
-    userId,
+  await deliver(target, {
+    email: user.email,
+    userName: user.name,
     title: "Your week in review",
     message,
-    link: "/chat/ai",
   });
 
   log.info("sent weekly retro", {
@@ -265,11 +399,150 @@ async function runWeeklyRetro(userId: string): Promise<number> {
  * nothing else — and `Record<ScheduleKind, …>` makes the compiler say so if a
  * kind is ever added without a runner.
  */
-const RUNNERS: Record<ScheduleKind, (userId: string) => Promise<number>> = {
+const RUNNERS: Record<ScheduleKind, (target: RunTarget) => Promise<number>> = {
   daily_brief: runDailyBrief,
   risk_radar: runRiskRadar,
   weekly_retro: runWeeklyRetro,
 };
+
+/**
+ * Custom schedules that are due, with the caller's zone attached.
+ *
+ * Separate query and separate loop from the built-ins, mirroring the separate
+ * table. The due-ness rule is shared — `isScheduleDue` does not care which table
+ * a row came from — which is the part that actually needed to agree.
+ */
+async function dueCustomSchedules(now: Date) {
+  const rows = await db
+    .select({
+      id: aiCustomSchedules.id,
+      userId: aiCustomSchedules.userId,
+      name: aiCustomSchedules.name,
+      prompt: aiCustomSchedules.prompt,
+      hourLocal: aiCustomSchedules.hourLocal,
+      dayOfWeek: aiCustomSchedules.dayOfWeek,
+      channel: aiCustomSchedules.channel,
+      channelFailures: aiCustomSchedules.channelFailures,
+      lastRunAt: aiCustomSchedules.lastRunAt,
+      timeZone: users.timezone,
+    })
+    .from(aiCustomSchedules)
+    .innerJoin(users, eq(aiCustomSchedules.userId, users.id))
+    .where(eq(aiCustomSchedules.enabled, true))
+    .limit(500);
+
+  return rows.filter((row) => isScheduleDue(row, now));
+}
+
+/**
+ * Run the custom schedules that are due.
+ *
+ * The per-user cap is applied here rather than only at insert. Enforcing it only
+ * on write would let a user who downgrades keep running the schedules they
+ * created while entitled to them — so the ceiling is re-read at execution, and
+ * anything past it is skipped rather than deleted. Their rows survive an upgrade.
+ */
+async function runDueCustomSchedules(now: Date): Promise<CustomReport> {
+  const due = await dueCustomSchedules(now);
+
+  const report: CustomReport = {
+    considered: due.length,
+    ran: 0,
+    skippedOverCap: 0,
+    failed: 0,
+    notificationsSent: 0,
+  };
+
+  // Oldest first, so "your first three schedules" is stable rather than depending
+  // on which happened to be due this hour.
+  const perUserCount = new Map<string, number>();
+
+  for (const schedule of due.sort((a, b) => a.id - b.id)) {
+    const claimed = await db
+      .update(aiCustomSchedules)
+      .set({ lastRunAt: now, updatedAt: now, lastError: null })
+      .where(
+        and(
+          eq(aiCustomSchedules.id, schedule.id),
+          schedule.lastRunAt === null
+            ? isNull(aiCustomSchedules.lastRunAt)
+            : eq(aiCustomSchedules.lastRunAt, schedule.lastRunAt),
+        ),
+      )
+      .returning({ id: aiCustomSchedules.id });
+
+    if (!claimed.length) continue;
+
+    try {
+      const user = await loadSystemUser(schedule.userId);
+      if (!user) continue;
+
+      const used = perUserCount.get(schedule.userId) ?? 0;
+      const allowance = entitlementsFor(
+        systemContextFor(user),
+      ).maxSchedules;
+
+      if (used >= allowance) {
+        report.skippedOverCap += 1;
+        continue;
+      }
+      perUserCount.set(schedule.userId, used + 1);
+
+      // Metered against the proactive budget like every other unattended run, so
+      // three custom schedules cannot outspend the briefs.
+      if (!(await consumeSystemRateLimit(schedule.userId))) {
+        report.skippedOverCap += 1;
+        continue;
+      }
+
+      const ctx = systemContextFor(user);
+      const result = await runCustomSchedule({
+        ctx,
+        userId: schedule.userId,
+        name: schedule.name,
+        prompt: schedule.prompt,
+        userName: user.name,
+        locale: user.language as SupportedLocale,
+      });
+
+      report.ran += 1;
+
+      if (result.message) {
+        await deliver(
+          {
+            userId: schedule.userId,
+            scheduleId: null,
+            channel: schedule.channel,
+            channelFailures: schedule.channelFailures,
+          },
+          {
+            email: user.email,
+            userName: user.name,
+            title: schedule.name,
+            message: result.message,
+          },
+        );
+        report.notificationsSent += 1;
+      }
+    } catch (err) {
+      report.failed += 1;
+      log.error("custom schedule run failed", {
+        userId: schedule.userId,
+        scheduleId: schedule.id,
+        err,
+      });
+      await db
+        .update(aiCustomSchedules)
+        .set({
+          lastError: err instanceof Error ? err.message.slice(0, 500) : "unknown",
+          updatedAt: new Date(),
+        })
+        .where(eq(aiCustomSchedules.id, schedule.id));
+    }
+  }
+
+  return report;
+}
 
 /** Process an array with a bounded number in flight. */
 async function mapLimit<T>(
@@ -337,7 +610,12 @@ export async function runDueSchedules(now = new Date()): Promise<RunReport> {
         return;
       }
 
-      const sent = await run(schedule.userId);
+      const sent = await run({
+        userId: schedule.userId,
+        scheduleId: schedule.id,
+        channel: schedule.channel,
+        channelFailures: schedule.channelFailures,
+      });
 
       report.ran += 1;
       report.notificationsSent += sent;
@@ -362,10 +640,51 @@ export async function runDueSchedules(now = new Date()): Promise<RunReport> {
   });
 
   log.info("scheduled sweep complete", { ...report });
+
+  // Custom schedules run after the built-ins. Deliberate ordering: the brief is
+  // the thing a Pro user is paying for, so if a sweep is going to run out of a
+  // shared resource, the saved question is the one that should miss out.
+  try {
+    const custom = await runDueCustomSchedules(now);
+    report.custom = custom;
+  } catch (err) {
+    log.error("custom schedule sweep failed", { err });
+  }
+
   return report;
 }
 
-/** Run one user's brief on demand — used by "preview my brief" in settings. */
+/**
+ * Run one user's brief on demand — the "send me one now" button in settings.
+ *
+ * Delivers through the user's configured channel rather than forcing in-app.
+ * Confirming that email delivery actually works is most of why someone presses
+ * this, and a preview that always arrives in the app would report success for a
+ * channel it never tried.
+ *
+ * Failures still count toward disabling the channel. That is the right call even
+ * though the user is watching: an address that bounces bounces, and pressing the
+ * button three times is a clearer way to discover it than three silent mornings.
+ */
 export async function runBriefNow(userId: string): Promise<number> {
-  return runDailyBrief(userId);
+  const [row] = await db
+    .select({
+      id: aiSchedules.id,
+      channel: aiSchedules.channel,
+      channelFailures: aiSchedules.channelFailures,
+    })
+    .from(aiSchedules)
+    .where(
+      and(eq(aiSchedules.userId, userId), eq(aiSchedules.kind, "daily_brief")),
+    )
+    .limit(1);
+
+  return runDailyBrief({
+    userId,
+    scheduleId: row?.id ?? null,
+    // No row means the brief has never been switched on. Previewing it is still
+    // reasonable, and in-app is the only channel that needs no configuration.
+    channel: row?.channel ?? "app",
+    channelFailures: row?.channelFailures ?? 0,
+  });
 }

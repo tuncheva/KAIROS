@@ -39,11 +39,14 @@ import {
   suggestedFixFor,
   type FindingKind,
 } from "~/server/llm/scheduled/riskRadar";
+import { MAX_PROMPT_CHARS } from "~/server/llm/scheduled/customSchedules";
 import { searchMessages } from "~/server/llm/retention";
 import { runBriefNow } from "~/server/llm/scheduled/runner";
 import { DEFAULT_TIME_ZONE } from "~/lib/timezone";
-import { aiSchedules, users } from "~/server/db/schema";
-import { and, eq } from "drizzle-orm";
+import { entitlementsFor } from "~/server/billing/entitlements";
+import { aiCustomSchedules, aiSchedules, users } from "~/server/db/schema";
+import { TRPCError } from "@trpc/server";
+import { and, eq, sql } from "drizzle-orm";
 import {
   GenerateTaskDraftsInputSchema,
   ExtractTasksFromPdfInputSchema,
@@ -75,7 +78,10 @@ import {
  * Confirm/Apply procedures are NOT rate-limited since they don't call the LLM.
  */
 const rateLimitedProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  await consumeRateLimit(ctx.session.user.id);
+  await consumeRateLimit(
+    ctx.session.user.id,
+    entitlementsFor(ctx).aiRequestsPerDay,
+  );
   return next();
 });
 
@@ -106,7 +112,10 @@ export const agentRouter = createTRPCRouter({
    * Check the caller's remaining AI request quota.
    */
   rateLimitStatus: protectedProcedure.query(async ({ ctx }) => {
-    return checkRateLimit(ctx.session.user.id);
+    return checkRateLimit(
+      ctx.session.user.id,
+      entitlementsFor(ctx).aiRequestsPerDay,
+    );
   }),
   /**
    * General A1 draft — workspace concierge answers questions with LLM.
@@ -577,6 +586,8 @@ export const agentRouter = createTRPCRouter({
         kind,
         enabled: row?.enabled ?? false,
         hourLocal: row?.hourLocal ?? defaults.hourLocal,
+        channel: row?.channel ?? "app",
+        channelFailures: row?.channelFailures ?? 0,
         // Null means daily. Weekly kinds default to their usual day rather than
         // to null, so a user enabling the retrospective gets a Friday one rather
         // than a daily one they then have to correct.
@@ -596,6 +607,7 @@ export const agentRouter = createTRPCRouter({
         hourLocal: z.number().int().min(0).max(23).optional(),
         /** 0 = Sunday … 6 = Saturday. Null means every day. */
         dayOfWeek: z.number().int().min(0).max(6).nullable().optional(),
+        channel: z.enum(["app", "email", "both"]).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -619,6 +631,12 @@ export const agentRouter = createTRPCRouter({
             ...(input.dayOfWeek !== undefined
               ? { dayOfWeek: input.dayOfWeek }
               : {}),
+            // Changing the channel clears the failure count: the user has just
+            // told us something about delivery, and holding two strikes against a
+            // freshly corrected address would disable it on the next hiccup.
+            ...(input.channel !== undefined
+              ? { channel: input.channel, channelFailures: 0 }
+              : {}),
             updatedAt: new Date(),
           })
           .where(eq(aiSchedules.id, existing.id));
@@ -632,8 +650,124 @@ export const agentRouter = createTRPCRouter({
             input.dayOfWeek !== undefined
               ? input.dayOfWeek
               : SCHEDULE_DEFAULTS[input.kind].dayOfWeek,
+          channel: input.channel ?? "app",
         });
       }
+
+      return { ok: true };
+    }),
+
+  /** The caller's own saved questions. */
+  customSchedules: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select()
+      .from(aiCustomSchedules)
+      .where(eq(aiCustomSchedules.userId, ctx.session.user.id))
+      .orderBy(aiCustomSchedules.id);
+
+    return {
+      schedules: rows,
+      /** So the UI can say "2 of 3 used" rather than only refusing at the limit. */
+      allowance: entitlementsFor(ctx).maxSchedules,
+    };
+  }),
+
+  createCustomSchedule: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().trim().min(2).max(80),
+        prompt: z.string().trim().min(5).max(MAX_PROMPT_CHARS),
+        dayOfWeek: z.number().int().min(0).max(6).nullable().default(null),
+        hourLocal: z.number().int().min(0).max(23).default(8),
+        channel: z.enum(["app", "email", "both"]).default("app"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const allowance = entitlementsFor(ctx).maxSchedules;
+
+      const [{ count } = { count: 0 }] = await ctx.db
+        .select({ count: sql<number>`count(*)`.mapWith(Number) })
+        .from(aiCustomSchedules)
+        .where(eq(aiCustomSchedules.userId, ctx.session.user.id));
+
+      // Refused rather than silently trimmed. The runner also skips beyond the
+      // cap, so the two agree; this is the one that can explain itself.
+      if (count >= allowance) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            allowance === 0
+              ? "Saved schedules are a Pro feature."
+              : `You can have ${String(allowance)} saved schedules. Delete one to add another.`,
+        });
+      }
+
+      const [row] = await ctx.db
+        .insert(aiCustomSchedules)
+        .values({
+          userId: ctx.session.user.id,
+          name: input.name,
+          prompt: input.prompt,
+          dayOfWeek: input.dayOfWeek,
+          hourLocal: input.hourLocal,
+          channel: input.channel,
+        })
+        .returning({ id: aiCustomSchedules.id });
+
+      return { id: row?.id ?? null };
+    }),
+
+  updateCustomSchedule: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        name: z.string().trim().min(2).max(80).optional(),
+        prompt: z.string().trim().min(5).max(MAX_PROMPT_CHARS).optional(),
+        dayOfWeek: z.number().int().min(0).max(6).nullable().optional(),
+        hourLocal: z.number().int().min(0).max(23).optional(),
+        channel: z.enum(["app", "email", "both"]).optional(),
+        enabled: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...changes } = input;
+
+      // Ownership is in the WHERE clause, not checked and then acted on: a
+      // separate read would be a race, and an update that matches no row is the
+      // correct outcome for someone else's id.
+      const updated = await ctx.db
+        .update(aiCustomSchedules)
+        .set({
+          ...changes,
+          ...(changes.channel !== undefined ? { channelFailures: 0 } : {}),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(aiCustomSchedules.id, id),
+            eq(aiCustomSchedules.userId, ctx.session.user.id),
+          ),
+        )
+        .returning({ id: aiCustomSchedules.id });
+
+      if (!updated.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Schedule not found." });
+      }
+
+      return { ok: true };
+    }),
+
+  deleteCustomSchedule: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(aiCustomSchedules)
+        .where(
+          and(
+            eq(aiCustomSchedules.id, input.id),
+            eq(aiCustomSchedules.userId, ctx.session.user.id),
+          ),
+        );
 
       return { ok: true };
     }),
@@ -684,7 +818,10 @@ export const agentRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const [metrics, interactive, system] = await Promise.all([
         getAiMetrics(ctx, ctx.session.user.id, input?.days ?? 30),
-        checkRateLimit(ctx.session.user.id),
+        checkRateLimit(
+          ctx.session.user.id,
+          entitlementsFor(ctx).aiRequestsPerDay,
+        ),
         checkSystemRateLimit(ctx.session.user.id),
       ]);
       return { ...metrics, quota: { interactive, system } };
