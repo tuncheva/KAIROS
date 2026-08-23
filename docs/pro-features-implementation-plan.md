@@ -26,7 +26,7 @@
 | 7 | Brief to email | 2 | ~~2.5d~~ **done** | 2 columns | no |
 | 8 | User-defined schedules | 2 | ~~3d~~ **done** | yes | no |
 | 9 | Per-plan rate ceilings | 2 | ~~1d~~ **done** | no | no |
-| 10 | Plan diff preview | 3 | 4d | no (1 column) | no |
+| 10 | Plan diff preview | 3 | ~~4d~~ **server done** | 1 column ×4 | no |
 | 11 | API keys + webhooks | 3 | 5d | yes (2) | no |
 | 12 | Documents the agents read | 3 | 8d | yes (2) | pgvector |
 | 13 | Meeting prep briefs | 3 | 3d | no | no (needs #14) |
@@ -346,6 +346,27 @@ module constant. Correct for one global limit; wrong the moment two plans differ
 ---
 
 ## Phase 3 — Real engineering (~15 days)
+
+> **#10 is done server-side.** `beforeJson` is on all four `*_applies` tables,
+> captured by A2 and A3, and it upgraded undo from "delete what was created" to a
+> real rollback of edits — the thing `undo.ts` documented as impossible.
+>
+> Two corrections to the sketch below:
+>
+> - **"Same transaction" was not available.** The apply path is a sequence of
+>   statements, not a transaction. The image is captured by reading the affected
+>   rows immediately before mutating them. A crash mid-apply can leave an image of
+>   partly-changed rows — still strictly more than the nothing recorded before, and
+>   making the apply transactional is its own change.
+> - **Deletes are still not reversible, and that is deliberate.** The image holds a
+>   deleted row's *contents* but its id is gone; re-inserting under a new one would
+>   silently orphan every task comment, activity-log entry and finding that pointed
+>   at the old one. Reported honestly rather than faked.
+>
+> **No client UI.** There is no undo UI either — `undoApply` and `undoAvailability`
+> have existed with no caller — so `taskPlanDiff` matches the existing state rather
+> than falling short of it. The diff card belongs in the chat components another
+> session is currently rewriting.
 
 Each of these is a genuine build. None is required to justify €12, and none should be
 promised with a date before its phase starts.

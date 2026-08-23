@@ -64,6 +64,27 @@ export const agentTaskPlannerApplies = createTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     planHash: varchar("plan_hash", { length: 64 }).notNull(),
+    /**
+     * The affected rows as they were immediately before this apply ran.
+     *
+     * The gap this closes: the apply tables recorded *which* rows were touched
+     * and never their prior contents, so `undo.ts` could delete what was created
+     * and had nothing to restore an edit from. Two features were blocked by the
+     * same missing column — a real rollback, and a field-level preview of what a
+     * plan is about to change.
+     *
+     * Captured by reading the rows before mutating them, not inside a database
+     * transaction: the apply path is a sequence of statements rather than a
+     * transaction today. A crash mid-apply can therefore leave a before-image
+     * describing rows that were only partly changed, which is still strictly more
+     * than existed before — and making the apply transactional is a separate
+     * change with its own risks.
+     *
+     * Size-capped at the capture site. A plan touching hundreds of rows stores a
+     * truncation marker rather than the lot, or these tables become the largest
+     * in the database.
+     */
+    beforeJson: text("before_json"),
     resultJson: text("result_json").notNull(),
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   }),
@@ -113,6 +134,27 @@ export const agentNotesVaultApplies = createTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     planHash: varchar("plan_hash", { length: 64 }).notNull(),
+    /**
+     * The affected rows as they were immediately before this apply ran.
+     *
+     * The gap this closes: the apply tables recorded *which* rows were touched
+     * and never their prior contents, so `undo.ts` could delete what was created
+     * and had nothing to restore an edit from. Two features were blocked by the
+     * same missing column — a real rollback, and a field-level preview of what a
+     * plan is about to change.
+     *
+     * Captured by reading the rows before mutating them, not inside a database
+     * transaction: the apply path is a sequence of statements rather than a
+     * transaction today. A crash mid-apply can therefore leave a before-image
+     * describing rows that were only partly changed, which is still strictly more
+     * than existed before — and making the apply transactional is a separate
+     * change with its own risks.
+     *
+     * Size-capped at the capture site. A plan touching hundreds of rows stores a
+     * truncation marker rather than the lot, or these tables become the largest
+     * in the database.
+     */
+    beforeJson: text("before_json"),
     resultJson: text("result_json").notNull(),
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   }),
@@ -170,6 +212,27 @@ export const agentEventsPublisherApplies = createTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     planHash: varchar("plan_hash", { length: 64 }).notNull(),
+    /**
+     * The affected rows as they were immediately before this apply ran.
+     *
+     * The gap this closes: the apply tables recorded *which* rows were touched
+     * and never their prior contents, so `undo.ts` could delete what was created
+     * and had nothing to restore an edit from. Two features were blocked by the
+     * same missing column — a real rollback, and a field-level preview of what a
+     * plan is about to change.
+     *
+     * Captured by reading the rows before mutating them, not inside a database
+     * transaction: the apply path is a sequence of statements rather than a
+     * transaction today. A crash mid-apply can therefore leave a before-image
+     * describing rows that were only partly changed, which is still strictly more
+     * than existed before — and making the apply transactional is a separate
+     * change with its own risks.
+     *
+     * Size-capped at the capture site. A plan touching hundreds of rows stores a
+     * truncation marker rather than the lot, or these tables become the largest
+     * in the database.
+     */
+    beforeJson: text("before_json"),
     resultJson: text("result_json").notNull(),
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   }),
@@ -550,6 +613,27 @@ export const agentOrgAdminApplies = createTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     planHash: varchar("plan_hash", { length: 64 }).notNull(),
+    /**
+     * The affected rows as they were immediately before this apply ran.
+     *
+     * The gap this closes: the apply tables recorded *which* rows were touched
+     * and never their prior contents, so `undo.ts` could delete what was created
+     * and had nothing to restore an edit from. Two features were blocked by the
+     * same missing column — a real rollback, and a field-level preview of what a
+     * plan is about to change.
+     *
+     * Captured by reading the rows before mutating them, not inside a database
+     * transaction: the apply path is a sequence of statements rather than a
+     * transaction today. A crash mid-apply can therefore leave a before-image
+     * describing rows that were only partly changed, which is still strictly more
+     * than existed before — and making the apply transactional is a separate
+     * change with its own risks.
+     *
+     * Size-capped at the capture site. A plan touching hundreds of rows stores a
+     * truncation marker rather than the lot, or these tables become the largest
+     * in the database.
+     */
+    beforeJson: text("before_json"),
     resultJson: text("result_json").notNull(),
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   }),

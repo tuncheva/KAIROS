@@ -21,6 +21,7 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
+import { Overlay } from "./Overlay";
 import {
   isRecent,
   isSameDay,
@@ -936,6 +937,7 @@ function DeleteDialog({
   const t = useTranslations("projects");
 
   return (
+    <Overlay>
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <button type="button" aria-label={t("delete.cancel")} onClick={onCancel} className="absolute inset-0" />
       <div
@@ -964,5 +966,6 @@ function DeleteDialog({
         </div>
       </div>
     </div>
+    </Overlay>
   );
 }

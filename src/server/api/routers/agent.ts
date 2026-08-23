@@ -39,14 +39,22 @@ import {
   suggestedFixFor,
   type FindingKind,
 } from "~/server/llm/scheduled/riskRadar";
+import { diffTaskPlan } from "~/server/llm/beforeImage";
 import { MAX_PROMPT_CHARS } from "~/server/llm/scheduled/customSchedules";
 import { searchMessages } from "~/server/llm/retention";
 import { runBriefNow } from "~/server/llm/scheduled/runner";
 import { DEFAULT_TIME_ZONE } from "~/lib/timezone";
 import { entitlementsFor } from "~/server/billing/entitlements";
-import { aiCustomSchedules, aiSchedules, users } from "~/server/db/schema";
+import {
+  agentTaskPlannerDrafts,
+  aiCustomSchedules,
+  aiSchedules,
+  tasks,
+  users,
+} from "~/server/db/schema";
+import { assertProjectAccess } from "~/server/api/authz";
 import { TRPCError } from "@trpc/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   GenerateTaskDraftsInputSchema,
   ExtractTasksFromPdfInputSchema,
@@ -787,6 +795,100 @@ export const agentRouter = createTRPCRouter({
   // -------------------------------------------------------------------------
   // G-5 Undo
   // -------------------------------------------------------------------------
+
+  /**
+   * What a task plan will change, field by field, before it is confirmed.
+   *
+   * Undo answers "that was wrong". This prevents the moment. For someone acting
+   * on an agent's judgment over real data, prevention is worth more than
+   * reversal — and reviewing thirty proposed edits properly is work most people
+   * will skim, which is exactly why the skim needs to show the *diff* rather
+   * than a count.
+   *
+   * Computed live rather than stored with the draft. A plan drafted two minutes
+   * ago may already be stale — a colleague edited the task, or deleted it — and a
+   * preview cached at draft time would confidently describe a change that will
+   * not happen.
+   */
+  taskPlanDiff: protectedProcedure
+    .input(z.object({ draftId: z.string().min(1).max(80) }))
+    .query(async ({ ctx, input }) => {
+      const [draft] = await ctx.db
+        .select({
+          userId: agentTaskPlannerDrafts.userId,
+          projectId: agentTaskPlannerDrafts.projectId,
+          planJson: agentTaskPlannerDrafts.planJson,
+          status: agentTaskPlannerDrafts.status,
+        })
+        .from(agentTaskPlannerDrafts)
+        .where(eq(agentTaskPlannerDrafts.id, input.draftId))
+        .limit(1);
+
+      if (!draft) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found." });
+      }
+      if (draft.userId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      // Read access, not write: previewing is looking. The confirm and apply
+      // steps do their own `write` check, so this cannot become a way to act.
+      await assertProjectAccess(ctx, draft.projectId, "read");
+
+      const plan = JSON.parse(draft.planJson) as {
+        creates?: Array<{ title: string }>;
+        updates?: Array<{ taskId: number; patch: Record<string, unknown> }>;
+        statusChanges?: Array<{ taskId: number; status: string }>;
+        deletes?: Array<{ taskId: number; dangerous?: boolean }>;
+      };
+
+      const creates = plan.creates ?? [];
+      const updates = plan.updates ?? [];
+      const statusChanges = plan.statusChanges ?? [];
+      // Only the deletes the apply would actually perform. A delete without
+      // `dangerous` is skipped there, so showing it here would promise a change
+      // that never comes.
+      const deletes = (plan.deletes ?? []).filter((d) => d.dangerous);
+
+      const referenced = [
+        ...new Set([
+          ...updates.map((u) => u.taskId),
+          ...statusChanges.map((c) => c.taskId),
+          ...deletes.map((d) => d.taskId),
+        ]),
+      ];
+
+      const currentRows = referenced.length
+        ? await ctx.db
+            .select({
+              id: tasks.id,
+              title: tasks.title,
+              description: tasks.description,
+              status: tasks.status,
+              priority: tasks.priority,
+              assignedToId: tasks.assignedToId,
+              dueDate: tasks.dueDate,
+              orderIndex: tasks.orderIndex,
+            })
+            .from(tasks)
+            .where(
+              and(
+                inArray(tasks.id, referenced),
+                eq(tasks.projectId, draft.projectId),
+              ),
+            )
+        : [];
+
+      const diff = diffTaskPlan({
+        creates,
+        updates,
+        statusChanges,
+        deletes,
+        current: new Map(currentRows.map((r) => [r.id, r])),
+      });
+
+      return { ...diff, status: draft.status };
+    }),
 
   undoAvailability: protectedProcedure
     .input(z.object({ draftId: z.string().min(1) }))

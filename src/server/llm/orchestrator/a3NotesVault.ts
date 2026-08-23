@@ -6,9 +6,12 @@ import {
   TRPCError,
 } from "@trpc/server";
 import {
-  eq,
   and,
+  eq,
+  inArray,
 } from "drizzle-orm";
+
+import { buildBeforeImage } from "~/server/llm/beforeImage";
 
 import type {
   TRPCContext,
@@ -301,6 +304,40 @@ export const a3NotesVault = {
     const deletedNoteIds: number[] = [];
     const blockedNoteIds: number[] = [];
 
+    // The notes this plan may change, as they are now — captured before the loop
+    // touches any of them, so an edit can be rolled back. See `beforeImage.ts`.
+    //
+    // Locked notes are read here even though their content is otherwise withheld:
+    // the plan can only reach one that the user unlocked for this turn, and a
+    // rollback that skipped locked notes would restore some of a plan and not the
+    // rest without saying so. The image lives on an apply row the owner alone can
+    // read, and is culled with it.
+    const touchedNoteIds = [
+      ...new Set(
+        plan.operations
+          .filter((op) => op.type === "update" || op.type === "delete")
+          .map((op) => (op as { noteId: number }).noteId),
+      ),
+    ];
+
+    const beforeNotes = touchedNoteIds.length
+      ? await input.ctx.db
+          .select({
+            id: stickyNotes.id,
+            title: stickyNotes.title,
+            content: stickyNotes.content,
+          })
+          .from(stickyNotes)
+          .where(
+            and(
+              inArray(stickyNotes.id, touchedNoteIds),
+              eq(stickyNotes.createdById, userId),
+            ),
+          )
+      : [];
+
+    const beforeImage = buildBeforeImage({ notes: beforeNotes });
+
     for (const op of plan.operations) {
       if (op.type === "create") {
         const inserted = await input.ctx.db
@@ -355,6 +392,7 @@ export const a3NotesVault = {
         userId,
         planHash: draft.planHash,
         resultJson: JSON.stringify({ createdNoteIds, updatedNoteIds, deletedNoteIds, blockedNoteIds }),
+        beforeJson: JSON.stringify(beforeImage),
       });
 
     await input.ctx.db

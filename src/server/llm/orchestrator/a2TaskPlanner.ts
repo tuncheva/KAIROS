@@ -11,9 +11,12 @@ import {
   TRPCError,
 } from "@trpc/server";
 import crypto from "node:crypto";
+
+import { buildBeforeImage } from "~/server/llm/beforeImage";
 import {
-  eq,
   and,
+  eq,
+  inArray,
 } from "drizzle-orm";
 
 import type {
@@ -444,6 +447,58 @@ export const a2TaskPlanner = {
     const statusChangedTaskIds: number[] = [];
     const deletedTaskIds: number[] = [];
 
+    // Read the rows this plan is about to change, *before* changing them.
+    //
+    // This is the whole of what makes undo a rollback rather than a delete of
+    // whatever was created: the apply row previously recorded which ids were
+    // touched and never what they held, so an edit had nothing to restore from.
+    //
+    // Not inside a transaction, because the apply below is not one either. The
+    // consequence is bounded and worth stating: if the process dies mid-apply the
+    // image describes rows that were only partly changed. That is still strictly
+    // better than the nothing that was recorded before, and making the whole
+    // apply transactional is a separate change with its own failure modes.
+    const touchedIds = [
+      ...plan.updates.map((u) => u.taskId),
+      ...plan.statusChanges.map((c) => c.taskId),
+      ...plan.deletes.filter((d) => d.dangerous).map((d) => d.taskId),
+    ];
+
+    const beforeRows = touchedIds.length
+      ? await input.ctx.db
+          .select({
+            id: tasks.id,
+            title: tasks.title,
+            description: tasks.description,
+            status: tasks.status,
+            priority: tasks.priority,
+            assignedToId: tasks.assignedToId,
+            dueDate: tasks.dueDate,
+            orderIndex: tasks.orderIndex,
+            completedAt: tasks.completedAt,
+            completedById: tasks.completedById,
+            completionNote: tasks.completionNote,
+          })
+          .from(tasks)
+          .where(
+            and(
+              inArray(tasks.id, [...new Set(touchedIds)]),
+              // Scoped to the project being applied to, like every other
+              // statement here. An apply row must not become a way to read a task
+              // from somewhere else.
+              eq(tasks.projectId, targetProjectId),
+            ),
+          )
+      : [];
+
+    const beforeImage = buildBeforeImage({
+      tasks: beforeRows.map((r) => ({
+        ...r,
+        dueDate: r.dueDate ? r.dueDate.toISOString() : null,
+        completedAt: r.completedAt ? r.completedAt.toISOString() : null,
+      })),
+    });
+
     // Apply creates with idempotency.
     for (const c of plan.creates) {
       // idempotency: if a task already exists with this clientRequestId, skip create.
@@ -554,6 +609,7 @@ export const a2TaskPlanner = {
       projectId: draft.projectId,
       planHash: draft.planHash,
       resultJson,
+      beforeJson: JSON.stringify(beforeImage),
     });
 
     await input.ctx.db

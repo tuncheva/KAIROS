@@ -11,14 +11,17 @@
  *
  * - **Creates are reversible.** The apply row records exactly which ids were
  *   inserted, and deleting those ids restores the previous state exactly.
- * - **Updates and deletes are not.** The applies table records *which* rows were
- *   touched, never their prior contents, so there is nothing to restore them
- *   from. Reconstructing that would mean a full before-image in every apply row —
- *   worth doing, but it is a schema change and a migration, not something to fake
- *   here by guessing.
- *
- * So undo removes what was created and reports honestly about the rest, rather
- * than claiming a rollback it cannot perform.
+ * - **Edits are now reversible too.** The before-image the apply stores
+ *   (`beforeJson`, see `beforeImage.ts`) holds the affected rows as they were, so
+ *   an update or a status change can be written back. This is what the comment
+ *   here used to describe as impossible; the schema change it called for is done.
+ * - **Deletes are still not reversible.** A deleted row's *contents* are in the
+ *   before-image, but its id is gone and re-inserting under a new one would
+ *   silently break every reference to it — task comments, activity log,
+ *   findings. Reported rather than faked.
+ * - **A truncated image restores nothing.** Past the snapshot cap the image holds
+ *   a count instead of rows. Restoring the stored half and reporting success
+ *   would be the worst available outcome, so it refuses and says why.
  */
 
 import "server-only";
@@ -36,6 +39,8 @@ import {
 } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
 
+import { parseBeforeImage } from "./beforeImage";
+
 const log = createLogger("llm.undo");
 
 /**
@@ -52,6 +57,9 @@ export interface UndoResult {
   undone: {
     tasksDeleted: number;
     notesDeleted: number;
+    /** Rows written back to their previous contents. */
+    tasksRestored: number;
+    notesRestored: number;
   };
   /** Operations that cannot be reversed, phrased for the user. */
   notReversed: string[];
@@ -74,22 +82,38 @@ function withinWindow(createdAt: Date): boolean {
   return Date.now() - createdAt.getTime() <= UNDO_WINDOW_MS;
 }
 
-function describeIrreversible(
-  updated: number,
-  deleted: number,
-  noun: string,
-): string[] {
+/**
+ * What could not be put back, in the user's terms.
+ *
+ * `unrestoredEdits` is non-zero only when the before-image was missing or
+ * truncated — an apply from before the column existed, or a plan too large to
+ * snapshot. Distinguished from deletes because the two have different remedies:
+ * an unrestorable edit can be fixed by hand, where a deleted row is gone.
+ */
+function describeIrreversible(input: {
+  unrestoredEdits: number;
+  deleted: number;
+  truncated: boolean;
+  noun: string;
+}): string[] {
   const out: string[] = [];
-  if (updated > 0) {
+
+  if (input.truncated) {
     out.push(
-      `${String(updated)} ${noun} were edited. I can't restore their previous contents — that isn't recorded.`,
+      `This plan changed too many ${input.noun} to record their previous contents, so the edits can't be rolled back.`,
+    );
+  } else if (input.unrestoredEdits > 0) {
+    out.push(
+      `${String(input.unrestoredEdits)} ${input.noun} were edited before change history was kept, so I can't restore them.`,
     );
   }
-  if (deleted > 0) {
+
+  if (input.deleted > 0) {
     out.push(
-      `${String(deleted)} ${noun} were deleted. Deletions can't be undone from here.`,
+      `${String(input.deleted)} ${input.noun} were deleted. I have their contents but not their identity, so re-creating them would break anything that referred to them.`,
     );
   }
+
   return out;
 }
 
@@ -111,6 +135,7 @@ export async function undoTaskApply(
       userId: agentTaskPlannerApplies.userId,
       projectId: agentTaskPlannerApplies.projectId,
       resultJson: agentTaskPlannerApplies.resultJson,
+      beforeJson: agentTaskPlannerApplies.beforeJson,
       createdAt: agentTaskPlannerApplies.createdAt,
     })
     .from(agentTaskPlannerApplies)
@@ -146,16 +171,72 @@ export async function undoTaskApply(
     tasksDeleted = removed.length;
   }
 
-  log.info("undid a task apply", { draftId, tasksDeleted });
+  // Put edited rows back.
+  //
+  // Deleted rows are deliberately excluded even though the image holds them: the
+  // row is gone and re-inserting it would take a new id, silently orphaning every
+  // comment, activity-log entry and finding that pointed at the old one.
+  const editedIds = new Set([
+    ...(results.updatedTaskIds ?? []),
+    ...(results.statusChangedTaskIds ?? []),
+  ]);
+  const deletedIds = new Set(results.deletedTaskIds ?? []);
+  for (const id of deletedIds) editedIds.delete(id);
+
+  const before = parseBeforeImage(applyRow.beforeJson);
+  let tasksRestored = 0;
+
+  if (before && !before.truncated) {
+    for (const snapshot of before.tasks ?? []) {
+      if (!editedIds.has(snapshot.id)) continue;
+
+      const restored = await ctx.db
+        .update(tasks)
+        .set({
+          title: snapshot.title ? String(snapshot.title) : undefined,
+          description: snapshot.description as string | null,
+          status: snapshot.status as never,
+          priority: snapshot.priority as never,
+          assignedToId: (snapshot.assignedToId as string | null) ?? null,
+          dueDate: snapshot.dueDate ? new Date(String(snapshot.dueDate)) : null,
+          orderIndex:
+            typeof snapshot.orderIndex === "number"
+              ? snapshot.orderIndex
+              : undefined,
+          completedAt: snapshot.completedAt
+            ? new Date(String(snapshot.completedAt))
+            : null,
+          completedById: (snapshot.completedById as string | null) ?? null,
+          completionNote: (snapshot.completionNote as string | null) ?? null,
+          lastEditedById: userId,
+          lastEditedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(tasks.id, snapshot.id),
+            // Re-scoped, like the delete above. The apply row is a record of what
+            // happened, not a licence to write to those ids later.
+            eq(tasks.projectId, applyRow.projectId),
+          ),
+        )
+        .returning({ id: tasks.id });
+
+      tasksRestored += restored.length;
+    }
+  }
+
+  log.info("undid a task apply", { draftId, tasksDeleted, tasksRestored });
 
   return {
-    undone: { tasksDeleted, notesDeleted: 0 },
-    notReversed: describeIrreversible(
-      (results.updatedTaskIds?.length ?? 0) +
-        (results.statusChangedTaskIds?.length ?? 0),
-      results.deletedTaskIds?.length ?? 0,
-      "tasks",
-    ),
+    undone: { tasksDeleted, notesDeleted: 0, tasksRestored, notesRestored: 0 },
+    notReversed: describeIrreversible({
+      // Only edits that were *not* restored are reported as lost.
+      unrestoredEdits: editedIds.size - tasksRestored,
+      deleted: deletedIds.size,
+      truncated: Boolean(before?.truncated),
+      noun: "tasks",
+    }),
   };
 }
 
@@ -169,6 +250,7 @@ export async function undoNoteApply(
     .select({
       userId: agentNotesVaultApplies.userId,
       resultJson: agentNotesVaultApplies.resultJson,
+      beforeJson: agentNotesVaultApplies.beforeJson,
       createdAt: agentNotesVaultApplies.createdAt,
     })
     .from(agentNotesVaultApplies)
@@ -204,13 +286,46 @@ export async function undoNoteApply(
     notesDeleted = removed.length;
   }
 
+  // Notes follow the same rule as tasks: edits are restorable from the image,
+  // deletes are not, because the id is what other rows point at.
+  const editedNoteIds = new Set(results.updatedNoteIds ?? []);
+  const deletedNoteIds = new Set(results.deletedNoteIds ?? []);
+  for (const id of deletedNoteIds) editedNoteIds.delete(id);
+
+  const before = parseBeforeImage(applyRow.beforeJson);
+  let notesRestored = 0;
+
+  if (before && !before.truncated) {
+    for (const snapshot of before.notes ?? []) {
+      if (!editedNoteIds.has(snapshot.id)) continue;
+
+      const restored = await ctx.db
+        .update(stickyNotes)
+        .set({
+          title: snapshot.title,
+          content: snapshot.content ?? "",
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(stickyNotes.id, snapshot.id),
+            eq(stickyNotes.createdById, userId),
+          ),
+        )
+        .returning({ id: stickyNotes.id });
+
+      notesRestored += restored.length;
+    }
+  }
+
   return {
-    undone: { tasksDeleted: 0, notesDeleted },
-    notReversed: describeIrreversible(
-      results.updatedNoteIds?.length ?? 0,
-      results.deletedNoteIds?.length ?? 0,
-      "notes",
-    ),
+    undone: { tasksDeleted: 0, notesDeleted, tasksRestored: 0, notesRestored },
+    notReversed: describeIrreversible({
+      unrestoredEdits: editedNoteIds.size - notesRestored,
+      deleted: deletedNoteIds.size,
+      truncated: Boolean(before?.truncated),
+      noun: "notes",
+    }),
   };
 }
 

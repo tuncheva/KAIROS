@@ -27,8 +27,8 @@ const { NewProjectDrawer } = await import("~/components/projects/NewProjectDrawe
 
 const setup = () => {
   const user = userEvent.setup();
-  render(<NewProjectDrawer />);
-  return user;
+  const view = render(<NewProjectDrawer />);
+  return { user, container: view.container };
 };
 
 beforeEach(() => {
@@ -43,21 +43,21 @@ describe("NewProjectDrawer", () => {
   });
 
   it("opens on the trigger and focuses the name field", async () => {
-    const user = setup();
+    const { user } = setup();
     await user.click(screen.getByRole("button", { name: "New project" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(await screen.findByPlaceholderText(/Thesis, Q4 launch/)).toHaveFocus();
   });
 
   it("closes on Escape", async () => {
-    const user = setup();
+    const { user } = setup();
     await user.click(screen.getByRole("button", { name: "New project" }));
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("labels the two identically-worded pill sets apart", async () => {
-    const user = setup();
+    const { user } = setup();
     await user.click(screen.getByRole("button", { name: "New project" }));
     // "Can view" / "Can edit" appear in both sets; the radiogroup label is what
     // tells a screen reader which control it is reading.
@@ -67,14 +67,28 @@ describe("NewProjectDrawer", () => {
     expect(within(permission).getAllByRole("radio")).toHaveLength(2);
   });
 
+  it("portals the drawer to the body, out of the page shell", async () => {
+    // The app shell wears `.kairos-page-enter`, whose `forwards` end frame keeps
+    // a transform and a `blur(0px)` filter. Either one makes the shell a
+    // containing block, so an overlay rendered inside it measures `fixed
+    // inset-0` against the shell instead of the viewport — the drawer slid in
+    // from the wrong origin and could not be composited. The portal is the fix.
+    const { user, container } = setup();
+    await user.click(screen.getByRole("button", { name: "New project" }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(container).not.toContainElement(dialog);
+    expect(dialog.parentElement).toBe(document.body);
+  });
+
   it("will not submit without a name", async () => {
-    const user = setup();
+    const { user } = setup();
     await user.click(screen.getByRole("button", { name: "New project" }));
     expect(screen.getByRole("button", { name: "Create project" })).toBeDisabled();
   });
 
   it("sends the trimmed name, the description and the chosen visibility", async () => {
-    const user = setup();
+    const { user } = setup();
     await user.click(screen.getByRole("button", { name: "New project" }));
     await user.type(screen.getByPlaceholderText(/Thesis, Q4 launch/), "  Q4 launch  ");
     await user.type(screen.getByPlaceholderText("What is this project for?"), "Landing and sign-in");
@@ -90,7 +104,7 @@ describe("NewProjectDrawer", () => {
   });
 
   it("omits an empty description rather than sending a blank string", async () => {
-    const user = setup();
+    const { user } = setup();
     await user.click(screen.getByRole("button", { name: "New project" }));
     await user.type(screen.getByPlaceholderText(/Thesis, Q4 launch/), "Thesis");
     await user.click(screen.getByRole("button", { name: "Create project" }));
@@ -103,7 +117,7 @@ describe("NewProjectDrawer", () => {
   });
 
   it("defaults to private, and forgets the draft after cancelling", async () => {
-    const user = setup();
+    const { user } = setup();
     await user.click(screen.getByRole("button", { name: "New project" }));
     const visibility = screen.getByRole("radiogroup", { name: "Visibility" });
     expect(within(visibility).getByRole("radio", { name: "Private" })).toBeChecked();

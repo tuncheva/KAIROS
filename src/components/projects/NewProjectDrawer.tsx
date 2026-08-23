@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
+import { Overlay } from "./Overlay";
 
 type Visibility = "private" | "shared_read" | "shared_write";
 type Permission = "read" | "write";
@@ -171,6 +172,7 @@ export function NewProjectDrawer() {
       </button>
 
       {open && (
+        <Overlay>
         <div className="fixed inset-0 z-[60] flex justify-end" role="dialog" aria-modal="true" aria-labelledby={titleId}>
           <button
             type="button"
@@ -290,6 +292,7 @@ export function NewProjectDrawer() {
             </form>
           </aside>
         </div>
+        </Overlay>
       )}
     </>
   );

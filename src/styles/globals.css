@@ -2668,6 +2668,9 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
 
 .projects-drawer {
   animation: projects-drawer-in 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+  /* The panel carries a wide, soft shadow. Promoting it keeps that shadow from
+     being re-rasterised on every frame of the slide. */
+  will-change: transform;
 }
 
 .projects-drawer-scrim {
