@@ -61,6 +61,8 @@ export async function loadSystemUser(
 export function systemContextFor(user: SystemUser): TRPCContext {
   return {
     db,
+    // Never an API-key request: a scheduled run has no inbound request at all.
+    apiKeyId: null,
     session: {
       user: {
         id: user.id,

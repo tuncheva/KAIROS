@@ -642,3 +642,138 @@ export const agentOrgAdminApplies = createTable(
     index("a5_apply_user_idx").on(t.userId),
   ],
 );
+
+/**
+ * API keys — programmatic access to the caller's own workspace.
+ *
+ * The complement to custom tools: today the agent can call out and nothing can
+ * call in. A key authenticates as exactly one user and grants nothing that user
+ * does not already have, because every procedure it reaches runs the same
+ * authorization it runs for a browser session.
+ *
+ * **The hash is SHA-256, not argon2**, and that is a deliberate departure from
+ * how passwords are stored two tables over. A password is low-entropy and
+ * human-chosen, so the slow KDF exists to make guessing expensive. An API key is
+ * 32 bytes from `randomBytes` — there is nothing to guess, and the only thing a
+ * deliberately slow hash would achieve is ~100ms of argon2 on every single API
+ * request, which is a self-inflicted denial of service. Fast hash, high entropy.
+ *
+ * `prefix` is stored in clear so a key can be *found* without being reversible:
+ * verification looks the row up by prefix and then compares hashes in constant
+ * time, rather than reading every key in the table on every request.
+ */
+export const apiKeys = createTable(
+  "api_keys",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** What the user calls it: "CI", "my laptop script". */
+    label: varchar("label", { length: 80 }).notNull(),
+    /**
+     * The first characters of the key, in clear.
+     *
+     * Not a secret — it is shown in the UI so a user can tell which key a row is
+     * without being able to use it, which is the whole reason keys are displayed
+     * as `kai_a1b2…` everywhere after creation.
+     */
+    prefix: varchar("prefix", { length: 16 }).notNull(),
+    /** SHA-256 of the full key, hex. See the note above on why not argon2. */
+    keyHash: varchar("key_hash", { length: 64 }).notNull(),
+    /**
+     * When it was last used to authenticate.
+     *
+     * Written lazily — see `apiKeys.ts` — because a strict update on every
+     * request would turn a read-only API call into a write and make this row the
+     * hottest in the database.
+     */
+    lastUsedAt: timestamp("last_used_at", { mode: "date", withTimezone: true }),
+    /**
+     * Revocation, as a timestamp rather than a delete.
+     *
+     * A deleted key row cannot answer "was this key ever used, and when did we
+     * stop trusting it?", which is the first question after a leak.
+     */
+    revokedAt: timestamp("revoked_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("api_key_user_idx").on(t.userId),
+    // The lookup path: find by prefix, then compare the hash. Unique because two
+    // live keys sharing a prefix would make that lookup ambiguous.
+    uniqueIndex("api_key_prefix_unique").on(t.prefix),
+  ],
+);
+
+/**
+ * Outbound webhooks.
+ *
+ * `secret` is stored so deliveries can be signed. It is a shared secret by
+ * necessity — the receiver needs the same value to verify — which is why it is
+ * generated here rather than chosen by the user, and shown once.
+ */
+export const webhooks = createTable(
+  "webhooks",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    /** Shared secret for the HMAC signature. */
+    secret: varchar("secret", { length: 64 }).notNull(),
+    /**
+     * Which events to send, comma-separated, or empty for all.
+     *
+     * Text rather than a join table: the set is small, it is read whole on every
+     * dispatch, and nothing ever queries "which webhooks want event X" except the
+     * dispatcher, which already has every row in hand.
+     */
+    events: text("events").notNull().default(""),
+    enabled: boolean("enabled").notNull().default(true),
+    /**
+     * Consecutive delivery failures, same convention as `ai_schedules`.
+     *
+     * Reset on any success. An endpoint that has been refusing for a week is
+     * either gone or broken, and continuing to post to it every time anything
+     * happens is how a webhook becomes an outbound flood nobody asked for.
+     */
+    failureCount: integer("failure_count").notNull().default(0),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [index("webhook_user_idx").on(t.userId)],
+);
+
+/**
+ * What was delivered, and what came back.
+ *
+ * Not optional. An undeliverable webhook with no visible history is
+ * unsupportable — the only available answer to "why did my endpoint not fire?"
+ * would be to read the server logs, which the user cannot do.
+ */
+export const webhookDeliveries = createTable(
+  "webhook_deliveries",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    webhookId: integer("webhook_id")
+      .notNull()
+      .references(() => webhooks.id, { onDelete: "cascade" }),
+    event: varchar("event", { length: 64 }).notNull(),
+    /** HTTP status, or null when the request never completed. */
+    statusCode: integer("status_code"),
+    /** How many attempts this delivery took, including the successful one. */
+    attempts: integer("attempts").notNull().default(1),
+    /** Truncated response or error text, for diagnosis. */
+    detail: text("detail"),
+    ok: boolean("ok").notNull(),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("webhook_delivery_webhook_idx").on(t.webhookId),
+    index("webhook_delivery_created_idx").on(t.createdAt),
+  ],
+);

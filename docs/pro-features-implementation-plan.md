@@ -27,7 +27,7 @@
 | 8 | User-defined schedules | 2 | ~~3d~~ **done** | yes | no |
 | 9 | Per-plan rate ceilings | 2 | ~~1d~~ **done** | no | no |
 | 10 | Plan diff preview | 3 | ~~4d~~ **server done** | 1 column ×4 | no |
-| 11 | API keys + webhooks | 3 | 5d | yes (2) | no |
+| 11 | API keys + webhooks | 3 | ~~5d~~ **server done** | yes (3) | no |
 | 12 | Documents the agents read | 3 | 8d | yes (2) | pgvector |
 | 13 | Meeting prep briefs | 3 | 3d | no | no (needs #14) |
 | 14 | Two-way calendar sync | 4 | 12d | yes (2) | Google/MS SDK |
@@ -386,7 +386,28 @@ contents, so updates and deletes can be neither reversed nor diffed.
 - Size-cap the before-image (a plan touching 200 tasks stores a truncation marker, not
   200 full rows) or the applies tables become the largest in the database.
 
-### 11. API keys and webhooks — 5 days
+### 11. API keys and webhooks — ✅ server done *(was: 5 days)*
+
+> Three departures from the sketch below, all corrections:
+>
+> - **SHA-256, not argon2.** The plan said argon2 because that is how passwords are
+>   stored two tables over. Wrong here: a key is 32 bytes of `randomBytes`, so there
+>   is nothing to guess, and a slow KDF buys only ~100ms of CPU on every API
+>   request — which an attacker triggers for free by sending garbage. Fast hash,
+>   high entropy, prefix lookup, constant-time compare.
+> - **Three tables, not two.** `webhook_deliveries` is separate, because the plan's
+>   own note that the delivery log "is not optional" needs somewhere to live.
+> - **An SSRF guard the sketch did not mention.** A user-chosen URL is a request
+>   *this server* makes. `isAllowedWebhookUrl` refuses plaintext HTTP, loopback,
+>   RFC1918, link-local, cloud metadata endpoints and IPv6 unique/link-local, and
+>   delivery uses `redirect: "manual"` so a 302 cannot walk around the check. DNS is
+>   not resolved, so a hostname resolving to a private address is still reachable —
+>   noted rather than half-done.
+>
+> **No client UI**, consistent with the rest of Phase 3.
+
+<details>
+<summary>Original sketch</summary>
 
 - `api_keys`: hashed key (`argon2` is already a dependency), label, `lastUsedAt`, scopes,
   revocation. Show the plaintext exactly once.
@@ -397,6 +418,8 @@ contents, so updates and deletes can be neither reversed nor diffed.
 - `webhooks`: URL, secret, event filter, delivery log. HMAC-SHA256 signatures, retry
   with backoff, auto-disable after repeated failure. The delivery log is not optional —
   an undeliverable webhook with no visible history is unsupportable.
+
+</details>
 
 ### 12. Documents the agents can read — 8 days
 

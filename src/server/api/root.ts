@@ -13,6 +13,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { chatRouter } from "~/server/api/routers/chat";
 import { agentRouter } from "~/server/api/routers/agent";
 import { billingRouter } from "~/server/api/routers/billing";
+import { integrationRouter } from "~/server/api/routers/integration";
 
 export const appRouter = createTRPCRouter({
   event: eventRouter,
@@ -28,6 +29,7 @@ export const appRouter = createTRPCRouter({
   chat: chatRouter,
   agent: agentRouter,
   billing: billingRouter,
+  integration: integrationRouter,
 });
 
 export type AppRouter = typeof appRouter;

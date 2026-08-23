@@ -6,7 +6,7 @@
   "scripts": {
     "build": "next build",
     "check": "pnpm run lint && tsc --noEmit",
-    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "db:generate": "drizzle-kit generate --config=drizzle.config.ts && tsx scripts/fix-migration-journal.ts",
     "db:migrate": "dotenv -e .env -- drizzle-kit migrate --config=drizzle.config.ts",
     "db:push": "dotenv -e .env -- drizzle-kit push --config=drizzle.config.ts",
     "db:studio": "dotenv -e .env -- drizzle-kit studio --config=drizzle.config.ts",

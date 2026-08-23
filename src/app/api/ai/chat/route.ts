@@ -113,7 +113,13 @@ export async function POST(request: Request) {
 
   // Built before the rate-limit gate rather than after: the ceiling is now the
   // caller's plan ceiling, and resolving entitlements needs a context.
-  const ctx: TRPCContext = { db, session, headers: request.headers };
+  // `apiKeyId: null` — this route authenticates by cookie only.
+  const ctx: TRPCContext = {
+    db,
+    session,
+    apiKeyId: null,
+    headers: request.headers,
+  };
 
   // Same door as the tRPC procedures: one AI request off the caller's daily
   // budget, refused before any model call.

@@ -79,6 +79,7 @@ export async function POST(request: Request) {
         resolveHistoryDays: (userId) =>
           entitlementsFor({
             db,
+            apiKeyId: null,
             session: { user: { id: userId } },
           } as TRPCContext).historyDays,
       });

@@ -66,7 +66,12 @@ export async function GET(
   // The handler builds its own context rather than receiving one: `collectExport`
   // takes a `TRPCContext` so it can share `loadVisibleScope` with the agent layer,
   // which is the entire reason the scoping is trustworthy here.
-  const ctx = { db, session, headers: new Headers() } as TRPCContext;
+  const ctx = {
+    db,
+    session,
+    apiKeyId: null,
+    headers: new Headers(),
+  } as TRPCContext;
 
   const entitlements = entitlementsFor(ctx);
   if (!entitlements.exportFormats.includes(format)) {
