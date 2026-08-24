@@ -36,6 +36,15 @@ const PUBLIC_PATHS = new Set([
   "/api/auth",
   "/reset-password",
   "/verify-email",
+  // The footer and the consent line under the sign-up button link here. A visitor
+  // has to be able to read what they are agreeing to *before* they have a session,
+  // so these cannot sit behind the cookie gate.
+  "/privacy",
+  "/terms",
+  "/security",
+  "/about",
+  "/contact",
+  "/careers",
 ]);
 
 /**
