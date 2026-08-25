@@ -1,6 +1,7 @@
 
 import { eventRouter } from "~/server/api/routers/event";
 import { noteRouter } from "~/server/api/routers/note";
+import { progressRouter } from "~/server/api/routers/progress";
 import { projectRouter } from "~/server/api/routers/project";
 import { taskRouter } from "~/server/api/routers/task";
 import { calendarRouter } from "~/server/api/routers/calendar";
@@ -19,6 +20,7 @@ export const appRouter = createTRPCRouter({
   event: eventRouter,
   settings: settingsRouter,
   note: noteRouter,
+  progress: progressRouter,
   project: projectRouter,
   task: taskRouter,
   calendar: calendarRouter,

@@ -43,64 +43,82 @@
   "progress": {
     "title": "Progreso",
     "loading": "Cargando progreso…",
-    "empty": "Aún no hay proyectos.",
-    "scope": {
-      "organization": "Organización",
-      "personal": "Personal"
-    },
-    "stats": {
-      "projects": "Proyectos",
-      "tasks": "Tareas",
-      "completed": "Completadas",
-      "topContributor": "Principal contribuyente",
-      "completions": "{count} finalizaciones"
-    },
-    "overall": {
-      "title": "Analítica del proyecto",
-      "subtitle": "Progreso en todos los proyectos"
-    },
-    "contributors": {
-      "title": "Distribución por contribuyente",
-      "subtitle": "Basado en tareas completadas"
-    },
-    "perProject": {
-      "title": "Distribución por proyecto",
-      "subtitle": "Completadas por proyecto",
-      "otherProjects": "Otros proyectos"
-    },
-    "labels": {
-      "remaining": "Restantes",
-      "other": "Otros",
-      "done": "Hecho",
-      "completed": "Completadas",
-      "created": "Creadas",
-      "updated": "Actualizadas",
-      "status": "Estado",
-      "deleted": "Eliminadas",
-      "activity": "Actividad"
-    },
-    "projectsList": {
-      "title": "Proyectos"
-    },
     "project": {
       "untitled": "Proyecto sin título"
     },
     "user": {
       "someone": "Alguien"
     },
-    "projectDetails": {
-      "back": "Volver",
-      "lastUpdate": "Última actualización",
-      "taskCompletion": "Finalización de tareas",
-      "activityCategories": "Categorías de actividad"
-    },
-    "activityTrend": {
-      "title": "Tendencia de actividad",
-      "subtitle": "Tareas creadas y completadas a lo largo del tiempo"
-    },
-    "createdVsCompleted": {
-      "title": "Creadas vs Completadas",
-      "subtitle": "Comparación de creación y finalización de tareas"
+    "record": {
+      "eyebrow": "Tu registro",
+      "headlinePerson": "{name} terminó {count, plural, one {# tarea} other {# tareas}}",
+      "headlineFinished": "{count, plural, one {# tarea terminada} other {# tareas terminadas}}",
+      "perDayAverage": "{perDay} al día de media",
+      "sinceWeek": "Últimos 7 días",
+      "sinceMonth": "Últimos 30 días",
+      "sinceAll": "Últimas {weeks} semanas",
+      "windowWeek": "Esta semana",
+      "windowMonth": "30 días",
+      "windowAll": "Todo",
+      "statFinished": "Terminadas",
+      "statPerDay": "Al día",
+      "statStreak": "Racha",
+      "statBestDay": "Mejor día",
+      "statInDays": "en {count} días",
+      "statAvg": "media",
+      "streakDays": "{count}d",
+      "streakRunning": "activa",
+      "streakFragile": "frágil",
+      "gridTitle": "Terminadas por día",
+      "gridSubtitle": "un cuadrado por día, {weeks} semanas atrás",
+      "gridHint": "Pasa por un día y haz clic para ver sus tareas",
+      "gridDayCount": "{day} · {count, plural, =0 {nada terminado} one {# terminada} other {# terminadas}}",
+      "gridDaySelected": "{day} seleccionado",
+      "less": "Menos",
+      "more": "Más",
+      "weekdayMon": "Lun",
+      "weekdayWed": "Mié",
+      "weekdayFri": "Vie",
+      "suggestions": "Sugerencias",
+      "suggestionsEmpty": "Nada que sugerir por ahora.",
+      "dismiss": "Descartar",
+      "paceUp": "Tu ritmo sube un {percent}% esta semana",
+      "paceDown": "Tu ritmo bajó un {percent}% esta semana",
+      "paceBody": "{thisWeek} terminadas en los últimos 7 días, frente a {previousWeek} la semana anterior.",
+      "staleTitle": "{project} no se mueve desde hace {days} días",
+      "staleBody": "{count, plural, one {Queda # tarea abierta ahí} other {Quedan # tareas abiertas ahí}}.",
+      "staleCta": "Abrir proyecto",
+      "nextTitle": "Sigue con esto: {task}",
+      "nextDue": "vence el {date}",
+      "nextWaiting": "{count, plural, one {# tarea esperando detrás} other {# tareas esperando detrás}}",
+      "nextCta": "Empezar",
+      "priorityUrgent": "Urgente",
+      "priorityHigh": "Alta",
+      "priorityMedium": "Media",
+      "priorityLow": "Baja",
+      "logRecent": "Terminadas hace poco",
+      "logOnDay": "Terminadas el {day}",
+      "logCount": "{count, plural, one {# tarea} other {# tareas}}",
+      "logEmpty": "Aún nada terminado en este periodo.",
+      "logEmptyDay": "Nada terminado ese día.",
+      "logShowRecent": "Ver recientes",
+      "tookDays": "{value}d",
+      "tookHours": "{value}h",
+      "todayPrefix": "Hoy · {day}",
+      "workloadTitle": "Lo que sigue en tus manos",
+      "workloadShort": "Sigue en ti",
+      "workloadOpen": "{count} abiertas",
+      "workloadQuiet": "{count}d en silencio",
+      "workloadToday": "hoy",
+      "workloadEmpty": "No tienes nada abierto.",
+      "boardTitle": "Clasificación",
+      "boardSubtitle": "Tareas completadas, histórico",
+      "boardOpenPerson": "Abrir el registro de {name}",
+      "boardUnknown": "Alguien",
+      "profileBack": "Volver a tu registro",
+      "profileYou": "Tú",
+      "profileProjects": "{count, plural, one {# proyecto} other {# proyectos}}",
+      "emptyHint": "Termina una tarea y aparecerá en esta cuadrícula el mismo día."
     }
   },
   "home": {

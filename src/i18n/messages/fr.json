@@ -43,64 +43,82 @@
   "progress": {
     "title": "Progrès",
     "loading": "Chargement de la progression…",
-    "empty": "Aucun projet pour le moment.",
-    "scope": {
-      "organization": "Organisation",
-      "personal": "Personnel"
-    },
-    "stats": {
-      "projects": "Projets",
-      "tasks": "Tâches",
-      "completed": "Terminées",
-      "topContributor": "Meilleur contributeur",
-      "completions": "{count} tâches terminées"
-    },
-    "overall": {
-      "title": "Analyse des projets",
-      "subtitle": "Progression sur l’ensemble des projets"
-    },
-    "contributors": {
-      "title": "Répartition des contributeurs",
-      "subtitle": "Basé sur les tâches terminées"
-    },
-    "perProject": {
-      "title": "Répartition par projet",
-      "subtitle": "Terminées par projet",
-      "otherProjects": "Autres projets"
-    },
-    "labels": {
-      "remaining": "Restant",
-      "other": "Autre",
-      "done": "Fait",
-      "completed": "Terminées",
-      "created": "Créées",
-      "updated": "Mises à jour",
-      "status": "Statut",
-      "deleted": "Supprimées",
-      "activity": "Activité"
-    },
-    "projectsList": {
-      "title": "Projets"
-    },
     "project": {
       "untitled": "Projet sans titre"
     },
     "user": {
       "someone": "Quelqu’un"
     },
-    "projectDetails": {
-      "back": "Retour",
-      "lastUpdate": "Dernière mise à jour",
-      "taskCompletion": "Achèvement des tâches",
-      "activityCategories": "Catégories d’activité"
-    },
-    "activityTrend": {
-      "title": "Tendance d'activité",
-      "subtitle": "Tâches créées et terminées au fil du temps"
-    },
-    "createdVsCompleted": {
-      "title": "Créées vs Terminées",
-      "subtitle": "Comparaison de la création et de l'achèvement des tâches"
+    "record": {
+      "eyebrow": "Ton relevé",
+      "headlinePerson": "{name} a terminé {count, plural, one {# tâche} other {# tâches}}",
+      "headlineFinished": "{count, plural, one {# tâche terminée} other {# tâches terminées}}",
+      "perDayAverage": "{perDay} par jour en moyenne",
+      "sinceWeek": "7 derniers jours",
+      "sinceMonth": "30 derniers jours",
+      "sinceAll": "{weeks} dernières semaines",
+      "windowWeek": "Cette semaine",
+      "windowMonth": "30 jours",
+      "windowAll": "Depuis le début",
+      "statFinished": "Terminées",
+      "statPerDay": "Par jour",
+      "statStreak": "Série",
+      "statBestDay": "Meilleur jour",
+      "statInDays": "en {count} jours",
+      "statAvg": "moy.",
+      "streakDays": "{count}j",
+      "streakRunning": "en cours",
+      "streakFragile": "fragile",
+      "gridTitle": "Terminées par jour",
+      "gridSubtitle": "un carré par jour, {weeks} semaines en arrière",
+      "gridHint": "Survole un jour, clique pour voir ses tâches",
+      "gridDayCount": "{day} · {count, plural, =0 {rien de terminé} one {# terminée} other {# terminées}}",
+      "gridDaySelected": "{day} sélectionné",
+      "less": "Moins",
+      "more": "Plus",
+      "weekdayMon": "Lun",
+      "weekdayWed": "Mer",
+      "weekdayFri": "Ven",
+      "suggestions": "Suggestions",
+      "suggestionsEmpty": "Rien à suggérer pour l'instant.",
+      "dismiss": "Masquer",
+      "paceUp": "Ton rythme est en hausse de {percent}% cette semaine",
+      "paceDown": "Ton rythme a baissé de {percent}% cette semaine",
+      "paceBody": "{thisWeek} terminées ces 7 derniers jours, contre {previousWeek} la semaine précédente.",
+      "staleTitle": "{project} n'a pas bougé depuis {days} jours",
+      "staleBody": "{count, plural, one {Il y reste # tâche ouverte} other {Il y reste # tâches ouvertes}}.",
+      "staleCta": "Ouvrir le projet",
+      "nextTitle": "À prendre ensuite : {task}",
+      "nextDue": "échéance {date}",
+      "nextWaiting": "{count, plural, one {# tâche attend derrière} other {# tâches attendent derrière}}",
+      "nextCta": "Commencer",
+      "priorityUrgent": "Urgent",
+      "priorityHigh": "Haute",
+      "priorityMedium": "Moyenne",
+      "priorityLow": "Basse",
+      "logRecent": "Terminées récemment",
+      "logOnDay": "Terminées le {day}",
+      "logCount": "{count, plural, one {# tâche} other {# tâches}}",
+      "logEmpty": "Rien de terminé sur cette période.",
+      "logEmptyDay": "Rien de terminé ce jour-là.",
+      "logShowRecent": "Voir les récentes",
+      "tookDays": "{value}j",
+      "tookHours": "{value}h",
+      "todayPrefix": "Aujourd'hui · {day}",
+      "workloadTitle": "Ce qui reste sur toi",
+      "workloadShort": "Reste sur toi",
+      "workloadOpen": "{count} ouvertes",
+      "workloadQuiet": "{count}j sans activité",
+      "workloadToday": "aujourd'hui",
+      "workloadEmpty": "Rien d'ouvert sur toi.",
+      "boardTitle": "Classement",
+      "boardSubtitle": "Tâches terminées, depuis le début",
+      "boardOpenPerson": "Ouvrir le relevé de {name}",
+      "boardUnknown": "Quelqu'un",
+      "profileBack": "Retour à ton relevé",
+      "profileYou": "Toi",
+      "profileProjects": "{count, plural, one {# projet} other {# projets}}",
+      "emptyHint": "Termine une tâche et elle apparaîtra dans cette grille le jour même."
     }
   },
   "home": {

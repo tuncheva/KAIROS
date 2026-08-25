@@ -2690,3 +2690,103 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
     transform: none !important;
   }
 }
+
+/* ==========================================================================
+   Calendar — workspace motion
+   --------------------------------------------------------------------------
+   Same design language as the new-project drawer: the detail / new-item panel
+   slides in from the right over a fading scrim, its fields stagger in behind
+   it, the toolbar rows rise on load and the filter popover pops open. The
+   stagger delays live inline on the fields; these are just the curves.
+   ========================================================================== */
+
+@keyframes calendar-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes calendar-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes calendar-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes calendar-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes calendar-field-in {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.calendar-rise {
+  animation: calendar-rise 0.6s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.calendar-pop {
+  animation: calendar-pop 0.3s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.calendar-fade {
+  animation: calendar-fade-in 0.4s ease-out both;
+}
+
+.calendar-drawer {
+  animation: calendar-drawer-in 0.4s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+  /* The panel carries a wide, soft shadow; promoting it keeps that shadow from
+     being re-rasterised on every frame of the slide. */
+  will-change: transform;
+}
+
+.calendar-scrim {
+  animation: calendar-fade-in 0.35s ease-out both;
+}
+
+.calendar-field {
+  animation: calendar-field-in 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-rise,
+  .calendar-pop,
+  .calendar-fade,
+  .calendar-drawer,
+  .calendar-scrim,
+  .calendar-field {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

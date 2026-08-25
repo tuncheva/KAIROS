@@ -21,7 +21,7 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
-import { Overlay } from "./Overlay";
+import { Overlay } from "~/components/ui/Overlay";
 import {
   isRecent,
   isSameDay,

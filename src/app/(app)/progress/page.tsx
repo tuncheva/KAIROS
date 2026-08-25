@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { SideNav } from "~/components/layout/SideNav";
 import { TopBar } from "~/components/layout/TopBar";
-import { ProgressFeedClient } from "~/components/progress/ProgressFeedClient";
+import { ProgressClient } from "~/components/progress/ProgressClient";
 
 export default async function ProgressPage() {
   const session = await auth();
@@ -20,7 +20,7 @@ export default async function ProgressPage() {
         <TopBar />
 
         <main id="main-content" className="flex-1 w-full overflow-auto pb-24 lg:pb-0">
-          <ProgressFeedClient />
+          <ProgressClient />
         </main>
       </div>
     </div>

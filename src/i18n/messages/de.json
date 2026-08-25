@@ -43,64 +43,82 @@
   "progress": {
     "title": "Fortschritt",
     "loading": "Fortschritt wird geladen…",
-    "empty": "Noch keine Projekte.",
-    "scope": {
-      "organization": "Organisation",
-      "personal": "Persönlich"
-    },
-    "stats": {
-      "projects": "Projekte",
-      "tasks": "Aufgaben",
-      "completed": "Abgeschlossen",
-      "topContributor": "Top-Mitwirkender",
-      "completions": "{count} Fertigstellungen"
-    },
-    "overall": {
-      "title": "Projektanalyse",
-      "subtitle": "Fortschritt über alle Projekte"
-    },
-    "contributors": {
-      "title": "Anteil nach Beitragenden",
-      "subtitle": "Basierend auf Aufgabenabschlüssen"
-    },
-    "perProject": {
-      "title": "Anteil nach Projekten",
-      "subtitle": "Abgeschlossen nach Projekt",
-      "otherProjects": "Andere Projekte"
-    },
-    "labels": {
-      "remaining": "Übrig",
-      "other": "Sonstiges",
-      "done": "Erledigt",
-      "completed": "Abgeschlossen",
-      "created": "Erstellt",
-      "updated": "Aktualisiert",
-      "status": "Status",
-      "deleted": "Gelöscht",
-      "activity": "Aktivität"
-    },
-    "projectsList": {
-      "title": "Projekte"
-    },
     "project": {
       "untitled": "Unbenanntes Projekt"
     },
     "user": {
       "someone": "Jemand"
     },
-    "projectDetails": {
-      "back": "Zurück",
-      "lastUpdate": "Letztes Update",
-      "taskCompletion": "Aufgabenerledigung",
-      "activityCategories": "Aktivitätskategorien"
-    },
-    "activityTrend": {
-      "title": "Aktivitätstrend",
-      "subtitle": "Erstellte und erledigte Aufgaben im Zeitverlauf"
-    },
-    "createdVsCompleted": {
-      "title": "Erstellt vs Erledigt",
-      "subtitle": "Vergleich von Aufgabenerstellung und -erledigung"
+    "record": {
+      "eyebrow": "Deine Bilanz",
+      "headlinePerson": "{name} hat {count, plural, one {# Aufgabe} other {# Aufgaben}} abgeschlossen",
+      "headlineFinished": "{count, plural, one {# Aufgabe abgeschlossen} other {# Aufgaben abgeschlossen}}",
+      "perDayAverage": "im Schnitt {perDay} pro Tag",
+      "sinceWeek": "Letzte 7 Tage",
+      "sinceMonth": "Letzte 30 Tage",
+      "sinceAll": "Letzte {weeks} Wochen",
+      "windowWeek": "Diese Woche",
+      "windowMonth": "30 Tage",
+      "windowAll": "Gesamt",
+      "statFinished": "Abgeschlossen",
+      "statPerDay": "Pro Tag",
+      "statStreak": "Serie",
+      "statBestDay": "Bester Tag",
+      "statInDays": "in {count} Tagen",
+      "statAvg": "Ø",
+      "streakDays": "{count}T",
+      "streakRunning": "läuft",
+      "streakFragile": "wackelig",
+      "gridTitle": "Abgeschlossen pro Tag",
+      "gridSubtitle": "ein Kästchen pro Tag, {weeks} Wochen zurück",
+      "gridHint": "Auf einen Tag zeigen, klicken für die Aufgaben",
+      "gridDayCount": "{day} · {count, plural, =0 {nichts abgeschlossen} one {# abgeschlossen} other {# abgeschlossen}}",
+      "gridDaySelected": "{day} ausgewählt",
+      "less": "Weniger",
+      "more": "Mehr",
+      "weekdayMon": "Mo",
+      "weekdayWed": "Mi",
+      "weekdayFri": "Fr",
+      "suggestions": "Vorschläge",
+      "suggestionsEmpty": "Im Moment gibt es nichts vorzuschlagen.",
+      "dismiss": "Ausblenden",
+      "paceUp": "Dein Tempo liegt diese Woche {percent}% höher",
+      "paceDown": "Dein Tempo ist diese Woche um {percent}% gefallen",
+      "paceBody": "{thisWeek} in den letzten 7 Tagen abgeschlossen, gegenüber {previousWeek} in der Woche davor.",
+      "staleTitle": "{project} bewegt sich seit {days} Tagen nicht",
+      "staleBody": "{count, plural, one {Dort ist noch # Aufgabe offen} other {Dort sind noch # Aufgaben offen}}.",
+      "staleCta": "Projekt öffnen",
+      "nextTitle": "Als Nächstes: {task}",
+      "nextDue": "fällig {date}",
+      "nextWaiting": "{count, plural, one {# Aufgabe wartet dahinter} other {# Aufgaben warten dahinter}}",
+      "nextCta": "Loslegen",
+      "priorityUrgent": "Dringend",
+      "priorityHigh": "Hoch",
+      "priorityMedium": "Mittel",
+      "priorityLow": "Niedrig",
+      "logRecent": "Zuletzt abgeschlossen",
+      "logOnDay": "Abgeschlossen am {day}",
+      "logCount": "{count, plural, one {# Aufgabe} other {# Aufgaben}}",
+      "logEmpty": "In diesem Zeitraum noch nichts abgeschlossen.",
+      "logEmptyDay": "An diesem Tag nichts abgeschlossen.",
+      "logShowRecent": "Aktuelle zeigen",
+      "tookDays": "{value}T",
+      "tookHours": "{value}h",
+      "todayPrefix": "Heute · {day}",
+      "workloadTitle": "Was noch bei dir liegt",
+      "workloadShort": "Noch bei dir",
+      "workloadOpen": "{count} offen",
+      "workloadQuiet": "{count}T still",
+      "workloadToday": "heute",
+      "workloadEmpty": "Bei dir ist nichts offen.",
+      "boardTitle": "Rangliste",
+      "boardSubtitle": "Abgeschlossene Aufgaben, gesamt",
+      "boardOpenPerson": "Bilanz von {name} öffnen",
+      "boardUnknown": "Jemand",
+      "profileBack": "Zurück zu deiner Bilanz",
+      "profileYou": "Du",
+      "profileProjects": "{count, plural, one {# Projekt} other {# Projekte}}",
+      "emptyHint": "Schließe eine Aufgabe ab und sie erscheint am selben Tag in diesem Raster."
     }
   },
   "home": {
