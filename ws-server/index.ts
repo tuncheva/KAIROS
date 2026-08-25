@@ -14,6 +14,7 @@ import { createServer } from "node:http";
 import { Server, type DefaultEventsMap } from "socket.io";
 import { verifyWsTicket } from "./auth";
 import { registerRoomHandlers, type WsSocketData } from "./rooms";
+import { onlineUserIds, trackConnect, trackDisconnect } from "./presence";
 import { createLogger } from "./logger";
 import { startScheduler } from "./scheduler";
 
@@ -209,8 +210,18 @@ io.on("connection", (socket) => {
   // Register room join/leave handlers (org, project, conversation, typing)
   registerRoomHandlers(socket);
 
+  trackConnect(io, userId);
+
+  /* A client that has just connected has missed every presence broadcast that
+     came before it, so it asks for the current picture once on mount rather
+     than starting blank and filling in only as people come and go. */
+  socket.on("presence:query", () => {
+    socket.emit("presence:snapshot", { userIds: onlineUserIds() });
+  });
+
   socket.on("disconnect", (reason: string) => {
     log.debug("client disconnected", { userId, reason });
+    trackDisconnect(io, userId);
   });
 });
 

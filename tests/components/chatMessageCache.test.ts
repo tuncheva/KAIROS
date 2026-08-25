@@ -6,6 +6,7 @@ import {
   hasMessage,
   isOptimistic,
   nextOptimisticId,
+  NEW_MESSAGE_EXTRAS,
   replaceMessage,
   seedPage,
   type ChatMessage,
@@ -26,13 +27,18 @@ function msg(id: number, body = `m${id}`): ChatMessage {
     senderId: "u1",
     senderName: null,
     senderImage: null,
+    ...NEW_MESSAGE_EXTRAS,
   };
 }
 
 /** Pages run oldest -> newest, the order `fetchPreviousPage` produces. */
 function data(...pages: ChatMessage[][]): MessagesData {
   return {
-    pages: pages.map((messages) => ({ messages, prevCursor: undefined })),
+    pages: pages.map((messages) => ({
+      messages,
+      prevCursor: undefined,
+      peerLastReadMessageId: null,
+    })),
     pageParams: pages.map(() => null),
   };
 }

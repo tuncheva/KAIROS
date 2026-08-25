@@ -10,6 +10,7 @@ import {
   dropMessage,
   hasMessage,
   nextOptimisticId,
+  NEW_MESSAGE_EXTRAS,
   replaceMessage,
   seedPage,
 } from "~/components/chat/messageCache";
@@ -135,6 +136,9 @@ export function ProjectChat({ projectId, currentUserId }: { projectId: number; c
       senderName: string | null;
       senderImage: string | null;
       createdAt: string | Date;
+      /* Optional: the frame carries attachments now, but a project thread that
+         was open across the deploy can still receive one sent without them. */
+      attachments?: ChatMessage["attachments"];
     }) => {
       if (data.conversationId !== conversationId) return;
       // Our own messages are already in the cache via the optimistic update.
@@ -154,6 +158,8 @@ export function ProjectChat({ projectId, currentUserId }: { projectId: number; c
             senderId: data.senderId,
             senderName: data.senderName,
             senderImage: data.senderImage,
+            ...NEW_MESSAGE_EXTRAS,
+            attachments: data.attachments ?? [],
           });
         },
       );
@@ -180,6 +186,7 @@ export function ProjectChat({ projectId, currentUserId }: { projectId: number; c
         senderId: currentUserId,
         senderName: null,
         senderImage: null,
+        ...NEW_MESSAGE_EXTRAS,
       };
 
       utils.chat.listMessages.setInfiniteData(
@@ -203,6 +210,9 @@ export function ProjectChat({ projectId, currentUserId }: { projectId: number; c
       const realMsg: ChatMessage = {
         id: msg.id ?? -1, body: msg.body ?? "", createdAt: msg.createdAt ?? new Date(),
         senderId: msg.senderId ?? currentUserId, senderName: msg.senderName ?? null, senderImage: msg.senderImage ?? null,
+        ...NEW_MESSAGE_EXTRAS,
+        attachments: msg.attachments ?? [],
+        replyTo: msg.replyTo ?? null,
       };
       const optimisticId = context?.optimisticId;
       utils.chat.listMessages.setInfiniteData(
