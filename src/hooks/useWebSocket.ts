@@ -63,8 +63,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}): Socket | null {
         invalidate(["notification", "getUnreadCount"]);
       }],
 
-      // Chat events
-      ["message:new", () => invalidate(["chat", "listMessages"])],
+      /* Chat events.
+         `message:new` is deliberately absent. The chat views write the incoming
+         message straight into the `listMessages` cache, so invalidating here
+         fired a full refetch of every loaded page on top of that — undoing the
+         point of the socket, and racing the optimistic send (the refetch could
+         land between the placeholder going in and the stored row coming back,
+         making a just-sent message flicker). Conversation ordering still needs
+         a refresh, and a dropped connection is covered by the catch-up above. */
       ["conversation:updated", () => invalidate(["chat", "listAllConversations"])],
 
       // Event feed events

@@ -37,6 +37,9 @@ const WINDOW_LABEL_KEYS: Record<WindowKey, string> = {
   all: "windowAll",
 };
 
+/** Kept in step with `.progress-person-card--out` in `globals.css`. */
+const PERSON_CARD_EXIT_MS = 260;
+
 const WINDOW_SINCE_KEYS: Record<WindowKey, string> = {
   week: "sinceWeek",
   month: "sinceMonth",
@@ -76,6 +79,10 @@ function ProgressWorkspace({ today }: { today: Date }) {
 
   /** `null` is the reader's own record; a person id opens their profile. */
   const [personId, setPersonId] = useState<string | null>(null);
+  /* React unmounts on the same tick it re-renders, so a card that is simply
+     dropped can never play an exit. `closing` keeps it mounted — and keeps
+     its record loaded — for exactly as long as the animation runs. */
+  const [closing, setClosing] = useState(false);
   const [windowKey, setWindowKey] = useState<WindowKey>("month");
   const [selectedYmd, setSelectedYmd] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
@@ -83,18 +90,53 @@ function ProgressWorkspace({ today }: { today: Date }) {
   const board = api.progress.getLeaderboard.useQuery(undefined, { staleTime: 30_000 });
   const record = api.progress.getRecord.useQuery(
     { userId: personId ?? undefined, days: RECORD_DAYS },
-    { staleTime: 30_000 },
+    {
+      staleTime: 30_000,
+      /* Opening a leaderboard block changes the query key. Without the
+         previous record standing in, the page would fall back to the
+         skeleton and remount every panel — the whole UI flashing when only
+         the person card is meant to move. */
+      placeholderData: (previous) => previous,
+    },
   );
 
-  const openPerson = useCallback((userId: string) => {
-    setPersonId(userId);
-    setSelectedYmd(null);
-  }, []);
+  /* A block on the board toggles: the first tap opens that person's card,
+     a second tap on the same block closes it again — through the same exit
+     animation the back button uses, not an abrupt unmount. */
+  const togglePerson = useCallback(
+    (userId: string) => {
+      if (userId === personId && !closing) {
+        setClosing(true);
+        return;
+      }
+      /* Tapping a block mid-exit reopens rather than finishes closing. */
+      setClosing(false);
+      setPersonId(userId);
+      setSelectedYmd(null);
+    },
+    [personId, closing],
+  );
 
-  const closePerson = useCallback(() => {
-    setPersonId(null);
-    setSelectedYmd(null);
-  }, []);
+  const closePerson = useCallback(() => setClosing(true), []);
+
+  /* The card is dropped on a timer rather than on `animationend`: under
+     `prefers-reduced-motion` the animation is switched off entirely and no
+     such event would ever arrive. */
+  useEffect(() => {
+    if (!closing) return;
+    const instant =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(
+      () => {
+        setClosing(false);
+        setPersonId(null);
+        setSelectedYmd(null);
+      },
+      instant ? 0 : PERSON_CARD_EXIT_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [closing]);
 
   const changeWindow = useCallback((next: WindowKey) => {
     setWindowKey(next);
@@ -216,138 +258,168 @@ function ProgressWorkspace({ today }: { today: Date }) {
   const leaderboard = (
     <Leaderboard
       people={board.data?.people ?? []}
-      activeId={personId}
-      onSelect={openPerson}
+      /* Un-highlight as the card starts leaving, so the board reflects
+         where a second tap has already taken you. */
+      activeId={closing ? null : personId}
+      onSelect={togglePerson}
     />
   );
 
-  /* ---------------- The person profile (a leaderboard block) ---------------- */
+  /* ------------------------------------------------------------------ */
+  /*  One layout serves both views.                                      */
+  /*                                                                     */
+  /*  Opening a leaderboard block used to swap the page for a different  */
+  /*  tree, which unmounted every panel and replayed the page-wide       */
+  /*  stagger. Here the person card is the only node that enters or      */
+  /*  leaves, so it is the only thing that animates; the grid, the log   */
+  /*  and the board itself stay put.                                     */
+  /* ------------------------------------------------------------------ */
 
-  if (personId) {
-    return (
-      <div className="flex flex-col lg:flex-row lg:items-stretch">
-        <aside className="flex w-full shrink-0 flex-col gap-6 border-b border-border-light bg-bg-surface px-6 py-7 lg:w-[330px] lg:border-b-0 lg:border-r">
-          <button
-            type="button"
-            onClick={closePerson}
-            className="flex w-fit items-center gap-2 text-xs font-semibold text-fg-tertiary transition-colors hover:text-fg-primary"
-          >
-            <ArrowLeft size={14} />
-            {t("profileBack")}
-          </button>
+  const personCard = personId ? (
+    <aside
+      key={personId}
+      className={cn(
+        "progress-person-card flex w-full shrink-0 flex-col gap-6 border-b border-border-light bg-bg-surface px-6 py-7 lg:w-[330px] lg:border-b-0 lg:border-r",
+        closing && "progress-person-card--out",
+        /* Still showing the previous person while their record loads. */
+        !closing && record.isPlaceholderData && "opacity-60",
+      )}
+      aria-hidden={closing}
+    >
+      <button
+        type="button"
+        onClick={closePerson}
+        disabled={closing}
+        className="flex w-fit items-center gap-2 text-xs font-semibold text-fg-tertiary transition-colors hover:text-fg-primary"
+      >
+        <ArrowLeft size={14} />
+        {t("profileBack")}
+      </button>
 
-          <div className="flex items-center gap-3.5">
-            <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-accent-primary text-[19px] font-bold text-white">
-              {initialsOf(data.person)}
-            </span>
-            <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="truncate text-[17px] font-semibold tracking-[-0.01em] text-fg-primary">
-                {name || t("boardUnknown")}
-              </span>
-              <span className="text-[11px] tabular-nums text-fg-tertiary">
-                {data.isSelf ? `${t("profileYou")} · ` : ""}
-                {t("profileProjects", { count: data.workload.length })}
-              </span>
-            </span>
-          </div>
-
-          <StatColumn stats={stats} />
-
-          <SuggestionList suggestions={suggestions} onDismiss={dismiss} variant="stacked" />
-
-          <div className="flex flex-col gap-3">
-            <span className="text-[10px] uppercase tracking-[0.14em] text-fg-tertiary">
-              {t("workloadShort")}
-            </span>
-            <WorkloadList workload={data.workload} today={today} variant="bare" />
-          </div>
-        </aside>
-
-        <div className="kairos-stagger flex min-w-0 flex-1 flex-col gap-7 px-4 py-7 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="flex flex-col gap-1.5">
-              <h1 className="text-[28px] font-semibold leading-none tracking-[-0.025em] text-fg-primary">
-                {t("headlineFinished", { count: summary.finished })}
-              </h1>
-              <span className="text-sm text-fg-secondary">{windowLine}</span>
-            </div>
-            <span className="flex-1" />
-            {windowToggle}
-          </div>
-
-          {grid}
-
-          <FinishedLog
-            groups={log}
-            selectedYmd={selectedYmd}
-            onClearDay={() => setSelectedYmd(null)}
-            variant="boxed"
-            today={today}
-          />
-
-          {leaderboard}
-        </div>
+      <div className="flex items-center gap-3.5">
+        <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-accent-primary text-[19px] font-bold text-white">
+          {initialsOf(data.person)}
+        </span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate text-[17px] font-semibold tracking-[-0.01em] text-fg-primary">
+            {name || t("boardUnknown")}
+          </span>
+          <span className="text-[11px] tabular-nums text-fg-tertiary">
+            {data.isSelf ? `${t("profileYou")} · ` : ""}
+            {t("profileProjects", { count: data.workload.length })}
+          </span>
+        </span>
       </div>
-    );
-  }
 
-  /* ---------------- The reader's own record ---------------- */
+      <StatColumn stats={stats} />
+
+      <SuggestionList suggestions={suggestions} onDismiss={dismiss} variant="stacked" />
+
+      <div className="flex flex-col gap-3">
+        <span className="text-[10px] uppercase tracking-[0.14em] text-fg-tertiary">
+          {t("workloadShort")}
+        </span>
+        <WorkloadList workload={data.workload} today={today} variant="bare" />
+      </div>
+    </aside>
+  ) : null;
 
   return (
-    <div className="kairos-stagger mx-auto flex max-w-[1400px] flex-col gap-7 p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] uppercase tracking-[0.16em] text-fg-tertiary">
-            {t("eyebrow")}
-          </span>
-          <h1 className="text-[32px] font-semibold leading-none tracking-[-0.025em] text-fg-primary">
-            {firstName
-              ? t("headlinePerson", { name: firstName, count: summary.finished })
-              : t("headlineFinished", { count: summary.finished })}
-          </h1>
-          <span className="text-sm text-fg-secondary">{windowLine}</span>
-          {isBlank && <span className="text-sm text-fg-tertiary">{t("emptyHint")}</span>}
+    <div className="flex flex-col lg:flex-row lg:items-stretch">
+      {personCard}
+
+      {/* One fixed set of classes: the column simply reflows as the card
+          beside it grows or collapses, instead of jumping to a new layout. */}
+      <div className="kairos-page-enter mx-auto flex w-full min-w-0 max-w-[1400px] flex-1 flex-col gap-7 p-4 sm:p-6 lg:p-8">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-1.5">
+            {!personId && (
+              <span className="text-[10px] uppercase tracking-[0.16em] text-fg-tertiary">
+                {t("eyebrow")}
+              </span>
+            )}
+            <h1
+              className={cn(
+                "font-semibold leading-none tracking-[-0.025em] text-fg-primary",
+                personId ? "text-[28px]" : "text-[32px]",
+              )}
+            >
+              {!personId && firstName
+                ? t("headlinePerson", { name: firstName, count: summary.finished })
+                : t("headlineFinished", { count: summary.finished })}
+            </h1>
+            <span className="text-sm text-fg-secondary">{windowLine}</span>
+            {!personId && isBlank && (
+              <span className="text-sm text-fg-tertiary">{t("emptyHint")}</span>
+            )}
+          </div>
+          <span className="flex-1" />
+          {windowToggle}
         </div>
-        <span className="flex-1" />
-        {windowToggle}
+
+        {/* The panels that belong to only one of the two views fade in when
+            they arrive, so nothing pops into place beside the moving card. */}
+        {!personId && (
+          <div className="progress-view-in">
+            <StatRow stats={stats.slice(0, 3)} />
+          </div>
+        )}
+
+        {personId ? (
+          <div className="progress-view-in">{grid}</div>
+        ) : (
+          <section className="progress-view-in flex flex-col gap-3.5">
+            <div className="flex flex-wrap items-baseline gap-3">
+              <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-fg-primary">
+                {t("gridTitle")}
+              </h2>
+              <span className="text-[11px] text-fg-tertiary">
+                {t("gridSubtitle", { weeks: RECORD_WEEKS })}
+              </span>
+            </div>
+            <div className="rounded-xl border border-border-light bg-bg-elevated px-5 py-4">
+              {grid}
+            </div>
+          </section>
+        )}
+
+        {!personId && (
+          <div className="progress-view-in">
+            <SuggestionList suggestions={suggestions} onDismiss={dismiss} variant="rows" />
+          </div>
+        )}
+
+        {personId ? (
+          <div className="progress-view-in">
+            <FinishedLog
+              groups={log}
+              selectedYmd={selectedYmd}
+              onClearDay={() => setSelectedYmd(null)}
+              variant="boxed"
+              today={today}
+            />
+          </div>
+        ) : (
+          <div className="progress-view-in grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+            <FinishedLog
+              groups={log}
+              selectedYmd={selectedYmd}
+              onClearDay={() => setSelectedYmd(null)}
+              variant="rows"
+              today={today}
+            />
+
+            <div className="flex flex-col gap-3">
+              <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-fg-primary">
+                {t("workloadTitle")}
+              </h2>
+              <WorkloadList workload={data.workload} today={today} variant="panel" />
+            </div>
+          </div>
+        )}
+
+        {leaderboard}
       </div>
-
-      <StatRow stats={stats.slice(0, 3)} />
-
-      <section className="flex flex-col gap-3.5">
-        <div className="flex flex-wrap items-baseline gap-3">
-          <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-fg-primary">
-            {t("gridTitle")}
-          </h2>
-          <span className="text-[11px] text-fg-tertiary">
-            {t("gridSubtitle", { weeks: RECORD_WEEKS })}
-          </span>
-        </div>
-        <div className="rounded-xl border border-border-light bg-bg-elevated px-5 py-4">
-          {grid}
-        </div>
-      </section>
-
-      <SuggestionList suggestions={suggestions} onDismiss={dismiss} variant="rows" />
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-        <FinishedLog
-          groups={log}
-          selectedYmd={selectedYmd}
-          onClearDay={() => setSelectedYmd(null)}
-          variant="rows"
-          today={today}
-        />
-
-        <div className="flex flex-col gap-3">
-          <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-fg-primary">
-            {t("workloadTitle")}
-          </h2>
-          <WorkloadList workload={data.workload} today={today} variant="panel" />
-        </div>
-      </div>
-
-      {leaderboard}
     </div>
   );
 }

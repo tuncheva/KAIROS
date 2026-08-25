@@ -292,6 +292,7 @@
       "boardTitle": "Leaderboard",
       "boardSubtitle": "Tasks completed, all time",
       "boardOpenPerson": "Open {name}'s record",
+      "boardClosePerson": "Close {name}'s record",
       "boardUnknown": "Someone",
       "profileBack": "Back to your record",
       "profileYou": "You",
@@ -1407,6 +1408,7 @@
       "startConversation": "Start the conversation!",
       "attachFiles": "Attach files",
       "typeMessagePlaceholder": "Type a message...",
+      "typing": "typing…",
       "yourMessages": "Your Messages",
       "selectConversationToStart": "Select a conversation to start chatting",
       "userFallback": "User"

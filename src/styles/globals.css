@@ -1572,6 +1572,121 @@ summary,
   animation: kairos-page-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+/* Progress: the leaderboard person card.
+
+   Tapping a block on the leaderboard opens that person's card beside the
+   record. The card is the only node that enters or leaves, so it carries the
+   whole transition — the rest of the page must not move.
+
+   The keyframes animate the card's own footprint (its height when stacked,
+   its width from `lg` up) as well as its opacity, so the column beside it
+   reflows continuously instead of snapping once the card is gone.
+
+   `backwards` on the entrance: the collapsed first frame applies before the
+   animation starts, then the card reverts to its real box, so a tall
+   workload list is never clipped by a left-over max-height. The exit keeps
+   `forwards` — it must stay collapsed until React drops it. */
+@keyframes progress-person-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 1400px;
+    padding-top: 1.75rem;
+    padding-bottom: 1.75rem;
+  }
+}
+
+@keyframes progress-person-card-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 1400px;
+    padding-top: 1.75rem;
+    padding-bottom: 1.75rem;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+.progress-person-card {
+  animation: progress-person-card-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  transition: opacity 0.2s ease;
+  overflow: hidden;
+}
+
+/* Duration is mirrored by PERSON_CARD_EXIT_MS in ProgressClient.tsx. */
+.progress-person-card--out {
+  animation: progress-person-card-out 0.26s cubic-bezier(0.4, 0, 1, 1) forwards;
+  pointer-events: none;
+}
+
+@media (min-width: 1024px) {
+  /* Side by side the card takes width, not height. */
+  @keyframes progress-person-card-in {
+    from {
+      opacity: 0;
+      transform: translateX(-16px);
+      width: 0;
+      padding-left: 0;
+      padding-right: 0;
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+      width: 330px;
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @keyframes progress-person-card-out {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+      width: 330px;
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-16px);
+      width: 0;
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+}
+
+/* The panels that exist in only one of the two views. They mount when the
+   view changes, so a plain fade is enough to keep them from popping. */
+@keyframes progress-view-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.progress-view-in {
+  animation: progress-view-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: 0.06s;
+}
+
 /* Stagger children – use with data-stagger on parent */
 .kairos-stagger > * {
   opacity: 0;
@@ -2066,6 +2181,9 @@ summary,
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .kairos-page-enter,
+  .progress-person-card,
+  .progress-person-card--out,
+  .progress-view-in,
   .kairos-stagger > * {
     animation: none !important;
     opacity: 1 !important;

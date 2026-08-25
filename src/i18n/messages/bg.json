@@ -292,6 +292,7 @@
       "boardTitle": "Класация",
       "boardSubtitle": "Завършени задачи, за цялото време",
       "boardOpenPerson": "Отвори записа на {name}",
+      "boardClosePerson": "Затвори записа на {name}",
       "boardUnknown": "Някой",
       "profileBack": "Обратно към твоя запис",
       "profileYou": "Ти",
@@ -1407,6 +1408,7 @@
       "startConversation": "Започни разговора!",
       "attachFiles": "Прикачи файлове",
       "typeMessagePlaceholder": "Напиши съобщение...",
+      "typing": "пише…",
       "yourMessages": "Твоите съобщения",
       "selectConversationToStart": "Избери разговор, за да започнеш чат",
       "userFallback": "Потребител"

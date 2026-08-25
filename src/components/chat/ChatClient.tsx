@@ -11,8 +11,17 @@ import { useToast } from "~/components/providers/ToastProvider";
 import { useUploadThing } from "~/lib/uploadthing";
 import { useSocket } from "~/components/providers/SocketProvider";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
+import { useTypingIndicator } from "./useTypingIndicator";
+import {
+  appendMessage,
+  dropMessage,
+  hasMessage,
+  nextOptimisticId,
+  replaceMessage,
+  seedPage,
+  type ChatMessage,
+} from "./messageCache";
 
-type ChatMessage = RouterOutputs["chat"]["listMessages"]["messages"][number];
 type ParticipantSuggestion = RouterOutputs["chat"]["getParticipantSuggestions"];
 
 export function ChatClient({ userId }: { userId: string }) {
@@ -72,11 +81,24 @@ export function ChatClient({ userId }: { userId: string }) {
   }, [conversations, searchParams, selectedConversationId, userId]);
 
   // Get messages for selected conversation (cursor-based pagination)
+  /* History pages backwards: `prevCursor` anchors the page *before* the one in
+     hand, so it has to be fetched with `fetchPreviousPage`, which prepends.
+     With `getNextPageParam` the older page was appended instead, leaving
+     `pages` as [newest, older, older-still] — history rendered underneath the
+     latest message, and the "last page" that new messages are appended to was
+     actually the oldest one. */
   const messagesQuery = api.chat.listMessages.useInfiniteQuery(
     { conversationId: selectedConversationId ?? -1, limit: 50 },
     {
       enabled: selectedConversationId !== null,
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      /* Messages arrive over the socket, so there is no poll. This is the net
+         for the one case the socket cannot cover on its own: a frame dropped
+         while the connection was nominally up. */
+      refetchOnWindowFocus: true,
+      getPreviousPageParam: (firstPage) => firstPage.prevCursor,
+      /* Never used — history only goes backwards — but react-query requires
+         the option to exist before `pages` can grow in either direction. */
+      getNextPageParam: () => undefined,
     }
   );
 
@@ -94,8 +116,14 @@ export function ChatClient({ userId }: { userId: string }) {
 
       const previous = utils.chat.listMessages.getInfiniteData({ conversationId: selectedConversationId, limit: 50 });
 
+      /* This send's own placeholder id, carried to `onSuccess` so it can swap
+         out exactly this one. Clearing every negative id there instead meant a
+         second message sent before the first resolved had its placeholder
+         deleted, and it vanished from the thread until the next refetch. */
+      const optimisticId = nextOptimisticId();
+
       const optimistic: ChatMessage = {
-        id: -Date.now(),
+        id: optimisticId,
         body: variables.body,
         createdAt: new Date(),
         senderId: userId,
@@ -105,33 +133,25 @@ export function ChatClient({ userId }: { userId: string }) {
 
       utils.chat.listMessages.setInfiniteData(
         { conversationId: selectedConversationId, limit: 50 },
-        (old) => {
-          if (!old) return { pages: [{ messages: [optimistic], nextCursor: undefined }], pageParams: [null] as (number | null)[] };
-          const lastPageIdx = old.pages.length - 1;
-          return {
-            ...old,
-            pages: old.pages.map((page, i) =>
-              i === lastPageIdx
-                ? { ...page, messages: [...page.messages, optimistic] }
-                : page,
-            ),
-          };
-        },
+        (old) => (old ? appendMessage(old, optimistic) : seedPage(optimistic)),
       );
 
       setDraft("");
-      return { previous };
+      return { previous, optimisticId };
     },
     onError: (_err, _variables, context) => {
       console.error("[ChatClient] sendMessage error:", _err);
-      if (!selectedConversationId || !context?.previous) return;
+      if (!selectedConversationId || context?.optimisticId === undefined) return;
+      /* Drop this placeholder rather than restoring the whole `previous`
+         snapshot, which would also erase messages that arrived over the socket
+         while the request was in flight. */
       utils.chat.listMessages.setInfiniteData(
         { conversationId: selectedConversationId, limit: 50 },
-        context.previous,
+        (old) => (old ? dropMessage(old, context.optimisticId) : old),
       );
       toast.error(t("failedToSendMessage"));
     },
-    onSuccess: async (msg) => {
+    onSuccess: async (msg, _variables, context) => {
       if (selectedConversationId === null) return;
 
       const realMsg: ChatMessage = {
@@ -143,20 +163,18 @@ export function ChatClient({ userId }: { userId: string }) {
         senderImage: msg.senderImage ?? null,
       };
 
-      // Replace optimistic message with real one
+      // Swap this send's placeholder for the stored message, in place.
+      const optimisticId = context?.optimisticId;
       utils.chat.listMessages.setInfiniteData(
         { conversationId: selectedConversationId, limit: 50 },
         (old) => {
-          if (!old) return old!;
-          const lastPageIdx = old.pages.length - 1;
-          return {
-            ...old,
-            pages: old.pages.map((page, i) =>
-              i === lastPageIdx
-                ? { ...page, messages: [...page.messages.filter((m) => m.id > 0), realMsg] }
-                : page,
-            ),
-          };
+          if (!old) return old;
+          /* The socket may have echoed this message back already. */
+          if (old.pages.some((page) => page.messages.some((m) => m.id === realMsg.id))) {
+            return dropMessage(old, optimisticId);
+          }
+          if (optimisticId === undefined) return appendMessage(old, realMsg);
+          return replaceMessage(old, optimisticId, realMsg);
         },
       );
 
@@ -215,8 +233,12 @@ export function ChatClient({ userId }: { userId: string }) {
 
   // Create new conversation
   const createConversation = api.chat.getOrCreateDirectConversation.useMutation({
-    onSuccess: async (data) => {
+    onSuccess: async (data, variables) => {
       setSelectedConversationId(data.conversationId);
+      /* Without this the header, avatar and name stay blank until the user
+         re-picks the chat from the rail: `selectedUser` is looked up by
+         `selectedUserId`, which nothing else sets on this path. */
+      setSelectedUserId(variables.otherUserId);
       await utils.chat.listAllConversations.invalidate();
       setShowNewChatModal(false);
       setNewChatEmail("");
@@ -275,14 +297,34 @@ export function ChatClient({ userId }: { userId: string }) {
   // -----------------------------------------------------------------------
   const socket = useSocket();
 
-  // Join / leave conversation rooms when the selected conversation changes.
+  /* Join / leave conversation rooms as the selection changes — and re-join on
+     every `connect`.
+
+     Room membership lives on the server against a socket id, so it does not
+     survive a dropped connection, and socket.io reconnects the *same* client
+     object rather than handing out a new one. Without the `connect` listener
+     this effect never re-ran after a network blip and the conversation room
+     was silently lost: typing indicators stopped, and delivery quietly fell
+     back to the user-room copy of each message. (`useWebSocket` already does
+     this for the org room; the same reasoning applies here.) */
   useEffect(() => {
     if (!socket || selectedConversationId === null) return;
-    socket.emit("join:conversation", selectedConversationId);
+
+    const join = () => socket.emit("join:conversation", selectedConversationId);
+    socket.on("connect", join);
+    if (socket.connected) join();
+
     return () => {
-      socket.emit("leave:conversation", selectedConversationId);
+      socket.off("connect", join);
+      if (socket.connected) socket.emit("leave:conversation", selectedConversationId);
     };
   }, [socket, selectedConversationId]);
+
+  /* Typing indicators ride the same conversation room as the messages. */
+  const { peerTyping, notifyTyping, stopTyping } = useTypingIndicator(
+    socket,
+    selectedConversationId,
+  );
 
   // On new message pushed via socket → append to the local cache.
   const handleNewMessage = useCallback(
@@ -309,19 +351,12 @@ export function ChatClient({ userId }: { userId: string }) {
       utils.chat.listMessages.setInfiniteData(
         { conversationId: data.conversationId, limit: 50 },
         (old) => {
-          if (!old) return old!;
-          // Deduplicate: skip if message already exists (can happen if user is in both conversation room and user room)
-          const allMsgIds = new Set(old.pages.flatMap((p) => p.messages.map((m) => m.id)));
-          if (allMsgIds.has(data.messageId)) return old;
-          const lastPageIdx = old.pages.length - 1;
-          return {
-            ...old,
-            pages: old.pages.map((page, i) =>
-              i === lastPageIdx
-                ? { ...page, messages: [...page.messages, newMsg] }
-                : page,
-            ),
-          };
+          if (!old) return old;
+          /* The server fans the message out to the conversation room *and* to
+             each participant's user room, so an open conversation receives it
+             twice. */
+          if (hasMessage(old, data.messageId)) return old;
+          return appendMessage(old, newMsg);
         },
       );
     },
@@ -351,9 +386,13 @@ export function ChatClient({ userId }: { userId: string }) {
   const handleMessagesScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    if (el.scrollTop < 80 && messagesQuery.hasNextPage && !messagesQuery.isFetchingNextPage) {
+    if (
+      el.scrollTop < 80 &&
+      messagesQuery.hasPreviousPage &&
+      !messagesQuery.isFetchingPreviousPage
+    ) {
       const prevHeight = el.scrollHeight;
-      void messagesQuery.fetchNextPage().then(() => {
+      void messagesQuery.fetchPreviousPage().then(() => {
         requestAnimationFrame(() => {
           el.scrollTop = el.scrollHeight - prevHeight;
         });
@@ -378,6 +417,7 @@ export function ChatClient({ userId }: { userId: string }) {
     if (!selectedConversationId || (!draft.trim() && attachments.length === 0) || sendMessage.isPending || isUploading) return;
     const messageBody = draft.trim();
     if (messageBody) {
+      stopTyping();
       sendMessage.mutate({ conversationId: selectedConversationId, body: messageBody });
     }
   };
@@ -399,6 +439,7 @@ export function ChatClient({ userId }: { userId: string }) {
         setAttachments([]);
         setIsUploading(false);
         if (messageBody) {
+          stopTyping();
           sendMessage.mutate({ conversationId: selectedConversationId, body: messageBody });
         }
       } catch (err) {
@@ -751,6 +792,11 @@ export function ChatClient({ userId }: { userId: string }) {
                   <h2 className="text-sm sm:text-base font-bold text-fg-primary truncate">
                     {selectedUser.name ?? selectedUser.email}
                   </h2>
+                  {peerTyping && (
+                    <p className="text-xs text-accent-primary truncate" aria-live="polite">
+                      {t("typing")}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="relative flex-shrink-0" ref={chatMenuRef}>
@@ -914,7 +960,14 @@ export function ChatClient({ userId }: { userId: string }) {
                 <input
                   type="text"
                   value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
+                  onChange={(e) => {
+                    setDraft(e.target.value);
+                    /* An empty box is not typing — clearing the draft should
+                       retract the indicator rather than refresh it. */
+                    if (e.target.value) notifyTyping();
+                    else stopTyping();
+                  }}
+                  onBlur={stopTyping}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();

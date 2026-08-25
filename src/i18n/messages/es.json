@@ -114,6 +114,7 @@
       "boardTitle": "Clasificación",
       "boardSubtitle": "Tareas completadas, histórico",
       "boardOpenPerson": "Abrir el registro de {name}",
+      "boardClosePerson": "Cerrar el registro de {name}",
       "boardUnknown": "Alguien",
       "profileBack": "Volver a tu registro",
       "profileYou": "Tú",

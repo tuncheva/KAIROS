@@ -532,14 +532,21 @@ export function Leaderboard({ people, activeId, onSelect }: LeaderboardProps) {
         {board.map((person) => {
           const name = displayName(person) || t("boardUnknown");
           const active = person.id === activeId;
+          /* The block is a toggle, so the label has to say which way the
+             next tap goes — otherwise a screen reader announces "open" on
+             the card that is already open. */
+          const label = active
+            ? t("boardClosePerson", { name })
+            : t("boardOpenPerson", { name });
 
           return (
             <button
               key={person.id}
               type="button"
               onClick={() => onSelect(person.id)}
-              title={t("boardOpenPerson", { name })}
-              aria-label={t("boardOpenPerson", { name })}
+              title={label}
+              aria-label={label}
+              aria-pressed={active}
               className={cn(
                 "group flex min-w-[92px] flex-1 flex-col items-center gap-2 rounded-t-md transition-colors",
                 active && "bg-accent-primary/[0.07]",

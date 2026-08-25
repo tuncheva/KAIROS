@@ -114,6 +114,7 @@
       "boardTitle": "Classement",
       "boardSubtitle": "Tâches terminées, depuis le début",
       "boardOpenPerson": "Ouvrir le relevé de {name}",
+      "boardClosePerson": "Fermer le relevé de {name}",
       "boardUnknown": "Quelqu'un",
       "profileBack": "Retour à ton relevé",
       "profileYou": "Toi",

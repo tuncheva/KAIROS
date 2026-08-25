@@ -114,6 +114,7 @@
       "boardTitle": "Rangliste",
       "boardSubtitle": "Abgeschlossene Aufgaben, gesamt",
       "boardOpenPerson": "Bilanz von {name} öffnen",
+      "boardClosePerson": "Bilanz von {name} schließen",
       "boardUnknown": "Jemand",
       "profileBack": "Zurück zu deiner Bilanz",
       "profileYou": "Du",

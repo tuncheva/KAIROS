@@ -361,9 +361,18 @@ export const chatRouter = createTRPCRouter({
       const hasMore = rows.length > input.limit;
       if (hasMore) rows.pop();
 
+      /* The page is selected newest-first and then reversed, so `messages` runs
+         oldest -> newest and `rows[0]` is the oldest row on it. The cursor
+         therefore walks *backwards* in time: it is the anchor for the page
+         BEFORE this one, which is why it is named `prevCursor` and why callers
+         must page with `getPreviousPageParam`/`fetchPreviousPage`.
+
+         Naming it `nextCursor` is what led both chat clients to fetch older
+         pages with `fetchNextPage`, which appends them after the newest page —
+         history rendered below the latest message instead of above it. */
       return {
         messages: rows.reverse(),
-        nextCursor: hasMore ? rows[0]?.id : undefined,
+        prevCursor: hasMore ? rows[0]?.id : undefined,
       };
     }),
 
