@@ -20,10 +20,18 @@ export const settingsRouter = createTRPCRouter({
           image: true,
           bio: true,
          
-          emailNotifications: true,
+          inAppNotifications: true,
+          directMessageNotifications: true,
           projectUpdatesNotifications: true,
-          eventRemindersNotifications: true,
+          taskAssignmentNotifications: true,
           taskDueRemindersNotifications: true,
+          eventRemindersNotifications: true,
+          eventUpdatesNotifications: true,
+          eventRsvpNotifications: true,
+          socialNotifications: true,
+          inviteNotifications: true,
+          workspaceNotifications: true,
+          emailNotifications: true,
           marketingEmailsNotifications: true,
         
           language: true,
@@ -72,13 +80,31 @@ export const settingsRouter = createTRPCRouter({
     }),
 
 
+  /**
+   * Every field optional, and only the provided ones are written.
+   *
+   * That matters more now that there are thirteen: a client that sends a partial
+   * object must not have the omitted switches reset to whatever its own defaults
+   * happen to be. The empty-input case is rejected rather than issuing an UPDATE
+   * that sets only `updatedAt`.
+   */
   updateNotifications: protectedProcedure
     .input(z.object({
-      emailNotifications: z.boolean().optional(),
+      inAppNotifications: z.boolean().optional(),
+      directMessageNotifications: z.boolean().optional(),
       projectUpdatesNotifications: z.boolean().optional(),
-      eventRemindersNotifications: z.boolean().optional(),
+      taskAssignmentNotifications: z.boolean().optional(),
       taskDueRemindersNotifications: z.boolean().optional(),
+      eventRemindersNotifications: z.boolean().optional(),
+      eventUpdatesNotifications: z.boolean().optional(),
+      eventRsvpNotifications: z.boolean().optional(),
+      socialNotifications: z.boolean().optional(),
+      inviteNotifications: z.boolean().optional(),
+      workspaceNotifications: z.boolean().optional(),
+      emailNotifications: z.boolean().optional(),
       marketingEmailsNotifications: z.boolean().optional(),
+    }).refine((v) => Object.keys(v).length > 0, {
+      message: "No notification preferences supplied",
     }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.update(users)

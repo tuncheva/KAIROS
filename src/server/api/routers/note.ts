@@ -2,9 +2,9 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import crypto from "node:crypto";
 import { protectedProcedure, createTRPCRouter } from "~/server/api/trpc";
-import { stickyNotes, users, notebooks, noteShares, notifications } from "~/server/db/schema";
+import { stickyNotes, users, notebooks, noteShares } from "~/server/db/schema";
 import { eq, and } from "drizzle-orm";
-import { emitNotification } from "~/server/ws/emit";
+import { notify } from "~/server/notifications/dispatch";
 import * as argon2 from "argon2";
 import { encryptContent, decryptContent } from "~/server/security/encryption";
 import {
@@ -259,16 +259,11 @@ export const noteRouter = createTRPCRouter({
       // Create notification for the target user
       const sharerName = ctx.session.user.name ?? ctx.session.user.email ?? "Someone";
       const noteTitle = note.title ?? "Untitled note";
-      await ctx.db.insert(notifications).values({
+      await notify({
+        db: ctx.db,
         userId: targetUser.id,
-        type: "system",
-        title: "Note shared with you",
-        message: `${sharerName} shared "${noteTitle}" with you (${input.permission === "write" ? "can edit" : "view only"}).`,
-        link: `/notes?noteId=${input.noteId}&tab=shared`,
-        read: false,
-      });
-      emitNotification(targetUser.id, {
-        id: `note-share-${input.noteId}-${Date.now()}`,
+        actorId: ctx.session.user.id,
+        category: "invite",
         type: "system",
         title: "Note shared with you",
         message: `${sharerName} shared "${noteTitle}" with you (${input.permission === "write" ? "can edit" : "view only"}).`,

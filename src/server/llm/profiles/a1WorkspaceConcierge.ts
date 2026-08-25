@@ -49,6 +49,7 @@ export const a1WorkspaceConciergeProfile: AgentProfile = {
     "listNotifications",
     "listEventsPublic",
     "listEventRsvps",
+    "searchDocuments",
     "rememberFact",
     "forgetFact",
   ],

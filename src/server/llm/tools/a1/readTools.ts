@@ -18,6 +18,7 @@ import {
 
 import { forgetFactTool, rememberFactTool } from "~/server/llm/memory";
 import { searchWorkspaceTool } from "./searchTools";
+import { searchDocumentsTool } from "~/server/llm/documents/search";
 import type { A1ReadToolName, A1Tool } from "./types";
 import {
   getCalendarRangeTool,
@@ -38,6 +39,7 @@ import {
 export type { A1ReadToolName, A1Tool };
 
 export type A1ReadToolsMap = {
+  searchDocuments: typeof searchDocumentsTool;
   getSessionContext: typeof getSessionContextTool;
   listOrganizations: typeof listOrganizationsTool;
   listOrgMembers: typeof listOrgMembersTool;
@@ -627,6 +629,7 @@ export const listEventsPublicTool: A1Tool<
 };
 
 export const A1_READ_TOOLS: A1ReadToolsMap = {
+  searchDocuments: searchDocumentsTool,
   getSessionContext: getSessionContextTool,
   listOrganizations: listOrganizationsTool,
   listOrgMembers: listOrgMembersTool,

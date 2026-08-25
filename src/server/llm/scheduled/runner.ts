@@ -24,13 +24,14 @@
 
 import "server-only";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "~/server/db";
+import { notify } from "~/server/notifications/dispatch";
 import {
   aiCustomSchedules,
   aiSchedules,
-  notifications,
+  externalEvents,
   users,
 } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
@@ -39,6 +40,12 @@ import { entitlementsFor } from "~/server/billing/entitlements";
 import { sendBriefEmail } from "~/server/email/email";
 
 import { runCustomSchedule } from "./customSchedules";
+import {
+  collectPrepFacts,
+  fallbackPrep,
+  prepIsEmpty,
+  writePrep,
+} from "./meetingPrep";
 import { isScheduleDue } from "./due";
 import { consumeSystemRateLimit } from "~/server/security/rateLimit";
 import type { SupportedLocale } from "~/server/llm/context/a1ContextBuilder";
@@ -64,7 +71,28 @@ import { loadSystemUser, systemContextFor } from "./systemContext";
 
 const log = createLogger("llm.scheduled");
 
-export type ScheduleKind = "daily_brief" | "risk_radar" | "weekly_retro";
+export type ScheduleKind =
+  | "daily_brief"
+  | "risk_radar"
+  | "weekly_retro"
+  | "meeting_prep";
+
+/**
+ * Kinds whose cadence is an hour of the day.
+ *
+ * `meeting_prep` is not one of them: it is due whenever a meeting is close, which
+ * is a question about the calendar rather than about the clock. It runs on every
+ * tick through its own pass, and is excluded from the hour-gated sweep so
+ * `isScheduleDue` is not asked a question it cannot answer.
+ */
+const HOUR_GATED_KINDS = [
+  "daily_brief",
+  "risk_radar",
+  "weekly_retro",
+] as const satisfies readonly ScheduleKind[];
+
+/** The kinds the hour-gated dispatch below is responsible for. */
+type HourGatedKind = (typeof HOUR_GATED_KINDS)[number];
 
 /** How many users are processed at once. */
 const CONCURRENCY = 4;
@@ -86,6 +114,8 @@ export interface RunReport {
   notificationsSent: number;
   /** Present once the custom-schedule pass has run. */
   custom?: CustomReport;
+  /** Present once the meeting-prep pass has run. */
+  meetingPrep?: CustomReport;
 }
 
 /**
@@ -120,20 +150,39 @@ async function dueSchedules(now: Date) {
     })
     .from(aiSchedules)
     .innerJoin(users, eq(aiSchedules.userId, users.id))
-    .where(eq(aiSchedules.enabled, true))
+    .where(
+      and(
+        eq(aiSchedules.enabled, true),
+        inArray(aiSchedules.kind, [...HOUR_GATED_KINDS]),
+      ),
+    )
     .limit(500);
 
   return rows.filter((row) => isScheduleDue(row, now));
 }
 
-async function notify(input: {
+/**
+ * Send one scheduled-run notification.
+ *
+ * A thin wrapper over `notifications/dispatch` rather than a direct call at each
+ * site, so the category and the default link are stated once. Named
+ * `notifyUser` because `notify` is the imported dispatcher — a local function of
+ * the same name shadows it and recurses.
+ */
+async function notifyUser(input: {
   userId: string;
   title: string;
   message: string;
   link?: string | null;
 }): Promise<void> {
-  await db.insert(notifications).values({
+  /* Category `requested`: the user created this schedule themselves, so it is
+     not gated by a category toggle — only by the master in-app switch. A per-item
+     opt-in is a stronger statement of intent than any category default. To stop
+     these, delete or disable the schedule. */
+  await notify({
+    db,
     userId: input.userId,
+    category: "requested",
     type: "system",
     title: input.title,
     message: input.message,
@@ -174,13 +223,33 @@ interface RunTarget {
  *   bug.
  * - **A success resets the count.** Three failures spread over six months is
  *   evidence of nothing; three consecutive is evidence the address is dead.
+ * - **The account-level email preference outranks the per-schedule channel.**
+ *   `emailNotifications` was read by nothing, so a user who switched email off in
+ *   Settings kept receiving briefs by email. It is checked here rather than at
+ *   each caller because every delivery path funnels through this function.
  */
 async function deliver(
   target: RunTarget,
   input: { email: string | null; userName: string | null; title: string; message: string },
 ): Promise<void> {
-  const wantsEmail = target.channel === "email" || target.channel === "both";
+  const channelWantsEmail = target.channel === "email" || target.channel === "both";
   const wantsApp = target.channel === "app" || target.channel === "both";
+
+  /* Off is a *choice*, not a delivery failure. So it must not count toward the
+     three-strikes counter that disables the channel, and it must not be reported
+     as an error — but the brief still has to land somewhere, so in-app takes
+     over exactly as it does for a bounce. */
+  let emailSuppressed = false;
+  if (channelWantsEmail) {
+    const [prefs] = await db
+      .select({ emailNotifications: users.emailNotifications })
+      .from(users)
+      .where(eq(users.id, target.userId))
+      .limit(1);
+    emailSuppressed = prefs ? !prefs.emailNotifications : true;
+  }
+
+  const wantsEmail = channelWantsEmail && !emailSuppressed;
 
   let emailError: string | null = null;
 
@@ -199,9 +268,13 @@ async function deliver(
   }
 
   // In-app when asked for, and always as the fallback when email was the only
-  // route and it did not work.
-  if (wantsApp || emailError) {
-    await notify({ userId: target.userId, title: input.title, message: input.message });
+  // route and it did not work — or was switched off at the account level.
+  if (wantsApp || emailError || emailSuppressed) {
+    await notifyUser({
+      userId: target.userId,
+      title: input.title,
+      message: input.message,
+    });
   }
 
   if (!wantsEmail || target.scheduleId === null) return;
@@ -220,7 +293,7 @@ async function deliver(
         })
         .where(eq(aiSchedules.id, target.scheduleId));
 
-      await notify({
+      await notifyUser({
         userId: target.userId,
         title: "Email delivery turned off",
         message: `We could not deliver your brief by email ${String(failures)} times in a row, so it will arrive here instead. Check your address in Settings → AI.`,
@@ -392,6 +465,104 @@ async function runWeeklyRetro(target: RunTarget): Promise<number> {
 }
 
 /**
+ * Run meeting prep for everyone who has it on.
+ *
+ * Separate from the hour-gated sweep because its cadence is different in kind:
+ * it fires when a meeting is close, so every tick asks "is anything within the
+ * horizon that has not been covered?" rather than "has the chosen hour arrived?".
+ *
+ * Idempotence comes from `external_events.preppedAt`, not from `lastRunAt` — the
+ * question is whether *this meeting* was covered, and a per-schedule timestamp
+ * cannot answer it for a user with four meetings in an afternoon.
+ */
+async function runDueMeetingPreps(now: Date): Promise<CustomReport> {
+  const rows = await db
+    .select({
+      id: aiSchedules.id,
+      userId: aiSchedules.userId,
+      channel: aiSchedules.channel,
+      channelFailures: aiSchedules.channelFailures,
+    })
+    .from(aiSchedules)
+    .where(
+      and(
+        eq(aiSchedules.enabled, true),
+        eq(aiSchedules.kind, "meeting_prep"),
+      ),
+    )
+    .limit(500);
+
+  const report: CustomReport = {
+    considered: rows.length,
+    ran: 0,
+    skippedOverCap: 0,
+    failed: 0,
+    notificationsSent: 0,
+  };
+
+  for (const row of rows) {
+    try {
+      const user = await loadSystemUser(row.userId);
+      if (!user) continue;
+
+      const ctx = systemContextFor(user);
+      const facts = await collectPrepFacts(ctx, row.userId, { now });
+
+      if (prepIsEmpty(facts)) continue;
+
+      report.ran += 1;
+
+      const allowed = await consumeSystemRateLimit(row.userId);
+      const message = allowed
+        ? await writePrep({
+            facts,
+            userName: user.name,
+            locale: user.language as SupportedLocale,
+          })
+        : fallbackPrep(facts);
+
+      await deliver(
+        {
+          userId: row.userId,
+          scheduleId: row.id,
+          channel: row.channel,
+          channelFailures: row.channelFailures,
+        },
+        {
+          email: user.email,
+          userName: user.name,
+          title:
+            facts.meetings.length === 1
+              ? `Before "${facts.meetings[0]!.title}"`
+              : `${String(facts.meetings.length)} meetings coming up`,
+          message,
+        },
+      );
+
+      // Marked only after delivery. Marking first would lose the brief entirely
+      // if delivery threw, and a meeting nobody was told about is worse than one
+      // mentioned twice.
+      await db
+        .update(externalEvents)
+        .set({ preppedAt: now })
+        .where(
+          inArray(
+            externalEvents.id,
+            facts.meetings.map((m) => m.id),
+          ),
+        );
+
+      report.notificationsSent += 1;
+    } catch (err) {
+      report.failed += 1;
+      log.error("meeting prep failed", { userId: row.userId, err });
+    }
+  }
+
+  return report;
+}
+
+/**
  * What each kind of schedule actually runs.
  *
  * A map rather than a chain of conditionals. With two kinds a ternary was fine;
@@ -399,7 +570,10 @@ async function runWeeklyRetro(target: RunTarget): Promise<number> {
  * nothing else — and `Record<ScheduleKind, …>` makes the compiler say so if a
  * kind is ever added without a runner.
  */
-const RUNNERS: Record<ScheduleKind, (target: RunTarget) => Promise<number>> = {
+const RUNNERS: Record<
+  HourGatedKind,
+  (target: RunTarget) => Promise<number>
+> = {
   daily_brief: runDailyBrief,
   risk_radar: runRiskRadar,
   weekly_retro: runWeeklyRetro,
@@ -601,7 +775,7 @@ export async function runDueSchedules(now = new Date()): Promise<RunReport> {
       // rather than defaulted. `kind` is free text by design, so an unknown value
       // is possible, and silently running the radar for it would be worse than
       // doing nothing.
-      const run = RUNNERS[schedule.kind as ScheduleKind];
+      const run = RUNNERS[schedule.kind as HourGatedKind];
       if (!run) {
         log.warn("unknown schedule kind, skipping", {
           userId: schedule.userId,
@@ -649,6 +823,12 @@ export async function runDueSchedules(now = new Date()): Promise<RunReport> {
     report.custom = custom;
   } catch (err) {
     log.error("custom schedule sweep failed", { err });
+  }
+
+  try {
+    report.meetingPrep = await runDueMeetingPreps(now);
+  } catch (err) {
+    log.error("meeting prep sweep failed", { err });
   }
 
   return report;

@@ -24,18 +24,33 @@ const REGIONS = [
   { value: 'shumen', label: 'Shumen' },
 ] as const;
 
+/**
+ * The field the composer wants attention on when it hands the form over.
+ * `title` means "just open it"; the others are the three chips.
+ */
+export type ComposerField = 'title' | 'date' | 'location' | 'image';
+
 interface CreateEventFormProps {
   onSuccess?: () => void;
   onClose?: () => void;
+  /** A title typed in the feed composer, so it is not retyped here. */
+  initialTitle?: string;
+  /** Which field to focus on open — the chip that was pressed. */
+  focusField?: ComposerField;
 }
 
-export const CreateEventForm: React.FC<CreateEventFormProps> = ({ onSuccess, onClose }) => {
+export const CreateEventForm: React.FC<CreateEventFormProps> = ({
+  onSuccess,
+  onClose,
+  initialTitle = '',
+  focusField = 'title',
+}) => {
   const { data: session } = useSession();
   const utils = api.useUtils();
   const toast = useToast();
   const t = useTranslations("publish");
   
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [eventTime, setEventTime] = useState('');
@@ -59,7 +74,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({ onSuccess, onC
       if (saved) {
         const d = JSON.parse(saved) as Record<string, string | boolean>;
         if (Date.now() - (Number(d._ts) || 0) < 120000) { // 2 minutes
-          if (d.title) setTitle(d.title as string);
+          if (d.title && !initialTitle) setTitle(d.title as string);
           if (d.description) setDescription(d.description as string);
           if (d.eventDate) setEventDate(d.eventDate as string);
           if (d.eventTime) setEventTime(d.eventTime as string);
@@ -70,6 +85,8 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({ onSuccess, onC
         }
       }
     } catch { /* ignore */ }
+    // `initialTitle` is read once, on the same first run as the restore.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Save changes to localStorage on unmount or change
@@ -81,6 +98,26 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({ onSuccess, onC
       localStorage.removeItem(draftKey);
     }
   }, [title, description, eventDate, eventTime, location, region]);
+
+  /**
+   * The chip you pressed in the composer is the field you meant to fill, so the
+   * dialog opens with that one focused rather than always landing on the title.
+   */
+  const titleRef = useRef<HTMLInputElement | null>(null);
+  const dateRef = useRef<HTMLInputElement | null>(null);
+  const locationRef = useRef<HTMLInputElement | null>(null);
+  const imageRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const target = {
+      title: titleRef,
+      date: dateRef,
+      location: locationRef,
+      image: imageRef,
+    }[focusField];
+    target.current?.focus();
+    if (focusField === 'image') target.current?.click();
+  }, [focusField]);
 
   const { startUpload } = useUploadThing("imageUploader");
 
@@ -219,6 +256,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({ onSuccess, onC
       <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
         {/* Event Title — large display font */}
         <input
+          ref={titleRef}
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -266,6 +304,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({ onSuccess, onC
           <div className="flex items-center gap-2.5 dark:bg-white/5 bg-slate-50 rounded-xl p-3 border dark:border-accent-primary/20 border-slate-200 focus-within:border-accent-primary focus-within:ring-1 focus-within:ring-accent-primary/40 transition-all">
             <MapPin size={16} className="text-accent-primary shrink-0" />
             <input
+              ref={locationRef}
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
@@ -280,6 +319,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({ onSuccess, onC
             <div className="flex items-center gap-2.5 dark:bg-white/5 bg-slate-50 rounded-xl p-3 border dark:border-accent-primary/20 border-slate-200 focus-within:border-accent-primary focus-within:ring-1 focus-within:ring-accent-primary/40 transition-all">
               <Calendar size={16} className="text-accent-primary shrink-0" />
               <input
+                ref={dateRef}
                 type="date"
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
@@ -386,6 +426,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({ onSuccess, onC
               <ImagePlus size={16} className="text-accent-primary" />
               <span className="text-xs font-semibold">{t("media")}</span>
               <input
+                ref={imageRef}
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}

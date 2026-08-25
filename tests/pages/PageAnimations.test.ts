@@ -10,7 +10,6 @@ import path from "path";
 const pagesDir = path.resolve(__dirname, "../../src/app");
 
 const pageFiles = [
-  "(app)/create/page.tsx",
   "(app)/projects/page.tsx",
   "(app)/progress/page.tsx",
   "(app)/publish/page.tsx",

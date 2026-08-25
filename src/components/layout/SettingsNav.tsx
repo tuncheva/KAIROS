@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { User, Bell, Shield, Globe, Palette, Building2, Sparkles } from "lucide-react";
+import {
+  Bell,
+  Building2,
+  Globe,
+  Palette,
+  Shield,
+  Sparkles,
+  Terminal,
+  User,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
@@ -23,6 +32,10 @@ export function SettingsNav({ activeSection }: SettingsNavProps) {
     { id: "language", label: t("language"), icon: Globe },
     { id: "appearance", label: t("appearance"), icon: Palette },
     { id: "ai", label: t("ai"), icon: Sparkles },
+    // Shown on every plan. The panels behind it refuse without `apiAccess`, so
+    // the page explains the gate rather than erroring into it — a hidden tab
+    // makes the capability undiscoverable.
+    { id: "developer", label: t("developer"), icon: Terminal },
   ];
 
   return (

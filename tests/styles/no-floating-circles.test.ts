@@ -10,11 +10,15 @@ import path from "path";
 const cssPath = path.resolve(__dirname, "../../src/styles/globals.css");
 const css = fs.readFileSync(cssPath, "utf-8");
 
-const createPagePath = path.resolve(__dirname, "../../src/app/(app)/create/page.tsx");
-const createPageSource = fs.readFileSync(createPagePath, "utf-8");
-
 const publishPagePath = path.resolve(__dirname, "../../src/app/(app)/publish/page.tsx");
 const publishPageSource = fs.readFileSync(publishPagePath, "utf-8");
+
+/* The page is now a shell; the grid and its separators live in the workspace. */
+const publishWorkspacePath = path.resolve(
+  __dirname,
+  "../../src/components/publish/PublishWorkspace.tsx",
+);
+const publishWorkspaceSource = fs.readFileSync(publishWorkspacePath, "utf-8");
 
 describe("Globals CSS – No Floating Circles", () => {
   it("body does not have background-image with radial-gradient", () => {
@@ -44,16 +48,6 @@ describe("Globals CSS – No Floating Circles", () => {
   });
 });
 
-describe("Create Page – No Floating Circles", () => {
-  it("does not contain radial-gradient inline div", () => {
-    expect(createPageSource).not.toContain("radial-gradient");
-  });
-
-  it("does not contain floating circle overlay div", () => {
-    expect(createPageSource).not.toContain("fixed inset-0 pointer-events-none z-0");
-  });
-});
-
 describe("Publish Page – No Gradient Background", () => {
   it("does not use bg-gradient-to-br", () => {
     expect(publishPageSource).not.toContain("bg-gradient-to-br");
@@ -68,10 +62,10 @@ describe("Publish Page – No Gradient Background", () => {
   });
 
   it("uses max-w-7xl for responsive width constraint", () => {
-    expect(publishPageSource).toContain("max-w-7xl");
+    expect(publishWorkspaceSource).toContain("max-w-7xl");
   });
 
-  it("header uses dark:border-white/5 separator", () => {
-    expect(publishPageSource).toContain("dark:border-white/5");
+  it("panel separators stay on the subtle dark border", () => {
+    expect(publishWorkspaceSource).toContain("dark:border-white/5");
   });
 });

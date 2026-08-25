@@ -24,7 +24,11 @@ export const themeEnum = pgEnum("theme", ["light", "dark", "system"]);
  */
 export const languageEnum = pgEnum("language", ["en", "bg", "es", "fr", "de"]);
 export const dateFormatEnum = pgEnum("date_format", ["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"]);
-export const notificationTypeEnum = pgEnum("notification_type", ["event", "task", "project", "system", "like", "comment", "reply"]);
+// "message" (a direct message) and "event_reminder" (a subscribed event about to
+// start) are new. Both were previously filed as "system", which is how the bell
+// ended up showing a generic gear beside "New message" and why a user could not
+// tell an account notice from a chat ping.
+export const notificationTypeEnum = pgEnum("notification_type", ["event", "task", "project", "system", "like", "comment", "reply", "message", "event_reminder"]);
 export const rsvpStatusEnum = pgEnum("rsvp_status", ["going", "maybe", "not_going"]);
 export const regionEnum = pgEnum("region", [
   "sofia",

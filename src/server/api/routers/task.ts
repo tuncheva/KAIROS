@@ -1,11 +1,13 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure, type TRPCContext } from "~/server/api/trpc";
 import { assertProjectPermission } from "~/server/api/authz";
 import { tasks, projects, projectCollaborators, taskActivityLog, organizationMembers, users, organizations, events } from "~/server/db/schema";
 import { eq, and, desc, sql, isNull, gte, lte, isNotNull, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { notify, notifyMany } from "~/server/notifications/dispatch";
+import { projectAudience } from "~/server/notifications/audience";
 
 export const taskRouter = createTRPCRouter({
  
@@ -78,6 +80,8 @@ export const taskRouter = createTRPCRouter({
           action: "created",
           newValue: "Task created",
         });
+
+        await notifyTaskCreated(ctx, task, input.projectId);
       }
 
       return task;
@@ -218,6 +222,38 @@ export const taskRouter = createTRPCRouter({
         action: "updated",
         newValue: "Task updated",
       });
+
+      /* Being handed somebody else's task is the one edit the new owner has to
+         know about. Scoped to an actual change of assignee: the task dialog sends
+         the current `assignedToId` back on every save, so comparing against the
+         stored value is what keeps a title tweak from re-notifying the assignee. */
+      if (
+        input.assignedToId !== undefined &&
+        input.assignedToId !== null &&
+        input.assignedToId !== task.assignedToId
+      ) {
+        const [project] = await ctx.db
+          .select({ title: projects.title })
+          .from(projects)
+          .where(eq(projects.id, task.projectId))
+          .limit(1);
+
+        const actor = await ctx.db.query.users.findFirst({
+          where: eq(users.id, ctx.session.user.id),
+          columns: { name: true },
+        });
+
+        await notify({
+          db: ctx.db,
+          userId: input.assignedToId,
+          actorId: ctx.session.user.id,
+          category: "taskAssignment",
+          type: "task",
+          title: "Task assigned to you",
+          message: `${actor?.name ?? "Someone"} assigned you "${input.title ?? task.title}" in ${project?.title ?? "a project"}.`,
+          link: `/projects?projectId=${task.projectId}`,
+        });
+      }
 
       return { success: true };
     }),
@@ -759,3 +795,65 @@ export const taskRouter = createTRPCRouter({
       return { tasks: taskRows, events: eventRows };
     }),
 });
+
+/**
+ * Tell a project's members that work was added, and tell an assignee it is theirs.
+ *
+ * "Somebody added something to a project" produced no notification at all before
+ * this: the only project-related notification in the codebase was the
+ * collaborator invite, so a project could fill up with work and every member
+ * other than the author would learn about it by happening to look.
+ *
+ * The assignee gets the *assignment* notice and is excluded from the general
+ * activity notice, so being given a task is one bell entry rather than two.
+ */
+async function notifyTaskCreated(
+  ctx: TRPCContext & { session: { user: { id: string } } },
+  task: { id: number; title: string; assignedToId: string | null },
+  projectId: number,
+): Promise<void> {
+  const actorId = ctx.session.user.id;
+
+  const [project] = await ctx.db
+    .select({ title: projects.title })
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .limit(1);
+
+  const actor = await ctx.db.query.users.findFirst({
+    where: eq(users.id, actorId),
+    columns: { name: true },
+  });
+
+  const actorName = actor?.name ?? "Someone";
+  const projectTitle = project?.title ?? "a project";
+  const link = `/projects?projectId=${projectId}`;
+
+  if (task.assignedToId && task.assignedToId !== actorId) {
+    await notify({
+      db: ctx.db,
+      userId: task.assignedToId,
+      actorId,
+      category: "taskAssignment",
+      type: "task",
+      title: "New task assigned to you",
+      message: `${actorName} assigned you "${task.title}" in ${projectTitle}.`,
+      link,
+    });
+  }
+
+  const audience = (await projectAudience(ctx.db, projectId)).filter(
+    (id) => id !== task.assignedToId,
+  );
+
+  await notifyMany({
+    db: ctx.db,
+    userIds: audience,
+    actorId,
+    category: "projectUpdate",
+    type: "project",
+    title: "New task added",
+    message: `${actorName} added "${task.title}" to ${projectTitle}.`,
+    link,
+  });
+}

@@ -26,7 +26,7 @@ import {
 } from "./dashboardData";
 
 /** Project detail lives behind the create flow — see `ProjectsWorkspace`. */
-const projectHref = (id: number) => `/create?action=new_project&projectId=${id}`;
+const projectHref = (id: number) => `/projects?projectId=${id}`;
 
 type ActivityRow = {
   id: number;
@@ -268,7 +268,7 @@ export function DashboardClient({ userName }: { userName: string | null }) {
           />
           {summaries.length === 0 ? (
             <Link
-              href="/create?action=new_project"
+              href="/projects"
               className="flex items-center gap-2 rounded-[10px] border border-dashed border-border-light/70 px-4 py-5 text-sm text-fg-tertiary transition-colors hover:border-accent-primary/50 hover:text-fg-primary"
             >
               <Plus size={16} />
@@ -476,7 +476,7 @@ function FirstRun({
 
         <div className="dash-rise flex flex-wrap items-center gap-3.5" style={rise(0.18)}>
           <Link
-            href="/create?action=new_project"
+            href="/projects"
             className="flex items-center gap-2.5 rounded-[10px] bg-accent-primary px-[22px] py-[15px] text-[15px] font-semibold text-white transition-all duration-[350ms] hover:-translate-y-0.5 hover:bg-accent-hover"
           >
             <Plus size={17} />

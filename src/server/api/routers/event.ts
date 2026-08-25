@@ -1,13 +1,30 @@
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, createTRPCRouter } from "../trpc";
-import { events, eventComments, eventLikes, eventRsvps, users, notifications } from "~/server/db/schema";
-import { eq, desc, and, sql, inArray } from "drizzle-orm";
+import { events, eventComments, eventLikes, eventRsvps, users } from "~/server/db/schema";
+import { eq, desc, asc, and, or, sql, inArray, gte } from "drizzle-orm";
 import { type NewEvent } from "~/server/db/schema";
 import { TRPCError } from "@trpc/server";
-import { emitNotification, emitEventDeleted, emitEventUpdated } from "~/server/ws/emit";
-import { createLogger } from "~/server/logger";
+import { emitEventDeleted, emitEventUpdated } from "~/server/ws/emit";
+import { notify, notifyMany } from "~/server/notifications/dispatch";
+import { eventSubscribers } from "~/server/notifications/audience";
 
-const log = createLogger("event");
+/**
+ * How an RSVP reads to the person who owns the event.
+ *
+ * A decline is worth telling the owner about — it changes their headcount — but
+ * it is framed as information rather than as good news.
+ */
+const RSVP_TITLES: Record<"going" | "maybe" | "not_going", string> = {
+  going: "New attendee",
+  maybe: "A tentative reply",
+  not_going: "Someone can't make it",
+};
+
+const RSVP_PHRASES: Record<"going" | "maybe" | "not_going", string> = {
+  going: "is going to",
+  maybe: "might attend",
+  not_going: "can't make",
+};
 
 const createEventSchema = z.object({
   title: z.string().min(1, "Title is required").max(256),
@@ -249,6 +266,73 @@ export const eventRouter = createTRPCRouter({
       return { items, nextCursor };
     }),
 
+  /**
+   * Everything the publish sidebar needs about *you*, in one round trip.
+   *
+   * The feed is paginated, so counting your own RSVPs from the loaded pages
+   * would report "3 going" simply because page two had not arrived yet. These
+   * counts are over the whole table; the agenda is the next few things you have
+   * said yes to, host or guest, soonest first.
+   */
+  getMySummary: protectedProcedure.query(async ({ ctx }) => {
+    const currentUserId = ctx.session.user.id;
+    const now = new Date();
+
+    const [counts] = await ctx.db
+      .select({
+        hosting: sql<number>`count(*) FILTER (WHERE ${events.createdById} = ${currentUserId})`.mapWith(Number),
+        going: sql<number>`count(*) FILTER (WHERE ${eventRsvps.status} = 'going')`.mapWith(Number),
+        maybe: sql<number>`count(*) FILTER (WHERE ${eventRsvps.status} = 'maybe')`.mapWith(Number),
+      })
+      .from(events)
+      .leftJoin(
+        eventRsvps,
+        and(eq(eventRsvps.eventId, events.id), eq(eventRsvps.userId, currentUserId)),
+      );
+
+    const agenda = await ctx.db
+      .select({
+        id: events.id,
+        title: events.title,
+        eventDate: events.eventDate,
+        region: events.region,
+        isHost: sql<boolean>`${events.createdById} = ${currentUserId}`,
+        rsvpStatus: eventRsvps.status,
+      })
+      .from(events)
+      .leftJoin(
+        eventRsvps,
+        and(eq(eventRsvps.eventId, events.id), eq(eventRsvps.userId, currentUserId)),
+      )
+      .where(
+        and(
+          gte(events.eventDate, now),
+          or(
+            eq(events.createdById, currentUserId),
+            inArray(eventRsvps.status, ["going", "maybe"]),
+          ),
+        ),
+      )
+      .orderBy(asc(events.eventDate))
+      .limit(5);
+
+    return {
+      counts: {
+        hosting: counts?.hosting ?? 0,
+        going: counts?.going ?? 0,
+        maybe: counts?.maybe ?? 0,
+      },
+      agenda: agenda.map((row) => ({
+        id: row.id,
+        title: row.title,
+        eventDate: row.eventDate,
+        region: row.region,
+        isHost: row.isHost,
+        rsvpStatus: row.rsvpStatus,
+      })),
+    };
+  }),
+
   addComment: protectedProcedure
     .input(addCommentSchema)
     .mutation(async ({ ctx, input }) => {
@@ -275,16 +359,11 @@ export const eventRouter = createTRPCRouter({
         });
         const commenterName = commenter?.name ?? "Someone";
 
-        await ctx.db.insert(notifications).values({
+        await notify({
+          db: ctx.db,
           userId: eventRow.createdById,
-          type: "comment",
-          title: "New comment on your event",
-          message: `${commenterName} commented on "${eventRow.title}"`,
-          link: `/publish#event-${input.eventId}`,
-          read: false,
-        });
-        emitNotification(eventRow.createdById, {
-          id: `comment-${input.eventId}-${Date.now()}`,
+          actorId: currentUserId,
+          category: "social",
           type: "comment",
           title: "New comment on your event",
           message: `${commenterName} commented on "${eventRow.title}"`,
@@ -346,20 +425,18 @@ export const eventRouter = createTRPCRouter({
           });
           const likerName = liker?.name ?? "Someone";
 
-          await ctx.db.insert(notifications).values({
+          await notify({
+            db: ctx.db,
             userId: eventRow.createdById,
+            actorId: currentUserId,
+            category: "social",
             type: "like",
             title: "New like on your event",
             message: `${likerName} liked your event "${eventRow.title}"`,
             link: `/publish#event-${input.eventId}`,
-            read: false,
-          });
-          emitNotification(eventRow.createdById, {
-            id: `like-${input.eventId}-${Date.now()}`,
-            type: "like",
-            title: "New like on your event",
-            message: `${likerName} liked your event "${eventRow.title}"`,
-            link: `/publish#event-${input.eventId}`,
+            // Likes arrive in bursts on a popular post; one bell entry per
+            // unread window is enough to make the point.
+            coalesceWindowMs: 10 * 60 * 1000,
           });
         }
 
@@ -384,6 +461,8 @@ export const eventRouter = createTRPCRouter({
           )
         )
         .limit(1);
+
+      const previousStatus = existingRsvp[0]?.status ?? null;
 
       if (existingRsvp.length > 0) {
         await ctx.db
@@ -415,6 +494,43 @@ export const eventRouter = createTRPCRouter({
         });
       }
 
+      /* Subscribing to an event told nobody anything. The owner had no way to
+         learn that someone had signed up, and the subscriber's own reminder
+         request was recorded and never acted on — see the reminder sweep in
+         `~/server/notifications/eventReminders` for the second half of that.
+
+         Only a *new* or *changed* RSVP is news. Re-saving the same status —
+         which the RSVP dialog does whenever the reminder dropdown changes —
+         must not notify again. */
+      const statusChanged = previousStatus !== input.status;
+
+      if (statusChanged) {
+        const [eventRow] = await ctx.db
+          .select({ createdById: events.createdById, title: events.title })
+          .from(events)
+          .where(eq(events.id, input.eventId))
+          .limit(1);
+
+        if (eventRow) {
+          const responder = await ctx.db.query.users.findFirst({
+            where: eq(users.id, currentUserId),
+            columns: { name: true },
+          });
+          const responderName = responder?.name ?? "Someone";
+
+          await notify({
+            db: ctx.db,
+            userId: eventRow.createdById,
+            actorId: currentUserId,
+            category: "eventRsvp",
+            type: "event",
+            title: RSVP_TITLES[input.status],
+            message: `${responderName} ${RSVP_PHRASES[input.status]} "${eventRow.title}"`,
+            link: `/publish#event-${input.eventId}`,
+          });
+        }
+      }
+
       emitEventUpdated(input.eventId);
       return { success: true, status: input.status };
     }),
@@ -423,7 +539,7 @@ export const eventRouter = createTRPCRouter({
     .input(deleteEventSchema)
     .mutation(async ({ ctx, input }) => {
       const [event] = await ctx.db
-        .select({ id: events.id, createdById: events.createdById })
+        .select({ id: events.id, createdById: events.createdById, title: events.title })
         .from(events)
         .where(eq(events.id, input.eventId))
         .limit(1);
@@ -436,7 +552,26 @@ export const eventRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't own this event." });
       }
 
+      /* Read the audience *before* the delete. The RSVP rows cascade away with
+         the event, so asking afterwards always returns nobody — which is the
+         trap that would make a cancellation the one change subscribers never
+         hear about. */
+      const subscribers = await eventSubscribers(ctx.db, input.eventId);
+      const title = event.title;
+
       await ctx.db.delete(events).where(eq(events.id, input.eventId));
+
+      await notifyMany({
+        db: ctx.db,
+        userIds: subscribers,
+        actorId: ctx.session.user.id,
+        category: "eventUpdate",
+        type: "event",
+        title: "Event cancelled",
+        message: `"${title}" has been cancelled by the organiser.`,
+        // No anchor: the event is gone, so a deep link would land on nothing.
+        link: "/publish",
+      });
 
       // Notify all connected clients about the deletion in real-time
       emitEventDeleted(input.eventId);
@@ -450,7 +585,13 @@ export const eventRouter = createTRPCRouter({
       const { eventId, ...updates } = input;
 
       const [event] = await ctx.db
-        .select({ id: events.id, createdById: events.createdById })
+        .select({
+          id: events.id,
+          createdById: events.createdById,
+          title: events.title,
+          eventDate: events.eventDate,
+          region: events.region,
+        })
         .from(events)
         .where(eq(events.id, eventId))
         .limit(1);
@@ -482,17 +623,60 @@ export const eventRouter = createTRPCRouter({
         .set(updateFields)
         .where(eq(events.id, eventId));
 
+      /* Only material edits reach subscribers.
+         A fixed typo in the description, or a swapped cover image, is not worth
+         a notification to everyone who signed up. A moved date or a moved city
+         is the whole reason a person wants to be told anything at all — and if
+         the date moved, every armed reminder is now measured against the wrong
+         moment, so they are re-armed below. */
+      const dateMoved =
+        updateFields.eventDate instanceof Date &&
+        updateFields.eventDate.getTime() !== event.eventDate.getTime();
+      const regionMoved =
+        typeof updateFields.region === "string" && updateFields.region !== event.region;
+
+      if (dateMoved || regionMoved) {
+        if (dateMoved) {
+          await ctx.db
+            .update(eventRsvps)
+            .set({ reminderSent: false })
+            .where(eq(eventRsvps.eventId, eventId));
+        }
+
+        const changes = [
+          dateMoved ? "a new date" : null,
+          regionMoved ? "a new location" : null,
+        ].filter(Boolean);
+
+        await notifyMany({
+          db: ctx.db,
+          userIds: await eventSubscribers(ctx.db, eventId),
+          actorId: ctx.session.user.id,
+          category: "eventUpdate",
+          type: "event",
+          title: "Event updated",
+          message: `"${event.title}" now has ${changes.join(" and ")}.`,
+          link: `/publish#event-${eventId}`,
+        });
+      }
+
       emitEventUpdated(eventId);
 
       return { success: true };
     }),
     
+  /**
+   * Retained as a no-op so the client that polls it keeps working during rollout.
+   *
+   * It never sent a reminder. It logged a line in development and returned
+   * success, while a browser `setInterval` called it every five minutes for every
+   * user with the publish page open — a per-viewer poll standing in for a clock.
+   * Reminders now come from `sendDueEventReminders`, driven by the server-side
+   * scheduler tick, which runs whether or not anyone has a tab open.
+   */
   sendEventReminders: protectedProcedure
     .input(sendRemindersSchema)
-    .mutation(async ({ ctx: _ctx }) => {
-      if (process.env.NODE_ENV !== "production") {
-        log.debug("running reminder check");
-      }
-      return { success: true, message: "Reminder check initiated." };
+    .mutation(async () => {
+      return { success: true, message: "Reminders are delivered by the server scheduler." };
     }),
 });

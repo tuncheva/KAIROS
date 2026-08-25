@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, type TRPCContext } from "~/server/api/trpc";
-import { organizations, organizationMembers, organizationRoles, organizationInvites, organizationJoinCodes, users, notifications, type OrganizationJoinCode } from "~/server/db/schema";
+import { organizations, organizationMembers, organizationRoles, organizationInvites, organizationJoinCodes, users, type OrganizationJoinCode } from "~/server/db/schema";
 import { flagsForRole } from "~/lib/permissions";
 import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/security/authRateLimit";
 import { getClientIp } from "~/server/http/clientIp";
@@ -28,7 +28,7 @@ function canInvite(membership: {
   return membership.role === "admin" || membership.canAddMembers === true;
 }
 import { eq, and, or, isNull, gt, lte, desc, sql } from "drizzle-orm";
-import { emitNotification } from "~/server/ws/emit";
+import { notify } from "~/server/notifications/dispatch";
 import { createLogger } from "~/server/logger";
 
 const log = createLogger("organization");
@@ -480,24 +480,16 @@ export const organizationRouter = createTRPCRouter({
 
         for (const admin of orgAdmins) {
           if (admin.userId === ctx.session.user.id) continue;
-          const [notif] = await ctx.db.insert(notifications).values({
+          await notify({
+            db: ctx.db,
             userId: admin.userId,
+            actorId: ctx.session.user.id,
+            category: "workspace",
             type: "system",
             title: "New Member Joined",
             message: `${joinerName} joined "${organization.name}" via access code`,
             link: "/settings",
-            read: false,
-          }).returning();
-
-          if (notif) {
-            emitNotification(admin.userId, {
-              id: notif.id,
-              type: "system",
-              title: "New Member Joined",
-              message: `${joinerName} joined "${organization.name}" via access code`,
-              link: "/settings",
-            });
-          }
+          });
         }
 
         return {
@@ -1253,24 +1245,16 @@ export const organizationRouter = createTRPCRouter({
         const inviterName = inviterUser?.name ?? "Someone";
         const orgName = org?.name ?? "a workspace";
 
-        const [createdNotification] = await ctx.db.insert(notifications).values({
+        await notify({
+          db: ctx.db,
           userId: existingUser.id,
+          actorId: ctx.session.user.id,
+          category: "invite",
           type: "system",
           title: "Workspace Invitation",
           message: `${inviterName} invited you to join "${orgName}" as ${input.role}`,
           link: "/orgs",
-          read: false,
-        }).returning();
-
-        if (createdNotification) {
-          emitNotification(existingUser.id, {
-            id: createdNotification.id,
-            type: "system",
-            title: "Workspace Invitation",
-            message: `${inviterName} invited you to join "${orgName}" as ${input.role}`,
-            link: "/orgs",
-          });
-        }
+        });
       }
 
       return invite;
@@ -1426,24 +1410,16 @@ export const organizationRouter = createTRPCRouter({
 
       // Notify the person who sent the invite
       if (invite.invitedById) {
-        const [notif] = await ctx.db.insert(notifications).values({
+        await notify({
+          db: ctx.db,
           userId: invite.invitedById,
+          actorId: ctx.session.user.id,
+          category: "workspace",
           type: "system",
           title: "Invite Accepted",
           message: `${acceptorName} accepted your invitation to join "${orgName}"`,
           link: "/settings",
-          read: false,
-        }).returning();
-
-        if (notif) {
-          emitNotification(invite.invitedById, {
-            id: notif.id,
-            type: "system",
-            title: "Invite Accepted",
-            message: `${acceptorName} accepted your invitation to join "${orgName}"`,
-            link: "/settings",
-          });
-        }
+        });
       }
 
       return { success: true, organizationName: orgName };
@@ -1524,24 +1500,16 @@ export const organizationRouter = createTRPCRouter({
           .limit(1);
         const orgName = org?.name ?? "a workspace";
 
-        const [notif] = await ctx.db.insert(notifications).values({
+        await notify({
+          db: ctx.db,
           userId: invite.invitedById,
+          actorId: ctx.session.user.id,
+          category: "workspace",
           type: "system",
           title: "Invite Declined",
           message: `${declinerName} declined your invitation to join "${orgName}"`,
           link: "/settings",
-          read: false,
-        }).returning();
-
-        if (notif) {
-          emitNotification(invite.invitedById, {
-            id: notif.id,
-            type: "system",
-            title: "Invite Declined",
-            message: `${declinerName} declined your invitation to join "${orgName}"`,
-            link: "/settings",
-          });
-        }
+        });
       }
 
       return { success: true };
@@ -1998,27 +1966,16 @@ export const organizationRouter = createTRPCRouter({
       for (const admin of orgAdmins) {
         if (admin.userId === ctx.session.user.id) continue;
         const message = `${joinerName} joined "${organization.name}" by scanning an invite QR`;
-        const [notif] = await ctx.db
-          .insert(notifications)
-          .values({
-            userId: admin.userId,
-            type: "system",
-            title: "New Member Joined",
-            message,
-            link: "/settings?section=workspace",
-            read: false,
-          })
-          .returning();
-
-        if (notif) {
-          emitNotification(admin.userId, {
-            id: notif.id,
-            type: "system",
-            title: "New Member Joined",
-            message,
-            link: "/settings?section=workspace",
-          });
-        }
+        await notify({
+          db: ctx.db,
+          userId: admin.userId,
+          actorId: ctx.session.user.id,
+          category: "workspace",
+          type: "system",
+          title: "New Member Joined",
+          message,
+          link: "/settings?section=workspace",
+        });
       }
 
       return {

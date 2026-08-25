@@ -84,7 +84,52 @@ const TASKS = [
   },
 ];
 
+/** `project.getById` is what the task board and the team panel read. */
+const DETAIL = {
+  id: 1,
+  title: "Дипломна работа",
+  description: "Chapters, sources and defense prep",
+  createdById: "me",
+  createdBy: { id: "me", name: "Теодора", email: "me@kairos.dev", image: null },
+  userHasWriteAccess: true,
+  collaborators: [
+    {
+      collaboratorId: "u1",
+      permission: "read",
+      collaborator: { id: "u1", name: "Мартин", email: "m@kairos.dev", image: null },
+    },
+  ],
+  tasks: [
+    {
+      id: 21,
+      title: "Chapter 2 review",
+      description: "Sources and footnotes",
+      status: "pending",
+      priority: "high",
+      dueDate: new Date(now + 3 * DAY),
+      completedAt: null,
+      completionNote: null,
+      assignedTo: { id: "u1", name: "Мартин", image: null },
+      completedBy: null,
+    },
+    {
+      id: 22,
+      title: "Draft the methodology section",
+      description: null,
+      status: "completed",
+      priority: "medium",
+      dueDate: null,
+      completedAt: new Date(now - HOUR),
+      completionNote: null,
+      assignedTo: null,
+      completedBy: { id: "me", name: "Теодора", image: null },
+    },
+  ],
+};
+
 const deleteMutate = vi.fn();
+const createTaskMutate = vi.fn().mockResolvedValue({ id: 99 });
+const statusMutate = vi.fn();
 
 vi.mock("~/trpc/react", () => {
   const query = (data: unknown) => ({
@@ -101,13 +146,30 @@ vi.mock("~/trpc/react", () => {
       useUtils: () => new Proxy({}, { get: () => invalidate() }),
       project: {
         getMyProjects: query(PROJECTS),
+        getById: query(DETAIL),
         delete: { useMutation: () => ({ mutate: deleteMutate, isPending: false }) },
-        addCollaborator: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
+        addCollaborator: { useMutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }) },
+        removeCollaborator: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+        updateCollaboratorPermission: {
+          useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+        },
         create: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       },
       task: {
         getProjectActivity: query(ACTIVITY),
         getByProject: query(TASKS),
+        create: {
+          useMutation: () => ({ mutate: createTaskMutate, mutateAsync: createTaskMutate, isPending: false }),
+        },
+        update: { useMutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }) },
+        updateStatus: {
+          useMutation: () => ({ mutate: statusMutate, mutateAsync: statusMutate, isPending: false }),
+        },
+        adminDiscard: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+        setCompletionNote: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      },
+      agent: {
+        generateTaskDrafts: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       },
     },
   };
@@ -124,6 +186,8 @@ const setup = () => {
 
 beforeEach(() => {
   deleteMutate.mockClear();
+  createTaskMutate.mockClear();
+  statusMutate.mockClear();
 });
 
 describe("ProjectsWorkspace — browse", () => {
@@ -220,6 +284,12 @@ describe("ProjectsWorkspace — detail", () => {
     await user.click(screen.getByText("Дипломна работа"));
   };
 
+  /* A project opens on its tasks — the timeline is one tab over. */
+  const openTimeline = async (user: ReturnType<typeof userEvent.setup>) => {
+    await open(user);
+    await user.click(screen.getByRole("button", { name: "Timeline" }));
+  };
+
   it("opens a project in place and can go back", async () => {
     const user = setup();
     await open(user);
@@ -231,30 +301,34 @@ describe("ProjectsWorkspace — detail", () => {
   it("breaks the project down by task state", async () => {
     const user = setup();
     await open(user);
+    // The task filters below use the same words, so the strip's own labels are
+    // the divs, not the buttons.
+    const stat = (label: string) =>
+      screen.getAllByText(label).find((node) => node.tagName === "DIV");
     expect(screen.getByText("Progress").nextSibling).toHaveTextContent("60%");
-    expect(screen.getByText("Done").nextSibling).toHaveTextContent("3");
-    expect(screen.getByText("In progress").nextSibling).toHaveTextContent("1");
-    expect(screen.getByText("To do").nextSibling).toHaveTextContent("1");
+    expect(stat("Done")?.nextSibling).toHaveTextContent("3");
+    expect(stat("In progress")?.nextSibling).toHaveTextContent("1");
+    expect(stat("To do")?.nextSibling).toHaveTextContent("1");
   });
 
   it("reads an activity row as who did what to which task", async () => {
     const user = setup();
-    await open(user);
+    await openTimeline(user);
     expect(screen.getByText("Теодора")).toBeInTheDocument();
     expect(screen.getByText("Draft the methodology section")).toBeInTheDocument();
   });
 
   it("puts a future deadline above the now marker and the past below it", async () => {
     const user = setup();
-    await open(user);
-    expect(screen.getByText("Chapter 2 review")).toBeInTheDocument();
+    await openTimeline(user);
+    expect(screen.getAllByText("Chapter 2 review").length).toBeGreaterThan(0);
     expect(screen.getByText("NOW")).toBeInTheDocument();
     expect(screen.getByText("is due")).toBeInTheDocument();
   });
 
   it("collapses older activity behind a toggle and counts it", async () => {
     const user = setup();
-    await open(user);
+    await openTimeline(user);
     // The five-day-old row is in the tail, not the recent head.
     expect(screen.queryByText("Book the defense room")).not.toBeInTheDocument();
     const toggle = screen.getByRole("button", { name: /Show earlier activity/ });
@@ -267,7 +341,7 @@ describe("ProjectsWorkspace — detail", () => {
 
   it("filters the timeline by kind", async () => {
     const user = setup();
-    await open(user);
+    await openTimeline(user);
     await user.click(screen.getByRole("button", { name: "Notes" }));
     expect(screen.getByText("Nothing recorded on this project yet.")).toBeInTheDocument();
   });
@@ -291,5 +365,57 @@ describe("ProjectsWorkspace — detail", () => {
     expect(deleteMutate).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     expect(deleteMutate).toHaveBeenCalledWith({ id: 1 });
+  });
+});
+
+describe("ProjectsWorkspace — tasks", () => {
+  const open = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByText("Дипломна работа"));
+  };
+
+  it("opens a project on its task board", async () => {
+    const user = setup();
+    await open(user);
+    expect(screen.getByRole("button", { name: "Tasks" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Chapter 2 review")).toBeInTheDocument();
+    expect(screen.getByText("Sources and footnotes")).toBeInTheDocument();
+  });
+
+  it("counts each task state on its filter and narrows to it", async () => {
+    const user = setup();
+    await open(user);
+    await user.click(screen.getByRole("button", { name: /^Done ?1$/ }));
+    expect(screen.getByText("Draft the methodology section")).toBeInTheDocument();
+    expect(screen.queryByText("Chapter 2 review")).not.toBeInTheDocument();
+  });
+
+  it("advances a task to the next status from its marker", async () => {
+    const user = setup();
+    await open(user);
+    await user.click(screen.getAllByRole("button", { name: "Move to next status" })[0]!);
+    expect(statusMutate).toHaveBeenCalledWith({ taskId: 21, status: "in_progress" });
+  });
+
+  it("creates a task from the drawer", async () => {
+    const user = setup();
+    await open(user);
+    await user.click(screen.getByRole("button", { name: "New task" }));
+
+    const drawer = screen.getByRole("dialog");
+    await user.type(within(drawer).getByRole("textbox", { name: /Task/ }), "Print the binding");
+    await user.click(within(drawer).getByRole("button", { name: "Create task" }));
+
+    expect(createTaskMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 1, title: "Print the binding", priority: "medium" }),
+    );
+  });
+
+  it("lists the team and who owns the project", async () => {
+    const user = setup();
+    await open(user);
+    await user.click(screen.getByRole("button", { name: "Team" }));
+    expect(screen.getByText("OWNER")).toBeInTheDocument();
+    expect(screen.getByText("Мартин")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Invite" })).toBeInTheDocument();
   });
 });

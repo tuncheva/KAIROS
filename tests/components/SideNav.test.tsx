@@ -25,7 +25,6 @@ describe("SideNav", () => {
   it("contains nav items with correct translated labels", () => {
     render(<SideNav />);
     // Labels resolve to real English copy via the next-intl mock
-    expect(screen.getAllByText("Create").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Projects").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Notes").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Progress").length).toBeGreaterThanOrEqual(1);

@@ -38,6 +38,7 @@ export type A1ReadToolName =
   | "listNotesMetadata"
   // Retrieval
   | "searchWorkspace"
+  | "searchDocuments"
   // Assistant memory (writes only the caller's own preference row — see memory.ts)
   | "rememberFact"
   | "forgetFact";

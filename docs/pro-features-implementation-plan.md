@@ -9,6 +9,11 @@
 >
 > Estimates are one engineer, calendar days, including tests and UI. They assume
 > familiarity with this codebase.
+>
+> **Client work is tracked separately.** Phases 0–3 shipped server-side without
+> interfaces; see [`docs/ui/pro-features-ui-proposal.html`](ui/pro-features-ui-proposal.html)
+> for where each one should live, mockups, and a ~9-day build order. The estimates
+> in the table below cover server work only.
 
 ---
 

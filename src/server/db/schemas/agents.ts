@@ -777,3 +777,249 @@ export const webhookDeliveries = createTable(
     index("webhook_delivery_created_idx").on(t.createdAt),
   ],
 );
+
+/**
+ * Documents the agents may read.
+ *
+ * Only metadata lives here — the bytes stay with the upload provider, which
+ * already has the storage, the CDN and the auth for them. What this table adds is
+ * ownership, scope, and the extraction status a user needs to understand why a
+ * freshly uploaded file is not yet searchable.
+ */
+export const documents = createTable(
+  "documents",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /**
+     * Optional project scope.
+     *
+     * Null means "mine, everywhere". A document attached to a project is visible
+     * to whoever can see the project, which is what makes uploading a spec useful
+     * to a team rather than only to the person who had the file.
+     */
+    projectId: integer("project_id").references(() => projects.id, {
+      onDelete: "cascade",
+    }),
+    filename: varchar("filename", { length: 256 }).notNull(),
+    /** The upload provider's key, for fetching and for deletion. */
+    storageKey: text("storage_key").notNull(),
+    mimeType: varchar("mime_type", { length: 128 }).notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    /** `pending` | `ready` | `failed` | `no_text`. */
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    /**
+     * Why extraction failed, or why a file produced no text.
+     *
+     * `no_text` is a distinct outcome from `failed` and the distinction matters to
+     * the user: an image-only scan is not broken, it just needs OCR, which is not
+     * in scope. Telling someone "failed" when the honest answer is "this PDF has
+     * no text layer" sends them to support instead of to a different file.
+     */
+    error: text("error"),
+    pageCount: integer("page_count"),
+    chunkCount: integer("chunk_count").notNull().default(0),
+    /** True when the document was longer than the chunk cap allows. */
+    truncated: boolean("truncated").notNull().default(false),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("document_user_idx").on(t.userId),
+    index("document_project_idx").on(t.projectId),
+  ],
+);
+
+/**
+ * The retrievable passages of a document.
+ *
+ * Searched by Postgres full-text today. That is a deliberate first step rather
+ * than the intended end state: it matches words, so "how do I cancel" will not
+ * find "termination clause", where an embedding would. It was chosen because it
+ * needs no extension, no embedding model and no inference on upload — and
+ * because inference on upload is a spend shape nothing else in this product has,
+ * which matters while the AI layer runs on free provider tiers.
+ *
+ * The seam for vectors is deliberately left open: adding a nullable `embedding`
+ * column and a second index changes nothing above this table. `searchDocuments`
+ * is the only caller, so swapping or combining the two is one function.
+ *
+ * `'simple'` rather than `'english'`, and the configuration must stay identical
+ * to the one in the query — see the note on `ai_message_content_fts_idx`.
+ */
+export const documentChunks = createTable(
+  "document_chunks",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    documentId: integer("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    /** Denormalised from `documents` so search can scope without a join. */
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    ordinal: integer("ordinal").notNull(),
+    content: text("content").notNull(),
+    /** Page the passage starts on, for citation. Null when unknown. */
+    page: integer("page"),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("document_chunk_document_idx").on(t.documentId),
+    index("document_chunk_user_idx").on(t.userId),
+    uniqueIndex("document_chunk_ordinal_unique").on(t.documentId, t.ordinal),
+    index("document_chunk_fts_idx").using(
+      "gin",
+      sql`to_tsvector('simple', ${t.content})`,
+    ),
+  ],
+);
+
+/**
+ * A connected external calendar.
+ *
+ * **Read-only import, deliberately.** Two-way sync is where the cost and the risk
+ * of this feature live — conflict resolution, write-back loops, and the question
+ * of what happens when both sides changed. Import alone answers the question
+ * users actually have ("the assistant does not know about my real meetings") and
+ * is what unlocks meeting-prep briefs. Writing back can follow once the read path
+ * has proven itself against real calendars.
+ *
+ * **Consent is separate from sign-in.** The NextAuth Google provider asks for
+ * `openid profile email` and nothing more, and that stays true: asking every new
+ * user for calendar access at signup is over-asking, and it costs conversions.
+ * Calendar scope is granted through its own flow, which is also what lets someone
+ * disconnect their calendar without signing out of the product.
+ *
+ * Tokens are encrypted at rest with a per-row salt. `accounts` stores sign-in
+ * tokens in clear because NextAuth owns that table and its shape; these are ours,
+ * they grant access to a user's entire calendar, and there is no reason for them
+ * to be readable in a database dump.
+ */
+export const calendarConnections = createTable(
+  "calendar_connections",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** `google` today; `microsoft` is the same shape with a different endpoint. */
+    provider: varchar("provider", { length: 32 }).notNull(),
+    /** The calendar account, so the UI can say *which* account is connected. */
+    accountEmail: varchar("account_email", { length: 255 }),
+    /** Encrypted. See `calendar/tokens.ts`. */
+    accessToken: text("access_token").notNull(),
+    /**
+     * Encrypted, and the one that matters.
+     *
+     * Google only returns a refresh token on the *first* consent unless
+     * `prompt=consent` is forced, so losing this means the user has to
+     * re-authorise. It is never overwritten with null on a refresh response that
+     * omits it — see `refreshAccessToken`.
+     */
+    refreshToken: text("refresh_token"),
+    /** Per-row salt, so one leaked ciphertext does not help with any other. */
+    tokenSalt: varchar("token_salt", { length: 64 }).notNull(),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    /**
+     * Google's incremental sync token.
+     *
+     * The whole reason a sync is cheap after the first one: it returns only what
+     * changed. Google invalidates it after a while and answers `410 Gone`, which
+     * is not an error — it means "start again", and the sync handles it by
+     * clearing this and doing a full pull.
+     */
+    syncToken: text("sync_token"),
+    lastSyncedAt: timestamp("last_synced_at", { mode: "date", withTimezone: true }),
+    lastError: text("last_error"),
+    /** Consecutive sync failures, same convention as `ai_schedules`. */
+    failureCount: integer("failure_count").notNull().default(0),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("calendar_connection_user_idx").on(t.userId),
+    // One connection per provider per user. Reconnecting updates in place rather
+    // than accumulating rows whose tokens all still work.
+    uniqueIndex("calendar_connection_user_provider_unique").on(
+      t.userId,
+      t.provider,
+    ),
+  ],
+);
+
+/**
+ * Events imported from a connected calendar.
+ *
+ * A separate table from `events`, which is the product's own noticeboard —
+ * user-authored, RSVP-able, publishable. An imported event is none of those: it
+ * is a read-only shadow of something that lives elsewhere, it must disappear when
+ * the calendar says it was cancelled, and it must never be editable here. Merging
+ * the two would mean every query on `events` growing a "but not the imported
+ * ones" clause, and the first one that forgot would let a user delete a meeting
+ * out of their real calendar's shadow and wonder why it came back.
+ */
+export const externalEvents = createTable(
+  "external_events",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    connectionId: integer("connection_id")
+      .notNull()
+      .references(() => calendarConnections.id, { onDelete: "cascade" }),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** The provider's own id, for incremental updates and deletions. */
+    externalId: varchar("external_id", { length: 256 }).notNull(),
+    title: varchar("title", { length: 512 }).notNull(),
+    description: text("description"),
+    location: text("location"),
+    startsAt: timestamp("starts_at", { mode: "date", withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { mode: "date", withTimezone: true }),
+    /** True for a date-only event, where the times carry no meaning. */
+    allDay: boolean("all_day").notNull().default(false),
+    /**
+     * `confirmed` | `tentative` | `cancelled`.
+     *
+     * Cancelled rows are kept rather than deleted, briefly: an incremental sync
+     * reports a cancellation as a status change, and a meeting-prep brief that
+     * already mentioned the meeting should be able to say it is off.
+     */
+    status: varchar("status", { length: 16 }).notNull().default("confirmed"),
+    /** How many people are on it — enough for a brief without storing the list. */
+    attendeeCount: integer("attendee_count"),
+    /** Whether the calendar owner has accepted, for "your meetings" filtering. */
+    selfResponse: varchar("self_response", { length: 16 }),
+    /**
+     * When a meeting-prep brief covered this meeting.
+     *
+     * The idempotence key for meeting prep. The sweep runs hourly against a
+     * 90-minute horizon, so without this a meeting two hours out is briefed on
+     * this tick and briefed again on the next — and the second message says
+     * nothing the first did not.
+     *
+     * A fact about the meeting rather than state on the schedule row: it survives
+     * the user turning prep off and on again, which is the behaviour someone would
+     * expect from "you already told me about this one".
+     */
+    preppedAt: timestamp("prepped_at", { mode: "date", withTimezone: true }),
+    updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("external_event_user_idx").on(t.userId),
+    index("external_event_starts_idx").on(t.startsAt),
+    uniqueIndex("external_event_connection_external_unique").on(
+      t.connectionId,
+      t.externalId,
+    ),
+  ],
+);

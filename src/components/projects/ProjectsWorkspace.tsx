@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import {
   ArrowLeft,
   CalendarClock,
@@ -12,7 +11,6 @@ import {
   Flag,
   LayoutGrid,
   List,
-  Plus,
   Search,
   StickyNote,
   Trash2,
@@ -22,6 +20,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { Overlay } from "~/components/ui/Overlay";
+import { NewProjectDrawer } from "./NewProjectDrawer";
+import { ProjectTasksPanel, ProjectTeamPanel } from "./ProjectTasksPanel";
 import {
   isRecent,
   isSameDay,
@@ -49,12 +49,13 @@ import {
 /** Blocks stage in on the shared dashboard curve; the delay separates them. */
 const rise = (delay: number) => ({ animationDelay: `${delay}s` });
 
-/** Tasks and the board still live behind the create flow. */
-const projectHref = (id: number) => `/create?action=new_project&projectId=${id}`;
-
 const FILTERS: FilterKey[] = ["all", "track", "risk", "done"];
 const SORTS: SortKey[] = ["updated", "progress", "name"];
 const TIMELINE_FILTERS: TimelineFilter[] = ["all", "task", "status", "note", "due"];
+
+/** The three readings of one project: what to do, who is on it, what happened. */
+const DETAIL_TABS = ["tasks", "team", "timeline"] as const;
+type DetailTab = (typeof DETAIL_TABS)[number];
 
 /**
  * Health only ever paints text and a rule, never a fill. A project one task
@@ -105,7 +106,14 @@ const EVENT_TINT: Record<EventKind, string> = {
   due: "text-fg-tertiary",
 };
 
-export function ProjectsWorkspace({ userId }: { userId: string }) {
+export function ProjectsWorkspace({
+  userId,
+  initialProjectId = null,
+}: {
+  userId: string;
+  /** `/projects?projectId=` opens straight into one project. */
+  initialProjectId?: number | null;
+}) {
   const t = useTranslations("projects");
   const toast = useToast();
   const locale = useLocale();
@@ -115,7 +123,7 @@ export function ProjectsWorkspace({ userId }: { userId: string }) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [sort, setSort] = useState<SortKey>("updated");
   const [view, setView] = useState<ViewMode>("list");
-  const [openId, setOpenId] = useState<number | null>(null);
+  const [openId, setOpenId] = useState<number | null>(initialProjectId);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const projectsQuery = api.project.getMyProjects.useQuery(undefined, {
@@ -583,6 +591,7 @@ function ProjectDetail({
   onDelete: () => void;
 }) {
   const t = useTranslations("projects");
+  const [tab, setTab] = useState<DetailTab>("tasks");
   const [kind, setKind] = useState<TimelineFilter>("all");
   const [showEarlier, setShowEarlier] = useState(false);
 
@@ -624,13 +633,6 @@ function ProjectDetail({
         </button>
 
         <div className="flex items-center gap-2">
-          <Link
-            href={projectHref(project.id)}
-            className="flex items-center gap-2 rounded-lg border border-border-light/60 px-3 py-2 text-[13px] font-medium text-fg-secondary transition-colors duration-300 hover:border-accent-primary/40 hover:text-fg-primary"
-          >
-            {t("openBoard")}
-            <ChevronRight size={14} aria-hidden />
-          </Link>
           {project.createdById === userId && (
             <button
               type="button"
@@ -673,6 +675,30 @@ function ProjectDetail({
         />
       </div>
 
+      <div className="dash-rise flex overflow-hidden rounded-lg border border-border-light/60 self-start" style={rise(0.08)}>
+        {DETAIL_TABS.map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            aria-pressed={tab === key}
+            className={`h-[34px] px-4 text-[13px] font-medium transition-colors duration-300 ${
+              tab === key
+                ? "bg-accent-primary/[0.16] text-fg-primary"
+                : "text-fg-tertiary hover:text-fg-secondary"
+            }`}
+          >
+            {t(`tabs.${key}`)}
+          </button>
+        ))}
+      </div>
+
+      {tab === "tasks" && <ProjectTasksPanel projectId={project.id} userId={userId} />}
+
+      {tab === "team" && <ProjectTeamPanel projectId={project.id} userId={userId} />}
+
+      {tab === "timeline" && (
+      <>
       <div className="dash-rise flex flex-wrap items-center gap-3" style={rise(0.1)}>
         <span className="kairos-stamp text-[10px] tracking-[0.14em] text-fg-quaternary">
           {t("timeline.label")}
@@ -753,6 +779,8 @@ function ProjectDetail({
           </>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }
@@ -913,14 +941,9 @@ function FirstRun() {
           {t("empty.body")}
         </p>
       </div>
-      <Link
-        href="/create?action=new_project"
-        className="dash-rise flex w-fit items-center gap-2.5 rounded-[10px] bg-accent-primary px-[22px] py-[15px] text-[15px] font-semibold text-white transition-all duration-[350ms] hover:-translate-y-0.5 hover:bg-accent-hover"
-        style={rise(0.15)}
-      >
-        <Plus size={17} aria-hidden />
-        {t("empty.cta")}
-      </Link>
+      <div className="dash-rise w-fit" style={rise(0.15)}>
+        <NewProjectDrawer />
+      </div>
     </div>
   );
 }

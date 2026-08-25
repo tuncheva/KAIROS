@@ -25,7 +25,7 @@ export default async function DashboardPage() {
         <TopBar
           actions={
             <Link
-              href="/create?action=new_project"
+              href="/projects"
               className="flex items-center gap-2 rounded-lg bg-accent-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
             >
               <Plus size={15} />

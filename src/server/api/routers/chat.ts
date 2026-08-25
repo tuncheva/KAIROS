@@ -13,11 +13,11 @@ import {
   projects,
   users,
 } from "~/server/db/schema";
-import { and, asc, count, desc, eq, gt, gte, ilike, inArray, lt, ne, or, sql, isNull } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, ilike, inArray, lt, ne, or, sql, isNull } from "drizzle-orm";
+import { notify } from "~/server/notifications/dispatch";
 import {
   emitNewMessage,
   emitConversationUpdated,
-  emitNotification,
   emitMessageRead,
   emitMessageUpdated,
   emitMessageReaction,
@@ -844,48 +844,29 @@ export const chatRouter = createTRPCRouter({
         : false;
 
       if (!muted) {
-        const link = `/chat/${input.conversationId}`;
-        const [recent] = await ctx.db
-          .select({ id: notifications.id })
-          .from(notifications)
-          .where(
-            and(
-              eq(notifications.userId, otherId),
-              eq(notifications.link, link),
-              eq(notifications.read, false),
-              gte(
-                notifications.createdAt,
-                new Date(Date.now() - NOTIFICATION_COALESCE_MS),
-              ),
-            ),
-          )
-          .limit(1);
+        const senderName = sender?.name ?? "Someone";
+        const preview =
+          message.body.trim().length > 0
+            ? message.body.length > 80
+              ? message.body.slice(0, 80) + "…"
+              : message.body
+            : storedAttachments[0]?.name ?? "Attachment";
 
-        if (!recent) {
-          const senderName = sender?.name ?? "Someone";
-          const preview =
-            message.body.trim().length > 0
-              ? message.body.length > 80
-                ? message.body.slice(0, 80) + "…"
-                : message.body
-              : storedAttachments[0]?.name ?? "Attachment";
-
-          await ctx.db.insert(notifications).values({
-            userId: otherId,
-            type: "system",
-            title: "New message",
-            message: `${senderName}: ${preview}`,
-            link,
-            read: false,
-          });
-          emitNotification(otherId, {
-            id: `chat-${message.id}`,
-            type: "system",
-            title: "New message",
-            message: `${senderName}: ${preview}`,
-            link,
-          });
-        }
+        /* Coalescing and the recipient's notification preferences are both
+           applied by the dispatcher now. The conversation-level mute above stays
+           here, because it is a property of this conversation rather than of the
+           recipient's account. */
+        await notify({
+          db: ctx.db,
+          userId: otherId,
+          actorId: ctx.session.user.id,
+          category: "directMessage",
+          type: "message",
+          title: "New message",
+          message: `${senderName}: ${preview}`,
+          link: `/chat/${input.conversationId}`,
+          coalesceWindowMs: NOTIFICATION_COALESCE_MS,
+        });
       }
 
       return result;

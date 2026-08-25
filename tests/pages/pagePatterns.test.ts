@@ -35,22 +35,6 @@ describe("Root Layout", () => {
   });
 });
 
-describe("Create Page", () => {
-  const page = readPage("(app)/create/page.tsx");
-
-  it("has authentication guard", () => {
-    expect(page).toMatch(/auth|session|redirect/i);
-  });
-
-  it("renders SideNav", () => {
-    expect(page).toContain("SideNav");
-  });
-
-  it("includes OnboardingGate", () => {
-    expect(page).toContain("OnboardingGate");
-  });
-});
-
 describe("Calendar Page", () => {
   const page = readPage("(app)/calendar/page.tsx");
 
@@ -159,7 +143,6 @@ describe("Not Found Page", () => {
 
 describe("All Protected Pages — Auth Guard Consistency", () => {
   const protectedPages = [
-    "(app)/create/page.tsx",
     "(app)/calendar/page.tsx",
     "(app)/notes/page.tsx",
     "(app)/projects/page.tsx",

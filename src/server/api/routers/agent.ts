@@ -103,7 +103,12 @@ const rateLimitedProcedure = protectedProcedure.use(async ({ ctx, next }) => {
  * retrospective. Friday at 16:00 is the end of a working week; Friday at 07:00
  * would review a week that still has a day left in it.
  */
-const SCHEDULE_KINDS = ["daily_brief", "risk_radar", "weekly_retro"] as const;
+const SCHEDULE_KINDS = [
+  "daily_brief",
+  "risk_radar",
+  "weekly_retro",
+  "meeting_prep",
+] as const;
 
 const SCHEDULE_DEFAULTS: Record<
   (typeof SCHEDULE_KINDS)[number],
@@ -112,6 +117,9 @@ const SCHEDULE_DEFAULTS: Record<
   daily_brief: { hourLocal: 7, dayOfWeek: null },
   risk_radar: { hourLocal: 7, dayOfWeek: null },
   weekly_retro: { hourLocal: 16, dayOfWeek: 5 },
+  // Meeting prep has no hour of its own: it fires when a meeting is close. The
+  // values are stored so the row has a shape, and the runner ignores them.
+  meeting_prep: { hourLocal: 0, dayOfWeek: null },
 };
 
 export const agentRouter = createTRPCRouter({

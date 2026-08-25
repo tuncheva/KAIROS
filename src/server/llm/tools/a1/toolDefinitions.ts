@@ -142,6 +142,28 @@ const DEFINITIONS: Record<A1ReadToolName, ToolDefinition> = {
   // Retrieval
   // -------------------------------------------------------------------------
 
+  searchDocuments: {
+    name: "searchDocuments",
+    description:
+      "Search inside documents the user has uploaded — specs, contracts, meeting notes. Use this when a question sounds like it is answered by a file rather than by workspace records: 'what does the contract say about renewal', 'what did we agree on in the spec'. IMPORTANT: this is a keyword search, not a semantic one — it matches the words in the document, so search using the terms the document itself would use rather than the user's paraphrase. Returns passages with the filename and page to cite. Only documents that finished indexing are searched.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "Words likely to appear in the document itself. 2-200 characters.",
+        },
+        limit: {
+          type: "number",
+          description: "Maximum passages to return. Defaults to 5, maximum 10.",
+        },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+
   searchWorkspace: {
     name: "searchWorkspace",
     description:

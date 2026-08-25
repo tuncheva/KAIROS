@@ -8,6 +8,8 @@ import {
   INSTRUCTION_SCOPE,
   MAX_INSTRUCTIONS,
 } from "~/lib/memoryScopes";
+import { CalendarConnectionPanel } from "./CalendarConnectionPanel";
+import { CustomSchedulesPanel } from "./CustomSchedulesPanel";
 import { api } from "~/trpc/react";
 
 /**
@@ -66,6 +68,10 @@ const SCHEDULE_LABELS = {
   weekly_retro: {
     title: "weeklyRetroTitle",
     description: "weeklyRetroDescription",
+  },
+  meeting_prep: {
+    title: "meetingPrepTitle",
+    description: "meetingPrepDescription",
   },
 } as const;
 
@@ -185,6 +191,10 @@ export function AiSettingsClient() {
         <p className="mt-1 text-sm text-fg-secondary">{t("subtitle")}</p>
       </header>
 
+      {/* Calendar first: meeting prep below is inert without one, and a user who
+          enables it should be able to see why nothing arrives. */}
+      <CalendarConnectionPanel />
+
       {/* ---- Proactive ---------------------------------------------------- */}
       <Card title={t("proactiveTitle")} description={t("proactiveDescription")}>
         <div className="flex flex-col gap-4">
@@ -208,9 +218,18 @@ export function AiSettingsClient() {
               </div>
 
               <div className="flex items-center gap-3">
+                {/* Meeting prep has no hour or day to choose: it fires relative
+                    to whatever is next on the calendar. Offering pickers would
+                    imply a control that does not exist. */}
+                {schedule.kind === "meeting_prep" ? (
+                  <span className="text-xs text-fg-tertiary">
+                    {t("meetingPrepTiming")}
+                  </span>
+                ) : null}
+
                 {/* Only weekly kinds get a day. Rendering a disabled "every day"
                     option for the daily ones would imply they could be changed. */}
-                {schedule.dayOfWeek !== null ? (
+                {schedule.kind !== "meeting_prep" && schedule.dayOfWeek !== null ? (
                   <label className="flex items-center gap-2 text-xs text-fg-secondary">
                     {t("onDay")}
                     <select
@@ -254,6 +273,7 @@ export function AiSettingsClient() {
                   </select>
                 </label>
 
+                {schedule.kind === "meeting_prep" ? null : (
                 <label className="flex items-center gap-2 text-xs text-fg-secondary">
                   {t("atHour")}
                   <select
@@ -275,6 +295,7 @@ export function AiSettingsClient() {
                     ))}
                   </select>
                 </label>
+                )}
 
                 <Toggle
                   checked={schedule.enabled}
@@ -291,6 +312,11 @@ export function AiSettingsClient() {
               </div>
             </div>
           ))}
+
+          {/* Saved questions, under the built-ins they extend. */}
+          {schedules.data?.[0] ? (
+            <CustomSchedulesPanel timeZone={schedules.data[0].timeZone} />
+          ) : null}
 
           {/* Stated once rather than per row: the hour selects above are
               meaningless without it, and the label used to read "UTC" — which

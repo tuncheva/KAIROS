@@ -13,6 +13,9 @@ import {
 } from "~/hooks/useAgentStream";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
+
+import { PlanDiffCard } from "./PlanDiffCard";
+import { UndoApplyButton } from "./UndoApplyButton";
 import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil, ArrowUp, ArrowUpRight } from "lucide-react";
 import { useDateFormat } from "~/hooks/useDateFormat";
 import { humanizeToolName, type TrailEvent } from "~/components/chat/trail";
@@ -70,6 +73,7 @@ type ChatMsg =
         | { type: "events_apply"; draftId: string; confirmationToken: string }
         | { type: "events_direct_apply"; draftId: string } // Combined confirm+apply
         | { type: "task_confirm"; draftId: string }
+        | { type: "task_undo"; draftId: string }
         | { type: "task_apply"; draftId: string; confirmationToken: string }
         | { type: "task_direct_apply"; draftId: string } // Combined confirm+apply
       >;
@@ -1714,6 +1718,23 @@ export function ProjectIntelligenceChat(props: {
                       </div>
                     )}
 
+                    {/*
+                      The real, field-level diff — read from the rows, not from
+                      the model's own description of its plan. Rendered above the
+                      confirm button so the count on the button is something the
+                      user has had a chance to check.
+                    */}
+                    {m.role === "agent"
+                      ? m.actions
+                          ?.filter((a) => a.type === "task_confirm")
+                          .map((a) => (
+                            <PlanDiffCard
+                              key={`diff-${a.draftId}`}
+                              draftId={a.draftId}
+                            />
+                          ))
+                      : null}
+
                     {/* Action buttons */}
                     {m.role === "agent" && m.actions?.length ? (
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -2155,6 +2176,21 @@ export function ProjectIntelligenceChat(props: {
                             );
                           }
 
+                          /* ---- Undo an applied plan ---- */
+                          if (a.type === "task_undo") {
+                            return (
+                              <UndoApplyButton
+                                key={`${a.type}-${a.draftId}-${aIdx}`}
+                                draftId={a.draftId}
+                                kind="tasks"
+                                onUndone={() => {
+                                  void utils.task.invalidate();
+                                  void utils.project.invalidate();
+                                }}
+                              />
+                            );
+                          }
+
                           /* ---- Task Confirm ---- */
                           if (a.type === "task_confirm") {
                             return (
@@ -2271,6 +2307,16 @@ export function ProjectIntelligenceChat(props: {
                                                 "taskPlannerDoneNoCount",
                                               ),
                                         createdAt: new Date(),
+                                        // The point of the draft/confirm/apply
+                                        // lifecycle: pressing Apply is safe
+                                        // because it can be taken back. Offered
+                                        // here for the first time.
+                                        actions: [
+                                          {
+                                            type: "task_undo",
+                                            draftId: a.draftId,
+                                          },
+                                        ],
                                       },
                                     ]);
                                     // Instant update: invalidate task/project caches

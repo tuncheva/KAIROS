@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PanelLeftClose, Plus, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -35,9 +35,22 @@ interface Props {
  * `updatedAt` against the viewer's local midnight, so a thread does not sit
  * under "Today" because the server is in a different timezone.
  *
- * Search filters the rows already loaded rather than querying the server. The
- * list is capped at thirty threads, so everything the filter could match is
- * already on the client, and a round trip per keystroke would buy nothing.
+ * Search does two things at once, and the split matters.
+ *
+ * Typing filters the thirty loaded threads by **title**, on the client — that is
+ * instant, and it is what someone wants when they half-remember a thread name.
+ * But a title only exists because it was generated from the first exchange, so
+ * "where did we discuss the invoice export" frequently matches nothing while the
+ * answer sits in a message six threads back.
+ *
+ * So past three characters it also queries `agent.searchMessages`, which is
+ * full-text over every message the account still retains. Those results appear
+ * under their own heading rather than mixed in, because "this thread is called
+ * that" and "this thread contains that" are different claims and only one of them
+ * shows the matched words.
+ *
+ * This is also the half of unlimited history that a Pro user can actually feel:
+ * keeping every message earns nothing if the only route back is scrolling.
  */
 export function ConversationsRail({
   conversations,
@@ -51,6 +64,26 @@ export function ConversationsRail({
   const { formatDate } = useDateFormat();
   const [query, setQuery] = useState("");
 
+  /**
+   * The query, held back from the server.
+   *
+   * The title filter runs on every keystroke because it is a local array scan.
+   * The message search is a full-text query, so it waits for the typing to stop —
+   * without this, "invoice" is eight queries and seven of them are discarded.
+   */
+  const deferredQuery = useDeferredQuery(query, 250);
+
+  const messageHits = api.agent.searchMessages.useQuery(
+    { query: deferredQuery, limit: 8 },
+    {
+      // Three characters is where a full-text match stops being noise. Below it
+      // nearly every thread matches and the section is worse than absent.
+      enabled: deferredQuery.trim().length >= 3,
+      retry: false,
+      staleTime: 30_000,
+    },
+  );
+
   const quota = api.agent.rateLimitStatus.useQuery(undefined, {
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
@@ -60,6 +93,23 @@ export function ConversationsRail({
     () => groupByDay(conversations, query),
     [conversations, query],
   );
+
+  const inMessages = useMemo(() => {
+    const hits = messageHits.data ?? [];
+    const alreadyShown = new Set(
+      groups.flatMap((g) => g.rows.map((r) => r.id)),
+    );
+
+    // One row per conversation: several messages in one thread matching is still
+    // one place to go, and listing each would crowd out the other threads.
+    const seen = new Set<string>();
+    return hits.filter((hit) => {
+      if (alreadyShown.has(hit.conversationId)) return false;
+      if (seen.has(hit.conversationId)) return false;
+      seen.add(hit.conversationId);
+      return true;
+    });
+  }, [messageHits.data, groups]);
 
   return (
     <aside className="kairos-console-rail flex h-full w-[284px] shrink-0 flex-col border-r border-border-medium/60 bg-bg-surface">
@@ -160,6 +210,34 @@ export function ConversationsRail({
             </section>
           ))
         )}
+
+        {/*
+          Message matches, under their own heading. Threads already shown by the
+          title filter are excluded — the same thread appearing in both sections
+          reads as a duplicate rather than as two kinds of match.
+        */}
+        {inMessages.length > 0 ? (
+          <section className="contents">
+            <span className="kairos-stamp px-2 pt-4 pb-1.5 text-[10px] text-fg-tertiary">
+              {t("inMessages")}
+            </span>
+            {inMessages.map((hit) => (
+              <button
+                key={`${hit.conversationId}-${hit.createdAt.toISOString()}`}
+                type="button"
+                onClick={() => onSelect(hit.conversationId)}
+                className="flex flex-col gap-1 rounded-[9px] border-l-2 border-transparent px-2.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary/70"
+              >
+                <span className="line-clamp-1 text-[12.5px] font-medium text-fg-secondary">
+                  {hit.conversationTitle?.trim() ?? t("untitledConversation")}
+                </span>
+                <span className="line-clamp-2 text-[12px] leading-snug text-fg-tertiary">
+                  {snippetAround(hit.content, query)}
+                </span>
+              </button>
+            ))}
+          </section>
+        ) : null}
       </div>
 
       <div className="kairos-stamp flex shrink-0 items-center justify-between gap-2 border-t border-border-medium/60 px-[18px] py-3.5 text-[10px] text-fg-tertiary">
@@ -234,4 +312,46 @@ function formatTimestamp(
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
   return formatDate(date, "short");
+}
+
+/**
+ * A value that trails its input until typing stops.
+ *
+ * Local rather than a shared hook: this is the only place in the app that needs
+ * it, and a debounce whose delay is tuned to one query does not generalise well.
+ */
+function useDeferredQuery(value: string, delayMs: number): string {
+  const [deferred, setDeferred] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDeferred(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+
+  return deferred;
+}
+
+/**
+ * A window of message text around the match.
+ *
+ * A message can be a page long, and the first 120 characters of it usually do not
+ * contain the words the user searched for — which makes the snippet look like a
+ * mis-hit. Centring on the match is what makes the result legible.
+ *
+ * Falls back to the head of the message when the term is not found verbatim:
+ * Postgres matched on a normalised token, so the raw substring may genuinely be
+ * absent.
+ */
+function snippetAround(content: string, query: string, width = 140): string {
+  const term = query.trim().split(/\s+/)[0] ?? "";
+  const at = term ? content.toLowerCase().indexOf(term.toLowerCase()) : -1;
+
+  if (at < 0) {
+    return content.length > width ? `${content.slice(0, width)}…` : content;
+  }
+
+  const start = Math.max(0, at - Math.floor(width / 3));
+  const end = Math.min(content.length, start + width);
+
+  return `${start > 0 ? "…" : ""}${content.slice(start, end)}${end < content.length ? "…" : ""}`;
 }

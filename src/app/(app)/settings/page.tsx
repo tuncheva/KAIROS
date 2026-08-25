@@ -8,6 +8,7 @@ import { ProfileSettingsClient } from "~/components/settings/ProfileSettingsClie
 import { AppearanceSettings } from "~/components/settings/AppearanceSettings";
 import { LanguageSettingsClient } from "~/components/settings/LanguageSettingsClient";
 import { AiSettingsClient } from "~/components/settings/AiSettingsClient";
+import { DeveloperSettingsClient } from "~/components/settings/DeveloperSettingsClient";
 import { NotificationSettingsClient } from "~/components/settings/NotificationSettingsClient";
 import { SecuritySettingsClient } from "~/components/settings/SecuritySettingsClient";
 import { WorkspaceSettingsClient } from "~/components/settings/WorkspaceSettingsClient";
@@ -90,6 +91,7 @@ export default async function SettingsPage({
  {activeSection === "language" && <LanguageSettingsClient />}
  {activeSection === "ai" && <AiSettingsClient />}
  {activeSection === "appearance" && <AppearanceSettings />}
+ {activeSection === "developer" && <DeveloperSettingsClient />}
  </div>
  </div>
  </section>

@@ -23,7 +23,7 @@ import {
 } from "./progressModel";
 
 /** Where a project opens. Same target the dashboard and /projects use. */
-export const projectHref = (id: number) => `/create?action=new_project&projectId=${id}`;
+export const projectHref = (id: number) => `/projects?projectId=${id}`;
 
 /** The redesign names the priority in the "pick this up next" line. */
 const PRIORITY_LABEL_KEYS: Record<string, string> = {

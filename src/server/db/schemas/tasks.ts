@@ -24,6 +24,16 @@ export const tasks = createTable(
       .varchar("completed_by_id", { length: 255 })
       .references(() => users.id, { onDelete: "set null" }),
     completionNote: text("completion_note"),
+    /**
+     * When the "your task is due" reminder went out, so it goes out once.
+     *
+     * The `taskDueRemindersNotifications` preference has been on the settings
+     * screen — promising "get notified when tasks are due" — with nothing behind
+     * it. Nothing in the codebase ever read `dueDate` to send a reminder. This
+     * column is what lets the sweep be idempotent; cleared when the due date
+     * moves, so a rescheduled task reminds again.
+     */
+    dueReminderSentAt: timestamp("due_reminder_sent_at", { mode: "date", withTimezone: true }),
     createdById: d
       .varchar({ length: 255 })
       .notNull()
@@ -48,6 +58,9 @@ export const tasks = createTable(
     index("task_completed_by_idx").on(t.completedById),
     index("task_last_edited_by_idx").on(t.lastEditedById),
     index("task_client_request_id_idx").on(t.clientRequestId),
+    // The due-reminder sweep filters on (due_date, due_reminder_sent_at) every
+    // tick; without this it is a full scan of every task in the system.
+    index("task_due_reminder_idx").on(t.dueDate, t.dueReminderSentAt),
   ]
 );
 

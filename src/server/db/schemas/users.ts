@@ -78,10 +78,50 @@ export const users = createTable("user", (d) => ({
 
     bio: text("bio"),
 
-    emailNotifications: boolean("email_notifications").default(true).notNull(),
+    /**
+     * Notification preferences.
+     *
+     * These columns existed long before anything consulted them: the settings
+     * screen wrote all five and no notification-producing code read any of them.
+     * They are now the single gate every notification passes through — see
+     * `~/server/notifications/dispatch`, which maps a category to the column
+     * below and drops the notification when it is false.
+     *
+     * `inAppNotifications` is the master switch for the bell. It does not
+     * silence `category: "security"`, which is deliberately ungateable: an
+     * account-security notice a user cannot receive is worse than a noisy one.
+     */
+    inAppNotifications: boolean("in_app_notifications").default(true).notNull(),
+    directMessageNotifications: boolean("direct_message_notifications").default(true).notNull(),
     projectUpdatesNotifications: boolean("project_updates_notifications").default(true).notNull(),
-    eventRemindersNotifications: boolean("event_reminders_notifications").default(false).notNull(),
+    taskAssignmentNotifications: boolean("task_assignment_notifications").default(true).notNull(),
     taskDueRemindersNotifications: boolean("task_due_reminders_notifications").default(true).notNull(),
+    /**
+     * Default flipped to `true`. It was `false`, which meant the reminder a user
+     * explicitly asked for when they subscribed to an event — by picking a
+     * "remind me N minutes before" — was silently discarded by a preference they
+     * never touched. Opting into a specific reminder is the clearer signal.
+     */
+    eventRemindersNotifications: boolean("event_reminders_notifications").default(true).notNull(),
+    eventUpdatesNotifications: boolean("event_updates_notifications").default(true).notNull(),
+    eventRsvpNotifications: boolean("event_rsvp_notifications").default(true).notNull(),
+    socialNotifications: boolean("social_notifications").default(true).notNull(),
+    inviteNotifications: boolean("invite_notifications").default(true).notNull(),
+    workspaceNotifications: boolean("workspace_notifications").default(true).notNull(),
+
+    /** Email channel. Separate from the in-app switches above. */
+    emailNotifications: boolean("email_notifications").default(true).notNull(),
+    /**
+     * Consent record, not yet a gate — there is no marketing email to gate.
+     *
+     * Every other column here is read by `~/server/notifications/dispatch` or by
+     * the brief delivery path. This one has no reader because nothing in the
+     * codebase sends promotional mail. It defaults to `false`, so the stored
+     * value is a genuine opt-in rather than an assumed one, and whoever adds the
+     * first campaign must check it. Called out explicitly because a preference
+     * that merely *looks* enforced is the exact defect this file's other comments
+     * describe.
+     */
     marketingEmailsNotifications: boolean("marketing_emails_notifications").default(false).notNull(),
 
     language: languageEnum("language").default("en").notNull(),
@@ -114,10 +154,18 @@ export type UserSettings = {
   bio: string | null;
   image: string | null;
 
-  emailNotifications: boolean;
+  inAppNotifications: boolean;
+  directMessageNotifications: boolean;
   projectUpdatesNotifications: boolean;
-  eventRemindersNotifications: boolean;
+  taskAssignmentNotifications: boolean;
   taskDueRemindersNotifications: boolean;
+  eventRemindersNotifications: boolean;
+  eventUpdatesNotifications: boolean;
+  eventRsvpNotifications: boolean;
+  socialNotifications: boolean;
+  inviteNotifications: boolean;
+  workspaceNotifications: boolean;
+  emailNotifications: boolean;
   marketingEmailsNotifications: boolean;
 
   language: "en" | "bg" | "es" | "fr" | "de";

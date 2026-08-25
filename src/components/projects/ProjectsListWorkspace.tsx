@@ -244,7 +244,7 @@ export function ProjectsListWorkspace() {
  return (
  <button
  key={project.id}
- onClick={() => router.push(`/create?action=new_project&projectId=${project.id}`)}
+ onClick={() => router.push(`/projects?projectId=${project.id}`)}
  className="w-full text-left bg-bg-secondary rounded-2xl p-6 border border-white/[0.06] hover:border-accent-primary/30 transition-all duration-300 relative overflow-hidden group"
  >
  {/* Gradient top bar */}

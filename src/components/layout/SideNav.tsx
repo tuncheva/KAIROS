@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { KairosMark } from "~/components/layout/KairosMark";
 import {
@@ -14,7 +14,6 @@ import {
   Settings,
   Menu,
   X,
-  SquarePen,
   MessageCircle,
   Sparkles,
   CalendarDays,
@@ -73,7 +72,6 @@ export function SideNav() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isRailPinned, setIsRailPinned] = useState(false);
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const mobileNavId = "mobile-nav-menu";
 
   useEffect(() => {
@@ -111,12 +109,9 @@ export function SideNav() {
 
   const labelClass = isRailPinned ? RAIL_LABEL_SHOWN : RAIL_LABEL_HIDDEN;
 
-  const action = searchParams?.get("action");
-
   const mainNavItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: t("dashboard") },
     { href: "/projects", icon: Briefcase, label: t("projects") },
-    { href: "/create", icon: SquarePen, label: t("create") },
     { href: "/notes", icon: BookText, label: t("notes") },
     { href: "/progress", icon: TrendingUp, label: t("progress") },
     { href: "/calendar", icon: CalendarCheck, label: t("calendar") },
@@ -135,7 +130,7 @@ export function SideNav() {
   }> = [
     { href: "/publish", icon: CalendarDays, label: t("events") },
     { href: "/progress", icon: TrendingUp, label: t("progress") },
-    { href: "/create?action=new_project", icon: Plus, label: t("newProject"), primary: true },
+    { href: "/projects", icon: Plus, label: t("newProject"), primary: true },
     { href: "/calendar", icon: CalendarCheck, label: t("calendar") },
     { href: settingsItem.href, icon: Settings, label: settingsItem.label },
   ];
@@ -143,9 +138,6 @@ export function SideNav() {
   const isItemActive = (href: string): boolean => {
     if (href === "/dashboard") {
       return pathname === "/dashboard";
-    }
-    if (href === "/create") {
-      return pathname === "/create" && !action;
     }
     if (href === "/progress") {
       return pathname === "/progress";
@@ -164,9 +156,6 @@ export function SideNav() {
     }
     if (href.startsWith("/settings")) {
       return pathname === "/settings";
-    }
-    if (href === "/create?action=new_project") {
-      return pathname === "/create" && action === "new_project";
     }
     if (href === "/notes") {
       /* An open note is a route of its own (`/notes/[noteId]`, `/notes/new`),
@@ -275,7 +264,7 @@ export function SideNav() {
                   {t("quickActions")}
                 </p>
                 <Link
-                  href="/create?action=new_project"
+                  href="/projects"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl text-accent-primary hover:bg-accent-primary/10 transition-colors shadow-sm font-medium"
                   title={t("newProject")}

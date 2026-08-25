@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Brain,
+  FileText,
   FolderKanban,
   ListTree,
   PanelLeftOpen,
@@ -22,12 +23,13 @@ import { api } from "~/trpc/react";
 
 import { ComposerMenu } from "./ComposerMenu";
 import { ConversationsRail } from "./ConversationsRail";
+import { DocumentsPanel } from "./DocumentsPanel";
 import { TurnTrailPanel } from "./TurnTrailPanel";
 import type { TrailEvent } from "./trail";
 
 const ALL_PROJECTS = "__all__";
 
-type RightTab = "trail" | "memory" | "tools";
+type RightTab = "trail" | "memory" | "tools" | "documents";
 
 /**
  * The full-page assistant, as an audit console.
@@ -46,6 +48,7 @@ export function AIChatPageClient() {
   const t = useTranslations("aiConsole");
   const tChat = useTranslations("chat");
   const tAgents = useTranslations("agents");
+  const tDocs = useTranslations("documents");
 
   const searchParams = useSearchParams();
   const prefill = searchParams.get("prefill") ?? undefined;
@@ -337,6 +340,9 @@ export function AIChatPageClient() {
               ["trail", t("tabTrail"), ListTree],
               ["memory", tAgents("memory"), Brain],
               ["tools", tAgents("tools"), Wrench],
+              // Short label deliberately: four tabs share a 332px rail, and
+              // "Documents" at 10px would wrap or squeeze the other three.
+              ["documents", tDocs("tabShort"), FileText],
             ] as const
           ).map(([id, label, Icon]) => (
             <button
@@ -361,6 +367,8 @@ export function AIChatPageClient() {
             <TurnTrailPanel events={trail} running={busy} />
           ) : rightTab === "memory" ? (
             <MemoryPanel agents={agents} activeAgentId={pinnedAgentId ?? null} />
+          ) : rightTab === "documents" ? (
+            <DocumentsPanel />
           ) : (
             <ToolInspector
               agent={inspectedAgent}
