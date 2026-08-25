@@ -119,7 +119,14 @@
       "addToCalendar": "Add to calendar",
       "addToCalendarDesc": "Show this note on a specific date",
       "calendarDate": "Calendar date",
-      "calendarTime": "Time"
+      "calendarTime": "Time",
+      "change": "Change the date",
+      "remove": "Remove",
+      "onDate": "On calendar · {date}",
+      "added": "Added to the calendar",
+      "removed": "Removed from the calendar",
+      "emptyTitle": "Nothing on the calendar",
+      "emptyDesc": "Notes with a date appear here and in the calendar."
     },
     "tabs": {
       "allNotes": "All Notes",
@@ -157,7 +164,11 @@
       "shared": "Note shared",
       "accessRemoved": "Access removed",
       "contentRequired": "Content is required",
-      "incorrectPassword": "Incorrect password"
+      "incorrectPassword": "Incorrect password",
+      "saveFailed": "Save failed",
+      "unsaved": "Unsaved",
+      "savedAt": "Saved {time}",
+      "lockedSaveBlocked": "Unlock this note before saving changes."
     },
     "notebooks": {
       "namePlaceholder": "Notebook name",
@@ -168,7 +179,16 @@
       "deleteConfirm": "Delete notebook \"{name}\"? Notes won't be deleted.",
       "moveTo": "Move to {name}",
       "removeFrom": "Remove from notebook",
-      "notesCount": "{count, plural, one {# note} other {# notes}}"
+      "notesCount": "{count, plural, one {# note} other {# notes}}",
+      "create": "New notebook",
+      "rename": "Rename",
+      "renamed": "Notebook updated",
+      "name": "Name",
+      "description": "Description",
+      "descriptionPlaceholder": "Optional",
+      "emptyRail": "No notebooks yet",
+      "actions": "Actions for {name}",
+      "deleteTitle": "Delete notebook"
     },
     "delete": {
       "title": "Delete Note",
@@ -176,7 +196,13 @@
     },
     "common": {
       "cancel": "Cancel",
-      "none": "None"
+      "none": "None",
+      "close": "Close",
+      "back": "Back",
+      "clearSearch": "Clear search",
+      "working": "Working...",
+      "openLibrary": "Open library",
+      "noteActions": "Note actions"
     },
     "sharing": {
       "title": "Manage sharing",
@@ -190,7 +216,11 @@
       "lookup": "Looking up email...",
       "view": "View",
       "edit": "Edit",
-      "sharedWith": "Shared with"
+      "sharedWith": "Shared with",
+      "permission": "Permission",
+      "notSharedYet": "Not shared with anyone yet",
+      "removeAccess": "Remove access for {name}",
+      "fromOwner": "From {owner}"
     },
     "password": {
       "enterPassword": "Enter password",
@@ -206,16 +236,71 @@
       "enterSecretPin": "Enter your secret PIN",
       "resetPin": "Reset PIN",
       "newPassword": "New Password",
-      "confirmPassword": "Confirm Password"
+      "confirmPassword": "Confirm Password",
+      "gateTitle": "This note is encrypted",
+      "gateSubtitle": "Last edited {edited}. The text is decrypted on the server only after your password checks out.",
+      "forgot": "Forgot it?",
+      "resetWithPin": "Reset with your PIN",
+      "show": "Show password",
+      "hide": "Hide password",
+      "hint": "Hint: {hint}",
+      "protect": "Protect with a password",
+      "unlocked": "Unlocked",
+      "ownerOnly": "Only {owner} can unlock this — the server verifies the password for its owner alone."
     },
     "saveChanges": "Save changes",
     "meta": {
       "created": "Created",
-      "edited": "Edited"
+      "edited": "Edited",
+      "createdOn": "Created {date}",
+      "editedOn": "Edited {date}",
+      "words": "{count, plural, one {# word} other {# words}}"
     },
     "tags": {
       "shared": "Shared",
       "note": "Note"
+    },
+    "title": "Notes",
+    "draft": "Draft",
+    "unfiledNote": "No notebook",
+    "lockedPreview": "Locked · unlock to read",
+    "searchEmpty": "Nothing matches “{query}”.",
+    "searchLockedExcluded": "{count, plural, one {# encrypted note was not searched} other {# encrypted notes were not searched}} — their text only exists on the server.",
+    "views": {
+      "sharedWithMe": "Shared with me",
+      "onCalendar": "On the calendar"
+    },
+    "sort": {
+      "label": "Sort",
+      "edited": "Edited",
+      "created": "Created",
+      "title": "Title"
+    },
+    "filters": {
+      "label": "Filter notes",
+      "all": "All",
+      "locked": "Locked",
+      "shared": "Shared",
+      "unfiled": "Unfiled",
+      "empty": {
+        "locked": "No encrypted notes here.",
+        "shared": "Nothing here is shared.",
+        "unfiled": "Every note here is in a notebook."
+      }
+    },
+    "buckets": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "week": "Earlier this week",
+      "month": "Earlier this month",
+      "older": "Older"
+    },
+    "empty": {
+      "title": "No notes yet",
+      "description": "Create your first note and it will show up here.",
+      "notebookTitle": "This notebook is empty",
+      "noSelection": "Nothing open",
+      "noSelectionDesc": "Pick a note from the list, or start a new one."
     }
   },
   "progress": {

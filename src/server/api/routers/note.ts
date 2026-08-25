@@ -489,7 +489,15 @@ export const noteRouter = createTRPCRouter({
   update: protectedProcedure
     .input(z.object({
       id: z.number(),
-      content: z.string().min(1),
+      /**
+       * Empty is allowed on update, unlike on create.
+       *
+       * `min(1)` here meant a note you had cleared out could never be saved:
+       * the request failed validation, so the last non-empty body stayed on the
+       * server and came back on the next load. Creating an empty note is still
+       * refused — that is a different question.
+       */
+      content: z.string(),
       title: z.string().optional(),
       password: z.string().optional(),
       calendarDate: z.date().nullable().optional(),

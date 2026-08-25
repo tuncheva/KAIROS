@@ -169,7 +169,9 @@ export function SideNav() {
       return pathname === "/create" && action === "new_project";
     }
     if (href === "/notes") {
-      return pathname === "/notes";
+      /* An open note is a route of its own (`/notes/[noteId]`, `/notes/new`),
+         and the nav has to stay lit while you are reading one. */
+      return pathname === "/notes" || pathname.startsWith("/notes/");
     }
     return false;
   };
