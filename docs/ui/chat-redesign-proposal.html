@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A redesign proposal for the KAIROS /chat surface: rendered mockups, a full feature inventory, schema and API deltas, and a five-phase delivery plan.">
+<title>Chat Rebuild Proposal — KAIROS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Nunito+Sans:wght@300;400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+/* ── KAIROS tokens, ported from src/styles/globals.css ────────────────── */
+:root{
+  --ground:#FCFDFF; --secondary:#F8FAFC; --surface:#FAFBFD; --elevated:#FDFEFF; --tertiary:#F1F5F9;
+  --ink:#0F172A; --muted:#475569; --faint:#64748B; --ghost:#94A3B8;
+  --hair:#C8C8C8; --hair-soft:rgba(200,200,200,.5); --rule:#CBD5E1;
+  --accent:#A855F7; --accent-2:#C084FC; --accent-3:#D8B4FE; --accent-hover:#9333EA;
+  --mint:#5FB49C; --caramel:#E9A86C; --straw:#F03A47; --sky:#276FBF;
+  --bubble-in:#FDFEFF;
+  --shadow-card:0 0 0 .5px rgba(200,200,200,.55),0 2px 8px -2px rgba(0,0,0,.08),0 4px 16px -4px rgba(0,0,0,.06);
+  --shadow-pop:0 0 0 .5px rgba(200,200,200,.6),0 4px 12px -2px rgba(0,0,0,.10),0 8px 24px -4px rgba(0,0,0,.08);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#08080C; --secondary:#0E0E12; --surface:#0C0C10; --elevated:#121216; --tertiary:#14141A;
+    --ink:#FFFFFF; --muted:#DCDCE4; --faint:#AAAAB4; --ghost:#787884;
+    --hair:#3C3C3C; --hair-soft:rgba(60,60,60,.9); --rule:#3C3C44;
+    --accent:#A855F7; --accent-2:#C084FC; --accent-3:#D8B4FE; --accent-hover:#D8B4FE;
+    --mint:#7FCBB5; --caramel:#F0BC8B; --straw:#FF6069; --sky:#5C9EDD;
+    --bubble-in:#1A1A20;
+    --shadow-card:0 0 0 .5px rgba(60,60,60,.9),0 2px 12px -2px rgba(0,0,0,.4),0 6px 24px -6px rgba(0,0,0,.3);
+    --shadow-pop:0 0 0 .5px rgba(60,60,60,1),0 4px 16px -2px rgba(0,0,0,.5),0 10px 32px -6px rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#08080C; --secondary:#0E0E12; --surface:#0C0C10; --elevated:#121216; --tertiary:#14141A;
+  --ink:#FFFFFF; --muted:#DCDCE4; --faint:#AAAAB4; --ghost:#787884;
+  --hair:#3C3C3C; --hair-soft:rgba(60,60,60,.9); --rule:#3C3C44;
+  --accent:#A855F7; --accent-2:#C084FC; --accent-3:#D8B4FE; --accent-hover:#D8B4FE;
+  --mint:#7FCBB5; --caramel:#F0BC8B; --straw:#FF6069; --sky:#5C9EDD;
+  --bubble-in:#1A1A20;
+  --shadow-card:0 0 0 .5px rgba(60,60,60,.9),0 2px 12px -2px rgba(0,0,0,.4),0 6px 24px -6px rgba(0,0,0,.3);
+  --shadow-pop:0 0 0 .5px rgba(60,60,60,1),0 4px 16px -2px rgba(0,0,0,.5),0 10px 32px -6px rgba(0,0,0,.4);
+  color-scheme:dark;
+}
+
+/* minimal reset — the hosted artifact runtime supplies one; a local file does not */
+*{box-sizing:border-box;}
+img,svg{max-width:100%;}
+button{font:inherit;color:inherit;cursor:pointer;}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"Nunito Sans",ui-sans-serif,system-ui,sans-serif;
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 96px;}
+.col{max-width:74ch;margin:0 auto;}
+
+/* ── type ─────────────────────────────────────────────────────────────── */
+h1,h2,h3{font-family:"Instrument Serif",Georgia,serif;font-weight:400;text-wrap:balance;letter-spacing:.005em;}
+h1{font-size:clamp(2.6rem,6vw,4.1rem);line-height:1.02;margin:0;}
+h2{font-size:clamp(1.85rem,3.4vw,2.5rem);line-height:1.12;margin:0 0 .35em;}
+h3{font-size:1.32rem;line-height:1.25;margin:0 0 .4em;}
+h4{font-size:.95rem;font-weight:800;margin:0 0 .35em;letter-spacing:-.005em;}
+p{margin:0 0 1.05em;color:var(--muted);}
+.lede{font-size:1.16rem;color:var(--muted);}
+strong{color:var(--ink);font-weight:700;}
+a{color:var(--accent-hover);text-underline-offset:3px;}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.7rem;font-weight:500;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:0 0 .9em;
+}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.855em;}
+code{background:var(--tertiary);border-radius:5px;padding:.1em .38em;color:var(--ink);}
+
+/* ── structure ────────────────────────────────────────────────────────── */
+header.top{padding:96px 0 56px;}
+.kicker{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--accent-hover);margin:0 0 1.4em;
+}
+.meta{display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:34px;padding-top:22px;border-top:.5px solid var(--hair);}
+.meta div{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;color:var(--faint);letter-spacing:.05em;}
+.meta b{display:block;font-family:"Nunito Sans",sans-serif;font-size:.9rem;font-weight:700;color:var(--ink);letter-spacing:0;margin-top:2px;}
+
+section{padding:52px 0;border-top:.5px solid var(--hair-soft);}
+section:first-of-type{border-top:0;}
+.card{background:var(--surface);border-radius:16px;box-shadow:var(--shadow-card);padding:28px 30px;margin:26px 0;}
+.card.tight{padding:20px 24px;}
+
+ul.clean{list-style:none;padding:0;margin:0 0 1.1em;display:flex;flex-direction:column;gap:11px;}
+ul.clean li{position:relative;padding-left:20px;color:var(--muted);}
+ul.clean li::before{content:"";position:absolute;left:2px;top:.62em;width:6px;height:6px;border-radius:2px;background:var(--accent-3);}
+
+/* ── chips ────────────────────────────────────────────────────────────── */
+.chip{
+  display:inline-flex;align-items:center;gap:6px;font-family:"IBM Plex Mono",monospace;
+  font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:6px;white-space:nowrap;
+}
+.chip::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;}
+.chip.have{color:var(--mint);background:color-mix(in srgb,var(--mint) 14%,transparent);}
+.chip.partial{color:var(--caramel);background:color-mix(in srgb,var(--caramel) 15%,transparent);}
+.chip.gap{color:var(--straw);background:color-mix(in srgb,var(--straw) 13%,transparent);}
+.chip.plain{color:var(--faint);background:var(--tertiary);}
+.chip.plain::before{display:none;}
+
+/* ── tables ───────────────────────────────────────────────────────────── */
+.tablewrap{overflow-x:auto;margin:24px 0;border-radius:14px;box-shadow:var(--shadow-card);background:var(--surface);}
+table{border-collapse:collapse;width:100%;min-width:660px;font-size:.895rem;}
+th{
+  text-align:left;font-family:"IBM Plex Mono",monospace;font-size:.66rem;font-weight:500;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint);padding:14px 18px;border-bottom:.5px solid var(--hair);white-space:nowrap;
+}
+td{padding:13px 18px;border-bottom:.5px solid var(--hair-soft);color:var(--muted);vertical-align:top;}
+tbody tr:last-child td{border-bottom:0;}
+td:first-child{color:var(--ink);font-weight:600;}
+td .mono{color:var(--faint);}
+tbody tr.group td{background:var(--tertiary);color:var(--faint);font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;font-weight:500;padding:9px 18px;}
+
+/* ── mockup frame ─────────────────────────────────────────────────────── */
+.stage{margin:34px 0 12px;}
+.stagescroll{overflow-x:auto;padding:4px;}
+.figcap{max-width:74ch;margin:14px auto 0;font-size:.86rem;color:var(--faint);}
+.figcap b{color:var(--muted);}
+
+.app{
+  width:1108px;height:660px;display:grid;grid-template-columns:286px 1fr 268px;
+  background:var(--ground);border-radius:18px;box-shadow:var(--shadow-pop);overflow:hidden;
+  font-size:13px;line-height:1.5;
+}
+.app.narrow{width:372px;height:660px;grid-template-columns:1fr;}
+.pane{min-width:0;display:flex;flex-direction:column;}
+.pane.rail{background:var(--surface);border-right:.5px solid var(--hair-soft);}
+.pane.detail{background:var(--surface);border-left:.5px solid var(--hair-soft);}
+.pane.thread{background:var(--ground);}
+
+.phead{padding:14px 16px;border-bottom:.5px solid var(--hair-soft);display:flex;align-items:center;gap:10px;flex:none;}
+.ptitle{font-family:"Instrument Serif",serif;font-size:20px;color:var(--ink);flex:1;}
+.iconbtn{
+  width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--faint);
+  background:transparent;border:0;flex:none;
+}
+.iconbtn.solid{background:var(--accent);color:#fff;box-shadow:0 4px 12px -4px rgba(168,85,247,.6);}
+.iconbtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+.search{
+  margin:0 16px 10px;display:flex;align-items:center;gap:8px;background:var(--tertiary);
+  border-radius:10px;padding:7px 10px;color:var(--ghost);font-size:12.5px;flex:none;
+}
+.search svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;}
+.filters{display:flex;gap:6px;padding:0 16px 10px;flex:none;}
+.fchip{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  padding:4px 9px;border-radius:7px;color:var(--faint);background:var(--tertiary);
+}
+.fchip.on{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-hover);box-shadow:inset 0 0 0 .5px color-mix(in srgb,var(--accent) 35%,transparent);}
+
+.convos{flex:1;overflow:hidden;padding:0 8px;display:flex;flex-direction:column;gap:2px;}
+.convo{display:flex;gap:10px;padding:9px 8px;border-radius:11px;align-items:flex-start;}
+.convo.on{background:color-mix(in srgb,var(--accent) 10%,transparent);box-shadow:inset 0 0 0 .5px color-mix(in srgb,var(--accent) 22%,transparent);}
+.av{
+  width:38px;height:38px;border-radius:50%;flex:none;position:relative;display:grid;place-items:center;
+  color:#fff;font-weight:800;font-size:13px;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+}
+.av.sky{background:linear-gradient(135deg,var(--sky),#6FA8DC);}
+.av.mint{background:linear-gradient(135deg,var(--mint),#8FD3C0);}
+.av.caramel{background:linear-gradient(135deg,var(--caramel),#F3CFA8);}
+.av.sm{width:26px;height:26px;font-size:10px;}
+.av.lg{width:52px;height:52px;font-size:17px;}
+.dot{position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;border:2px solid var(--surface);}
+.dot.on{background:var(--mint);} .dot.away{background:var(--caramel);} .dot.off{background:var(--ghost);}
+.pane.thread .dot{border-color:var(--ground);}
+.cbody{flex:1;min-width:0;}
+.crow{display:flex;align-items:baseline;gap:8px;}
+.cname{font-weight:700;color:var(--ink);font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ctime{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ghost);flex:none;font-variant-numeric:tabular-nums;}
+.cprev{font-size:12px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
+.cprev.unread{color:var(--ink);font-weight:600;}
+.cprev em{font-style:normal;color:var(--accent-hover);}
+.badge{
+  min-width:19px;height:19px;padding:0 6px;border-radius:10px;background:var(--accent);color:#fff;
+  font-size:10.5px;font-weight:800;display:grid;place-items:center;flex:none;font-variant-numeric:tabular-nums;
+}
+.tagline{display:flex;gap:5px;margin-top:4px;}
+.tag{
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 6px;border-radius:5px;background:var(--tertiary);color:var(--faint);
+}
+.tag.sky{background:color-mix(in srgb,var(--sky) 15%,transparent);color:var(--sky);}
+.muteicon{color:var(--ghost);flex:none;}
+.muteicon svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;}
+
+/* thread */
+.thead{padding:12px 18px;border-bottom:.5px solid var(--hair-soft);display:flex;align-items:center;gap:11px;flex:none;background:var(--surface);}
+.tname{font-weight:800;color:var(--ink);font-size:14px;}
+.tsub{font-size:11.5px;color:var(--mint);display:flex;align-items:center;gap:5px;}
+.tsub.typing{color:var(--accent-hover);}
+
+.msgs{flex:1;overflow:hidden;padding:16px 22px;display:flex;flex-direction:column;gap:9px;}
+.daydiv{display:flex;align-items:center;gap:12px;margin:4px 0 6px;}
+.daydiv::before,.daydiv::after{content:"";height:.5px;background:var(--hair-soft);flex:1;}
+.daydiv span{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ghost);}
+.unreadline{display:flex;align-items:center;gap:12px;margin:4px 0;}
+.unreadline::before,.unreadline::after{content:"";height:.5px;flex:1;background:color-mix(in srgb,var(--accent) 45%,transparent);}
+.unreadline span{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--accent-hover);}
+
+.m{display:flex;gap:9px;align-items:flex-end;}
+.m.own{flex-direction:row-reverse;}
+.mslot{width:26px;flex:none;}
+.mcol{max-width:74%;display:flex;flex-direction:column;gap:3px;}
+.m.own .mcol{align-items:flex-end;}
+.mwho{font-size:11px;font-weight:700;color:var(--muted);padding:0 4px;}
+.bub{padding:8px 12px;border-radius:15px;font-size:13px;color:var(--ink);background:var(--bubble-in);box-shadow:var(--shadow-card);border-bottom-left-radius:5px;}
+.m.own .bub{
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 4px 14px -6px rgba(168,85,247,.65);
+  border-bottom-left-radius:15px;border-bottom-right-radius:5px;
+}
+.bub.mid{border-bottom-left-radius:15px;border-top-left-radius:5px;}
+.m.own .bub.mid{border-top-right-radius:5px;border-bottom-right-radius:15px;}
+.quote{
+  border-left:2px solid color-mix(in srgb,var(--accent) 55%,transparent);padding:3px 0 3px 8px;margin-bottom:6px;
+  font-size:11.5px;color:var(--faint);
+}
+.quote b{display:block;color:var(--accent-hover);font-size:10.5px;font-weight:700;}
+.m.own .quote{border-left-color:rgba(255,255,255,.55);color:rgba(255,255,255,.82);}
+.m.own .quote b{color:#fff;}
+.stamp{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ghost);padding:0 5px;
+  display:flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums;
+}
+.stamp svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+.stamp.seen{color:var(--accent-hover);}
+.stamp.failed{color:var(--straw);}
+.stamp.failed u{text-decoration:none;border-bottom:1px solid currentColor;}
+.reacts{display:flex;gap:4px;padding:0 4px;}
+.react{
+  display:flex;align-items:center;gap:3px;font-size:11px;padding:1px 7px;border-radius:9px;
+  background:var(--tertiary);color:var(--muted);box-shadow:inset 0 0 0 .5px var(--hair-soft);
+}
+.react.mine{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-hover);box-shadow:inset 0 0 0 .5px color-mix(in srgb,var(--accent) 38%,transparent);}
+
+.filecard{display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:12px;background:var(--bubble-in);box-shadow:var(--shadow-card);min-width:210px;}
+.fileic{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--straw) 15%,transparent);color:var(--straw);}
+.fileic svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;}
+.filename{font-size:12.5px;font-weight:700;color:var(--ink);}
+.filemeta{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ghost);}
+.imgcard{width:180px;height:104px;border-radius:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--sky) 45%,var(--tertiary)),color-mix(in srgb,var(--accent) 35%,var(--tertiary)));box-shadow:var(--shadow-card);}
+
+.typing{display:flex;gap:9px;align-items:flex-end;}
+.tbub{padding:10px 13px;border-radius:15px;border-bottom-left-radius:5px;background:var(--bubble-in);box-shadow:var(--shadow-card);display:flex;gap:4px;}
+.tbub i{width:5px;height:5px;border-radius:50%;background:var(--ghost);display:block;}
+.tbub i:nth-child(2){opacity:.65;} .tbub i:nth-child(3){opacity:.4;}
+
+.composer{flex:none;padding:12px 18px 14px;border-top:.5px solid var(--hair-soft);background:var(--surface);}
+.replybar{display:flex;align-items:center;gap:8px;padding:6px 10px;margin-bottom:8px;border-radius:10px;background:var(--tertiary);font-size:11.5px;color:var(--faint);}
+.replybar b{color:var(--accent-hover);font-size:10.5px;font-family:"IBM Plex Mono",monospace;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;}
+.cbox{display:flex;align-items:flex-end;gap:8px;background:var(--tertiary);border-radius:16px;padding:7px 8px 7px 12px;box-shadow:inset 0 0 0 .5px var(--hair-soft);}
+.cinput{flex:1;font-size:13px;color:var(--ghost);padding:5px 0;min-height:22px;}
+.cinput b{color:var(--ink);font-weight:400;}
+.chints{display:flex;justify-content:space-between;margin-top:7px;padding:0 4px;}
+.chints span{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.06em;color:var(--ghost);}
+
+/* detail pane */
+.dsect{padding:14px 16px;border-bottom:.5px solid var(--hair-soft);}
+.dlabel{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ghost);margin-bottom:9px;}
+.drow{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:12px;color:var(--muted);}
+.drow svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;color:var(--ghost);flex:none;}
+.drow .grow{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.switch{width:30px;height:17px;border-radius:9px;background:var(--rule);flex:none;position:relative;}
+.switch.on{background:var(--accent);}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;}
+.switch.on::after{left:15px;}
+.pinned{padding:8px 10px;border-radius:10px;background:var(--tertiary);font-size:11.5px;color:var(--muted);box-shadow:inset 0 0 0 .5px var(--hair-soft);}
+.pinned b{display:block;font-size:10px;font-family:"IBM Plex Mono",monospace;color:var(--ghost);letter-spacing:.06em;margin-bottom:2px;}
+.dcenter{text-align:center;padding:16px;}
+.dname{font-family:"Instrument Serif",serif;font-size:19px;color:var(--ink);margin-top:9px;}
+.drole{font-size:11.5px;color:var(--faint);}
+
+/* mobile mock */
+.mobbar{display:flex;gap:6px;padding:10px 14px;border-top:.5px solid var(--hair-soft);background:var(--surface);justify-content:space-around;color:var(--ghost);}
+.mobbar svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;}
+.mobbar .act{color:var(--accent);}
+
+/* phases */
+.phase{display:grid;grid-template-columns:auto 1fr;gap:18px;padding:20px 0;border-top:.5px solid var(--hair-soft);}
+.phase:first-of-type{border-top:0;}
+.pnum{
+  font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--accent-hover);letter-spacing:.1em;
+  padding-top:.35em;font-variant-numeric:tabular-nums;
+}
+.phase p{margin:0;font-size:.94rem;}
+.phase h4{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+
+.callout{border-left:2px solid var(--straw);padding:2px 0 2px 18px;margin:22px 0;}
+.callout p:last-child{margin-bottom:0;}
+.callout .eyebrow{color:var(--straw);}
+
+footer{padding:44px 0 0;border-top:.5px solid var(--hair);margin-top:16px;}
+footer p{font-size:.85rem;color:var(--faint);margin:0;}
+
+@media (max-width:640px){
+  .wrap{padding:0 18px 64px;}
+  header.top{padding:56px 0 36px;}
+  .card{padding:20px 18px;}
+  section{padding:38px 0;}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="col">
+    <p class="kicker">KAIROS · Design proposal · /chat</p>
+    <h1>Chat, rebuilt as a<br>first-class surface</h1>
+    <p class="lede" style="margin-top:26px;">The transport layer is already good — optimistic sends, cursor pagination, Socket.IO rooms and typing indicators all work. What's missing is everything that tells a person <strong>what happened to their message</strong>. This proposal keeps the plumbing, replaces the shell, and closes the gaps between what <code>/chat</code> is today and a chat people can run a workday on.</p>
+    <div class="meta">
+      <div>Surface<b>src/app/(app)/chat</b></div>
+      <div>Owner component<b>ChatClient.tsx · 1011 lines</b></div>
+      <div>Design system<b>KAIROS tokens · unchanged</b></div>
+      <div>Status<b>Proposal for review</b></div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Where it stands</p>
+    <h2>What works, and what the shell hides</h2>
+    <p>Reading <code>ChatClient.tsx</code> and <code>chat.ts</code> end to end, the real problem isn't code quality — several of the hardest parts are handled carefully, with comments explaining exactly why. The problem is that the UI exposes almost none of the state the system already knows about, and the data model stops one table short of a working chat.</p>
+
+    <div class="card">
+      <h4 style="display:flex;align-items:center;gap:10px;">Already solid <span class="chip have">keep</span></h4>
+      <ul class="clean">
+        <li><strong>Optimistic sends that survive concurrency.</strong> Each send carries its own placeholder id through to <code>onSuccess</code>, so a second message sent mid-flight no longer erases the first one's placeholder.</li>
+        <li><strong>Backwards pagination done right.</strong> <code>prevCursor</code> with <code>fetchPreviousPage</code> prepends history above the newest message, with scroll-anchor restoration on <code>requestAnimationFrame</code>.</li>
+        <li><strong>Socket rooms that survive reconnects.</strong> The <code>connect</code> listener re-joins the conversation room after a network blip — without it, typing indicators died silently.</li>
+        <li><strong>Duplicate-safe fan-out.</strong> The server pushes to the conversation room <em>and</em> each user room; <code>hasMessage</code> absorbs the double delivery.</li>
+        <li><strong>Typing indicators</strong> with a sender ping interval, an idle stop, and a receive timeout tuned so an indicator neither flickers between pings nor hangs forever when a tab closes.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h4 style="display:flex;align-items:center;gap:10px;">Structurally missing <span class="chip gap">rebuild</span></h4>
+      <ul class="clean">
+        <li><strong>No read state anywhere.</strong> No unread badge, no "seen", no new-messages divider, no way to mark a thread read. There is no column to store it in.</li>
+        <li><strong>Attachments are string-concatenated into <code>body</code></strong> and re-parsed on render with an image-extension regex. Nothing knows a file's name, size, or type, and prose containing a URL can trip the parser.</li>
+        <li><strong>Deleting a conversation deletes it for both people.</strong> <code>deleteConversation</code> hard-drops the row and cascades every message — the other participant loses their history without consent or notice.</li>
+        <li><strong>A notification row is written on every single message,</strong> even when the recipient is looking at the thread. An active conversation floods the bell.</li>
+        <li><strong>The composer is an <code>&lt;input type="text"&gt;</code>.</strong> The Enter / Shift+Enter handler exists, but Shift+Enter cannot insert a newline into an input — multi-line messages are impossible.</li>
+        <li><strong>A failed send just vanishes</strong> behind a toast. No retry, no failed state on the bubble, and the typed text is already cleared.</li>
+        <li><strong>Conversations are hard-wired to two people</strong> via <code>userOneId</code> / <code>userTwoId</code>. No group threads, and no room to add them without a migration.</li>
+      </ul>
+    </div>
+
+    <div class="callout">
+      <p class="eyebrow">Worth fixing before anything visual</p>
+      <p>Two of these are correctness issues, not polish: the destructive <code>deleteConversation</code> and the unconditional notification insert. Both ship today. They are phase 1 below, ahead of the redesign.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Direction</p>
+    <h2>Three panes, one hairline system</h2>
+    <p>The redesign changes the frame, not the vocabulary. Everything below is built from tokens already in <code>globals.css</code> — <code>bg-surface</code>, <code>fg-tertiary</code>, <code>accent-primary</code>, the <code>.kairos-system-card</code> hairline-plus-blur treatment, the 16px card radius, the accent gradient reserved for the user's own messages. Nothing new enters the palette.</p>
+    <p>Three structural moves carry the change: a <strong>rail</strong> that finally shows state — unread, presence, mute, project origin — instead of repeating each contact's email beneath their name; a <strong>thread</strong> where every message carries its own delivery status inside a day-grouped, sender-grouped rhythm; and a <strong>details pane</strong> that gives shared files, pinned messages and mute controls a home so they stop hiding in an overflow menu.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stagescroll">
+      <div class="app">
+
+        <div class="pane rail">
+          <div class="phead">
+            <div class="ptitle">Messages</div>
+            <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M10 18h4"/></svg></button>
+            <button class="iconbtn solid"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+          </div>
+          <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg> Search people and messages</div>
+          <div class="filters">
+            <span class="fchip on">All</span><span class="fchip">Unread 3</span><span class="fchip">Projects</span><span class="fchip">Archived</span>
+          </div>
+          <div class="convos">
+            <div class="convo on">
+              <div class="av">MP<span class="dot on"></span></div>
+              <div class="cbody">
+                <div class="crow"><span class="cname">Мария Петрова</span><span class="ctime">14:32</span></div>
+                <div class="cprev">Typing…</div>
+                <div class="tagline"><span class="tag sky">Atrium rebrand</span></div>
+              </div>
+            </div>
+            <div class="convo">
+              <div class="av sky">DK<span class="dot on"></span></div>
+              <div class="cbody">
+                <div class="crow"><span class="cname">Daniel Koeva</span><span class="ctime">14:07</span><span class="badge">2</span></div>
+                <div class="cprev unread">Can you look at the venue contract before 5?</div>
+              </div>
+            </div>
+            <div class="convo">
+              <div class="av mint">TS<span class="dot away"></span></div>
+              <div class="cbody">
+                <div class="crow"><span class="cname">Tanya Stoyanova</span><span class="ctime">13:41</span><span class="badge">1</span></div>
+                <div class="cprev unread"><em>Draft:</em> No worries — I'll send the</div>
+              </div>
+            </div>
+            <div class="convo">
+              <div class="av caramel">RV</div>
+              <div class="cbody">
+                <div class="crow"><span class="cname">Rosen Vasilev</span><span class="ctime">11:58</span>
+                  <span class="muteicon"><svg viewBox="0 0 24 24"><path d="M3 3l18 18M17 17H5l2-3v-4a5 5 0 018-4"/></svg></span>
+                </div>
+                <div class="cprev">You: Pushed the revised budget to the sheet</div>
+                <div class="tagline"><span class="tag">Muted</span></div>
+              </div>
+            </div>
+            <div class="convo">
+              <div class="av">EG<span class="dot off"></span></div>
+              <div class="cbody">
+                <div class="crow"><span class="cname">Elena Georgieva</span><span class="ctime">Yest.</span></div>
+                <div class="cprev">You: Sounds good, see you Thursday</div>
+              </div>
+            </div>
+            <div class="convo">
+              <div class="av sky">NI<span class="dot off"></span></div>
+              <div class="cbody">
+                <div class="crow"><span class="cname">Nikolay Ivanov</span><span class="ctime">Mon</span></div>
+                <div class="cprev">Attachment · floor-plan-v4.pdf</div>
+                <div class="tagline"><span class="tag sky">Spring Gala</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane thread">
+          <div class="thead">
+            <div class="av" style="width:34px;height:34px;font-size:12px;">MP<span class="dot on"></span></div>
+            <div style="flex:1;min-width:0;">
+              <div class="tname">Мария Петрова</div>
+              <div class="tsub typing">is typing…</div>
+            </div>
+            <button class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+            <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M12 17v5M8 22h8M5 10a7 7 0 0014 0M12 2a3 3 0 013 3v5a3 3 0 01-6 0V5a3 3 0 013-3z"/></svg></button>
+            <button class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></button>
+          </div>
+
+          <div class="msgs">
+            <div class="daydiv"><span>Yesterday</span></div>
+
+            <div class="m">
+              <div class="av sm">MP</div>
+              <div class="mcol">
+                <span class="mwho">Мария Петрова</span>
+                <div class="bub">Floor plan's approved. Sending the final PDF now.</div>
+              </div>
+            </div>
+
+            <div class="m">
+              <div class="mslot"></div>
+              <div class="mcol">
+                <div class="bub mid" style="padding:6px;">
+                  <div class="filecard" style="box-shadow:none;background:transparent;">
+                    <div class="fileic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>
+                    <div><div class="filename">floor-plan-v4.pdf</div><div class="filemeta">2.4 MB · PDF</div></div>
+                  </div>
+                </div>
+                <div class="stamp">17:20</div>
+              </div>
+            </div>
+
+            <div class="m own">
+              <div class="mslot"></div>
+              <div class="mcol">
+                <div class="bub">Perfect — I'll route it to Daniel for the permit filing.</div>
+                <div class="stamp seen"><svg viewBox="0 0 24 24"><path d="M1 13l4 4L13 7"/><path d="M9 13l4 4L23 7"/></svg> Seen 17:24</div>
+              </div>
+            </div>
+
+            <div class="daydiv"><span>Today</span></div>
+
+            <div class="m own">
+              <div class="mslot"></div>
+              <div class="mcol">
+                <div class="bub">Morning! Quick one — did the caterer confirm headcount?</div>
+                <div class="stamp seen"><svg viewBox="0 0 24 24"><path d="M1 13l4 4L13 7"/><path d="M9 13l4 4L23 7"/></svg> Seen 09:12</div>
+              </div>
+            </div>
+
+            <div class="unreadline"><span>3 new messages</span></div>
+
+            <div class="m">
+              <div class="av sm">MP</div>
+              <div class="mcol">
+                <span class="mwho">Мария Петрова</span>
+                <div class="bub">
+                  <div class="quote"><b>You · 09:11</b>did the caterer confirm headcount?</div>
+                  Confirmed at 240, plus 12 vegetarian.
+                </div>
+                <div class="reacts"><span class="react mine">🎉 2</span><span class="react">👍 1</span></div>
+              </div>
+            </div>
+
+            <div class="m">
+              <div class="mslot"></div>
+              <div class="mcol">
+                <div class="bub mid" style="padding:6px;"><div class="imgcard"></div></div>
+                <div class="stamp">14:29 · seating-draft.png</div>
+              </div>
+            </div>
+
+            <div class="m own">
+              <div class="mslot"></div>
+              <div class="mcol">
+                <div class="bub" style="opacity:.55;">That table by the door needs to move — blocks the service run.</div>
+                <div class="stamp failed">Not sent · <u>Retry</u> · <u>Delete</u></div>
+              </div>
+            </div>
+
+            <div class="typing">
+              <div class="av sm">MP</div>
+              <div class="tbub"><i></i><i></i><i></i></div>
+            </div>
+          </div>
+
+          <div class="composer">
+            <div class="replybar">
+              <b>Replying to Мария</b><span class="grow" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Confirmed at 240, plus 12 vegetarian.</span>
+              <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;flex:none;"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </div>
+            <div class="cbox">
+              <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M21 12.8V17a4 4 0 01-8 0V7a2.5 2.5 0 015 0v9a1 1 0 01-2 0V8"/></svg></button>
+              <div class="cinput"><b>Agreed — I'll flag it to the venue team and</b>|</div>
+              <button class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M8.5 14.5a4.5 4.5 0 007 0"/></svg></button>
+              <button class="iconbtn solid"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></button>
+            </div>
+            <div class="chints"><span>Enter to send · Shift + Enter for a new line</span><span>Draft saved</span></div>
+          </div>
+        </div>
+
+        <div class="pane detail">
+          <div class="phead"><div class="ptitle" style="font-size:17px;">Details</div>
+            <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+          </div>
+          <div class="dsect dcenter">
+            <div class="av lg" style="margin:0 auto;">MP<span class="dot on"></span></div>
+            <div class="dname">Мария Петрова</div>
+            <div class="drole">Producer · Active now</div>
+          </div>
+          <div class="dsect">
+            <div class="dlabel">Pinned</div>
+            <div class="pinned"><b>Мария · 12 Aug</b>Venue access code is 4471#, gate opens 06:00.</div>
+          </div>
+          <div class="dsect">
+            <div class="dlabel">Shared files · 7</div>
+            <div class="drow"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg><span class="grow">floor-plan-v4.pdf</span></div>
+            <div class="drow"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg><span class="grow">seating-draft.png</span></div>
+            <div class="drow"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg><span class="grow">stage-lighting.jpg</span></div>
+          </div>
+          <div class="dsect">
+            <div class="dlabel">Shared work</div>
+            <div class="drow"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span class="grow">Atrium rebrand</span></div>
+            <div class="drow"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span class="grow">Confirm caterer headcount</span></div>
+          </div>
+          <div class="dsect">
+            <div class="dlabel">Notifications</div>
+            <div class="drow"><span class="grow">Mute this conversation</span><span class="switch"></span></div>
+            <div class="drow"><span class="grow">Mentions only</span><span class="switch on"></span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <p class="figcap"><b>Desktop, 1108px.</b> Every state in this frame maps to something the system needs to store or emit: presence dots, unread badges, a draft marker, a mute flag, a project tag, a new-messages divider, seen receipts, a failed send with retry, reactions, a reply quote, typed attachments, pinned messages. The rail replaces the second line of each row — currently the contact's email, redundant beside their name — with the last message and its state.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Feature inventory</p>
+    <h2>Everything a working chat needs</h2>
+    <p>The full surface, each row marked against what exists today and where the work lands. <span class="chip have">have</span> ships and stays; <span class="chip partial">partial</span> half-works or is faked; <span class="chip gap">gap</span> means nothing exists.</p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Feature</th><th style="width:96px;">Today</th><th>What it takes</th></tr></thead>
+      <tbody>
+        <tr class="group"><td colspan="3">Messaging core</td></tr>
+        <tr><td>Send &amp; receive in real time</td><td><span class="chip have">have</span></td><td><span class="mono">chat.sendMessage</span> plus the <span class="mono">message:new</span> fan-out. Unchanged.</td></tr>
+        <tr><td>Optimistic send</td><td><span class="chip have">have</span></td><td>Per-send placeholder ids in <span class="mono">messageCache.ts</span>. Unchanged.</td></tr>
+        <tr><td>History pagination</td><td><span class="chip have">have</span></td><td>Backwards cursor with scroll anchoring. Unchanged.</td></tr>
+        <tr><td>Typing indicator</td><td><span class="chip have">have</span></td><td><span class="mono">useTypingIndicator</span>. Surface it in the rail too, not only the thread header.</td></tr>
+        <tr><td>Multi-line composer</td><td><span class="chip gap">gap</span></td><td>Swap the <span class="mono">&lt;input&gt;</span> for an auto-growing <span class="mono">&lt;textarea&gt;</span> capped at ~6 rows. Enter sends, Shift+Enter breaks the line.</td></tr>
+        <tr><td>Send failure &amp; retry</td><td><span class="chip gap">gap</span></td><td>Keep the failed bubble in place with a <span class="mono">failed</span> status and Retry / Delete actions; restore the draft text on failure.</td></tr>
+        <tr><td>Edit &amp; delete own message</td><td><span class="chip gap">gap</span></td><td><span class="mono">edited_at</span> / <span class="mono">deleted_at</span> columns, tombstone rendering, a <span class="mono">message:updated</span> event.</td></tr>
+
+        <tr class="group"><td colspan="3">Read state &amp; attention</td></tr>
+        <tr><td>Unread count per conversation</td><td><span class="chip gap">gap</span></td><td>Derived from <span class="mono">last_read_message_id</span> on the participant row and returned by <span class="mono">listAllConversations</span>.</td></tr>
+        <tr><td>Read receipts (Seen)</td><td><span class="chip gap">gap</span></td><td><span class="mono">chat.markRead</span> plus a <span class="mono">message:read</span> broadcast; render on the last own message only.</td></tr>
+        <tr><td>New-messages divider</td><td><span class="chip gap">gap</span></td><td>Client-side, anchored to the read pointer captured on thread open so it doesn't jump as you read.</td></tr>
+        <tr><td>Unread badge on the nav</td><td><span class="chip gap">gap</span></td><td><span class="mono">chat.getUnreadTotal</span>, invalidated by the same socket events.</td></tr>
+        <tr><td>Notifications for messages</td><td><span class="chip partial">partial</span></td><td>Exists, but fires on <em>every</em> message. Gate on: recipient not in the room, thread not muted, and coalesce per conversation per 5 minutes.</td></tr>
+        <tr><td>Mute / archive a thread</td><td><span class="chip gap">gap</span></td><td><span class="mono">muted_until</span> and <span class="mono">archived_at</span> on the participant row, driving the rail filters.</td></tr>
+
+        <tr class="group"><td colspan="3">Content</td></tr>
+        <tr><td>File &amp; image attachments</td><td><span class="chip partial">partial</span></td><td>Uploads work via UploadThing, but URLs are concatenated into <span class="mono">body</span> and re-parsed by regex. Move to <span class="mono">direct_message_attachments</span> with name, mime, size, dimensions.</td></tr>
+        <tr><td>Link previews</td><td><span class="chip gap">gap</span></td><td>Server-side OG fetch on send, cached by URL. Deferred to phase 5 — nice, not needed.</td></tr>
+        <tr><td>Emoji reactions</td><td><span class="chip gap">gap</span></td><td><span class="mono">direct_message_reactions</span> keyed on message, user and emoji with a unique triple; a <span class="mono">message:reaction</span> event.</td></tr>
+        <tr><td>Reply to a message</td><td><span class="chip gap">gap</span></td><td><span class="mono">reply_to_id</span> self-reference. The quote renders sender plus truncated body, and clicking it scrolls to the source.</td></tr>
+        <tr><td>Pinned messages</td><td><span class="chip gap">gap</span></td><td><span class="mono">pinned_at</span> / <span class="mono">pinned_by</span>, surfaced in the details pane.</td></tr>
+        <tr><td>Mentions</td><td><span class="chip gap">gap</span></td><td>Parse <span class="mono">@</span> on send into a mentions array. Needed before group threads are useful.</td></tr>
+
+        <tr class="group"><td colspan="3">Finding things</td></tr>
+        <tr><td>Filter the conversation list</td><td><span class="chip partial">partial</span></td><td>Client-side only, over already-loaded rows, matching on email. Move to a server query over names and message bodies.</td></tr>
+        <tr><td>Search inside a thread</td><td><span class="chip gap">gap</span></td><td><span class="mono">chat.searchMessages</span> over a Postgres full-text index on <span class="mono">body</span>; jump-to-result scrolls and highlights.</td></tr>
+        <tr><td>Deep link to a message</td><td><span class="chip partial">partial</span></td><td><span class="mono">?conversationId=</span> works. Add <span class="mono">&amp;messageId=</span> so notifications land on the right message.</td></tr>
+
+        <tr class="group"><td colspan="3">People &amp; rooms</td></tr>
+        <tr><td>Presence (online / away)</td><td><span class="chip gap">gap</span></td><td>Derive from socket connections in the user room; broadcast <span class="mono">presence:update</span> on connect and disconnect with a short debounce.</td></tr>
+        <tr><td>Group conversations</td><td><span class="chip gap">gap</span></td><td>The blocker: <span class="mono">user_one_id</span> / <span class="mono">user_two_id</span> hard-codes two people. Needs <span class="mono">conversation_participants</span> and a backfill.</td></tr>
+        <tr><td>Leave a conversation</td><td><span class="chip gap">gap</span></td><td>Falls out of the participants table for free — and is what <span class="mono">deleteConversation</span> should have been.</td></tr>
+        <tr><td>Delete a conversation</td><td><span class="chip gap">gap</span></td><td>Today it destroys both sides. Replace with a per-participant <span class="mono">cleared_before</span> pointer; hard delete only once every participant has left.</td></tr>
+        <tr><td>Start a chat</td><td><span class="chip have">have</span></td><td>Suggestions by org, recent contacts and project already work well. Keep the modal, restyle it.</td></tr>
+
+        <tr class="group"><td colspan="3">Platform</td></tr>
+        <tr><td>Mobile layout</td><td><span class="chip partial">partial</span></td><td>Two-pane toggling works, but <span class="mono">globals-mobile.css</span> forces <span class="mono">w-80 → 100%</span> and collapses all <span class="mono">p-6</span> padding. Scope the chat panes out of those blanket rules.</td></tr>
+        <tr><td>Keyboard &amp; a11y</td><td><span class="chip gap">gap</span></td><td>Message list as an <span class="mono">aria-log</span>, arrow-key navigation between threads, focus trap in modals, Escape to close the details pane.</td></tr>
+        <tr><td>Per-thread drafts</td><td><span class="chip gap">gap</span></td><td>Drafts in a map keyed by conversation id, persisted to <span class="mono">localStorage</span>, with a Draft marker in the rail.</td></tr>
+        <tr><td>Localisation</td><td><span class="chip have">have</span></td><td>The <span class="mono">chat.direct</span> namespace is complete. New strings follow it; date separators reuse the existing locale switch.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Data model</p>
+    <h2>One new table unlocks most of it</h2>
+    <p>Almost every gap above traces back to the same root: <code>direct_conversations</code> stores participants as two columns on the conversation itself, so there is nowhere to hang per-person state. Adding <code>conversation_participants</code> gives read pointers, mute, archive and clear-history a home — and turns group threads into a data change rather than a rewrite.</p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Table</th><th>Change</th><th>Serves</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>conversation_participants <span class="chip gap" style="margin-left:6px;">new</span></td>
+          <td><span class="mono">conversation_id, user_id, role, last_read_message_id, muted_until, archived_at, cleared_before, joined_at, left_at</span></td>
+          <td>Unread counts, read receipts, mute, archive, safe delete, leave, group membership</td>
+        </tr>
+        <tr>
+          <td>direct_message_attachments <span class="chip gap" style="margin-left:6px;">new</span></td>
+          <td><span class="mono">message_id, url, name, mime, size_bytes, width, height</span></td>
+          <td>Typed attachments; retires the regex parser in the render path</td>
+        </tr>
+        <tr>
+          <td>direct_message_reactions <span class="chip gap" style="margin-left:6px;">new</span></td>
+          <td><span class="mono">message_id, user_id, emoji</span> — unique on all three</td>
+          <td>Reactions, with toggling enforced by the constraint</td>
+        </tr>
+        <tr>
+          <td>direct_messages</td>
+          <td>add <span class="mono">reply_to_id, edited_at, deleted_at, pinned_at, pinned_by, body_tsv</span></td>
+          <td>Replies, edit and delete, pins, in-thread search</td>
+        </tr>
+        <tr>
+          <td>direct_conversations</td>
+          <td>add <span class="mono">kind ('direct' | 'group'), title, created_by</span>; keep <span class="mono">user_one_id</span> / <span class="mono">user_two_id</span> through the migration, then drop</td>
+          <td>Group threads without breaking the existing pair lookup</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <div class="card tight">
+      <h4>Migration note</h4>
+      <p style="margin:0;font-size:.93rem;">Backfill <code>conversation_participants</code> from the two existing columns and keep <code>normalizePair</code> working against them for one release, so <code>getOrCreateDirectConversation</code> stays correct. Then switch the uniqueness check to a participant-set lookup and drop the columns. Nothing here needs a downtime window.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Contract</p>
+    <h2>tRPC and socket surface</h2>
+  </div>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Procedure / event</th><th>Kind</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">chat.markRead</td><td>mutation</td><td><span class="mono">{ conversationId, messageId }</span> — advances the read pointer and never rewinds it. Fires on thread open, on window focus, and on a new message while focused.</td></tr>
+        <tr><td class="mono">chat.getUnreadTotal</td><td>query</td><td>A single number for the nav badge.</td></tr>
+        <tr><td class="mono">chat.setConversationPrefs</td><td>mutation</td><td>Mute, archive, pin-to-top — one mutation, partial payload.</td></tr>
+        <tr><td class="mono">chat.toggleReaction</td><td>mutation</td><td>Insert-or-delete on the unique triple; returns the new aggregate for the message.</td></tr>
+        <tr><td class="mono">chat.editMessage · chat.deleteMessage</td><td>mutation</td><td>Author-only, with a time window on edit. Delete writes a tombstone rather than removing the row.</td></tr>
+        <tr><td class="mono">chat.searchMessages</td><td>query</td><td>Scoped to one conversation or all of them; returns message id and conversation id for deep-linking.</td></tr>
+        <tr><td class="mono">chat.leaveConversation</td><td>mutation</td><td>Sets <span class="mono">left_at</span>. Replaces the destructive <span class="mono">deleteConversation</span>.</td></tr>
+        <tr><td class="mono">chat.clearHistory</td><td>mutation</td><td>Moves <span class="mono">cleared_before</span> forward for the caller only.</td></tr>
+        <tr><td class="mono">message:read</td><td>socket</td><td>To the conversation room: <span class="mono">{ conversationId, userId, messageId }</span>.</td></tr>
+        <tr><td class="mono">message:updated</td><td>socket</td><td>Covers edit, delete and pin with one payload shape.</td></tr>
+        <tr><td class="mono">message:reaction</td><td>socket</td><td>Message id plus the new aggregate — never a delta, so a duplicated or dropped frame can't desync the count.</td></tr>
+        <tr><td class="mono">presence:update</td><td>socket</td><td>Org room, debounced 3s on disconnect so a page refresh doesn't blink the dot.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p>Two rules keep the client cache honest, both extending patterns <code>ChatClient</code> already uses. Every socket payload carries enough state to be applied idempotently — reactions send the aggregate, not <code>+1</code> — because the existing dual fan-out means any frame can arrive twice. And every mutation that a socket event also reports gets the same duplicate guard as <code>hasMessage</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Mobile</p>
+    <h2>One pane at a time</h2>
+    <p>The rail and thread collapse to a route-driven single pane below <code>sm</code>: <code>/chat</code> is the list, <code>/chat/[conversationId]</code> is the thread. Making it a route rather than a state toggle fixes the back button, makes notification deep-links land correctly, and lets the thread render on the server. The details pane becomes a sheet.</p>
+    <p>One thing to fix first: <code>globals-mobile.css</code> applies <code>[class*="w-80"] { width: 100% !important }</code> and collapses all <code>p-6</code> padding globally. The chat panes need to opt out, or the composer and rail fight the cascade on every small screen.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stagescroll" style="display:flex;justify-content:center;">
+      <div class="app narrow">
+        <div class="thead">
+          <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <div class="av" style="width:32px;height:32px;font-size:11px;">DK<span class="dot on"></span></div>
+          <div style="flex:1;min-width:0;">
+            <div class="tname">Daniel Koeva</div>
+            <div class="tsub">Active now</div>
+          </div>
+          <button class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></button>
+        </div>
+        <div class="msgs" style="padding:14px;">
+          <div class="daydiv"><span>Today</span></div>
+          <div class="m">
+            <div class="av sm sky">DK</div>
+            <div class="mcol" style="max-width:80%;">
+              <div class="bub">Can you look at the venue contract before 5?</div>
+            </div>
+          </div>
+          <div class="m">
+            <div class="mslot"></div>
+            <div class="mcol" style="max-width:80%;">
+              <div class="bub mid">Clause 6 is the one I'm unsure about.</div>
+              <div class="reacts"><span class="react mine">👀 1</span></div>
+            </div>
+          </div>
+          <div class="m own">
+            <div class="mslot"></div>
+            <div class="mcol" style="max-width:80%;">
+              <div class="bub">On it — reading now.</div>
+              <div class="stamp seen"><svg viewBox="0 0 24 24"><path d="M1 13l4 4L13 7"/><path d="M9 13l4 4L23 7"/></svg> Seen 14:09</div>
+            </div>
+          </div>
+          <div class="typing">
+            <div class="av sm sky">DK</div>
+            <div class="tbub"><i></i><i></i><i></i></div>
+          </div>
+        </div>
+        <div class="composer" style="padding:10px 12px;">
+          <div class="cbox">
+            <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M21 12.8V17a4 4 0 01-8 0V7a2.5 2.5 0 015 0v9a1 1 0 01-2 0V8"/></svg></button>
+            <div class="cinput">Message Daniel</div>
+            <button class="iconbtn solid"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></button>
+          </div>
+        </div>
+        <div class="mobbar">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <svg class="act" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>
+        </div>
+      </div>
+    </div>
+    <p class="figcap"><b>Mobile, 372px.</b> Same tokens, same bubble geometry, tap targets at 44px. The back arrow is a real route pop, not a state reset.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Delivery</p>
+    <h2>Five phases, shippable in order</h2>
+    <p>Ordered so each phase is independently releasable and the two correctness bugs land first. The visual redesign sits in the middle rather than at the front, because it depends on the read-state data existing before there is anything new to render.</p>
+
+    <div style="margin-top:26px;">
+      <div class="phase">
+        <div class="pnum">01</div>
+        <div>
+          <h4>Stop the bleeding <span class="chip gap">correctness</span></h4>
+          <p>Replace <code>deleteConversation</code> with <code>leaveConversation</code> and <code>clearHistory</code>. Gate the notification insert on recipient presence and mute state, and coalesce per conversation. Swap the composer input for a textarea. No visual change ships here.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="pnum">02</div>
+        <div>
+          <h4>Participants &amp; read state <span class="chip plain">migration</span></h4>
+          <p>Add <code>conversation_participants</code> and backfill it. Ship <code>markRead</code>, <code>getUnreadTotal</code>, the <code>message:read</code> event, and mute/archive. Unread badges appear in the rail and on the nav — the first user-visible win.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="pnum">03</div>
+        <div>
+          <h4>The redesign <span class="chip plain">ui</span></h4>
+          <p>Rebuild the shell as the three panes above. Split the 1011-line <code>ChatClient</code> into <code>ConversationRail</code>, <code>MessageThread</code>, <code>MessageBubble</code>, <code>Composer</code> and <code>ConversationDetails</code>; the cache helpers stay where they are. Route-driven mobile, day and sender grouping, seen receipts, failed-send retry, per-thread drafts, keyboard and <code>aria-log</code> work. Delete the unused <code>ChatPageTabs.tsx</code>.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="pnum">04</div>
+        <div>
+          <h4>Rich messages <span class="chip plain">content</span></h4>
+          <p>Typed attachments — retiring the regex in the render path — plus reactions, replies, edit and delete, pins, and presence dots. The details pane fills with real content at this point instead of being a placeholder.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="pnum">05</div>
+        <div>
+          <h4>Search &amp; groups <span class="chip plain">scale</span></h4>
+          <p>Postgres full-text over message bodies, server-side conversation search, deep links to a specific message, then group threads and mentions on top of the participants table. Link previews if they still feel worth it.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Open questions</p>
+    <h2>Decisions this proposal doesn't make</h2>
+    <ul class="clean">
+      <li><strong>Read receipts as a setting?</strong> Some teams want them off. Cheap to add as a user preference now, awkward to retrofit once people expect Seen to be reliable.</li>
+      <li><strong>Message retention.</strong> Nothing prunes <code>direct_messages</code> today. Worth deciding before the table gets large enough that the decision becomes a migration.</li>
+      <li><strong>AI chat's place.</strong> <code>/chat/ai</code> is a separate route with its own rail, and <code>ChatPageTabs</code> was written to merge the two but is never rendered. Merge them, or keep the split and delete the dead component? This proposal assumes the split stays.</li>
+      <li><strong>Project-scoped threads.</strong> The schema already carries <code>project_id</code> and <code>organization_id</code> on conversations, and <code>listProjectConversations</code> exists — but <code>/chat</code> ignores both. The rail's project tags assume they get surfaced; confirm that's wanted.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="col">
+    <p>Prepared for the KAIROS team · Findings drawn from <code>src/components/chat/</code>, <code>src/server/api/routers/chat.ts</code>, <code>src/server/db/schemas/chat.ts</code> and <code>ws-server/rooms.ts</code> on <code>development</code> at <span class="mono">7b379c8</span>.</p>
+  </div>
+</footer>
+
+</div>
+
+<button id="themetoggle" type="button" aria-label="Switch between light and dark">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+  <span>Theme</span>
+</button>
+<style>
+#themetoggle{
+  position:fixed;right:20px;bottom:20px;z-index:10;display:flex;align-items:center;gap:8px;
+  padding:9px 14px;border:0;border-radius:999px;background:var(--surface);color:var(--muted);
+  box-shadow:var(--shadow-pop);font-family:"IBM Plex Mono",monospace;font-size:.68rem;
+  letter-spacing:.12em;text-transform:uppercase;
+}
+#themetoggle svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linejoin:round;}
+#themetoggle:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+@media print{#themetoggle{display:none;}}
+</style>
+<script>
+(function () {
+  var root = document.documentElement;
+  document.getElementById("themetoggle").addEventListener("click", function () {
+    // No stamp means "follow the OS", so the first click has to resolve what
+    // the OS is currently showing before it can flip to the other one.
+    var current = root.getAttribute("data-theme");
+    if (!current) {
+      current = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    root.setAttribute("data-theme", current === "dark" ? "light" : "dark");
+  });
+})();
+</script>
+
+</body>
+</html>
