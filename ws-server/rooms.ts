@@ -204,7 +204,7 @@ async function handleJoinConversation(
  * The public events feed.
  *
  * No membership check, deliberately: events are public content — region-scoped,
- * with no organization — and `event.getPublicEvents` is a `publicProcedure`. This
+ * with no organization — and `event.getFeed` is a `publicProcedure`. This
  * room exists for scope, not secrecy: it replaces an `io.emit` that woke every
  * connected socket in the system whenever any event changed.
  *

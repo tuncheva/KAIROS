@@ -77,6 +77,10 @@ function isStaticAsset(pathname: string): boolean {
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;
+  // An event page is meant to be pasted into a group chat. Gating it behind the
+  // session cookie would mean every shared link greeted the person who received
+  // it with a sign-in wall, which is the opposite of what publishing is for.
+  if (pathname.startsWith("/events/")) return true;
   if (pathname.startsWith("/api/auth")) return true;
   if (pathname.startsWith("/api/trpc")) return true;
   if (pathname.startsWith("/api/account-switch")) return true;

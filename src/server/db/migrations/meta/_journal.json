@@ -162,6 +162,41 @@
       "when": 1787961613001,
       "tag": "0031_verification_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1787961613002,
+      "tag": "0032_event_place_and_replies",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1787961613003,
+      "tag": "0033_event_topic_capacity_cohosts",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1787961613004,
+      "tag": "0034_event_saves",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1787961613005,
+      "tag": "0035_event_cover_theme",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1787961613006,
+      "tag": "0036_event_edited_at",
+      "breakpoints": true
     }
   ]
 }

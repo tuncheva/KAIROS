@@ -73,9 +73,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}): Socket | null {
          a refresh, and a dropped connection is covered by the catch-up above. */
       ["conversation:updated", () => invalidate(["chat", "listAllConversations"])],
 
-      // Event feed events
-      ["event:deleted", () => invalidate(["event", "getPublicEvents"])],
-      ["event:updated", () => invalidate(["event", "getPublicEvents"])],
+      /* Event feed events.
+         `event:created` is new: creation used to emit nothing at all, so the
+         one moment a live feed exists for was the one moment it sat still. */
+      ["event:created", () => invalidate(["event", "getFeed"])],
+      ["event:deleted", () => invalidate(["event", "getFeed"])],
+      ["event:updated", () => invalidate(["event", "getFeed"])],
 
       // Organization events
       ["org:member_joined", () => invalidate(["organization"])],
