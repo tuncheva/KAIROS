@@ -1,5 +1,4 @@
 import "~/styles/globals.css";
-import "react-chat-elements/dist/main.css";
 
 import { type Metadata } from "next";
 import { Nunito_Sans, Instrument_Serif, Playfair_Display, IBM_Plex_Mono } from "next/font/google";

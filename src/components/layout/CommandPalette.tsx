@@ -42,12 +42,24 @@ function matches(haystack: string, needle: string): boolean {
   return norm(haystack).includes(norm(needle));
 }
 
-export function CommandPalette() {
+export function CommandPalette({
+  /**
+   * Whether to come up already open.
+   *
+   * The palette is loaded lazily (see `GlobalAIWidget`), so the ⌘K press that
+   * asks for it happens before this component exists — there is no listener of
+   * its own to catch it. The host arms this on that first press; every press
+   * after it is handled by the listener below, which is mounted by then.
+   */
+  initialOpen = false,
+}: {
+  initialOpen?: boolean;
+} = {}) {
   const useT = useTranslations as unknown as (ns: string) => Translator;
   const t = useT("ai.palette");
   const router = useRouter();
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);

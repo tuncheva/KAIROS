@@ -15,6 +15,10 @@ import {
   seedPage,
 } from "~/components/chat/messageCache";
 import { MessageBox } from "react-chat-elements";
+/* This lived in the root layout, which meant every page — the landing page
+   included — downloaded and parsed the chat library's stylesheet. It belongs
+   with its one consumer, so it now ships only on routes that render this. */
+import "react-chat-elements/dist/main.css";
 import Image from "next/image";
 
 const MessageBubble = MessageBox as unknown as ComponentType<{
