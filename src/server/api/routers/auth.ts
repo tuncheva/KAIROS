@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { users, passwordResetCodes } from "~/server/db/schema";
-import { eq, and, gt } from "drizzle-orm";
+import { users } from "~/server/db/schema";
+import { eq } from "drizzle-orm";
 import * as argon2 from "argon2";
 import { TRPCError } from "@trpc/server";
 import { sendWelcomeEmail, sendPasswordResetCode, sendEmailVerification } from "~/server/email/email";
@@ -9,17 +9,34 @@ import {
   consumeVerificationToken,
   issueVerificationToken,
 } from "~/server/email/emailVerification";
-import crypto from "node:crypto";
+import {
+  checkVerificationCode,
+  consumeVerificationCode,
+  issueVerificationCode,
+  normalizeEmail,
+} from "~/server/email/verificationCodes";
 import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/security/authRateLimit";
 import { getClientIp } from "~/server/http/clientIp";
 import { createLogger } from "~/server/logger";
 
 const log = createLogger("auth.router");
 
-function generateResetCode(): string {
-  const buf = crypto.randomBytes(4);
-  const num = buf.readUInt32BE(0) % 90000000 + 10000000;
-  return num.toString();
+/**
+ * Turn a code-check failure into something a user can act on.
+ *
+ * "Invalid or expired" told a person who had waited too long to keep retyping
+ * the same eight digits. These three cases have three different next steps —
+ * retype, request another, wait — and the message should say which.
+ */
+function codeFailureMessage(reason: "invalid" | "expired" | "too_many_attempts") {
+  switch (reason) {
+    case "expired":
+      return "That code has expired. Request a new one.";
+    case "too_many_attempts":
+      return "Too many incorrect attempts. Request a new code.";
+    default:
+      return "That code is not valid.";
+  }
 }
 
 export const authRouter = createTRPCRouter({
@@ -191,7 +208,7 @@ export const authRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { email } = input;
+      const email = normalizeEmail(input.email);
 
       // Rate limit password reset requests to prevent email spam
       // Two dimensions, deliberately.
@@ -216,27 +233,9 @@ export const authRouter = createTRPCRouter({
         return { success: true };
       }
 
-      const code = generateResetCode();
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-
-      // Issuing a new code retires any earlier ones, so only the most recent
-      // code is ever valid. Previously each request just inserted another row.
-      await ctx.db
-        .update(passwordResetCodes)
-        .set({ used: true })
-        .where(
-          and(
-            eq(passwordResetCodes.email, email),
-            eq(passwordResetCodes.used, false),
-          ),
-        );
-
-      // Store the code in the database
-      await ctx.db.insert(passwordResetCodes).values({
-        email,
-        code,
-        expiresAt,
-      });
+      // Issuing retires any earlier code for this address, so only the most
+      // recent one is ever valid, and only its SHA-256 is stored.
+      const code = await issueVerificationCode(ctx.db, "password_reset", email);
 
       // Send the code via email
       try {
@@ -264,7 +263,8 @@ export const authRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { email, code } = input;
+      const email = normalizeEmail(input.email);
+      const { code } = input;
 
       // Rate limit code verification to prevent brute-force attacks
       await consumeAuthRateLimit(
@@ -272,19 +272,20 @@ export const authRouter = createTRPCRouter({
       );
       await consumeAuthRateLimit(createAuthRateLimitKey("verify_code", email));
 
-      const resetCode = await ctx.db.query.passwordResetCodes.findFirst({
-        where: and(
-          eq(passwordResetCodes.email, email),
-          eq(passwordResetCodes.code, code),
-          eq(passwordResetCodes.used, false),
-          gt(passwordResetCodes.expiresAt, new Date()),
-        ),
-      });
+      // Checked, not spent. The user types the code on one screen and the new
+      // password on the next, and a code consumed here would strand them in
+      // between. A wrong answer still costs an attempt.
+      const check = await checkVerificationCode(
+        ctx.db,
+        "password_reset",
+        email,
+        code,
+      );
 
-      if (!resetCode) {
+      if (!check.ok) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Invalid or expired reset code",
+          message: codeFailureMessage(check.reason),
         });
       }
 
@@ -300,7 +301,8 @@ export const authRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { email, code, newPassword } = input;
+      const email = normalizeEmail(input.email);
+      const { code, newPassword } = input;
 
       // Rate limit password resets
       await consumeAuthRateLimit(
@@ -309,19 +311,19 @@ export const authRouter = createTRPCRouter({
       await consumeAuthRateLimit(createAuthRateLimitKey("reset_password", email));
 
       // Verify the code again
-      const resetCode = await ctx.db.query.passwordResetCodes.findFirst({
-        where: and(
-          eq(passwordResetCodes.email, email),
-          eq(passwordResetCodes.code, code),
-          eq(passwordResetCodes.used, false),
-          gt(passwordResetCodes.expiresAt, new Date()),
-        ),
-      });
+      // Spent here, where it actually authorises something. Consuming retires
+      // every outstanding code for the address, so none survives the change.
+      const redeemed = await consumeVerificationCode(
+        ctx.db,
+        "password_reset",
+        email,
+        code,
+      );
 
-      if (!resetCode) {
+      if (!redeemed.ok) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Invalid or expired reset code",
+          message: codeFailureMessage(redeemed.reason),
         });
       }
 
@@ -354,20 +356,6 @@ export const authRouter = createTRPCRouter({
         .update(users)
         .set({ password: hashedPassword, updatedAt: new Date() })
         .where(eq(users.id, user.id));
-
-      // Invalidate every outstanding code for this address, not just the one
-      // consumed. Each request inserted a new row without expiring the previous
-      // ones, so up to 5 codes stayed valid per window — including after the
-      // password had already been changed.
-      await ctx.db
-        .update(passwordResetCodes)
-        .set({ used: true })
-        .where(
-          and(
-            eq(passwordResetCodes.email, email),
-            eq(passwordResetCodes.used, false),
-          ),
-        );
 
       return { success: true };
     }),

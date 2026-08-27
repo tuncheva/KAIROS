@@ -9,6 +9,7 @@
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts && tsx scripts/fix-migration-journal.ts",
     "db:migrate": "dotenv -e .env -- drizzle-kit migrate --config=drizzle.config.ts",
     "db:push": "dotenv -e .env -- drizzle-kit push --config=drizzle.config.ts",
+    "db:verify": "dotenv -e .env -- tsx scripts/verify-schema.ts",
     "db:studio": "dotenv -e .env -- drizzle-kit studio --config=drizzle.config.ts",
     "dev": "tsx watch server.ts",
     "dev:next": "next dev --turbo",

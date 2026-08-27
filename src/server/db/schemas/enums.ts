@@ -93,3 +93,18 @@ export const aiMessageRoleEnum = pgEnum("ai_message_role", [
   "tool",
   "system",
 ] as const);
+
+/**
+ * What a short emailed code proves.
+ *
+ * One table serves both flows because the mechanics are identical — issue,
+ * hash, expire, consume once — and the only thing that differs is what the
+ * application does after a code checks out. Keeping them apart meant two
+ * near-identical implementations, of which only one hashed anything.
+ */
+export const verificationCodePurposeEnum = pgEnum("verification_code_purpose", [
+  /** Prove the address belongs to you, so credentials sign-in is allowed. */
+  "email_verify",
+  /** Authorise setting a new account password without being signed in. */
+  "password_reset",
+]);

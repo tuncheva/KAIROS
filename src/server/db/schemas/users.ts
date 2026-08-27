@@ -17,6 +17,7 @@ import {
   dateFormatEnum,
   themeEnum,
   profileAudienceEnum,
+  verificationCodePurposeEnum,
 } from "./enums";
 
 export const users = createTable("user", (d) => ({
@@ -270,6 +271,50 @@ export const passwordResetCodes = createTable("password_reset_code", (d) => ({
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 }));
+
+/**
+ * Short numeric codes emailed to prove control of an address.
+ *
+ * Supersedes `password_reset_code`, which stored its codes in plaintext — a
+ * read of the database yielded a live credential for every outstanding reset.
+ * Only a SHA-256 of the code is kept here, for the same reason
+ * `verification_token` keeps only a hash of its link tokens.
+ *
+ * Three things this table does that its predecessor did not:
+ *
+ * - `purpose` lets one mechanism serve both confirming an address and
+ *   authorising a password reset, instead of two implementations that drifted.
+ * - `attempts` caps guessing at the row rather than at the rate limiter alone.
+ *   An eight-digit code survives a shared-IP limiter for a long time; it does
+ *   not survive five wrong answers.
+ * - `consumedAt` records *when* rather than a bare boolean, which is what makes
+ *   "was this code already used, and how long ago" answerable during an
+ *   incident.
+ */
+export const verificationCodes = createTable(
+  "verification_code",
+  (d) => ({
+    id: d.integer().primaryKey().generatedAlwaysAsIdentity(),
+    purpose: verificationCodePurposeEnum("purpose").notNull(),
+    /** Lowercased address. Not a user reference: a code may be issued before
+     *  the row exists, and must keep working if the account is renamed. */
+    email: d.varchar({ length: 255 }).notNull(),
+    codeHash: d.varchar("code_hash", { length: 64 }).notNull(),
+    expiresAt: d
+      .timestamp("expires_at", { mode: "date", withTimezone: true })
+      .notNull(),
+    consumedAt: d.timestamp("consumed_at", { mode: "date", withTimezone: true }),
+    attempts: d.integer().default(0).notNull(),
+    createdAt: d
+      .timestamp("created_at", { mode: "date", withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    // Every lookup is "the live code for this address and purpose".
+    index("verification_code_lookup_idx").on(t.email, t.purpose),
+  ],
+);
 
 /**
  * The follow graph.

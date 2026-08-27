@@ -17,6 +17,7 @@ const TABLES = [
   "webhooks",
   "webhook_deliveries",
   "documents",
+  "verification_code",
   "document_chunks",
   "calendar_connections",
   "external_events",
@@ -53,9 +54,14 @@ const COLUMNS: Array<[string, string]> = [
 const ENUM_VALUES: Array<[string, string]> = [
   ["notification_type", "message"],
   ["notification_type", "event_reminder"],
+  ["verification_code_purpose", "email_verify"],
 ];
 
-const INDEXES = ["ai_message_content_fts_idx", "document_chunk_fts_idx"];
+const INDEXES = [
+  "ai_message_content_fts_idx",
+  "document_chunk_fts_idx",
+  "verification_code_lookup_idx",
+];
 
 async function main(): Promise<void> {
   const url = process.env.DATABASE_DIRECT_URL ?? process.env.DATABASE_URL;

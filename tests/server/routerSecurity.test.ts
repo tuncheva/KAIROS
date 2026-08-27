@@ -47,6 +47,13 @@ describe("Router Security — All Routers", () => {
 
 describe("Auth Router — Specific Security", () => {
   const authSource = routers["auth.ts"]!;
+  // Code issuing, hashing and expiry moved out of the router into the shared
+  // module that serves both password reset and address confirmation, so the
+  // assertions about them follow it there.
+  const codeSource = fs.readFileSync(
+    path.resolve(__dirname, "../../src/server/email/verificationCodes.ts"),
+    "utf-8",
+  );
 
   it("uses argon2 for password hashing", () => {
     expect(authSource).toContain("argon2");
@@ -57,9 +64,25 @@ describe("Auth Router — Specific Security", () => {
     expect(authSource).not.toContain("bcrypt");
   });
 
-  it("uses crypto.randomBytes for reset code (not Math.random)", () => {
-    expect(authSource).toContain("crypto.randomBytes");
+  it("generates reset codes with node:crypto, not Math.random", () => {
+    expect(codeSource).toContain('from "node:crypto"');
+    expect(codeSource).toContain("randomInt(");
+    expect(codeSource).not.toContain("Math.random");
     expect(authSource).not.toContain("Math.random");
+  });
+
+  it("stores only a hash of the code, never the code itself", () => {
+    expect(codeSource).toContain("createHash(\"sha256\")");
+    expect(codeSource).toContain("codeHash: hashVerificationCode(code)");
+  });
+
+  it("compares code hashes in constant time", () => {
+    expect(codeSource).toContain("timingSafeEqual");
+  });
+
+  it("caps guesses per issued code", () => {
+    expect(codeSource).toContain("MAX_CODE_ATTEMPTS");
+    expect(codeSource).toContain("row.attempts >= MAX_CODE_ATTEMPTS");
   });
 
   it("validates email format on signup", () => {
@@ -76,11 +99,13 @@ describe("Auth Router — Specific Security", () => {
   });
 
   it("reset code has expiry", () => {
-    expect(authSource).toContain("expiresAt");
+    expect(codeSource).toContain("expiresAt");
+    expect(codeSource).toContain("VERIFICATION_CODE_TTL_MS");
   });
 
-  it("marks reset code as used after password reset", () => {
-    expect(authSource).toContain("used: true");
+  it("spends the code when the password is actually reset", () => {
+    expect(authSource).toContain("consumeVerificationCode");
+    expect(codeSource).toContain("consumedAt: new Date()");
   });
 
   it("all procedures use publicProcedure (auth is public)", () => {
