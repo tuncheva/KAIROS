@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
 import { JoinWithQrClient } from "~/components/orgs/JoinWithQrClient";
-import { SideNav } from "~/components/layout/SideNav";
 import { TopBar } from "~/components/layout/TopBar";
 import { auth } from "~/server/auth";
 
@@ -32,7 +31,6 @@ export default async function JoinPage({
 
   return (
     <div className="min-h-screen bg-bg-primary">
-      <SideNav />
       <div className="rail-offset flex min-h-screen flex-col pt-16 lg:pt-0 kairos-page-enter">
         <TopBar />
 

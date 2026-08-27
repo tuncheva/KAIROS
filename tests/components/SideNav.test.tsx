@@ -141,25 +141,33 @@ describe("SideNav", () => {
     const aside = container.querySelector('aside[aria-label="Primary"]')!;
     expect(aside.className).toContain("w-16");
     expect(aside.className).toContain("hover:w-[236px]");
-    // Keyboard users get the same expansion when a row takes focus.
-    expect(aside.className).toContain("focus-within:w-[236px]");
+    // A mouse click leaves focus on the clicked row, so `focus-within` would
+    // hold the rail open long after the cursor left. Keyboard expansion is
+    // handled by a `:has(:focus-visible)` rule in globals.css instead.
+    expect(aside.className).not.toContain("focus-within:w-[236px]");
+  });
+
+  it("expands the rail for keyboard focus only, via :focus-visible", () => {
+    const css = fs.readFileSync(
+      path.resolve(__dirname, "../../src/styles/globals.css"),
+      "utf-8"
+    );
+    expect(css).toContain(".kairos-rail:has(:focus-visible)");
+    expect(css).toContain(".kairos-rail:has(:focus-visible) .kairos-rail-label");
   });
 
   it("pins the rail open, stamps <html> and persists the choice", async () => {
     const user = userEvent.setup();
     window.localStorage.removeItem("kairos:railPinned");
+    delete document.documentElement.dataset.railPinned;
 
-    const { container } = render(<SideNav />);
-    const aside = container.querySelector('aside[aria-label="Primary"]')!;
+    render(<SideNav />);
     const pin = screen.getByRole("button", { name: "Pin navigation" });
 
     expect(pin).toHaveAttribute("aria-pressed", "false");
-    expect(document.documentElement.dataset.railPinned).toBe("false");
 
     await user.click(pin);
 
-    expect(aside.className).toContain("w-[236px]");
-    expect(aside.className).not.toContain("w-16");
     // `--rail-w` hangs off this attribute, which is what shifts the page.
     expect(document.documentElement.dataset.railPinned).toBe("true");
     expect(window.localStorage.getItem("kairos:railPinned")).toBe("true");
@@ -168,11 +176,42 @@ describe("SideNav", () => {
     ).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("restores a pinned rail from localStorage on mount", () => {
+  /**
+   * The pinned *width* is CSS, not React.
+   *
+   * `globals.css` widens `.kairos-rail` under `:root[data-rail-pinned="true"]`,
+   * and the pre-paint script in `themeInitScript.ts` sets that attribute before
+   * the first frame. Picking the width class off React state instead meant the
+   * rail painted collapsed on every load and widened once the effect that reads
+   * localStorage had run — dragging `.rail-offset` and the whole page with it.
+   *
+   * So the class the stylesheet hooks onto has to be on the element, and it has
+   * to be there unconditionally.
+   */
+  it("carries the CSS hook the pinned rule targets, pinned or not", () => {
     window.localStorage.setItem("kairos:railPinned", "true");
     const { container } = render(<SideNav />);
     const aside = container.querySelector('aside[aria-label="Primary"]')!;
-    expect(aside.className).toContain("w-[236px]");
+
+    expect(aside.className).toContain("kairos-rail");
+    // Still the collapsed base width: the stylesheet overrides it, not React.
+    expect(aside.className).toContain("w-16");
+
     window.localStorage.removeItem("kairos:railPinned");
+  });
+
+  it("does not stamp the rail attribute on mount, only on toggle", () => {
+    // The pre-paint script owns the initial value. An effect that mirrored
+    // React state onto <html> would overwrite it with "false" on every load,
+    // which is the flash this whole arrangement exists to remove.
+    window.localStorage.setItem("kairos:railPinned", "true");
+    document.documentElement.dataset.railPinned = "true";
+
+    render(<SideNav />);
+
+    expect(document.documentElement.dataset.railPinned).toBe("true");
+
+    window.localStorage.removeItem("kairos:railPinned");
+    delete document.documentElement.dataset.railPinned;
   });
 });

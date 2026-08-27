@@ -5,9 +5,9 @@ import { Plus } from "lucide-react";
 
 import { AiInsightsPanel } from "~/components/dashboard/AiInsightsPanel";
 import { DashboardClient } from "~/components/dashboard/DashboardClient";
-import { SideNav } from "~/components/layout/SideNav";
 import { TopBar } from "~/components/layout/TopBar";
 import { auth } from "~/server/auth";
+import { api, HydrateClient } from "~/trpc/server";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -17,15 +17,37 @@ export default async function DashboardPage() {
 
   const tNav = await getTranslations("nav");
 
-  return (
-    <div className="min-h-screen bg-bg-primary">
-      <SideNav />
+  /*
+   * Warm the cache on the server, so the page arrives with its data instead of
+   * fetching it after hydration.
+   *
+   * Without this the sequence on every visit was: HTML, hydrate, *then* fire
+   * the queries and show skeletons while a round trip completes. The server is
+   * already talking to the database to resolve the session, so it is the
+   * cheapest possible place to also ask for what the page is about to want.
+   *
+   * Deliberately not awaited. `HydrateClient` streams each result down as it
+   * resolves, so the three run concurrently and none of them holds up the
+   * shell; the client queries below them adopt whatever has landed and only
+   * fetch what has not.
+   *
+   * `getForCalendar` is missing from this list on purpose: its input is a date
+   * range built from `new Date()` in the client component, so a range computed
+   * here would produce a different query key and prefetch into a cache entry
+   * nothing ever reads.
+   */
+  void api.project.getMyProjects.prefetch();
+  void api.note.getAll.prefetch();
+  void api.task.getOrgActivity.prefetch({ limit: 6, scope: "all" });
 
+  return (
+    <HydrateClient>
+    <div className="min-h-screen bg-bg-primary">
       <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0 kairos-page-enter">
         <TopBar
           actions={
             <Link
-              href="/projects"
+              href="/projects?new=1"
               className="flex items-center gap-2 rounded-lg bg-accent-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
             >
               <Plus size={15} />
@@ -49,5 +71,6 @@ export default async function DashboardPage() {
         </main>
       </div>
     </div>
+    </HydrateClient>
   );
 }

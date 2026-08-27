@@ -35,6 +35,41 @@ describe("Root Layout", () => {
   });
 });
 
+/**
+ * The signed-in shell.
+ *
+ * The rail used to be rendered by each page, which put it inside the page
+ * segment — so every navigation threw it away and built a new one, and the
+ * pinned width it reads from localStorage after mount dragged the whole page
+ * sideways each time. It now lives in the `(app)` layout, which is what lets
+ * React keep the same DOM across a navigation.
+ *
+ * Both halves are asserted: that the layout renders it, and that no page does.
+ * The second is the one that stops the regression, because putting `<SideNav />`
+ * back into a page is a change that looks harmless and reads fine in review.
+ */
+describe("App shell layout", () => {
+  const layout = readPage("(app)/layout.tsx");
+
+  it("renders SideNav once, for every signed-in page", () => {
+    expect(layout).toContain("SideNav");
+  });
+
+  it("is the only place SideNav is rendered", () => {
+    const pages = fs
+      .readdirSync(path.resolve(appDir, "(app)"), { recursive: true })
+      .filter((f): f is string => typeof f === "string" && f.endsWith("page.tsx"));
+
+    expect(pages.length).toBeGreaterThan(0);
+
+    const offenders = pages.filter((f) =>
+      readPage(path.join("(app)", f)).includes("SideNav"),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe("Calendar Page", () => {
   const page = readPage("(app)/calendar/page.tsx");
 
@@ -42,9 +77,6 @@ describe("Calendar Page", () => {
     expect(page).toMatch(/auth|session|redirect/i);
   });
 
-  it("renders SideNav", () => {
-    expect(page).toContain("SideNav");
-  });
 
   it("renders CalendarClient", () => {
     expect(page).toContain("CalendarClient");
@@ -58,9 +90,6 @@ describe("Notes Page", () => {
     expect(page).toMatch(/auth|session|redirect/i);
   });
 
-  it("renders SideNav", () => {
-    expect(page).toContain("SideNav");
-  });
 });
 
 describe("Projects Page", () => {
@@ -70,9 +99,6 @@ describe("Projects Page", () => {
     expect(page).toMatch(/auth|session|redirect/i);
   });
 
-  it("renders SideNav", () => {
-    expect(page).toContain("SideNav");
-  });
 });
 
 describe("Progress Page", () => {
@@ -82,9 +108,6 @@ describe("Progress Page", () => {
     expect(page).toMatch(/auth|session|redirect/i);
   });
 
-  it("renders SideNav", () => {
-    expect(page).toContain("SideNav");
-  });
 });
 
 describe("Settings Page", () => {
@@ -98,9 +121,6 @@ describe("Settings Page", () => {
     expect(page).toContain("SettingsWorkspace");
   });
 
-  it("renders SideNav", () => {
-    expect(page).toContain("SideNav");
-  });
 
   it("validates the section query parameter", () => {
     expect(page).toContain("isSettingsSection");
@@ -126,9 +146,6 @@ describe("Orgs Page", () => {
     expect(page).toMatch(/auth|session|redirect/i);
   });
 
-  it("includes SideNav layout", () => {
-    expect(page).toContain("SideNav");
-  });
 });
 
 describe("Not Found Page", () => {

@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { auth } from "~/server/auth";
-import { SideNav } from "~/components/layout/SideNav";
 import { TopBar } from "~/components/layout/TopBar";
 import { CalendarClient } from "~/components/calendar/CalendarClient";
 
@@ -13,8 +12,6 @@ export default async function CalendarPage() {
 
   return (
     <div className="h-dvh overflow-hidden bg-bg-primary">
-      <SideNav />
-
       {/* The calendar is a fixed-height surface that scrolls its own hour grid,
           so this column needs a DEFINITE height: with `min-h-screen` the height
           stays indefinite, `flex-1` on <main> falls back to content sizing and

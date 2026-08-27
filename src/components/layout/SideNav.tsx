@@ -31,10 +31,16 @@ const RAIL_PIN_KEY = "kairos:railPinned";
 const railRowClass =
   "flex w-full items-center gap-4 border-l-2 px-5 py-[11px] text-sm whitespace-nowrap";
 
-/** Labels sit in the clipped overflow; they fade in as the rail opens. */
-const RAIL_LABEL_HIDDEN =
-  "opacity-0 transition-opacity duration-300 group-hover/rail:opacity-100 group-focus-within/rail:opacity-100 motion-reduce:transition-none";
-const RAIL_LABEL_SHOWN = "opacity-100";
+/**
+ * Labels sit in the clipped overflow; they fade in as the rail opens.
+ *
+ * `kairos-rail-label` is the hook the pinned and keyboard-focus rules in
+ * `globals.css` use to hold them open. It is a class rather than a second Tailwind string picked during
+ * render because the pinned state is only known after hydration, and swapping
+ * the class then made every label fade in again on each load.
+ */
+const RAIL_LABEL =
+  "kairos-rail-label opacity-0 transition-opacity duration-[600ms] group-hover/rail:opacity-100 motion-reduce:transition-none";
 
 function RailLink({
   href,
@@ -87,27 +93,30 @@ export function SideNav() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isMobileMenuOpen]);
 
-  // The pin survives navigation, so it is read back on mount rather than kept
-  // in a provider — nothing else in the tree needs it.
+  // The rail's *appearance* while pinned now comes from CSS (see `.kairos-rail`
+  // in globals.css), so this read no longer decides what gets painted. It keeps
+  // the pin button's pressed state and label honest, and runs once per session
+  // rather than once per navigation: the rail lives in `(app)/layout.tsx` now.
   useEffect(() => {
     setIsRailPinned(window.localStorage.getItem(RAIL_PIN_KEY) === "true");
   }, []);
 
   // `--rail-w` hangs off <html> so every page's `.rail-offset` shifts with the
-  // rail without threading the state through each layout.
-  useEffect(() => {
-    document.documentElement.dataset.railPinned = String(isRailPinned);
-  }, [isRailPinned]);
-
+  // rail without threading the state through each layout. It is written here
+  // only when the user actually toggles the pin, never from an effect keyed on
+  // `isRailPinned` — that state starts `false` and would stamp "false" over
+  // whatever the pre-paint script in `themeInitScript.ts` already worked out,
+  // which is exactly what made the page slide sideways after every load.
   const togglePin = () => {
     setIsRailPinned((pinned) => {
       const next = !pinned;
       window.localStorage.setItem(RAIL_PIN_KEY, String(next));
+      document.documentElement.dataset.railPinned = String(next);
       return next;
     });
   };
 
-  const labelClass = isRailPinned ? RAIL_LABEL_SHOWN : RAIL_LABEL_HIDDEN;
+  const labelClass = RAIL_LABEL;
 
   const mainNavItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: t("dashboard") },
@@ -130,7 +139,7 @@ export function SideNav() {
   }> = [
     { href: "/publish", icon: CalendarDays, label: t("events") },
     { href: "/progress", icon: TrendingUp, label: t("progress") },
-    { href: "/projects", icon: Plus, label: t("newProject"), primary: true },
+    { href: "/projects?new=1", icon: Plus, label: t("newProject"), primary: true },
     { href: "/calendar", icon: CalendarCheck, label: t("calendar") },
     { href: settingsItem.href, icon: Settings, label: settingsItem.label },
   ];
@@ -264,7 +273,7 @@ export function SideNav() {
                   {t("quickActions")}
                 </p>
                 <Link
-                  href="/projects"
+                  href="/projects?new=1"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl text-accent-primary hover:bg-accent-primary/10 transition-colors shadow-sm font-medium"
                   title={t("newProject")}
@@ -303,13 +312,13 @@ export function SideNav() {
         </div>
       </nav>
 
-      {/* Design 7A rail: 64px of icons that opens to 236px on hover, or stays
-          open when pinned. Only the pinned state moves the page (see
+      {/* Design 7A rail: 64px of icons that opens to 236px on hover, on
+          keyboard focus (see `:has(:focus-visible)` in globals.css — a plain
+          `focus-within` kept it open after a mouse click), or stays open when
+          pinned. Only the pinned state moves the page (see
           `--rail-w` in globals.css), so a passing cursor never reflows it. */}
       <aside
-        className={`group/rail hidden lg:flex fixed left-0 top-0 bottom-0 z-40 flex-col gap-0.5 overflow-hidden border-r border-border-light/60 bg-bg-elevated py-5 transition-[width] duration-[400ms] ease-[cubic-bezier(0.2,0.8,0.25,1)] motion-reduce:transition-none ${
-          isRailPinned ? "w-[236px]" : "w-16 hover:w-[236px] focus-within:w-[236px]"
-        }`}
+        className={`group/rail hidden lg:flex fixed left-0 top-0 bottom-0 z-40 flex-col gap-0.5 overflow-hidden border-r border-border-light/60 bg-bg-elevated py-5 transition-[width] duration-[700ms] ease-[cubic-bezier(0.2,0.8,0.25,1)] motion-reduce:transition-none kairos-rail w-16 hover:w-[236px]`}
         aria-label="Primary"
       >
         <div className="flex items-center justify-between gap-3 whitespace-nowrap px-[18px] pb-[22px]">

@@ -1,7 +1,6 @@
 import { auth } from "~/server/auth";
 import { redirect } from "next/navigation";
 
-import { SideNav } from "~/components/layout/SideNav";
 import { OnboardingGate } from "~/components/auth/OnboardingGate";
 import { NotesWorkspace } from "~/components/notes/NotesWorkspace";
 
@@ -20,8 +19,6 @@ export default async function NotesPage() {
   return (
     <OnboardingGate>
       <div className="h-[100dvh] bg-bg-primary overflow-hidden">
-        <SideNav />
-
         <main
           id="main-content"
           className="rail-offset h-[100dvh] overflow-hidden kairos-page-enter pt-16 lg:pt-0 pb-24 lg:pb-0"

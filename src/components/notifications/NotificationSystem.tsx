@@ -71,15 +71,27 @@ export function NotificationSystem() {
   // request rate for every signed-in user.
   const NOTIFICATION_FALLBACK_POLL_MS = 120_000;
 
+  /*
+   * `staleTime` is what keeps the bell from refetching on every navigation.
+   * The bar this lives in is re-rendered by each page, so both queries mount
+   * again on every page switch; with the list treated as stale they fired two
+   * requests every time the user moved anywhere in the app. Since delivery is
+   * push-based, a cached list is not a stale one — the socket event below
+   * invalidates it the moment anything actually arrives.
+   *
+   * Window focus is still opted into by name, against the app-wide default, as
+   * the cheap way to catch up on anything missed while the tab was hidden.
+   */
   const { data: storedNotifications, refetch } = api.notification.getAll.useQuery(undefined, {
     refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    staleTime: NOTIFICATION_FALLBACK_POLL_MS,
     refetchInterval: NOTIFICATION_FALLBACK_POLL_MS,
   });
 
   // Separate unread count query for faster badge updates
   const { data: serverUnreadCount } = api.notification.getUnreadCount.useQuery(undefined, {
     refetchOnWindowFocus: true,
+    staleTime: NOTIFICATION_FALLBACK_POLL_MS,
     refetchInterval: NOTIFICATION_FALLBACK_POLL_MS,
   });
 

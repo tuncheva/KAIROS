@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 
-import { SideNav } from "~/components/layout/SideNav";
 import { PublishWorkspace } from "~/components/publish/PublishWorkspace";
 
 /**
@@ -17,8 +16,6 @@ import { PublishWorkspace } from "~/components/publish/PublishWorkspace";
 export default function PublishPage() {
   return (
     <div className="min-h-screen bg-bg-primary">
-      <SideNav />
-
       <div className="rail-offset kairos-page-enter pt-16 lg:pt-0">
         {/* The workspace reads the view and region from the query string. */}
         <Suspense fallback={null}>

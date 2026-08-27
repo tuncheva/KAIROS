@@ -42,7 +42,15 @@ export function WorkspaceMenu() {
   const [showInvite, setShowInvite] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const activeQuery = api.organization.getActive.useQuery();
+  /*
+   * The workspace name sits in the top bar, so this mounts on every page. The
+   * active organisation only changes when somebody switches it — which goes
+   * through `useSwitchOrganization` and invalidates this key — so re-asking the
+   * server for it on each navigation was pure latency in front of the bar.
+   */
+  const activeQuery = api.organization.getActive.useQuery(undefined, {
+    staleTime: 5 * 60_000,
+  });
   const orgsQuery = api.organization.listMine.useQuery(undefined, {
     enabled: open,
   });

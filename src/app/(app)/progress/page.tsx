@@ -1,7 +1,6 @@
 import { auth } from "~/server/auth";
 import { redirect } from "next/navigation";
 
-import { SideNav } from "~/components/layout/SideNav";
 import { TopBar } from "~/components/layout/TopBar";
 import { ProgressClient } from "~/components/progress/ProgressClient";
 
@@ -14,8 +13,6 @@ export default async function ProgressPage() {
 
   return (
     <div className="min-h-screen bg-bg-primary">
-      <SideNav />
-
       <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0 kairos-page-enter">
         <TopBar />
 

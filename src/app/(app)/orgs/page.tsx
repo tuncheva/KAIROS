@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "~/server/auth";
 import { OrgDashboardClient } from "~/components/orgs/OrgDashboardClient";
-import { SideNav } from "~/components/layout/SideNav";
 import { TopBar } from "~/components/layout/TopBar";
 
 export default async function OrgsPage() {
@@ -13,7 +12,6 @@ export default async function OrgsPage() {
 
   return (
     <div className="min-h-screen bg-bg-primary">
-      <SideNav />
       <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0 kairos-page-enter">
         <TopBar />
 
