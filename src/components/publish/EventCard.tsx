@@ -54,6 +54,7 @@ import { ProfileLink } from "~/components/profile/ProfileLink";
 import { useDateFormat } from "~/hooks/useDateFormat";
 import { EditEventForm } from "~/components/events/EditEventForm";
 import {
+  canRemind,
   countdownFor,
   coverClass,
   eventDateParts,
@@ -152,6 +153,8 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
     [event.eventDate, locale],
   );
 
+  const past = isEventPast(event);
+
   const requireSession = (message: string) => {
     if (session) return true;
     setInfo({ message, type: "error" });
@@ -165,12 +168,23 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
     setShowReminderPicker(status !== "not_going");
   };
 
+  /** Going or maybe — the two answers a reminder makes sense after. */
+  const attending =
+    (lastRsvp ?? event.userRsvpStatus) === "going" ||
+    (lastRsvp ?? event.userRsvpStatus) === "maybe";
+
   const handleReminder = (minutes: number | null) => {
-    updateRsvp.mutate({
-      eventId: event.id,
-      status: lastRsvp ?? event.userRsvpStatus ?? "going",
-      reminderMinutesBefore: minutes,
-    });
+    updateRsvp.mutate(
+      {
+        eventId: event.id,
+        status: lastRsvp ?? event.userRsvpStatus ?? "going",
+        reminderMinutesBefore: minutes,
+      },
+      /* The confirmation below is optimistic. If the server refuses — the event
+         ended while this card sat on screen — its answer replaces it, rather
+         than leaving a "reminder set" for a reminder that was not. */
+      { onError: (error) => setInfo({ message: error.message, type: "error" }) },
+    );
     setShowReminderPicker(false);
     if (minutes === null) return;
 
@@ -185,8 +199,25 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
 
   const handleBell = () => {
     if (!requireSession(t("signInToManageNotifications"))) return;
+    /* Asked first, and before the RSVP question: nothing can be sent ahead of an
+       event that has already happened, whether or not it took RSVPs. Behind the
+       RSVP check, a past event with RSVPs switched off answered the bell with a
+       line about like and comment notifications — a non-answer that reads
+       exactly like the button doing nothing. */
+    if (!canRemind(event)) {
+      setInfo({ message: t("reminderPastEvent"), type: "error" });
+      return;
+    }
     if (!event.enableRsvp) {
       setInfo({ message: t("likeCommentNotificationsAuto"), type: "info" });
+      return;
+    }
+    /* The reminder lives on the RSVP row, and the picker below only renders for
+       someone who is going or might be. The bell used to toggle a flag that
+       changed nothing on screen for everyone else — a dead click, which is what
+       "the remind me button does not work" looked like. */
+    if (!attending) {
+      setInfo({ message: t("reminderNeedsRsvp"), type: "info" });
       return;
     }
     setShowReminderPicker((open) => !open);
@@ -230,7 +261,6 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
     }
   };
 
-  const past = isEventPast(event);
   const left = placesLeft(event);
   const full = left === 0;
 
@@ -740,7 +770,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
             type="button"
             onClick={handleBell}
             aria-label={t("eventNotifications")}
-            title={t("eventNotifications")}
+            title={past ? t("reminderPastEvent") : t("eventNotifications")}
             className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] transition-colors ${
               showReminderPicker
                 ? "text-accent-primary"
@@ -753,51 +783,47 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
         </div>
 
         {/* Reminder choice, offered right after you say you are coming. */}
-        {showReminderPicker &&
-          (lastRsvp === "going" ||
-            lastRsvp === "maybe" ||
-            event.userRsvpStatus === "going" ||
-            event.userRsvpStatus === "maybe") && (
-            <div className="mx-3.5 mb-3.5 rounded-lg bg-slate-50 p-2.5 dark:bg-white/[0.03]">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs font-medium text-accent-primary">
-                  <Bell size={12} />
-                  {t("getNotified")}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowReminderPicker(false)}
-                  aria-label={t("noThanks")}
-                  className="p-0.5 text-fg-tertiary hover:text-fg-primary"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {REMINDER_CHOICES.map((minutes) => (
-                  <button
-                    key={minutes}
-                    type="button"
-                    onClick={() => handleReminder(minutes)}
-                    className="rounded-md bg-accent-primary/10 px-2.5 py-1 text-xs font-medium text-accent-primary transition-colors hover:bg-accent-primary/20"
-                  >
-                    {minutes >= 1440
-                      ? t("reminderDays", { count: minutes / 1440 })
-                      : minutes >= 60
-                        ? t("reminderHours", { count: minutes / 60 })
-                        : t("reminderMinutes", { count: minutes })}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => handleReminder(null)}
-                  className="rounded-md px-2.5 py-1 text-xs font-medium text-fg-tertiary transition-colors hover:bg-slate-100 dark:hover:bg-white/5"
-                >
-                  {t("noThanks")}
-                </button>
-              </div>
+        {showReminderPicker && attending && !past && (
+          <div className="mx-3.5 mb-3.5 rounded-lg bg-slate-50 p-2.5 dark:bg-white/[0.03]">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-accent-primary">
+                <Bell size={12} />
+                {t("getNotified")}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowReminderPicker(false)}
+                aria-label={t("noThanks")}
+                className="p-0.5 text-fg-tertiary hover:text-fg-primary"
+              >
+                <X size={12} />
+              </button>
             </div>
-          )}
+            <div className="flex flex-wrap gap-1.5">
+              {REMINDER_CHOICES.map((minutes) => (
+                <button
+                  key={minutes}
+                  type="button"
+                  onClick={() => handleReminder(minutes)}
+                  className="rounded-md bg-accent-primary/10 px-2.5 py-1 text-xs font-medium text-accent-primary transition-colors hover:bg-accent-primary/20"
+                >
+                  {minutes >= 1440
+                    ? t("reminderDays", { count: minutes / 1440 })
+                    : minutes >= 60
+                      ? t("reminderHours", { count: minutes / 60 })
+                      : t("reminderMinutes", { count: minutes })}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => handleReminder(null)}
+                className="rounded-md px-2.5 py-1 text-xs font-medium text-fg-tertiary transition-colors hover:bg-slate-100 dark:hover:bg-white/5"
+              >
+                {t("noThanks")}
+              </button>
+            </div>
+          </div>
+        )}
       </article>
 
       {showDashboard &&

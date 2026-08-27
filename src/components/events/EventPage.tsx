@@ -24,6 +24,7 @@ import {
   AlertCircle,
   ArrowLeft,
   Bell,
+  BellOff,
   Bookmark,
   Clock,
   Heart,
@@ -39,6 +40,7 @@ import { api } from "~/trpc/react";
 import { ProfileLink } from "~/components/profile/ProfileLink";
 import { useDateFormat } from "~/hooks/useDateFormat";
 import {
+  canRemind,
   coverClass,
   formatTimeRange,
   isPast as isEventPast,
@@ -152,11 +154,21 @@ export function EventPage({ eventId }: { eventId: number }) {
   };
 
   const handleReminder = (minutes: number | null) => {
-    updateRsvp.mutate({
-      eventId,
-      status: event.userRsvpStatus ?? "going",
-      reminderMinutesBefore: minutes,
-    });
+    /* A reminder for an event that is over can never be sent — the server
+       refuses it too, so this is the same answer given without a round trip. */
+    if (minutes !== null && !canRemind(event)) {
+      setInfo({ message: t("reminderPastEvent"), type: "error" });
+      setShowReminders(false);
+      return;
+    }
+    updateRsvp.mutate(
+      {
+        eventId,
+        status: event.userRsvpStatus ?? "going",
+        reminderMinutesBefore: minutes,
+      },
+      { onError: (err) => setInfo({ message: err.message, type: "error" }) },
+    );
     setShowReminders(false);
   };
 
@@ -461,7 +473,7 @@ export function EventPage({ eventId }: { eventId: number }) {
 
                 {rsvpButtons}
 
-                {showReminders && (
+                {showReminders && !past && (
                   <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-2.5 dark:border-white/[0.06]">
                     <Stamp className="w-full tracking-[0.12em]">
                       {t("getNotified")}
@@ -483,7 +495,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                   </div>
                 )}
 
-                {event.reminderMinutesBefore !== null && !showReminders && (
+                {event.reminderMinutesBefore !== null && !showReminders && !past && (
                   <button
                     type="button"
                     onClick={() => setShowReminders(true)}
@@ -492,6 +504,16 @@ export function EventPage({ eventId }: { eventId: number }) {
                     <Bell size={12} className="text-accent-primary" />
                     {t("reminderArmed")}
                   </button>
+                )}
+
+                {/* Said plainly, next to the answer buttons it explains: the
+                    RSVP row is disabled here and a reminder is not on offer
+                    because there is nothing left to be reminded about. */}
+                {past && (
+                  <p className="flex items-start gap-2 border-t border-slate-100 pt-2.5 text-xs text-fg-tertiary dark:border-white/[0.06]">
+                    <BellOff size={13} className="mt-px shrink-0" />
+                    {t("reminderPastEvent")}
+                  </p>
                 )}
               </div>
             )}

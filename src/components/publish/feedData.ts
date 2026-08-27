@@ -224,6 +224,24 @@ export function isPast(
 }
 
 /**
+ * Whether a reminder can still be armed for this event.
+ *
+ * A reminder is a promise to say something *before* an event, and the sweep in
+ * `~/server/notifications/eventReminders` will not send one for an event that
+ * is already over. Arming one on a past event therefore recorded a request that
+ * could never be kept: the row was written, the card said "reminder set", and
+ * nothing was ever delivered. Both the card and the event page ask this before
+ * offering the choice, and `event.updateRsvp` enforces the same rule so a stale
+ * page cannot make the promise either.
+ */
+export function canRemind(
+  event: { eventDate: Date | string; endsAt?: Date | string | null },
+  now: Date = new Date(),
+): boolean {
+  return !isPast(event, now);
+}
+
+/**
  * How many places are left, or `null` when the event has no ceiling.
  *
  * Only `going` counts against capacity: a *maybe* has not taken a seat, and

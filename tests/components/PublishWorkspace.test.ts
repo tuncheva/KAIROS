@@ -87,10 +87,19 @@ describe("PublishWorkspace – what is on screen", () => {
     expect(workspace).toContain("sources.");
   });
 
-  it("says so when the lane it showed is not the lane you asked for", () => {
-    // A feed that quietly shows you something else is worse than an empty one.
-    expect(workspace).toContain("usedSource !== source");
-    expect(workspace).toContain("followingFellBack");
+  it("shows the lane you asked for, or nothing", () => {
+    // The server no longer substitutes Discover for an empty Following lane,
+    // so there is no banner apologising for it either — an empty Following
+    // lane renders the empty state, which offers Discover as a button.
+    expect(workspace).not.toContain("usedSource");
+    expect(workspace).not.toContain("followingFellBack");
+    expect(workspace).toContain("noEventsFollowing");
+    expect(workspace).toContain('setFilter({ source: "discover" })');
+  });
+
+  it("lands you on Discover rather than on an empty Following lane", () => {
+    // Nobody follows anybody on the day a follow graph ships.
+    expect(workspace).toContain('isFeedSource(rawSource) ? rawSource : "discover"');
   });
 
   it("gives search the input it never had", () => {
@@ -179,6 +188,17 @@ describe("EventCard – everything the old card could do", () => {
   it("keeps the reminder picker and its timings", () => {
     expect(card).toContain("getNotified");
     expect(card).toContain("REMINDER_CHOICES");
+  });
+
+  /**
+   * The bell used to be a dead click twice over: on a past event, and on any
+   * event you had not answered yet. It toggled a flag, the picker's own
+   * condition refused to render, and nothing happened at all.
+   */
+  it("answers the bell instead of toggling a picker that will not open", () => {
+    expect(card).toContain("canRemind(event)");
+    expect(card).toContain("reminderPastEvent");
+    expect(card).toContain("reminderNeedsRsvp");
   });
 
   /**
@@ -447,6 +467,13 @@ describe("The event page – a link you can send", () => {
     expect(eventPage).toContain("EditEventForm");
     expect(eventPage).toContain("setShowEditForm(true)");
     expect(eventPage).toContain("event.canEdit");
+  });
+
+  it("says a past event cannot remind you, rather than pretending it can", () => {
+    expect(eventPage).toContain("canRemind(event)");
+    expect(eventPage).toContain("reminderPastEvent");
+    // The standing "reminder set — change it" line goes with it.
+    expect(eventPage).toContain("!showReminders && !past");
   });
 
   it("shows the edited stamp on the page too", () => {

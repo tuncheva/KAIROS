@@ -1292,6 +1292,8 @@
     "reminderHours": "{count} hour(s)",
     "reminderDays": "{count} day(s)",
     "getNotified": "Get notified before event?",
+    "reminderPastEvent": "This event has already happened — there is nothing left to remind you about.",
+    "reminderNeedsRsvp": "Say you are going or maybe first, then pick when to be reminded.",
     "noThanks": "No thanks",
     "loadingMoreEvents": "Loading more events...",
     "allCaughtUp": "You're all caught up.",
@@ -1476,8 +1478,7 @@
       "tide": "Tide"
     },
     "edited": "Edited",
-    "editedOn": "Edited {date}",
-    "followingFellBack": "Nobody you follow has anything coming up yet — showing everything instead."
+    "editedOn": "Edited {date}"
   },
   "auth": {
     "signIn": "Sign In",
@@ -2116,7 +2117,8 @@
     "openFullPage": "Open full page",
     "emptyDescription": "Reads your projects, tasks and notes. Anything that would change them is drafted for your approval first.",
     "trailSummary": "{count, plural, one {# lookup} other {# lookups}} · {seconds}s",
-    "inMessages": "In messages"
+    "inMessages": "In messages",
+    "clearSearch": "Clear search"
   },
   "projects": {
     "title": "Your projects",

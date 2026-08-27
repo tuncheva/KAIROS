@@ -32,6 +32,12 @@ const eventsSchemaPath = path.resolve(
 );
 const eventsSchemaSource = fs.readFileSync(eventsSchemaPath, "utf-8");
 
+const sweepPath = path.resolve(
+  __dirname,
+  "../../src/server/notifications/eventReminders.ts"
+);
+const sweepSource = fs.readFileSync(sweepPath, "utf-8");
+
 describe("Event Router – Notifications", () => {
   it("imports notifications table", () => {
     expect(eventRouterSource).toContain("notifications");
@@ -69,6 +75,23 @@ describe("Event Router – RSVP Reminders", () => {
 
   it("resets reminderSent flag when reminder preference changes", () => {
     expect(eventRouterSource).toContain("reminderSent: false");
+  });
+
+  /**
+   * The row could be written for an event that had already happened, and the
+   * sweep would never look at it again — a reminder the UI confirmed and
+   * nothing could ever send.
+   */
+  it("refuses to arm a reminder on an event that is over", () => {
+    expect(eventRouterSource).toContain(
+      'typeof input.reminderMinutesBefore === "number"'
+    );
+    expect(eventRouterSource).toContain("already happened");
+  });
+
+  it("measures staleness from when the event ends, not when it starts", () => {
+    expect(sweepSource).toContain("COALESCE(${events.endsAt}, ${events.eventDate})");
+    expect(sweepSource).toContain("STALE_AFTER_MS");
   });
 });
 

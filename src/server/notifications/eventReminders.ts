@@ -69,8 +69,14 @@ export async function sendDueEventReminders(now = new Date()): Promise<ReminderR
           sql`${events.eventDate} - (${eventRsvps.reminderMinutesBefore} * interval '1 minute')`,
           now,
         ),
-        // But the event itself has not long since gone by.
-        gte(events.eventDate, new Date(now.getTime() - STALE_AFTER_MS)),
+        /* But the event itself has not long since gone by. Measured from
+           when it *ends*, not when it starts: a three-day conference on its
+           second morning is still ahead of you, and reading the start time
+           here dropped its reminders as stale while it was under way. */
+        gte(
+          sql`COALESCE(${events.endsAt}, ${events.eventDate})`,
+          new Date(now.getTime() - STALE_AFTER_MS),
+        ),
       ),
     )
     .orderBy(asc(events.eventDate))
@@ -94,7 +100,10 @@ export async function sendDueEventReminders(now = new Date()): Promise<ReminderR
       message:
         minutesToStart > 0
           ? `"${row.eventTitle}" starts in ${formatLead(minutesToStart)}.`
-          : `"${row.eventTitle}" is starting now.`,
+          : minutesToStart > -60
+            ? `"${row.eventTitle}" is starting now.`
+            : // Armed during a multi-day event that is already running.
+              `"${row.eventTitle}" is under way.`,
       link: `/publish#event-${row.eventId}`,
     });
 

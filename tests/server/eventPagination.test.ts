@@ -67,24 +67,33 @@ describe("Event Router – selection happens on the server", () => {
     );
   });
 
-  it("puts your own events in your own Following lane", () => {
-    // The first feed a host checks is the one their own event is supposed to
-    // be in. Without this a host who follows nobody sees an empty screen and
-    // concludes the publish button did nothing.
-    expect(source).toContain("${events.createdById} = ${viewerId}");
+  it("stands your own events in the lane alongside your circle", () => {
+    // The feed a host checks is the one their own event should be in, and the
+    // card marks those rows "You're hosting" so the lane still reads honestly.
+    const lane = source.slice(
+      source.indexOf('if (source === "following")'),
+      source.indexOf('if (input?.cursor)'),
+    );
+    expect(lane).toContain("${hostedBy(viewerId)}");
+    expect(lane).toContain("${events.createdById} IN ${followingIds(viewerId)}");
   });
 
-  it("falls back to Discover rather than showing an empty Following lane", () => {
-    // Following nobody yet is the normal first state of the feature.
-    expect(source).toContain('asked === "following" && pageRows.length === 0');
-    expect(source).toContain('readPage("discover")');
-    expect(source).toContain("usedSource");
+  it("counts the lane with the same predicate it reads it with", () => {
+    // A rail that says "All 0" over a feed with rows in it teaches people to
+    // trust neither number. Both call the one helper.
+    expect(source).toContain("function hostedBy(userId: string)");
+    const facets = source.slice(source.indexOf("getFacets:"));
+    expect(facets).toContain("${hostedBy(viewerId)}");
   });
 
-  it("only falls back on the first page", () => {
-    // Paging forward past the end of a lane you chose should end, not switch
-    // lanes under you.
-    expect(source).toContain("!input?.cursor");
+  it("leaves an empty Following lane empty", () => {
+    // It used to read Discover a second time and hand those rows back under
+    // the Following label, so somebody who followed nobody got a feed of
+    // strangers and no way to tell that was what had happened. One read, one
+    // lane: the empty state on the page offers Discover as a door instead.
+    expect(source).not.toContain("readPage");
+    expect(source).not.toContain("usedSource");
+    expect(source).not.toContain('asked === "following"');
   });
 
   it("filters the personal views in SQL rather than in the browser", () => {

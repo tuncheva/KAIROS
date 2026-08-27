@@ -6,6 +6,7 @@ import {
   TOPICS,
   bandFor,
   bandRows,
+  canRemind,
   eventDateParts,
   eventEndsAt,
   formatTimeRange,
@@ -122,6 +123,28 @@ describe("when an event is over", () => {
     expect(isPast(event({ id: 1, eventDate: at(18), endsAt: at(18, 23) }), NOW)).toBe(
       true,
     );
+  });
+});
+
+describe("who can still be reminded", () => {
+  /**
+   * The reminder sweep only sends before an event, and drops anything whose
+   * event is over. The card used to offer the choice anyway: you picked "1 day
+   * before" on something from last month, the toast said the reminder was set,
+   * and no notification was ever going to arrive.
+   */
+  it("refuses an event that has already finished", () => {
+    expect(canRemind(event({ id: 1, eventDate: at(18) }), NOW)).toBe(false);
+  });
+
+  it("allows anything still to come", () => {
+    expect(canRemind(event({ id: 1, eventDate: at(25) }), NOW)).toBe(true);
+  });
+
+  it("allows a multi-day event that is under way", () => {
+    // Its second morning is still a moment you can be told about.
+    const conference = event({ id: 1, eventDate: at(19, 9), endsAt: at(22, 18) });
+    expect(canRemind(conference, NOW)).toBe(true);
   });
 });
 

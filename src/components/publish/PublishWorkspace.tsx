@@ -74,11 +74,15 @@ export function PublishWorkspace() {
   const utils = api.useUtils();
 
   const rawSource = params.get("source");
-  const source: FeedSource = isFeedSource(rawSource)
-    ? rawSource
-    : session
-      ? "following"
-      : "discover";
+  /**
+   * Discover unless you asked for Following.
+   *
+   * Defaulting a signed-in visitor into Following put everybody who had not
+   * followed anyone yet — which is everybody, on the day this shipped — on an
+   * empty screen with three events one tab away. Following is now somewhere you
+   * go, not somewhere you land.
+   */
+  const source: FeedSource = isFeedSource(rawSource) ? rawSource : "discover";
   const view: FeedView = isFeedView(params.get("view"))
     ? (params.get("view") as FeedView)
     : "all";
@@ -179,10 +183,6 @@ export function PublishWorkspace() {
   const safePage = Math.min(page, pageCount);
   const current = loadedPages[safePage - 1];
   const rows = useMemo(() => bandRows(current?.items ?? []), [current?.items]);
-  /* The server swaps an empty Following lane for Discover rather than handing
-     back nothing. Said out loud, because a feed that quietly shows you
-     something other than what you asked for is worse than an empty one. */
-  const usedSource = loadedPages[0]?.usedSource ?? source;
   const isEmpty = loadedPages.length > 0 && loadedPages[0]?.items.length === 0;
 
   /* Reading forward past what is loaded pulls the next cursor. */
@@ -270,7 +270,10 @@ export function PublishWorkspace() {
 
     if (isEmpty) {
       /* An empty Following lane is not an empty app — it means you have not
-         followed anybody yet, and the way out is Discover, not a new event. */
+         followed anybody yet and are hosting nothing yourself, and the way out
+         is Discover, not a new event. This is the only thing that happens now:
+         the server used to quietly swap the lane for Discover, so the screen
+         below was the rare case rather than the first one everybody sees. */
       const emptyBody =
         source === "following"
           ? t("noEventsFollowing")
@@ -328,12 +331,6 @@ export function PublishWorkspace() {
 
     return (
       <>
-        {usedSource !== source && (
-          <p className="rounded-lg bg-accent-primary/[0.07] px-3 py-2 text-[13px] text-fg-secondary">
-            {t("followingFellBack")}
-          </p>
-        )}
-
         {/* Keyed on the page so a page turn plays the entrance once, together,
             rather than one card at a time as they scroll past. */}
         <div key={safePage} className="flex flex-col gap-4">

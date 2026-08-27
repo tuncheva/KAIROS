@@ -88,6 +88,21 @@ function ts(value: Date) {
   return sql`${value.toISOString()}::timestamptz`;
 }
 
+/**
+ * The events `userId` hosts — their own, and any they were made a co-host of.
+ *
+ * Written once because three places ask it: the Hosting view, the Following
+ * lane, and the facet counts above that lane. They were three hand-copied
+ * `createdById = viewer OR EXISTS(co_host…)` expressions, which is exactly how
+ * a view and the count over it come to disagree.
+ */
+function hostedBy(userId: string) {
+  return sql`(
+    ${events.createdById} = ${userId}
+    OR EXISTS(SELECT 1 FROM ${eventCoHosts} WHERE ${eventCoHosts.eventId} = ${events.id} AND ${eventCoHosts.userId} = ${userId})
+  )`;
+}
+
 /** The ids of everyone `userId` follows, as a scalar subquery. */
 function followingIds(userId: string) {
   return sql`(SELECT ${userFollows.followingId} FROM ${userFollows} WHERE ${userFollows.followerId} = ${userId})`;
@@ -380,18 +395,10 @@ export const eventRouter = createTRPCRouter({
       const viewerId = ctx.session?.user?.id ?? null;
       const limit = input?.limit ?? 8;
       const view = input?.view ?? "all";
-      const asked = input?.source ?? "discover";
+      const source = input?.source ?? "discover";
       const isPast = view === "past";
       const now = new Date();
 
-      /**
-       * One page, for one lane.
-       *
-       * A closure rather than a module-level helper so it keeps `ctx`, `input`
-       * and the viewer without threading them through a signature — and so the
-       * caller below can simply run it twice.
-       */
-      const readPage = async (candidate: (typeof FEED_SOURCES)[number]) => {
       const conditions: (SQL | undefined)[] = [
         isPast ? sql`${eventEndsAt} < ${ts(now)}` : sql`${eventEndsAt} >= ${ts(now)}`,
       ];
@@ -421,11 +428,7 @@ export const eventRouter = createTRPCRouter({
         );
       }
       if (view === "hosting") {
-        conditions.push(
-          viewerId
-            ? sql`(${events.createdById} = ${viewerId} OR EXISTS(SELECT 1 FROM ${eventCoHosts} WHERE ${eventCoHosts.eventId} = ${events.id} AND ${eventCoHosts.userId} = ${viewerId}))`
-            : sql`false`,
-        );
+        conditions.push(viewerId ? hostedBy(viewerId) : sql`false`);
       }
       if (view === "saved") {
         conditions.push(
@@ -435,18 +438,24 @@ export const eventRouter = createTRPCRouter({
         );
       }
 
-      /* Following: yours, or somebody's you follow.
+      /* Following: your circle, and you in it.
+
          Hosted or co-hosted by someone you follow, attended by someone you
          follow — that third clause is what makes the lane worth reading, since
          it surfaces events from people you have never heard of because people
-         you trust are going — and your own, because the first feed a host
-         checks is the one their own event is supposed to be in. */
-      if (candidate === "following") {
+         you trust are going — and your own, because the feed a host checks is
+         the one their own event should be standing in. Reading your circle and
+         finding no trace of yourself is the odder answer; the card says "You're
+         hosting" on those rows, so nobody has to guess why they are there.
+
+         The lane still does not fall back to Discover when it comes back empty.
+         A Following lane full of strangers is a label that lies, and nobody who
+         saw it could tell which lane they were reading. */
+      if (source === "following") {
         conditions.push(
           viewerId
             ? sql`(
-                ${events.createdById} = ${viewerId}
-                OR EXISTS(SELECT 1 FROM ${eventCoHosts} WHERE ${eventCoHosts.eventId} = ${events.id} AND ${eventCoHosts.userId} = ${viewerId})
+                ${hostedBy(viewerId)}
                 OR ${events.createdById} IN ${followingIds(viewerId)}
                 OR EXISTS(SELECT 1 FROM ${eventCoHosts} WHERE ${eventCoHosts.eventId} = ${events.id} AND ${eventCoHosts.userId} IN ${followingIds(viewerId)})
                 OR EXISTS(SELECT 1 FROM ${eventRsvps} WHERE ${eventRsvps.eventId} = ${events.id} AND ${eventRsvps.status} IN ('going','maybe') AND ${eventRsvps.userId} IN ${followingIds(viewerId)})
@@ -551,26 +560,6 @@ export const eventRouter = createTRPCRouter({
         rows.length > limit && last
           ? { eventDate: last.eventDate, id: last.id }
           : null;
-
-      return { pageRows, nextCursor };
-      };
-
-      /**
-       * An empty Following lane falls back to Discover.
-       *
-       * Following nobody yet is the *normal* first state of this feature, not
-       * an edge case — and landing somebody on an empty screen is how a feed
-       * teaches people it is broken. Only the first page falls back: paging
-       * forward past the end of a lane you chose should end, not switch lanes
-       * under you.
-       */
-      let usedSource = asked;
-      let { pageRows, nextCursor } = await readPage(asked);
-
-      if (asked === "following" && pageRows.length === 0 && !input?.cursor) {
-        ({ pageRows, nextCursor } = await readPage("discover"));
-        usedSource = "discover";
-      }
 
       /**
        * One name per event for the reason line.
@@ -704,7 +693,7 @@ export const eventRouter = createTRPCRouter({
                 : null,
       }));
 
-      return { items, nextCursor, usedSource };
+      return { items, nextCursor };
     }),
 
   /**
@@ -740,11 +729,18 @@ export const eventRouter = createTRPCRouter({
         base.push(sql`(${events.title} ILIKE ${pattern} OR ${events.description} ILIKE ${pattern} OR ${events.venue} ILIKE ${pattern})`);
       }
 
+      /* The same predicate the feed's Following lane uses, exactly. The two
+         disagreeing is worse than either being wrong on its own: a host who
+         follows nobody once saw their own event in the feed and "All 0" in the
+         rail above it, and a count that contradicts the list it counts teaches
+         people to trust neither. Change one, change both. */
       if (source === "following") {
         base.push(
           viewerId
             ? sql`(
-                ${events.createdById} IN ${followingIds(viewerId)}
+                ${hostedBy(viewerId)}
+                OR ${events.createdById} IN ${followingIds(viewerId)}
+                OR EXISTS(SELECT 1 FROM ${eventCoHosts} WHERE ${eventCoHosts.eventId} = ${events.id} AND ${eventCoHosts.userId} IN ${followingIds(viewerId)})
                 OR EXISTS(SELECT 1 FROM ${eventRsvps} WHERE ${eventRsvps.eventId} = ${events.id} AND ${eventRsvps.status} IN ('going','maybe') AND ${eventRsvps.userId} IN ${followingIds(viewerId)})
               )`
             : sql`false`,
@@ -1007,6 +1003,31 @@ export const eventRouter = createTRPCRouter({
     .input(updateRsvpSchema)
     .mutation(async ({ ctx, input }) => {
       const currentUserId = ctx.session.user.id;
+
+      /* Arming a reminder for an event that is over is a promise nothing can
+         keep: the sweep in `~/server/notifications/eventReminders` skips it,
+         so the row would sit there unsent forever while the card said the
+         reminder was set. Clearing one (`null`) stays allowed — that is how
+         somebody turns off a reminder they no longer want. */
+      if (typeof input.reminderMinutesBefore === "number") {
+        const [row] = await ctx.db
+          .select({ eventDate: events.eventDate, endsAt: events.endsAt })
+          .from(events)
+          .where(eq(events.id, input.eventId))
+          .limit(1);
+
+        if (!row) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Event not found." });
+        }
+
+        // The same reading of "over" as `eventEndsAt` and the client's `isPast`.
+        if ((row.endsAt ?? row.eventDate).getTime() < Date.now()) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This event has already happened — a reminder cannot be set for it.",
+          });
+        }
+      }
 
       // Direct check without findFirst for speed
       const existingRsvp = await ctx.db
