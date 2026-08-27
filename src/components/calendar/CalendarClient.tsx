@@ -364,7 +364,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
 
         <span className="h-[22px] w-px bg-border-light" />
 
-        <label className="flex h-8 w-[230px] items-center gap-2.5 rounded-lg border border-border-medium bg-bg-surface px-3">
+        <label className="flex h-9 w-full min-w-0 items-center gap-2.5 rounded-lg border border-border-medium bg-bg-surface px-3 sm:h-8 sm:w-[230px]">
           <Search size={14} className="shrink-0 text-fg-tertiary" />
           <input
             type="text"
@@ -397,7 +397,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
           </button>
 
           {filtersOpen && (
-            <div className="absolute top-10 left-0 z-30 flex w-[330px] flex-col gap-4 rounded-xl border border-border-medium bg-bg-elevated p-4 shadow-2xl calendar-pop">
+            <div className="calendar-pop absolute left-0 top-10 z-30 flex w-[min(330px,calc(100vw-2rem))] flex-col gap-4 rounded-xl border border-border-medium bg-bg-elevated p-4 shadow-2xl">
               <div className="flex flex-col gap-2.5">
                 <span className={MICRO_LABEL}>{t("taskStatus")}</span>
                 <div className="flex flex-wrap gap-2">
@@ -493,8 +493,19 @@ function CalendarWorkspace({ today }: { today: Date }) {
       </div>
 
       {/* ── Grid ── */}
-      <div className="flex min-h-0 flex-1 overflow-x-auto">
-        <div className="flex min-h-0 min-w-[760px] flex-1 flex-col">
+      {/* The 760px floor is a readability floor, not a layout requirement —
+          both grids are fluid. It is worth scrolling sideways for on the time
+          views, where a column narrower than ~100px cannot hold an event's
+          title, but not on the month view: seven boxes each holding a date and
+          a couple of coloured bars still read at 45px, and a month you have to
+          drag sideways to see the end of the week is worse than a tight one. */}
+      <div className="kairos-scroll-area flex min-h-0 flex-1 overflow-x-auto">
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col",
+            view === "month" ? "min-w-0 sm:min-w-[760px]" : "min-w-[760px]",
+          )}
+        >
           {view === "month" ? (
             <CalendarMonthGrid
               days={days}

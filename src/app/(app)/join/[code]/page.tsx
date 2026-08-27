@@ -30,11 +30,11 @@ export default async function JoinPage({
 
 
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <div className="rail-offset flex min-h-screen flex-col pt-16 lg:pt-0 kairos-page-enter">
+    <div className="min-h-dvh bg-bg-primary">
+      <div className="rail-offset flex min-h-dvh flex-col kairos-topbar-gap kairos-page-enter">
         <TopBar />
 
-        <main id="main-content" className="w-full flex-1 overflow-auto pb-24 lg:pb-0">
+        <main id="main-content" className="w-full flex-1 overflow-auto kairos-bottomnav-gap">
           <div className="mx-auto max-w-lg px-6 py-12 md:px-8">
             <JoinWithQrClient code={code} />
           </div>

@@ -529,7 +529,7 @@ export function SignInModal({
 
   const renderResetCode = () => (
     <div className="k-auth-body mt-9 flex flex-col gap-7">
-      <div className="grid grid-cols-8 gap-2.5" onPaste={handleCodePaste}>
+      <div className="grid grid-cols-8 gap-1.5 sm:gap-2.5" onPaste={handleCodePaste}>
         {Array.from({ length: 8 }).map((_, i) => (
           <input
             key={i}

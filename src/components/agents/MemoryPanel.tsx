@@ -121,7 +121,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
               type="button"
               onClick={reset}
               aria-label={t("cancel")}
-              className="rounded-lg p-1 text-fg-tertiary hover:bg-bg-secondary"
+              className="kairos-tap rounded-lg p-1 text-fg-tertiary hover:bg-bg-secondary"
             >
               <X className="h-3.5 w-3.5" />
             </button>

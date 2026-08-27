@@ -33,7 +33,7 @@ export async function LegalPage({
     const t = await getTranslations("staticPages");
 
     return (
-        <main id="main-content" className="dark min-h-screen bg-bg-primary px-6 py-24 text-fg-primary lg:px-12">
+        <main id="main-content" className="dark min-h-dvh bg-bg-primary px-6 py-24 text-fg-primary lg:px-12">
             <div className="mx-auto w-full max-w-[720px] lg:grid lg:max-w-[1000px] lg:grid-cols-[220px_minmax(0,720px)] lg:gap-16">
                 <div className="lg:col-span-2">
                     <Link

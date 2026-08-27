@@ -64,7 +64,7 @@ function ResetPasswordForm() {
 
   if (!noteId) {
     return (
-      <div className="min-h-screen bg-bg-primary flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-bg-primary flex items-center justify-center p-4">
         <div className="surface-card p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-error/15 rounded-full flex items-center justify-center mx-auto mb-4 border border-error/25">
             <AlertCircle className="text-error" size={32} />
@@ -86,7 +86,7 @@ function ResetPasswordForm() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-bg-primary flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-bg-primary flex items-center justify-center p-4">
         <div className="surface-card p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-success/15 rounded-full flex items-center justify-center mx-auto mb-4 border border-success/25">
             <CheckCircle className="text-success" size={32} />
@@ -104,7 +104,7 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen bg-bg-primary flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-bg-primary flex items-center justify-center p-4">
       <div className="surface-card p-8 max-w-md w-full">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-xl flex items-center justify-center shadow-sm">
@@ -229,7 +229,7 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+      <div className="min-h-dvh bg-bg-primary flex items-center justify-center">
         <div className="text-fg-secondary">Loading...</div>
       </div>
     }>

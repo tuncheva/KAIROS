@@ -173,7 +173,7 @@ export function InviteQrDialog({
             type="button"
             onClick={onClose}
             aria-label={tCommon("close")}
-            className="rounded-lg p-1.5 text-fg-tertiary transition-colors hover:bg-bg-elevated hover:text-fg-primary"
+            className="kairos-tap rounded-lg p-1.5 text-fg-tertiary transition-colors hover:bg-bg-elevated hover:text-fg-primary"
           >
             <X size={16} />
           </button>

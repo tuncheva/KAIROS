@@ -61,8 +61,15 @@ describe("Publish Page – No Gradient Background", () => {
     expect(publishPageSource).not.toContain("ios-header");
   });
 
-  it("uses max-w-7xl for responsive width constraint", () => {
-    expect(publishWorkspaceSource).toContain("max-w-7xl");
+  /**
+   * The feed traded the 12-column split for fixed-width rails and a column that
+   * takes what is left, so the constraint moved from `max-w-7xl` to an explicit
+   * outer width. The assertion is that there is still exactly one, and that the
+   * feed column can shrink inside it rather than pushing the grid wide.
+   */
+  it("still constrains the page to one measured width", () => {
+    expect(publishWorkspaceSource).toContain("max-w-[1500px]");
+    expect(publishWorkspaceSource).toContain("minmax(0,1fr)");
   });
 
   it("panel separators stay on the subtle dark border", () => {

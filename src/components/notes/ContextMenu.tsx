@@ -114,7 +114,7 @@ export function ContextMenu({
       role="menu"
       aria-label={label}
       style={{ top: position.y, left: position.x }}
-      className="fixed z-50 min-w-[190px] max-h-[70vh] overflow-y-auto p-1.5 rounded-xl bg-bg-elevated kairos-menu-surface"
+      className="fixed z-50 min-w-[190px] max-h-[70dvh] overflow-y-auto p-1.5 rounded-xl bg-bg-elevated kairos-menu-surface"
     >
       {children(close)}
     </div>

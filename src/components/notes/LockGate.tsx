@@ -81,7 +81,7 @@ export function LockGate({
             type="button"
             onClick={onToggleReveal}
             aria-label={reveal ? t("password.hide") : t("password.show")}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-fg-tertiary hover:text-fg-primary transition-colors"
+            className="kairos-tap absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-fg-tertiary hover:text-fg-primary transition-colors"
           >
             {reveal ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>

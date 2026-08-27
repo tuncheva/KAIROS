@@ -210,7 +210,7 @@ export function SettingsWorkspace({ activeSection, user }: Props) {
               column is capped and centred in whatever space is left over. The
               cap is generous enough that the wider blocks — the members list,
               the permissions grid — still get their room. */}
-          <main className="min-w-0 flex-1 px-6 pb-24 pt-8 sm:px-10 lg:pb-20 lg:pl-12 lg:pr-14 lg:pt-12">
+          <main className="min-w-0 flex-1 px-6 pb-[calc(var(--kairos-bottomnav-h)+var(--kairos-safe-bottom)+1rem)] pt-8 sm:px-10 lg:pb-20 lg:pl-12 lg:pr-14 lg:pt-12">
             <SectionMatchCollector onChange={setCounts}>
               <div className="mx-auto flex w-full max-w-[1000px] flex-col gap-10">
                 {filtering ? (

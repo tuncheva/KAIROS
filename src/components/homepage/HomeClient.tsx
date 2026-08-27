@@ -55,7 +55,7 @@ export function HomeClient() {
         <main
             id="main-content"
             ref={rootRef}
-            className="dark relative min-h-screen overflow-x-hidden bg-bg-primary text-fg-primary"
+            className="dark relative min-h-dvh overflow-x-hidden bg-bg-primary text-fg-primary"
         >
             <LandingIntro onClear={handleIntroClear} />
 

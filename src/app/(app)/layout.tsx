@@ -37,7 +37,7 @@ import { ProfilePeekProvider } from "~/components/profile/ProfilePeekProvider";
  *
  * `TopBar`, and the page's own column wrapper. Pages disagree about both — the
  * chat, notes and events pages have no top bar at all, and the height model
- * splits between `min-h-screen` and a definite `h-[100dvh]` for the surfaces
+ * splits between `min-h-dvh` and a definite `h-[100dvh]` for the surfaces
  * that scroll internally. Hoisting those would mean encoding per-route
  * exceptions in the layout, so each page still owns its column. The bar's cost
  * was never the markup anyway; it was the queries behind it, and those are now

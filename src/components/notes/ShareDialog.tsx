@@ -169,7 +169,7 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
             type="button"
             onClick={onClose}
             aria-label={t("common.close")}
-            className="p-1.5 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-secondary transition-colors"
+            className="kairos-tap p-1.5 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-secondary transition-colors"
           >
             <X size={18} />
           </button>

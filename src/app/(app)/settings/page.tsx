@@ -25,8 +25,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       : "profile";
 
   return (
-    <div className="min-h-screen w-full bg-bg-primary pb-24 lg:pb-0">
-      <div className="rail-offset flex min-h-screen flex-col pt-16 lg:pt-0">
+    <div className="min-h-dvh w-full bg-bg-primary">
+      <div className="rail-offset flex min-h-dvh flex-col kairos-topbar-gap">
         <TopBar scrim />
 
         <main className="settings-scroll flex flex-1 flex-col overflow-y-auto bg-bg-primary">

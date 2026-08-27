@@ -331,7 +331,8 @@ export function A1ChatWidgetOverlay(props: {
   return (
     <div
       ref={panelRef}
-      data-testid="ai-widget-panel"
+      data-testid="ai-widget-panel"
+
       className="fixed z-50 flex flex-col overflow-hidden rounded-[14px] shadow-[0_24px_60px_rgba(0,0,0,.5)] transition-[height] duration-200 ease-out"
       style={{
         ...panelStyle,
@@ -361,7 +362,7 @@ export function A1ChatWidgetOverlay(props: {
           <button
             type="button"
             onClick={toggleMinimise}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
+            className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
             aria-label={minimised ? "Expand" : "Minimise"}
           >
             <Minus className="h-3.5 w-3.5" />
@@ -370,7 +371,7 @@ export function A1ChatWidgetOverlay(props: {
           <button
             type="button"
             onClick={goFullScreen}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-accent-primary/15 hover:text-accent-primary"
+            className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-accent-primary/15 hover:text-accent-primary"
             aria-label="Open full screen"
             title="Open full screen"
           >

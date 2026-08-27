@@ -8,7 +8,7 @@
 export default function NotesLoading() {
   return (
     <div className="h-[100dvh] bg-bg-primary overflow-hidden">
-      <div className="rail-offset h-[100dvh] flex pt-16 lg:pt-0" aria-hidden="true">
+      <div className="rail-offset h-[100dvh] flex kairos-topbar-gap" aria-hidden="true">
         {/* library rail */}
         <div className="hidden md:flex flex-col gap-2 w-[236px] flex-none p-4 bg-bg-surface border-r border-border-light/40">
           <div className="h-8 w-24 bg-bg-secondary rounded-lg animate-pulse" />

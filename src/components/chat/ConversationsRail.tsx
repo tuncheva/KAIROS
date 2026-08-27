@@ -127,7 +127,7 @@ export function ConversationsRail({
               onClick={onCollapse}
               title={t("hideConversations")}
               aria-label={t("hideConversations")}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
+              className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
             >
               <PanelLeftClose className="h-[15px] w-[15px]" />
             </button>

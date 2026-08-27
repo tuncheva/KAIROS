@@ -469,7 +469,7 @@ export function AiSettingsClient() {
         rows={usageRows}
         block={
           (metrics.data?.latencyByAgent.length ?? 0) > 0 ? (
-            <div className="overflow-x-auto">
+            <div className="kairos-scroll-area overflow-x-auto">
               <table className="w-full min-w-[24rem] text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wide text-fg-quaternary">

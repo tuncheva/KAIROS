@@ -156,7 +156,7 @@ export function NotesRail({
             onClick={onCreateNotebook}
             aria-label={t("notebooks.create")}
             title={t("notebooks.create")}
-            className="p-1 rounded-md text-accent-primary hover:bg-accent-primary/10 transition-colors"
+            className="kairos-tap p-1 rounded-md text-accent-primary hover:bg-accent-primary/10 transition-colors"
           >
             <Plus size={13} />
           </button>

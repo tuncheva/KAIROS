@@ -80,6 +80,12 @@ export function SideNav() {
   const pathname = usePathname();
   const mobileNavId = "mobile-nav-menu";
 
+  // Escape closes the sheet, and while it is open the page behind it must not
+  // scroll. On a phone that is not a nicety: without the lock, dragging
+  // anywhere on the (full-screen) backdrop scrolls the page underneath, and on
+  // iOS a drag that starts at the top edge fires pull-to-refresh and reloads
+  // the app out from under the open menu. `position: fixed` is the only lock
+  // Safari honours, so the scroll offset is saved and restored by hand.
   useEffect(() => {
     if (!isMobileMenuOpen) return;
 
@@ -89,8 +95,41 @@ export function SideNav() {
       }
     };
 
+    const { body } = document;
+    const scrollY = window.scrollY;
+    const previous = {
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    };
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      body.style.position = previous.position;
+      body.style.top = previous.top;
+      body.style.width = previous.width;
+      body.style.overflow = previous.overflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isMobileMenuOpen]);
+
+  // A rotation or a resize past `lg` leaves the sheet mounted but its backdrop
+  // `lg:hidden`, which strands the scroll lock with no visible way to undo it.
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => {
+      if (desktop.matches) setIsMobileMenuOpen(false);
+    };
+    onChange();
+    desktop.addEventListener("change", onChange);
+    return () => desktop.removeEventListener("change", onChange);
   }, [isMobileMenuOpen]);
 
   // The rail's *appearance* while pinned now comes from CSS (see `.kairos-rail`
@@ -176,14 +215,14 @@ export function SideNav() {
 
   return (
     <>
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-bg-primary/95 backdrop-blur-md shadow-sm px-4 py-3 flex items-center justify-between">
+      <div className="kairos-mobile-topbar lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-bg-primary/95 pb-3 shadow-sm backdrop-blur-md">
         <div className="flex items-center gap-2.5">
           <KairosMark size={28} />
           <h1 className="text-lg font-semibold text-fg-primary font-display tracking-[-0.02em]">KAIROS</h1>
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 hover:bg-bg-secondary/60 rounded-lg transition-colors"
+          className="-mr-2 flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-bg-secondary/60"
           aria-label={isMobileMenuOpen ? tCommon("close") : tCommon("menu")}
           aria-expanded={isMobileMenuOpen}
           aria-controls={mobileNavId}
@@ -208,9 +247,13 @@ export function SideNav() {
             id={mobileNavId}
             role="dialog"
             aria-label="Navigation"
-            className="lg:hidden fixed left-0 top-0 bottom-0 w-72 bg-bg-primary z-50 shadow-2xl pt-16 animate-slideIn"
+            /* `w-72` is 288px — wider than 85% of a 320px phone, which left the
+               page behind it as a 32px sliver you could not actually aim at.
+               The sheet also scrolls: eleven rows plus the quick-actions block
+               is taller than a landscape phone. */
+            className="kairos-topbar-gap kairos-sheet-left kairos-scroll-area animate-slideIn fixed bottom-0 left-0 top-0 z-50 w-[min(18rem,85vw)] overflow-y-auto bg-bg-primary shadow-2xl lg:hidden"
           >
-            <nav className="flex flex-col gap-1 p-3" aria-label="Primary">
+            <nav className="kairos-safe-bottom flex flex-col gap-1 p-3 pb-6" aria-label="Primary">
               {mainNavItems.map((item) => {
                 const isActive = isItemActive(item.href);
                 return (
@@ -287,7 +330,7 @@ export function SideNav() {
         </>
       )}
 
-      <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-bg-primary/95 px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur-md dark:border-white/[0.06] ${isMobileMenuOpen ? "hidden" : ""}`} aria-label="Primary">
+      <nav className={`kairos-mobile-bottomnav fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-bg-primary/95 pt-2 backdrop-blur-md lg:hidden dark:border-white/[0.06] ${isMobileMenuOpen ? "hidden" : ""}`} aria-label="Primary">
         <div className="flex items-center justify-around gap-1">
           {mobileBottomItems.map((item) => {
             const isActive = isItemActive(item.href);
@@ -312,7 +355,9 @@ export function SideNav() {
         </div>
       </nav>
 
-      {/* Design 7A rail: 64px of icons that opens to 236px on hover, on
+      {/* Design 7A rail: 64px of icons that opens to 236px after the pointer
+          rests on it for 1s (the delay lives in `globals.css` so every surface
+          that moves with the rail waits in step), on
           keyboard focus (see `:has(:focus-visible)` in globals.css — a plain
           `focus-within` kept it open after a mouse click), or stays open when
           pinned. All three feed `--rail-w`, so the page shrinks in step with

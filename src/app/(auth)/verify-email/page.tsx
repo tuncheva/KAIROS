@@ -40,7 +40,7 @@ function VerifyEmailContent() {
   const hasFailed = verify.isError;
 
   return (
-    <div className="min-h-screen bg-bg-primary flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-bg-primary flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-bg-secondary/60 border border-border-light/40 rounded-2xl p-8">
         {!token ? (
           <div className="space-y-3 text-center">
@@ -137,7 +137,7 @@ export default function VerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+        <div className="min-h-dvh bg-bg-primary flex items-center justify-center">
           <div className="text-fg-secondary">Loading…</div>
         </div>
       }
