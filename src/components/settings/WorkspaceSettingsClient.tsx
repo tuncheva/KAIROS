@@ -578,7 +578,7 @@ export function WorkspaceSettingsClient() {
             onChange={(e) => setBulkInviteInput(e.target.value)}
             aria-label={t("members.bulkInviteLabel")}
             placeholder={t("members.bulkInvitePlaceholder")}
-            className="min-h-[64px] w-full max-w-[420px] resize-y border-0 border-b border-border-medium bg-transparent px-0.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary"
+            className="min-h-[64px] w-full max-w-[420px] resize-y rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
           />
           <LedgerAction
             disabled={inviteMember.isPending || !bulkInviteInput.trim()}
@@ -829,7 +829,7 @@ export function WorkspaceSettingsClient() {
             onChange={(e) => setNewRoleName(e.target.value)}
             placeholder={t("roles.namePlaceholder")}
             aria-label={t("roles.namePlaceholder")}
-            className="mb-3 w-full border-0 border-b border-border-medium bg-transparent px-0.5 py-1.5 text-[13.5px] text-fg-primary outline-none placeholder:text-fg-quaternary focus:border-accent-primary"
+            className="mb-3 w-full rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
             autoFocus
           />
           <div className="mb-3 grid grid-cols-2 gap-2">

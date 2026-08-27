@@ -17,9 +17,20 @@ import { WorkspaceMenu } from "~/components/orgs/WorkspaceMenu";
  */
 export function TopBar({
   actions,
+  scrim = false,
 }: {
   /** Page-specific controls, placed before the notification bell. */
   actions?: ReactNode;
+  /**
+   * A short fade under the bar, for pages whose content scrolls past it.
+   *
+   * The bar is opaque, so a row of settings sliding under it was sheared off
+   * mid-glyph against the hairline. The scrim gives the last few pixels of that
+   * row somewhere to go. It hangs off the bar rather than sitting in the page
+   * because the bar is what is sticky — anything in the page would need to
+   * re-derive the bar's height to know where to pin itself.
+   */
+  scrim?: boolean;
 }) {
   return (
     <header className="sticky top-16 z-30 border-b border-border-light/50 topbar-solid lg:top-0">
@@ -40,6 +51,13 @@ export function TopBar({
           <UserDisplay />
         </div>
       </div>
+
+      {scrim ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-full h-5 bg-gradient-to-b from-bg-primary to-transparent"
+        />
+      ) : null}
     </header>
   );
 }

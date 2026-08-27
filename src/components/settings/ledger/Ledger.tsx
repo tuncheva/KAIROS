@@ -267,10 +267,57 @@ export interface LedgerGroupProps {
   block?: ReactNode;
 }
 
+/**
+ * Lifts a node into place the first time it scrolls into view.
+ *
+ * A settings section is a tall stack of groups, most of them below the fold, so
+ * arriving at one used to mean the whole ledger was simply *there* the instant
+ * the section mounted. Revealing each group as it crosses into view instead
+ * gives the scroll something to do without turning it into an effect: the
+ * observer fires per element, not per scroll frame.
+ *
+ * The reveal is one-way — once a group is seen it is unobserved and stays put,
+ * so scrolling back up does not replay anything. When `IntersectionObserver` is
+ * missing the node is marked visible immediately; the un-revealed state is
+ * opacity 0, and a group nobody can read is worse than one that never animated.
+ */
+function useRevealOnScroll<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || visible) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      // A little early and a little short: the group starts moving just before
+      // its top edge arrives, and a group taller than the viewport still counts
+      // as seen.
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.01 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [visible]);
+
+  return { ref, visible };
+}
+
 export function LedgerGroup({ label, hint, note, rows = [], block }: LedgerGroupProps) {
   const query = useSettingsFilter();
   const report = useContext(ReportContext);
   const groupKey = useId();
+  const { ref: revealRef, visible } = useRevealOnScroll<HTMLDivElement>();
 
   const groupMatched = matches(query, label, hint);
   const visibleRows = groupMatched
@@ -293,8 +340,13 @@ export function LedgerGroup({ label, hint, note, rows = [], block }: LedgerGroup
   if (query && !groupMatched && visibleRows.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-12">
-      <div className="flex w-full flex-col gap-1.5 pt-0.5 lg:w-[170px] lg:flex-none">
+    <div
+      ref={revealRef}
+      className={`settings-reveal flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-12 ${
+        visible ? "is-visible" : ""
+      }`}
+    >
+      <div className="flex w-full flex-col gap-1.5 pt-0.5 lg:w-[220px] lg:flex-none">
         <span className="text-[13.5px] font-semibold tracking-[-0.01em] text-fg-primary">
           {label}
         </span>
@@ -311,7 +363,7 @@ export function LedgerGroup({ label, hint, note, rows = [], block }: LedgerGroup
           <div className="border-t border-border-light pt-4">{block}</div>
         ) : null}
         {note ? (
-          <div className="max-w-[560px] border-t border-border-light pt-3.5 text-[12.5px] leading-[1.5] text-fg-tertiary">
+          <div className="max-w-[680px] border-t border-border-light pt-3.5 text-[12.5px] leading-[1.5] text-fg-tertiary">
             {note}
           </div>
         ) : null}
@@ -327,7 +379,7 @@ function LedgerRowView({ row }: { row: LedgerRow }) {
         row.muted ? "pointer-events-none opacity-45" : ""
       }`}
     >
-      <div className="flex w-full items-center gap-3 sm:w-[260px] sm:flex-none">
+      <div className="flex w-full items-center gap-3 sm:w-[300px] sm:flex-none">
         {row.leading}
         <span
           className={`text-[14px] font-medium tracking-[-0.01em] ${
@@ -343,7 +395,7 @@ function LedgerRowView({ row }: { row: LedgerRow }) {
           <div className="flex flex-wrap items-center gap-3">{row.control}</div>
         ) : null}
         {row.desc ? (
-          <span className="max-w-[520px] text-[12.5px] leading-[1.45] text-fg-tertiary">
+          <span className="max-w-[620px] text-[12.5px] leading-[1.45] text-fg-tertiary">
             {row.desc}
           </span>
         ) : null}
@@ -432,7 +484,7 @@ export function LedgerSection({
             </div>
             <span className="flex-1" />
             {subtitle ? (
-              <span className="max-w-[360px] text-[13.5px] text-fg-secondary sm:text-right">
+              <span className="max-w-[420px] text-[13.5px] text-fg-secondary sm:text-right">
                 {subtitle}
               </span>
             ) : null}
@@ -582,7 +634,7 @@ export function LedgerInput({
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
       onKeyDown={onKeyDown}
-      className={`${width} max-w-full border-0 border-b border-border-medium bg-transparent px-0.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary disabled:opacity-50 ${
+      className={`${width} max-w-full rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 disabled:opacity-50 ${
         mono ? "font-mono tracking-[0.08em]" : ""
       }`}
     />
@@ -618,7 +670,7 @@ export function LedgerTextarea({
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
-      className="w-full max-w-[420px] resize-none border-0 border-b border-border-medium bg-transparent px-0.5 py-1.5 text-[13.5px] leading-[1.5] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary disabled:opacity-50"
+      className="w-full max-w-[420px] resize-none rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] leading-[1.5] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 disabled:opacity-50"
     />
   );
 }
@@ -644,7 +696,7 @@ export function LedgerSelect<T extends string | number>({
       aria-label={ariaLabel}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className={`${width} max-w-full cursor-pointer border-0 border-b border-border-medium bg-transparent px-0.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors focus:border-accent-primary disabled:cursor-not-allowed disabled:opacity-50`}
+      className={`${width} max-w-full cursor-pointer rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 disabled:cursor-not-allowed disabled:opacity-50`}
     >
       {options.map((o) => (
         <option
