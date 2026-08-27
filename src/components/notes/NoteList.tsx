@@ -10,20 +10,29 @@
  * filter are controls here rather than assumptions baked into the query.
  */
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   ArrowDownWideNarrow,
   CalendarDays,
+  CalendarX,
   Check,
   FileText,
+  FolderOpen,
+  KeyRound,
   Lock,
+  LockOpen,
   Menu as MenuIcon,
   Plus,
+  SquareArrowOutUpRight,
+  Share2,
+  ShieldOff,
+  Trash2,
   Users,
 } from "lucide-react";
 
-import { Menu, MenuItem, MenuLabel } from "./Menu";
+import { ContextMenu, type ContextMenuAnchor } from "./ContextMenu";
+import { Menu, MenuItem, MenuLabel, MenuSeparator } from "./Menu";
 import { MetaChip, SharedAvatars } from "./notesUi";
 import {
   formatListTimestamp,
@@ -54,6 +63,15 @@ export function NoteList({
   onSelect,
   onNewNote,
   onOpenRail,
+  notebooks,
+  onShare,
+  onDelete,
+  onMoveToNotebook,
+  onLock,
+  onRemoveLock,
+  onResetPassword,
+  onRelock,
+  onRemoveCalendarDate,
 }: {
   notes: NoteItem[];
   selectedId: number | null;
@@ -73,9 +91,25 @@ export function NoteList({
   onSelect: (id: number) => void;
   onNewNote: () => void;
   onOpenRail: () => void;
+  /** For the "move to notebook" section of a row's context menu. */
+  notebooks: Array<{ id: number; name: string }>;
+  onShare: (id: number) => void;
+  onDelete: (id: number) => void;
+  onMoveToNotebook: (id: number, notebookId: number | null) => void;
+  /** Encrypt a note that has no password yet. */
+  onLock: (id: number) => void;
+  /** Decrypt a protected note back to an ordinary one. */
+  onRemoveLock: (id: number) => void;
+  onResetPassword: (id: number) => void;
+  /** Forget the password held for this note this session. */
+  onRelock: (id: number) => void;
+  onRemoveCalendarDate: (id: number) => void;
 }) {
   const t = useTranslations("notes");
   const listRef = useRef<HTMLUListElement | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ note: NoteItem; anchor: ContextMenuAnchor } | null>(
+    null,
+  );
 
   const sortLabels: Record<NoteSort, string> = {
     edited: t("sort.edited"),
@@ -229,6 +263,7 @@ export function NoteList({
                         locale={locale}
                         sort={sort}
                         onSelect={() => onSelect(note.id)}
+                        onContextMenu={(anchor) => setContextMenu({ note, anchor })}
                       />
                     </li>
                   ))}
@@ -247,7 +282,180 @@ export function NoteList({
           </p>
         )}
       </div>
+
+      {contextMenu && (
+        <NoteContextMenu
+          note={contextMenu.note}
+          anchor={contextMenu.anchor}
+          isUnlocked={unlocked[contextMenu.note.id] !== undefined}
+          notebooks={notebooks}
+          onClose={() => setContextMenu(null)}
+          onSelect={onSelect}
+          onShare={onShare}
+          onDelete={onDelete}
+          onMoveToNotebook={onMoveToNotebook}
+          onLock={onLock}
+          onRemoveLock={onRemoveLock}
+          onResetPassword={onResetPassword}
+          onRelock={onRelock}
+          onRemoveCalendarDate={onRemoveCalendarDate}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * What a right-click on a row can do.
+ *
+ * Mostly actions the surface already supported from somewhere else — what
+ * changes is that reaching them no longer costs opening the note first. The
+ * exception is locking: a password used to be choosable only while creating a
+ * note, so protecting an old one meant retyping it into a new one.
+ *
+ * A note shared *with* you is someone else's: no delete, no sharing, no
+ * notebook — those all check ownership on the server and would only fail.
+ */
+function NoteContextMenu({
+  note,
+  anchor,
+  isUnlocked,
+  notebooks,
+  onClose,
+  onSelect,
+  onShare,
+  onDelete,
+  onMoveToNotebook,
+  onLock,
+  onRemoveLock,
+  onResetPassword,
+  onRelock,
+  onRemoveCalendarDate,
+}: {
+  note: NoteItem;
+  anchor: ContextMenuAnchor;
+  isUnlocked: boolean;
+  notebooks: Array<{ id: number; name: string }>;
+  onClose: () => void;
+  onSelect: (id: number) => void;
+  onShare: (id: number) => void;
+  onDelete: (id: number) => void;
+  onMoveToNotebook: (id: number, notebookId: number | null) => void;
+  onLock: (id: number) => void;
+  /** Decrypt a protected note back to an ordinary one. */
+  onRemoveLock: (id: number) => void;
+  onResetPassword: (id: number) => void;
+  onRelock: (id: number) => void;
+  onRemoveCalendarDate: (id: number) => void;
+}) {
+  const t = useTranslations("notes");
+  const isOwn = note.kind === "own";
+
+  /* Close first, so focus is back on the row before the handler navigates or
+     opens a dialog that wants focus of its own. */
+  const act = (close: () => void, run: () => void) => () => {
+    close();
+    run();
+  };
+
+  return (
+    <ContextMenu anchor={anchor} label={t("common.noteActions")} onClose={onClose}>
+      {(close) => (
+        <>
+          <MenuItem
+            icon={<SquareArrowOutUpRight size={13} />}
+            onClick={act(close, () => onSelect(note.id))}
+          >
+            {t("actions.open")}
+          </MenuItem>
+
+          {isOwn && !note.isPasswordProtected && (
+            <MenuItem icon={<Lock size={13} />} onClick={act(close, () => onLock(note.id))}>
+              {t("password.protect")}
+            </MenuItem>
+          )}
+
+          {note.isPasswordProtected &&
+            (isUnlocked ? (
+              <MenuItem icon={<Lock size={13} />} onClick={act(close, () => onRelock(note.id))}>
+                {t("actions.lockAgain")}
+              </MenuItem>
+            ) : (
+              <MenuItem icon={<LockOpen size={13} />} onClick={act(close, () => onSelect(note.id))}>
+                {t("actions.unlock")}
+              </MenuItem>
+            ))}
+
+          {isOwn && note.isPasswordProtected && (
+            <>
+              <MenuItem icon={<ShieldOff size={13} />} onClick={act(close, () => onRemoveLock(note.id))}>
+                {t("password.remove")}
+              </MenuItem>
+              <MenuItem icon={<KeyRound size={13} />} onClick={act(close, () => onResetPassword(note.id))}>
+                {t("password.resetPassword")}
+              </MenuItem>
+            </>
+          )}
+
+          {isOwn && (
+            <>
+              <MenuSeparator />
+              <MenuItem icon={<Share2 size={13} />} onClick={act(close, () => onShare(note.id))}>
+                {note.sharedWith.length > 0 ? t("manageSharing") : t("share")}
+              </MenuItem>
+
+              {note.calendarDate && (
+                <MenuItem
+                  icon={<CalendarX size={13} />}
+                  onClick={act(close, () => onRemoveCalendarDate(note.id))}
+                >
+                  {t("calendar.remove")}
+                </MenuItem>
+              )}
+
+              <MenuSeparator />
+              <MenuLabel>{t("notebook")}</MenuLabel>
+              <MenuItem
+                icon={
+                  note.notebookId === null ? (
+                    <Check size={13} className="text-accent-primary" />
+                  ) : (
+                    <span className="w-[13px]" />
+                  )
+                }
+                onClick={act(close, () => onMoveToNotebook(note.id, null))}
+              >
+                {t("common.none")}
+              </MenuItem>
+              {notebooks.map((notebook) => (
+                <MenuItem
+                  key={notebook.id}
+                  icon={
+                    note.notebookId === notebook.id ? (
+                      <Check size={13} className="text-accent-primary" />
+                    ) : (
+                      <FolderOpen size={13} />
+                    )
+                  }
+                  onClick={act(close, () => onMoveToNotebook(note.id, notebook.id))}
+                >
+                  {notebook.name}
+                </MenuItem>
+              ))}
+
+              <MenuSeparator />
+              <MenuItem
+                icon={<Trash2 size={13} />}
+                destructive
+                onClick={act(close, () => onDelete(note.id))}
+              >
+                {t("actions.delete")}
+              </MenuItem>
+            </>
+          )}
+        </>
+      )}
+    </ContextMenu>
   );
 }
 
@@ -259,6 +467,7 @@ function NoteRow({
   locale,
   sort,
   onSelect,
+  onContextMenu,
 }: {
   note: NoteItem;
   selected: boolean;
@@ -267,6 +476,7 @@ function NoteRow({
   locale: string;
   sort: NoteSort;
   onSelect: () => void;
+  onContextMenu: (anchor: ContextMenuAnchor) => void;
 }) {
   const t = useTranslations("notes");
 
@@ -290,6 +500,17 @@ function NoteRow({
       type="button"
       data-note-row
       onClick={onSelect}
+      /* Fires for the context-menu key and Shift+F10 as well as for the mouse.
+         A keyboard opening reports 0,0, so anchor to the row instead. */
+      onContextMenu={(event) => {
+        event.preventDefault();
+        const box = event.currentTarget.getBoundingClientRect();
+        onContextMenu(
+          event.clientX === 0 && event.clientY === 0
+            ? { x: box.left + 16, y: box.top + box.height / 2 }
+            : { x: event.clientX, y: event.clientY },
+        );
+      }}
       aria-current={selected ? "true" : undefined}
       className={`relative w-full text-left px-2.5 py-2.5 rounded-xl transition-colors ${
         selected

@@ -155,7 +155,10 @@
       "saving": "Saving...",
       "unlock": "Unlock",
       "unlocking": "Unlocking...",
-      "create": "Create"
+      "create": "Create",
+      "open": "Open",
+      "lockAgain": "Lock again",
+      "lock": "Lock"
     },
     "messages": {
       "created": "Note created",
@@ -246,7 +249,17 @@
       "hint": "Hint: {hint}",
       "protect": "Protect with a password",
       "unlocked": "Unlocked",
-      "ownerOnly": "Only {owner} can unlock this — the server verifies the password for its owner alone."
+      "ownerOnly": "Only {owner} can unlock this — the server verifies the password for its owner alone.",
+      "locked": "Note locked",
+      "protectDesc": "Encrypt this note behind a password",
+      "protectWarning": "The password is not stored anywhere. If you forget it, only your recovery PIN can get the note back.",
+      "remove": "Remove password",
+      "removeDesc": "Turn this back into an ordinary note",
+      "removeWarning": "The note will be stored unencrypted and readable without a password. Anyone you share it with will be able to read it.",
+      "removed": "Password removed",
+      "pinRequired": "Enter your reset PIN",
+      "incorrectPin": "Incorrect reset PIN",
+      "pinLocked": "Too many wrong PINs. Try again in a few minutes."
     },
     "saveChanges": "Save changes",
     "meta": {

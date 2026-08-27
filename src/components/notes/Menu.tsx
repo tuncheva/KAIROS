@@ -102,7 +102,7 @@ export function Menu({
           id={menuId}
           role="menu"
           aria-label={label}
-          className={`absolute z-30 top-full mt-1 min-w-[180px] max-h-[280px] overflow-y-auto p-1.5 rounded-xl bg-bg-elevated kairos-system-card-elevated ${
+          className={`absolute z-30 top-full mt-1 min-w-[180px] max-h-[280px] overflow-y-auto p-1.5 rounded-xl bg-bg-elevated kairos-menu-surface ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >

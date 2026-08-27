@@ -25,11 +25,13 @@ import { useToast } from "~/components/providers/ToastProvider";
 import { useDateFormat } from "~/hooks/useDateFormat";
 
 import { ConfirmDialog } from "./ConfirmDialog";
+import { LockNoteDialog } from "./LockNoteDialog";
 import { NoteList } from "./NoteList";
 import { NotePage, type DraftInput } from "./NotePage";
 import { NotebookDialog } from "./NotebookDialog";
 import { NotesRail, type RailNotebook } from "./NotesRail";
 import { PinResetDialog } from "./PinResetDialog";
+import { RemoveLockDialog } from "./RemoveLockDialog";
 import { ShareDialog } from "./ShareDialog";
 import {
   countLockedExcluded,
@@ -83,6 +85,8 @@ export function NotesWorkspace({
   const [notebookDialog, setNotebookDialog] = useState<null | { notebook: RailNotebook | null }>(null);
   const [confirmDeleteNote, setConfirmDeleteNote] = useState<number | null>(null);
   const [confirmDeleteNotebook, setConfirmDeleteNotebook] = useState<RailNotebook | null>(null);
+  const [lockNoteId, setLockNoteId] = useState<number | null>(null);
+  const [removeLockNoteId, setRemoveLockNoteId] = useState<number | null>(null);
   const [resetPromptFor, setResetPromptFor] = useState<number | null>(null);
   const [resetPinFor, setResetPinFor] = useState<number | null>(null);
 
@@ -375,18 +379,27 @@ export function NotesWorkspace({
     [createNote, isDraft, router, toast, t, utils],
   );
 
-  const setCalendarDate = useCallback(
-    async (date: Date | null) => {
-      if (!activeNote) return;
-      const isProtected = activeNote.isPasswordProtected;
-      const password = isProtected ? unlocked[activeNote.id]?.password : undefined;
-      const content = unlocked[activeNote.id]?.content ?? activeNote.content ?? "";
+  /* Takes the note rather than reading "the open one": the list's context menu
+     can change the date of a note that is not on screen. */
+  const setCalendarDateFor = useCallback(
+    async (note: NoteItem | null, date: Date | null) => {
+      if (!note) return;
+      const isProtected = note.isPasswordProtected;
+      const password = isProtected ? unlocked[note.id]?.password : undefined;
+      const content = unlocked[note.id]?.content ?? note.content ?? "";
+
+      if (isProtected && !password) {
+        /* Writing the date means rewriting the body, and the body cannot be
+           re-encrypted without the password. */
+        toast.error(t("messages.lockedSaveBlocked"));
+        return;
+      }
 
       try {
         await updateNote.mutateAsync({
-          id: activeNote.id,
+          id: note.id,
           content,
-          title: activeNote.title ?? "",
+          title: note.title ?? "",
           calendarDate: date,
           ...(password ? { password } : {}),
         });
@@ -396,7 +409,7 @@ export function NotesWorkspace({
         toast.error(error instanceof Error ? error.message : t("messages.saveFailed"));
       }
     },
-    [activeNote, unlocked, updateNote, utils, toast, t],
+    [unlocked, updateNote, utils, toast, t],
   );
 
   // ── list assembly ───────────────────────────────────────────────────
@@ -550,6 +563,26 @@ export function NotesWorkspace({
           onSelect={openNote}
           onNewNote={newNote}
           onOpenRail={() => setRailOpen(true)}
+          notebooks={notebooks}
+          onShare={setShareNoteId}
+          onDelete={setConfirmDeleteNote}
+          onMoveToNotebook={(id, notebookId) => moveToNotebook.mutate({ noteId: id, notebookId })}
+          onLock={setLockNoteId}
+          onRemoveLock={setRemoveLockNoteId}
+          onResetPassword={setResetPinFor}
+          onRelock={(id) =>
+            setUnlocked((previous) => {
+              /* Drop the decrypted copy and the password with it: the row goes
+                 back to showing the locked preview and the next open asks
+                 again. Nothing on the server changes — it never held either. */
+              const { [id]: _removed, ...rest } = previous;
+              return rest;
+            })
+          }
+          onRemoveCalendarDate={(id) => {
+            const note = ownNotes.find((entry) => entry.id === id) ?? null;
+            void setCalendarDateFor(note, null);
+          }}
         />
       </div>
 
@@ -584,7 +617,7 @@ export function NotesWorkspace({
           onMoveToNotebook={(notebookId) => {
             if (noteId !== null) moveToNotebook.mutate({ noteId, notebookId });
           }}
-          onSetCalendarDate={(date) => void setCalendarDate(date)}
+          onSetCalendarDate={(date) => void setCalendarDateFor(activeNote, date)}
           onBack={() => router.push("/notes")}
           onNewNote={newNote}
         />
@@ -592,6 +625,45 @@ export function NotesWorkspace({
 
       {shareNoteId !== null && (
         <ShareDialog noteId={shareNoteId} onClose={() => setShareNoteId(null)} />
+      )}
+
+      {lockNoteId !== null && (
+        <LockNoteDialog
+          noteId={lockNoteId}
+          onClose={() => setLockNoteId(null)}
+          onSuccess={(password) => {
+            const id = lockNoteId;
+            /* The body was readable a moment ago, and the password is right
+               here — holding both keeps the note open instead of locking the
+               user out of what they were just looking at. */
+            const body =
+              unlocked[id]?.content ??
+              ownNotes.find((note) => note.id === id)?.content ??
+              "";
+            setUnlocked((previous) => ({ ...previous, [id]: { content: body, password } }));
+            setLockNoteId(null);
+            void utils.note.getAll.invalidate();
+          }}
+        />
+      )}
+
+      {removeLockNoteId !== null && (
+        <RemoveLockDialog
+          noteId={removeLockNoteId}
+          knownPassword={unlocked[removeLockNoteId]?.password}
+          onClose={() => setRemoveLockNoteId(null)}
+          onSuccess={() => {
+            const id = removeLockNoteId;
+            setUnlocked((previous) => {
+              /* The note is plaintext now, so `getAll` carries its body again.
+                 A stale entry here would keep an old copy winning over it. */
+              const { [id]: _removed, ...rest } = previous;
+              return rest;
+            });
+            setRemoveLockNoteId(null);
+            void utils.note.getAll.invalidate();
+          }}
+        />
       )}
 
       {notebookDialog && (
