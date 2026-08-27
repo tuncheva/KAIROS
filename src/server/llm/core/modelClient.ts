@@ -95,11 +95,6 @@ const CHAT_TEMPLATE_KWARGS: ReadonlyArray<
   readonly [prefix: string, kwargs: Record<string, unknown>]
 > = [
   ["deepseek-v4-flash", { thinking: true }],
-  // Same V4 chat template as Flash, so the same flag. Listed explicitly rather
-  // than widening the Flash prefix to "deepseek-v4": the table's whole point is
-  // that the flag is per-model, and a wrong guess here is silent. Unverified
-  // against a live Pro deployment — confirm with `pnpm llm:probe`.
-  ["deepseek-v4-pro", { thinking: true }],
   ["nemotron-3", { enable_thinking: true }],
 ];
 

@@ -33,6 +33,28 @@ import {
  * Deliberately does not summarise the workspace: an outage is not a reason to
  * start listing projects the user did not ask about.
  */
+/**
+ * Marks a turn as the hand-built outage reply rather than model output.
+ *
+ * Read by `isFallbackTurn` so those turns can be kept out of the history the
+ * model sees. They are persisted like any other turn, so a thread that hit an
+ * outage accumulates assistant messages that all read "I'm having trouble
+ * generating an AI response right now". Fed back as context, that is a pattern
+ * the model will happily continue once it recovers — answering a cheerful
+ * "hello" with the outage text, from a call that succeeded.
+ */
+export const AI_UNAVAILABLE_REF = "ai_unavailable";
+
+/**
+ * True for a stored assistant turn that was the fallback, not an answer.
+ *
+ * Deliberately a substring test on the raw JSON rather than a parse: history
+ * rows are arbitrary stored text, and this runs on every message of every turn.
+ */
+export function isFallbackTurn(content: string): boolean {
+  return content.includes(`"${AI_UNAVAILABLE_REF}"`);
+}
+
 function buildFallbackResponse(input: AgentDraftInput): A1Output {
   const safeScope = input.scope ?? {};
   return {
@@ -54,7 +76,7 @@ function buildFallbackResponse(input: AgentDraftInput): A1Output {
     // because a hand-built fallback never passes through it.
     handoff: undefined,
     handoffs: [],
-    citations: [{ label: "fallback", ref: "ai_unavailable" }],
+    citations: [{ label: "fallback", ref: AI_UNAVAILABLE_REF }],
   };
 }
 
@@ -78,10 +100,16 @@ export const a1Concierge = {
 
     let outputJson: A1Output;
     try {
-      const historyMessages = (input.conversationHistory ?? []).map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
+      const historyMessages = (input.conversationHistory ?? [])
+        // An outage reply is not something the assistant "said" — it is what
+        // this file returns when the model is unreachable. Replaying it as
+        // context teaches the model that this thread answers everything with
+        // it, which it then does on the next turn that succeeds.
+        .filter((m) => !(m.role === "assistant" && isFallbackTurn(m.content)))
+        .map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
 
       // Retrieval and answering happen in one loop. The endpoint rejects
       // `response_format` alongside `tools`, so the JSON contract is carried by
