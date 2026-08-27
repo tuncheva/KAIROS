@@ -12,7 +12,12 @@ interface ImageUploadProps {
   isUploading: boolean;
   label: string;
   description: string;
-  size?: "sm" | "md";
+  /**
+   * `row` is the settings-ledger form: a 40px avatar and a plain Replace button,
+   * with no label or description block. The picker and its size/type checks are
+   * the same in every variant — only the chrome around them changes.
+   */
+  size?: "sm" | "md" | "row";
 }
 
 export function ImageUpload({
@@ -53,6 +58,46 @@ export function ImageUpload({
   };
 
   const imageSize = size === "sm" ? "w-20 h-20" : "w-24 h-24";
+
+  const fileInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept="image/*"
+      onChange={handleImageChange}
+      className="hidden"
+    />
+  );
+
+  if (size === "row") {
+    return (
+      <span className="flex items-center gap-3">
+        {imagePreview ? (
+          <Image
+            src={imagePreview}
+            alt=""
+            width={40}
+            height={40}
+            unoptimized
+            className="h-10 w-10 flex-none rounded-full object-cover"
+          />
+        ) : (
+          <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-accent-primary/15">
+            <Camera className="text-accent-primary" size={18} />
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          className="rounded-[7px] border border-border-medium px-[13px] py-1.5 text-[12.5px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isUploading ? t("uploading") : t("uploadImage")}
+        </button>
+        {fileInput}
+      </span>
+    );
+  }
 
   return (
     <div>

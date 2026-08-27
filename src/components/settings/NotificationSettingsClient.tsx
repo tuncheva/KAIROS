@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
+
+import {
+  LedgerGroup,
+  LedgerSection,
+  LedgerToggle,
+  useSectionCrumb,
+  useSettingsSave,
+  type LedgerRow,
+} from "./ledger/Ledger";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -50,11 +59,12 @@ interface Group {
   descriptionKey: string;
   keys: NotificationKey[];
   /**
-   * Grouped switches are disabled while the master in-app switch is off, because
+   * Grouped switches are inert while the master in-app switch is off, because
    * the server ignores them in that state. A toggle that visibly does nothing is
    * how the previous version of this screen misled people for so long.
    */
   dependsOnInApp: boolean;
+  noteKey?: string;
 }
 
 const GROUPS: Group[] = [
@@ -96,6 +106,7 @@ const GROUPS: Group[] = [
     descriptionKey: "groupEmailDesc",
     keys: ["emailNotifications", "marketingEmailsNotifications"],
     dependsOnInApp: false,
+    noteKey: "securityAlwaysOn",
   },
 ];
 
@@ -119,6 +130,8 @@ const LABELS: Record<NotificationKey, { title: string; desc: string }> = {
 export function NotificationSettingsClient() {
   const useT = useTranslations as unknown as (namespace: string) => Translator;
   const t = useT("settings.notifications");
+  const crumb = useSectionCrumb("notifications");
+  const save = useSettingsSave();
 
   const { status } = useSession();
   const enabled = status === "authenticated";
@@ -131,181 +144,77 @@ export function NotificationSettingsClient() {
   });
   const utils = api.useUtils();
 
-  const settings = data;
-
   const updateNotifications = api.settings.updateNotifications.useMutation({
-    onSuccess: async () => {
+    // Optimistic, because a switch that waits for a round trip before moving
+    // feels broken, and this page no longer has a Save button to blame the
+    // delay on. The header's indicator carries the truth.
+    onMutate: async (patch) => {
+      await utils.settings.get.cancel();
+      const previous = utils.settings.get.getData();
+      utils.settings.get.setData(undefined, (old) =>
+        old ? { ...old, ...patch } : old,
+      );
+      return { previous };
+    },
+    onError: (_e, _patch, ctx) => {
+      if (ctx?.previous) utils.settings.get.setData(undefined, ctx.previous);
+    },
+    onSettled: async () => {
       await utils.settings.get.invalidate();
     },
   });
 
-  const initial = useMemo(() => {
+  const values = useMemo(() => {
     const resolved = { ...DEFAULTS };
-    if (settings) {
+    if (data) {
       for (const key of Object.keys(DEFAULTS) as NotificationKey[]) {
-        const value = settings[key as keyof typeof settings];
+        const value = data[key as keyof typeof data];
         if (typeof value === "boolean") resolved[key] = value;
       }
     }
     return resolved;
-  }, [settings]);
-
-  const [values, setValues] = useState<Record<NotificationKey, boolean>>(initial);
-  const [touched, setTouched] = useState(false);
-
-  useEffect(() => {
-    setValues(initial);
-    setTouched(false);
-  }, [initial]);
-
-  const isBusy = isLoading || updateNotifications.isPending;
+  }, [data]);
 
   const onToggle = (key: NotificationKey, checked: boolean) => {
-    setValues((prev) => ({ ...prev, [key]: checked }));
-    setTouched(true);
-  };
-
-  const onSave = async () => {
-    await updateNotifications.mutateAsync(values);
-    setTouched(false);
+    void save.run(() => updateNotifications.mutateAsync({ [key]: checked }));
   };
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-bg-primary">
-      <div className="w-full px-4 sm:px-6">
-        {/* Header */}
-        <div className="pt-8 pb-6">
-          <h1 className="text-[34px] font-[700] leading-[1.1] tracking-[-0.022em] text-fg-primary mb-2">
-            {t("title")}
-          </h1>
-          <p className="text-[15px] leading-[1.4667] tracking-[-0.01em] text-fg-tertiary">
-            {t("subtitle")}
-          </p>
-        </div>
+    <LedgerSection
+      sectionId="notifications"
+      crumb={crumb}
+      title={t("title")}
+      subtitle={t("subtitle")}
+    >
+      {GROUPS.map((group) => {
+        const muted = group.dependsOnInApp && !values.inAppNotifications;
 
-        <div className="space-y-8">
-          {GROUPS.map((group) => {
-            const dimmed = group.dependsOnInApp && !values.inAppNotifications;
+        const rows: LedgerRow[] = group.keys.map((key) => ({
+          id: key,
+          title: t(LABELS[key].title),
+          desc: t(LABELS[key].desc),
+          keywords: key,
+          muted,
+          control: (
+            <LedgerToggle
+              checked={values[key]}
+              disabled={isLoading || muted}
+              label={t(LABELS[key].title)}
+              onChange={(next) => onToggle(key, next)}
+            />
+          ),
+        }));
 
-            return (
-              <div key={group.titleKey} className="mb-8">
-                <div className="px-1 mb-2">
-                  <h2 className="text-[13px] font-[590] uppercase tracking-[0.06em] text-fg-tertiary">
-                    {t(group.titleKey)}
-                  </h2>
-                  <p className="mt-1 text-[13px] leading-[1.3846] tracking-[-0.006em] text-fg-tertiary">
-                    {t(group.descriptionKey)}
-                  </p>
-                </div>
-
-                <div
-                  className={`bg-bg-secondary rounded-[10px] overflow-hidden border border-white/[0.06] transition-opacity duration-200 ${
-                    dimmed ? "opacity-50" : ""
-                  }`}
-                >
-                  {group.keys.map((key, index) => {
-                    const checked = values[key];
-                    const disabled = isBusy || dimmed;
-
-                    return (
-                      <div key={key} className="relative">
-                        <div className="flex items-center justify-between pl-[16px] pr-[18px] py-[11px]">
-                          <div className="flex-1 min-w-0 pr-4">
-                            <div className="text-[17px] leading-[1.235] tracking-[-0.016em] text-fg-primary font-[590] mb-[1px]">
-                              {t(LABELS[key].title)}
-                            </div>
-                            <div className="text-[13px] leading-[1.3846] tracking-[-0.006em] text-fg-tertiary">
-                              {t(LABELS[key].desc)}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={checked}
-                            aria-label={t(LABELS[key].title)}
-                            disabled={disabled}
-                            onClick={() => onToggle(key, !checked)}
-                            className={`relative inline-flex h-[31px] w-[51px] flex-shrink-0 rounded-full border transition-colors duration-200 focus:outline-none ${
-                              disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-                            } ${
-                              checked
-                                ? "border-transparent"
-                                : "border-gray-300/30 dark:border-gray-600/50"
-                            } ${!checked ? "bg-bg-tertiary" : ""}`}
-                            style={
-                              checked
-                                ? { backgroundColor: `rgb(var(--accent-primary))` }
-                                : undefined
-                            }
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-[27px] w-[27px] transform rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] transition-transform duration-200 ease-in-out ${
-                                checked ? "translate-x-[20px]" : "translate-x-[1px]"
-                              }`}
-                            />
-                          </button>
-                        </div>
-                        {index < group.keys.length - 1 && (
-                          <div className="absolute bottom-0 left-[16px] right-[18px] h-[0.33px] border-t border-white/[0.04]" />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Security notices are not configurable; saying so is clearer than
-              leaving a user to wonder which switch covers them. */}
-          <div className="mb-8 px-1">
-            <p className="text-[13px] leading-[1.3846] tracking-[-0.006em] text-fg-tertiary">
-              {t("securityAlwaysOn")}
-            </p>
-          </div>
-
-          {/* Save Button Card */}
-          <div className="mb-6">
-            <div className="bg-bg-secondary rounded-[10px] overflow-hidden border border-white/[0.06]">
-              <div className="px-4 py-4">
-                <button
-                  type="button"
-                  onClick={onSave}
-                  disabled={isBusy || !touched}
-                  className={`w-full py-3.5 rounded-[10px] text-center text-[17px] leading-[1.235] tracking-[-0.016em] font-[590] transition-all duration-200 ${
-                    isBusy || !touched
-                      ? "bg-bg-tertiary text-fg-secondary cursor-not-allowed"
-                      : "text-white active:opacity-80"
-                  }`}
-                  style={
-                    !isBusy && touched
-                      ? { backgroundColor: `rgb(var(--accent-primary))` }
-                      : undefined
-                  }
-                >
-                  {t("save")}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Error Message */}
-          {updateNotifications.error && (
-            <div className="mb-6">
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-[10px] overflow-hidden">
-                <div className="px-4 py-3.5">
-                  <p className="text-[15px] leading-[1.4667] tracking-[-0.012em] text-red-600 dark:text-red-400 text-center">
-                    {updateNotifications.error.message}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Bottom Spacing */}
-          <div className="h-8"></div>
-        </div>
-      </div>
-    </div>
+        return (
+          <LedgerGroup
+            key={group.titleKey}
+            label={t(group.titleKey)}
+            hint={t(group.descriptionKey)}
+            note={group.noteKey ? t(group.noteKey) : undefined}
+            rows={rows}
+          />
+        );
+      })}
+    </LedgerSection>
   );
 }

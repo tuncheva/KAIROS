@@ -215,7 +215,11 @@
       "fullName": "Nom complet",
       "namePlaceholder": "Entrez votre nom complet",
       "emailAddress": "Adresse e-mail",
-      "bio": "Biographie"
+      "bio": "Biographie",
+      "groupIdentity": "Identité",
+      "groupIdentityHint": "Visible par tous les membres de vos espaces de travail.",
+      "groupAccount": "Compte",
+      "groupAccountHint": "Informations en lecture seule sur ce compte."
     },
     "notifications": {
       "title": "Paramètres de notification",
@@ -280,7 +284,11 @@
       "export_markdown": "Tout (Markdown)",
       "export_ics": "Calendrier (ICS)",
       "deleteAccount": "Supprimer le compte",
-      "deleteConfirm": "Cela supprimera définitivement votre compte et vos données. Continuer ?"
+      "deleteConfirm": "Cela supprimera définitivement votre compte et vos données. Continuer ?",
+      "groupNotes": "Notes",
+      "groupNotesHint": "Ne concerne que les notes verrouillées.",
+      "groupData": "Vos données",
+      "groupDataHint": "Faites une copie avant de supprimer quoi que ce soit."
     },
     "language": {
       "title": "Langue et région",
@@ -291,7 +299,14 @@
       "save": "Enregistrer les préférences",
       "expand": "Développer la liste des langues",
       "collapse": "Réduire la liste des langues",
-      "applying": "Application des modifications de langue..."
+      "applying": "Application des modifications de langue...",
+      "groupLanguage": "Langue",
+      "groupLanguageHint": "Le bulgare et l'anglais sont entièrement traduits.",
+      "groupRegion": "Région",
+      "groupRegionHint": "Utilisé pour les rappels et les échéances.",
+      "timezoneSuggestTitle": "Fuseau horaire suggéré",
+      "timezoneSuggestDesc": "Votre compte est toujours en UTC, la valeur par défaut plutôt qu'un choix. Votre navigateur indique {zone}.",
+      "timezoneSuggestAction": "Utiliser {zone}"
     },
     "appearance": {
       "title": "Apparence",
@@ -404,7 +419,9 @@
       "calendarCancelled": "Connexion annulée.",
       "calendarFailed": "Impossible de connecter le calendrier. Réessayez.",
       "calendarNoRefresh": "Google n’a pas accordé un accès durable. Reconnectez-vous et approuvez toutes les autorisations demandées.",
-      "dismiss": "Fermer"
+      "dismiss": "Fermer",
+      "calendarGroup": "Agenda",
+      "calendarGroupHint": "La préparation de réunion ne fonctionne pas sans agenda connecté."
     },
     "developer": {
       "title": "Développeur",
@@ -449,7 +466,15 @@
       "noResponse": "aucune réponse",
       "delete": "Supprimer",
       "loading": "Chargement…"
-    }
+    },
+    "filterPlaceholder": "Filtrer les paramètres",
+    "filterCrumb": "Recherche",
+    "filterTitle": "Résultats du filtre",
+    "filterSubtitle": "Lignes correspondantes de toutes les sections.",
+    "filterEmpty": "Aucun résultat pour ce filtre.",
+    "saveSaving": "Enregistrement",
+    "saveSaved": "Toutes les modifications sont enregistrées",
+    "saveFailed": "Échec de l'enregistrement"
   },
   "create": {
     "title": "Espace de travail",

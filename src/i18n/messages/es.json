@@ -215,7 +215,11 @@
       "fullName": "Nombre completo",
       "namePlaceholder": "Ingresa tu nombre completo",
       "emailAddress": "Dirección de correo",
-      "bio": "Biografía"
+      "bio": "Biografía",
+      "groupIdentity": "Identidad",
+      "groupIdentityHint": "Visible para cualquiera en tus espacios de trabajo.",
+      "groupAccount": "Cuenta",
+      "groupAccountHint": "Datos de solo lectura de esta cuenta."
     },
     "notifications": {
       "title": "Configuración de notificaciones",
@@ -280,7 +284,11 @@
       "export_markdown": "Todo (Markdown)",
       "export_ics": "Calendario (ICS)",
       "deleteAccount": "Eliminar cuenta",
-      "deleteConfirm": "Esto eliminará permanentemente tu cuenta y tus datos. ¿Continuar?"
+      "deleteConfirm": "Esto eliminará permanentemente tu cuenta y tus datos. ¿Continuar?",
+      "groupNotes": "Notas",
+      "groupNotesHint": "Solo se aplica a las notas bloqueadas.",
+      "groupData": "Tus datos",
+      "groupDataHint": "Haz una copia antes de borrar nada."
     },
     "language": {
       "title": "Idioma y región",
@@ -291,7 +299,14 @@
       "save": "Guardar preferencias",
       "expand": "Expandir lista de idiomas",
       "collapse": "Contraer lista de idiomas",
-      "applying": "Aplicando cambios de idioma..."
+      "applying": "Aplicando cambios de idioma...",
+      "groupLanguage": "Idioma",
+      "groupLanguageHint": "El búlgaro y el inglés están traducidos por completo.",
+      "groupRegion": "Región",
+      "groupRegionHint": "Se usa para recordatorios y fechas límite.",
+      "timezoneSuggestTitle": "Zona horaria sugerida",
+      "timezoneSuggestDesc": "Tu cuenta sigue en UTC, que es el valor por defecto y no una elección. Tu navegador indica {zone}.",
+      "timezoneSuggestAction": "Usar {zone}"
     },
     "appearance": {
       "title": "Apariencia",
@@ -404,7 +419,9 @@
       "calendarCancelled": "Conexión cancelada.",
       "calendarFailed": "No se pudo conectar el calendario. Inténtalo de nuevo.",
       "calendarNoRefresh": "Google no concedió acceso duradero. Vuelve a conectar y aprueba todos los permisos solicitados.",
-      "dismiss": "Cerrar"
+      "dismiss": "Cerrar",
+      "calendarGroup": "Calendario",
+      "calendarGroupHint": "La preparación de reuniones no funciona sin un calendario conectado."
     },
     "developer": {
       "title": "Desarrollador",
@@ -449,7 +466,15 @@
       "noResponse": "sin respuesta",
       "delete": "Eliminar",
       "loading": "Cargando…"
-    }
+    },
+    "filterPlaceholder": "Filtrar ajustes",
+    "filterCrumb": "Búsqueda",
+    "filterTitle": "Resultados del filtro",
+    "filterSubtitle": "Filas coincidentes de todas las secciones.",
+    "filterEmpty": "Nada coincide con ese filtro.",
+    "saveSaving": "Guardando",
+    "saveSaved": "Todos los cambios guardados",
+    "saveFailed": "No se pudo guardar"
   },
   "create": {
     "title": "Espacio de trabajo",

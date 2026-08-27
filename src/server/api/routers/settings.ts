@@ -53,12 +53,22 @@ export const settingsRouter = createTRPCRouter({
           resetPinHint: true,
           resetPinFailedAttempts: true,
           resetPinLockedUntil: true,
+          // Read only to answer "is one set?" below. Never returned.
+          resetPinHash: true,
 
           createdAt: true,
         },
       });
 
-      return user ?? null;
+      if (!user) return null;
+
+      // Whether a PIN exists is a fact the settings screen needs and the hash is
+      // one it must never see. Settings inferred it from `resetPinHint` before,
+      // which is optional, and from `resetPinFailedAttempts >= 0`, which is true
+      // for every account that has never failed — so the screen told everyone
+      // they had a PIN configured.
+      const { resetPinHash, ...rest } = user;
+      return { ...rest, hasResetPin: !!resetPinHash };
     }),
 
 

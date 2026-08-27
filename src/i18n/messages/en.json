@@ -578,7 +578,11 @@
       "fullName": "Full Name",
       "namePlaceholder": "Enter your full name",
       "emailAddress": "Email Address",
-      "bio": "Bio"
+      "bio": "Bio",
+      "groupIdentity": "Identity",
+      "groupIdentityHint": "Visible to anyone in your workspaces.",
+      "groupAccount": "Account",
+      "groupAccountHint": "Read-only facts about this account."
     },
     "notifications": {
       "title": "Notification Settings",
@@ -663,7 +667,11 @@
       "errors": {
         "updateResetPin": "Failed to update reset PIN",
         "pinRequired": "Please enter and confirm your PIN"
-      }
+      },
+      "groupNotes": "Notes",
+      "groupNotesHint": "Applies to locked notes only.",
+      "groupData": "Your data",
+      "groupDataHint": "Take a copy before you delete anything."
     },
     "language": {
       "title": "Language & Region",
@@ -674,7 +682,14 @@
       "save": "Save Preferences",
       "expand": "Expand language list",
       "collapse": "Collapse language list",
-      "applying": "Applying language changes..."
+      "applying": "Applying language changes...",
+      "groupLanguage": "Language",
+      "groupLanguageHint": "Bulgarian and English are fully translated.",
+      "groupRegion": "Region",
+      "groupRegionHint": "Used for reminders and due dates.",
+      "timezoneSuggestTitle": "Suggested timezone",
+      "timezoneSuggestDesc": "Your account is still set to UTC, which is the default rather than a choice. Your browser says {zone}.",
+      "timezoneSuggestAction": "Use {zone}"
     },
     "appearance": {
       "title": "Appearance",
@@ -887,7 +902,9 @@
       "calendarCancelled": "Connection cancelled.",
       "calendarFailed": "Could not connect the calendar. Try again.",
       "calendarNoRefresh": "Google did not grant lasting access. Try connecting again and approve all requested permissions.",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "calendarGroup": "Calendar",
+      "calendarGroupHint": "Meeting prep is inert without a connected calendar."
     },
     "developer": {
       "title": "Developer",
@@ -932,7 +949,15 @@
       "noResponse": "no response",
       "delete": "Delete",
       "loading": "Loading…"
-    }
+    },
+    "filterPlaceholder": "Filter settings",
+    "filterCrumb": "Search",
+    "filterTitle": "Filter results",
+    "filterSubtitle": "Matching rows from every section.",
+    "filterEmpty": "Nothing matches that filter.",
+    "saveSaving": "Saving",
+    "saveSaved": "All changes saved",
+    "saveFailed": "Could not save"
   },
   "create": {
     "title": "Workspace",

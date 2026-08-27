@@ -6,6 +6,17 @@ import { useTranslations } from "next-intl";
 import { useEntitlement } from "~/hooks/useEntitlements";
 import { api } from "~/trpc/react";
 
+import {
+  LedgerAction,
+  LedgerError,
+  LedgerGroup,
+  LedgerInput,
+  LedgerSection,
+  useSectionCrumb,
+  useSettingsSave,
+  type LedgerRow,
+} from "./ledger/Ledger";
+
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
 /**
@@ -23,46 +34,29 @@ type Translator = (key: string, values?: Record<string, unknown>) => string;
  * recover them. So both have a show-once state that must be visually distinct
  * from the list it sits above, or someone will scroll past the only copy.
  */
-function Card({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-xl border border-border-light bg-bg-elevated p-5">
-      <h3 className="text-base font-semibold text-fg-primary">{title}</h3>
-      <p className="mt-0.5 mb-4 text-sm text-fg-tertiary">{description}</p>
-      {children}
-    </section>
-  );
-}
-
 export function DeveloperSettingsClient() {
   const useT = useTranslations as unknown as (ns: string) => Translator;
   const t = useT("settings.developer");
+  const crumb = useSectionCrumb("developer");
 
   const hasApiAccess = useEntitlement("apiAccess");
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4 sm:p-6">
-      <header>
-        <h2 className="text-lg font-semibold text-fg-primary">{t("title")}</h2>
-        <p className="mt-0.5 text-sm text-fg-tertiary">{t("subtitle")}</p>
-      </header>
-
+    <LedgerSection
+      sectionId="developer"
+      crumb={crumb}
+      title={t("title")}
+      subtitle={t("subtitle")}
+    >
       {hasApiAccess ? (
         <>
-          <KeysPanel t={t} />
-          <WebhooksPanel t={t} />
+          <KeysGroup t={t} />
+          <WebhooksGroup t={t} />
         </>
       ) : (
-        <UpgradeNotice t={t} />
+        <UpgradeGroup t={t} />
       )}
-    </div>
+    </LedgerSection>
   );
 }
 
@@ -73,29 +67,85 @@ export function DeveloperSettingsClient() {
  * disabled version of the real panel — a greyed-out form the user cannot submit
  * is more frustrating than a plain explanation of what the tier includes.
  */
-function UpgradeNotice({ t }: { t: Translator }) {
+function UpgradeGroup({ t }: { t: Translator }) {
+  const rows: LedgerRow[] = ["gatedKeys", "gatedWebhooks", "gatedLog"].map((key) => ({
+    id: key,
+    title: t(key),
+    dim: true,
+  }));
+
   return (
-    <Card title={t("gatedTitle")} description={t("gatedDescription")}>
-      <ul className="mb-4 flex flex-col gap-2">
-        {["gatedKeys", "gatedWebhooks", "gatedLog"].map((key) => (
-          <li key={key} className="flex gap-2 text-sm text-fg-secondary">
-            <span aria-hidden className="text-accent-primary">
-              ·
-            </span>
-            {t(key)}
-          </li>
-        ))}
-      </ul>
-      <p className="text-xs text-fg-tertiary">{t("gatedFooter")}</p>
-    </Card>
+    <LedgerGroup
+      label={t("gatedTitle")}
+      hint={t("gatedDescription")}
+      note={t("gatedFooter")}
+      rows={rows}
+    />
   );
 }
 
-function KeysPanel({ t }: { t: Translator }) {
+/** The one moment a secret exists. Loud on purpose. */
+function ShowOnce({
+  title,
+  hint,
+  value,
+  footer,
+  onDismiss,
+  copyLabel,
+  copiedLabel,
+  dismissLabel,
+}: {
+  title: string;
+  hint: string;
+  value: string;
+  footer?: string;
+  onDismiss: () => void;
+  copyLabel?: string;
+  copiedLabel?: string;
+  dismissLabel: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div className="mb-3 rounded-lg border border-accent-primary/40 bg-accent-primary/[0.08] p-3">
+      <p className="text-[13px] font-semibold text-fg-primary">{title}</p>
+      <p className="mt-0.5 text-xs text-fg-tertiary">{hint}</p>
+      <div className="mt-2 flex items-center gap-2">
+        <code className="min-w-0 flex-1 overflow-x-auto rounded-md bg-bg-secondary px-2 py-1.5 font-mono text-xs text-fg-primary">
+          {value}
+        </code>
+        {copyLabel ? (
+          <button
+            type="button"
+            onClick={() => {
+              void navigator.clipboard.writeText(value);
+              setCopied(true);
+            }}
+            className="shrink-0 rounded-lg bg-accent-primary px-3 py-1.5 text-xs font-semibold text-white"
+          >
+            {copied ? (copiedLabel ?? copyLabel) : copyLabel}
+          </button>
+        ) : null}
+      </div>
+      {footer ? (
+        <p className="mt-2 font-mono text-[11px] text-fg-quaternary">{footer}</p>
+      ) : null}
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="mt-2 text-xs text-fg-tertiary underline"
+      >
+        {dismissLabel}
+      </button>
+    </div>
+  );
+}
+
+function KeysGroup({ t }: { t: Translator }) {
   const utils = api.useUtils();
+  const save = useSettingsSave();
   const [label, setLabel] = useState("");
   const [minted, setMinted] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const keys = api.integration.keys.useQuery(undefined, { retry: false });
@@ -118,46 +168,47 @@ function KeysPanel({ t }: { t: Translator }) {
 
   const rows = keys.data ?? [];
 
-  return (
-    <Card title={t("keysTitle")} description={t("keysDescription")}>
-      {minted ? (
-        <div className="mb-3 rounded-lg border border-accent-primary/40 bg-accent-primary/[0.08] p-3">
-          <p className="text-sm font-semibold text-fg-primary">
-            {t("copyNow")}
-          </p>
-          <p className="mt-0.5 text-xs text-fg-tertiary">{t("copyNowHint")}</p>
-          <div className="mt-2 flex items-center gap-2">
-            <code className="min-w-0 flex-1 overflow-x-auto rounded-md bg-bg-secondary px-2 py-1.5 font-mono text-xs text-fg-primary">
-              {minted}
-            </code>
-            <button
-              type="button"
-              onClick={() => {
-                void navigator.clipboard.writeText(minted);
-                setCopied(true);
-              }}
-              className="shrink-0 rounded-lg bg-accent-primary px-3 py-1.5 text-xs font-semibold text-white"
-            >
-              {copied ? t("copied") : t("copy")}
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setMinted(null);
-              setCopied(false);
-            }}
-            className="mt-2 text-xs text-fg-tertiary underline"
-          >
-            {t("dismiss")}
-          </button>
-        </div>
-      ) : null}
+  const createRow: LedgerRow = {
+    id: "createKey",
+    title: t("createKey"),
+    desc: error ? <LedgerError>{error}</LedgerError> : undefined,
+    descText: error ?? "",
+    control: (
+      <>
+        <LedgerInput
+          value={label}
+          onChange={setLabel}
+          ariaLabel={t("createKey")}
+          placeholder={t("keyLabelPlaceholder")}
+          maxLength={80}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && label.trim()) {
+              void save.run(() => create.mutateAsync({ label: label.trim() }));
+            }
+          }}
+        />
+        <LedgerAction
+          disabled={create.isPending || !label.trim()}
+          onClick={() => void save.run(() => create.mutateAsync({ label: label.trim() }))}
+        >
+          {create.isPending ? t("creating") : t("createKey")}
+        </LedgerAction>
+      </>
+    ),
+  };
 
-      {error ? (
-        <p className="mb-3 rounded-lg bg-error/10 px-3 py-2 text-xs text-error">
-          {error}
-        </p>
+  const list = (
+    <>
+      {minted ? (
+        <ShowOnce
+          title={t("copyNow")}
+          hint={t("copyNowHint")}
+          value={minted}
+          copyLabel={t("copy")}
+          copiedLabel={t("copied")}
+          dismissLabel={t("dismiss")}
+          onDismiss={() => setMinted(null)}
+        />
       ) : null}
 
       {keys.isLoading ? (
@@ -165,19 +216,19 @@ function KeysPanel({ t }: { t: Translator }) {
       ) : rows.length === 0 ? (
         <p className="text-sm text-fg-tertiary">{t("keysEmpty")}</p>
       ) : (
-        <ul className="mb-3 flex flex-col gap-2">
-          {rows.map((key) => (
+        <ul className="flex flex-col">
+          {rows.map((key, index) => (
             <li
               key={key.id}
               // Revoked rows are kept and dimmed rather than removed: after a
               // leak the first question is "was it used, and when did we stop
               // trusting it", and a deleted row answers neither half.
-              className={`flex items-start justify-between gap-3 rounded-lg border border-border-light bg-bg-secondary p-3 ${
-                key.revokedAt ? "opacity-60" : ""
-              }`}
+              className={`flex items-center justify-between gap-3 py-3 ${
+                index > 0 ? "border-t border-border-light" : ""
+              } ${key.revokedAt ? "opacity-60" : ""}`}
             >
               <div className="min-w-0">
-                <p className="text-sm font-medium text-fg-primary">
+                <p className="text-[13.5px] font-medium text-fg-primary">
                   {key.label}
                   {key.revokedAt ? (
                     <span className="ml-2 text-xs font-normal text-error">
@@ -195,50 +246,36 @@ function KeysPanel({ t }: { t: Translator }) {
                 </p>
               </div>
               {key.revokedAt ? null : (
-                <button
-                  type="button"
-                  onClick={() => revoke.mutate({ keyId: key.id })}
+                <LedgerAction
+                  danger
                   disabled={revoke.isPending}
-                  className="shrink-0 rounded-md px-2 py-1 text-xs text-error transition-colors hover:bg-error/10 disabled:opacity-50"
+                  onClick={() =>
+                    void save.run(() => revoke.mutateAsync({ keyId: key.id }))
+                  }
                 >
                   {t("revoke")}
-                </button>
+                </LedgerAction>
               )}
             </li>
           ))}
         </ul>
       )}
+    </>
+  );
 
-      <form
-        className="flex flex-col gap-2 sm:flex-row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const trimmed = label.trim();
-          if (!trimmed) return;
-          create.mutate({ label: trimmed });
-        }}
-      >
-        <input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          maxLength={80}
-          placeholder={t("keyLabelPlaceholder")}
-          className="flex-1 rounded-lg border border-border-medium bg-bg-elevated px-3 py-1.5 text-sm text-fg-primary"
-        />
-        <button
-          type="submit"
-          disabled={create.isPending || !label.trim()}
-          className="shrink-0 rounded-lg border border-border-medium px-3 py-1.5 text-sm font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
-        >
-          {create.isPending ? t("creating") : t("createKey")}
-        </button>
-      </form>
-    </Card>
+  return (
+    <LedgerGroup
+      label={t("keysTitle")}
+      hint={t("keysDescription")}
+      rows={[createRow]}
+      block={list}
+    />
   );
 }
 
-function WebhooksPanel({ t }: { t: Translator }) {
+function WebhooksGroup({ t }: { t: Translator }) {
   const utils = api.useUtils();
+  const save = useSettingsSave();
   const [url, setUrl] = useState("");
   const [secret, setSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -260,45 +297,55 @@ function WebhooksPanel({ t }: { t: Translator }) {
     onSuccess: invalidate,
     onError: (e) => setError(e.message),
   });
-  const remove = api.integration.deleteWebhook.useMutation({
-    onSuccess: invalidate,
-  });
+  const remove = api.integration.deleteWebhook.useMutation({ onSuccess: invalidate });
 
   const rows = hooks.data ?? [];
 
-  return (
-    <Card title={t("hooksTitle")} description={t("hooksDescription")}>
-      {secret ? (
-        <div className="mb-3 rounded-lg border border-accent-primary/40 bg-accent-primary/[0.08] p-3">
-          <p className="text-sm font-semibold text-fg-primary">
-            {t("secretNow")}
-          </p>
-          {/*
-            The receiver needs the recipe as well as the value. Publishing it next
-            to the secret is the difference between a verified webhook and a
-            signature header nobody checks.
-          */}
-          <p className="mt-0.5 text-xs text-fg-tertiary">{t("secretHint")}</p>
-          <code className="mt-2 block overflow-x-auto rounded-md bg-bg-secondary px-2 py-1.5 font-mono text-xs text-fg-primary">
-            {secret}
-          </code>
-          <p className="mt-2 font-mono text-[11px] text-fg-quaternary">
-            X-Kairos-Signature: sha256=HMAC_SHA256(secret, timestamp + &quot;.&quot; + body)
-          </p>
-          <button
-            type="button"
-            onClick={() => setSecret(null)}
-            className="mt-2 text-xs text-fg-tertiary underline"
-          >
-            {t("dismiss")}
-          </button>
-        </div>
-      ) : null}
+  const addRow: LedgerRow = {
+    id: "addWebhook",
+    title: t("addWebhook"),
+    desc: error ? <LedgerError>{error}</LedgerError> : t("hooksUrlRule"),
+    descText: t("hooksUrlRule"),
+    control: (
+      <>
+        <LedgerInput
+          value={url}
+          onChange={setUrl}
+          ariaLabel={t("addWebhook")}
+          placeholder="https://hooks.example.com/kairos"
+          maxLength={2000}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && url.trim()) {
+              void save.run(() => create.mutateAsync({ url: url.trim(), events: [] }));
+            }
+          }}
+        />
+        <LedgerAction
+          disabled={create.isPending || !url.trim()}
+          onClick={() =>
+            void save.run(() => create.mutateAsync({ url: url.trim(), events: [] }))
+          }
+        >
+          {create.isPending ? t("creating") : t("addWebhook")}
+        </LedgerAction>
+      </>
+    ),
+  };
 
-      {error ? (
-        <p className="mb-3 rounded-lg bg-error/10 px-3 py-2 text-xs text-error">
-          {error}
-        </p>
+  const list = (
+    <>
+      {secret ? (
+        <ShowOnce
+          title={t("secretNow")}
+          // The receiver needs the recipe as well as the value. Publishing it
+          // next to the secret is the difference between a verified webhook and
+          // a signature header nobody checks.
+          hint={t("secretHint")}
+          value={secret}
+          footer='X-Kairos-Signature: sha256=HMAC_SHA256(secret, timestamp + "." + body)'
+          dismissLabel={t("dismiss")}
+          onDismiss={() => setSecret(null)}
+        />
       ) : null}
 
       {hooks.isLoading ? (
@@ -306,15 +353,15 @@ function WebhooksPanel({ t }: { t: Translator }) {
       ) : rows.length === 0 ? (
         <p className="text-sm text-fg-tertiary">{t("hooksEmpty")}</p>
       ) : (
-        <ul className="mb-3 flex flex-col gap-2">
-          {rows.map((hook) => (
+        <ul className="flex flex-col">
+          {rows.map((hook, index) => (
             <li
               key={hook.id}
-              className="rounded-lg border border-border-light bg-bg-secondary p-3"
+              className={`py-3 ${index > 0 ? "border-t border-border-light" : ""}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-fg-primary">
+                  <p className="truncate text-[13.5px] font-medium text-fg-primary">
                     {hook.url}
                   </p>
                   <p className="mt-0.5 text-xs text-fg-quaternary">
@@ -332,34 +379,31 @@ function WebhooksPanel({ t }: { t: Translator }) {
                     </p>
                   ) : null}
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      update.mutate({ id: hook.id, enabled: !hook.enabled })
-                    }
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <LedgerAction
                     disabled={update.isPending}
-                    className="rounded-md border border-border-medium px-2 py-1 text-xs text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
+                    onClick={() =>
+                      void save.run(() =>
+                        update.mutateAsync({ id: hook.id, enabled: !hook.enabled }),
+                      )
+                    }
                   >
                     {hook.enabled ? t("disable") : t("enable")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLogFor(logFor === hook.id ? null : hook.id)
-                    }
-                    className="rounded-md border border-border-medium px-2 py-1 text-xs text-fg-primary transition-colors hover:bg-bg-tertiary"
+                  </LedgerAction>
+                  <LedgerAction
+                    onClick={() => setLogFor(logFor === hook.id ? null : hook.id)}
                   >
                     {t("log")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => remove.mutate({ id: hook.id })}
+                  </LedgerAction>
+                  <LedgerAction
+                    danger
                     disabled={remove.isPending}
-                    className="rounded-md px-2 py-1 text-xs text-error transition-colors hover:bg-error/10 disabled:opacity-50"
+                    onClick={() =>
+                      void save.run(() => remove.mutateAsync({ id: hook.id }))
+                    }
                   >
                     {t("delete")}
-                  </button>
+                  </LedgerAction>
                 </div>
               </div>
 
@@ -368,33 +412,16 @@ function WebhooksPanel({ t }: { t: Translator }) {
           ))}
         </ul>
       )}
+    </>
+  );
 
-      <form
-        className="flex flex-col gap-2 sm:flex-row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const trimmed = url.trim();
-          if (!trimmed) return;
-          create.mutate({ url: trimmed, events: [] });
-        }}
-      >
-        <input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          maxLength={2000}
-          placeholder="https://hooks.example.com/kairos"
-          className="flex-1 rounded-lg border border-border-medium bg-bg-elevated px-3 py-1.5 text-sm text-fg-primary"
-        />
-        <button
-          type="submit"
-          disabled={create.isPending || !url.trim()}
-          className="shrink-0 rounded-lg border border-border-medium px-3 py-1.5 text-sm font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
-        >
-          {create.isPending ? t("creating") : t("addWebhook")}
-        </button>
-      </form>
-      <p className="mt-2 text-xs text-fg-tertiary">{t("hooksUrlRule")}</p>
-    </Card>
+  return (
+    <LedgerGroup
+      label={t("hooksTitle")}
+      hint={t("hooksDescription")}
+      rows={[addRow]}
+      block={list}
+    />
   );
 }
 
@@ -424,9 +451,7 @@ function DeliveryLog({ id, t }: { id: number; t: Translator }) {
     <ul className="mt-2 flex flex-col gap-1 border-t border-border-light pt-2">
       {rows.map((row) => (
         <li key={row.id} className="flex items-baseline gap-2 text-xs">
-          <span
-            className={`font-mono ${row.ok ? "text-fg-secondary" : "text-error"}`}
-          >
+          <span className={`font-mono ${row.ok ? "text-fg-secondary" : "text-error"}`}>
             {row.statusCode ?? t("noResponse")}
           </span>
           <span className="min-w-0 flex-1 truncate text-fg-tertiary">

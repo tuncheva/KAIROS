@@ -215,7 +215,11 @@
       "fullName": "Vollständiger Name",
       "namePlaceholder": "Geben Sie Ihren vollständigen Namen ein",
       "emailAddress": "E-Mail-Adresse",
-      "bio": "Biografie"
+      "bio": "Biografie",
+      "groupIdentity": "Identität",
+      "groupIdentityHint": "Für alle in deinen Workspaces sichtbar.",
+      "groupAccount": "Konto",
+      "groupAccountHint": "Schreibgeschützte Angaben zu diesem Konto."
     },
     "notifications": {
       "title": "Benachrichtigungseinstellungen",
@@ -280,7 +284,11 @@
       "export_markdown": "Alles (Markdown)",
       "export_ics": "Kalender (ICS)",
       "deleteAccount": "Konto löschen",
-      "deleteConfirm": "Dadurch werden Ihr Konto und Ihre Daten dauerhaft gelöscht. Fortfahren?"
+      "deleteConfirm": "Dadurch werden Ihr Konto und Ihre Daten dauerhaft gelöscht. Fortfahren?",
+      "groupNotes": "Notizen",
+      "groupNotesHint": "Gilt nur für gesperrte Notizen.",
+      "groupData": "Deine Daten",
+      "groupDataHint": "Mach eine Kopie, bevor du etwas löschst."
     },
     "language": {
       "title": "Sprache und Region",
@@ -291,7 +299,14 @@
       "save": "Einstellungen speichern",
       "expand": "Sprachliste erweitern",
       "collapse": "Sprachliste reduzieren",
-      "applying": "Sprachänderungen werden angewendet..."
+      "applying": "Sprachänderungen werden angewendet...",
+      "groupLanguage": "Sprache",
+      "groupLanguageHint": "Bulgarisch und Englisch sind vollständig übersetzt.",
+      "groupRegion": "Region",
+      "groupRegionHint": "Wird für Erinnerungen und Fälligkeiten verwendet.",
+      "timezoneSuggestTitle": "Vorgeschlagene Zeitzone",
+      "timezoneSuggestDesc": "Dein Konto steht noch auf UTC — der Standardwert, keine Entscheidung. Dein Browser meldet {zone}.",
+      "timezoneSuggestAction": "{zone} verwenden"
     },
     "appearance": {
       "title": "Erscheinungsbild",
@@ -404,7 +419,9 @@
       "calendarCancelled": "Verbindung abgebrochen.",
       "calendarFailed": "Kalender konnte nicht verbunden werden. Bitte erneut versuchen.",
       "calendarNoRefresh": "Google hat keinen dauerhaften Zugriff gewährt. Verbinden Sie erneut und bestätigen Sie alle angefragten Berechtigungen.",
-      "dismiss": "Schließen"
+      "dismiss": "Schließen",
+      "calendarGroup": "Kalender",
+      "calendarGroupHint": "Meeting-Vorbereitung läuft ohne verbundenen Kalender ins Leere."
     },
     "developer": {
       "title": "Entwickler",
@@ -449,7 +466,15 @@
       "noResponse": "keine Antwort",
       "delete": "Löschen",
       "loading": "Wird geladen…"
-    }
+    },
+    "filterPlaceholder": "Einstellungen filtern",
+    "filterCrumb": "Suche",
+    "filterTitle": "Filterergebnisse",
+    "filterSubtitle": "Passende Zeilen aus allen Bereichen.",
+    "filterEmpty": "Nichts passt zu diesem Filter.",
+    "saveSaving": "Wird gespeichert",
+    "saveSaved": "Alle Änderungen gespeichert",
+    "saveFailed": "Speichern fehlgeschlagen"
   },
   "create": {
     "title": "Arbeitsbereich",

@@ -12,6 +12,19 @@ import { CalendarConnectionPanel } from "./CalendarConnectionPanel";
 import { CustomSchedulesPanel } from "./CustomSchedulesPanel";
 import { api } from "~/trpc/react";
 
+import {
+  LedgerAction,
+  LedgerGroup,
+  LedgerInput,
+  LedgerSection,
+  LedgerSelect,
+  LedgerToggle,
+  LedgerValue,
+  useSectionCrumb,
+  useSettingsSave,
+  type LedgerRow,
+} from "./ledger/Ledger";
+
 /**
  * Settings → AI.
  *
@@ -65,14 +78,8 @@ function nextRuleKey(existing: string[]): string {
 const SCHEDULE_LABELS = {
   daily_brief: { title: "dailyBriefTitle", description: "dailyBriefDescription" },
   risk_radar: { title: "riskRadarTitle", description: "riskRadarDescription" },
-  weekly_retro: {
-    title: "weeklyRetroTitle",
-    description: "weeklyRetroDescription",
-  },
-  meeting_prep: {
-    title: "meetingPrepTitle",
-    description: "meetingPrepDescription",
-  },
+  weekly_retro: { title: "weeklyRetroTitle", description: "weeklyRetroDescription" },
+  meeting_prep: { title: "meetingPrepTitle", description: "meetingPrepDescription" },
 } as const;
 
 /** Sunday-first, matching `Date.getDay` and the stored `dayOfWeek`. */
@@ -86,60 +93,12 @@ const WEEKDAY_KEYS = [
   "saturday",
 ] as const;
 
-function Card({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-xl border border-border-light bg-bg-elevated p-5">
-      <h3 className="text-base font-semibold text-fg-primary">{title}</h3>
-      <p className="mt-1 text-sm text-fg-secondary">{description}</p>
-      <div className="mt-4">{children}</div>
-    </section>
-  );
-}
-
-function Toggle({
-  checked,
-  onChange,
-  disabled,
-  label,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-  disabled?: boolean;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 disabled:opacity-50 ${
-        checked ? "bg-accent-primary" : "bg-border-strong"
-      }`}
-    >
-      <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-          checked ? "translate-x-5" : "translate-x-0.5"
-        }`}
-      />
-    </button>
-  );
-}
-
 export function AiSettingsClient() {
   const useT = useTranslations as unknown as (ns: string) => Translator;
   const t = useT("settings.ai");
   const tAgents = useT("agents");
+  const crumb = useSectionCrumb("ai");
+  const save = useSettingsSave();
 
   const utils = api.useUtils();
   const [previewMessage, setPreviewMessage] = useState<string | null>(null);
@@ -157,7 +116,7 @@ export function AiSettingsClient() {
   const stats = api.agent.findingStats.useQuery(undefined, { retry: false });
 
   // Rules and facts share a table and a delete path but are two different things
-  // to a reader, so they are two different cards. Listing a rule among the facts
+  // to a reader, so they are two different groups. Listing a rule among the facts
   // labelled "instruction" would show the storage detail and hide the meaning.
   const allMemory = memory.data ?? [];
   const rules = allMemory.filter((f) => f.scope === INSTRUCTION_SCOPE);
@@ -183,351 +142,364 @@ export function AiSettingsClient() {
   });
 
   const quota = metrics.data?.quota;
+  const timeZone = schedules.data?.[0]?.timeZone;
+
+  const scheduleRows: LedgerRow[] = (schedules.data ?? []).map((schedule) => ({
+    id: schedule.kind,
+    title: t(SCHEDULE_LABELS[schedule.kind].title),
+    desc: schedule.lastError
+      ? t("lastFailed", { error: schedule.lastError })
+      : t(SCHEDULE_LABELS[schedule.kind].description),
+    descText: t(SCHEDULE_LABELS[schedule.kind].description),
+    control: (
+      <>
+        {/* Meeting prep has no hour or day to choose: it fires relative to
+            whatever is next on the calendar. Offering pickers would imply a
+            control that does not exist. */}
+        {schedule.kind === "meeting_prep" ? (
+          <LedgerValue tone="dim">{t("meetingPrepTiming")}</LedgerValue>
+        ) : null}
+
+        {/* Only weekly kinds get a day. Rendering a disabled "every day" option
+            for the daily ones would imply they could be changed. */}
+        {schedule.kind !== "meeting_prep" && schedule.dayOfWeek !== null ? (
+          <LedgerSelect
+            width="w-[130px]"
+            value={schedule.dayOfWeek}
+            ariaLabel={t("onDay")}
+            disabled={!schedule.enabled || setSchedule.isPending}
+            onChange={(next) =>
+              void save.run(() =>
+                setSchedule.mutateAsync({
+                  kind: schedule.kind,
+                  enabled: schedule.enabled,
+                  dayOfWeek: Number(next),
+                }),
+              )
+            }
+            options={WEEKDAY_KEYS.map((key, index) => ({ value: index, label: t(key) }))}
+          />
+        ) : null}
+
+        {schedule.kind === "meeting_prep" ? null : (
+          <LedgerSelect
+            width="w-[90px]"
+            value={schedule.hourLocal}
+            ariaLabel={t("atHour")}
+            disabled={!schedule.enabled || setSchedule.isPending}
+            onChange={(next) =>
+              void save.run(() =>
+                setSchedule.mutateAsync({
+                  kind: schedule.kind,
+                  enabled: schedule.enabled,
+                  hourLocal: Number(next),
+                }),
+              )
+            }
+            options={HOURS.map((h) => ({
+              value: h,
+              label: `${String(h).padStart(2, "0")}:00`,
+            }))}
+          />
+        )}
+
+        <LedgerSelect
+          width="w-[120px]"
+          value={schedule.channel}
+          ariaLabel={t("deliverTo")}
+          disabled={!schedule.enabled || setSchedule.isPending}
+          onChange={(next) =>
+            void save.run(() =>
+              setSchedule.mutateAsync({
+                kind: schedule.kind,
+                enabled: schedule.enabled,
+                channel: next as "app" | "email" | "both",
+              }),
+            )
+          }
+          options={[
+            { value: "app", label: t("channelApp") },
+            { value: "email", label: t("channelEmail") },
+            { value: "both", label: t("channelBoth") },
+          ]}
+        />
+
+        <LedgerToggle
+          checked={schedule.enabled}
+          disabled={setSchedule.isPending}
+          label={t("enableToggle")}
+          onChange={(next) =>
+            void save.run(() =>
+              setSchedule.mutateAsync({
+                kind: schedule.kind,
+                enabled: next,
+                hourLocal: schedule.hourLocal,
+              }),
+            )
+          }
+        />
+      </>
+    ),
+  }));
+
+  scheduleRows.push({
+    id: "previewBrief",
+    title: t("previewBrief"),
+    desc: previewMessage ?? undefined,
+    control: (
+      <LedgerAction disabled={preview.isPending} onClick={() => preview.mutate()}>
+        {preview.isPending ? t("sending") : t("previewBrief")}
+      </LedgerAction>
+    ),
+  });
+
+  const ruleRows: LedgerRow[] =
+    rules.length >= MAX_INSTRUCTIONS
+      ? [
+          {
+            id: "ruleLimit",
+            title: t("ruleLimit", { max: MAX_INSTRUCTIONS }),
+            dim: true,
+          },
+        ]
+      : [
+          {
+            id: "addRule",
+            title: t("addRule"),
+            control: (
+              <>
+                <LedgerInput
+                  value={draftRule}
+                  onChange={setDraftRule}
+                  ariaLabel={t("addRule")}
+                  placeholder={t("rulePlaceholder")}
+                  maxLength={RULE_MAX_CHARS}
+                  disabled={addRule.isPending}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && draftRule.trim().length >= 2) {
+                      void save.run(() =>
+                        addRule.mutateAsync({
+                          key: nextRuleKey(rules.map((r) => r.key)),
+                          value: draftRule.trim(),
+                          scope: INSTRUCTION_SCOPE,
+                        }),
+                      );
+                    }
+                  }}
+                />
+                <LedgerAction
+                  disabled={addRule.isPending || draftRule.trim().length < 2}
+                  onClick={() =>
+                    void save.run(() =>
+                      addRule.mutateAsync({
+                        key: nextRuleKey(rules.map((r) => r.key)),
+                        value: draftRule.trim(),
+                        scope: INSTRUCTION_SCOPE,
+                      }),
+                    )
+                  }
+                >
+                  {addRule.isPending ? t("sending") : t("addRule")}
+                </LedgerAction>
+              </>
+            ),
+          },
+        ];
+
+  const usageRows: LedgerRow[] = [
+    {
+      id: "quotaInteractive",
+      title: t("quotaRemaining"),
+      control: (
+        <LedgerValue mono>
+          {quota ? `${quota.interactive.remaining}/${quota.interactive.limit}` : "—"}
+        </LedgerValue>
+      ),
+    },
+    {
+      id: "quotaSystem",
+      title: t("quotaSystem"),
+      control: (
+        <LedgerValue mono>
+          {quota ? `${quota.system.remaining}/${quota.system.limit}` : "—"}
+        </LedgerValue>
+      ),
+    },
+    {
+      id: "tokens30d",
+      title: t("tokens30d"),
+      control: (
+        <LedgerValue mono>
+          {metrics.data ? metrics.data.window.totalTokens.toLocaleString() : "—"}
+        </LedgerValue>
+      ),
+    },
+    {
+      id: "dismissalRate",
+      title: t("dismissalRate"),
+      control: (
+        <LedgerValue mono>{stats.data ? `${stats.data.dismissalRate}%` : "—"}</LedgerValue>
+      ),
+    },
+  ];
 
   return (
-    <div className="flex flex-col gap-4 p-6">
-      <header>
-        <h2 className="text-xl font-semibold text-fg-primary">{t("title")}</h2>
-        <p className="mt-1 text-sm text-fg-secondary">{t("subtitle")}</p>
-      </header>
-
+    <LedgerSection sectionId="ai" crumb={crumb} title={t("title")} subtitle={t("subtitle")}>
       {/* Calendar first: meeting prep below is inert without one, and a user who
           enables it should be able to see why nothing arrives. */}
-      <CalendarConnectionPanel />
+      <LedgerGroup
+        label={t("calendarGroup")}
+        hint={t("calendarGroupHint")}
+        block={<CalendarConnectionPanel />}
+      />
 
-      {/* ---- Proactive ---------------------------------------------------- */}
-      <Card title={t("proactiveTitle")} description={t("proactiveDescription")}>
-        <div className="flex flex-col gap-4">
-          {(schedules.data ?? []).map((schedule) => (
-            <div
-              key={schedule.kind}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-light bg-bg-secondary p-3"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-fg-primary">
-                  {t(SCHEDULE_LABELS[schedule.kind].title)}
-                </p>
-                <p className="text-xs text-fg-tertiary">
-                  {t(SCHEDULE_LABELS[schedule.kind].description)}
-                </p>
-                {schedule.lastError ? (
-                  <p className="mt-1 text-xs text-error">
-                    {t("lastFailed", { error: schedule.lastError })}
-                  </p>
-                ) : null}
-              </div>
+      <LedgerGroup
+        label={t("proactiveTitle")}
+        hint={t("proactiveDescription")}
+        rows={scheduleRows}
+        // Stated once rather than per row: the hour selects above are meaningless
+        // without it, and the label used to read "UTC" — which was accurate about
+        // the old behaviour and wrong about the user's morning.
+        note={timeZone ? t("timeZoneHint", { zone: timeZone }) : undefined}
+        // Saved questions, under the built-ins they extend.
+        block={timeZone ? <CustomSchedulesPanel timeZone={timeZone} /> : undefined}
+      />
 
-              <div className="flex items-center gap-3">
-                {/* Meeting prep has no hour or day to choose: it fires relative
-                    to whatever is next on the calendar. Offering pickers would
-                    imply a control that does not exist. */}
-                {schedule.kind === "meeting_prep" ? (
-                  <span className="text-xs text-fg-tertiary">
-                    {t("meetingPrepTiming")}
-                  </span>
-                ) : null}
-
-                {/* Only weekly kinds get a day. Rendering a disabled "every day"
-                    option for the daily ones would imply they could be changed. */}
-                {schedule.kind !== "meeting_prep" && schedule.dayOfWeek !== null ? (
-                  <label className="flex items-center gap-2 text-xs text-fg-secondary">
-                    {t("onDay")}
-                    <select
-                      value={schedule.dayOfWeek}
-                      disabled={!schedule.enabled || setSchedule.isPending}
-                      onChange={(e) =>
-                        setSchedule.mutate({
-                          kind: schedule.kind,
-                          enabled: schedule.enabled,
-                          dayOfWeek: Number(e.target.value),
-                        })
-                      }
-                      className="rounded-md border border-border-medium bg-bg-elevated px-2 py-1 text-xs text-fg-primary disabled:opacity-50"
-                    >
-                      {WEEKDAY_KEYS.map((key, index) => (
-                        <option key={key} value={index}>
-                          {t(key)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
-
-                <label className="flex items-center gap-2 text-xs text-fg-secondary">
-                  {t("deliverTo")}
-                  <select
-                    value={schedule.channel}
-                    disabled={!schedule.enabled || setSchedule.isPending}
-                    onChange={(e) =>
-                      setSchedule.mutate({
-                        kind: schedule.kind,
-                        enabled: schedule.enabled,
-                        channel: e.target.value as "app" | "email" | "both",
-                      })
-                    }
-                    className="rounded-md border border-border-medium bg-bg-elevated px-2 py-1 text-xs text-fg-primary disabled:opacity-50"
-                  >
-                    <option value="app">{t("channelApp")}</option>
-                    <option value="email">{t("channelEmail")}</option>
-                    <option value="both">{t("channelBoth")}</option>
-                  </select>
-                </label>
-
-                {schedule.kind === "meeting_prep" ? null : (
-                <label className="flex items-center gap-2 text-xs text-fg-secondary">
-                  {t("atHour")}
-                  <select
-                    value={schedule.hourLocal}
-                    disabled={!schedule.enabled || setSchedule.isPending}
-                    onChange={(e) =>
-                      setSchedule.mutate({
-                        kind: schedule.kind,
-                        enabled: schedule.enabled,
-                        hourLocal: Number(e.target.value),
-                      })
-                    }
-                    className="rounded-md border border-border-medium bg-bg-elevated px-2 py-1 text-xs text-fg-primary disabled:opacity-50"
-                  >
-                    {HOURS.map((h) => (
-                      <option key={h} value={h}>
-                        {String(h).padStart(2, "0")}:00
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                )}
-
-                <Toggle
-                  checked={schedule.enabled}
-                  disabled={setSchedule.isPending}
-                  label={t("enableToggle")}
-                  onChange={(next) =>
-                    setSchedule.mutate({
-                      kind: schedule.kind,
-                      enabled: next,
-                      hourLocal: schedule.hourLocal,
-                    })
-                  }
-                />
-              </div>
-            </div>
-          ))}
-
-          {/* Saved questions, under the built-ins they extend. */}
-          {schedules.data?.[0] ? (
-            <CustomSchedulesPanel timeZone={schedules.data[0].timeZone} />
-          ) : null}
-
-          {/* Stated once rather than per row: the hour selects above are
-              meaningless without it, and the label used to read "UTC" — which
-              was accurate about the old behaviour and wrong about the user's
-              morning. */}
-          {schedules.data?.[0] ? (
-            <p className="text-xs text-fg-tertiary">
-              {t("timeZoneHint", { zone: schedules.data[0].timeZone })}
-            </p>
-          ) : null}
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => preview.mutate()}
-              disabled={preview.isPending}
-              className="rounded-lg border border-border-medium px-3 py-1.5 text-sm text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
-            >
-              {preview.isPending ? t("sending") : t("previewBrief")}
-            </button>
-            {previewMessage ? (
-              <p className="text-xs text-fg-secondary">{previewMessage}</p>
-            ) : null}
-          </div>
-        </div>
-      </Card>
-
-      {/* ---- Standing rules ----------------------------------------------- */}
-      <Card title={t("rulesTitle")} description={t("rulesDescription")}>
-        <div className="flex flex-col gap-3">
-          {rules.length ? (
-            <div className="flex flex-col gap-2">
-              {rules.map((rule) => (
-                <div
+      <LedgerGroup
+        label={t("rulesTitle")}
+        hint={t("rulesDescription")}
+        rows={ruleRows}
+        // Said plainly, because the alternative is a user wondering why the
+        // assistant will not write a rule they asked it for.
+        note={t("rulesOnlyYou")}
+        block={
+          rules.length ? (
+            <ul className="flex flex-col">
+              {rules.map((rule, index) => (
+                <li
                   key={rule.id}
-                  className="flex items-start justify-between gap-3 rounded-lg border border-border-light bg-bg-secondary p-3"
+                  className={`flex items-start justify-between gap-3 py-3 ${
+                    index > 0 ? "border-t border-border-light" : ""
+                  }`}
                 >
-                  <p className="min-w-0 text-sm text-fg-primary">{rule.value}</p>
-                  <button
-                    type="button"
-                    onClick={() => forget.mutate({ id: rule.id })}
+                  <p className="min-w-0 text-[13.5px] text-fg-primary">{rule.value}</p>
+                  <LedgerAction
+                    danger
                     disabled={forget.isPending}
-                    className="shrink-0 rounded-md px-2 py-1 text-xs text-error transition-colors hover:bg-error/10 disabled:opacity-50"
+                    onClick={() =>
+                      void save.run(() => forget.mutateAsync({ id: rule.id }))
+                    }
                   >
                     {t("removeRule")}
-                  </button>
-                </div>
+                  </LedgerAction>
+                </li>
               ))}
-            </div>
+            </ul>
           ) : (
             <p className="text-sm text-fg-tertiary">{t("rulesEmpty")}</p>
-          )}
+          )
+        }
+      />
 
-          {rules.length >= MAX_INSTRUCTIONS ? (
-            <p className="text-xs text-fg-tertiary">
-              {t("ruleLimit", { max: MAX_INSTRUCTIONS })}
-            </p>
+      <LedgerGroup
+        label={t("memoryTitle")}
+        hint={t("memoryDescription")}
+        block={
+          memory.isLoading ? (
+            <p className="text-sm text-fg-tertiary">{t("loading")}</p>
+          ) : facts.length === 0 ? (
+            <p className="text-sm text-fg-tertiary">{t("memoryEmpty")}</p>
           ) : (
-            <form
-              className="flex flex-col gap-2 sm:flex-row"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const value = draftRule.trim();
-                if (value.length < 2) return;
-                addRule.mutate({
-                  key: nextRuleKey(rules.map((r) => r.key)),
-                  value,
-                  scope: INSTRUCTION_SCOPE,
-                });
-              }}
-            >
-              <input
-                value={draftRule}
-                onChange={(e) => setDraftRule(e.target.value)}
-                maxLength={RULE_MAX_CHARS}
-                placeholder={t("rulePlaceholder")}
-                disabled={addRule.isPending}
-                className="flex-1 rounded-md border border-border-medium bg-bg-elevated px-3 py-1.5 text-sm text-fg-primary disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={addRule.isPending || draftRule.trim().length < 2}
-                className="shrink-0 rounded-lg border border-border-medium px-3 py-1.5 text-sm text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
-              >
-                {addRule.isPending ? t("sending") : t("addRule")}
-              </button>
-            </form>
-          )}
-
-          {/* Said plainly, because the alternative is a user wondering why the
-              assistant will not write a rule they asked it for. */}
-          <p className="text-xs text-fg-quaternary">{t("rulesOnlyYou")}</p>
-        </div>
-      </Card>
-
-      {/* ---- Memory ------------------------------------------------------- */}
-      <Card title={t("memoryTitle")} description={t("memoryDescription")}>
-        {memory.isLoading ? (
-          <p className="text-sm text-fg-tertiary">{t("loading")}</p>
-        ) : facts.length === 0 ? (
-          <p className="text-sm text-fg-tertiary">{t("memoryEmpty")}</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {facts.map((fact) => (
-              <div
-                key={fact.id}
-                className="flex items-start justify-between gap-3 rounded-lg border border-border-light bg-bg-secondary p-3"
-              >
-                <div className="min-w-0">
-                  {/* The value verbatim: paraphrasing what it remembers would
-                      defeat the point of showing it. */}
-                  <p className="text-sm text-fg-primary">{fact.value}</p>
-                  <p className="mt-0.5 text-xs text-fg-quaternary">
-                    {/* Which agent this applies to. A fact scoped to one agent
-                        reads as a general rule without this, and a user cannot
-                        correct a scope they cannot see. */}
-                    <span>
-                      {fact.scope === GLOBAL_SCOPE
-                        ? tAgents("scopeGlobal")
-                        : (agents.data?.find((a) => a.id === fact.scope)?.name ??
-                          fact.scope)}
-                    </span>
-                    <span className="px-1">·</span>
-                    <span className="font-mono">{fact.key}</span>
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => forget.mutate({ id: fact.id })}
-                  disabled={forget.isPending}
-                  className="shrink-0 rounded-md px-2 py-1 text-xs text-error transition-colors hover:bg-error/10 disabled:opacity-50"
-                >
-                  {t("forget")}
-                </button>
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={() => clearAll.mutate()}
-              disabled={clearAll.isPending}
-              className="self-start rounded-lg border border-border-medium px-3 py-1.5 text-sm text-error transition-colors hover:bg-error/10 disabled:opacity-50"
-            >
-              {t("forgetEverything")}
-            </button>
-          </div>
-        )}
-      </Card>
-
-      {/* ---- Usage -------------------------------------------------------- */}
-      <Card title={t("usageTitle")} description={t("usageDescription")}>
-        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-lg border border-border-light bg-bg-secondary p-3">
-            <dt className="text-xs text-fg-tertiary">{t("quotaRemaining")}</dt>
-            <dd className="mt-1 text-lg font-semibold tabular-nums text-fg-primary">
-              {quota ? `${quota.interactive.remaining}/${quota.interactive.limit}` : "—"}
-            </dd>
-          </div>
-          <div className="rounded-lg border border-border-light bg-bg-secondary p-3">
-            <dt className="text-xs text-fg-tertiary">{t("quotaSystem")}</dt>
-            <dd className="mt-1 text-lg font-semibold tabular-nums text-fg-primary">
-              {quota ? `${quota.system.remaining}/${quota.system.limit}` : "—"}
-            </dd>
-          </div>
-          <div className="rounded-lg border border-border-light bg-bg-secondary p-3">
-            <dt className="text-xs text-fg-tertiary">{t("tokens30d")}</dt>
-            <dd className="mt-1 text-lg font-semibold tabular-nums text-fg-primary">
-              {metrics.data
-                ? metrics.data.window.totalTokens.toLocaleString()
-                : "—"}
-            </dd>
-          </div>
-          <div className="rounded-lg border border-border-light bg-bg-secondary p-3">
-            <dt className="text-xs text-fg-tertiary">{t("dismissalRate")}</dt>
-            <dd className="mt-1 text-lg font-semibold tabular-nums text-fg-primary">
-              {stats.data ? `${stats.data.dismissalRate}%` : "—"}
-            </dd>
-          </div>
-        </dl>
-
-        {(metrics.data?.latencyByAgent.length ?? 0) > 0 ? (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[24rem] text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-fg-quaternary">
-                  <th className="pb-2 font-medium">{t("agent")}</th>
-                  <th className="pb-2 text-right font-medium">p50</th>
-                  <th className="pb-2 text-right font-medium">p95</th>
-                  <th className="pb-2 text-right font-medium">{t("samples")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {metrics.data?.latencyByAgent.map((row) => (
-                  <tr key={row.agentId} className="border-t border-border-light">
-                    <td className="py-1.5 text-fg-secondary">{row.agentId}</td>
-                    <td className="py-1.5 text-right tabular-nums text-fg-primary">
-                      {(row.p50Ms / 1000).toFixed(1)}s
-                    </td>
-                    <td className="py-1.5 text-right tabular-nums text-fg-primary">
-                      {(row.p95Ms / 1000).toFixed(1)}s
-                    </td>
-                    <td className="py-1.5 text-right tabular-nums text-fg-tertiary">
-                      {row.samples}
-                    </td>
-                  </tr>
+            <div className="flex flex-col gap-3">
+              <ul className="flex flex-col">
+                {facts.map((fact, index) => (
+                  <li
+                    key={fact.id}
+                    className={`flex items-start justify-between gap-3 py-3 ${
+                      index > 0 ? "border-t border-border-light" : ""
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      {/* The value verbatim: paraphrasing what it remembers
+                          would defeat the point of showing it. */}
+                      <p className="text-[13.5px] text-fg-primary">{fact.value}</p>
+                      <p className="mt-0.5 text-xs text-fg-quaternary">
+                        {/* Which agent this applies to. A fact scoped to one
+                            agent reads as a general rule without this, and a
+                            user cannot correct a scope they cannot see. */}
+                        <span>
+                          {fact.scope === GLOBAL_SCOPE
+                            ? tAgents("scopeGlobal")
+                            : (agents.data?.find((a) => a.id === fact.scope)?.name ??
+                              fact.scope)}
+                        </span>
+                        <span className="px-1">·</span>
+                        <span className="font-mono">{fact.key}</span>
+                      </p>
+                    </div>
+                    <LedgerAction
+                      danger
+                      disabled={forget.isPending}
+                      onClick={() =>
+                        void save.run(() => forget.mutateAsync({ id: fact.id }))
+                      }
+                    >
+                      {t("forget")}
+                    </LedgerAction>
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-      </Card>
-    </div>
+              </ul>
+              <div>
+                <LedgerAction
+                  danger
+                  disabled={clearAll.isPending}
+                  onClick={() => void save.run(() => clearAll.mutateAsync())}
+                >
+                  {t("forgetEverything")}
+                </LedgerAction>
+              </div>
+            </div>
+          )
+        }
+      />
+
+      <LedgerGroup
+        label={t("usageTitle")}
+        hint={t("usageDescription")}
+        rows={usageRows}
+        block={
+          (metrics.data?.latencyByAgent.length ?? 0) > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[24rem] text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-fg-quaternary">
+                    <th className="pb-2 font-medium">{t("agent")}</th>
+                    <th className="pb-2 text-right font-medium">p50</th>
+                    <th className="pb-2 text-right font-medium">p95</th>
+                    <th className="pb-2 text-right font-medium">{t("samples")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.data?.latencyByAgent.map((row) => (
+                    <tr key={row.agentId} className="border-t border-border-light">
+                      <td className="py-1.5 text-fg-secondary">{row.agentId}</td>
+                      <td className="py-1.5 text-right tabular-nums text-fg-primary">
+                        {(row.p50Ms / 1000).toFixed(1)}s
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums text-fg-primary">
+                        {(row.p95Ms / 1000).toFixed(1)}s
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums text-fg-tertiary">
+                        {row.samples}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : undefined
+        }
+      />
+    </LedgerSection>
   );
 }

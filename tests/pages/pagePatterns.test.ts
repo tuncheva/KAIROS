@@ -90,18 +90,20 @@ describe("Progress Page", () => {
 describe("Settings Page", () => {
   const page = readPage("(app)/settings/page.tsx");
 
-  it("is a server component that delegates to client components", () => {
-    expect(page).toContain("ProfileSettingsClient");
+  it("has authentication guard", () => {
+    expect(page).toMatch(/auth|session|redirect/i);
   });
 
-  it("renders SettingsNav", () => {
-    expect(page).toContain("SettingsNav");
+  it("is a server component that delegates to the client workspace", () => {
+    expect(page).toContain("SettingsWorkspace");
   });
 
-  it("renders multiple settings sections", () => {
-    expect(page).toContain("ProfileSettingsClient");
-    expect(page).toContain("SecuritySettingsClient");
-    expect(page).toContain("NotificationSettingsClient");
+  it("renders SideNav", () => {
+    expect(page).toContain("SideNav");
+  });
+
+  it("validates the section query parameter", () => {
+    expect(page).toContain("isSettingsSection");
   });
 });
 
