@@ -75,6 +75,90 @@ function useEntrance(active: boolean): number {
   return active ? progress : 0;
 }
 
+/**
+ * Tweens a number toward its latest target. The entrance handles first paint,
+ * so this starts settled and only animates the *changes* — ticking a task off
+ * sweeps the ring and counts the percent across instead of snapping.
+ */
+function useTween(target: number, duration = 700): number {
+  const [value, setValue] = useState(target);
+  const current = useRef(target);
+  const frame = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (current.current === target) return;
+
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      current.current = target;
+      setValue(target);
+      return;
+    }
+
+    const origin = current.current;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const x = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - x, 3);
+      const next = origin + (target - origin) * eased;
+      current.current = x < 1 ? next : target;
+      setValue(current.current);
+      if (x < 1) frame.current = requestAnimationFrame(tick);
+    };
+    frame.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (frame.current !== undefined) cancelAnimationFrame(frame.current);
+    };
+  }, [target, duration]);
+
+  return value;
+}
+
+/**
+ * Completing a task usually drops it out of the list. React has no exit phase,
+ * so rows that vanish are held at their old index for the length of the
+ * collapse animation and then let go.
+ */
+function useExitList<T extends { id: number }>(
+  items: T[],
+  hold = 420,
+): Array<{ item: T; leaving: boolean }> {
+  const [leaving, setLeaving] = useState<Array<{ item: T; index: number }>>([]);
+  const previous = useRef<T[]>(items);
+
+  useEffect(() => {
+    const live = new Set(items.map((item) => item.id));
+    const gone = previous.current
+      .map((item, index) => ({ item, index }))
+      .filter((entry) => !live.has(entry.item.id));
+    previous.current = items;
+    if (gone.length === 0) return;
+
+    setLeaving((rows) => [
+      ...rows.filter((row) => !gone.some((entry) => entry.item.id === row.item.id)),
+      ...gone,
+    ]);
+    const timer = setTimeout(() => {
+      setLeaving((rows) =>
+        rows.filter((row) => !gone.some((entry) => entry.item.id === row.item.id)),
+      );
+    }, hold);
+
+    return () => clearTimeout(timer);
+  }, [items, hold]);
+
+  const live = new Set(items.map((item) => item.id));
+  const rows = items.map((item) => ({ item, leaving: false }));
+  for (const entry of leaving) {
+    if (live.has(entry.item.id)) continue;
+    rows.splice(Math.min(entry.index, rows.length), 0, { item: entry.item, leaving: true });
+  }
+  return rows;
+}
+
 /** Blocks stage in on a shared curve; the delay is what separates them. */
 const rise = (delay: number) => ({ animationDelay: `${delay}s` });
 
@@ -121,6 +205,8 @@ export function DashboardClient({ userName }: { userName: string | null }) {
   const stats = useMemo(() => headlineStats(projects, now), [projects, now]);
   const summaries = useMemo(() => projectSummaries(projects, now), [projects, now]);
   const today = useMemo(() => todayTasks(calendarTasks, now), [calendarTasks, now]);
+  const todayRows = useExitList(today);
+  const [pendingDone, setPendingDone] = useState<Map<number, boolean>>(new Map());
   const week = useMemo(() => weekStrip(calendarTasks, now), [calendarTasks, now]);
   const dayGone = useMemo(() => dayFraction(now), [now]);
 
@@ -146,10 +232,21 @@ export function DashboardClient({ userName }: { userName: string | null }) {
   const firstName = (userName ?? "").trim().split(" ")[0] ?? "";
 
   const toggleTask = (task: CalendarTask) => {
-    updateStatus.mutate({
-      taskId: task.id,
-      status: task.status === "completed" ? "pending" : "completed",
-    });
+    const done = task.status !== "completed";
+    // The tick fills straight away; the row only leaves once the refetch drops
+    // it from the list, which is what the collapse animation covers.
+    setPendingDone((map) => new Map(map).set(task.id, done));
+    updateStatus.mutate(
+      { taskId: task.id, status: done ? "completed" : "pending" },
+      {
+        onSettled: () =>
+          setPendingDone((map) => {
+            const next = new Map(map);
+            next.delete(task.id);
+            return next;
+          }),
+      },
+    );
   };
 
   if (isFirstRun) {
@@ -192,7 +289,12 @@ export function DashboardClient({ userName }: { userName: string | null }) {
         <section className="dash-rise" style={rise(0.19)}>
           <SectionHead
             title={t("today.title")}
-            count={today.filter((task) => task.status !== "completed").length}
+            count={
+              today.filter(
+                (task) =>
+                  task.status !== "completed" && pendingDone.get(task.id) !== true,
+              ).length
+            }
             actionLabel={t("today.action")}
             actionHref="/progress"
           />
@@ -202,12 +304,17 @@ export function DashboardClient({ userName }: { userName: string | null }) {
             ) : today.length === 0 ? (
               <EmptyRow message={t("today.empty")} />
             ) : (
-              today.map((task) => (
+              todayRows.map(({ item: task, leaving }) => (
                 <TaskRow
                   key={task.id}
                   task={task}
-                  state={taskState(task, now)}
+                  state={
+                    pendingDone.get(task.id) === true
+                      ? "done"
+                      : taskState(task, now)
+                  }
                   disabled={updateStatus.isPending}
+                  leaving={leaving}
                   onToggle={() => toggleTask(task)}
                 />
               ))
@@ -268,7 +375,7 @@ export function DashboardClient({ userName }: { userName: string | null }) {
           />
           {summaries.length === 0 ? (
             <Link
-              href="/projects"
+              href="/projects?new=1"
               className="flex items-center gap-2 rounded-[10px] border border-dashed border-border-light/70 px-4 py-5 text-sm text-fg-tertiary transition-colors hover:border-accent-primary/50 hover:text-fg-primary"
             >
               <Plus size={16} />
@@ -341,6 +448,9 @@ function WorkspaceRing({
   dayGone: number;
 }) {
   const t = useTranslations("dashboard");
+  // The entrance sweeps from zero via `progress`; afterwards the tween is what
+  // carries the ring and the number to a new completion figure.
+  const shown = useTween(percent);
 
   return (
     <div
@@ -372,34 +482,43 @@ function WorkspaceRing({
             strokeWidth="12"
             strokeLinecap="round"
             strokeDasharray={RING_TASKS}
-            strokeDashoffset={dashOffset(RING_TASKS, percent / 100, progress)}
+            strokeDashoffset={dashOffset(RING_TASKS, shown / 100, progress)}
             transform="rotate(-90 100 100)"
             className="stroke-accent-primary"
           />
-          <circle
-            cx="100"
-            cy="100"
-            r="62"
-            fill="none"
-            strokeWidth="4"
-            className="stroke-border-light/50"
-          />
-          <circle
-            cx="100"
-            cy="100"
-            r="62"
-            fill="none"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeDasharray={RING_DAY}
-            strokeDashoffset={dashOffset(RING_DAY, dayGone, progress)}
-            transform="rotate(-90 100 100)"
-            className="stroke-dash-day"
-          />
+          {/* The day ring is only legible next to the task ring. With no tasks
+              the outer arc is empty, and this inner one — which tracks the
+              clock, not the work — became the only arc on the card, reading as
+              though the workspace were three-quarters done at 0%. Drop both it
+              and its track in that case. */}
+          {total > 0 && (
+            <>
+              <circle
+                cx="100"
+                cy="100"
+                r="62"
+                fill="none"
+                strokeWidth="4"
+                className="stroke-border-light/50"
+              />
+              <circle
+                cx="100"
+                cy="100"
+                r="62"
+                fill="none"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeDasharray={RING_DAY}
+                strokeDashoffset={dashOffset(RING_DAY, dayGone, progress)}
+                transform="rotate(-90 100 100)"
+                className="stroke-dash-day"
+              />
+            </>
+          )}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
           <span className="text-[44px] font-semibold tabular-nums tracking-[-0.03em] text-fg-primary">
-            {Math.round(percent * progress)}%
+            {Math.round(shown * progress)}%
           </span>
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary">
             {t("workspace.ofTasks", { done: completed, total })}
@@ -476,7 +595,7 @@ function FirstRun({
 
         <div className="dash-rise flex flex-wrap items-center gap-3.5" style={rise(0.18)}>
           <Link
-            href="/projects"
+            href="/projects?new=1"
             className="flex items-center gap-2.5 rounded-[10px] bg-accent-primary px-[22px] py-[15px] text-[15px] font-semibold text-white transition-all duration-[350ms] hover:-translate-y-0.5 hover:bg-accent-hover"
           >
             <Plus size={17} />
@@ -581,28 +700,39 @@ function StatGrid({
       style={rise(0.12)}
     >
       {items.map((item) => (
-        <div
-          key={item.label}
-          className="bg-bg-elevated px-5 py-[18px] transition-colors duration-[350ms] hover:bg-bg-tertiary"
-        >
-          <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary">
-            {item.label}
-          </div>
-          <div
-            className={`mt-2 text-[28px] font-semibold tabular-nums tracking-[-0.02em] ${
-              item.value === 0
-                ? "text-fg-primary"
-                : item.tone === "danger"
-                  ? "text-error"
-                  : item.tone === "success"
-                    ? "text-success"
-                    : "text-fg-primary"
-            }`}
-          >
-            {Math.round(item.value * progress)}
-          </div>
-        </div>
+        <StatCell key={item.label} item={item} progress={progress} />
       ))}
+    </div>
+  );
+}
+
+function StatCell({
+  item,
+  progress,
+}: {
+  item: { label: string; value: number; tone?: "danger" | "success" };
+  progress: number;
+}) {
+  const shown = useTween(item.value);
+
+  return (
+    <div className="bg-bg-elevated px-5 py-[18px] transition-colors duration-[350ms] hover:bg-bg-tertiary">
+      <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary">
+        {item.label}
+      </div>
+      <div
+        className={`mt-2 text-[28px] font-semibold tabular-nums tracking-[-0.02em] ${
+          item.value === 0
+            ? "text-fg-primary"
+            : item.tone === "danger"
+              ? "text-error"
+              : item.tone === "success"
+                ? "text-success"
+                : "text-fg-primary"
+        }`}
+      >
+        {Math.round(shown * progress)}
+      </div>
     </div>
   );
 }
@@ -656,11 +786,13 @@ function TaskRow({
   task,
   state,
   disabled,
+  leaving,
   onToggle,
 }: {
   task: CalendarTask;
   state: TaskState;
   disabled: boolean;
+  leaving: boolean;
   onToggle: () => void;
 }) {
   const t = useTranslations("dashboard");
@@ -670,7 +802,7 @@ function TaskRow({
     <div
       className={`grid grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-[18px] border-b border-border-light/50 px-1 py-[17px] transition-all duration-[350ms] hover:bg-accent-primary/[0.07] sm:grid-cols-[24px_minmax(0,1fr)_160px_112px_20px] ${
         isDone ? "opacity-50" : ""
-      }`}
+      } ${leaving ? "dash-row-out" : ""}`}
     >
       <button
         type="button"
@@ -793,6 +925,8 @@ const PROJECT_HEALTH_TEXT = {
 function ProjectCard({ project, progress }: { project: ProjectSummary; progress: number }) {
   const t = useTranslations("dashboard");
   const title = (project.title?.trim() ?? "") || t("projects.untitled");
+  const percent = project.percent ?? 0;
+  const shown = useTween(percent);
 
   if (project.health === "empty") {
     return (
@@ -807,8 +941,6 @@ function ProjectCard({ project, progress }: { project: ProjectSummary; progress:
       </Link>
     );
   }
-
-  const percent = project.percent ?? 0;
 
   return (
     <Link
@@ -826,7 +958,7 @@ function ProjectCard({ project, progress }: { project: ProjectSummary; progress:
             strokeWidth="5"
             strokeLinecap="round"
             strokeDasharray={RING_PROJECT}
-            strokeDashoffset={dashOffset(RING_PROJECT, percent / 100, progress)}
+            strokeDashoffset={dashOffset(RING_PROJECT, shown / 100, progress)}
             transform="rotate(-90 23 23)"
             className={PROJECT_RING}
           />
@@ -841,7 +973,7 @@ function ProjectCard({ project, progress }: { project: ProjectSummary; progress:
         </span>
       </span>
       <span className="font-mono text-[13px] tabular-nums text-fg-primary">
-        {Math.round(percent * progress)}%
+        {Math.round(shown * progress)}%
       </span>
     </Link>
   );
