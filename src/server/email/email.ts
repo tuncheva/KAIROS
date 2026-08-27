@@ -23,6 +23,12 @@ export interface PasswordResetCodeParams {
   code: string;
 }
 
+export interface EmailVerificationCodeParams {
+  email: string;
+  userName: string;
+  code: string;
+}
+
 export interface EmailVerificationParams {
   email: string;
   userName: string;
@@ -53,7 +59,7 @@ type WelcomeTemplateInput = {
   appUrl: string;
 };
 
-type ResetCodeTemplateInput = {
+type CodeTemplateInput = {
   userName: string;
   code: string;
 };
@@ -63,13 +69,55 @@ type ResetCodeTemplateInput = {
 // ---------------------------------------------------------------------------
 
 /**
+ * The palette, kept in step with `globals.css`.
+ *
+ * Email cannot read CSS variables — every colour has to be inlined as a literal
+ * — so these are the hex forms of the light-theme tokens the application itself
+ * renders. They were drifting: the templates hardcoded `#9448F2` while the app's
+ * `--accent-primary` had moved to `rgb(168 85 247)`, so a confirmation email sat
+ * next to the product wearing a visibly different purple. Change a token in
+ * `globals.css` and change its twin here.
+ */
+const BRAND = {
+  /** `--accent-primary` — rgb(168 85 247). */
+  accent: "#A855F7",
+  /** `--accent-hover` — rgb(147 51 234). Used for the wordmark tile edge. */
+  accentDeep: "#9333EA",
+  /** A tint of the accent, for the code plate. */
+  accentTint: "#F6F0FE",
+  /** `--fg-primary` — rgb(15 23 42). */
+  ink: "#0F172A",
+  /** `--fg-secondary` — rgb(71 85 105). */
+  inkMuted: "#475569",
+  /** Page ground behind the card. */
+  surface: "#F8FAFC",
+  card: "#FFFFFF",
+  border: "#E2E8F0",
+  /** `--warning` and `--warning-light`, for the security notices. */
+  warning: "#FB923C",
+  warningTint: "#FFF7ED",
+} as const;
+
+/**
+ * The product name, in the form the brand uses.
+ *
+ * Set out once rather than spelled inline thirty times, because the last rename
+ * left "Kairos" in some subjects and sign-offs and not others.
+ */
+const BRAND_NAME = "KAIROS";
+
+const FONT_STACK =
+  "'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";
+
+/**
  * Escape text destined for an HTML email body.
  *
- * The transactional templates interpolate names and URLs the application itself
- * produced. The brief interpolates model output built from task and project
- * titles — which is user-authored text, arriving in an HTML document, and would
- * otherwise let a task called `<img onerror=...>` write markup into somebody's
- * inbox. Cheap, and the only place in this file that needs it.
+ * Applied to every interpolated value, not only the ones that look risky.
+ * `userName` is user-authored, arrives in an HTML document, and was previously
+ * interpolated raw into four templates — a display name of `<img onerror=...>`
+ * wrote markup into the recipient's inbox. The brief's model output has the same
+ * property. Cheap enough that the rule is simply "escape it", with no judgement
+ * call at each call site about whether this particular string is trusted.
  */
 function escapeHtml(value: string): string {
   return value
@@ -80,6 +128,18 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
+/**
+ * Escape a URL the application built for use in an `href`.
+ *
+ * The URLs here are assembled from `NEXT_PUBLIC_APP_URL` and a token this
+ * process generated, so nothing hostile is expected in them — but an unescaped
+ * `&` between query parameters is invalid in an HTML attribute regardless, and
+ * a mail client that reflows the markup can mangle it.
+ */
+function escapeUrl(value: string): string {
+  return escapeHtml(value);
+}
+
 function emailWrapper(content: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -87,10 +147,10 @@ function emailWrapper(content: string): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Kairos</title>
+  <title>${BRAND_NAME}</title>
 </head>
-<body style="margin:0;padding:0;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background-color:#FCFBF9;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FCFBF9;">
+<body style="margin:0;padding:0;font-family:${FONT_STACK};background-color:${BRAND.surface};-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.surface};">
     <tr>
       <td align="center" style="padding:40px 20px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
@@ -99,8 +159,9 @@ ${content}
           <tr>
             <td align="center" style="padding:32px 0 0;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tr><td style="border-top:1px solid #DDE3E9;padding-top:24px;text-align:center;">
-                  <p style="margin:0;color:#59677C;font-size:14px;line-height:1.5;">Best regards,<br><strong style="color:#222B32;">The Kairos Team</strong></p>
+                <tr><td style="border-top:1px solid ${BRAND.border};padding-top:24px;text-align:center;">
+                  <p style="margin:0;color:${BRAND.inkMuted};font-size:14px;line-height:1.5;">Sent by <strong style="color:${BRAND.ink};letter-spacing:0.06em;">${BRAND_NAME}</strong></p>
+                  <p style="margin:8px 0 0;color:${BRAND.inkMuted};font-size:12px;line-height:1.5;">This is an automated message about your account. Nobody replies to this address.</p>
                 </td></tr>
               </table>
             </td>
@@ -113,169 +174,238 @@ ${content}
 </html>`;
 }
 
+/**
+ * The wordmark tile and the message heading.
+ *
+ * The tile carries a `K` rather than an image: a remote logo is blocked by
+ * default in most mail clients, and a transactional email whose first paint is a
+ * broken-image icon reads as a phish.
+ */
 function logoBlock(title: string): string {
-  return `          <!-- Logo & Title -->
+  return `          <!-- Wordmark & Title -->
           <tr>
             <td align="center" style="padding-bottom:32px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td align="center" style="width:60px;height:60px;background-color:#9448F2;border-radius:16px;text-align:center;vertical-align:middle;line-height:60px;">
-                    <span style="color:#ffffff;font-size:28px;font-weight:bold;">K</span>
+                  <td align="center" style="width:56px;height:56px;background-color:${BRAND.accent};border-bottom:3px solid ${BRAND.accentDeep};border-radius:16px;text-align:center;vertical-align:middle;line-height:56px;">
+                    <span style="color:#ffffff;font-size:26px;font-weight:bold;">K</span>
                   </td>
                 </tr>
               </table>
-              <h1 style="margin:16px 0 0;color:#222B32;font-size:26px;font-weight:bold;line-height:1.3;">${title}</h1>
+              <p style="margin:12px 0 0;color:${BRAND.inkMuted};font-size:12px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;">${BRAND_NAME}</p>
+              <h1 style="margin:8px 0 0;color:${BRAND.ink};font-size:26px;font-weight:bold;line-height:1.3;">${escapeHtml(title)}</h1>
             </td>
           </tr>`;
 }
 
-// ---------------------------------------------------------------------------
-// Welcome Email
-// ---------------------------------------------------------------------------
-
-const WelcomeEmailTemplate = {
-  subject: 'Welcome to Kairos',
-  renderHtml: ({ userName, appUrl }: WelcomeTemplateInput) =>
-    emailWrapper(`
-${logoBlock('Welcome to Kairos')}
-          <!-- Content Card -->
+/** The white card every message body sits in. */
+function card(inner: string): string {
+  return `          <!-- Content Card -->
           <tr>
-            <td style="background:#ffffff;border-radius:16px;padding:32px;border:1px solid #DDE3E9;">
-              <p style="margin:0 0 20px;color:#222B32;font-size:16px;line-height:1.6;">Hi <strong>${userName}</strong>,</p>
-              <p style="margin:0 0 24px;color:#59677C;font-size:16px;line-height:1.6;">Your account has been created successfully. You can now start managing your projects, tasks, and notes.</p>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+            <td style="background:${BRAND.card};border-radius:16px;padding:32px;border:1px solid ${BRAND.border};">
+${inner}
+            </td>
+          </tr>`;
+}
+
+function greeting(userName: string): string {
+  return `              <p style="margin:0 0 20px;color:${BRAND.ink};font-size:16px;line-height:1.6;">Hi <strong>${escapeHtml(userName)}</strong>,</p>`;
+}
+
+function paragraph(text: string): string {
+  return `              <p style="margin:0 0 24px;color:${BRAND.inkMuted};font-size:16px;line-height:1.6;">${text}</p>`;
+}
+
+function button(href: string, label: string): string {
+  return `              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
-                  <td align="center" style="padding:8px 0 0;">
-                    <a href="${appUrl}" style="display:inline-block;padding:14px 32px;background-color:#9448F2;color:#ffffff;text-decoration:none;border-radius:12px;font-weight:600;font-size:16px;line-height:1;">Open Kairos</a>
+                  <td align="center" style="padding:8px 0 24px;">
+                    <a href="${escapeUrl(href)}" style="display:inline-block;padding:14px 32px;background-color:${BRAND.accent};color:#ffffff;text-decoration:none;border-radius:12px;font-weight:600;font-size:16px;line-height:1;">${escapeHtml(label)}</a>
                   </td>
                 </tr>
-              </table>
-            </td>
-          </tr>`),
-  renderText: ({ userName, appUrl }: WelcomeTemplateInput) =>
-    `Hi ${userName},\n\nWelcome to Kairos! Your account has been created successfully.\n\nOpen Kairos: ${appUrl}\n\nBest regards,\nThe Kairos Team`,
-} as const;
+              </table>`;
+}
 
-// ---------------------------------------------------------------------------
-// Password Reset Code Email
-// ---------------------------------------------------------------------------
-
-const PasswordResetCodeTemplate = {
-  subject: 'Your Password Reset Code - Kairos',
-  renderHtml: ({ userName, code }: ResetCodeTemplateInput) =>
-    emailWrapper(`
-${logoBlock('Password Reset Code')}
-          <!-- Content Card -->
-          <tr>
-            <td style="background:#ffffff;border-radius:16px;padding:32px;border:1px solid #DDE3E9;">
-              <p style="margin:0 0 20px;color:#222B32;font-size:16px;line-height:1.6;">Hi <strong>${userName}</strong>,</p>
-              <p style="margin:0 0 24px;color:#59677C;font-size:16px;line-height:1.6;">We received a request to reset your password. Use the code below to proceed:</p>
-              <!-- Code Display -->
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+/**
+ * The plate a one-time code is shown on.
+ *
+ * One renderer for both codes, so the reset code and the address-confirmation
+ * code are visually identical — they are the same object to the person reading
+ * them, and rendering them differently would only invite the guess that one of
+ * them is not really from here.
+ */
+function codePlate(code: string): string {
+  return `              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
                   <td align="center" style="padding:8px 0 24px;">
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                       <tr>
-                        <td style="padding:18px 36px;background-color:#F4F0FF;border:2px solid #9448F2;border-radius:12px;letter-spacing:8px;font-size:32px;font-weight:bold;color:#222B32;font-family:'Courier New',Courier,monospace;text-align:center;">${code}</td>
+                        <td style="padding:18px 36px;background-color:${BRAND.accentTint};border:2px solid ${BRAND.accent};border-radius:12px;letter-spacing:8px;font-size:32px;font-weight:bold;color:${BRAND.ink};font-family:'Courier New',Courier,monospace;text-align:center;">${escapeHtml(code)}</td>
                       </tr>
                     </table>
                   </td>
                 </tr>
-              </table>
-              <!-- Security Notice -->
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              </table>`;
+}
+
+function notice(heading: string, body: string): string {
+  return `              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
-                  <td style="background-color:#FFF8E6;border-left:4px solid #FFC53D;padding:16px;border-radius:0 8px 8px 0;">
-                    <p style="margin:0;color:#59677C;font-size:14px;line-height:1.6;"><strong style="color:#222B32;">Security Notice:</strong><br>This code will expire in <strong>15 minutes</strong>. If you didn't request this reset, you can safely ignore this email.</p>
+                  <td style="background-color:${BRAND.warningTint};border-left:4px solid ${BRAND.warning};padding:16px;border-radius:0 8px 8px 0;">
+                    <p style="margin:0;color:${BRAND.inkMuted};font-size:14px;line-height:1.6;"><strong style="color:${BRAND.ink};">${escapeHtml(heading)}</strong><br>${body}</p>
                   </td>
                 </tr>
-              </table>
-            </td>
-          </tr>`),
-  renderText: ({ userName, code }: ResetCodeTemplateInput) =>
-    `Hi ${userName},\n\nYour password reset code is: ${code}\n\nThis code expires in 15 minutes.\n\nIf you didn't request this, you can safely ignore this email.\n\nBest regards,\nThe Kairos Team`,
+              </table>`;
+}
+
+const SIGN_OFF = `Sent by ${BRAND_NAME}. This is an automated message about your account.`;
+
+// ---------------------------------------------------------------------------
+// Welcome
+// ---------------------------------------------------------------------------
+
+const WelcomeEmailTemplate = {
+  subject: `Welcome to ${BRAND_NAME}`,
+  renderHtml: ({ userName, appUrl }: WelcomeTemplateInput) =>
+    emailWrapper(`
+${logoBlock(`Welcome to ${BRAND_NAME}`)}
+${card(`${greeting(userName)}
+${paragraph("Your account is ready. Projects, tasks, notes and your calendar all live in one place — start wherever you like.")}
+${button(appUrl, `Open ${BRAND_NAME}`)}`)}`),
+  renderText: ({ userName, appUrl }: WelcomeTemplateInput) =>
+    `Hi ${userName},
+
+Your ${BRAND_NAME} account is ready.
+
+Open ${BRAND_NAME}: ${appUrl}
+
+${SIGN_OFF}`,
 } as const;
 
 // ---------------------------------------------------------------------------
-// Email Verification
+// Password reset code
+// ---------------------------------------------------------------------------
+
+const PasswordResetCodeTemplate = {
+  subject: `Your password reset code — ${BRAND_NAME}`,
+  renderHtml: ({ userName, code }: CodeTemplateInput) =>
+    emailWrapper(`
+${logoBlock("Password reset code")}
+${card(`${greeting(userName)}
+${paragraph("Someone asked to reset the password on your account. Enter this code to continue:")}
+${codePlate(code)}
+${notice(
+  "If this wasn't you",
+  `Ignore this email and your password stays as it is — a code on its own changes nothing. The code expires in <strong>15 minutes</strong> and stops working after five wrong attempts. ${BRAND_NAME} will never ask you for it.`,
+)}`)}`),
+  renderText: ({ userName, code }: CodeTemplateInput) =>
+    `Hi ${userName},
+
+Your password reset code is: ${code}
+
+It expires in 15 minutes and stops working after five wrong attempts.
+
+If you didn't ask for this, ignore this email — your password stays as it is. ${BRAND_NAME} will never ask you for this code.
+
+${SIGN_OFF}`,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Address confirmation — code
+// ---------------------------------------------------------------------------
+
+/**
+ * Confirming your address from inside the app.
+ *
+ * The link variant below is what signup sends; this is what the settings screen
+ * sends. The difference is where the person is standing. Someone who just typed
+ * their address into Settings is looking at a form that can take a code, and
+ * sending them out to a mail client and back would throw away the screen they
+ * are already on.
+ */
+const EmailVerificationCodeTemplate = {
+  subject: `Your confirmation code — ${BRAND_NAME}`,
+  renderHtml: ({ userName, code }: CodeTemplateInput) =>
+    emailWrapper(`
+${logoBlock("Confirm your email")}
+${card(`${greeting(userName)}
+${paragraph(`Enter this code in ${BRAND_NAME} to confirm this address belongs to you:`)}
+${codePlate(code)}
+${notice(
+  "If this wasn't you",
+  `Somebody may have typed your address by mistake. Ignore this email — nothing is confirmed without the code. It expires in <strong>15 minutes</strong>.`,
+)}`)}`),
+  renderText: ({ userName, code }: CodeTemplateInput) =>
+    `Hi ${userName},
+
+Your ${BRAND_NAME} confirmation code is: ${code}
+
+Enter it in Settings to confirm this address. It expires in 15 minutes.
+
+If you didn't ask for this, ignore this email — nothing is confirmed without the code.
+
+${SIGN_OFF}`,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Address confirmation — link
 // ---------------------------------------------------------------------------
 
 const EmailVerificationTemplate = {
-  subject: 'Confirm your email - Kairos',
+  subject: `Confirm your email — ${BRAND_NAME}`,
   renderHtml: ({ userName, verifyUrl }: EmailVerificationTemplateInput) =>
     emailWrapper(`
-${logoBlock('Confirm your email')}
-          <!-- Content Card -->
-          <tr>
-            <td style="background:#ffffff;border-radius:16px;padding:32px;border:1px solid #DDE3E9;">
-              <p style="margin:0 0 20px;color:#222B32;font-size:16px;line-height:1.6;">Hi <strong>${userName}</strong>,</p>
-              <p style="margin:0 0 24px;color:#59677C;font-size:16px;line-height:1.6;">Confirm this address to finish setting up your Kairos account. You will not be able to sign in until you do.</p>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td align="center" style="padding:8px 0 24px;">
-                    <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;background-color:#9448F2;color:#ffffff;text-decoration:none;border-radius:12px;font-size:16px;font-weight:bold;">Confirm email</a>
-                  </td>
-                </tr>
-              </table>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td style="background-color:#FFF8E6;border-left:4px solid #FFC53D;padding:16px;border-radius:0 8px 8px 0;">
-                    <p style="margin:0;color:#59677C;font-size:14px;line-height:1.6;"><strong style="color:#222B32;">Didn't sign up?</strong><br>Someone may have entered your address by mistake. Ignore this email and no account will be usable with it. The link expires in <strong>24 hours</strong>.</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>`),
+${logoBlock("Confirm your email")}
+${card(`${greeting(userName)}
+${paragraph(`Confirm this address to finish setting up your ${BRAND_NAME} account. You won't be able to sign in until you do.`)}
+${button(verifyUrl, "Confirm email")}
+${notice(
+  "Didn't sign up?",
+  "Someone may have entered your address by mistake. Ignore this email and no account will be usable with it. The link expires in <strong>24 hours</strong>.",
+)}`)}`),
   renderText: ({ userName, verifyUrl }: EmailVerificationTemplateInput) =>
     `Hi ${userName},
 
-Confirm your email address to finish setting up your Kairos account:
+Confirm your email address to finish setting up your ${BRAND_NAME} account:
 
 ${verifyUrl}
 
-This link expires in 24 hours. You will not be able to sign in until the address is confirmed.
+This link expires in 24 hours. You won't be able to sign in until the address is confirmed.
 
 If you didn't sign up, ignore this email.
 
-Best regards,
-The Kairos Team`,
+${SIGN_OFF}`,
 } as const;
 
 // ---------------------------------------------------------------------------
-// Note Password Reset Email (link-based)
+// Note password reset (link-based)
 // ---------------------------------------------------------------------------
 
 const PasswordResetEmailTemplate = {
-  subject: 'Reset Your Note Password - Kairos',
+  subject: `Reset your note password — ${BRAND_NAME}`,
   renderHtml: ({ userName, resetUrl }: PasswordResetTemplateInput) =>
     emailWrapper(`
-${logoBlock('Reset Your Note Password')}
-          <!-- Content Card -->
-          <tr>
-            <td style="background:#ffffff;border-radius:16px;padding:32px;border:1px solid #DDE3E9;">
-              <p style="margin:0 0 20px;color:#222B32;font-size:16px;line-height:1.6;">Hi <strong>${userName}</strong>,</p>
-              <p style="margin:0 0 24px;color:#59677C;font-size:16px;line-height:1.6;">We received a request to reset the password for one of your encrypted notes. Click the button below to create a new password:</p>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td align="center" style="padding:8px 0 24px;">
-                    <a href="${resetUrl}" style="display:inline-block;padding:14px 32px;background-color:#9448F2;color:#ffffff;text-decoration:none;border-radius:12px;font-weight:600;font-size:16px;line-height:1;">Reset Password</a>
-                  </td>
-                </tr>
-              </table>
-              <!-- Security Notice -->
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td style="background-color:#FFF8E6;border-left:4px solid #FFC53D;padding:16px;border-radius:0 8px 8px 0;">
-                    <p style="margin:0;color:#59677C;font-size:14px;line-height:1.6;"><strong style="color:#222B32;">Security Notice:</strong><br>This link will expire in <strong>1 hour</strong>. If you didn't request this reset, you can safely ignore this email.</p>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin:24px 0 0;color:#59677C;font-size:14px;line-height:1.6;">If the button doesn't work, copy and paste this link into your browser:</p>
-              <p style="margin:8px 0 0;color:#9448F2;font-size:13px;word-break:break-all;">${resetUrl}</p>
-            </td>
-          </tr>`),
+${logoBlock("Reset your note password")}
+${card(`${greeting(userName)}
+${paragraph("Someone asked to reset the password on one of your encrypted notes. This affects that note only, not your account:")}
+${button(resetUrl, "Reset note password")}
+${notice(
+  "If this wasn't you",
+  "Ignore this email and the note stays locked as it is. The link expires in <strong>1 hour</strong>.",
+)}
+              <p style="margin:24px 0 0;color:${BRAND.inkMuted};font-size:14px;line-height:1.6;">If the button doesn't work, paste this into your browser:</p>
+              <p style="margin:8px 0 0;color:${BRAND.accent};font-size:13px;word-break:break-all;">${escapeUrl(resetUrl)}</p>`)}`),
   renderText: ({ userName, resetUrl }: PasswordResetTemplateInput) =>
-    `Hi ${userName},\n\nWe received a request to reset the password for one of your encrypted notes.\n\nClick this link to reset your password:\n${resetUrl}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this reset, you can safely ignore this email.\n\nBest regards,\nThe Kairos Team`,
+    `Hi ${userName},
+
+Someone asked to reset the password on one of your encrypted notes. This affects that note only, not your account.
+
+Reset it here:
+${resetUrl}
+
+This link expires in 1 hour. If it wasn't you, ignore this email and the note stays locked as it is.
+
+${SIGN_OFF}`,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -366,6 +496,33 @@ export class EmailService {
 
     if (error) {
       throw new Error(`Failed to send verification email: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  /**
+   * Send a confirmation code for an address the user is confirming in-app.
+   *
+   * Throws on failure, like its transactional siblings: somebody is watching a
+   * spinner in Settings and needs to be told it didn't send.
+   */
+  async sendEmailVerificationCode({
+    email,
+    userName,
+    code,
+  }: EmailVerificationCodeParams): Promise<{ id: string } | null> {
+    const { data, error } = await this.resend.emails.send({
+      from: this.options.fromEmail,
+      to: [email],
+      subject: EmailVerificationCodeTemplate.subject,
+      html: EmailVerificationCodeTemplate.renderHtml({ userName, code }),
+      text: EmailVerificationCodeTemplate.renderText({ userName, code }),
+    });
+
+    if (error) {
+      log.error('verification code send failed', { err: error });
+      throw new Error(`Failed to send confirmation code: ${error.message}`);
     }
 
     return data;
@@ -472,20 +629,9 @@ const BriefEmailTemplate = {
   }) =>
     emailWrapper(`
 ${logoBlock(heading)}
-          <!-- Content Card -->
-          <tr>
-            <td style="background:#ffffff;border-radius:16px;padding:32px;border:1px solid #DDE3E9;">
-              <p style="margin:0 0 20px;color:#222B32;font-size:16px;line-height:1.6;">Hi <strong>${escapeHtml(userName)}</strong>,</p>
-              <p style="margin:0 0 24px;color:#59677C;font-size:16px;line-height:1.7;white-space:pre-wrap;">${escapeHtml(body)}</p>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td align="center" style="padding:8px 0 0;">
-                    <a href="${appUrl}/chat/ai" style="display:inline-block;padding:14px 32px;background-color:#9448F2;color:#ffffff;text-decoration:none;border-radius:12px;font-weight:600;font-size:16px;line-height:1;">Open the assistant</a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>`),
+${card(`${greeting(userName)}
+              <p style="margin:0 0 24px;color:${BRAND.inkMuted};font-size:16px;line-height:1.7;white-space:pre-wrap;">${escapeHtml(body)}</p>
+${button(`${appUrl}/chat/ai`, "Open the assistant")}`)}`),
   renderText: ({
     userName,
     heading,
@@ -505,8 +651,7 @@ ${body}
 
 Open the assistant: ${appUrl}/chat/ai
 
-Best regards,
-The Kairos Team`,
+${SIGN_OFF}`,
 } as const;
 
 /**
@@ -542,7 +687,7 @@ export function getEmailService(): EmailService {
     throw new Error('NEXT_PUBLIC_APP_URL is not set in environment variables');
   }
 
-  const rawFromEmail = process.env.RESEND_FROM_EMAIL?.trim() ?? 'Kairos <onboarding@resend.dev>';
+  const rawFromEmail = process.env.RESEND_FROM_EMAIL?.trim() ?? `${BRAND_NAME} <onboarding@resend.dev>`;
   const fromEmail = rawFromEmail.replace(/^['"]|['"]$/g, '');
 
   if (cachedEmailService) {
@@ -577,6 +722,12 @@ export async function sendPasswordResetCode(
   params: PasswordResetCodeParams
 ): Promise<{ id: string } | null> {
   return getEmailService().sendPasswordResetCode(params);
+}
+
+export async function sendEmailVerificationCode(
+  params: EmailVerificationCodeParams
+): Promise<{ id: string } | null> {
+  return getEmailService().sendEmailVerificationCode(params);
 }
 
 export async function sendEmailVerification(
