@@ -315,8 +315,8 @@ export function SideNav() {
       {/* Design 7A rail: 64px of icons that opens to 236px on hover, on
           keyboard focus (see `:has(:focus-visible)` in globals.css — a plain
           `focus-within` kept it open after a mouse click), or stays open when
-          pinned. Only the pinned state moves the page (see
-          `--rail-w` in globals.css), so a passing cursor never reflows it. */}
+          pinned. All three feed `--rail-w`, so the page shrinks in step with
+          the rail instead of being covered by it. */}
       <aside
         className={`group/rail hidden lg:flex fixed left-0 top-0 bottom-0 z-40 flex-col gap-0.5 overflow-hidden border-r border-border-light/60 bg-bg-elevated py-5 transition-[width] duration-[700ms] ease-[cubic-bezier(0.2,0.8,0.25,1)] motion-reduce:transition-none kairos-rail w-16 hover:w-[236px]`}
         aria-label="Primary"

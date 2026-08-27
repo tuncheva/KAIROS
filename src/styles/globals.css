@@ -409,12 +409,6 @@ summary,
   transition-duration: 180ms;
 }
 
-/* Consistent focus treatment (keyboard accessibility) */
-:where(a, button, summary, [role="button"], [tabindex]):focus-visible {
-  outline: 2px solid rgb(var(--accent-primary));
-  outline-offset: 2px;
-}
-
 /* Text fields default to soft corners; any `rounded-*` utility still overrides. */
 @layer base {
   :where(
@@ -424,12 +418,6 @@ summary,
   ) {
     border-radius: 10px;
   }
-}
-
-/* Inputs/textareas/selects keep their own border-radius on focus */
-:where(input, textarea, select):focus-visible {
-  outline: 2px solid rgb(var(--accent-primary));
-  outline-offset: 2px;
 }
 
 /* A bare field painted inside a wrapper that owns the frame: the wrapper shows
@@ -852,10 +840,17 @@ summary,
   -webkit-text-fill-color: #fff;
 }
 
-/* Global focus — inherits the element's own border-radius */
-*:focus-visible {
-  outline: 2px solid rgb(var(--accent-primary));
-  outline-offset: 2px;
+/* Global focus — inherits the element's own border-radius.
+   Lives in `@layer base` on purpose: unlayered CSS outranks every layered
+   utility no matter the specificity, so an unlayered rule here would paint a
+   second outline on top of any field that already draws its own focus ring
+   (`focus:outline-none focus:ring-1 …`) — the double outline. In the base
+   layer this is only the fallback for elements that style nothing. */
+@layer base {
+  *:focus-visible {
+    outline: 2px solid rgb(var(--accent-primary));
+    outline-offset: 2px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2734,9 +2729,9 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
 /* ==========================================================================
    Design 7A navigation rail
    --------------------------------------------------------------------------
-   The rail sits at 64px and opens to 236px. Hover expansion floats over the
-   page, so only the *pinned* state feeds `--rail-w` and moves content — that
-   keeps a passing cursor from reflowing the whole dashboard. `SideNav` stamps
+   The rail sits at 64px and opens to 236px. Every way of opening it — hover,
+   keyboard focus, pin — feeds `--rail-w`, so the page shrinks alongside it and
+   the rail never covers content. Only the pin *persists* — `SideNav` stamps
    `data-rail-pinned` on <html>; the var and the rail read the same source.
    ========================================================================== */
 
@@ -2745,6 +2740,16 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
 }
 
 :root[data-rail-pinned="true"] {
+  --rail-w: 14.75rem; /* 236px */
+}
+
+/* Hover and keyboard-focus expansion move the page too, so the rail never
+   overlaps content — it opens *beside* it whichever way it was opened. The
+   selectors mirror the two `.kairos-rail` width rules below exactly; `:has` on
+   the root is what lets a sibling's hover state feed a variable the page reads.
+   Below `lg` the rail is `display: none`, so neither can match there. */
+:root:has(.kairos-rail:hover),
+:root:has(.kairos-rail:has(:focus-visible)) {
   --rail-w: 14.75rem; /* 236px */
 }
 
@@ -2892,6 +2897,53 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
   animation: projects-slide-in 0.5s cubic-bezier(0.2, 0.8, 0.25, 1) both;
 }
 
+/* --------------------------------------------------------------------------
+   Leaving.
+
+   Every drawer in the app slides in and then vanishes on close, which reads as
+   a crash rather than a dismissal — the panel is simply not there on the next
+   frame. These are the exit halves. They are separate classes rather than a
+   reversed `animation-direction`, because the element has to be *told* it is
+   leaving and stay mounted for the duration; see `PROFILE_DRAWER_EXIT_MS` in
+   `~/components/profile/ProfileDrawer`, which holds it there.
+
+   The exit is faster than the entrance (0.3s against 0.45s) and rides an
+   ease-in rather than the entrance's overshoot-free ease-out. Dismissal should
+   feel like the panel is getting out of the way; matching the entrance curve
+   makes closing feel reluctant.
+   -------------------------------------------------------------------------- */
+
+@keyframes projects-drawer-out {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes projects-scrim-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.projects-drawer-out {
+  animation: projects-drawer-out 0.3s cubic-bezier(0.4, 0, 0.9, 0.5) both;
+  will-change: transform;
+}
+
+.projects-drawer-scrim-out {
+  animation: projects-scrim-out 0.3s ease-in both;
+  /* The scrim is the click target for "close". Once it is on its way out it
+     must stop accepting clicks, or a second tap during the exit re-fires a
+     close on a drawer that is already gone. */
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .projects-drawer,
   .projects-drawer-scrim,
@@ -2899,6 +2951,21 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+
+  /* The exit classes keep their end state rather than being neutralised. The
+     rule above sets `opacity: 1; transform: none`, which for a leaving element
+     means "stay fully visible where you are" — so a reduced-motion user would
+     watch the drawer sit still for the whole exit window before blinking out.
+     Jumping straight to the finished state is the honest no-motion version. */
+  .projects-drawer-out {
+    animation: none !important;
+    transform: translateX(100%) !important;
+  }
+
+  .projects-drawer-scrim-out {
+    animation: none !important;
+    opacity: 0 !important;
   }
 }
 
