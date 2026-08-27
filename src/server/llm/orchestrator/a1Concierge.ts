@@ -43,9 +43,11 @@ function buildFallbackResponse(input: AgentDraftInput): A1Output {
     answer: {
       summary:
         "I’m having trouble generating an AI response right now. Try rephrasing your question or be more specific about what you need.",
+      // No bullet glyphs here: every renderer of `answer.details` adds its own,
+      // and a hand-written one shows up as a doubled bullet.
       details: [
-        "• Ask a direct question (e.g., ‘What’s the status of Project X?’)",
-        "• If you want tasks created, say ‘create tasks for …’ and I’ll hand it off to the Task Planner",
+        "Ask a direct question (e.g., ‘What’s the status of Project X?’)",
+        "If you want tasks created, say ‘create tasks for …’ and I’ll hand it off to the Task Planner",
       ],
     },
     // Normalized by `A1OutputSchema`'s transform on the happy path; set here
