@@ -81,18 +81,63 @@ const DEFAULT_MAX_TOKENS = 8192;
  * the model answers with no reasoning at all — so the mapping stays explicit per
  * model rather than one global shape that is wrong for half the chain.
  *
- * Matched by prefix, so a dated build ("…-0731") inherits its family's entry. An
- * unlisted model gets nothing, which is correct for a plain instruct model.
+ * Matched on the model id with any vendor namespace stripped. The prefixes used
+ * to carry one — `deepseek-ai/deepseek-v4-flash` — and the deployment we
+ * actually point at serves the same model as `deepseek/deepseek-v4-flash`, so
+ * every lookup missed and the whole table was dead config. A namespace is a
+ * routing detail of the gateway, not part of the model's chat template.
+ *
+ * Suffixes still match by prefix, so a dated build ("…-0731") inherits its
+ * family's entry. An unlisted model gets nothing, which is correct for a plain
+ * instruct model.
  */
 const CHAT_TEMPLATE_KWARGS: ReadonlyArray<
   readonly [prefix: string, kwargs: Record<string, unknown>]
 > = [
-  ["deepseek-ai/deepseek-v4-flash", { thinking: true, reasoning_effort: "high" }],
-  ["nvidia/nemotron-3", { enable_thinking: true }],
+  ["deepseek-v4-flash", { thinking: true }],
+  ["nemotron-3", { enable_thinking: true }],
 ];
 
-function chatTemplateKwargsFor(model: string): Record<string, unknown> | undefined {
-  return CHAT_TEMPLATE_KWARGS.find(([prefix]) => model.startsWith(prefix))?.[1];
+/**
+ * Reasoning effort per tier.
+ *
+ * This was pinned to `"high"` for every call — routing a one-line question,
+ * repairing a stray brace and planning a thirty-task backlog all paid the same
+ * chain-of-thought. Reasoning is most of the token volume and it is emitted
+ * *before* the first visible character, so effort is the dominant term in how
+ * long the user stares at nothing. The strong tier is tunable with
+ * `LLM_REASONING_EFFORT`; the fast tier is always low, which is the whole point
+ * of it being a separate tier.
+ */
+const FAST_TIER_REASONING_EFFORT = "low";
+
+function strongTierReasoningEffort(): string {
+  return env.LLM_REASONING_EFFORT ?? "medium";
+}
+
+/**
+ * The chat-template flags for one request: the model's family entry, plus the
+ * reasoning effort for the tier it is being served on.
+ *
+ * Only models that take a `thinking` flag get an effort — `enable_thinking`
+ * models have no effort dial, and sending them one is the same silent-ignore
+ * mistake the per-model table exists to avoid.
+ */
+function chatTemplateKwargsFor(
+  model: string,
+  tier: "fast" | "strong",
+): Record<string, unknown> | undefined {
+  const bare = model.slice(model.lastIndexOf("/") + 1);
+  const kwargs = CHAT_TEMPLATE_KWARGS.find(([prefix]) =>
+    bare.startsWith(prefix),
+  )?.[1];
+  if (!kwargs) return undefined;
+  if (!("thinking" in kwargs)) return kwargs;
+  return {
+    ...kwargs,
+    reasoning_effort:
+      tier === "fast" ? FAST_TIER_REASONING_EFFORT : strongTierReasoningEffort(),
+  };
 }
 
 function getBaseUrl(): string {
@@ -370,7 +415,7 @@ function buildBody(
     max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
   };
 
-  const templateKwargs = chatTemplateKwargsFor(model);
+  const templateKwargs = chatTemplateKwargsFor(model, req.tier ?? "strong");
   if (templateKwargs) {
     // Top level, not nested: the OpenAI SDK's `extra_body` merges its keys into
     // the request root, and that is the shape the NIM reads off the wire.
@@ -700,6 +745,8 @@ export async function simpleCompletion(
   userMessage: string,
   opts?: {
     model?: string;
+    /** Which model chain to use. Short, mechanical prompts belong on "fast". */
+    tier?: "fast" | "strong";
     temperature?: number;
     jsonMode?: boolean;
     maxTokens?: number;
@@ -713,6 +760,7 @@ export async function simpleCompletion(
       { role: "user", content: userMessage },
     ],
     model: opts?.model,
+    tier: opts?.tier,
     temperature: opts?.temperature,
     jsonMode: opts?.jsonMode,
     maxTokens: opts?.maxTokens,

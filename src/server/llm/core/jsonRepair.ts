@@ -144,6 +144,12 @@ export async function parseAndValidate<T>(
           `Original:\n${current}\n\nError:\n${errorMsg}`,
           {
             model: opts?.model,
+            // Short, mechanical, and on the critical path: the answer has
+            // already streamed and the user is waiting on this before the turn
+            // resolves. `modelClient` names JSON repair as fast-tier work; it
+            // simply was never asked for one, so a stray brace cost a full
+            // reasoning pass.
+            tier: "fast",
             temperature: 0,
             jsonMode: true,
             signal: opts?.signal,

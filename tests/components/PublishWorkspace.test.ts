@@ -122,7 +122,12 @@ describe("EventCard – everything the old card could do", () => {
   it("keeps comments, with an inline author-then-text line", () => {
     expect(card).toContain("viewAllComments");
     expect(card).toContain("addComment");
-    expect(card).toContain('className="mr-1.5 font-semibold text-fg-primary"');
+    // The author is now wrapped in a `ProfileLink` so tapping the name opens
+    // that person's profile, which split the old single class string across
+    // two elements. The assertion follows the structure rather than the string:
+    // the name is still bold, still inline, and still ahead of the text.
+    expect(card).toContain('className="font-semibold text-fg-primary"');
+    expect(card).toContain("userId={comment.author.id}");
   });
 
   it("keeps share, message-the-host, edit, delete and the host's dashboard", () => {

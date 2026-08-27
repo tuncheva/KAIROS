@@ -46,6 +46,13 @@ export const env = createEnv({
      * optimisation rather than a requirement.
      */
     LLM_MODEL_FAST: z.string().optional(),
+    /**
+     * Chain-of-thought budget for the strong tier on models that take a
+     * `reasoning_effort` chat-template flag. Reasoning is emitted before the
+     * first visible character, so this is the main dial on how long a turn
+     * looks like it is doing nothing. Unset = "medium".
+     */
+    LLM_REASONING_EFFORT: z.enum(["low", "medium", "high"]).optional(),
     /** AI requests per user per rolling 24h window. */
     AI_RATE_LIMIT: z.coerce.number().int().positive().default(50),
     /**
@@ -92,6 +99,7 @@ export const env = createEnv({
     LLM_MODEL: process.env.LLM_MODEL,
     LLM_FALLBACK_MODEL: process.env.LLM_FALLBACK_MODEL,
     LLM_MODEL_FAST: process.env.LLM_MODEL_FAST,
+    LLM_REASONING_EFFORT: process.env.LLM_REASONING_EFFORT,
     AI_RATE_LIMIT: process.env.AI_RATE_LIMIT,
     AI_SYSTEM_RATE_LIMIT: process.env.AI_SYSTEM_RATE_LIMIT,
 
