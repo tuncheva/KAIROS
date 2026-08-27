@@ -6,31 +6,19 @@
  * The proposal puts friend requests, suggested people and a follow button here.
  * None of those exist in this schema — there is no social graph yet — so the
  * slot keeps the shape and fills it with the real requests this app does have:
- * workspace invitations, which accept and decline for real. Below them sit your
- * agenda, your workspaces, and how the feed you are looking at is doing.
+ * workspace invitations, which accept and decline for real, and your agenda.
+ *
+ * Quick links and workspaces used to sit between them. Both were navigation the
+ * side nav already carries, so they were spending the feed's width to repeat
+ * it; engagement moved into a dialog off the feed toolbar. What is left is the
+ * two things that are about *you* and exist nowhere else on this page.
  */
 
-import Link from "next/link";
-import { useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import {
-  Activity,
-  Calendar,
-  CheckSquare,
-  ChevronRight,
-  Heart,
-  MessageCircle,
-  TrendingUp,
-} from "lucide-react";
 
 import { api } from "~/trpc/react";
-import {
-  eventDateParts,
-  regionLabel,
-  summariseEngagement,
-  type FeedEvent,
-} from "./feedData";
-import { Panel, PersonAvatar, Stamp, TitledPanel } from "./publishUi";
+import { eventDateParts, regionLabel } from "./feedData";
+import { PersonAvatar, Stamp, TitledPanel } from "./publishUi";
 
 /** Workspace invitations — the one inbound request this app actually models. */
 function InviteInbox() {
@@ -139,160 +127,14 @@ function Agenda() {
   );
 }
 
-/** Workspaces you belong to — the closest thing this app has to groups. */
-function Workspaces() {
-  const t = useTranslations("publish");
-  const { data: orgs } = api.organization.listMine.useQuery();
-
-  if (!orgs || orgs.length === 0) return null;
-
-  return (
-    <TitledPanel title={t("yourWorkspaces")}>
-      <ul className="flex flex-col gap-0.5 p-2">
-        {orgs.slice(0, 4).map((org) => (
-          <li key={org.id}>
-            <Link
-              href="/orgs"
-              className="flex items-center gap-2.5 rounded-lg p-2 transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.04]"
-            >
-              <PersonAvatar name={org.name} size="sm" square />
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-[13px] font-semibold text-fg-primary">
-                  {org.name}
-                </span>
-                <Stamp className="text-[9.5px] tracking-[0.12em]">
-                  {org.role}
-                </Stamp>
-              </span>
-              <ChevronRight size={13} className="shrink-0 text-fg-quaternary" />
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </TitledPanel>
-  );
-}
-
-const QUICK_LINKS = [
-  { href: "/calendar", key: "calendar", Icon: Calendar },
-  { href: "/progress", key: "progress", Icon: TrendingUp },
-  { href: "/projects", key: "tasks", Icon: CheckSquare },
-] as const;
-
-function QuickLinks() {
-  const t = useTranslations("publish");
-
-  return (
-    <TitledPanel title={t("quickLinks")}>
-      <ul className="flex flex-col gap-0.5 p-2">
-        {QUICK_LINKS.map(({ href, key, Icon }) => (
-          <li key={href}>
-            <Link
-              href={href}
-              className="group flex items-center justify-between rounded-lg px-2.5 py-2 transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.04]"
-            >
-              <span className="flex items-center gap-2.5">
-                <span className="rounded-md bg-accent-primary/10 p-1.5 text-accent-primary transition-colors group-hover:bg-accent-primary group-hover:text-white">
-                  <Icon size={14} />
-                </span>
-                <span className="text-xs font-semibold text-fg-secondary">
-                  {t(key)}
-                </span>
-              </span>
-              <ChevronRight size={12} className="text-fg-quaternary" />
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </TitledPanel>
-  );
-}
-
-/** How the feed on screen is doing — likes, comments, RSVPs and the top three. */
-function Engagement({ events }: { events: FeedEvent[] }) {
-  const t = useTranslations("publish");
-  const summary = useMemo(() => summariseEngagement(events), [events]);
-
-  if (!summary) return null;
-
-  const tiles = [
-    { Icon: Heart, value: summary.totalLikes, label: t("likes") },
-    { Icon: MessageCircle, value: summary.totalComments, label: t("comments") },
-    { Icon: Activity, value: summary.totalRsvps, label: "RSVPs" },
-  ];
-
-  return (
-    <Panel className="flex flex-col gap-3.5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[13px] font-semibold text-fg-primary">
-          {t("eventProgress")}
-        </h2>
-        <Stamp className="rounded bg-accent-primary/10 px-1.5 py-0.5 text-[9px] tracking-[0.14em] text-accent-primary">
-          {t("active")}
-        </Stamp>
-      </div>
-
-      <dl className="grid grid-cols-3 gap-1.5">
-        {tiles.map(({ Icon, value, label }) => (
-          <div
-            key={label}
-            className="rounded-md bg-accent-primary/5 p-1.5 text-center dark:bg-white/5"
-          >
-            <Icon size={12} className="mx-auto mb-0.5 text-accent-primary" />
-            <dd className="kairos-mono text-xs font-bold text-fg-primary">
-              {value}
-            </dd>
-            <dt className="text-[9px] text-fg-tertiary">{label}</dt>
-          </div>
-        ))}
-      </dl>
-
-      <ul className="flex flex-col gap-3">
-        {summary.topEvents.map((event, index) => {
-          const percent = Math.round(
-            ((event.likeCount + event.commentCount) / summary.peak) * 100,
-          );
-          const tone = [
-            "bg-accent-primary",
-            "bg-accent-primary/60",
-            "bg-accent-primary/30",
-          ][index] ?? "bg-accent-primary";
-
-          return (
-            <li key={event.id}>
-              <div className="mb-1.5 flex items-end justify-between gap-2">
-                <span className="truncate text-[10px] font-bold text-fg-secondary">
-                  {event.title}
-                </span>
-                <span className="kairos-mono shrink-0 text-[10px] font-bold text-accent-primary">
-                  {percent}%
-                </span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${tone}`}
-                  style={{ width: `${percent}%` }}
-                />
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </Panel>
-  );
-}
-
-export function PublishAside({ events }: { events: FeedEvent[] }) {
+export function PublishAside() {
   return (
     <aside
-      className="dash-rise hidden flex-col gap-4 lg:flex lg:col-span-3"
+      className="dash-rise hidden flex-col gap-4 xl:sticky xl:top-6 xl:flex xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:self-start scrollbar-hide"
       style={{ animationDelay: "120ms" }}
     >
       <InviteInbox />
       <Agenda />
-      <QuickLinks />
-      <Workspaces />
-      <Engagement events={events} />
     </aside>
   );
 }

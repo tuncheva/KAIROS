@@ -169,6 +169,28 @@ export function splitByTime(events: FeedEvent[], now = new Date()): FeedBands {
   return { upcoming, past };
 }
 
+/** One row of the feed: the event, and which band it reads under. */
+export interface FeedRow {
+  event: FeedEvent;
+  band: keyof FeedBands;
+}
+
+/**
+ * The whole feed flattened into reading order.
+ *
+ * Pagination cuts across the bands — page two can start halfway through
+ * "coming up" or straddle the seam into "already happened" — so the band a row
+ * belongs to travels with the row rather than being implied by which array it
+ * came out of. The view decides where to draw a heading from that.
+ */
+export function orderForFeed(events: FeedEvent[], now = new Date()): FeedRow[] {
+  const bands = splitByTime(events, now);
+  return [
+    ...bands.upcoming.map((event): FeedRow => ({ event, band: "upcoming" })),
+    ...bands.past.map((event): FeedRow => ({ event, band: "past" })),
+  ];
+}
+
 /**
  * Region counts for the picker, over everything loaded rather than the current
  * view — the point of the picker is to show you where else there is something.

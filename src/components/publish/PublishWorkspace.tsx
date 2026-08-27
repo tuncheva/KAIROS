@@ -8,8 +8,16 @@
  * decides *what is on screen* now lands here, the panes are given their data,
  * and the rules for filtering live in `feedData.ts` where they can be read.
  *
- * The view and region are in the URL, so a filtered feed is a link you can send
- * and the back button undoes a filter change instead of leaving the page.
+ * The view, region and page are in the URL, so a filtered feed is a link you
+ * can send and the back button undoes a filter change instead of leaving the
+ * page.
+ *
+ * The feed is paged rather than infinite. Scrolling used to mount every event
+ * ever loaded, each with its own staggered entrance firing as it crossed the
+ * viewport, which is what made a long feed look the way it did; a page is a
+ * fixed number of cards that arrive together and leave together. The server
+ * still hands out cursors, so `fetchNextPage` runs underneath to keep enough
+ * rows loaded for the page you are on — see `ensureLoaded` below.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -29,16 +37,18 @@ import {
 
 import { EventCard } from "./EventCard";
 import { EventComposer } from "./EventComposer";
+import { EventProgressButton } from "./EventProgress";
+import { FeedPager } from "./FeedPager";
 import { PublishAside } from "./PublishAside";
 import { PublishRail, type RailCounts } from "./PublishRail";
 import { BandDivider } from "./publishUi";
 import { FEED_QUERY_INPUT } from "./eventMutations";
 import {
   isFeedView,
+  orderForFeed,
   regionCounts,
   regionLabel,
   selectFeed,
-  splitByTime,
   type FeedEvent,
   type FeedView,
 } from "./feedData";
@@ -47,6 +57,9 @@ interface ComposerDraft {
   title: string;
   focus: ComposerField;
 }
+
+/** How many cards one page of the feed holds. */
+const PAGE_SIZE = 8;
 
 export function PublishWorkspace() {
   const t = useTranslations("publish");
@@ -59,23 +72,35 @@ export function PublishWorkspace() {
     ? (params.get("view") as FeedView)
     : "all";
   const region = params.get("region") ?? "";
+  const page = Math.max(1, Number(params.get("page")) || 1);
   const deepLinkedId = Number(params.get("event")) || null;
 
   const [draft, setDraft] = useState<ComposerDraft | null>(null);
 
-  /** View and region are URL state; replace rather than push so filters do not
-      pile up in history one keystroke at a time. */
-  const setParam = useCallback(
-    (key: "view" | "region", value: string) => {
+  /**
+   * View, region and page are URL state; replace rather than push so filters do
+   * not pile up in history one keystroke at a time. Changing a filter drops you
+   * back to page one — page 7 of the old feed is rarely page 7 of the new one.
+   */
+  const setParams = useCallback(
+    (patch: Partial<Record<"view" | "region" | "page", string>>) => {
       const next = new URLSearchParams(params.toString());
-      if (value && value !== "all") next.set(key, value);
-      else next.delete(key);
+      for (const [key, value] of Object.entries(patch)) {
+        if (value && value !== "all" && value !== "1") next.set(key, value);
+        else next.delete(key);
+      }
       const query = next.toString();
       router.replace(query ? `/publish?${query}` : "/publish", {
         scroll: false,
       });
     },
     [params, router],
+  );
+
+  const setFilter = useCallback(
+    (key: "view" | "region", value: string) =>
+      setParams({ [key]: value, page: "1" }),
+    [setParams],
   );
 
   const {
@@ -94,7 +119,7 @@ export function PublishWorkspace() {
   });
 
   const events = useMemo<FeedEvent[]>(
-    () => pages?.pages.flatMap((page) => page.items) ?? [],
+    () => pages?.pages.flatMap((serverPage) => serverPage.items) ?? [],
     [pages?.pages],
   );
 
@@ -104,12 +129,49 @@ export function PublishWorkspace() {
     () => selectFeed({ events, view, region, query: "", viewerId }),
     [events, view, region, viewerId],
   );
-  const bands = useMemo(() => splitByTime(visible), [visible]);
+
+  /** The whole filtered feed in reading order, each row tagged with its band. */
+  const ordered = useMemo(() => orderForFeed(visible), [visible]);
   const totals = useMemo(() => regionCounts(events), [events]);
+
+  const pageCount = Math.max(1, Math.ceil(ordered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const slice = useMemo(
+    () => ordered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [ordered, safePage],
+  );
+
+  /**
+   * Keep enough rows loaded to fill the page being read.
+   *
+   * The views filter client-side over what the cursor has handed us, so "going"
+   * can throw away most of a server page. Rather than making the reader press
+   * next through half-empty pages, this pulls the next cursor whenever the last
+   * page is in sight and there is more to have.
+   */
+  const ensureLoaded = ordered.length < (safePage + 1) * PAGE_SIZE;
+  useEffect(() => {
+    if (!ensureLoaded || !hasNextPage || isFetchingNextPage || isLoading) return;
+    void fetchNextPage();
+  }, [ensureLoaded, hasNextPage, isFetchingNextPage, isLoading, fetchNextPage]);
+
+  /** More to read beyond the pages we can already prove exist. */
+  const hasMore = !!hasNextPage;
+
+  /* Paging returns you to the top of the feed rather than mid-card. */
+  const feedTopRef = useRef<HTMLDivElement | null>(null);
+  const goToPage = useCallback(
+    (next: number) => {
+      const clamped = Math.max(1, hasMore ? next : Math.min(next, pageCount));
+      setParams({ page: String(clamped) });
+      feedTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [hasMore, pageCount, setParams],
+  );
 
   /**
    * The rail's counts come from the server for the three that depend on you —
-   * a paginated feed would otherwise report "1 going" until you scrolled — and
+   * a paged feed would otherwise report "1 going" until you paged forward — and
    * from the loaded rows for the two that are only about what is on screen.
    */
   const counts: RailCounts = useMemo(() => {
@@ -124,26 +186,6 @@ export function PublishWorkspace() {
     };
   }, [events, region, summary]);
 
-  /* Infinite scroll. */
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const [sentinelVisible, setSentinelVisible] = useState(false);
-
-  useEffect(() => {
-    const node = sentinelRef.current;
-    if (!node) return;
-    const observer = new IntersectionObserver(
-      (entries) => setSentinelVisible(entries.some((e) => e.isIntersecting)),
-      { rootMargin: "600px 0px" },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!sentinelVisible || !hasNextPage || isFetchingNextPage) return;
-    void fetchNextPage();
-  }, [sentinelVisible, hasNextPage, isFetchingNextPage, fetchNextPage]);
-
   /* Real time. */
   const handleDeleted = useCallback(
     ({ eventId }: { eventId: number }) => {
@@ -151,9 +193,9 @@ export function PublishWorkspace() {
         old
           ? {
               ...old,
-              pages: old.pages.map((page) => ({
-                ...page,
-                items: page.items.filter((e) => e.id !== eventId),
+              pages: old.pages.map((serverPage) => ({
+                ...serverPage,
+                items: serverPage.items.filter((e) => e.id !== eventId),
               })),
             }
           : old,
@@ -169,18 +211,29 @@ export function PublishWorkspace() {
   useSocketEvent("event:updated", handleUpdated);
 
   /**
-   * A shared link (`/publish?event=12`) should land on the card. The row may be
-   * on a later page, so this waits until it is actually rendered rather than
-   * racing the first fetch with a timeout.
+   * A shared link (`/publish?event=12`) should land on the card, which under
+   * pagination first means landing on the *page* it is on. The row may still be
+   * behind a cursor, so this waits until it is actually in `ordered` rather
+   * than racing the first fetch with a timeout.
    */
   const scrolledToRef = useRef<number | null>(null);
   useEffect(() => {
     if (!deepLinkedId || scrolledToRef.current === deepLinkedId) return;
+
+    const index = ordered.findIndex((row) => row.event.id === deepLinkedId);
+    if (index === -1) return;
+
+    const target = Math.floor(index / PAGE_SIZE) + 1;
+    if (target !== safePage) {
+      setParams({ page: String(target) });
+      return;
+    }
+
     const node = document.getElementById(`event-${deepLinkedId}`);
     if (!node) return;
     scrolledToRef.current = deepLinkedId;
     node.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [deepLinkedId, visible]);
+  }, [deepLinkedId, ordered, safePage, setParams]);
 
   const feedBody = () => {
     if (isLoading) {
@@ -206,7 +259,17 @@ export function PublishWorkspace() {
       );
     }
 
-    if (visible.length === 0) {
+    if (ordered.length === 0) {
+      /* Still pulling cursors for a filter that has not matched anything yet. */
+      if (hasNextPage) {
+        return (
+          <div className="py-20 text-center">
+            <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-accent-primary" />
+            <p className="text-sm text-fg-secondary">{t("loadingMoreEvents")}</p>
+          </div>
+        );
+      }
+
       return (
         <div className="px-4 py-20 text-center">
           <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-accent-primary/10">
@@ -224,49 +287,41 @@ export function PublishWorkspace() {
       );
     }
 
-    let index = 0;
-
     return (
       <>
-        {bands.upcoming.length > 0 && (
-          <>
-            <BandDivider label={t("bands.upcoming")} accent />
-            {bands.upcoming.map((event) => (
+        {/* Keyed on the page so a page turn plays the entrance once, together,
+            rather than one card at a time as they scroll past. */}
+        <div key={safePage} className="flex flex-col gap-4">
+          {slice.map((row, index) => (
+            <div key={row.event.id} className="flex flex-col gap-4">
+              {/* A band heading only where the band actually changes, so a page
+                  sitting inside one band is not re-titled at the top. */}
+              {(index === 0 || slice[index - 1]?.band !== row.band) && (
+                <BandDivider
+                  label={t("bands." + row.band)}
+                  accent={row.band === "upcoming"}
+                />
+              )}
               <EventCard
-                key={event.id}
-                delayMs={Math.min(160 + index++ * 60, 460)}
-                event={{ ...event, isOwner: viewerId === event.createdById }}
+                event={{
+                  ...row.event,
+                  isOwner: viewerId === row.event.createdById,
+                }}
               />
-            ))}
-          </>
-        )}
+            </div>
+          ))}
+        </div>
 
-        {bands.past.length > 0 && (
-          <>
-            <BandDivider label={t("bands.past")} />
-            {bands.past.map((event) => (
-              <EventCard
-                key={event.id}
-                delayMs={Math.min(160 + index++ * 60, 460)}
-                event={{ ...event, isOwner: viewerId === event.createdById }}
-              />
-            ))}
-          </>
-        )}
+        <FeedPager
+          page={safePage}
+          pageCount={pageCount}
+          hasMore={hasMore}
+          isLoadingMore={isFetchingNextPage}
+          onChange={goToPage}
+        />
 
-        <div ref={sentinelRef} className="h-6" />
-
-        {isFetchingNextPage && (
-          <div className="py-8 text-center">
-            <Loader2 className="mx-auto mb-2 h-7 w-7 animate-spin text-accent-primary" />
-            <p className="text-sm text-fg-secondary">
-              {t("loadingMoreEvents")}
-            </p>
-          </div>
-        )}
-
-        {!hasNextPage && (
-          <p className="py-6 text-center text-sm text-fg-tertiary">
+        {!hasMore && safePage >= pageCount && (
+          <p className="py-2 text-center text-sm text-fg-tertiary">
             {t("allCaughtUp")}
           </p>
         )}
@@ -291,26 +346,48 @@ export function PublishWorkspace() {
         }
       />
 
+      {/* Fixed-width rails and a feed that takes everything left over — the old
+          12-column split spent a quarter of the page on two panels of links. */}
       <main
         id="main-content"
-        className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 pb-28 pt-6 sm:px-6 sm:pb-8 sm:pt-8 lg:grid-cols-12 lg:gap-8 lg:px-8"
+        className="mx-auto grid max-w-[1500px] grid-cols-1 gap-6 px-4 pb-28 pt-6 sm:px-6 sm:pb-8 sm:pt-8 lg:grid-cols-[264px_minmax(0,1fr)] lg:gap-8 lg:px-8 xl:grid-cols-[264px_minmax(0,1fr)_304px]"
       >
-
         <PublishRail
           view={view}
-          onViewChange={(next) => setParam("view", next)}
+          onViewChange={(next) => setFilter("view", next)}
           counts={counts}
           region={region}
-          onRegionChange={(next) => setParam("region", next)}
+          onRegionChange={(next) => setFilter("region", next)}
           regionTotals={totals}
         />
 
-        <section className="flex flex-col gap-4 lg:col-span-6">
+        <section className="flex min-w-0 flex-col gap-4">
           <EventComposer onOpen={setDraft} />
+
+          {/* The feed's own toolbar: what you are looking at, how much of it,
+              and the way into the engagement summary. */}
+          <div
+            ref={feedTopRef}
+            className="flex scroll-mt-24 items-center justify-between gap-3"
+          >
+            <span className="flex min-w-0 items-baseline gap-2">
+              <h1 className="truncate text-[15px] font-semibold text-fg-primary">
+                {t("views." + view)}
+              </h1>
+              {ordered.length > 0 && (
+                <span className="kairos-mono shrink-0 text-[11px] text-fg-quaternary">
+                  {t("pageOf", { page: safePage, pages: pageCount })}
+                  {hasMore ? "+" : ""}
+                </span>
+              )}
+            </span>
+            <EventProgressButton events={visible} />
+          </div>
+
           {feedBody()}
         </section>
 
-        <PublishAside events={events} />
+        <PublishAside />
       </main>
 
       {draft &&

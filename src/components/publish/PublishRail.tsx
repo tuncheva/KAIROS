@@ -155,7 +155,7 @@ export function PublishRail({
         {views}
       </nav>
 
-      <aside className="dash-rise hidden flex-col gap-4 lg:flex lg:col-span-3">
+      <aside className="dash-rise hidden flex-col gap-4 lg:sticky lg:top-6 lg:flex lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:self-start lg:pr-1 scrollbar-hide">
         <ProfileCard counts={counts} />
 
         <nav aria-label={t("feedViews")} className="flex flex-col gap-0.5">
