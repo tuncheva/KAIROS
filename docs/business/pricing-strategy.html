@@ -1,0 +1,1277 @@
+<title>KAIROS Agent Pricing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ink:        #101722;
+    --ink-soft:   #3A4657;
+    --ink-faint:  #6B7788;
+    --paper:      #F5F7FA;
+    --surface:    #FFFFFF;
+    --rule:       #DDE3EB;
+    --rule-soft:  #EBEFF4;
+    --brass:      #8F6420;
+    --brass-wash: #F3EADA;
+    --teal:       #1E5F63;
+    --teal-wash:  #E3EFEF;
+    --good:       #2F6F4F;
+    --warn:       #A8661C;
+    --crit:       #9B3B2F;
+    --crit-wash:  #F8E9E6;
+
+    --measure: 68ch;
+    --display: "Newsreader", ui-serif, Georgia, serif;
+    --body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink:        #E6EBF2;
+      --ink-soft:   #A9B4C4;
+      --ink-faint:  #78859A;
+      --paper:      #0B1017;
+      --surface:    #141B26;
+      --rule:       #26303E;
+      --rule-soft:  #1C2431;
+      --brass:      #D4A65B;
+      --brass-wash: #241D10;
+      --teal:       #6FBFC2;
+      --teal-wash:  #10241F;
+      --good:       #6FBF8F;
+      --warn:       #D9A05B;
+      --crit:       #E08A7A;
+      --crit-wash:  #2A1714;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ink:        #E6EBF2;
+    --ink-soft:   #A9B4C4;
+    --ink-faint:  #78859A;
+    --paper:      #0B1017;
+    --surface:    #141B26;
+    --rule:       #26303E;
+    --rule-soft:  #1C2431;
+    --brass:      #D4A65B;
+    --brass-wash: #241D10;
+    --teal:       #6FBFC2;
+    --teal-wash:  #10241F;
+    --good:       #6FBF8F;
+    --warn:       #D9A05B;
+    --crit:       #E08A7A;
+    --crit-wash:  #2A1714;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 24px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  .measure { max-width: var(--measure); }
+
+  /* ---- masthead ---- */
+
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 72px 0 40px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin: 0;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(38px, 6vw, 62px);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .standfirst {
+    font-family: var(--display);
+    font-size: clamp(19px, 2.4vw, 23px);
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    margin: 0;
+  }
+
+  .masthead-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    padding-top: 6px;
+  }
+
+  /* ---- sections ---- */
+
+  section { padding-top: 64px; }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(27px, 3.4vw, 34px);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0 0 6px;
+  }
+
+  h3 {
+    font-family: var(--body);
+    font-weight: 600;
+    font-size: 17px;
+    letter-spacing: -0.005em;
+    margin: 32px 0 8px;
+  }
+
+  p { margin: 0 0 18px; }
+  .measure p, .measure ul { max-width: var(--measure); }
+
+  a { color: var(--brass); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--brass);
+    outline-offset: 3px;
+  }
+
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.87em;
+    background: var(--rule-soft);
+    padding: 0.12em 0.38em;
+    border-radius: 3px;
+  }
+
+  ul { padding-left: 20px; margin: 0 0 18px; }
+  li { margin-bottom: 7px; }
+
+  /* ---- the meter: key figures ---- */
+
+  .figures {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 28px 0 8px;
+  }
+
+  .figure {
+    background: var(--surface);
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .figure-value {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--ink);
+  }
+
+  .figure-label {
+    font-size: 13.5px;
+    line-height: 1.4;
+    color: var(--ink-soft);
+  }
+
+  .figure-note {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+
+  /* ---- pull statement ---- */
+
+  .thesis {
+    border-left: 3px solid var(--brass);
+    background: var(--brass-wash);
+    padding: 24px 28px;
+    border-radius: 0 4px 4px 0;
+    margin: 28px 0;
+    max-width: var(--measure);
+  }
+
+  .thesis p { margin: 0; }
+  .thesis p + p { margin-top: 12px; }
+
+  .thesis-lead {
+    font-family: var(--display);
+    font-size: 21px;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+
+  /* ---- tiers ---- */
+
+  .tiers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(258px, 1fr));
+    gap: 16px;
+    margin: 32px 0 8px;
+    align-items: start;
+  }
+
+  .tier {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 24px 22px 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .tier--lead {
+    border-color: var(--brass);
+    box-shadow: 0 0 0 1px var(--brass);
+  }
+
+  .tier-head { display: flex; flex-direction: column; gap: 3px; }
+
+  .tier-name {
+    font-family: var(--display);
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .tier-role {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--brass);
+  }
+
+  .tier-price {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 32px;
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    padding-top: 4px;
+  }
+
+  .tier-price span {
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--ink-faint);
+  }
+
+  .tier-line {
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  .tier ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    font-size: 14.5px;
+    line-height: 1.45;
+  }
+
+  .tier li {
+    margin: 0;
+    padding-left: 20px;
+    position: relative;
+    color: var(--ink-soft);
+  }
+
+  .tier li::before {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 8px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--brass);
+    opacity: 0.55;
+  }
+
+  .tier li.is-key { color: var(--ink); font-weight: 500; }
+  .tier li.is-key::before { opacity: 1; }
+
+  .tier li.is-soon { color: var(--ink-faint); }
+  .tier li.is-soon::after {
+    content: "soon";
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--teal);
+    background: var(--teal-wash);
+    border-radius: 2px;
+    padding: 1px 4px;
+    margin-left: 6px;
+    vertical-align: 1px;
+  }
+
+  .tier-group {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 12px 0 -6px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule-soft);
+    list-style: none;
+  }
+  .tier-group::before { display: none; }
+  .tier ul > .tier-group:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+
+  /* ---- roadmap families ---- */
+
+  .families {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    margin: 30px 0 10px;
+    align-items: start;
+  }
+
+  .family {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--teal);
+    border-radius: 0 0 5px 5px;
+    padding: 20px 22px 22px;
+  }
+
+  .family h3 { margin: 0 0 4px; font-size: 19px; }
+
+  .family > p {
+    margin: 0 0 14px;
+    font-size: 14.5px;
+    color: var(--ink-faint);
+  }
+
+  .family dl { margin: 0; }
+
+  .family dt {
+    font-weight: 600;
+    font-size: 15px;
+    margin-top: 14px;
+  }
+  .family dl > dt:first-child { margin-top: 0; }
+
+  .family dd {
+    margin: 3px 0 0;
+    font-size: 14.5px;
+    color: var(--ink-soft);
+  }
+
+  .family dd code { font-size: 12px; }
+
+  /* ---- comparison table ---- */
+
+  .scroll {
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    margin: 28px 0 10px;
+    background: var(--surface);
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 640px;
+    font-size: 14.5px;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+
+  thead th {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+  tbody th { font-weight: 500; color: var(--ink); }
+
+  td { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  td.yes { color: var(--good); }
+  td.no  { color: var(--ink-faint); }
+
+  .caption {
+    font-size: 13.5px;
+    color: var(--ink-faint);
+    max-width: var(--measure);
+    margin: 0 0 18px;
+  }
+
+  /* ---- blockers ---- */
+
+  .blocker {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--crit);
+    border-radius: 0 4px 4px 0;
+    padding: 20px 24px;
+    margin-bottom: 14px;
+    max-width: var(--measure);
+  }
+
+  .blocker h3 { margin: 0 0 6px; }
+  .blocker p { margin: 0; font-size: 15.5px; color: var(--ink-soft); }
+  .blocker p + p { margin-top: 10px; }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: var(--crit-wash);
+    color: var(--crit);
+    margin-bottom: 8px;
+  }
+
+  .tag--teal { background: var(--teal-wash); color: var(--teal); }
+
+  /* ---- assumption list ---- */
+
+  .assumptions {
+    display: grid;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 26px 0 10px;
+  }
+
+  .assumption {
+    background: var(--surface);
+    padding: 18px 22px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  @media (min-width: 720px) {
+    .assumption { grid-template-columns: 1.1fr 1fr; gap: 24px; }
+  }
+
+  .assumption-claim { font-weight: 500; font-size: 15.5px; }
+  .assumption-test { font-size: 14.5px; color: var(--ink-soft); }
+  .assumption-test b {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  footer {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    font-size: 14px;
+    color: var(--ink-faint);
+    max-width: var(--measure);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    a, button { transition: color .15s ease; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Pricing &amp; packaging · internal decision memo</p>
+    <h1>What KAIROS should charge for</h1>
+    <p class="standfirst">
+      The agent layer is built and the meter already exists in the code. The open
+      question is not how much — it is <em>which line</em> separates free from paid.
+      This argues the line falls at proactivity, not at volume.
+    </p>
+    <div class="masthead-meta">
+      <span>21 August 2026</span>
+      <span>Basis: shipped code, not projections</span>
+      <span>Status: proposal</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="measure">
+      <p class="eyebrow">What actually costs money</p>
+      <h2>The meter is model calls, and it is already built</h2>
+      <p>
+        Tasks, notes, events, comments and RSVPs are rows in Postgres. Their marginal
+        cost rounds to zero. Every euro KAIROS spends per active user is an inference
+        call, which means the pricing metric is not seats, projects or storage — it is
+        turns.
+      </p>
+      <p>
+        That metric is already metered. <code>rateLimit.ts</code> runs a 24-hour
+        sliding window per user, Redis-backed, and it splits the budget in two: what
+        the user asks for, and what the system does on their behalf.
+      </p>
+    </div>
+
+    <div class="figures">
+      <div class="figure">
+        <span class="figure-value">50</span>
+        <span class="figure-label">Interactive AI requests per user, per 24h</span>
+        <span class="figure-note">AI_RATE_LIMIT</span>
+      </div>
+      <div class="figure">
+        <span class="figure-value">20</span>
+        <span class="figure-label">Proactive requests, on a separate budget</span>
+        <span class="figure-note">AI_SYSTEM_RATE_LIMIT</span>
+      </div>
+      <div class="figure">
+        <span class="figure-value">0</span>
+        <span class="figure-label">Model cost to confirm and apply a plan</span>
+        <span class="figure-note">no inference on write</span>
+      </div>
+      <div class="figure">
+        <span class="figure-value">3</span>
+        <span class="figure-label">Sub-agents one turn may run</span>
+        <span class="figure-note">worst-case cost multiplier</span>
+      </div>
+    </div>
+
+    <div class="measure">
+      <p class="caption">
+        The third figure is the one with pricing consequences. Generating a plan costs
+        a model call; approving and applying it costs nothing. Acting on the AI is
+        free — only asking is metered.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="measure">
+      <p class="eyebrow">The line</p>
+      <h2>Sell anticipation, not allowance</h2>
+    </div>
+
+    <div class="thesis">
+      <p class="thesis-lead">
+        The usual move is to meter the free tier down and charge for more messages.
+        That prices the thing users experience as a punishment, and it trains them to
+        ration the feature you want them addicted to.
+      </p>
+      <p>
+        KAIROS has a better boundary sitting in its architecture. Five agents answer
+        when spoken to. Two — the Daily Brief and the Risk Radar — run on a schedule
+        and draw on their own budget, with no user in the loop. That is a categorical
+        difference, not a quantitative one: one is a tool you pick up, the other is
+        something that works while you sleep.
+      </p>
+      <p>
+        <strong>Free gets the full tool. Pro gets the thing that runs without you.</strong>
+      </p>
+    </div>
+
+    <div class="measure">
+      <p>
+        Three reasons this line is the right one:
+      </p>
+      <ul>
+        <li>
+          <strong>It matches where cost is unbounded.</strong> Interactive spend is
+          self-limiting — people only ask so much. Scheduled spend accrues every day
+          for every opted-in user whether or not they open the app. Giving that away
+          is the one commitment that scales badly.
+        </li>
+        <li>
+          <strong>It is legible.</strong> "It watches your projects and tells you
+          what is slipping" is a sentence someone repeats to a colleague. "200
+          requests instead of 15" is not.
+        </li>
+        <li>
+          <strong>It does not cripple the free product.</strong> A free user gets all
+          five conversational agents and all 21 tools. They form the habit on the full
+          thing, which is what makes the upgrade feel like an addition rather than the
+          removal of an artificial limit.
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="measure">
+      <p class="eyebrow">The tiers</p>
+      <h2>Three tiers, one boundary each</h2>
+      <p>
+        Each step adds one thing you can name. Free ends where the product stops
+        waiting to be asked; Pro ends where one person's workspace becomes several
+        people's.
+      </p>
+    </div>
+
+    <div class="tiers">
+      <article class="tier">
+        <div class="tier-head">
+          <span class="tier-role">Ask</span>
+          <span class="tier-name">Free</span>
+        </div>
+        <div class="tier-price">€0</div>
+        <p class="tier-line">The whole assistant, on your initiative.</p>
+        <ul>
+          <li class="is-key">All 5 conversational agents</li>
+          <li class="is-key">All 21 workspace tools</li>
+          <li>15 AI requests per day</li>
+          <li>Unlimited confirm &amp; apply</li>
+          <li>20 remembered preferences</li>
+          <li>Personal and team workspaces</li>
+          <li>All 5 interface languages</li>
+        </ul>
+      </article>
+
+      <article class="tier tier--lead">
+        <div class="tier-head">
+          <span class="tier-role">Anticipate</span>
+          <span class="tier-name">Pro</span>
+        </div>
+        <div class="tier-price">€12 <span>/ user / month</span></div>
+        <p class="tier-line">It starts noticing things before you do.</p>
+        <ul>
+          <li class="tier-group">Runs without you</li>
+          <li class="is-key">Daily Brief, on your schedule</li>
+          <li class="is-key">Risk Radar with one-click fixes</li>
+          <li class="is-soon">Weekly retrospective, every Friday</li>
+          <li class="is-soon">Deadline watch with escalating nudges</li>
+          <li class="is-soon">Meeting prep before every event</li>
+          <li class="is-soon">Schedules you write yourself</li>
+
+          <li class="tier-group">Knows more about you</li>
+          <li class="is-key">Per-agent memory</li>
+          <li class="is-soon">Unlimited conversation history</li>
+          <li class="is-soon">Document upload the agents can read</li>
+          <li class="is-soon">Standing instructions per workspace</li>
+
+          <li class="tier-group">Reaches further</li>
+          <li>200 AI requests per day</li>
+          <li class="is-soon">Two-way calendar sync</li>
+          <li class="is-soon">Brief delivered to email or Slack</li>
+          <li class="is-soon">Reply by email to act</li>
+          <li class="is-soon">API keys and outbound webhooks</li>
+          <li>Your own tools, when they ship</li>
+
+          <li class="tier-group">Trust and control</li>
+          <li>Pick a specialist directly</li>
+          <li>See every lookup an answer used</li>
+          <li>Undo applied changes</li>
+          <li class="is-soon">Preview a plan's diff before applying</li>
+          <li class="is-soon">Export everything as Markdown, CSV or ICS</li>
+        </ul>
+      </article>
+
+      <article class="tier">
+        <div class="tier-head">
+          <span class="tier-role">Coordinate</span>
+          <span class="tier-name">Team</span>
+        </div>
+        <div class="tier-price">€22 <span>/ user / month</span></div>
+        <p class="tier-line">Everything in Pro, across an organization.</p>
+        <ul>
+          <li class="is-key">Org Admin agent — roles and membership by chat</li>
+          <li class="is-key">Shared organization memory</li>
+          <li>Risk Radar across the whole org</li>
+          <li>Audit trail of every applied change</li>
+          <li>Priority model tier on long turns</li>
+          <li>Minimum 3 seats</li>
+        </ul>
+      </article>
+    </div>
+
+    <p class="caption">
+      Annual billing at two months free (Pro €120/yr, Team €220/yr) is worth offering
+      from day one — it converts the cash-flow question into a discount question.
+    </p>
+  </section>
+
+  <section>
+    <div class="measure">
+      <p class="eyebrow">Where each capability lands</p>
+      <h2>The boundary, feature by feature</h2>
+      <p>
+        The rows above the divider all exist in the shipped product — the launch
+        boundary can be drawn today without new agent work. The rows marked
+        <span class="tag tag--teal">not built</span> are the deliberate roadmap:
+        they are what keeps Pro worth renewing after the novelty of the Daily Brief
+        wears off, and each one is argued for in the next section.
+      </p>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Capability</th>
+            <th scope="col">Free</th>
+            <th scope="col">Pro</th>
+            <th scope="col">Team</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Conversational agents</th>
+            <td class="yes">All 5</td>
+            <td class="yes">All 5</td>
+            <td class="yes">All 5</td>
+          </tr>
+          <tr>
+            <th scope="row">Workspace tools</th>
+            <td class="yes">21</td>
+            <td class="yes">21</td>
+            <td class="yes">21</td>
+          </tr>
+          <tr>
+            <th scope="row">Multi-agent turns</th>
+            <td class="yes">Yes</td>
+            <td class="yes">Yes</td>
+            <td class="yes">Yes</td>
+          </tr>
+          <tr>
+            <th scope="row">AI requests / day</th>
+            <td>15</td>
+            <td>200</td>
+            <td>200</td>
+          </tr>
+          <tr>
+            <th scope="row">Confirm &amp; apply</th>
+            <td class="yes">Unlimited</td>
+            <td class="yes">Unlimited</td>
+            <td class="yes">Unlimited</td>
+          </tr>
+          <tr>
+            <th scope="row">Daily Brief</th>
+            <td class="no">—</td>
+            <td class="yes">Yes</td>
+            <td class="yes">Yes</td>
+          </tr>
+          <tr>
+            <th scope="row">Risk Radar</th>
+            <td class="no">—</td>
+            <td class="yes">Own projects</td>
+            <td class="yes">Whole org</td>
+          </tr>
+          <tr>
+            <th scope="row">Remembered preferences</th>
+            <td>20 shared</td>
+            <td>20 + 10 per agent</td>
+            <td>20 + 10 per agent</td>
+          </tr>
+          <tr>
+            <th scope="row">Pin a specific agent</th>
+            <td class="no">—</td>
+            <td class="yes">Yes</td>
+            <td class="yes">Yes</td>
+          </tr>
+          <tr>
+            <th scope="row">Tool inspector</th>
+            <td class="no">—</td>
+            <td class="yes">Yes</td>
+            <td class="yes">Yes</td>
+          </tr>
+          <tr>
+            <th scope="row">Undo applied changes</th>
+            <td class="no">—</td>
+            <td class="yes">Yes</td>
+            <td class="yes">Yes</td>
+          </tr>
+          <tr>
+            <th scope="row">Org Admin agent</th>
+            <td class="no">—</td>
+            <td class="no">—</td>
+            <td class="yes">Yes</td>
+          </tr>
+          <tr>
+            <th scope="row">Custom tools <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Org-wide AI reporting <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Weekly retrospective <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Deadline watch &amp; nudges <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Meeting prep briefs <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">User-defined schedules <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">3 schedules</td>
+            <td class="yes">10 schedules</td>
+          </tr>
+          <tr>
+            <th scope="row">Conversation history <span class="tag tag--teal">not built</span></th>
+            <td class="">30 days</td>
+            <td class="yes">Unlimited</td>
+            <td class="yes">Unlimited</td>
+          </tr>
+          <tr>
+            <th scope="row">Document upload &amp; recall <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Standing instructions <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Per workspace</td>
+            <td class="yes">Per workspace</td>
+          </tr>
+          <tr>
+            <th scope="row">Calendar sync <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Two-way</td>
+            <td class="yes">Two-way</td>
+          </tr>
+          <tr>
+            <th scope="row">Delivery to email / Slack <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Reply by email to act <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">API keys &amp; webhooks <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Plan diff preview <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="yes">Planned</td>
+            <td class="yes">Planned</td>
+          </tr>
+          <tr>
+            <th scope="row">Export (MD / CSV / ICS) <span class="tag tag--teal">not built</span></th>
+            <td class="">Manual copy</td>
+            <td class="yes">One click</td>
+            <td class="yes">One click</td>
+          </tr>
+          <tr>
+            <th scope="row">Priority model tier <span class="tag tag--teal">not built</span></th>
+            <td class="no">—</td>
+            <td class="no">—</td>
+            <td class="yes">Long turns</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="measure">
+      <p class="eyebrow">What Pro grows into</p>
+      <h2>Four families, one argument each</h2>
+      <p>
+        The Daily Brief sells the first month. It does not sell the twelfth. A
+        subscription needs a reason to still be there at renewal, and the honest
+        version of that reason is that the agent has accumulated something the user
+        would lose by leaving — schedules it runs, documents it has read, instructions
+        it follows, places it reaches.
+      </p>
+      <p>
+        Everything below is unbuilt. The grouping matters more than the individual
+        items: each family extends the same boundary already drawn — <em>Pro is the
+        part that works without you</em> — rather than inventing a second axis of
+        value that would have to be explained separately.
+      </p>
+    </div>
+
+    <div class="families">
+
+      <article class="family">
+        <h3>More that runs unattended</h3>
+        <p>The scheduler exists. Only the Brief and the Radar ride on it.</p>
+        <dl>
+          <dt>Weekly retrospective</dt>
+          <dd>
+            Friday afternoon: what closed, what slipped, what has not moved in two
+            weeks. Same machinery as the Daily Brief on a different cadence and a
+            wider window — the cheapest genuinely new Pro feature on this page.
+          </dd>
+
+          <dt>Deadline watch</dt>
+          <dd>
+            Escalating nudges as a due date approaches, pitched at the task's actual
+            state rather than the calendar alone. A task with no activity and two days
+            left is a different message from one that is nearly done.
+          </dd>
+
+          <dt>Meeting prep</dt>
+          <dd>
+            Thirty minutes before an event, a short brief on the projects and people
+            it touches. This is the feature most likely to be described out loud to a
+            colleague, which makes it the best acquisition lever in the list.
+          </dd>
+
+          <dt>Schedules you write yourself</dt>
+          <dd>
+            A saved prompt on a cron of the user's choosing — "every Monday, list
+            unassigned tasks in Delta." Turns a fixed set of two proactive agents into
+            an open surface, and caps naturally at three schedules on Pro.
+          </dd>
+        </dl>
+      </article>
+
+      <article class="family">
+        <h3>More that it knows</h3>
+        <p>Memory is the switching cost. Free should have a little; Pro should compound.</p>
+        <dl>
+          <dt>Unlimited conversation history</dt>
+          <dd>
+            Free keeps 30 days. Pro keeps everything and can search it. Storage is
+            rows in Postgres, so this costs almost nothing to give and is felt
+            immediately the first time someone looks for a decision from last quarter.
+          </dd>
+
+          <dt>Documents the agents can read</dt>
+          <dd>
+            Upload a spec, a contract, a set of meeting notes; the agents cite it when
+            answering. This is the largest build on the page — it needs storage,
+            extraction and retrieval — and the one with the clearest willingness to
+            pay attached.
+          </dd>
+
+          <dt>Standing instructions</dt>
+          <dd>
+            Per-workspace rules the agents always follow: house terminology, a default
+            assignee, "never create tasks without an estimate." Distinct from
+            <code>perAgentMemory</code>, which records what the agent learned rather
+            than what the user decreed.
+          </dd>
+        </dl>
+      </article>
+
+      <article class="family">
+        <h3>More places it reaches</h3>
+        <p>An assistant confined to one browser tab is only useful when that tab is open.</p>
+        <dl>
+          <dt>Two-way calendar sync</dt>
+          <dd>
+            Google and Outlook. Events created in KAIROS appear on the real calendar
+            and the reverse. Also the precondition for meeting prep above — build once,
+            two features land.
+          </dd>
+
+          <dt>Delivery to email or Slack</dt>
+          <dd>
+            The brief should arrive where the morning already happens. Today it waits
+            in the app for someone to come and read it, which is the weakest possible
+            version of a proactive feature.
+          </dd>
+
+          <dt>Reply by email to act</dt>
+          <dd>
+            Answer the brief in a sentence and have the change applied. Note that
+            confirm-and-apply costs no inference, so the round trip that closes the
+            loop is the cheapest interaction in the product.
+          </dd>
+
+          <dt>API keys and outbound webhooks</dt>
+          <dd>
+            The complement to custom tools: today the agent can call out, but nothing
+            can call in. Pairs with per-key rate limits drawn from the same Redis
+            window the UI already uses.
+          </dd>
+        </dl>
+      </article>
+
+      <article class="family">
+        <h3>More reason to trust it</h3>
+        <p>Every one of these lowers the cost of letting an agent write to real data.</p>
+        <dl>
+          <dt>Plan diff preview</dt>
+          <dd>
+            Before confirming, show exactly which rows change and how. Undo answers
+            "that was wrong"; a diff prevents the moment. For a paid user acting on an
+            agent's judgment, prevention is worth more than reversal.
+          </dd>
+
+          <dt>Export</dt>
+          <dd>
+            Markdown, CSV and ICS, one click. Counter-intuitively a retention feature:
+            the easiest product to adopt is the one that is visibly easy to leave, and
+            an export button is a cheap answer to the procurement question.
+          </dd>
+
+          <dt>Custom tools</dt>
+          <dd>
+            Already flagged in <code>entitlements.ts</code> as
+            <code>customTools</code>. An HTTP endpoint or MCP server of the user's own,
+            registered into the same 21-tool surface the built-ins use.
+          </dd>
+        </dl>
+      </article>
+
+    </div>
+
+    <div class="measure">
+      <p class="caption">
+        If only three of these ship before launch, they should be the weekly
+        retrospective (cheapest), delivery to email or Slack (makes the Brief actually
+        proactive) and unlimited history (nearly free, and the first thing a returning
+        user notices). Documents and calendar sync are the second wave — both are real
+        engineering, and neither is needed to justify €12.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="measure">
+      <p class="eyebrow">Before you can charge</p>
+      <h2>Two shipped limitations undercut the Pro pitch</h2>
+      <p>
+        Both are in the agent layer's own list of known gaps. They are tolerable in a
+        free feature and embarrassing in a paid one, so they gate the launch rather
+        than follow it.
+      </p>
+    </div>
+
+    <div class="blocker">
+      <span class="tag">Blocks Pro</span>
+      <h3>The Daily Brief fires on UTC, not on your morning</h3>
+      <p>
+        <code>ai_schedules.hourUtc</code> stores an hour with no timezone. Bulgaria
+        runs UTC+2 in winter and UTC+3 in summer, so a brief set for 07:00 arrives at
+        09:00 — and shifts by an hour twice a year without the user touching anything.
+      </p>
+      <p>
+        The Daily Brief is the headline Pro feature. "Your morning brief" that lands
+        mid-morning and drifts seasonally is the first thing a paying customer will
+        write in to complain about. This needs a real timezone column first.
+      </p>
+    </div>
+
+    <div class="blocker">
+      <span class="tag">Blocks Team</span>
+      <h3>There is no cross-user view of anything</h3>
+      <p>
+        <code>getAiMetrics</code> is per-user, and the codebase has no admin role that
+        spans tenants. Two Team rows above — org-wide Risk Radar and org-wide
+        reporting — have no mechanism behind them today.
+      </p>
+      <p>
+        This is the larger of the two. It is why Team is drawn here as a later step
+        rather than a launch tier: sell Free and Pro first, and let Team follow the
+        admin role it depends on.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="measure">
+      <p class="eyebrow">What has to be true</p>
+      <h2>The assumptions this rests on</h2>
+      <p>
+        Each of these is falsifiable, and the first one is the one most likely to be
+        wrong in a way that matters.
+      </p>
+    </div>
+
+    <div class="assumptions">
+      <div class="assumption">
+        <div class="assumption-claim">
+          Inference stays close to free.
+        </div>
+        <div class="assumption-test">
+          <b>Why it might not</b>
+          KAIROS currently runs on free provider tiers. Those are rate-limited and can
+          be withdrawn. Price for the cost of paid inference, not today's zero — at
+          200 requests/day a heavy Pro user is the entire margin. Model tiering
+          (<code>tier: "fast"</code>) is already in the client; route the cheap work
+          through it before launch, not after.
+        </div>
+      </div>
+      <div class="assumption">
+        <div class="assumption-claim">
+          15 free requests a day is enough to form a habit, and few enough to feel.
+        </div>
+        <div class="assumption-test">
+          <b>How to check</b>
+          Instrument how often free users hit the ceiling. If almost nobody does, the
+          limit is doing no work and can rise; if most do on day one, it reads as a
+          crippled trial rather than a real product.
+        </div>
+      </div>
+      <div class="assumption">
+        <div class="assumption-claim">
+          €12 clears the bar in the launch market.
+        </div>
+        <div class="assumption-test">
+          <b>The risk</b>
+          It sits credibly against Notion AI and ClickUp Brain for a Western European
+          buyer. For Bulgarian SMBs it may not — that is a market where per-seat SaaS
+          faces real resistance. Consider a regional price rather than a global one.
+        </div>
+      </div>
+      <div class="assumption">
+        <div class="assumption-claim">
+          The roadmap features are worth their build cost.
+        </div>
+        <div class="assumption-test">
+          <b>The risk</b>
+          Four families is a long list to promise and a slow list to ship. The failure
+          mode is selling a Pro tier that is mostly footnotes — announce only what is
+          built, and treat the rest as internal sequencing rather than marketing copy.
+          Nothing on that page should carry a date it cannot keep.
+        </div>
+      </div>
+      <div class="assumption">
+        <div class="assumption-claim">
+          Proactivity is what people pay for.
+        </div>
+        <div class="assumption-test">
+          <b>How to check</b>
+          It costs nothing to find out before building billing: offer the Daily Brief
+          to a cohort, remove it after two weeks, and count who asks for it back. That
+          is the cheapest possible test of this entire memo.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="measure">
+      <p class="eyebrow">Implementation</p>
+      <h2>Where this meets the code</h2>
+      <p>
+        The entitlement seam is already in place. <code>entitlementsFor(ctx)</code> in
+        <code>src/server/billing/entitlements.ts</code> returns a flag set and
+        currently grants everything to everyone, so the tiers above are describable in
+        code today without blocking anyone.
+      </p>
+      <p>
+        Turning this memo on is three steps, in this order:
+      </p>
+      <ul>
+        <li>
+          <strong>Add the flags.</strong> Extend the <code>Entitlements</code>
+          interface with one field per boundary in the table — scheduled agents, agent
+          pinning, undo, per-agent memory, request ceiling. <code>customTools</code>
+          and <code>perAgentMemory</code> are already there; the shape is set. Add the
+          roadmap flags at the same time, even though nothing reads them yet
+          (<code>historyDays</code>, <code>maxSchedules</code>, <code>documents</code>,
+          <code>integrations</code>, <code>apiAccess</code>) — a flag added before its
+          feature costs one line and keeps the paywall decision out of the feature PR.
+          Read them at each call site now, while they all return true and nothing can
+          break.
+        </li>
+        <li>
+          <strong>Fix the two blockers.</strong> A timezone column on
+          <code>ai_schedules</code>, and an admin role that can see across a tenant.
+          Neither is billing work, and both are prerequisites rather than follow-ups.
+        </li>
+        <li>
+          <strong>Replace the constant.</strong> Swap the hardcoded return in
+          <code>entitlementsFor</code> for a subscription lookup. Every call site
+          already branches correctly by then, so this is the only file that changes.
+        </li>
+      </ul>
+      <p>
+        Deliberately not on that list: the rate limiter needs no rework. It already
+        reads its ceiling from configuration and already separates interactive from
+        proactive spend, which is exactly the split the tiers are drawn along.
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Figures taken from the shipped codebase on 21 August 2026 —
+      <code>rateLimit.ts</code>, <code>memory.ts</code>, <code>registry.ts</code> and
+      the agent enhancement implementation notes. Price points are proposals and the
+      only numbers here not derived from code.
+    </p>
+  </footer>
+
+</div>

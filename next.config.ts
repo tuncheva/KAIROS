@@ -6,7 +6,8 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/config.ts");
 const nextConfig: NextConfig = {
   // Keep pdfjs-dist out of the webpack/turbopack bundle — its legacy build
   // references worker files that bundlers cannot statically resolve.
-  serverExternalPackages: ["pdfjs-dist"],
+  // redis is an optional peer dependency and should not be bundled
+  serverExternalPackages: ["pdfjs-dist", "redis"],
   images: {
     remotePatterns: [
       {

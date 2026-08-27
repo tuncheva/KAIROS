@@ -8,7 +8,7 @@ export default async function Home() {
 
     // Authenticated users are redirected to the workspace — landing page is pre-auth only
     if (session?.user) {
-        redirect("/create");
+        redirect("/dashboard");
     }
 
     return (

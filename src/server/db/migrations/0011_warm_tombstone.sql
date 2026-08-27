@@ -1,0 +1,1 @@
+ALTER TABLE "ai_schedules" ADD COLUMN "day_of_week" integer;

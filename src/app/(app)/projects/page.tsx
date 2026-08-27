@@ -1,44 +1,52 @@
-import { ProjectsListWorkspace } from "~/components/projects/ProjectsListClient";
-import { SideNav } from "~/components/layout/SideNav";
-import { UserDisplay } from "~/components/layout/UserDisplay";
-import { NotificationSystem } from "~/components/notifications/NotificationSystem";
-import { WorkspaceIndicator } from "~/components/orgs/WorkspaceIndicator";
-import { auth } from "~/server/auth";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
 
-export default async function ProjectsPage() {
+import { TopBar } from "~/components/layout/TopBar";
+import { NewProjectDrawer } from "~/components/projects/NewProjectDrawer";
+import { ProjectsWorkspace } from "~/components/projects/ProjectsWorkspace";
+import { auth } from "~/server/auth";
+import { api, HydrateClient } from "~/trpc/server";
+
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await auth();
   if (!session?.user) {
     redirect("/api/auth/signin");
   }
 
-  const tNav = await getTranslations("nav");
+  /* `?projectId=` deep-links straight into one project, so notifications and
+     the dashboard can point at a project rather than at the list. */
+  const params = await searchParams;
+  const raw = params.projectId;
+  const parsed = Number(Array.isArray(raw) ? raw[0] : raw);
+  const initialProjectId = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+
+  /* `?new=1` opens the create drawer on arrival, so "new project" from the nav,
+     the dashboard or a first-run workspace goes to the form directly. */
+  const newRaw = params.new;
+  const openNew = (Array.isArray(newRaw) ? newRaw[0] : newRaw) === "1";
+
+  /* The list the workspace opens on. Fetched here rather than after hydration
+     so the page arrives populated; the dashboard warms the same key, so moving
+     between the two is served from cache either way. Not awaited — the result
+     streams down through `HydrateClient` without holding up the shell. */
+  void api.project.getMyProjects.prefetch();
 
   return (
+    <HydrateClient>
     <div className="min-h-screen bg-bg-primary">
-      <SideNav />
-      <div className="lg:ml-16 min-h-screen flex flex-col pt-16 lg:pt-0 kairos-page-enter">
-        <header className="sticky top-16 lg:top-0 z-30 topbar-solid">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 flex flex-wrap justify-between items-center gap-3">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-fg-primary tracking-tight">{tNav("projects")}</h1>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
-              <WorkspaceIndicator compact />
-              <div className="hidden sm:block h-6 w-px bg-border-medium mx-1"></div>
-              <NotificationSystem />
-              <UserDisplay />
-            </div>
-          </div>
-        </header>
+      <div className="rail-offset kairos-page-enter flex min-h-screen flex-col pt-16 lg:pt-0">
+        {/* Creating a project is the page's one primary action, so it sits in the
+            bar rather than competing with the heading below it. */}
+        <TopBar actions={<NewProjectDrawer defaultOpen={openNew} />} />
 
-        <main id="main-content" className="flex-1 w-full overflow-auto pb-24 lg:pb-0">
-          <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-4">
-            <ProjectsListWorkspace userId={session.user.id} />
-          </div>
+        <main id="main-content" className="w-full flex-1 overflow-auto pb-24 lg:pb-0">
+          <ProjectsWorkspace userId={session.user.id} initialProjectId={initialProjectId} />
         </main>
       </div>
     </div>
+    </HydrateClient>
   );
 }

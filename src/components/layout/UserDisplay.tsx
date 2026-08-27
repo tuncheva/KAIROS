@@ -6,6 +6,7 @@ import { signIn, signOut, useSession } from"next-auth/react";
 import { useState, useRef, useEffect } from"react";
 import Image from"next/image";
 import { useTranslations } from"next-intl";
+import { onAvatarUpdate } from"~/lib/avatarEvents";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -29,6 +30,9 @@ export function UserDisplay() {
  const [switchPassword, setSwitchPassword] = useState("");
  const [switchError, setSwitchError] = useState<string | null>(null);
  const [isSwitching, setIsSwitching] = useState(false);
+ // Set the moment a new avatar is uploaded elsewhere in the app, so the picture
+ // here changes without waiting for the profile query to come back around.
+ const [avatarOverride, setAvatarOverride] = useState<string | null>(null);
  const dropdownRef = useRef<HTMLDivElement>(null);
 
  const { status } = useSession();
@@ -49,6 +53,23 @@ export function UserDisplay() {
  refetchOnWindowFocus: false,
  refetchOnMount: false,
  });
+
+ useEffect(() => {
+ return onAvatarUpdate((imageUrl) => {
+ setAvatarOverride(imageUrl);
+ utils.user.getCurrentUser.setData(undefined, (old) =>
+ old ? { ...old, image: imageUrl } : old,
+ );
+ });
+ }, [utils]);
+
+ // Once the query itself carries the new picture the override has nothing left
+ // to do, and holding it would mask a later change from the server.
+ useEffect(() => {
+ if (avatarOverride && user?.image === avatarOverride) {
+ setAvatarOverride(null);
+ }
+ }, [avatarOverride, user?.image]);
 
  useEffect(() => {
  if (!user?.email) return;
@@ -185,6 +206,8 @@ export function UserDisplay() {
  return null;
  }
 
+ const avatarSrc = avatarOverride ?? user.image ?? null;
+
  const otherAccounts = storedAccounts.filter((a) => 
  a.email && 
  a.email !== user.email && 
@@ -209,8 +232,8 @@ export function UserDisplay() {
  </div>
  </div>
  
- {user.image ? (
- <Image src={user.image} alt={user.name ??"User"} width={32} height={32} className="w-8 h-8 rounded-full object-cover ring-2 ring-border-light/20 group-hover:ring-accent-primary/50 transition-all" />
+ {avatarSrc ? (
+ <Image src={avatarSrc} alt={user.name ??"User"} width={32} height={32} unoptimized className="w-8 h-8 rounded-full object-cover ring-2 ring-border-light/20 group-hover:ring-accent-primary/50 transition-all" />
  ) : (
  <div className="w-8 h-8 bg-accent-primary rounded-full flex items-center justify-center text-white text-sm font-bold group-hover:bg-accent-secondary transition-colors">
  {user.name?.charAt(0).toUpperCase() ??"U"}
@@ -231,12 +254,13 @@ export function UserDisplay() {
  >
  <div className="p-4 border-b dark:border-white/10 border-slate-200 dark:bg-[#1A191E] bg-slate-50">
  <div className="flex items-center gap-3">
- {user.image ? (
+ {avatarSrc ? (
  <Image
- src={user.image}
+ src={avatarSrc}
  alt={user.name ??"User"}
  width={48}
  height={48}
+ unoptimized
  className="w-12 h-12 rounded-full object-cover ring-2 ring-border-light/20"
  />
  ) : (

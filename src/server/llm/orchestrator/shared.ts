@@ -49,10 +49,22 @@ export interface AgentDraftInput {
     projectId?: string | number;
   };
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>;
+  /**
+   * What was established in turns that have aged out of the replay window.
+   *
+   * Produced by `maybeSummarize`. Replayed in front of the recent turns so a long
+   * conversation keeps its beginning without the prompt growing without bound.
+   */
+  conversationSummary?: string | null;
   /** Cancels the upstream model call when the client disconnects. */
   signal?: AbortSignal;
   /** Fires as each tool starts, so a streaming caller can show real progress. */
   onToolCall?: (name: string) => void;
+  /**
+   * G-1 — fires with the answer text as it decodes, so the user reads the reply
+   * while the rest of the structured object is still being written.
+   */
+  onAnswerDelta?: (text: string) => void;
 }
 
 export interface AgentDraftResult {

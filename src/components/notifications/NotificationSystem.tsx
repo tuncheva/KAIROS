@@ -2,14 +2,45 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "~/trpc/react";
-import { Bell, X, Calendar, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
+import { Bell, X, Calendar, CheckCircle2, AlertCircle, Trash2, Heart, MessageCircle, MessageSquare, FolderKanban, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
 
+/**
+ * Mirrors `notificationTypeEnum`.
+ *
+ * This used to be a four-value union, and both places that built a `Notification`
+ * narrowed anything else down to `"system"`. Since a direct message, a like and a
+ * comment are all stored with their own type, the effect was that most of the
+ * bell rendered the same generic warning icon — a like on your post looked
+ * identical to an account notice.
+ */
+type NotificationType =
+  | "event"
+  | "task"
+  | "project"
+  | "system"
+  | "like"
+  | "comment"
+  | "reply"
+  | "message"
+  | "event_reminder";
+
+const NOTIFICATION_TYPES: readonly NotificationType[] = [
+  "event", "task", "project", "system",
+  "like", "comment", "reply", "message", "event_reminder",
+];
+
+function asNotificationType(value: unknown): NotificationType {
+  return NOTIFICATION_TYPES.includes(value as NotificationType)
+    ? (value as NotificationType)
+    : "system";
+}
+
 interface Notification {
   id: string;
-  type: "event" | "task" | "project" | "system";
+  type: NotificationType;
   title: string;
   message: string;
   createdAt: Date;
@@ -40,15 +71,27 @@ export function NotificationSystem() {
   // request rate for every signed-in user.
   const NOTIFICATION_FALLBACK_POLL_MS = 120_000;
 
+  /*
+   * `staleTime` is what keeps the bell from refetching on every navigation.
+   * The bar this lives in is re-rendered by each page, so both queries mount
+   * again on every page switch; with the list treated as stale they fired two
+   * requests every time the user moved anywhere in the app. Since delivery is
+   * push-based, a cached list is not a stale one — the socket event below
+   * invalidates it the moment anything actually arrives.
+   *
+   * Window focus is still opted into by name, against the app-wide default, as
+   * the cheap way to catch up on anything missed while the tab was hidden.
+   */
   const { data: storedNotifications, refetch } = api.notification.getAll.useQuery(undefined, {
     refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    staleTime: NOTIFICATION_FALLBACK_POLL_MS,
     refetchInterval: NOTIFICATION_FALLBACK_POLL_MS,
   });
 
   // Separate unread count query for faster badge updates
   const { data: serverUnreadCount } = api.notification.getUnreadCount.useQuery(undefined, {
     refetchOnWindowFocus: true,
+    staleTime: NOTIFICATION_FALLBACK_POLL_MS,
     refetchInterval: NOTIFICATION_FALLBACK_POLL_MS,
   });
 
@@ -75,8 +118,7 @@ export function NotificationSystem() {
         setNotifications((prev) => [
           {
             id: floatId,
-            type: (data.type === "event" || data.type === "task" || data.type === "project" || data.type === "system")
-              ? data.type : "system",
+            type: asNotificationType(data.type),
             title: data.title ?? "",
             message: data.message ?? "",
             createdAt: new Date(),
@@ -140,15 +182,9 @@ export function NotificationSystem() {
   useEffect(() => {
     if (storedNotifications) {
       const formattedNotifications: Notification[] = storedNotifications.map((notif) => {
-        const notifType = notif.type;
-        const validType: "event" | "task" | "project" | "system" =
-          notifType === "event" || notifType === "task" || notifType === "project" || notifType === "system"
-            ? notifType
-            : "system";
-
         return {
           id: notif.id.toString(),
-          type: validType,
+          type: asNotificationType(notif.type),
           title: notif.title,
           message: notif.message,
           createdAt: new Date(notif.createdAt),
@@ -194,31 +230,34 @@ export function NotificationSystem() {
     }
   };
 
-  const getIcon = (type: string) => {
+  const iconFor = (type: string, size: number) => {
     switch (type) {
       case "event":
-        return <Calendar className="text-event-upcoming" size={20} />;
+        return <Calendar className="text-event-upcoming" size={size} />;
+      case "event_reminder":
+        return <Clock className="text-event-upcoming" size={size} />;
       case "task":
-        return <CheckCircle2 className="text-success" size={20} />;
+        return <CheckCircle2 className="text-success" size={size} />;
       case "project":
-        return <AlertCircle className="text-warning" size={20} />;
+        return <FolderKanban className="text-warning" size={size} />;
+      case "message":
+        return <MessageSquare className="text-accent-primary" size={size} />;
+      case "like":
+        return <Heart className="text-error" size={size} />;
+      case "comment":
+      case "reply":
+        return <MessageCircle className="text-accent-primary" size={size} />;
       default:
-        return <AlertCircle className="text-fg-tertiary" size={20} />;
+        return <AlertCircle className="text-fg-tertiary" size={size} />;
     }
   };
 
-  const getFloatingIcon = (type: string) => {
-    switch (type) {
-      case "event":
-        return <Calendar className="text-event-upcoming" size={18} />;
-      case "task":
-        return <CheckCircle2 className="text-success" size={18} />;
-      case "project":
-        return <AlertCircle className="text-warning" size={18} />;
-      default:
-        return <Bell className="text-accent-primary" size={18} />;
-    }
-  };
+  const getIcon = (type: string) => iconFor(type, 20);
+
+  // The floating toast falls back to the bell rather than a warning triangle: an
+  // unrecognised type popping up as an alert reads as an error.
+  const getFloatingIcon = (type: string) =>
+    type === "system" ? <Bell className="text-accent-primary" size={18} /> : iconFor(type, 18);
 
   return (
     <>

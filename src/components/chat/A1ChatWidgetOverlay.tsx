@@ -1,8 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Minus, X, Maximize2, Minimize2, GripVertical, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Minus, X, Maximize2, GripVertical, Sparkles, FolderKanban } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
+import { AUTO_AGENT } from "~/components/agents/AgentPicker";
+import { ComposerMenu } from "~/components/chat/ComposerMenu";
+import { api } from "~/trpc/react";
+
+const ALL_PROJECTS = "__all__";
 
 /* ────────────── types ────────────── */
 interface Rect {
@@ -95,17 +103,69 @@ export function A1ChatWidgetOverlay(props: {
   projectId?: number;
   isOpen?: boolean;
   onClose?: () => void;
+  /** Both directions, unlike `onClose`. See the note above. */
+  onOpenChange?: (open: boolean) => void;
+  /** A message to send as soon as the thread mounts. */
+  prefill?: string;
+  /**
+   * Bumped by the host to remount the thread — the only way a `prefill` that
+   * arrives after mount can actually be sent, since it is sent once per mount.
+   */
+  threadKey?: number;
 }) {
   const [selfOpen, setSelfOpen] = useState(false);
   const controlled = props.isOpen !== undefined;
   const open = controlled ? props.isOpen! : selfOpen;
   const setOpen = controlled
-    ? (v: boolean) => { if (!v && props.onClose) props.onClose(); }
+    ? (v: boolean) => {
+        props.onOpenChange?.(v);
+        if (!v) props.onClose?.();
+      }
     : setSelfOpen;
   const [minimised, setMinimised] = useState(false);
-  const [maximised, setMaximised] = useState(false);
   const [rect, setRect] = useState<Rect>(defaultRect);
-  const [prevRect, setPrevRect] = useState<Rect | null>(null);
+
+  const router = useRouter();
+  const t = useTranslations("aiConsole");
+  const tAgents = useTranslations("agents");
+
+  /*
+   * Who answers, and what they can see.
+   *
+   * The same two decisions the full page offers, made with the same control —
+   * a user who pins Task Planner in the widget and then opens the page should
+   * not have to learn a second way of doing it.
+   */
+  const [selectedAgent, setSelectedAgent] = useState<string>(AUTO_AGENT);
+  const [scope, setScope] = useState<string>(ALL_PROJECTS);
+
+  const agentsQuery = api.agent.agents.useQuery(undefined, {
+    enabled: open,
+    staleTime: Infinity,
+  });
+  const projectsQuery = api.project.getMyProjects.useQuery(undefined, {
+    enabled: open,
+    staleTime: 60_000,
+  });
+  const quotaQuery = api.agent.rateLimitStatus.useQuery(undefined, {
+    enabled: open,
+    refetchInterval: 60_000,
+  });
+
+  const agents = agentsQuery.data ?? [];
+  const projects = projectsQuery.data ?? [];
+
+  const pinnedAgentId = selectedAgent === AUTO_AGENT ? undefined : selectedAgent;
+  // A project passed in by the host wins: a widget mounted on a project page is
+  // already scoped, and offering to un-scope it there would be a trap.
+  const scopeProjectId =
+    props.projectId ?? (scope === ALL_PROJECTS ? undefined : Number(scope));
+  const scopeProject = projects.find((pr) => String(pr.id) === scope) ?? null;
+
+  const agentLabel =
+    selectedAgent === AUTO_AGENT
+      ? tAgents("auto")
+      : (agents.find((a) => a.id === selectedAgent)?.name ?? tAgents("auto"));
 
   const panelRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
@@ -120,8 +180,8 @@ export function A1ChatWidgetOverlay(props: {
 
   /* persist on change */
   useEffect(() => {
-    if (open && !maximised) saveRect(rect);
-  }, [rect, open, maximised]);
+    if (open) saveRect(rect);
+  }, [rect, open]);
 
   /* constrain on window resize */
   useEffect(() => {
@@ -152,7 +212,6 @@ export function A1ChatWidgetOverlay(props: {
   /* ─── drag / resize pointer handlers ─── */
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (maximised) return;
       const el = panelRef.current;
       if (!el) return;
       // Never intercept clicks on interactive elements
@@ -166,12 +225,11 @@ export function A1ChatWidgetOverlay(props: {
         e.preventDefault();
       }
     },
-    [rect, maximised],
+    [rect],
   );
 
   const handleHeaderPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (maximised) return;
       /* don't start drag if clicking a button */
       if ((e.target as HTMLElement).closest("button")) return;
       dragging.current = true;
@@ -179,7 +237,7 @@ export function A1ChatWidgetOverlay(props: {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       e.preventDefault();
     },
-    [rect, maximised],
+    [rect],
   );
 
   const handlePointerMove = useCallback(
@@ -235,15 +293,24 @@ export function A1ChatWidgetOverlay(props: {
   }, []);
 
   /* ─── maximise / minimise helpers ─── */
-  const toggleMaximise = () => {
-    if (maximised) {
-      if (prevRect) setRect(prevRect);
-      setMaximised(false);
-    } else {
-      setPrevRect(rect);
-      setMaximised(true);
-    }
+
+  /**
+   * Maximising leaves the widget and opens the AI page.
+   *
+   * The full-screen chat used to be this same overlay stretched to the viewport
+   * with a three-pane workspace inside it. That is now a real page at
+   * `/chat/ai` — with the thread list, the audit trail and a URL you can link
+   * to or reload — and maintaining a second, worse copy of it inside a floating
+   * panel would guarantee the two drift.
+   *
+   * The widget closes on the way out. `GlobalAIWidget` already hides it on
+   * `/chat/ai`, so leaving it open would only mean it springs back the moment
+   * the user navigates anywhere else.
+   */
+  const goFullScreen = () => {
     setMinimised(false);
+    setOpen(false);
+    router.push("/chat/ai");
   };
 
   const toggleMinimise = () => {
@@ -254,19 +321,18 @@ export function A1ChatWidgetOverlay(props: {
   if (!open) return null;
 
   /* ─── panel styles ─── */
-  const panelStyle: React.CSSProperties = maximised
-    ? { inset: 0, width: "100vw", height: "100vh" }
-    : {
-        left: rect.x,
-        top: rect.y,
-        width: rect.w,
-        height: minimised ? 48 : rect.h,
-      };
+  const panelStyle: React.CSSProperties = {
+    left: rect.x,
+    top: rect.y,
+    width: rect.w,
+    height: minimised ? 46 : rect.h,
+  };
 
   return (
     <div
       ref={panelRef}
-      className="fixed z-50 flex flex-col overflow-hidden rounded-2xl shadow-2xl transition-[height] duration-200 ease-out"
+      data-testid="ai-widget-panel"
+      className="fixed z-50 flex flex-col overflow-hidden rounded-[14px] shadow-[0_24px_60px_rgba(0,0,0,.5)] transition-[height] duration-200 ease-out"
       style={{
         ...panelStyle,
         backgroundColor: 'rgb(var(--bg-primary))',
@@ -279,77 +345,150 @@ export function A1ChatWidgetOverlay(props: {
       {/* ─── title bar ─── */}
       <div
         onPointerDown={handleHeaderPointerDown}
-        className="flex h-12 shrink-0 cursor-grab items-center gap-2 border-b px-3 select-none active:cursor-grabbing"
-        style={{
-          backgroundColor: 'rgb(var(--bg-secondary))',
-          borderBottomColor: 'rgb(var(--border-medium))',
-          borderBottomWidth: '1px',
-          borderBottomStyle: 'solid'
-        }}
+        className="flex h-[46px] shrink-0 cursor-grab items-center gap-2.5 border-b border-border-medium/60 bg-bg-secondary px-3 select-none active:cursor-grabbing"
       >
-        <GripVertical className="h-4 w-4" style={{ color: 'rgb(var(--fg-tertiary))', opacity: 0.7 }} />
-        <Sparkles className="h-4 w-4" style={{ color: 'rgb(var(--fg-secondary))' }} />
-        <span className="flex-1 text-sm font-medium truncate" style={{ color: 'rgb(var(--fg-primary))' }}>KAIROS AI</span>
+        <GripVertical className="h-3.5 w-3.5 shrink-0" style={{ color: 'rgb(var(--fg-tertiary))', opacity: 0.7 }} />
+        <Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: 'rgb(var(--accent-primary))' }} />
+        <span className="flex-1 truncate text-[13px] font-semibold" style={{ color: 'rgb(var(--fg-primary))' }}>KAIROS AI</span>
+        {/* Which specialist is answering — the widget has no room for the
+            byline the page prints above each answer, and a user needs to know
+            whether they are talking to a router or to a write agent. */}
+        <span className="kairos-stamp hidden shrink-0 truncate text-[9.5px] text-fg-tertiary sm:inline">
+          {agentLabel}
+        </span>
 
-        <button
-          type="button"
-          onClick={toggleMinimise}
-          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
-          style={{ 
-            color: 'rgb(var(--fg-tertiary))',
-            backgroundColor: 'transparent'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-          aria-label={minimised ? "Expand" : "Minimise"}
-        >
-          <Minus className="h-3.5 w-3.5" />
-        </button>
+        <span className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={toggleMinimise}
+            className="flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
+            aria-label={minimised ? "Expand" : "Minimise"}
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
 
-        <button
-          type="button"
-          onClick={toggleMaximise}
-          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
-          style={{ 
-            color: 'rgb(var(--fg-tertiary))',
-            backgroundColor: 'transparent'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-          aria-label={maximised ? "Restore" : "Maximise"}
-        >
-          {maximised ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-        </button>
+          <button
+            type="button"
+            onClick={goFullScreen}
+            className="flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-accent-primary/15 hover:text-accent-primary"
+            aria-label="Open full screen"
+            title="Open full screen"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            setOpen(false);
-            setMaximised(false);
-            setMinimised(false);
-          }}
-          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
-          style={{ 
-            color: 'rgb(var(--fg-tertiary))',
-            backgroundColor: 'transparent'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-          aria-label="Close"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setMinimised(false);
+            }}
+            className="flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-red-500/20 hover:text-red-400"
+            aria-label="Close"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </span>
       </div>
 
       {/* ─── body ─── */}
+      {/*
+        The widget is the quick-ask surface and nothing else. Everything that
+        needs room — the agent picker, the tool inspector, the memory editor,
+        the audit trail — lives on `/chat/ai`, which the maximise button opens.
+      */}
       {!minimised && (
         <div className="flex-1 min-h-0 overflow-hidden">
-          <ProjectIntelligenceChat projectId={props.projectId} />
+          <ProjectIntelligenceChat
+            key={props.threadKey}
+            variant="widget"
+            hideHeader
+            prefill={props.prefill}
+            projectId={scopeProjectId}
+            pinnedAgentId={pinnedAgentId}
+            composerControls={
+              <>
+                <ComposerMenu
+                  tone="accent"
+                  title={tAgents("chooseAgent")}
+                  label={agentLabel}
+                  icon={<Sparkles className="h-3 w-3 shrink-0" />}
+                  selected={selectedAgent}
+                  onSelect={setSelectedAgent}
+                  options={[
+                    {
+                      id: AUTO_AGENT,
+                      label: tAgents("auto"),
+                      description: tAgents("autoDescription"),
+                    },
+                    ...agents
+                      .filter((a) => a.kind === "conversational")
+                      .map((a) => ({
+                        id: a.id,
+                        label: a.name,
+                        description: a.description,
+                      })),
+                    ...agents
+                      .filter((a) => a.kind === "scheduled")
+                      .map((a) => ({
+                        id: a.id,
+                        label: a.name,
+                        description: a.description,
+                        disabled: true,
+                      })),
+                  ]}
+                />
+
+                {/* A widget mounted against a project is already scoped by its
+                    host, so the picker would be offering a choice it cannot
+                    honour. */}
+                {props.projectId === undefined && (
+                  <ComposerMenu
+                    title={t("scopeTitle")}
+                    label={scopeProject?.title ?? t("allProjects")}
+                    icon={<FolderKanban className="h-3 w-3 shrink-0" />}
+                    selected={scope}
+                    onSelect={setScope}
+                    options={[
+                      {
+                        id: ALL_PROJECTS,
+                        label: t("allProjects"),
+                        description: t("allProjectsHint"),
+                      },
+                      ...projects.map((pr) => ({
+                        id: String(pr.id),
+                        label: pr.title,
+                      })),
+                    ]}
+                  />
+                )}
+              </>
+            }
+            emptyStateFooter={
+              <div className="kairos-stamp flex items-center justify-between gap-3 text-[9.5px] text-fg-tertiary">
+                <span>
+                  {quotaQuery.data
+                    ? t("requestsToday", {
+                        used: quotaQuery.data.limit - quotaQuery.data.remaining,
+                        limit: quotaQuery.data.limit,
+                      })
+                    : "\u2014"}
+                </span>
+                <Link
+                  href="/chat/ai"
+                  onClick={() => setOpen(false)}
+                  className="text-accent-primary transition-opacity hover:opacity-80"
+                >
+                  {t("openFullPage")}
+                </Link>
+              </div>
+            }
+          />
         </div>
       )}
 
       {/* ─── resize indicator (bottom-right corner, visual only) ─── */}
-      {!maximised && !minimised && (
+      {!minimised && (
         <div className="pointer-events-none absolute bottom-1 right-1.5" style={{ color: 'rgb(var(--fg-tertiary))', opacity: 0.3 }}>
           <svg width="12" height="12" viewBox="0 0 12 12">
             <path d="M11 1v10H1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

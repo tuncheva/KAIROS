@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A redesign proposal for the KAIROS /notes surface: rendered mockups, a full feature inventory, schema and API deltas, and a five-phase delivery plan.">
+<title>Notes Rebuild Proposal — KAIROS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Nunito+Sans:wght@300;400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+/* ── KAIROS tokens, ported from src/styles/globals.css ────────────────── */
+:root{
+  --ground:#FCFDFF; --secondary:#F8FAFC; --surface:#FAFBFD; --elevated:#FDFEFF; --tertiary:#F1F5F9;
+  --ink:#0F172A; --muted:#475569; --faint:#64748B; --ghost:#94A3B8;
+  --hair:#C8C8C8; --hair-soft:rgba(200,200,200,.5); --rule:#CBD5E1;
+  --accent:#A855F7; --accent-2:#C084FC; --accent-3:#D8B4FE; --accent-hover:#9333EA;
+  --mint:#5FB49C; --caramel:#E9A86C; --straw:#F03A47; --sky:#276FBF;
+  --paper:#FDFEFF;
+  --shadow-card:0 0 0 .5px rgba(200,200,200,.55),0 2px 8px -2px rgba(0,0,0,.08),0 4px 16px -4px rgba(0,0,0,.06);
+  --shadow-pop:0 0 0 .5px rgba(200,200,200,.6),0 4px 12px -2px rgba(0,0,0,.10),0 8px 24px -4px rgba(0,0,0,.08);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#08080C; --secondary:#0E0E12; --surface:#0C0C10; --elevated:#121216; --tertiary:#14141A;
+    --ink:#FFFFFF; --muted:#DCDCE4; --faint:#AAAAB4; --ghost:#787884;
+    --hair:#3C3C3C; --hair-soft:rgba(60,60,60,.9); --rule:#3C3C44;
+    --accent:#A855F7; --accent-2:#C084FC; --accent-3:#D8B4FE; --accent-hover:#D8B4FE;
+    --mint:#7FCBB5; --caramel:#F0BC8B; --straw:#FF6069; --sky:#5C9EDD;
+    --paper:#121216;
+    --shadow-card:0 0 0 .5px rgba(60,60,60,.9),0 2px 12px -2px rgba(0,0,0,.4),0 6px 24px -6px rgba(0,0,0,.3);
+    --shadow-pop:0 0 0 .5px rgba(60,60,60,1),0 4px 16px -2px rgba(0,0,0,.5),0 10px 32px -6px rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#08080C; --secondary:#0E0E12; --surface:#0C0C10; --elevated:#121216; --tertiary:#14141A;
+  --ink:#FFFFFF; --muted:#DCDCE4; --faint:#AAAAB4; --ghost:#787884;
+  --hair:#3C3C3C; --hair-soft:rgba(60,60,60,.9); --rule:#3C3C44;
+  --accent:#A855F7; --accent-2:#C084FC; --accent-3:#D8B4FE; --accent-hover:#D8B4FE;
+  --mint:#7FCBB5; --caramel:#F0BC8B; --straw:#FF6069; --sky:#5C9EDD;
+  --paper:#121216;
+  --shadow-card:0 0 0 .5px rgba(60,60,60,.9),0 2px 12px -2px rgba(0,0,0,.4),0 6px 24px -6px rgba(0,0,0,.3);
+  --shadow-pop:0 0 0 .5px rgba(60,60,60,1),0 4px 16px -2px rgba(0,0,0,.5),0 10px 32px -6px rgba(0,0,0,.4);
+  color-scheme:dark;
+}
+
+/* minimal reset — the hosted artifact runtime supplies one; a local file does not */
+*{box-sizing:border-box;}
+img,svg{max-width:100%;}
+button{font:inherit;color:inherit;cursor:pointer;}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"Nunito Sans",ui-sans-serif,system-ui,sans-serif;
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 96px;}
+.col{max-width:74ch;margin:0 auto;}
+
+/* ── type ─────────────────────────────────────────────────────────────── */
+h1,h2,h3{font-family:"Instrument Serif",Georgia,serif;font-weight:400;text-wrap:balance;letter-spacing:.005em;}
+h1{font-size:clamp(2.6rem,6vw,4.1rem);line-height:1.02;margin:0;}
+h2{font-size:clamp(1.85rem,3.4vw,2.5rem);line-height:1.12;margin:0 0 .35em;}
+h3{font-size:1.32rem;line-height:1.25;margin:0 0 .4em;}
+h4{font-size:.95rem;font-weight:800;margin:0 0 .35em;letter-spacing:-.005em;}
+p{margin:0 0 1.05em;color:var(--muted);}
+.lede{font-size:1.16rem;color:var(--muted);}
+strong{color:var(--ink);font-weight:700;}
+a{color:var(--accent-hover);text-underline-offset:3px;}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.7rem;font-weight:500;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:0 0 .9em;
+}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.855em;}
+code{background:var(--tertiary);border-radius:5px;padding:.1em .38em;color:var(--ink);}
+
+/* ── structure ────────────────────────────────────────────────────────── */
+header.top{padding:96px 0 56px;}
+.kicker{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--accent-hover);margin:0 0 1.4em;
+}
+.meta{display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:34px;padding-top:22px;border-top:.5px solid var(--hair);}
+.meta div{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;color:var(--faint);letter-spacing:.05em;}
+.meta b{display:block;font-family:"Nunito Sans",sans-serif;font-size:.9rem;font-weight:700;color:var(--ink);letter-spacing:0;margin-top:2px;}
+
+section{padding:52px 0;border-top:.5px solid var(--hair-soft);}
+section:first-of-type{border-top:0;}
+.card{background:var(--surface);border-radius:16px;box-shadow:var(--shadow-card);padding:28px 30px;margin:26px 0;}
+.card.tight{padding:20px 24px;}
+
+ul.clean{list-style:none;padding:0;margin:0 0 1.1em;display:flex;flex-direction:column;gap:11px;}
+ul.clean li{position:relative;padding-left:20px;color:var(--muted);}
+ul.clean li::before{content:"";position:absolute;left:2px;top:.62em;width:6px;height:6px;border-radius:2px;background:var(--accent-3);}
+
+/* ── chips ────────────────────────────────────────────────────────────── */
+.chip{
+  display:inline-flex;align-items:center;gap:6px;font-family:"IBM Plex Mono",monospace;
+  font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:6px;white-space:nowrap;
+}
+.chip::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;}
+.chip.have{color:var(--mint);background:color-mix(in srgb,var(--mint) 14%,transparent);}
+.chip.partial{color:var(--caramel);background:color-mix(in srgb,var(--caramel) 15%,transparent);}
+.chip.gap{color:var(--straw);background:color-mix(in srgb,var(--straw) 13%,transparent);}
+.chip.plain{color:var(--faint);background:var(--tertiary);}
+.chip.plain::before{display:none;}
+
+/* ── tables ───────────────────────────────────────────────────────────── */
+.tablewrap{overflow-x:auto;margin:24px 0;border-radius:14px;box-shadow:var(--shadow-card);background:var(--surface);}
+table{border-collapse:collapse;width:100%;min-width:660px;font-size:.895rem;}
+th{
+  text-align:left;font-family:"IBM Plex Mono",monospace;font-size:.66rem;font-weight:500;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint);padding:14px 18px;border-bottom:.5px solid var(--hair);white-space:nowrap;
+}
+td{padding:13px 18px;border-bottom:.5px solid var(--hair-soft);color:var(--muted);vertical-align:top;}
+tbody tr:last-child td{border-bottom:0;}
+td:first-child{color:var(--ink);font-weight:600;}
+td .mono{color:var(--faint);}
+tbody tr.group td{background:var(--tertiary);color:var(--faint);font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;font-weight:500;padding:9px 18px;}
+
+/* ── mockup frame ─────────────────────────────────────────────────────── */
+.stage{margin:34px 0 12px;}
+.stagescroll{overflow-x:auto;padding:4px;}
+.figcap{max-width:74ch;margin:14px auto 0;font-size:.86rem;color:var(--faint);}
+.figcap b{color:var(--muted);}
+
+.app{
+  width:1108px;height:668px;display:grid;grid-template-columns:236px 318px 1fr;
+  background:var(--ground);border-radius:18px;box-shadow:var(--shadow-pop);overflow:hidden;
+  font-size:13px;line-height:1.5;
+}
+.app.narrow{width:372px;height:668px;grid-template-columns:1fr;}
+.pane{min-width:0;min-height:0;display:flex;flex-direction:column;}
+.pane.rail{background:var(--surface);border-right:.5px solid var(--hair-soft);}
+.pane.list{background:var(--secondary);border-right:.5px solid var(--hair-soft);}
+.pane.editor{background:var(--ground);}
+
+.phead{padding:14px 16px 10px;display:flex;align-items:center;gap:10px;flex:none;}
+.ptitle{font-family:"Instrument Serif",serif;font-size:21px;color:var(--ink);flex:1;}
+.iconbtn{
+  width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--faint);
+  background:transparent;border:0;flex:none;
+}
+.iconbtn.solid{background:var(--accent);color:#fff;box-shadow:0 4px 12px -4px rgba(168,85,247,.6);}
+.iconbtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+.search{
+  margin:0 14px 12px;display:flex;align-items:center;gap:8px;background:var(--tertiary);
+  border-radius:10px;padding:7px 10px;color:var(--ghost);font-size:12.5px;flex:none;
+}
+.search svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;flex:none;}
+.search .kbd{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--ghost);
+  background:var(--surface);border-radius:5px;padding:1px 5px;box-shadow:inset 0 0 0 .5px var(--hair-soft);}
+
+/* rail */
+.railscroll{flex:1;min-height:0;overflow:hidden;padding:0 8px 10px;}
+.dlabel{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ghost);padding:12px 8px 6px;}
+.dlabel.row{display:flex;align-items:center;justify-content:space-between;}
+.dlabel .add{color:var(--accent-hover);}
+.nav{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:10px;color:var(--muted);font-size:12.5px;}
+.nav svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:var(--ghost);flex:none;}
+.nav .grow{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.nav .n{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ghost);font-variant-numeric:tabular-nums;}
+.nav.on{background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent-hover);font-weight:700;
+  box-shadow:inset 0 0 0 .5px color-mix(in srgb,var(--accent) 22%,transparent);}
+.nav.on svg,.nav.on .n{color:var(--accent-hover);}
+.swatch{width:9px;height:9px;border-radius:3px;flex:none;background:var(--sky);}
+.swatch.mint{background:var(--mint);} .swatch.caramel{background:var(--caramel);} .swatch.accent{background:var(--accent);}
+.tagrow{display:flex;flex-wrap:wrap;gap:5px;padding:2px 8px;}
+.tg{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.05em;padding:2px 7px;border-radius:6px;background:var(--tertiary);color:var(--faint);}
+.tg.on{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-hover);}
+
+/* list pane */
+.lhead{padding:14px 14px 10px;display:flex;align-items:baseline;gap:8px;flex:none;}
+.lhead .t{font-weight:800;color:var(--ink);font-size:14px;flex:1;}
+.sortbtn{display:flex;align-items:center;gap:4px;font-family:"IBM Plex Mono",monospace;font-size:10px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--faint);background:var(--tertiary);
+  border-radius:7px;padding:3px 8px;}
+.sortbtn svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.2;}
+.filters{display:flex;gap:6px;padding:0 14px 10px;flex:none;}
+.fchip{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  padding:4px 9px;border-radius:7px;color:var(--faint);background:var(--tertiary);
+}
+.fchip.on{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-hover);box-shadow:inset 0 0 0 .5px color-mix(in srgb,var(--accent) 35%,transparent);}
+.grouplbl{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ghost);padding:8px 14px 5px;display:flex;align-items:center;gap:6px;}
+.grouplbl svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;}
+.rows{flex:1;min-height:0;overflow:hidden;padding:0 8px;display:flex;flex-direction:column;gap:2px;}
+.row{padding:9px 10px;border-radius:11px;display:flex;flex-direction:column;gap:3px;position:relative;}
+.row.on{background:var(--paper);box-shadow:var(--shadow-card);}
+.row.on::before{content:"";position:absolute;left:0;top:11px;bottom:11px;width:2px;border-radius:2px;background:var(--accent);}
+.rtop{display:flex;align-items:baseline;gap:8px;}
+.rtitle{font-weight:700;color:var(--ink);font-size:12.8px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rtime{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--ghost);flex:none;font-variant-numeric:tabular-nums;}
+.rprev{font-size:11.5px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rprev mark{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--accent-hover);border-radius:3px;padding:0 2px;}
+.rmeta{display:flex;align-items:center;gap:6px;margin-top:2px;}
+.mchip{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 6px;border-radius:5px;background:var(--tertiary);color:var(--faint);display:inline-flex;align-items:center;gap:4px;}
+.mchip svg{width:9px;height:9px;stroke:currentColor;fill:none;stroke-width:2.4;}
+.mchip.lock{background:color-mix(in srgb,var(--straw) 13%,transparent);color:var(--straw);}
+.mchip.share{background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent-hover);}
+.mchip.cal{background:color-mix(in srgb,var(--sky) 14%,transparent);color:var(--sky);}
+.spacer{flex:1;}
+.avs{display:flex;}
+.av{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;
+  font-size:8.5px;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  box-shadow:0 0 0 1.5px var(--secondary);margin-left:-5px;}
+.avs .av:first-child{margin-left:0;}
+.av.sky{background:linear-gradient(135deg,var(--sky),#6FA8DC);}
+.av.mint{background:linear-gradient(135deg,var(--mint),#8FD3C0);}
+.av.lg{width:26px;height:26px;font-size:11px;box-shadow:0 0 0 1.5px var(--ground);}
+.pinicon{color:var(--accent);flex:none;display:flex;}
+.pinicon svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.2;}
+
+/* editor pane */
+.ehead{padding:12px 20px;display:flex;align-items:center;gap:8px;flex:none;border-bottom:.5px solid var(--hair-soft);}
+.crumb{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--faint);flex:1;}
+.crumb svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;}
+.saved{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--mint);display:flex;align-items:center;gap:5px;margin-right:4px;}
+.saved svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
+.iconbtn.pin{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);}
+.ebody{flex:1;min-height:0;overflow:hidden;padding:26px 40px 0;display:flex;flex-direction:column;}
+.etitle{font-family:"Instrument Serif",serif;font-size:30px;line-height:1.15;color:var(--ink);}
+.emeta{display:flex;align-items:center;gap:8px;margin:8px 0 18px;font-family:"IBM Plex Mono",monospace;
+  font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ghost);}
+.emeta .sep{width:3px;height:3px;border-radius:50%;background:var(--ghost);}
+.doc{font-size:13.2px;color:var(--muted);line-height:1.72;max-width:60ch;}
+.doc p{margin:0 0 12px;color:var(--muted);}
+.doc h5{font-family:"Nunito Sans",sans-serif;font-size:12.5px;font-weight:800;color:var(--ink);margin:0 0 8px;letter-spacing:.01em;}
+.doc .li{display:flex;gap:9px;margin-bottom:7px;align-items:flex-start;}
+.doc .bullet{width:5px;height:5px;border-radius:2px;background:var(--accent-3);margin-top:8px;flex:none;}
+.doc .box{width:13px;height:13px;border-radius:4px;box-shadow:inset 0 0 0 1.2px var(--rule);margin-top:4px;flex:none;}
+.doc .box.done{background:var(--accent);box-shadow:none;display:grid;place-items:center;}
+.doc .box.done svg{width:9px;height:9px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;}
+.doc .done-t{color:var(--ghost);text-decoration:line-through;}
+.doc .caret{display:inline-block;width:1.5px;height:1em;background:var(--accent);vertical-align:-2px;}
+.doc blockquote{margin:0 0 12px;padding:2px 0 2px 12px;border-left:2px solid var(--accent-3);color:var(--faint);font-size:12.6px;}
+.efoot{flex:none;padding:11px 20px;border-top:.5px solid var(--hair-soft);display:flex;align-items:center;gap:8px;background:var(--surface);}
+.efoot .n{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ghost);}
+.presence{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--faint);}
+.pdot{width:7px;height:7px;border-radius:50%;background:var(--mint);}
+
+/* lock gate (inline, not a modal) */
+.gate{margin:auto;text-align:center;max-width:280px;padding-bottom:70px;}
+.gatering{width:52px;height:52px;border-radius:16px;margin:0 auto 14px;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--straw) 12%,transparent);color:var(--straw);}
+.gatering svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.gatetitle{font-family:"Instrument Serif",serif;font-size:19px;color:var(--ink);}
+.gatesub{font-size:11.5px;color:var(--faint);margin:4px 0 16px;}
+.gatefield{display:flex;align-items:center;gap:8px;background:var(--tertiary);border-radius:11px;padding:9px 12px;
+  box-shadow:inset 0 0 0 .5px var(--hair-soft);color:var(--ghost);font-size:12px;text-align:left;}
+.gatefield svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;}
+.gatebtn{margin-top:9px;border-radius:11px;padding:9px;background:var(--accent);color:#fff;font-size:12px;font-weight:700;
+  box-shadow:0 6px 16px -8px rgba(168,85,247,.8);}
+.gatelink{margin-top:10px;font-size:10.5px;color:var(--faint);}
+
+/* mobile mock */
+.mobbar{display:flex;gap:6px;padding:10px 14px;border-top:.5px solid var(--hair-soft);background:var(--surface);justify-content:space-around;color:var(--ghost);flex:none;}
+.mobbar svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;}
+.mobbar .act{color:var(--accent);}
+.fab{position:absolute;right:16px;bottom:74px;width:48px;height:48px;border-radius:16px;display:grid;place-items:center;
+  background:var(--accent);color:#fff;box-shadow:0 10px 24px -8px rgba(168,85,247,.85);}
+.fab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;}
+.rel{position:relative;}
+
+/* phases */
+.phase{display:grid;grid-template-columns:auto 1fr;gap:18px;padding:20px 0;border-top:.5px solid var(--hair-soft);}
+.phase:first-of-type{border-top:0;}
+.pnum{
+  font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--accent-hover);letter-spacing:.1em;
+  padding-top:.35em;font-variant-numeric:tabular-nums;
+}
+.phase p{margin:0;font-size:.94rem;}
+.phase h4{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+
+.callout{border-left:2px solid var(--straw);padding:2px 0 2px 18px;margin:22px 0;}
+.callout p:last-child{margin-bottom:0;}
+.callout .eyebrow{color:var(--straw);}
+
+footer{padding:44px 0 0;border-top:.5px solid var(--hair);margin-top:16px;}
+footer p{font-size:.85rem;color:var(--faint);margin:0;}
+
+@media (max-width:640px){
+  .wrap{padding:0 18px 64px;}
+  header.top{padding:56px 0 36px;}
+  .card{padding:20px 18px;}
+  section{padding:38px 0;}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="col">
+    <p class="kicker">KAIROS · Design proposal · /notes</p>
+    <h1>Notes, rebuilt around<br>the act of writing</h1>
+    <p class="lede" style="margin-top:26px;">The vault underneath is the strong part — Argon2 hashes, AES-256-GCM content, ciphertext that never leaves the server unlocked, a PIN recovery path. What sits on top is a card grid that opens each note in a <strong>512-pixel modal with a Save button</strong>. This proposal leaves the cryptography untouched, replaces the shell with a three-pane workspace built from the existing KAIROS tokens, and closes the gaps between what <code>/notes</code> is today and somewhere people would actually keep their thinking.</p>
+    <div class="meta">
+      <div>Surface<b>src/app/(app)/notes</b></div>
+      <div>Owner component<b>NotesDashboard.tsx · 1394 lines</b></div>
+      <div>Design system<b>KAIROS tokens · unchanged</b></div>
+      <div>Status<b>Proposal for review</b></div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Where it stands</p>
+    <h2>A good vault behind a bad desk</h2>
+    <p>Reading <code>NotesDashboard.tsx</code> and <code>note.ts</code> end to end, the security work is the most careful code on the surface — and it is commented like someone had already been burned once. The problem is everything around it: one component holds thirty-plus <code>useState</code> hooks and four nested modals, the entire note corpus ships to the browser on load, and the writing surface is a <code>&lt;textarea&gt;</code> inside a dialog you have to dismiss before you can see anything else.</p>
+
+    <div class="card">
+      <h4 style="display:flex;align-items:center;gap:10px;">Already solid <span class="chip have">keep</span></h4>
+      <ul class="clean">
+        <li><strong>Encryption that holds its line.</strong> <code>getAll</code> nulls <code>content</code> for protected notes and strips <code>passwordHash</code> / <code>passwordSalt</code> on <em>both</em> branches, so the endpoint cannot leak credential material whichever path it takes. <code>getSharedWithMe</code> strips the owner's hash too.</li>
+        <li><strong>Re-encryption on save.</strong> The unlock password is deliberately held in memory so an edit can re-encrypt with it — the server refuses to write a protected note without one rather than quietly storing plaintext.</li>
+        <li><strong>Recovery without a backdoor.</strong> Two failed unlocks surface the PIN reset path, and <code>resetPasswordWithPin</code> is the only route back in.</li>
+        <li><strong>Unlock lifetime is the user's choice.</strong> <code>notesKeepUnlockedUntilClose</code> decides whether the in-memory unlock map survives navigation. Right default, right place.</li>
+        <li><strong>Sharing has real permissions.</strong> <code>note_shares</code> carries read/write per person, <code>update</code> re-checks it server-side, and the share modal suggests org members instead of demanding an exact email.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h4 style="display:flex;align-items:center;gap:10px;">What the shell gets wrong <span class="chip gap">replace</span></h4>
+      <ul class="clean">
+        <li><strong>Writing happens in a dialog.</strong> Opening a note mounts a <code>max-w-lg</code>, <code>max-h-[80vh]</code> modal over a 70% black scrim. You cannot see another note while writing, the textarea is <code>min-h-[200px]</code> and <code>resize-none</code>, and saving closes the note and refetches the whole list.</li>
+        <li><strong>Nothing autosaves.</strong> Edits live in <code>editingContent</code> / <code>editingTitle</code> maps until you press Save. Clicking the scrim throws them away without a word.</li>
+        <li><strong>The whole corpus loads at once.</strong> <code>getAll</code> returns every note with full <code>content</code>, unpaginated, and search filters that array in the browser. Fine at twenty notes, not at two thousand.</li>
+        <li><strong>Tokens get bypassed.</strong> Cards are hardcoded <code>dark:bg-[#1f1b2e] bg-[#efedf4]</code>, and nearly every border in the surface is <code>border-white/[0.06]</code> — white at 6% opacity, effectively invisible on a light background. The system already ships <code>--hair</code> and <code>bg-bg-elevated</code> for exactly this.</li>
+        <li><strong>Two note surfaces exist.</strong> <code>/create</code> renders <code>CreateNoteForm</code> and <code>NotesList</code> — a second, older notes UI totalling 972 lines that duplicates create, unlock and edit against the same router.</li>
+        <li><strong>Structure has nowhere to live.</strong> No tags, no pinning, no archive, no trash, no sort control, no colour. Notebooks are the only organising tool, and a note belongs to at most one.</li>
+        <li><strong>Half the router is unreachable.</strong> <code>updateNotebook</code> has no caller, so a notebook can never be renamed and its <code>description</code> column can never be filled. <code>calendarDate</code> can be set at creation and never seen or changed again.</li>
+      </ul>
+    </div>
+
+    <div class="callout">
+      <p class="eyebrow">Worth fixing before anything visual</p>
+      <p><strong>A locked note that is shared never shows that it is locked.</strong> The card badge is a ternary chain testing <code>shareStatus !== "private"</code> first, so the <em>Shared</em> chip wins and the lock chip is unreachable. The two states are orthogonal; both need to render.</p>
+      <p><strong>Deleting a notebook asks with <code>window.confirm</code>.</strong> Deleting a <em>note</em> uses the styled dialog three hundred lines above it. Same surface, two confirmation languages — and the native one is the destructive path that also detaches every note inside it.</p>
+      <p><strong><code>share_status</code> duplicates <code>note_shares</code>.</strong> The enum on the note (<code>private</code> / <code>shared_read</code> / <code>shared_write</code>) restates what the shares table already knows per person, and nothing keeps the two in step when a share is revoked.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Direction</p>
+    <h2>Rail, list, page — no modal in the writing path</h2>
+    <p>The same three-pane spine the chat rebuild uses, tuned for documents instead of messages. A <strong>library rail</strong> holds the ways in — smart views, notebooks, tags. A <strong>note list</strong> is the current query made visible, with sort and filter where you can see them. The <strong>page</strong> is a real writing surface: full height, autosaving, wide enough to read a paragraph at a measure that doesn't fight you.</p>
+    <p>Modals survive only for things that are genuinely interruptive and reversible-or-not: sharing, deletion, PIN reset. Unlocking moves <em>into</em> the page as a gate — the note is selected, the list stays visible, and the password field replaces the body rather than the screen. Every colour, radius and shadow below is a KAIROS token; nothing new is invented.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stagescroll">
+      <div class="app" role="img" aria-label="Desktop mockup of the redesigned notes page: library rail, note list, and an open note page.">
+
+        <!-- ── RAIL ─────────────────────────────────────────────── -->
+        <div class="pane rail">
+          <div class="phead">
+            <div class="ptitle">Notes</div>
+            <div class="iconbtn solid"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+          </div>
+          <div class="search">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <span>Search notes</span><span class="kbd">⌘K</span>
+          </div>
+          <div class="railscroll">
+            <div class="nav on">
+              <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>
+              <span class="grow">All notes</span><span class="n">128</span>
+            </div>
+            <div class="nav">
+              <svg viewBox="0 0 24 24"><path d="M12 3l2.3 4.7 5.2.8-3.8 3.6.9 5.1L12 14.8 7.4 17.2l.9-5.1L4.5 8.5l5.2-.8z"/></svg>
+              <span class="grow">Pinned</span><span class="n">4</span>
+            </div>
+            <div class="nav">
+              <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.9"/></svg>
+              <span class="grow">Shared with me</span><span class="n">6</span>
+            </div>
+            <div class="nav">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
+              <span class="grow">On the calendar</span><span class="n">3</span>
+            </div>
+            <div class="nav">
+              <svg viewBox="0 0 24 24"><path d="M4 4h16v5H4zM6 9v11h12V9M10 13h4"/></svg>
+              <span class="grow">Archive</span><span class="n">31</span>
+            </div>
+            <div class="nav">
+              <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+              <span class="grow">Trash</span><span class="n">2</span>
+            </div>
+
+            <div class="dlabel row"><span>Notebooks</span><span class="add">+</span></div>
+            <div class="nav"><span class="swatch accent"></span><span class="grow">Product</span><span class="n">24</span></div>
+            <div class="nav"><span class="swatch sky"></span><span class="grow">Research</span><span class="n">12</span></div>
+            <div class="nav"><span class="swatch mint"></span><span class="grow">Personal</span><span class="n">8</span></div>
+            <div class="nav"><span class="swatch caramel"></span><span class="grow">Clients</span><span class="n">5</span></div>
+
+            <div class="dlabel">Tags</div>
+            <div class="tagrow">
+              <span class="tg on">#spec</span><span class="tg">#retro</span><span class="tg">#okr</span>
+              <span class="tg">#hiring</span><span class="tg">#idea</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── LIST ─────────────────────────────────────────────── -->
+        <div class="pane list">
+          <div class="lhead">
+            <div class="t">All notes</div>
+            <div class="sortbtn">Edited <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+          </div>
+          <div class="filters">
+            <span class="fchip on">All</span><span class="fchip">Locked</span><span class="fchip">Shared</span><span class="fchip">#spec</span>
+          </div>
+
+          <div class="grouplbl">
+            <svg viewBox="0 0 24 24"><path d="M12 3l2.3 4.7 5.2.8-3.8 3.6.9 5.1L12 14.8 7.4 17.2l.9-5.1L4.5 8.5l5.2-.8z"/></svg>
+            Pinned
+          </div>
+          <div class="rows" style="flex:none;">
+            <div class="row on">
+              <div class="rtop">
+                <span class="pinicon"><svg viewBox="0 0 24 24"><path d="M12 17v5M8 3h8l-1 6 3 3v2H6v-2l3-3z"/></svg></span>
+                <span class="rtitle">Q3 planning — open threads</span><span class="rtime">2m</span>
+              </div>
+              <div class="rprev">Three things still unresolved before we commit the roadmap…</div>
+              <div class="rmeta">
+                <span class="mchip">Product</span><span class="mchip">#spec</span>
+                <span class="spacer"></span>
+                <span class="avs"><span class="av">IT</span><span class="av sky">MK</span></span>
+              </div>
+            </div>
+            <div class="row">
+              <div class="rtop">
+                <span class="pinicon"><svg viewBox="0 0 24 24"><path d="M12 17v5M8 3h8l-1 6 3 3v2H6v-2l3-3z"/></svg></span>
+                <span class="rtitle">Salary review — H2</span><span class="rtime">Mon</span>
+              </div>
+              <div class="rprev">Locked · unlock to read</div>
+              <div class="rmeta">
+                <span class="mchip lock"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>Locked</span>
+                <span class="mchip share">Shared · 1</span>
+                <span class="spacer"></span>
+                <span class="avs"><span class="av mint">AD</span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grouplbl">Today</div>
+          <div class="rows">
+            <div class="row">
+              <div class="rtop"><span class="rtitle">Interview notes — backend #4</span><span class="rtime">11:20</span></div>
+              <div class="rprev">Strong on <mark>spec</mark> reading, thin on distributed failure modes…</div>
+              <div class="rmeta"><span class="mchip">#hiring</span><span class="mchip cal">Sep 2</span></div>
+            </div>
+            <div class="row">
+              <div class="rtop"><span class="rtitle">Untitled</span><span class="rtime">09:41</span></div>
+              <div class="rprev">rate limiting on the ws-server? ask Ivan —</div>
+              <div class="rmeta"><span class="mchip">Draft</span></div>
+            </div>
+            <div class="row">
+              <div class="rtop"><span class="rtitle">Retro — sprint 42</span><span class="rtime">08:05</span></div>
+              <div class="rprev">What went well: the migration landed without a rollback…</div>
+              <div class="rmeta"><span class="mchip">Product</span><span class="mchip">#retro</span></div>
+            </div>
+
+            <div class="grouplbl" style="padding-left:2px;">Earlier this week</div>
+            <div class="row">
+              <div class="rtop"><span class="rtitle">Vendor call — pricing</span><span class="rtime">Tue</span></div>
+              <div class="rprev">They will not move below 12k/yr without a two-year term…</div>
+              <div class="rmeta"><span class="mchip">Clients</span><span class="mchip share">Shared · 3</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── EDITOR ───────────────────────────────────────────── -->
+        <div class="pane editor">
+          <div class="ehead">
+            <div class="crumb">
+              <svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h11a1 1 0 011 1v16a1 1 0 01-1 1H6a2 2 0 01-2-2z"/><path d="M8 3v18"/></svg>
+              Product
+              <span style="color:var(--ghost);">/</span>
+              <span style="color:var(--muted);">Q3 planning — open threads</span>
+            </div>
+            <div class="saved">
+              <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> Saved 14:02
+            </div>
+            <div class="iconbtn pin"><svg viewBox="0 0 24 24"><path d="M12 17v5M8 3h8l-1 6 3 3v2H6v-2l3-3z"/></svg></div>
+            <div class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></div>
+            <div class="iconbtn"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg></div>
+            <div class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></div>
+          </div>
+
+          <div class="ebody">
+            <div class="etitle">Q3 planning — open threads</div>
+            <div class="emeta">
+              <span>Created 12 Aug</span><span class="sep"></span>
+              <span>Edited 2 min ago by you</span><span class="sep"></span>
+              <span style="color:var(--sky);">On calendar · 28 Aug</span>
+            </div>
+
+            <div class="doc">
+              <p>Three things are still unresolved before we can commit the roadmap. Writing them down so the Monday call is about decisions rather than recall.</p>
+              <h5>1 · The ws-server split</h5>
+              <div class="li"><span class="box done"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="done-t">Confirm presence fan-out cost at 500 concurrent sockets</span></div>
+              <div class="li"><span class="box"></span><span>Decide whether rooms stay per-conversation or move per-org</span></div>
+              <div class="li"><span class="box"></span><span>Ask Ivan about rate limiting before the sprint opens<span class="caret"></span></span></div>
+              <h5 style="margin-top:16px;">2 · Notes vault, second pass</h5>
+              <div class="li"><span class="bullet"></span><span>Search cannot cover locked notes by design — the content never leaves the server decrypted. Say so in the empty state instead of returning nothing.</span></div>
+              <div class="li"><span class="bullet"></span><span>Trash before hard delete. Two people have already asked.</span></div>
+              <blockquote>Open question for Maria: does the PIN reset flow need an audit trail, or is the notification enough?</blockquote>
+            </div>
+          </div>
+
+          <div class="efoot">
+            <span class="mchip">#spec</span><span class="mchip">Product</span>
+            <span class="mchip" style="color:var(--ghost);">+ tag</span>
+            <span class="spacer"></span>
+            <div class="presence"><span class="pdot"></span> Ivan is viewing</div>
+            <span class="n">412 words</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <p class="figcap"><b>Desktop, 1108px.</b> Every state in this frame maps to something the system has to store or emit: pin order, tags, notebook colour, share avatars with permission, a lock chip that coexists with a share chip, a calendar link that can be edited after creation, a live save stamp, a draft with no title, search highlighting from a server-side match, and another person viewing a shared note. The list row replaces today's card grid — three lines of real content beat a 220-pixel box holding two dates.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">The locked state</p>
+    <h2>Unlocking is a gate, not an interruption</h2>
+    <p>Today a locked note opens the same modal as any other and puts a password field where the text would be — with the rest of the app blacked out behind it. The mechanism is right; the framing is wrong. In the rebuild the note is simply <em>selected</em>: the rail and the list stay put, the page shows what it can (title, dates, who it is shared with) and asks for the password in place. Everything else about the flow — Argon2 verification, the attempt counter, the PIN reset after two failures, the in-memory unlock map — is unchanged.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stagescroll">
+      <div class="app" style="grid-template-columns:236px 318px 1fr;" role="img" aria-label="The same layout with a locked note selected: the password gate renders inside the page pane instead of a modal.">
+        <div class="pane rail">
+          <div class="phead">
+            <div class="ptitle">Notes</div>
+            <div class="iconbtn solid"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+          </div>
+          <div class="search">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <span>Search notes</span><span class="kbd">⌘K</span>
+          </div>
+          <div class="railscroll">
+            <div class="nav on"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg><span class="grow">All notes</span><span class="n">128</span></div>
+            <div class="nav"><svg viewBox="0 0 24 24"><path d="M12 3l2.3 4.7 5.2.8-3.8 3.6.9 5.1L12 14.8 7.4 17.2l.9-5.1L4.5 8.5l5.2-.8z"/></svg><span class="grow">Pinned</span><span class="n">4</span></div>
+            <div class="nav"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.9"/></svg><span class="grow">Shared with me</span><span class="n">6</span></div>
+            <div class="nav"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 11h18"/></svg><span class="grow">On the calendar</span><span class="n">3</span></div>
+            <div class="dlabel row"><span>Notebooks</span><span class="add">+</span></div>
+            <div class="nav"><span class="swatch accent"></span><span class="grow">Product</span><span class="n">24</span></div>
+            <div class="nav"><span class="swatch sky"></span><span class="grow">Research</span><span class="n">12</span></div>
+            <div class="nav"><span class="swatch mint"></span><span class="grow">Personal</span><span class="n">8</span></div>
+          </div>
+        </div>
+
+        <div class="pane list">
+          <div class="lhead"><div class="t">All notes</div><div class="sortbtn">Edited <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div></div>
+          <div class="filters"><span class="fchip">All</span><span class="fchip on">Locked</span><span class="fchip">Shared</span></div>
+          <div class="rows">
+            <div class="row on">
+              <div class="rtop"><span class="rtitle">Salary review — H2</span><span class="rtime">Mon</span></div>
+              <div class="rprev">Locked · unlock to read</div>
+              <div class="rmeta">
+                <span class="mchip lock"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>Locked</span>
+                <span class="mchip share">Shared · 1</span>
+                <span class="spacer"></span><span class="avs"><span class="av mint">AD</span></span>
+              </div>
+            </div>
+            <div class="row">
+              <div class="rtop"><span class="rtitle">Board pre-read</span><span class="rtime">14 Aug</span></div>
+              <div class="rprev">Locked · unlock to read</div>
+              <div class="rmeta"><span class="mchip lock"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>Locked</span><span class="mchip">Product</span></div>
+            </div>
+            <div class="row">
+              <div class="rtop"><span class="rtitle">Personal — medical</span><span class="rtime">2 Aug</span></div>
+              <div class="rprev">Locked · unlock to read</div>
+              <div class="rmeta"><span class="mchip lock"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>Locked</span><span class="mchip">Personal</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane editor">
+          <div class="ehead">
+            <div class="crumb">
+              <svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h11a1 1 0 011 1v16a1 1 0 01-1 1H6a2 2 0 01-2-2z"/><path d="M8 3v18"/></svg>
+              Personal <span style="color:var(--ghost);">/</span> <span style="color:var(--muted);">Salary review — H2</span>
+            </div>
+            <div class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></div>
+            <div class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></div>
+          </div>
+          <div class="ebody" style="justify-content:center;">
+            <div class="gate">
+              <div class="gatering">
+                <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+              </div>
+              <div class="gatetitle">This note is encrypted</div>
+              <div class="gatesub">Shared with Ana D. · edited Mon 09:12<br>The text is decrypted on the server only after your password checks out.</div>
+              <div class="gatefield">
+                <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+                <span>Password</span>
+                <span class="spacer"></span>
+                <svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>
+              </div>
+              <div class="gatebtn">Unlock</div>
+              <div class="gatelink">Forgot it? <span style="color:var(--accent-hover);">Reset with your PIN</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="figcap"><b>The locked page.</b> No scrim, no dialog, no lost context — the list is still there and the next note is one click away. The metadata shown above the field is exactly what <code>getAll</code> already returns for a protected note: title, timestamps, notebook, shares. Nothing decrypted, nothing new to leak.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Feature inventory</p>
+    <h2>Everything a working notes app needs</h2>
+    <p>The full surface, each row marked against what exists today and where the work lands. <span class="chip have">have</span> ships and stays; <span class="chip partial">partial</span> half-works or is unreachable; <span class="chip gap">gap</span> means nothing exists.</p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Feature</th><th style="width:96px;">Today</th><th>What it takes</th></tr></thead>
+      <tbody>
+        <tr class="group"><td colspan="3">Writing</td></tr>
+        <tr><td>Create a note</td><td><span class="chip have">have</span></td><td><span class="mono">note.create</span> with optional password, notebook and calendar date. Keep the mutation; drop the modal in favour of an empty note opening straight in the page.</td></tr>
+        <tr><td>Edit title &amp; body</td><td><span class="chip partial">partial</span></td><td>Works, but only inside a <span class="mono">max-w-lg</span> dialog with a fixed-height <span class="mono">resize-none</span> textarea. Becomes the page pane at full height.</td></tr>
+        <tr><td>Autosave</td><td><span class="chip gap">gap</span></td><td>Debounced <span class="mono">note.update</span> (~800ms idle, plus on blur and on selection change), a Saved/Saving stamp, and a beforeunload guard. Removes the Save button entirely.</td></tr>
+        <tr><td>Optimistic update</td><td><span class="chip gap">gap</span></td><td>Today every save closes the note and refetches the whole list. Patch the cache in <span class="mono">onMutate</span>, roll back on error.</td></tr>
+        <tr><td>Markdown / rich text</td><td><span class="chip gap">gap</span></td><td>Notes are plain <span class="mono">text</span>. Add a <span class="mono">content_format</span> column and render markdown read-side; checklists are the one feature worth the dependency.</td></tr>
+        <tr><td>Word / character count</td><td><span class="chip gap">gap</span></td><td>Client-side, in the page footer. Free.</td></tr>
+
+        <tr class="group"><td colspan="3">Encryption</td></tr>
+        <tr><td>Password-protect a note</td><td><span class="chip have">have</span></td><td>Argon2id hash plus AES-256-GCM content, salt per note. Unchanged.</td></tr>
+        <tr><td>Unlock &amp; re-encrypt on save</td><td><span class="chip have">have</span></td><td>In-memory password map, server refuses plaintext writes to a protected note. Unchanged — but it must survive autosave, so the debounce reads from the same map.</td></tr>
+        <tr><td>PIN recovery</td><td><span class="chip have">have</span></td><td><span class="mono">resetPasswordWithPin</span> after two failed attempts. Restyle the dialog, keep the flow.</td></tr>
+        <tr><td>Lock an existing note</td><td><span class="chip gap">gap</span></td><td>A password can only be set at creation. Add <span class="mono">note.setPassword</span> / <span class="mono">removePassword</span>, which encrypt or decrypt in place.</td></tr>
+        <tr><td>Locked notes in search</td><td><span class="chip partial">partial</span></td><td>They silently never match, because the server never ships their content. Correct behaviour, missing explanation — say it in the results footer.</td></tr>
+
+        <tr class="group"><td colspan="3">Organising</td></tr>
+        <tr><td>Notebooks</td><td><span class="chip partial">partial</span></td><td>Create, delete and move work. <span class="mono">updateNotebook</span> exists but has no caller, so renaming is impossible and <span class="mono">description</span> unreachable. Wire it, add colour and ordering.</td></tr>
+        <tr><td>Tags</td><td><span class="chip gap">gap</span></td><td><span class="mono">note_tags</span> plus a join table. The one organiser that works across notebooks, which is why the same note keeps getting duplicated today.</td></tr>
+        <tr><td>Pin a note</td><td><span class="chip gap">gap</span></td><td><span class="mono">pinned_at</span> column, pinned group at the top of the list.</td></tr>
+        <tr><td>Archive</td><td><span class="chip gap">gap</span></td><td><span class="mono">archived_at</span>, excluded from the default view, its own smart view in the rail.</td></tr>
+        <tr><td>Trash &amp; restore</td><td><span class="chip gap">gap</span></td><td><span class="mono">deleted_at</span> soft delete with a 30-day sweep. Deletion is currently immediate and irreversible.</td></tr>
+        <tr><td>Sort the list</td><td><span class="chip gap">gap</span></td><td>Fixed <span class="mono">createdAt desc</span> server-side while the card shows <em>edited</em> times. Add sort by edited / created / title, persisted per user.</td></tr>
+        <tr><td>Calendar-linked notes</td><td><span class="chip partial">partial</span></td><td><span class="mono">calendar_date</span> is settable at creation and never surfaced again — the expanded editor does not send it, so it can be neither changed nor cleared. Show it in the page header and the list row.</td></tr>
+
+        <tr class="group"><td colspan="3">Finding things</td></tr>
+        <tr><td>Search</td><td><span class="chip partial">partial</span></td><td>Client-side <span class="mono">includes()</span> over the fully-loaded array. Move to <span class="mono">note.search</span> over a Postgres <span class="mono">tsvector</span> with a GIN index, matching title and body.</td></tr>
+        <tr><td>Result highlighting</td><td><span class="chip gap">gap</span></td><td><span class="mono">ts_headline</span> for the snippet, so a row shows <em>why</em> it matched instead of its first line.</td></tr>
+        <tr><td>Pagination</td><td><span class="chip gap">gap</span></td><td><span class="mono">getAll</span> returns every note with full content. Cursor pagination plus a list projection that returns a 160-char preview, not the body.</td></tr>
+        <tr><td>Command palette</td><td><span class="chip gap">gap</span></td><td>⌘K over notes and notebooks. Cheap once search is server-side, and the fastest path for people with hundreds of notes.</td></tr>
+        <tr><td>Deep link to a note</td><td><span class="chip partial">partial</span></td><td><span class="mono">?noteId=&amp;tab=</span> works but drives it through a 300ms <span class="mono">setTimeout</span> race against the query. Make it a real route: <span class="mono">/notes/[id]</span>.</td></tr>
+
+        <tr class="group"><td colspan="3">Sharing</td></tr>
+        <tr><td>Share with a person</td><td><span class="chip have">have</span></td><td>Email lookup plus org-member suggestions, read/write permission. Keep the logic, restyle the dialog.</td></tr>
+        <tr><td>Revoke access</td><td><span class="chip have">have</span></td><td><span class="mono">unshareNote</span>. Should also recompute or retire <span class="mono">share_status</span>.</td></tr>
+        <tr><td>See who has access</td><td><span class="chip partial">partial</span></td><td>Only inside the share modal. Surface avatars on the list row and in the page header.</td></tr>
+        <tr><td>Edit a shared note</td><td><span class="chip partial">partial</span></td><td>Write-permission editing exists but lives in a bespoke inline block on the Shared tab, with its own duplicated title/content state. Same page pane as any other note.</td></tr>
+        <tr><td>Concurrent edits</td><td><span class="chip gap">gap</span></td><td>Two writers overwrite each other silently — last save wins, no warning. Add a <span class="mono">version</span> column and a conflict banner. Full CRDT collaboration is out of scope.</td></tr>
+        <tr><td>Live update on a shared note</td><td><span class="chip gap">gap</span></td><td>A <span class="mono">note:updated</span> socket event to the shared-with room, reusing the existing ws-server. Presence in the page footer.</td></tr>
+
+        <tr class="group"><td colspan="3">Platform</td></tr>
+        <tr><td>Mobile layout</td><td><span class="chip partial">partial</span></td><td>The rail is <span class="mono">hidden md:flex</span>, so notebooks and tabs vanish entirely below 768px. Route-driven panes instead: list at <span class="mono">/notes</span>, page at <span class="mono">/notes/[id]</span>.</td></tr>
+        <tr><td>Keyboard &amp; a11y</td><td><span class="chip gap">gap</span></td><td>Cards and rows are <span class="mono">div</span>s with <span class="mono">onClick</span>, the context menu is not a menu, no focus trap, no Escape. Real buttons, <span class="mono">role="menu"</span>, arrow-key list navigation, Escape closes the page pane.</td></tr>
+        <tr><td>Loading &amp; empty states</td><td><span class="chip gap">gap</span></td><td>An unresolved query renders as an empty grid with one dashed <em>create</em> tile — indistinguishable from having no notes. Skeleton rows, and distinct empties for no-notes, no-results and no-notebook.</td></tr>
+        <tr><td>Theme correctness</td><td><span class="chip gap">gap</span></td><td>Hardcoded <span class="mono">#1f1b2e</span> / <span class="mono">#efedf4</span> cards and <span class="mono">border-white/[0.06]</span> everywhere. Move to <span class="mono">bg-bg-elevated</span> and the <span class="mono">--hair</span> tokens so the six accent themes and light mode all work.</td></tr>
+        <tr><td>Localisation</td><td><span class="chip partial">partial</span></td><td>The <span class="mono">notes</span> namespace is broad but leaky — <span class="mono">"Show all"</span>, <span class="mono">"Cancel"</span>, <span class="mono">"From {owner}"</span> and <span class="mono">`${hours}h ago`</span> are hardcoded English. New strings follow the namespace; relative times go through the existing locale switch.</td></tr>
+        <tr><td>Notes Vault agent (A3)</td><td><span class="chip partial">partial</span></td><td>The draft → confirm → apply pipeline exists server-side and is invisible on this page. Surface proposed creates, updates and blocked notes as a review strip in the list pane.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Data model</p>
+    <h2>Six columns and one join table</h2>
+    <p>Unlike the chat rebuild, nothing here needs a structural rewrite — <code>sticky_notes</code> is shaped correctly, it is just thin. Most of the inventory above lands as nullable columns on the existing table, which means every change is additive and backfill-free.</p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Table</th><th>Change</th><th>Serves</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>sticky_notes</td>
+          <td><span class="mono">pinned_at</span>, <span class="mono">archived_at</span>, <span class="mono">deleted_at</span> — all nullable timestamps</td>
+          <td>Pinning, archive, trash and restore. Every existing read gains a <span class="mono">deleted_at is null</span> filter.</td>
+        </tr>
+        <tr>
+          <td>sticky_notes</td>
+          <td><span class="mono">content_format</span> enum <span class="mono">plain | markdown</span>, default <span class="mono">plain</span></td>
+          <td>Markdown rendering without reinterpreting every note ever written.</td>
+        </tr>
+        <tr>
+          <td>sticky_notes</td>
+          <td><span class="mono">version</span> integer, incremented on update</td>
+          <td>Conflict detection on shared notes. The update mutation takes the version it read and rejects a stale write.</td>
+        </tr>
+        <tr>
+          <td>sticky_notes</td>
+          <td><span class="mono">updated_by_id</span> → users</td>
+          <td>"Edited 2 min ago by Ivan" on shared notes, which today is unanswerable.</td>
+        </tr>
+        <tr>
+          <td>sticky_notes</td>
+          <td><span class="mono">search_tsv</span> generated column + GIN index, <em>null when <span class="mono">password_hash</span> is set</em></td>
+          <td>Server-side search. Encrypted notes are excluded at the database level, so no code path can accidentally index ciphertext or plaintext.</td>
+        </tr>
+        <tr>
+          <td>sticky_notes</td>
+          <td>Retire <span class="mono">share_status</span></td>
+          <td>Derived from <span class="mono">note_shares</span> in the list projection instead of stored twice and allowed to drift.</td>
+        </tr>
+        <tr>
+          <td>note_tags <span class="chip plain">new</span></td>
+          <td><span class="mono">id</span>, <span class="mono">name</span>, <span class="mono">created_by_id</span>, unique on (owner, lower(name))</td>
+          <td>Tags, scoped per user like notebooks are.</td>
+        </tr>
+        <tr>
+          <td>note_tag_links <span class="chip plain">new</span></td>
+          <td><span class="mono">note_id</span>, <span class="mono">tag_id</span>, unique pair, cascade on both sides</td>
+          <td>Many-to-many, which is the whole point — a note in <em>Product</em> can still be <span class="mono">#retro</span>.</td>
+        </tr>
+        <tr>
+          <td>notebooks</td>
+          <td><span class="mono">color</span>, <span class="mono">position</span>, <span class="mono">archived_at</span></td>
+          <td>The rail swatches and manual ordering. <span class="mono">description</span> already exists and finally becomes reachable.</td>
+        </tr>
+        <tr>
+          <td>notebooks</td>
+          <td>Decide the delete rule</td>
+          <td><span class="mono">on delete set null</span> today, so deleting a notebook silently unfiles its notes. Either say so in the dialog or offer to move them.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Contract</p>
+    <h2>tRPC and socket surface</h2>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Procedure</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>note.list</td><td><span class="chip gap">new</span></td><td>Replaces <span class="mono">getAll</span>. Cursor-paginated, filtered by view (all / pinned / archived / trash / notebook / tag), sorted, and projecting a <span class="mono">preview</span> string instead of full <span class="mono">content</span>.</td></tr>
+        <tr><td>note.getOne</td><td><span class="chip have">have</span></td><td>Already exists and already handles the locked branch. Becomes the page pane's loader.</td></tr>
+        <tr><td>note.search</td><td><span class="chip gap">new</span></td><td><span class="mono">tsvector</span> match with <span class="mono">ts_headline</span> snippets. Returns a count of excluded locked notes so the UI can explain the omission.</td></tr>
+        <tr><td>note.update</td><td><span class="chip partial">amend</span></td><td>Takes <span class="mono">expectedVersion</span>, accepts partial patches (title alone, tags alone) and returns the new version. Autosave calls it on a debounce.</td></tr>
+        <tr><td>note.setPinned / setArchived</td><td><span class="chip gap">new</span></td><td>Single-column writes, optimistic on the client.</td></tr>
+        <tr><td>note.softDelete / restore / purge</td><td><span class="chip partial">amend</span></td><td><span class="mono">delete</span> becomes a soft delete; <span class="mono">purge</span> is the only hard path and is reachable from Trash alone.</td></tr>
+        <tr><td>note.setPassword / removePassword</td><td><span class="chip gap">new</span></td><td>Encrypt or decrypt in place. Removing requires the current password, same as an edit does.</td></tr>
+        <tr><td>note.setCalendarDate</td><td><span class="chip gap">new</span></td><td><span class="mono">update</span> already accepts <span class="mono">calendarDate</span>; nothing calls it with one. Either wire the existing input or split it out for clarity.</td></tr>
+        <tr><td>note.updateNotebook</td><td><span class="chip partial">wire</span></td><td>Exists, fully implemented, zero callers. Rename plus description plus colour.</td></tr>
+        <tr><td>note.tags.*</td><td><span class="chip gap">new</span></td><td><span class="mono">list</span>, <span class="mono">create</span>, <span class="mono">attach</span>, <span class="mono">detach</span>, <span class="mono">rename</span>, <span class="mono">delete</span>.</td></tr>
+        <tr><td><span class="mono">note:updated</span> event</td><td><span class="chip gap">new</span></td><td>Emitted to every user a note is shared with, carrying id, version and editor. The client patches the list row and warns if the open page is behind.</td></tr>
+        <tr><td><span class="mono">note:shared</span> event</td><td><span class="chip partial">amend</span></td><td>A notification row is already written on share. Add the socket emit so <em>Shared with me</em> updates without a refresh.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Mobile</p>
+    <h2>One pane at a time, and the rail comes back</h2>
+    <p>Below 768px the current page hides the entire secondary sidebar, which is where notebooks, the tab switcher and the create button live — leaving a search field over a single-column card grid with no way to reach a notebook at all. The rebuild makes the panes routes: <code>/notes</code> is the list with the rail behind a sheet, <code>/notes/[id]</code> is the page, and Back is a real history pop rather than a state reset.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stagescroll" style="display:flex;gap:24px;justify-content:center;">
+
+      <div class="app narrow rel" role="img" aria-label="Mobile mockup of the note list.">
+        <div class="phead">
+          <div class="iconbtn"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></div>
+          <div class="ptitle" style="font-size:19px;">All notes</div>
+          <div class="iconbtn"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg></div>
+        </div>
+        <div class="search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <span>Search notes</span>
+        </div>
+        <div class="filters"><span class="fchip on">All</span><span class="fchip">Pinned</span><span class="fchip">Locked</span><span class="fchip">Shared</span></div>
+        <div class="grouplbl">Pinned</div>
+        <div class="rows" style="flex:none;">
+          <div class="row">
+            <div class="rtop">
+              <span class="pinicon"><svg viewBox="0 0 24 24"><path d="M12 17v5M8 3h8l-1 6 3 3v2H6v-2l3-3z"/></svg></span>
+              <span class="rtitle">Q3 planning — open threads</span><span class="rtime">2m</span>
+            </div>
+            <div class="rprev">Three things still unresolved before we commit…</div>
+            <div class="rmeta"><span class="mchip">Product</span><span class="mchip">#spec</span><span class="spacer"></span><span class="avs"><span class="av">IT</span><span class="av sky">MK</span></span></div>
+          </div>
+        </div>
+        <div class="grouplbl">Today</div>
+        <div class="rows">
+          <div class="row">
+            <div class="rtop"><span class="rtitle">Salary review — H2</span><span class="rtime">Mon</span></div>
+            <div class="rprev">Locked · unlock to read</div>
+            <div class="rmeta"><span class="mchip lock"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>Locked</span><span class="mchip share">Shared · 1</span></div>
+          </div>
+          <div class="row">
+            <div class="rtop"><span class="rtitle">Interview notes — backend #4</span><span class="rtime">11:20</span></div>
+            <div class="rprev">Strong on spec reading, thin on failure modes…</div>
+            <div class="rmeta"><span class="mchip">#hiring</span><span class="mchip cal">Sep 2</span></div>
+          </div>
+          <div class="row">
+            <div class="rtop"><span class="rtitle">Retro — sprint 42</span><span class="rtime">08:05</span></div>
+            <div class="rprev">What went well: the migration landed without…</div>
+            <div class="rmeta"><span class="mchip">Product</span><span class="mchip">#retro</span></div>
+          </div>
+          <div class="row">
+            <div class="rtop"><span class="rtitle">Reading list</span><span class="rtime">Tue</span></div>
+            <div class="rprev">Designing Data-Intensive Applications, ch. 7…</div>
+            <div class="rmeta"><span class="mchip">Personal</span></div>
+          </div>
+        </div>
+        <div class="fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+        <div class="mobbar">
+          <svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
+          <svg class="act" viewBox="0 0 24 24"><path d="M6 3h9l5 5v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M14 3v6h6"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V6a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+      </div>
+
+      <div class="app narrow rel" role="img" aria-label="Mobile mockup of an open note.">
+        <div class="ehead">
+          <div class="iconbtn" style="margin-left:-6px;"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></div>
+          <div class="crumb" style="flex:1;">Product</div>
+          <div class="saved"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> Saved</div>
+          <div class="iconbtn pin"><svg viewBox="0 0 24 24"><path d="M12 17v5M8 3h8l-1 6 3 3v2H6v-2l3-3z"/></svg></div>
+          <div class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></div>
+        </div>
+        <div class="ebody" style="padding:22px 20px 0;">
+          <div class="etitle" style="font-size:25px;">Q3 planning — open threads</div>
+          <div class="emeta" style="flex-wrap:wrap;">
+            <span>Edited 2 min ago</span><span class="sep"></span><span style="color:var(--sky);">On calendar · 28 Aug</span>
+          </div>
+          <div class="doc" style="font-size:13px;">
+            <p>Three things are still unresolved before we can commit the roadmap. Writing them down so Monday is about decisions rather than recall.</p>
+            <h5>1 · The ws-server split</h5>
+            <div class="li"><span class="box done"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="done-t">Confirm presence fan-out at 500 sockets</span></div>
+            <div class="li"><span class="box"></span><span>Rooms per conversation or per org?</span></div>
+            <div class="li"><span class="box"></span><span>Ask Ivan about rate limiting<span class="caret"></span></span></div>
+            <h5 style="margin-top:14px;">2 · Notes vault</h5>
+            <div class="li"><span class="bullet"></span><span>Search cannot cover locked notes — say so in the empty state.</span></div>
+          </div>
+        </div>
+        <div class="efoot">
+          <span class="mchip">#spec</span><span class="mchip" style="color:var(--ghost);">+ tag</span>
+          <span class="spacer"></span>
+          <span class="avs"><span class="av lg">IT</span><span class="av lg sky">MK</span></span>
+        </div>
+      </div>
+
+    </div>
+    <p class="figcap"><b>Mobile, 372px each.</b> Same tokens, same row geometry, 44px tap targets. The rail becomes a sheet behind the hamburger so notebooks and tags stop disappearing below <span class="mono">md</span>. One caveat carried over from the chat proposal: <code>globals-mobile.css</code> flattens every <code>p-6</code>, collapses <code>grid-cols-*</code> to one column and forces <code>[class*="fixed"] &gt; div</code> to <code>90vh</code> — the notes panes need scoping out of those blanket rules rather than fighting them.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Delivery</p>
+    <h2>Five phases, shippable in order</h2>
+    <p>Ordered so the correctness and payload problems land before any pixels move, and so the redesign arrives after there is new state worth rendering. Phases 1 and 2 are safe to ship behind no flag at all; phase 3 is the one that wants a preview toggle.</p>
+
+    <div style="margin-top:26px;">
+      <div class="phase">
+        <div class="pnum">01</div>
+        <div>
+          <h4>Correctness &amp; payload <span class="chip gap">no visual change</span></h4>
+          <p>Fix the badge ternary so lock and share states can coexist. Replace the <code>window.confirm</code> on notebook delete with the dialog already in the file, and say what happens to the notes inside. Add <code>note.list</code> with cursor pagination and a preview projection so the browser stops receiving every note body on load. Move the hardcoded card colours and <code>border-white/[0.06]</code> onto tokens — a one-file sweep that fixes light mode immediately.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="pnum">02</div>
+        <div>
+          <h4>Structure <span class="chip plain">migration</span></h4>
+          <p>Add <code>pinned_at</code>, <code>archived_at</code>, <code>deleted_at</code>, <code>version</code>, <code>updated_by_id</code>, the tag tables and the notebook columns. Ship pin, archive, trash/restore and sort against the existing UI. Wire <code>updateNotebook</code>. Retire <code>share_status</code> in favour of a derived field.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="pnum">03</div>
+        <div>
+          <h4>The redesign <span class="chip plain">ui</span></h4>
+          <p>Rebuild the shell as the three panes above. Split the 1394-line <code>NotesDashboard</code> into <code>NotesRail</code>, <code>NoteList</code>, <code>NoteRow</code>, <code>NotePage</code>, <code>LockGate</code>, <code>ShareDialog</code> and <code>useAutosave</code>; the password and unlock logic moves across unchanged. Route-driven <code>/notes/[id]</code>, autosave with optimistic cache patches, skeletons and real empty states, keyboard navigation and focus management. Delete <code>NotesList.tsx</code> and <code>CreateNoteForm.tsx</code> once <code>/create</code> redirects here.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="pnum">04</div>
+        <div>
+          <h4>The writing surface <span class="chip plain">content</span></h4>
+          <p>Markdown rendering behind <code>content_format</code>, checklists, word count, calendar date editable after creation, notebook colours and ordering, tag management in the page footer, and <code>setPassword</code> / <code>removePassword</code> so a note can be locked after the fact.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="pnum">05</div>
+        <div>
+          <h4>Search &amp; collaboration <span class="chip plain">scale</span></h4>
+          <p>The <code>tsvector</code> column, <code>note.search</code> with headline snippets, the ⌘K palette, then <code>note:updated</code> over the existing ws-server with version-based conflict warnings and viewer presence. Finally, surface the A3 Notes Vault draft/confirm pipeline as a review strip so the agent's proposed edits are approved where the notes actually live.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Open questions</p>
+    <h2>Decisions this proposal doesn't make</h2>
+    <ul class="clean">
+      <li><strong>Markdown, or stay plain?</strong> Nothing in <code>package.json</code> renders markdown today, and adding a renderer means an XSS surface on shared content. The proposal assumes a sanitised read-side renderer with a plain textarea for editing — no WYSIWYG dependency. Worth confirming that checklists are enough to justify it at all.</li>
+      <li><strong>Autosave on encrypted notes.</strong> Every autosave of a protected note re-runs AES-GCM encryption server-side and rewrites the row. Acceptable at an 800ms debounce, but it does mean a locked note's <code>updated_at</code> moves while you type. Longer debounce for locked notes, or accept it?</li>
+      <li><strong>What happens to notes when a notebook is deleted?</strong> The FK is <code>set null</code>, so they quietly become unfiled. Fine, provided the dialog says so — or should deletion offer to move them somewhere first?</li>
+      <li><strong>Does <code>/create</code> survive?</strong> It is a second notes surface with its own 972 lines. This proposal assumes it redirects to <code>/notes</code> and both components are deleted, but it may be doing something for onboarding that is not obvious from the code.</li>
+      <li><strong>Tags versus notebooks.</strong> Two organisers is one more than most people use. Tags are proposed because a note genuinely belongs to several contexts — but if notebooks become multi-assign instead, tags stop earning their tables.</li>
+      <li><strong>Trash retention.</strong> Thirty days is assumed. Nothing prunes <code>sticky_notes</code> today, and a soft delete without a sweep is just a slower leak.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="col">
+    <p>Prepared for the KAIROS team · Findings drawn from <code>src/components/notes/</code>, <code>src/app/(app)/notes/</code>, <code>src/server/api/routers/note.ts</code>, <code>src/server/db/schemas/notes.ts</code> and <code>src/styles/globals.css</code> on <code>development</code> at <span class="mono">6e2ec7d</span>.</p>
+  </div>
+</footer>
+
+</div>
+
+<button id="themetoggle" type="button" aria-label="Switch between light and dark">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+  <span>Theme</span>
+</button>
+<style>
+#themetoggle{
+  position:fixed;right:20px;bottom:20px;z-index:10;display:flex;align-items:center;gap:8px;
+  padding:9px 14px;border:0;border-radius:999px;background:var(--surface);color:var(--muted);
+  box-shadow:var(--shadow-pop);font-family:"IBM Plex Mono",monospace;font-size:.68rem;
+  letter-spacing:.12em;text-transform:uppercase;
+}
+#themetoggle svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linejoin:round;}
+#themetoggle:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+@media print{#themetoggle{display:none;}}
+</style>
+<script>
+(function () {
+  var root = document.documentElement;
+  document.getElementById("themetoggle").addEventListener("click", function () {
+    // No stamp means "follow the OS", so the first click has to resolve what
+    // the OS is currently showing before it can flip to the other one.
+    var current = root.getAttribute("data-theme");
+    if (!current) {
+      current = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    root.setAttribute("data-theme", current === "dark" ? "light" : "dark");
+  });
+})();
+</script>
+
+</body>
+</html>

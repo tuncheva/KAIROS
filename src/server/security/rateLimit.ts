@@ -20,8 +20,18 @@ import { readWindow, recordHit } from "~/server/security/slidingWindow";
 // Configuration
 // ---------------------------------------------------------------------------
 
-/** Maximum AI requests per user per sliding window. */
-const MAX_REQUESTS_PER_WINDOW = parseInt(process.env.AI_RATE_LIMIT ?? "50", 10);
+/**
+ * Default maximum AI requests per user per sliding window.
+ *
+ * The floor, not the rule. Callers pass the ceiling their plan grants
+ * (`Entitlements.aiRequestsPerDay`); this is what applies when nobody says. It
+ * stays env-configurable because a deployment still needs one number it can turn
+ * down in an incident without touching plan definitions.
+ */
+const DEFAULT_MAX_REQUESTS_PER_WINDOW = parseInt(
+  process.env.AI_RATE_LIMIT ?? "50",
+  10,
+);
 
 /** Sliding window duration in milliseconds (24 hours). */
 const WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -45,21 +55,35 @@ function toStatus(
   count: number,
   oldest: number | null,
   now: number,
+  limit: number,
 ): RateLimitStatus {
   return {
-    allowed: count < MAX_REQUESTS_PER_WINDOW,
-    remaining: Math.max(0, MAX_REQUESTS_PER_WINDOW - count),
-    limit: MAX_REQUESTS_PER_WINDOW,
+    allowed: count < limit,
+    // Clamped at zero, and it has to be. A user who drops from a 200/day plan to
+    // a 15/day one with 40 hits already in the window is over the new ceiling, and
+    // the honest arithmetic gives -25 — which the UI would render as
+    // "-25 requests left".
+    remaining: Math.max(0, limit - count),
+    limit,
     // The window slides, so budget frees up when the oldest hit ages out.
     resetsAt: new Date((oldest ?? now) + WINDOW_MS),
   };
 }
 
-/** Read a user's remaining budget without consuming any of it. */
-export async function checkRateLimit(userId: string): Promise<RateLimitStatus> {
+/**
+ * Read a user's remaining budget without consuming any of it.
+ *
+ * `limit` is the plan's ceiling. Passing it per call rather than resolving
+ * entitlements in here keeps this module free of the billing layer: the window
+ * store is a mechanism, and which number applies to whom is policy.
+ */
+export async function checkRateLimit(
+  userId: string,
+  limit: number = DEFAULT_MAX_REQUESTS_PER_WINDOW,
+): Promise<RateLimitStatus> {
   const now = Date.now();
   const { count, oldest } = await readWindow(key(userId), WINDOW_MS, now);
-  return toStatus(count, oldest, now);
+  return toStatus(count, oldest, now, limit);
 }
 
 /**
@@ -69,8 +93,9 @@ export async function checkRateLimit(userId: string): Promise<RateLimitStatus> {
  */
 export async function consumeRateLimit(
   userId: string,
+  limit: number = DEFAULT_MAX_REQUESTS_PER_WINDOW,
 ): Promise<RateLimitStatus> {
-  const status = await checkRateLimit(userId);
+  const status = await checkRateLimit(userId, limit);
 
   if (!status.allowed) {
     throw new TRPCError({
@@ -81,7 +106,7 @@ export async function consumeRateLimit(
 
   const now = Date.now();
   const { count, oldest } = await recordHit(key(userId), WINDOW_MS, now);
-  return { ...toStatus(count, oldest, now), allowed: true };
+  return { ...toStatus(count, oldest, now, limit), allowed: true };
 }
 
 /**
@@ -98,4 +123,55 @@ export async function consumeRateLimit(
  */
 export async function recordExtraAiCall(userId: string): Promise<void> {
   await recordHit(key(userId), WINDOW_MS, Date.now());
+}
+
+// ---------------------------------------------------------------------------
+// B-4 — the system budget
+// ---------------------------------------------------------------------------
+
+/**
+ * Scheduled runs are metered separately from what the user asks for.
+ *
+ * A daily brief that quietly ate one of the user's 50 requests would be a
+ * feature charging the person it was supposed to help — and worse, it would do
+ * it before they woke up, so the budget they found at 9am would already be down.
+ * Proactive work therefore draws on its own window and can never touch the
+ * interactive one.
+ *
+ * The reverse also holds: a user who exhausts their interactive budget still
+ * gets tomorrow's brief.
+ */
+const MAX_SYSTEM_REQUESTS_PER_WINDOW = parseInt(
+  process.env.AI_SYSTEM_RATE_LIMIT ?? "20",
+  10,
+);
+
+function systemKey(userId: string): string {
+  return `ai:system:${userId}`;
+}
+
+export async function checkSystemRateLimit(
+  userId: string,
+): Promise<RateLimitStatus> {
+  const now = Date.now();
+  const { count, oldest } = await readWindow(systemKey(userId), WINDOW_MS, now);
+  return {
+    allowed: count < MAX_SYSTEM_REQUESTS_PER_WINDOW,
+    remaining: Math.max(0, MAX_SYSTEM_REQUESTS_PER_WINDOW - count),
+    limit: MAX_SYSTEM_REQUESTS_PER_WINDOW,
+    resetsAt: new Date((oldest ?? now) + WINDOW_MS),
+  };
+}
+
+/**
+ * Consume one scheduled run.
+ *
+ * Returns `false` rather than throwing: a scheduler iterating hundreds of users
+ * wants to skip this one and carry on, not unwind a batch.
+ */
+export async function consumeSystemRateLimit(userId: string): Promise<boolean> {
+  const status = await checkSystemRateLimit(userId);
+  if (!status.allowed) return false;
+  await recordHit(systemKey(userId), WINDOW_MS, Date.now());
+  return true;
 }

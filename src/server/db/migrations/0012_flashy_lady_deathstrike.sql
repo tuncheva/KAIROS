@@ -1,0 +1,1 @@
+CREATE INDEX "ai_message_content_fts_idx" ON "ai_messages" USING gin (to_tsvector('simple', "content"));

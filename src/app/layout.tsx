@@ -1,8 +1,7 @@
 import "~/styles/globals.css";
-import "react-chat-elements/dist/main.css";
 
 import { type Metadata } from "next";
-import { Nunito_Sans, Instrument_Serif, Playfair_Display } from "next/font/google";
+import { Nunito_Sans, Instrument_Serif, Playfair_Display, IBM_Plex_Mono } from "next/font/google";
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 
@@ -42,6 +41,15 @@ const displayLatin = Instrument_Serif({
   display: "swap",
 });
 
+// The dashboard leans on a mono face for its labels and stamps; IBM Plex Mono
+// carries Cyrillic, so the Bulgarian locale gets the same treatment.
+const mono = IBM_Plex_Mono({
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500"],
+  variable: "--font-mono",
+  display: "swap",
+});
+
 const displayCyrillic = Playfair_Display({
   subsets: ["latin", "cyrillic"],
   weight: ["400"],
@@ -67,7 +75,7 @@ export default async function RootLayout({
   const display = locale === "bg" ? displayCyrillic : displayLatin;
 
   return (
-    <html lang={locale} className={`${sans.variable} ${display.variable}`} suppressHydrationWarning>
+    <html lang={locale} className={`${sans.variable} ${display.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         {/* Applies the saved theme before first paint. Allowed by hash rather
             than nonce; the script text and its hash live together in

@@ -40,6 +40,13 @@ export const THEME_INIT_SCRIPT = `
     // the only opt-out is a reduced-motion preference.
     var motionOk = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     document.documentElement.dataset.kairosIntro = motionOk ? 'play' : 'seen';
+
+    // Nav rail: the pin feeds --rail-w, and every page's .rail-offset takes its
+    // margin from that. Read after hydration instead, the rail opened and the
+    // whole page slid sideways a frame after each load. Setting it here means
+    // the first paint already has the right width.
+    document.documentElement.dataset.railPinned =
+      localStorage.getItem('kairos:railPinned') === 'true' ? 'true' : 'false';
   } catch (e) {}
 })();
 `;
@@ -50,7 +57,7 @@ export const THEME_INIT_SCRIPT = `
  * Regenerate by running the CSP test — it prints the expected value on failure.
  */
 export const THEME_INIT_SCRIPT_HASH =
-  "sha256-xhY9v3jFmOlgwvq4OZzg4awAiwAZ0PY0mJYqcfFxtLg=";
+  "sha256-Q7oBpHUR9Jwrbnismgfmo6XmNRojnOWwTFYlbH6wPOc=";
 
 /**
  * The same hash as a `script-src` source expression.

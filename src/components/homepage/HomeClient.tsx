@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { SignInModal } from "~/components/auth/SignInModal";
 import { LandingIntro } from "~/components/homepage/LandingIntro";
@@ -25,7 +26,17 @@ import { useSmoothAnchors } from "~/components/homepage/useSmoothAnchors";
  */
 export function HomeClient() {
     const { setTheme } = useTheme();
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const searchParams = useSearchParams();
+    // Arriving here with a `callbackUrl` means the proxy bounced someone off a
+    // page they were trying to reach — most sharply, a scanned invite QR. Show
+    // them the sign-in box rather than a marketing page they did not ask for.
+    // `switchAccount=1` is the same idea from the other direction: "add account"
+    // signs the current session out and lands here wanting the sign-in box.
+    const [isModalOpen, setIsModalOpen] = useState(
+        () =>
+            searchParams.get("callbackUrl") !== null ||
+            searchParams.get("switchAccount") !== null,
+    );
     const [introCleared, setIntroCleared] = useState(false);
     const rootRef = useRef<HTMLElement>(null);
 
@@ -80,7 +91,11 @@ export function HomeClient() {
                 <SiteFooter />
             </div>
 
-            <SignInModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+            <SignInModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                initialEmail={searchParams.get("email") ?? undefined}
+            />
         </main>
     );
 }

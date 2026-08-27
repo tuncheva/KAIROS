@@ -18,15 +18,40 @@ export const a1WorkspaceConciergeProfile: AgentProfile = {
   description:
     "A read-first front door agent that answers workspace questions, analyzes project descriptions to draft task plans, and produces handoffs for write operations — no side effects without approval.",
   outputSchema: A1OutputSchema,
+  // Every read tool, plus the two memory tools. A1 holds no tool that can change
+  // workspace data, so the allowlist exists to bound what it *looks at* rather
+  // than to bound damage — but "no write tools at all" overstates it:
+  // `rememberFact` and `forgetFact` at the end of this list write to and delete
+  // from the caller's own preference rows. Harmless in an interactive turn, where
+  // the user just asked; not harmless unattended, which is why
+  // `scheduled/customSchedules.ts` subtracts them before running a saved question
+  // on a timer.
+  //
+  // Ordered roughly as the model should reach for them: search first, then the
+  // cross-project views, then drill-down.
   draftToolAllowlist: [
+    "searchWorkspace",
     "getSessionContext",
-    "listOrganizations",
     "listProjects",
+    "listMyWork",
+    "getCalendarRange",
     "getProjectDetail",
+    "getProjectHealth",
+    "getWorkloadByAssignee",
     "listTasks",
     "getTaskDetail",
+    "listTaskComments",
+    "getTaskActivity",
+    "listProjectCollaborators",
+    "listOrganizations",
+    "listOrgMembers",
+    "listNotesMetadata",
     "listNotifications",
     "listEventsPublic",
+    "listEventRsvps",
+    "searchDocuments",
+    "rememberFact",
+    "forgetFact",
   ],
   routingRules: {
     modify_tasks: "task_planner",

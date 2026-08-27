@@ -1,10 +1,24 @@
 
 
 import { z } from "zod";
+import { isValidTimeZone } from "~/lib/timezone";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { users, accounts, sessions } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import * as argon2 from "argon2";
+import { TRPCError } from "@trpc/server";
+import {
+  consumeVerificationCode,
+  issueVerificationCode,
+} from "~/server/email/verificationCodes";
+import { sendEmailVerificationCode } from "~/server/email/email";
+import {
+  consumeAuthRateLimit,
+  createAuthRateLimitKey,
+} from "~/server/security/authRateLimit";
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("settings.router");
 
 export const settingsRouter = createTRPCRouter({
  
@@ -16,13 +30,22 @@ export const settingsRouter = createTRPCRouter({
           id: true,
           name: true,
           email: true,
+          emailVerified: true,
           image: true,
           bio: true,
          
-          emailNotifications: true,
+          inAppNotifications: true,
+          directMessageNotifications: true,
           projectUpdatesNotifications: true,
-          eventRemindersNotifications: true,
+          taskAssignmentNotifications: true,
           taskDueRemindersNotifications: true,
+          eventRemindersNotifications: true,
+          eventUpdatesNotifications: true,
+          eventRsvpNotifications: true,
+          socialNotifications: true,
+          inviteNotifications: true,
+          workspaceNotifications: true,
+          emailNotifications: true,
           marketingEmailsNotifications: true,
         
           language: true,
@@ -33,6 +56,9 @@ export const settingsRouter = createTRPCRouter({
           accentColor: true,
         
           profileVisibility: true,
+          profileAudience: true,
+          allowFollowers: true,
+          showActivityFeed: true,
           showOnlineStatus: true,
           activityTracking: true,
           dataCollection: true,
@@ -44,12 +70,22 @@ export const settingsRouter = createTRPCRouter({
           resetPinHint: true,
           resetPinFailedAttempts: true,
           resetPinLockedUntil: true,
+          // Read only to answer "is one set?" below. Never returned.
+          resetPinHash: true,
 
           createdAt: true,
         },
       });
 
-      return user ?? null;
+      if (!user) return null;
+
+      // Whether a PIN exists is a fact the settings screen needs and the hash is
+      // one it must never see. Settings inferred it from `resetPinHint` before,
+      // which is optional, and from `resetPinFailedAttempts >= 0`, which is true
+      // for every account that has never failed — so the screen told everyone
+      // they had a PIN configured.
+      const { resetPinHash, ...rest } = user;
+      return { ...rest, hasResetPin: !!resetPinHash };
     }),
 
 
@@ -71,13 +107,31 @@ export const settingsRouter = createTRPCRouter({
     }),
 
 
+  /**
+   * Every field optional, and only the provided ones are written.
+   *
+   * That matters more now that there are thirteen: a client that sends a partial
+   * object must not have the omitted switches reset to whatever its own defaults
+   * happen to be. The empty-input case is rejected rather than issuing an UPDATE
+   * that sets only `updatedAt`.
+   */
   updateNotifications: protectedProcedure
     .input(z.object({
-      emailNotifications: z.boolean().optional(),
+      inAppNotifications: z.boolean().optional(),
+      directMessageNotifications: z.boolean().optional(),
       projectUpdatesNotifications: z.boolean().optional(),
-      eventRemindersNotifications: z.boolean().optional(),
+      taskAssignmentNotifications: z.boolean().optional(),
       taskDueRemindersNotifications: z.boolean().optional(),
+      eventRemindersNotifications: z.boolean().optional(),
+      eventUpdatesNotifications: z.boolean().optional(),
+      eventRsvpNotifications: z.boolean().optional(),
+      socialNotifications: z.boolean().optional(),
+      inviteNotifications: z.boolean().optional(),
+      workspaceNotifications: z.boolean().optional(),
+      emailNotifications: z.boolean().optional(),
       marketingEmailsNotifications: z.boolean().optional(),
+    }).refine((v) => Object.keys(v).length > 0, {
+      message: "No notification preferences supplied",
     }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.update(users)
@@ -96,7 +150,15 @@ export const settingsRouter = createTRPCRouter({
       // Matches `languageEnum`, which now lists only locales that have a message
       // file. Accepting `ja` here stored a preference nothing could honour.
       language: z.enum(["en", "bg", "es", "fr", "de"]).optional(),
-      timezone: z.string().optional(),
+      // Validated rather than merely typed. This preference stopped being
+      // cosmetic when the scheduler began reading it: an unrecognised zone makes
+      // `Intl.DateTimeFormat` throw, and a zone that is really a fixed offset
+      // (`+02:00`) reinstates the seasonal drift the zone was introduced to fix.
+      // The picker only offers real zones, but this input is reachable without it.
+      timezone: z
+        .string()
+        .refine(isValidTimeZone, { message: "Unknown IANA time zone" })
+        .optional(),
       dateFormat: z.enum(["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -106,6 +168,112 @@ export const settingsRouter = createTRPCRouter({
           updatedAt: new Date(),
         })
         .where(eq(users.id, ctx.session.user.id));
+
+      return { success: true };
+    }),
+
+  /**
+   * Email a confirmation code for the signed-in user's own address.
+   *
+   * Signup sends a link, because at that moment there is no session and the
+   * mail client is the only place the person can be reached. This is the other
+   * situation: they are signed in, looking at Settings, and can type eight
+   * digits into the form that is already on screen.
+   *
+   * Rate-limited on the account, not the IP: the caller is authenticated, so
+   * there is nobody to enumerate and the only abuse left is using somebody's
+   * own session to send themselves mail in a loop.
+   */
+  sendEmailVerificationCode: protectedProcedure.mutation(async ({ ctx }) => {
+    const user = await ctx.db.query.users.findFirst({
+      where: eq(users.id, ctx.session.user.id),
+      columns: { name: true, email: true, emailVerified: true },
+    });
+
+    if (!user?.email) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "No email on file." });
+    }
+
+    if (user.emailVerified) {
+      // Not an error the UI should ever provoke — the row hides the control
+      // once verified — but a second tab with a stale query could.
+      return { success: true, alreadyVerified: true as const };
+    }
+
+    await consumeAuthRateLimit(
+      createAuthRateLimitKey("verify_code_send", ctx.session.user.id),
+    );
+
+    const code = await issueVerificationCode(ctx.db, "email_verify", user.email);
+
+    // Awaited, unlike signup's fire-and-forget: the user is watching a button
+    // and a failure here has to reach them rather than a log line.
+    try {
+      await sendEmailVerificationCode({
+        email: user.email,
+        userName: user.name ?? user.email,
+        code,
+      });
+    } catch (err) {
+      log.error("failed to send verification code", { err });
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Couldn't send the code. Try again in a moment.",
+      });
+    }
+
+    return { success: true, alreadyVerified: false as const };
+  }),
+
+  /**
+   * Redeem a code and mark the address confirmed.
+   *
+   * Confirming here has the same effect as clicking the emailed link: it is
+   * what lifts the sign-in refusal in `auth/config.ts`, so a user who never
+   * found the signup mail can rescue the account from inside a session they
+   * still have.
+   */
+  confirmEmailVerificationCode: protectedProcedure
+    .input(z.object({ code: z.string().regex(/^\d{8}$/, "Enter the 8-digit code") }))
+    .mutation(async ({ ctx, input }) => {
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("verify_code_confirm", ctx.session.user.id),
+      );
+
+      const user = await ctx.db.query.users.findFirst({
+        where: eq(users.id, ctx.session.user.id),
+        columns: { id: true, email: true, emailVerified: true },
+      });
+
+      if (!user?.email) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No email on file." });
+      }
+
+      if (user.emailVerified) return { success: true };
+
+      const result = await consumeVerificationCode(
+        ctx.db,
+        "email_verify",
+        user.email,
+        input.code,
+      );
+
+      if (!result.ok) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            result.reason === "expired"
+              ? "That code has expired. Send yourself a new one."
+              : result.reason === "too_many_attempts"
+                ? "Too many incorrect attempts. Send yourself a new code."
+                : "That code is not valid.",
+        });
+      }
+
+      await ctx.db
+        .update(users)
+        .set({ emailVerified: new Date(), updatedAt: new Date() })
+        .where(eq(users.id, user.id));
 
       return { success: true };
     }),
@@ -191,6 +359,9 @@ export const settingsRouter = createTRPCRouter({
   updatePrivacy: protectedProcedure
     .input(z.object({
       profileVisibility: z.boolean().optional(),
+      profileAudience: z.enum(["everyone", "organization", "shared"]).optional(),
+      allowFollowers: z.boolean().optional(),
+      showActivityFeed: z.boolean().optional(),
       showOnlineStatus: z.boolean().optional(),
       activityTracking: z.boolean().optional(),
       dataCollection: z.boolean().optional(),
@@ -207,14 +378,17 @@ export const settingsRouter = createTRPCRouter({
     }),
 
 
-  requestDataExport: protectedProcedure
-    .mutation(async ({ ctx:_ctx }) => {
-  
-      return { 
-        success: true,
-        message: "Data export request received. You'll receive an email when it's ready."
-      };
-    }),
+  /**
+   * Export moved to `GET /api/export/{format}`.
+   *
+   * What was here returned `{ success: true, message: "You'll receive an email
+   * when it's ready" }` and did nothing else — no job, no email, no file. It had
+   * no callers, so nothing is broken by its removal; it is noted rather than
+   * silently deleted because "we already have an export endpoint" was true of the
+   * codebase and false of the product.
+   *
+   * A file download is not a tRPC shape: see the route handler for why.
+   */
 
  
   deleteAllData: protectedProcedure

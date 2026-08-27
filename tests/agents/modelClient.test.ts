@@ -181,6 +181,38 @@ describe("modelClient — responses", () => {
     expect(body.response_format).toEqual({ type: "json_object" });
   });
 
+  /**
+   * Hybrid-thinking models gate reasoning behind a chat-template flag whose shape
+   * differs per model. Sending the wrong key fails *silently* — the template
+   * ignores it and the model answers with no reasoning — so nothing downstream
+   * would catch a regression here. These assert the wire body directly.
+   */
+  it.each([
+    [
+      "deepseek-ai/deepseek-v4-flash-0731",
+      { thinking: true, reasoning_effort: "high" },
+    ],
+    ["nvidia/nemotron-3-super-120b-a12b", { enable_thinking: true }],
+  ])("sends the chat template kwargs %s expects", async (model, expected) => {
+    fetchMock.mockResolvedValue(completion({ role: "assistant", content: "ok" }));
+
+    await chatCompletion({ messages: USER, model });
+
+    // Top level, not nested under extra_body: that is the shape the NIM reads.
+    // The dated suffix on the DeepSeek id is deliberate — entries match by
+    // prefix, so a new build of a known family inherits its flags for free.
+    expect(requestBody(0).chat_template_kwargs).toEqual(expected);
+  });
+
+  it("sends no chat template kwargs for a plain instruct model", async () => {
+    fetchMock.mockResolvedValue(completion({ role: "assistant", content: "ok" }));
+
+    await chatCompletion({ messages: USER, model: "meta/some-instruct-model" });
+
+    // Absent, not empty: an unlisted model has no thinking mode to switch on.
+    expect(requestBody(0)).not.toHaveProperty("chat_template_kwargs");
+  });
+
   it("serializes tool results back to the wire format", async () => {
     fetchMock.mockResolvedValue(completion({ role: "assistant", content: "ok" }));
 
@@ -279,17 +311,32 @@ describe("modelClient — retries and fallback", () => {
     },
   );
 
-  it.each([400, 401, 403, 404, 422])(
-    "fails immediately on HTTP %i",
+  it.each([400, 401, 403])(
+    "fails immediately on HTTP %i, without reaching the fallback",
     async (status) => {
       fetchMock.mockResolvedValue(errorResponse(status));
 
       await expect(chatCompletion({ messages: USER })).rejects.toBeInstanceOf(
         LlmHttpError,
       );
-      // A bad key or a malformed request fails identically on every attempt;
-      // retrying only spends the user's latency budget.
+      // A malformed request or a bad key fails identically on every attempt and
+      // on every model; retrying only spends the user's latency budget.
       expect(fetchMock).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each([404, 422])(
+    "does not retry HTTP %i, but does advance the chain",
+    async (status) => {
+      fetchMock.mockResolvedValue(errorResponse(status));
+
+      await expect(chatCompletion({ messages: USER })).rejects.toBeInstanceOf(
+        LlmHttpError,
+      );
+      // A model this account cannot reach is a property of *that* endpoint, not
+      // of the request, so the fallback is worth trying — but only once each: the
+      // status is no more retriable on the second model than it was on the first.
+      expect(fetchMock).toHaveBeenCalledTimes(2);
     },
   );
 

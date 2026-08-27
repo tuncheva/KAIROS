@@ -4,9 +4,57 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { agentOrchestrator } from "~/server/llm/orchestrator/agentOrchestrator";
 import { runAgentTurn } from "~/server/llm/orchestrator/handoff";
 import {
+  deleteConversation,
   findLatestConversation,
+  listConversations,
   loadConversation,
 } from "~/server/llm/conversations";
+import {
+  OrgAdminApplyInputSchema,
+  OrgAdminConfirmInputSchema,
+  OrgAdminDraftInputSchema,
+} from "~/server/llm/schemas/a5OrgAdminSchemas";
+import {
+  clearMemory,
+  deleteFact,
+  FactKeySchema,
+  FactValueSchema,
+  GLOBAL_SCOPE,
+  INSTRUCTION_SCOPE,
+  loadAllUserMemory,
+  upsertFact,
+} from "~/server/llm/memory";
+import { AGENTS, getAgent } from "~/server/llm/agents/registry";
+import { toolDefinitionsFor } from "~/server/llm/tools/a1/toolDefinitions";
+import { getAiMetrics } from "~/server/llm/observability";
+import {
+  undoAvailability,
+  undoNoteApply,
+  undoTaskApply,
+} from "~/server/llm/undo";
+import {
+  dismissFinding,
+  findingStats,
+  listOpenFindings,
+  suggestedFixFor,
+  type FindingKind,
+} from "~/server/llm/scheduled/riskRadar";
+import { diffTaskPlan } from "~/server/llm/beforeImage";
+import { MAX_PROMPT_CHARS } from "~/server/llm/scheduled/customSchedules";
+import { searchMessages } from "~/server/llm/retention";
+import { runBriefNow } from "~/server/llm/scheduled/runner";
+import { DEFAULT_TIME_ZONE } from "~/lib/timezone";
+import { entitlementsFor } from "~/server/billing/entitlements";
+import {
+  agentTaskPlannerDrafts,
+  aiCustomSchedules,
+  aiSchedules,
+  tasks,
+  users,
+} from "~/server/db/schema";
+import { assertProjectAccess } from "~/server/api/authz";
+import { TRPCError } from "@trpc/server";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   GenerateTaskDraftsInputSchema,
   ExtractTasksFromPdfInputSchema,
@@ -26,7 +74,11 @@ import {
   EventsPublisherConfirmInputSchema,
   EventsPublisherApplyInputSchema,
 } from "~/server/llm/schemas/a4EventsPublisherSchemas";
-import { consumeRateLimit, checkRateLimit } from "~/server/security/rateLimit";
+import {
+  checkRateLimit,
+  checkSystemRateLimit,
+  consumeRateLimit,
+} from "~/server/security/rateLimit";
 
 /**
  * Rate-limited protected procedure — consumes one AI request from the user's
@@ -34,9 +86,41 @@ import { consumeRateLimit, checkRateLimit } from "~/server/security/rateLimit";
  * Confirm/Apply procedures are NOT rate-limited since they don't call the LLM.
  */
 const rateLimitedProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  await consumeRateLimit(ctx.session.user.id);
+  await consumeRateLimit(
+    ctx.session.user.id,
+    entitlementsFor(ctx).aiRequestsPerDay,
+  );
   return next();
 });
+
+/**
+ * The schedules a user can turn on, and what they look like before they touch
+ * anything.
+ *
+ * Defaults live here rather than in the database because they are a product
+ * decision, not a storage one: `ai_schedules.dayOfWeek` is null-means-daily,
+ * which is the right default for a *column* and the wrong one for a
+ * retrospective. Friday at 16:00 is the end of a working week; Friday at 07:00
+ * would review a week that still has a day left in it.
+ */
+const SCHEDULE_KINDS = [
+  "daily_brief",
+  "risk_radar",
+  "weekly_retro",
+  "meeting_prep",
+] as const;
+
+const SCHEDULE_DEFAULTS: Record<
+  (typeof SCHEDULE_KINDS)[number],
+  { hourLocal: number; dayOfWeek: number | null }
+> = {
+  daily_brief: { hourLocal: 7, dayOfWeek: null },
+  risk_radar: { hourLocal: 7, dayOfWeek: null },
+  weekly_retro: { hourLocal: 16, dayOfWeek: 5 },
+  // Meeting prep has no hour of its own: it fires when a meeting is close. The
+  // values are stored so the row has a shape, and the runner ignores them.
+  meeting_prep: { hourLocal: 0, dayOfWeek: null },
+};
 
 export const agentRouter = createTRPCRouter({
 
@@ -44,7 +128,10 @@ export const agentRouter = createTRPCRouter({
    * Check the caller's remaining AI request quota.
    */
   rateLimitStatus: protectedProcedure.query(async ({ ctx }) => {
-    return checkRateLimit(ctx.session.user.id);
+    return checkRateLimit(
+      ctx.session.user.id,
+      entitlementsFor(ctx).aiRequestsPerDay,
+    );
   }),
   /**
    * General A1 draft — workspace concierge answers questions with LLM.
@@ -151,6 +238,7 @@ export const agentRouter = createTRPCRouter({
         message: input.message,
         scope: input.scope,
         handoffContext: input.handoffContext,
+        priorDraftId: input.priorDraftId,
       });
     }),
 
@@ -271,5 +359,581 @@ export const agentRouter = createTRPCRouter({
         draftId: input.draftId,
         confirmationToken: input.confirmationToken,
       });
+    }),
+
+  // -------------------------------------------------------------------------
+  // A5 Org Admin (E-4)
+  // -------------------------------------------------------------------------
+
+  orgAdminDraft: rateLimitedProcedure
+    .input(OrgAdminDraftInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return agentOrchestrator.orgAdminDraft({
+        ctx,
+        message: input.message,
+        organizationId: input.organizationId,
+      });
+    }),
+
+  orgAdminConfirm: protectedProcedure
+    .input(OrgAdminConfirmInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return agentOrchestrator.orgAdminConfirm({ ctx, draftId: input.draftId });
+    }),
+
+  orgAdminApply: protectedProcedure
+    .input(OrgAdminApplyInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return agentOrchestrator.orgAdminApply({
+        ctx,
+        draftId: input.draftId,
+        confirmationToken: input.confirmationToken,
+      });
+    }),
+
+  // -------------------------------------------------------------------------
+  // Agent roster and tool inspector
+  // -------------------------------------------------------------------------
+
+  /**
+   * Every agent, with what it can actually do.
+   *
+   * Static data — no database, no session-specific content — but a procedure
+   * rather than a client constant because the tool descriptions are the same
+   * strings the model is given, and duplicating them into the bundle would let
+   * the two drift the moment a description is reworded.
+   *
+   * `tools` is only ever non-empty for A1. The write agents receive a pre-built
+   * context pack rather than calling tools, so listing anything there would be
+   * describing a mechanism that does not exist; they report `operations`
+   * instead. See the note in `agents/registry.ts`.
+   */
+  agents: protectedProcedure.query(() => {
+    return AGENTS.map((agent) => ({
+      id: agent.id,
+      name: agent.name,
+      description: agent.description,
+      kind: agent.kind,
+      writes: agent.writes,
+      operations: agent.operations,
+      tools: toolDefinitionsFor(agent.tools).map((def) => ({
+        name: def.name,
+        description: def.description,
+        parameters: def.parameters,
+      })),
+    }));
+  }),
+
+  // -------------------------------------------------------------------------
+  // C-2 Assistant memory
+  // -------------------------------------------------------------------------
+
+  /**
+   * Everything the assistant is remembering, for Settings → AI Memory.
+   *
+   * Every scope, not just the global one: the editor has to be able to show and
+   * delete a fact scoped to an agent the user is not currently talking to, or
+   * that fact becomes unreachable from the UI that promised it was inspectable.
+   */
+  memory: protectedProcedure.query(async ({ ctx }) => {
+    return loadAllUserMemory(ctx, ctx.session.user.id);
+  }),
+
+  /**
+   * Write a fact by hand.
+   *
+   * Until now a fact could only appear because the model called `rememberFact`
+   * mid-conversation, so a user who knew exactly what they wanted remembered
+   * still had to say it out loud and hope. The cap and scope rules live in
+   * `upsertFact`, shared with the tool, so the two paths cannot diverge.
+   */
+  upsertMemory: protectedProcedure
+    .input(
+      z.object({
+        key: FactKeySchema,
+        value: FactValueSchema,
+        // Validated against the registry here, unlike the tool: this input comes
+        // from a picker with a known list, so an unknown scope is a bug or a
+        // tampered request rather than a model being loose with a string.
+        //
+        // `INSTRUCTION_SCOPE` is accepted here and refused in the tool. That
+        // asymmetry is the whole security model for standing rules: this
+        // procedure is only reachable from a signed-in person's own settings
+        // page, where the tool is reachable by anything the model decides to
+        // call mid-turn.
+        scope: z
+          .string()
+          .max(40)
+          .default(GLOBAL_SCOPE)
+          .refine(
+            (s) =>
+              s === GLOBAL_SCOPE ||
+              s === INSTRUCTION_SCOPE ||
+              Boolean(getAgent(s)),
+            { message: "Unknown agent scope." },
+          ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return upsertFact(ctx, ctx.session.user.id, input);
+    }),
+
+  forgetMemory: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await deleteFact(ctx, ctx.session.user.id, input.id);
+      return { forgotten: true };
+    }),
+
+  clearMemory: protectedProcedure.mutation(async ({ ctx }) => {
+    await clearMemory(ctx, ctx.session.user.id);
+    return { cleared: true };
+  }),
+
+  // -------------------------------------------------------------------------
+  // C-3 Conversation history
+  // -------------------------------------------------------------------------
+
+  /**
+   * Search your own messages.
+   *
+   * The visible half of "unlimited history": keeping every message earns nothing
+   * if the only route back to a decision from last quarter is scrolling.
+   *
+   * Ownership is enforced inside `searchMessages` by joining through
+   * `ai_conversations.userId`, not by filtering on a caller-supplied id.
+   */
+  searchMessages: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().min(2).max(200),
+        limit: z.number().int().min(1).max(100).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return searchMessages({
+        userId: ctx.session.user.id,
+        query: input.query,
+        limit: input.limit,
+      });
+    }),
+
+  conversations: protectedProcedure
+    .input(
+      z.object({ limit: z.number().int().min(1).max(50).optional() }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      return listConversations(ctx, ctx.session.user.id, input?.limit ?? 30);
+    }),
+
+  deleteConversation: protectedProcedure
+    .input(z.object({ conversationId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await deleteConversation(ctx, input.conversationId, ctx.session.user.id);
+      return { deleted: true };
+    }),
+
+  // -------------------------------------------------------------------------
+  // B-2 / B-3 Risk radar findings
+  // -------------------------------------------------------------------------
+
+  findings: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await listOpenFindings(ctx, ctx.session.user.id);
+    // The suggested fix is derived rather than stored: it is a function of the
+    // finding kind, so storing it would mean a migration every time the wording
+    // improves.
+    return rows.map((row) => ({
+      ...row,
+      suggestedFix: suggestedFixFor({
+        kind: row.kind as FindingKind,
+        severity: "info",
+        projectId: row.projectId,
+        title: row.title,
+        detail: row.detail,
+        fingerprint: row.fingerprint,
+        taskIds: [],
+      }),
+    }));
+  }),
+
+  dismissFinding: protectedProcedure
+    .input(z.object({ findingId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await dismissFinding(ctx, ctx.session.user.id, input.findingId);
+      return { dismissed: true };
+    }),
+
+  /**
+   * Dismissal rate is the metric that decides whether proactive AI stays on.
+   * Surfaced in the product rather than buried in a log.
+   */
+  findingStats: protectedProcedure.query(async ({ ctx }) => {
+    return findingStats(ctx, ctx.session.user.id);
+  }),
+
+  // -------------------------------------------------------------------------
+  // B-4 Proactive schedules
+  // -------------------------------------------------------------------------
+
+  schedules: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select()
+      .from(aiSchedules)
+      .where(eq(aiSchedules.userId, ctx.session.user.id));
+
+    // The zone travels with the schedules rather than being fetched separately:
+    // an hour is meaningless without it, and every consumer of one needs the
+    // other to render an honest "07:00 in Europe/Sofia".
+    const [profile] = await ctx.db
+      .select({ timeZone: users.timezone })
+      .from(users)
+      .where(eq(users.id, ctx.session.user.id))
+      .limit(1);
+
+    const timeZone = profile?.timeZone ?? DEFAULT_TIME_ZONE;
+
+    // A missing row means off. Returned explicitly so the settings UI does not
+    // have to encode "absent means disabled" itself.
+    const byKind = new Map(rows.map((r) => [r.kind, r]));
+    return SCHEDULE_KINDS.map((kind) => {
+      const row = byKind.get(kind);
+      const defaults = SCHEDULE_DEFAULTS[kind];
+      return {
+        kind,
+        enabled: row?.enabled ?? false,
+        hourLocal: row?.hourLocal ?? defaults.hourLocal,
+        channel: row?.channel ?? "app",
+        channelFailures: row?.channelFailures ?? 0,
+        // Null means daily. Weekly kinds default to their usual day rather than
+        // to null, so a user enabling the retrospective gets a Friday one rather
+        // than a daily one they then have to correct.
+        dayOfWeek: row?.dayOfWeek ?? defaults.dayOfWeek,
+        timeZone,
+        lastRunAt: row?.lastRunAt ?? null,
+        lastError: row?.lastError ?? null,
+      };
+    });
+  }),
+
+  setSchedule: protectedProcedure
+    .input(
+      z.object({
+        kind: z.enum(SCHEDULE_KINDS),
+        enabled: z.boolean(),
+        hourLocal: z.number().int().min(0).max(23).optional(),
+        /** 0 = Sunday … 6 = Saturday. Null means every day. */
+        dayOfWeek: z.number().int().min(0).max(6).nullable().optional(),
+        channel: z.enum(["app", "email", "both"]).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [existing] = await ctx.db
+        .select({ id: aiSchedules.id })
+        .from(aiSchedules)
+        .where(
+          and(eq(aiSchedules.userId, userId), eq(aiSchedules.kind, input.kind)),
+        )
+        .limit(1);
+
+      if (existing) {
+        await ctx.db
+          .update(aiSchedules)
+          .set({
+            enabled: input.enabled,
+            ...(input.hourLocal !== undefined
+              ? { hourLocal: input.hourLocal }
+              : {}),
+            ...(input.dayOfWeek !== undefined
+              ? { dayOfWeek: input.dayOfWeek }
+              : {}),
+            // Changing the channel clears the failure count: the user has just
+            // told us something about delivery, and holding two strikes against a
+            // freshly corrected address would disable it on the next hiccup.
+            ...(input.channel !== undefined
+              ? { channel: input.channel, channelFailures: 0 }
+              : {}),
+            updatedAt: new Date(),
+          })
+          .where(eq(aiSchedules.id, existing.id));
+      } else {
+        await ctx.db.insert(aiSchedules).values({
+          userId,
+          kind: input.kind,
+          enabled: input.enabled,
+          hourLocal: input.hourLocal ?? SCHEDULE_DEFAULTS[input.kind].hourLocal,
+          dayOfWeek:
+            input.dayOfWeek !== undefined
+              ? input.dayOfWeek
+              : SCHEDULE_DEFAULTS[input.kind].dayOfWeek,
+          channel: input.channel ?? "app",
+        });
+      }
+
+      return { ok: true };
+    }),
+
+  /** The caller's own saved questions. */
+  customSchedules: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select()
+      .from(aiCustomSchedules)
+      .where(eq(aiCustomSchedules.userId, ctx.session.user.id))
+      .orderBy(aiCustomSchedules.id);
+
+    return {
+      schedules: rows,
+      /** So the UI can say "2 of 3 used" rather than only refusing at the limit. */
+      allowance: entitlementsFor(ctx).maxSchedules,
+    };
+  }),
+
+  createCustomSchedule: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().trim().min(2).max(80),
+        prompt: z.string().trim().min(5).max(MAX_PROMPT_CHARS),
+        dayOfWeek: z.number().int().min(0).max(6).nullable().default(null),
+        hourLocal: z.number().int().min(0).max(23).default(8),
+        channel: z.enum(["app", "email", "both"]).default("app"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const allowance = entitlementsFor(ctx).maxSchedules;
+
+      const [{ count } = { count: 0 }] = await ctx.db
+        .select({ count: sql<number>`count(*)`.mapWith(Number) })
+        .from(aiCustomSchedules)
+        .where(eq(aiCustomSchedules.userId, ctx.session.user.id));
+
+      // Refused rather than silently trimmed. The runner also skips beyond the
+      // cap, so the two agree; this is the one that can explain itself.
+      if (count >= allowance) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            allowance === 0
+              ? "Saved schedules are a Pro feature."
+              : `You can have ${String(allowance)} saved schedules. Delete one to add another.`,
+        });
+      }
+
+      const [row] = await ctx.db
+        .insert(aiCustomSchedules)
+        .values({
+          userId: ctx.session.user.id,
+          name: input.name,
+          prompt: input.prompt,
+          dayOfWeek: input.dayOfWeek,
+          hourLocal: input.hourLocal,
+          channel: input.channel,
+        })
+        .returning({ id: aiCustomSchedules.id });
+
+      return { id: row?.id ?? null };
+    }),
+
+  updateCustomSchedule: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        name: z.string().trim().min(2).max(80).optional(),
+        prompt: z.string().trim().min(5).max(MAX_PROMPT_CHARS).optional(),
+        dayOfWeek: z.number().int().min(0).max(6).nullable().optional(),
+        hourLocal: z.number().int().min(0).max(23).optional(),
+        channel: z.enum(["app", "email", "both"]).optional(),
+        enabled: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...changes } = input;
+
+      // Ownership is in the WHERE clause, not checked and then acted on: a
+      // separate read would be a race, and an update that matches no row is the
+      // correct outcome for someone else's id.
+      const updated = await ctx.db
+        .update(aiCustomSchedules)
+        .set({
+          ...changes,
+          ...(changes.channel !== undefined ? { channelFailures: 0 } : {}),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(aiCustomSchedules.id, id),
+            eq(aiCustomSchedules.userId, ctx.session.user.id),
+          ),
+        )
+        .returning({ id: aiCustomSchedules.id });
+
+      if (!updated.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Schedule not found." });
+      }
+
+      return { ok: true };
+    }),
+
+  deleteCustomSchedule: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(aiCustomSchedules)
+        .where(
+          and(
+            eq(aiCustomSchedules.id, input.id),
+            eq(aiCustomSchedules.userId, ctx.session.user.id),
+          ),
+        );
+
+      return { ok: true };
+    }),
+
+  /** "Show me what a brief looks like" — costs one system-budget request. */
+  previewBrief: protectedProcedure.mutation(async ({ ctx }) => {
+    const sent = await runBriefNow(ctx.session.user.id);
+    return {
+      sent: sent > 0,
+      message:
+        sent > 0
+          ? "Sent — check your notifications."
+          : "Nothing needs your attention right now, so there is no brief to send.",
+    };
+  }),
+
+  // -------------------------------------------------------------------------
+  // G-5 Undo
+  // -------------------------------------------------------------------------
+
+  /**
+   * What a task plan will change, field by field, before it is confirmed.
+   *
+   * Undo answers "that was wrong". This prevents the moment. For someone acting
+   * on an agent's judgment over real data, prevention is worth more than
+   * reversal — and reviewing thirty proposed edits properly is work most people
+   * will skim, which is exactly why the skim needs to show the *diff* rather
+   * than a count.
+   *
+   * Computed live rather than stored with the draft. A plan drafted two minutes
+   * ago may already be stale — a colleague edited the task, or deleted it — and a
+   * preview cached at draft time would confidently describe a change that will
+   * not happen.
+   */
+  taskPlanDiff: protectedProcedure
+    .input(z.object({ draftId: z.string().min(1).max(80) }))
+    .query(async ({ ctx, input }) => {
+      const [draft] = await ctx.db
+        .select({
+          userId: agentTaskPlannerDrafts.userId,
+          projectId: agentTaskPlannerDrafts.projectId,
+          planJson: agentTaskPlannerDrafts.planJson,
+          status: agentTaskPlannerDrafts.status,
+        })
+        .from(agentTaskPlannerDrafts)
+        .where(eq(agentTaskPlannerDrafts.id, input.draftId))
+        .limit(1);
+
+      if (!draft) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found." });
+      }
+      if (draft.userId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      // Read access, not write: previewing is looking. The confirm and apply
+      // steps do their own `write` check, so this cannot become a way to act.
+      await assertProjectAccess(ctx, draft.projectId, "read");
+
+      const plan = JSON.parse(draft.planJson) as {
+        creates?: Array<{ title: string }>;
+        updates?: Array<{ taskId: number; patch: Record<string, unknown> }>;
+        statusChanges?: Array<{ taskId: number; status: string }>;
+        deletes?: Array<{ taskId: number; dangerous?: boolean }>;
+      };
+
+      const creates = plan.creates ?? [];
+      const updates = plan.updates ?? [];
+      const statusChanges = plan.statusChanges ?? [];
+      // Only the deletes the apply would actually perform. A delete without
+      // `dangerous` is skipped there, so showing it here would promise a change
+      // that never comes.
+      const deletes = (plan.deletes ?? []).filter((d) => d.dangerous);
+
+      const referenced = [
+        ...new Set([
+          ...updates.map((u) => u.taskId),
+          ...statusChanges.map((c) => c.taskId),
+          ...deletes.map((d) => d.taskId),
+        ]),
+      ];
+
+      const currentRows = referenced.length
+        ? await ctx.db
+            .select({
+              id: tasks.id,
+              title: tasks.title,
+              description: tasks.description,
+              status: tasks.status,
+              priority: tasks.priority,
+              assignedToId: tasks.assignedToId,
+              dueDate: tasks.dueDate,
+              orderIndex: tasks.orderIndex,
+            })
+            .from(tasks)
+            .where(
+              and(
+                inArray(tasks.id, referenced),
+                eq(tasks.projectId, draft.projectId),
+              ),
+            )
+        : [];
+
+      const diff = diffTaskPlan({
+        creates,
+        updates,
+        statusChanges,
+        deletes,
+        current: new Map(currentRows.map((r) => [r.id, r])),
+      });
+
+      return { ...diff, status: draft.status };
+    }),
+
+  undoAvailability: protectedProcedure
+    .input(z.object({ draftId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      return undoAvailability(ctx, ctx.session.user.id, input.draftId);
+    }),
+
+  undoApply: protectedProcedure
+    .input(
+      z.object({
+        draftId: z.string().min(1),
+        kind: z.enum(["tasks", "notes"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return input.kind === "tasks"
+        ? undoTaskApply(ctx, ctx.session.user.id, input.draftId)
+        : undoNoteApply(ctx, ctx.session.user.id, input.draftId);
+    }),
+
+  // -------------------------------------------------------------------------
+  // F-3 Observability
+  // -------------------------------------------------------------------------
+
+  metrics: protectedProcedure
+    .input(
+      z.object({ days: z.number().int().min(1).max(90).optional() }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const [metrics, interactive, system] = await Promise.all([
+        getAiMetrics(ctx, ctx.session.user.id, input?.days ?? 30),
+        checkRateLimit(
+          ctx.session.user.id,
+          entitlementsFor(ctx).aiRequestsPerDay,
+        ),
+        checkSystemRateLimit(ctx.session.user.id),
+      ]);
+      return { ...metrics, quota: { interactive, system } };
     }),
 });

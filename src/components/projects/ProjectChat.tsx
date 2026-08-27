@@ -5,7 +5,20 @@ import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
 import { useSocket } from "~/components/providers/SocketProvider";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
+import {
+  appendMessage,
+  dropMessage,
+  hasMessage,
+  nextOptimisticId,
+  NEW_MESSAGE_EXTRAS,
+  replaceMessage,
+  seedPage,
+} from "~/components/chat/messageCache";
 import { MessageBox } from "react-chat-elements";
+/* This lived in the root layout, which meant every page — the landing page
+   included — downloaded and parsed the chat library's stylesheet. It belongs
+   with its one consumer, so it now ships only on routes that render this. */
+import "react-chat-elements/dist/main.css";
 import Image from "next/image";
 
 const MessageBubble = MessageBox as unknown as ComponentType<{
@@ -85,7 +98,10 @@ export function ProjectChat({ projectId, currentUserId }: { projectId: number; c
       // i.e. two requests per second per open chat.
       refetchInterval: 60_000,
       refetchOnWindowFocus: true,
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      /* Backwards: `prevCursor` anchors the page before this one, so history
+         must be prepended. See `~/components/chat/messageCache`. */
+      getPreviousPageParam: (firstPage) => firstPage.prevCursor,
+      getNextPageParam: () => undefined,
     },
   );
 
@@ -99,11 +115,19 @@ export function ProjectChat({ projectId, currentUserId }: { projectId: number; c
   // ---------------------------------------------------------------------------
   const socket = useSocket();
 
+  /* Re-join on every `connect`: server-side room membership is tied to a socket
+     id and does not survive a reconnect, and socket.io reuses the same client
+     object, so this effect would not otherwise re-run. */
   useEffect(() => {
     if (!socket || conversationId === null) return;
-    socket.emit("join:conversation", conversationId);
+
+    const join = () => socket.emit("join:conversation", conversationId);
+    socket.on("connect", join);
+    if (socket.connected) join();
+
     return () => {
-      socket.emit("leave:conversation", conversationId);
+      socket.off("connect", join);
+      if (socket.connected) socket.emit("leave:conversation", conversationId);
     };
   }, [socket, conversationId]);
 
@@ -116,6 +140,9 @@ export function ProjectChat({ projectId, currentUserId }: { projectId: number; c
       senderName: string | null;
       senderImage: string | null;
       createdAt: string | Date;
+      /* Optional: the frame carries attachments now, but a project thread that
+         was open across the deploy can still receive one sent without them. */
+      attachments?: ChatMessage["attachments"];
     }) => {
       if (data.conversationId !== conversationId) return;
       // Our own messages are already in the cache via the optimistic update.
@@ -127,31 +154,17 @@ export function ProjectChat({ projectId, currentUserId }: { projectId: number; c
           if (!old) return old;
           // The server also fans out to each participant's user room, so the same
           // message can arrive twice.
-          const seen = new Set(old.pages.flatMap((p) => p.messages.map((m) => m.id)));
-          if (seen.has(data.messageId)) return old;
-
-          const lastPageIdx = old.pages.length - 1;
-          return {
-            ...old,
-            pages: old.pages.map((page, i) =>
-              i === lastPageIdx
-                ? {
-                    ...page,
-                    messages: [
-                      ...page.messages,
-                      {
-                        id: data.messageId,
-                        body: data.body,
-                        createdAt: new Date(data.createdAt),
-                        senderId: data.senderId,
-                        senderName: data.senderName,
-                        senderImage: data.senderImage,
-                      },
-                    ],
-                  }
-                : page,
-            ),
-          };
+          if (hasMessage(old, data.messageId)) return old;
+          return appendMessage(old, {
+            id: data.messageId,
+            body: data.body,
+            createdAt: new Date(data.createdAt),
+            senderId: data.senderId,
+            senderName: data.senderName,
+            senderImage: data.senderImage,
+            ...NEW_MESSAGE_EXTRAS,
+            attachments: data.attachments ?? [],
+          });
         },
       );
     },
@@ -165,66 +178,59 @@ export function ProjectChat({ projectId, currentUserId }: { projectId: number; c
 
       await utils.chat.listMessages.cancel({ conversationId, limit: 50 });
 
-      const previous = utils.chat.listMessages.getInfiniteData({ conversationId, limit: 50 });
+      /* Carried to onSuccess/onError so each send only ever touches its own
+         placeholder. Clearing every negative id there dropped the second of
+         two messages sent in quick succession. */
+      const optimisticId = nextOptimisticId();
 
       const optimistic: ChatMessage = {
-        id: -Date.now(),
+        id: optimisticId,
         body: variables.body,
         createdAt: new Date(),
         senderId: currentUserId,
         senderName: null,
         senderImage: null,
+        ...NEW_MESSAGE_EXTRAS,
       };
 
       utils.chat.listMessages.setInfiniteData(
         { conversationId, limit: 50 },
-        (old) => {
-          if (!old) return { pages: [{ messages: [optimistic], nextCursor: undefined }], pageParams: [null] as (number | null)[] };
-          const lastIdx = old.pages.length - 1;
-          return {
-            ...old,
-            pages: old.pages.map((page, i) =>
-              i === lastIdx ? { ...page, messages: [...page.messages, optimistic] } : page,
-            ),
-          };
-        },
+        (old) => (old ? appendMessage(old, optimistic) : seedPage(optimistic)),
       );
 
       setDraft("");
 
-      return { previous };
+      return { optimisticId };
     },
     onError: (_err, _variables, context) => {
-      if (!conversationId || !context?.previous) return;
+      if (!conversationId || context?.optimisticId === undefined) return;
       utils.chat.listMessages.setInfiniteData(
         { conversationId, limit: 50 },
-        context.previous,
+        (old) => (old ? dropMessage(old, context.optimisticId) : old),
       );
     },
-    onSuccess: async (msg: SendMessageOutput) => {
+    onSuccess: async (msg: SendMessageOutput, _variables, context) => {
       if (conversationId === null) return;
       const realMsg: ChatMessage = {
         id: msg.id ?? -1, body: msg.body ?? "", createdAt: msg.createdAt ?? new Date(),
         senderId: msg.senderId ?? currentUserId, senderName: msg.senderName ?? null, senderImage: msg.senderImage ?? null,
+        ...NEW_MESSAGE_EXTRAS,
+        attachments: msg.attachments ?? [],
+        replyTo: msg.replyTo ?? null,
       };
+      const optimisticId = context?.optimisticId;
       utils.chat.listMessages.setInfiniteData(
         { conversationId, limit: 50 },
         (old) => {
-          if (!old) return old!;
-          const lastIdx = old.pages.length - 1;
-          return {
-            ...old,
-            pages: old.pages.map((page, i) =>
-              i === lastIdx ? { ...page, messages: [...page.messages.filter((m) => m.id > 0), realMsg] } : page,
-            ),
-          };
+          if (!old) return old;
+          /* The socket echo may have landed first. */
+          if (hasMessage(old, realMsg.id)) return dropMessage(old, optimisticId);
+          if (optimisticId === undefined) return appendMessage(old, realMsg);
+          return replaceMessage(old, optimisticId, realMsg);
         },
       );
 
       await utils.chat.listProjectConversations.invalidate({ projectId });
-    },
-    onSettled: async () => {
-      if (conversationId !== null) await utils.chat.listMessages.invalidate({ conversationId, limit: 50 });
     },
   });
 

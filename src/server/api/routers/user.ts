@@ -124,9 +124,16 @@ export const userRouter = createTRPCRouter({
         )
         .where(eq(organizationMembers.userId, ctx.session.user.id));
 
-      const activeMembership = user.activeOrganizationId
-        ? memberships.find((m) => m.organization.id === user.activeOrganizationId) ?? null
-        : memberships[0] ?? null;
+      // Personal mode has no active membership. Falling through to
+      // `memberships[0]` meant a user working personally still had an
+      // organisation name and role rendered next to their avatar — see the same
+      // fix in `organization.getActive`.
+      const activeMembership =
+        user.usageMode === "personal"
+          ? null
+          : user.activeOrganizationId
+            ? memberships.find((m) => m.organization.id === user.activeOrganizationId) ?? null
+            : memberships[0] ?? null;
 
       return {
         id: user.id,

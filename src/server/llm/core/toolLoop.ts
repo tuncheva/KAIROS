@@ -33,17 +33,37 @@ import { recordExtraAiCall } from "~/server/security/rateLimit";
 
 import {
   chatCompletion,
+  streamCompletion,
   type ChatMessage,
+  type ChatResponse,
   type ChatUsage,
   type ToolCall,
   type ToolDefinition,
 } from "./modelClient";
+import { createSummaryStream } from "./summaryStream";
 
 const log = createLogger("llm.toolLoop");
 
-/** Enough hops to chain listProjects → getProjectDetail → listTasks → getTaskDetail and answer. */
-const DEFAULT_MAX_ITERATIONS = 6;
+/**
+ * Enough hops to chain searchWorkspace → getProjectDetail → listTasks →
+ * getTaskDetail → listTaskComments and still have a turn left to answer in.
+ *
+ * Was 6, sized for a surface of eight tools where almost every question was one
+ * or two lookups. With nineteen tools the model legitimately takes more hops —
+ * search first, then drill down — and hitting the cap does not degrade the
+ * answer, it discards the turn entirely (`exhausted`).
+ */
+const DEFAULT_MAX_ITERATIONS = 8;
 const DEFAULT_WALL_CLOCK_MS = 90_000;
+
+/**
+ * How many tool calls from one model turn may run at once.
+ *
+ * Bounded rather than unlimited: these are database round trips on a shared
+ * pool, and a model that asks for twelve lookups should not be able to occupy
+ * the pool by itself.
+ */
+const TOOL_CONCURRENCY = 4;
 
 /** Truncation guard for a tool result, so one huge row set cannot fill the context. */
 const MAX_TOOL_RESULT_CHARS = 12_000;
@@ -70,6 +90,15 @@ export interface ToolLoopOptions {
   signal?: AbortSignal;
   /** Called as each tool starts, for progress UI. */
   onToolCall?: (name: string) => void;
+  /**
+   * G-1 — called with the answer text as it streams.
+   *
+   * Setting this switches the model call from a single response to a streamed
+   * one, and the characters of `answer.summary` are emitted as they decode. The
+   * complete response is still assembled and validated exactly as before; this
+   * is a view onto the same bytes, not a second contract.
+   */
+  onAnswerDelta?: (text: string) => void;
 }
 
 export interface ToolLoopResult {
@@ -184,6 +213,50 @@ async function executeToolCall(
 }
 
 /**
+ * Run one model call as a stream, forwarding the answer text as it decodes.
+ *
+ * Returns the same {@link ChatResponse} the non-streaming path does, so the loop
+ * above is identical either way — the only difference is that the caller saw the
+ * answer arrive instead of waiting for it.
+ *
+ * A tool-calling turn produces no `answer.summary` at all, and the scanner
+ * simply finds nothing; there is no need to know in advance which kind of turn
+ * this is.
+ */
+async function streamAnswer(
+  request: Parameters<typeof chatCompletion>[0],
+  onAnswerDelta: (text: string) => void,
+): Promise<ChatResponse> {
+  const scanner = createSummaryStream({ onDelta: onAnswerDelta });
+
+  for await (const event of streamCompletion(request)) {
+    if (event.type === "content") {
+      scanner.push(event.text);
+      continue;
+    }
+    if (event.type === "done") {
+      scanner.end();
+      return {
+        content: event.content,
+        reasoning: event.reasoning,
+        toolCalls: event.toolCalls,
+        finishReason: event.finishReason,
+        model: event.model,
+        usage: event.usage,
+      };
+    }
+    // `reasoning` deltas are deliberately dropped: they are most of the token
+    // volume and must never reach the transcript.
+  }
+
+  // The generator ended without a `done` event, which means the upstream stream
+  // was cut. Surfaced as an error rather than an empty answer, so the caller's
+  // fallback path runs instead of the user seeing a blank reply.
+  scanner.end();
+  throw new Error("The model stream ended without completing.");
+}
+
+/**
  * Drive the model until it produces an answer, executing the tools it asks for.
  */
 export async function runToolLoop(
@@ -205,17 +278,21 @@ export async function runToolLoop(
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
     const outOfTime = Date.now() > deadline;
 
-    const response = await chatCompletion({
+    const request = {
       messages,
       // On the last iteration — or once out of time — drop the tools so the
       // model has to answer with what it has instead of asking for more.
       tools: iteration === maxIterations || outOfTime ? undefined : opts.tools,
-      toolChoice: "auto",
+      toolChoice: "auto" as const,
       temperature: opts.temperature,
       maxTokens: opts.maxTokens,
       signal: opts.signal,
       purpose: `${opts.purpose ?? "toolLoop"}#${String(iteration)}`,
-    });
+    };
+
+    const response = opts.onAnswerDelta
+      ? await streamAnswer(request, opts.onAnswerDelta)
+      : await chatCompletion(request);
 
     usage = addUsage(usage, response.usage);
     // The first call is paid for by the caller's `consumeRateLimit`; each extra
@@ -242,18 +319,35 @@ export async function runToolLoop(
       toolCalls: response.toolCalls,
     });
 
-    // Sequential, not parallel: these are DB reads on one connection pool, and a
-    // later call in the same turn often depends on an id from an earlier one.
-    for (const call of response.toolCalls) {
-      opts.onToolCall?.(call.name);
-      const { message, ok, durationMs } = await executeToolCall(
-        opts,
-        call,
-        resultCache,
+    // Calls within one model turn run concurrently, in bounded batches.
+    //
+    // This was sequential, justified by "a later call in the same turn often
+    // depends on an id from an earlier one" — but that is not what a turn is.
+    // The model emits every call in a single response *before* seeing any
+    // result, so no call here can depend on another; chaining happens across
+    // iterations, which are still strictly sequential. With search in the tool
+    // set the model now routinely asks for three or four lookups at once, and
+    // paying for them serially was latency for nothing.
+    //
+    // Results are appended in the model's original order regardless of which
+    // finished first: the tool messages must line up with the tool_call ids in
+    // the preceding assistant message.
+    for (let i = 0; i < response.toolCalls.length; i += TOOL_CONCURRENCY) {
+      const batch = response.toolCalls.slice(i, i + TOOL_CONCURRENCY);
+
+      const settled = await Promise.all(
+        batch.map(async (call) => {
+          opts.onToolCall?.(call.name);
+          const outcome = await executeToolCall(opts, call, resultCache);
+          return { call, ...outcome };
+        }),
       );
-      toolCallsMade.push({ name: call.name, ok, durationMs });
-      messages.push(message);
-      log.debug("tool call", { tool: call.name, ok, durationMs });
+
+      for (const { call, message, ok, durationMs } of settled) {
+        toolCallsMade.push({ name: call.name, ok, durationMs });
+        messages.push(message);
+        log.debug("tool call", { tool: call.name, ok, durationMs });
+      }
     }
   }
 

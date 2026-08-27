@@ -14,6 +14,7 @@ import type { inferAsyncReturnType } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { verifyApiKey } from "~/server/api/apiKeys";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { createLogger } from "~/server/logger";
@@ -35,12 +36,58 @@ const log = createLogger("trpc");
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth();
 
+  // An API key stands in for a cookie session, and only when there is no cookie.
+  //
+  // Two properties make this safe to bolt on here rather than in every procedure:
+  //
+  // 1. **The session shape is identical.** A key resolves to the same
+  //    `{ user: { id } }` a browser would carry, so every `protectedProcedure`,
+  //    every `assertProjectAccess` and every ownership `where` clause applies
+  //    unchanged. A key grants what its owner has and nothing more.
+  // 2. **A cookie always wins.** If both are present the cookie is used, so a
+  //    stray header cannot escalate or impersonate inside a signed-in browser.
+  //
+  // `apiKeyId` is carried on the context so the rate limiter can meter the key
+  // rather than only the user — see `withApiKeyLimit`.
+  if (!session?.user?.id) {
+    const keyed = await verifyApiKey(bearerFrom(opts.headers));
+    if (keyed) {
+      return {
+        db,
+        apiKeyId: keyed.keyId,
+        session: {
+          user: { id: keyed.userId, name: null, email: null, image: null },
+          // Nominal, and never read for authorization — the key's own
+          // `revokedAt` is what expiry means here.
+          expires: new Date(Date.now() + 60_000).toISOString(),
+        },
+        ...opts,
+      };
+    }
+  }
+
   return {
     db,
+    apiKeyId: null as number | null,
     session,
     ...opts,
   };
 };
+
+/**
+ * Read a key from the request.
+ *
+ * `Authorization: Bearer <key>` is the form every client already knows. The
+ * bespoke `x-api-key` header is also accepted because it survives proxies that
+ * strip `Authorization`, which is common enough to be worth two lines.
+ */
+function bearerFrom(headers: Headers): string | null {
+  const auth = headers.get("authorization");
+  if (auth?.toLowerCase().startsWith("bearer ")) {
+    return auth.slice(7).trim();
+  }
+  return headers.get("x-api-key");
+}
 
 export type TRPCContext = inferAsyncReturnType<typeof createTRPCContext>;
 

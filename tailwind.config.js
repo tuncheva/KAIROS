@@ -45,6 +45,8 @@ export default {
         warning: "rgb(var(--warning) / <alpha-value>)",
         error: "rgb(var(--error) / <alpha-value>)",
         info: "rgb(var(--info) / <alpha-value>)",
+        /* The dashboard's "day elapsed" arc — cyan, independent of the accent. */
+        "dash-day": "rgb(var(--dash-day) / <alpha-value>)",
         event: {
           active: "rgb(var(--event-active) / <alpha-value>)",
           upcoming: "rgb(var(--event-upcoming) / <alpha-value>)",
@@ -71,6 +73,13 @@ export default {
           "Segoe UI Emoji",
           "Segoe UI Symbol",
           "Noto Color Emoji",
+        ],
+        mono: [
+          "var(--font-mono)",
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "monospace",
         ],
         display: [
           "var(--font-display)",

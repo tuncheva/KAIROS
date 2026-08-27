@@ -16,6 +16,8 @@ import {
   languageEnum,
   dateFormatEnum,
   themeEnum,
+  profileAudienceEnum,
+  verificationCodePurposeEnum,
 } from "./enums";
 
 export const users = createTable("user", (d) => ({
@@ -78,10 +80,50 @@ export const users = createTable("user", (d) => ({
 
     bio: text("bio"),
 
-    emailNotifications: boolean("email_notifications").default(true).notNull(),
+    /**
+     * Notification preferences.
+     *
+     * These columns existed long before anything consulted them: the settings
+     * screen wrote all five and no notification-producing code read any of them.
+     * They are now the single gate every notification passes through — see
+     * `~/server/notifications/dispatch`, which maps a category to the column
+     * below and drops the notification when it is false.
+     *
+     * `inAppNotifications` is the master switch for the bell. It does not
+     * silence `category: "security"`, which is deliberately ungateable: an
+     * account-security notice a user cannot receive is worse than a noisy one.
+     */
+    inAppNotifications: boolean("in_app_notifications").default(true).notNull(),
+    directMessageNotifications: boolean("direct_message_notifications").default(true).notNull(),
     projectUpdatesNotifications: boolean("project_updates_notifications").default(true).notNull(),
-    eventRemindersNotifications: boolean("event_reminders_notifications").default(false).notNull(),
+    taskAssignmentNotifications: boolean("task_assignment_notifications").default(true).notNull(),
     taskDueRemindersNotifications: boolean("task_due_reminders_notifications").default(true).notNull(),
+    /**
+     * Default flipped to `true`. It was `false`, which meant the reminder a user
+     * explicitly asked for when they subscribed to an event — by picking a
+     * "remind me N minutes before" — was silently discarded by a preference they
+     * never touched. Opting into a specific reminder is the clearer signal.
+     */
+    eventRemindersNotifications: boolean("event_reminders_notifications").default(true).notNull(),
+    eventUpdatesNotifications: boolean("event_updates_notifications").default(true).notNull(),
+    eventRsvpNotifications: boolean("event_rsvp_notifications").default(true).notNull(),
+    socialNotifications: boolean("social_notifications").default(true).notNull(),
+    inviteNotifications: boolean("invite_notifications").default(true).notNull(),
+    workspaceNotifications: boolean("workspace_notifications").default(true).notNull(),
+
+    /** Email channel. Separate from the in-app switches above. */
+    emailNotifications: boolean("email_notifications").default(true).notNull(),
+    /**
+     * Consent record, not yet a gate — there is no marketing email to gate.
+     *
+     * Every other column here is read by `~/server/notifications/dispatch` or by
+     * the brief delivery path. This one has no reader because nothing in the
+     * codebase sends promotional mail. It defaults to `false`, so the stored
+     * value is a genuine opt-in rather than an assumed one, and whoever adds the
+     * first campaign must check it. Called out explicitly because a preference
+     * that merely *looks* enforced is the exact defect this file's other comments
+     * describe.
+     */
     marketingEmailsNotifications: boolean("marketing_emails_notifications").default(false).notNull(),
 
     language: languageEnum("language").default("en").notNull(),
@@ -93,8 +135,26 @@ export const users = createTable("user", (d) => ({
 
     notesKeepUnlockedUntilClose: boolean("notes_keep_unlocked_until_close").default(false).notNull(),
 
+    /**
+     * Master switch. False hides you from everyone regardless of
+     * `profileAudience` — see `~/server/profile/visibility`.
+     */
     profileVisibility: boolean("profile_visibility").default(true).notNull(),
+    /**
+     * Which audience the master switch admits. Defaults to `organization`
+     * rather than `everyone`: the people who can already see your name in a
+     * member list are the ones a profile tells nothing new to.
+     */
+    profileAudience: profileAudienceEnum("profile_audience")
+      .default("organization")
+      .notNull(),
     showOnlineStatus: boolean("show_online_status").default(true).notNull(),
+    /** Whether other people may follow you at all. */
+    allowFollowers: boolean("allow_followers").default(true).notNull(),
+    /** Whether the drawer's Activity tab renders anything to other viewers. */
+    showActivityFeed: boolean("show_activity_feed").default(true).notNull(),
+    /** Last time this user was seen; drives the online dot. */
+    lastSeenAt: timestamp("last_seen_at", { mode: "date", withTimezone: true }),
     activityTracking: boolean("activity_tracking").default(false).notNull(),
     dataCollection: boolean("data_collection").default(false).notNull(),
 
@@ -114,10 +174,18 @@ export type UserSettings = {
   bio: string | null;
   image: string | null;
 
-  emailNotifications: boolean;
+  inAppNotifications: boolean;
+  directMessageNotifications: boolean;
   projectUpdatesNotifications: boolean;
-  eventRemindersNotifications: boolean;
+  taskAssignmentNotifications: boolean;
   taskDueRemindersNotifications: boolean;
+  eventRemindersNotifications: boolean;
+  eventUpdatesNotifications: boolean;
+  eventRsvpNotifications: boolean;
+  socialNotifications: boolean;
+  inviteNotifications: boolean;
+  workspaceNotifications: boolean;
+  emailNotifications: boolean;
   marketingEmailsNotifications: boolean;
 
   language: "en" | "bg" | "es" | "fr" | "de";
@@ -128,7 +196,10 @@ export type UserSettings = {
   accentColor: string;
 
   profileVisibility: boolean;
+  profileAudience: "everyone" | "organization" | "shared";
   showOnlineStatus: boolean;
+  allowFollowers: boolean;
+  showActivityFeed: boolean;
   activityTracking: boolean;
   dataCollection: boolean;
 
@@ -200,6 +271,83 @@ export const passwordResetCodes = createTable("password_reset_code", (d) => ({
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 }));
+
+/**
+ * Short numeric codes emailed to prove control of an address.
+ *
+ * Supersedes `password_reset_code`, which stored its codes in plaintext — a
+ * read of the database yielded a live credential for every outstanding reset.
+ * Only a SHA-256 of the code is kept here, for the same reason
+ * `verification_token` keeps only a hash of its link tokens.
+ *
+ * Three things this table does that its predecessor did not:
+ *
+ * - `purpose` lets one mechanism serve both confirming an address and
+ *   authorising a password reset, instead of two implementations that drifted.
+ * - `attempts` caps guessing at the row rather than at the rate limiter alone.
+ *   An eight-digit code survives a shared-IP limiter for a long time; it does
+ *   not survive five wrong answers.
+ * - `consumedAt` records *when* rather than a bare boolean, which is what makes
+ *   "was this code already used, and how long ago" answerable during an
+ *   incident.
+ */
+export const verificationCodes = createTable(
+  "verification_code",
+  (d) => ({
+    id: d.integer().primaryKey().generatedAlwaysAsIdentity(),
+    purpose: verificationCodePurposeEnum("purpose").notNull(),
+    /** Lowercased address. Not a user reference: a code may be issued before
+     *  the row exists, and must keep working if the account is renamed. */
+    email: d.varchar({ length: 255 }).notNull(),
+    codeHash: d.varchar("code_hash", { length: 64 }).notNull(),
+    expiresAt: d
+      .timestamp("expires_at", { mode: "date", withTimezone: true })
+      .notNull(),
+    consumedAt: d.timestamp("consumed_at", { mode: "date", withTimezone: true }),
+    attempts: d.integer().default(0).notNull(),
+    createdAt: d
+      .timestamp("created_at", { mode: "date", withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    // Every lookup is "the live code for this address and purpose".
+    index("verification_code_lookup_idx").on(t.email, t.purpose),
+  ],
+);
+
+/**
+ * The follow graph.
+ *
+ * Directed and unreciprocated: following someone is a subscription, not a
+ * mutual link, so there is no accept step and no pending state. The composite
+ * primary key is what makes a double-tap on Follow a no-op rather than a
+ * duplicate row, and the reverse index is what makes "who follows me" a lookup
+ * rather than a scan.
+ */
+export const userFollows = createTable(
+  "user_follow",
+  (d) => ({
+    followerId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    followingId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: d
+      .timestamp("created_at", { mode: "date", withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.followerId, t.followingId] }),
+    index("user_follow_following_idx").on(t.followingId),
+  ],
+);
+
+export type UserFollow = InferSelectModel<typeof userFollows>;
 
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;

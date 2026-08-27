@@ -40,6 +40,7 @@
 
 import "server-only";
 
+import { optionalImport } from "~/server/optionalImport";
 import { createLogger } from "~/server/logger";
 
 const REDIS_NATIVE_URL = process.env.REDIS_NATIVE_URL;
@@ -99,13 +100,9 @@ async function getClient(): Promise<RedisLike | null> {
 
   connecting = (async () => {
     try {
-      // `redis` is an optional dependency that may not be installed. The
-      // specifier is held in a variable and marked `@vite-ignore` so that
-      // bundlers treat this as a genuinely dynamic import instead of trying to
-      // resolve it at build time — Vitest fails to transform this module
-      // otherwise, since it imports the store transitively through the limiters.
-      const specifier = "redis";
-      const mod: unknown = await import(/* @vite-ignore */ specifier);
+      // `redis` is optional and usually absent — see `optionalImport`, which
+      // keeps the bundler from trying to resolve it at build time.
+      const mod: unknown = await optionalImport("redis");
       const { createClient } = mod as RedisModuleLike;
       const created = createClient({ url: REDIS_NATIVE_URL });
       await created.connect();

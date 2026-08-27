@@ -23,7 +23,7 @@ function ResetPasswordForm() {
     onSuccess: () => {
       setSuccess(true);
       setTimeout(() => {
-        router.push("/create?action=new_note");
+        router.push("/notes");
       }, 3000);
     },
     onError: (error) => {
@@ -74,7 +74,7 @@ function ResetPasswordForm() {
             This password reset link is invalid or has expired.
           </p>
           <Link
-            href="/create?action=new_note"
+            href="/notes"
             className="inline-block px-6 py-3 bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-accent transition-all"
           >
             Go to Notes
@@ -215,7 +215,7 @@ function ResetPasswordForm() {
 
         <div className="mt-6 pt-6 border-t border-border-light/40 text-center">
           <Link
-            href="/create?action=new_note"
+            href="/notes"
             className="text-sm text-accent-primary hover:text-accent-hover font-medium transition-colors"
           >
             ← Back to Notes

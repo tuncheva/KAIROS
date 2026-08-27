@@ -2,9 +2,9 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import crypto from "node:crypto";
 import { protectedProcedure, createTRPCRouter } from "~/server/api/trpc";
-import { stickyNotes, users, notebooks, noteShares, notifications } from "~/server/db/schema";
+import { stickyNotes, users, notebooks, noteShares } from "~/server/db/schema";
 import { eq, and } from "drizzle-orm";
-import { emitNotification } from "~/server/ws/emit";
+import { notify } from "~/server/notifications/dispatch";
 import * as argon2 from "argon2";
 import { encryptContent, decryptContent } from "~/server/security/encryption";
 import {
@@ -259,16 +259,11 @@ export const noteRouter = createTRPCRouter({
       // Create notification for the target user
       const sharerName = ctx.session.user.name ?? ctx.session.user.email ?? "Someone";
       const noteTitle = note.title ?? "Untitled note";
-      await ctx.db.insert(notifications).values({
+      await notify({
+        db: ctx.db,
         userId: targetUser.id,
-        type: "system",
-        title: "Note shared with you",
-        message: `${sharerName} shared "${noteTitle}" with you (${input.permission === "write" ? "can edit" : "view only"}).`,
-        link: `/notes?noteId=${input.noteId}&tab=shared`,
-        read: false,
-      });
-      emitNotification(targetUser.id, {
-        id: `note-share-${input.noteId}-${Date.now()}`,
+        actorId: ctx.session.user.id,
+        category: "invite",
         type: "system",
         title: "Note shared with you",
         message: `${sharerName} shared "${noteTitle}" with you (${input.permission === "write" ? "can edit" : "view only"}).`,
@@ -489,7 +484,15 @@ export const noteRouter = createTRPCRouter({
   update: protectedProcedure
     .input(z.object({
       id: z.number(),
-      content: z.string().min(1),
+      /**
+       * Empty is allowed on update, unlike on create.
+       *
+       * `min(1)` here meant a note you had cleared out could never be saved:
+       * the request failed validation, so the last non-empty body stayed on the
+       * server and came back on the next load. Creating an empty note is still
+       * refused — that is a different question.
+       */
+      content: z.string(),
       title: z.string().optional(),
       password: z.string().optional(),
       calendarDate: z.date().nullable().optional(),
@@ -583,6 +586,136 @@ export const noteRouter = createTRPCRouter({
       }
 
       await ctx.db.delete(stickyNotes).where(eq(stickyNotes.id, input.id));
+
+      return { success: true };
+    }),
+
+  /**
+   * Encrypt an existing note under a new password.
+   *
+   * Until now a password could only be chosen at creation, so the only way to
+   * protect an old note was to retype it into a new one. The work is the same
+   * as `create` does: an Argon2 hash to check the password against later, a
+   * fresh 32-byte salt for AES-256-GCM, and the body rewritten as ciphertext.
+   *
+   * Owner only, and refused on a note that is already protected — changing a
+   * password is `resetPasswordWithPin`, which knows how to prove you may.
+   * Recipients of a write share are deliberately excluded: locking a note they
+   * do not own would take it away from the person who does.
+   */
+  setPassword: protectedProcedure
+    .input(z.object({
+      noteId: z.number(),
+      password: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const note = await ctx.db.query.stickyNotes.findFirst({
+        where: eq(stickyNotes.id, input.noteId),
+      });
+
+      if (!note) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Note not found." });
+      }
+
+      if (note.createdById !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't own this note." });
+      }
+
+      if (note.passwordHash) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This note is already password protected.",
+        });
+      }
+
+      const passwordSalt = crypto.randomBytes(32).toString("hex");
+      let passwordHash: string;
+      try {
+        passwordHash = await argon2.hash(input.password, ARGON2_OPTS);
+      } catch (hashError) {
+        log.error("failed to hash note password", { err: hashError });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to secure note password.",
+        });
+      }
+
+      await ctx.db.update(stickyNotes)
+        .set({
+          passwordHash,
+          passwordSalt,
+          content: encryptContent(note.content, input.password, passwordSalt),
+          updatedAt: new Date(),
+        })
+        .where(eq(stickyNotes.id, input.noteId));
+
+      return { success: true };
+    }),
+
+  /**
+   * Take the password off a note and store its body as plaintext again.
+   *
+   * The password has to be supplied even by the owner, because it is the only
+   * thing that can decrypt the body — without it there is nothing to write back
+   * but ciphertext, which is what `resetPasswordWithPin` has to settle for.
+   * Throttled and verified on the same path as `verifyPassword`, so this is not
+   * a second, cheaper guessing oracle for the same secret.
+   */
+  removePassword: protectedProcedure
+    .input(z.object({
+      noteId: z.number(),
+      password: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const note = await ctx.db.query.stickyNotes.findFirst({
+        where: eq(stickyNotes.id, input.noteId),
+      });
+
+      if (!note) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Note not found." });
+      }
+
+      if (note.createdById !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You don't own this note." });
+      }
+
+      if (!note.passwordHash) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Note is not password protected.",
+        });
+      }
+
+      await throttleNotePasswordAttempt(ctx, input.noteId);
+
+      const isMatch = await argon2.verify(note.passwordHash, input.password);
+      if (!isMatch) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Incorrect note password." });
+      }
+
+      let content = note.content;
+      if (note.passwordSalt) {
+        try {
+          content = decryptContent(note.content, input.password, note.passwordSalt);
+        } catch {
+          /* Refuse rather than clear the flags over a body we could not read:
+             dropping the hash here would leave the ciphertext on screen as if
+             it were the note, with no password left to recover it with. */
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to decrypt note content. The note may need to be re-saved.",
+          });
+        }
+      }
+
+      await ctx.db.update(stickyNotes)
+        .set({
+          content,
+          passwordHash: null,
+          passwordSalt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(stickyNotes.id, input.noteId));
 
       return { success: true };
     }),

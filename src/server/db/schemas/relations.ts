@@ -5,7 +5,13 @@ import { projects, projectCollaborators } from "./projects";
 import { tasks, taskComments, taskActivityLog } from "./tasks";
 import { notebooks, stickyNotes, noteShares } from "./notes";
 import { events, eventComments, eventLikes, eventRsvps } from "./events";
-import { directConversations, directMessages } from "./chat";
+import {
+  conversationParticipants,
+  directConversations,
+  directMessageAttachments,
+  directMessageReactions,
+  directMessages,
+} from "./chat";
 import { notifications } from "./notifications";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -120,11 +126,36 @@ export const directConversationsRelations = relations(directConversations, ({ on
   userOne: one(users, { fields: [directConversations.userOneId], references: [users.id] }),
   userTwo: one(users, { fields: [directConversations.userTwoId], references: [users.id] }),
   messages: many(directMessages),
+  participants: many(conversationParticipants),
 }));
 
-export const directMessagesRelations = relations(directMessages, ({ one }) => ({
+export const directMessagesRelations = relations(directMessages, ({ one, many }) => ({
   conversation: one(directConversations, { fields: [directMessages.conversationId], references: [directConversations.id] }),
   sender: one(users, { fields: [directMessages.senderId], references: [users.id] }),
+  /* Named relation: without it drizzle cannot tell which side of the
+     self-reference each field belongs to. */
+  replyTo: one(directMessages, {
+    fields: [directMessages.replyToId],
+    references: [directMessages.id],
+    relationName: "messageReply",
+  }),
+  replies: many(directMessages, { relationName: "messageReply" }),
+  attachments: many(directMessageAttachments),
+  reactions: many(directMessageReactions),
+}));
+
+export const conversationParticipantsRelations = relations(conversationParticipants, ({ one }) => ({
+  conversation: one(directConversations, { fields: [conversationParticipants.conversationId], references: [directConversations.id] }),
+  user: one(users, { fields: [conversationParticipants.userId], references: [users.id] }),
+}));
+
+export const directMessageAttachmentsRelations = relations(directMessageAttachments, ({ one }) => ({
+  message: one(directMessages, { fields: [directMessageAttachments.messageId], references: [directMessages.id] }),
+}));
+
+export const directMessageReactionsRelations = relations(directMessageReactions, ({ one }) => ({
+  message: one(directMessages, { fields: [directMessageReactions.messageId], references: [directMessages.id] }),
+  user: one(users, { fields: [directMessageReactions.userId], references: [users.id] }),
 }));
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({

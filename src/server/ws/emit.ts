@@ -19,6 +19,16 @@ import {
 // Chat events
 // -------------------------------------------------------------------------
 
+export interface SocketMessageAttachment {
+  id: number;
+  url: string;
+  name: string;
+  mime: string;
+  sizeBytes: number;
+  width: number | null;
+  height: number | null;
+}
+
 export interface SocketNewMessage {
   messageId: number;
   conversationId: number;
@@ -27,6 +37,13 @@ export interface SocketNewMessage {
   senderName: string | null;
   senderImage: string | null;
   createdAt: Date;
+  attachments?: SocketMessageAttachment[];
+  replyTo?: {
+    id: number;
+    body: string;
+    senderName: string | null;
+    deleted: boolean;
+  } | null;
 }
 
 export function emitNewMessage(msg: SocketNewMessage, participantUserIds?: string[]) {
@@ -48,6 +65,72 @@ export function emitConversationUpdated(
 ) {
   for (const uid of userIds) {
     publishUserEvent(uid, "conversation:updated", payload);
+  }
+}
+
+/**
+ * "Your message was seen."
+ *
+ * Sent to the *reader's counterpart* only — the reader already knows what they
+ * just read, and a frame back to them would only invite a needless refetch.
+ */
+export function emitMessageRead(
+  recipientUserId: string,
+  payload: { conversationId: number; userId: string; messageId: number },
+) {
+  publishUserEvent(recipientUserId, "message:read", payload);
+}
+
+/**
+ * Edit, soft-delete and pin share one frame shape.
+ *
+ * A field left `undefined` means "unchanged" — a pin must not blank out a body,
+ * and an edit must not clear a pin. `null` is a real value (deletedAt: null =
+ * not deleted), which is why absence and null mean different things here.
+ */
+export interface SocketMessageUpdated {
+  conversationId: number;
+  messageId: number;
+  body?: string;
+  editedAt?: Date | null;
+  deletedAt?: Date | null;
+  pinnedAt?: Date | null;
+}
+
+export function emitMessageUpdated(
+  conversationId: number,
+  participantUserIds: string[],
+  payload: SocketMessageUpdated,
+) {
+  publishConversationEvent(conversationId, "message:updated", payload);
+  for (const uid of participantUserIds) {
+    publishUserEvent(uid, "message:updated", payload);
+  }
+}
+
+/**
+ * Reaction state after the change — the full set of reactor ids per emoji, not
+ * a delta.
+ *
+ * Two reasons it carries ids rather than counts: the fan-out below delivers the
+ * same frame to the conversation room *and* each user room, so a client can see
+ * it twice and `+1` would double-count; and `mine` differs per viewer, so each
+ * client has to derive its own from the ids.
+ */
+export interface SocketMessageReaction {
+  conversationId: number;
+  messageId: number;
+  reactions: Array<{ emoji: string; userIds: string[] }>;
+}
+
+export function emitMessageReaction(
+  conversationId: number,
+  participantUserIds: string[],
+  payload: SocketMessageReaction,
+) {
+  publishConversationEvent(conversationId, "message:reaction", payload);
+  for (const uid of participantUserIds) {
+    publishUserEvent(uid, "message:reaction", payload);
   }
 }
 

@@ -11,6 +11,7 @@ import "server-only";
 
 const REDIS_NATIVE_URL = process.env.REDIS_NATIVE_URL;
 import { createLogger } from "~/server/logger";
+import { optionalImport } from "~/server/optionalImport";
 
 const log = createLogger("publisher");
 const WS_INTERNAL_URL =
@@ -45,8 +46,9 @@ async function getRedisPublisher(): Promise<RedisClientLike | null> {
 
   redisInitializing = true;
   try {
-    // @ts-expect-error -- redis is an optional peer dependency, may not be installed
-    const mod: unknown = await import("redis");
+    // Optional peer dependency — `optionalImport` keeps it out of the bundler's
+    // static resolution, so an absent package is a runtime throw we catch below.
+    const mod: unknown = await optionalImport("redis");
     const { createClient } = mod as RedisModuleLike;
     const client = createClient({ url: REDIS_NATIVE_URL });
     await client.connect();

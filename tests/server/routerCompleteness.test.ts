@@ -101,7 +101,11 @@ describe("Settings Router — Procedure Completeness", () => {
   for (const proc of [
     "get", "updateProfile", "updateNotifications", "updateLanguageRegion",
     "updateSecurity", "updateResetPin", "updateAppearance", "updatePrivacy",
-    "requestDataExport", "deleteAllData",
+    // `requestDataExport` was removed, not renamed. It returned "you'll receive
+    // an email when it's ready" and then did nothing — no job, no email, no
+    // file — and it had no callers. Export is now `GET /api/export/{format}`,
+    // which is a route handler because a file download is not a tRPC shape.
+    "deleteAllData",
   ]) {
     it(`exports "${proc}" procedure`, () => {
       expect(src).toContain(`${proc}:`);

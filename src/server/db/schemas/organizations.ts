@@ -110,7 +110,46 @@ export const organizationInvites = createTable(
   ]
 );
 
+/**
+ * Short-lived invite tokens behind the join QR code.
+ *
+ * The organisation's `accessCode` is a permanent bearer credential: once it is
+ * on a whiteboard photo or in a group chat it grants access forever. These rows
+ * replace it as the way in — one token per QR, valid for minutes, single-use by
+ * default, and revocable. The token is the QR payload, so it is generated with
+ * the same CSPRNG treatment the access code got.
+ */
+export const organizationJoinCodes = createTable(
+  "organization_join_codes",
+  (_d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    organizationId: integer("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    code: varchar("code", { length: 64 }).notNull().unique(),
+    role: orgRoleEnum("role").notNull().default("worker"),
+    createdById: varchar("created_by_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }).notNull(),
+    // Null means "never revoked". Rotating a QR revokes the previous token
+    // rather than deleting it, so an admin can still tell a stale scan from a
+    // token that was never issued.
+    revokedAt: timestamp("revoked_at", { mode: "date", withTimezone: true }),
+    maxUses: integer("max_uses").notNull().default(1),
+    usedCount: integer("used_count").notNull().default(0),
+  }),
+  (t) => [
+    index("org_join_code_org_idx").on(t.organizationId),
+    index("org_join_code_expires_idx").on(t.expiresAt),
+  ]
+);
+
 export type Organization = InferSelectModel<typeof organizations>;
+export type OrganizationJoinCode = InferSelectModel<typeof organizationJoinCodes>;
 export type NewOrganization = InferInsertModel<typeof organizations>;
 export type OrganizationMember = InferSelectModel<typeof organizationMembers>;
 export type NewOrganizationMember = InferInsertModel<typeof organizationMembers>;

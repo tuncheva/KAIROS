@@ -48,6 +48,7 @@
   --color-warning: rgb(var(--warning));
   --color-error: rgb(var(--error));
   --color-info: rgb(var(--info));
+  --color-dash-day: rgb(var(--dash-day));
 
   /* Semantic event colors */
   --color-event-active: rgb(var(--event-active));
@@ -128,6 +129,10 @@
   --error-light: 254 226 226;
   --info: 59 130 246;
   --info-light: 219 234 254;
+
+  /* Dashboard: the cyan "day elapsed" arc, distinct from the accent so the
+     workspace ring can carry two unrelated readings at once. */
+  --dash-day: 8 145 178;
   
   /* Semantic Event Colors */
   --event-active: var(--brand-purple);
@@ -255,6 +260,9 @@
   --error-light: 127 29 29;
   --info: 96 165 250;
   --info-light: 30 58 138;
+
+  /* Dashboard: cyan "day elapsed" arc — see the light-mode note above. */
+  --dash-day: 34 211 238;
   
   /* Semantic Event Colors - Dark */
   --event-active: var(--brand-purple);
@@ -401,16 +409,22 @@ summary,
   transition-duration: 180ms;
 }
 
-/* Consistent focus treatment (keyboard accessibility) */
-:where(a, button, summary, [role="button"], [tabindex]):focus-visible {
-  outline: 2px solid rgb(var(--accent-primary));
-  outline-offset: 2px;
+/* Text fields default to soft corners; any `rounded-*` utility still overrides. */
+@layer base {
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+    textarea,
+    select
+  ) {
+    border-radius: 10px;
+  }
 }
 
-/* Inputs/textareas/selects keep their own border-radius on focus */
-:where(input, textarea, select):focus-visible {
-  outline: 2px solid rgb(var(--accent-primary));
-  outline-offset: 2px;
+/* A bare field painted inside a wrapper that owns the frame: the wrapper shows
+   focus with `focus-within`, so a second outline just draws a box inside a box. */
+.kairos-field-bare:focus,
+.kairos-field-bare:focus-visible {
+  outline: none;
 }
 
 /* Skip link for keyboard and screen readers */
@@ -826,10 +840,17 @@ summary,
   -webkit-text-fill-color: #fff;
 }
 
-/* Global focus — inherits the element's own border-radius */
-*:focus-visible {
-  outline: 2px solid rgb(var(--accent-primary));
-  outline-offset: 2px;
+/* Global focus — inherits the element's own border-radius.
+   Lives in `@layer base` on purpose: unlayered CSS outranks every layered
+   utility no matter the specificity, so an unlayered rule here would paint a
+   second outline on top of any field that already draws its own focus ring
+   (`focus:outline-none focus:ring-1 …`) — the double outline. In the base
+   layer this is only the fallback for elements that style nothing. */
+@layer base {
+  *:focus-visible {
+    outline: 2px solid rgb(var(--accent-primary));
+    outline-offset: 2px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1008,6 +1029,27 @@ summary,
     0 0 0 0.5px rgba(var(--border-light) / 0.9),
     0 4px 16px -2px rgba(0, 0, 0, 0.5),
     0 10px 32px -6px rgba(0, 0, 0, 0.4);
+}
+
+/* A menu panel: the elevated card's shape, without its translucency.
+   `kairos-system-card-elevated` sets a background at 0.9 alpha and blurs what
+   is behind it, which reads fine over a page but not over a menu — the note
+   rows underneath show through the items you are trying to click. */
+.kairos-menu-surface {
+  /* No radius of its own — the element's `rounded-*` utility decides that, so a
+     dialog and a menu can share the surface at different sizes. */
+  background: rgb(var(--bg-elevated));
+  box-shadow:
+    0 0 0 0.5px rgba(var(--border-light) / 0.8),
+    0 4px 12px -2px rgba(0, 0, 0, 0.12),
+    0 8px 24px -4px rgba(0, 0, 0, 0.1);
+}
+
+.dark .kairos-menu-surface {
+  box-shadow:
+    0 0 0 0.5px rgba(var(--border-light) / 0.9),
+    0 4px 16px -2px rgba(0, 0, 0, 0.55),
+    0 10px 32px -6px rgba(0, 0, 0, 0.45);
 }
 
 .kairos-system-header {
@@ -1547,21 +1589,151 @@ summary,
    ============================================================================ */
 
 /* Page entrance animation – soft reveal from bottom */
+/* The entrance every page plays on arrival.
+
+   It used to animate `filter: blur(4px)` down to zero alongside the fade. A
+   blur is not a compositor-only property: the browser has to rasterise the
+   whole page subtree and re-run a separable convolution over it every frame,
+   for the entire duration. On a dashboard-sized tree that is the single most
+   expensive thing on the navigation path, and it lands at exactly the moment
+   the page is also hydrating and running its first queries — so the two
+   compete, and the blur wins, which is why switching pages felt heavy.
+
+   What is left is `opacity` and `transform`, both of which the compositor can
+   run on its own thread without touching layout or paint. The duration comes
+   down with it: 600ms was long enough that the animation, not the data, was
+   what you were waiting for. 280ms still reads as a deliberate entrance.
+
+   `will-change` is deliberately absent — the animation is short and promoting
+   every page to its own layer for the whole session costs more than it saves. */
 @keyframes kairos-page-enter {
   0% {
     opacity: 0;
-    transform: translateY(24px);
-    filter: blur(4px);
+    transform: translateY(8px);
   }
   100% {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0px);
   }
 }
 
 .kairos-page-enter {
-  animation: kairos-page-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: kairos-page-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Progress: the leaderboard person card.
+
+   Tapping a block on the leaderboard opens that person's card beside the
+   record. The card is the only node that enters or leaves, so it carries the
+   whole transition — the rest of the page must not move.
+
+   The keyframes animate the card's own footprint (its height when stacked,
+   its width from `lg` up) as well as its opacity, so the column beside it
+   reflows continuously instead of snapping once the card is gone.
+
+   `backwards` on the entrance: the collapsed first frame applies before the
+   animation starts, then the card reverts to its real box, so a tall
+   workload list is never clipped by a left-over max-height. The exit keeps
+   `forwards` — it must stay collapsed until React drops it. */
+@keyframes progress-person-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 1400px;
+    padding-top: 1.75rem;
+    padding-bottom: 1.75rem;
+  }
+}
+
+@keyframes progress-person-card-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 1400px;
+    padding-top: 1.75rem;
+    padding-bottom: 1.75rem;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+.progress-person-card {
+  animation: progress-person-card-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  transition: opacity 0.2s ease;
+  overflow: hidden;
+}
+
+/* Duration is mirrored by PERSON_CARD_EXIT_MS in ProgressClient.tsx. */
+.progress-person-card--out {
+  animation: progress-person-card-out 0.26s cubic-bezier(0.4, 0, 1, 1) forwards;
+  pointer-events: none;
+}
+
+@media (min-width: 1024px) {
+  /* Side by side the card takes width, not height. */
+  @keyframes progress-person-card-in {
+    from {
+      opacity: 0;
+      transform: translateX(-16px);
+      width: 0;
+      padding-left: 0;
+      padding-right: 0;
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+      width: 330px;
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @keyframes progress-person-card-out {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+      width: 330px;
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-16px);
+      width: 0;
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+}
+
+/* The panels that exist in only one of the two views. They mount when the
+   view changes, so a plain fade is enough to keep them from popping. */
+@keyframes progress-view-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.progress-view-in {
+  animation: progress-view-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: 0.06s;
 }
 
 /* Stagger children – use with data-stagger on parent */
@@ -2058,6 +2230,9 @@ summary,
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .kairos-page-enter,
+  .progress-person-card,
+  .progress-person-card--out,
+  .progress-view-in,
   .kairos-stagger > * {
     animation: none !important;
     opacity: 1 !important;
@@ -2489,4 +2664,511 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .k-auth-shell { animation: none; }
+}
+
+/* ==========================================================================
+   Dashboard entrance motion
+   --------------------------------------------------------------------------
+   Design 7A stages the dashboard in: each block rises on a soft ease while the
+   numbers count up and the rings sweep out. The delays live on the elements as
+   inline `animation-delay`, so these are just the curves.
+   ========================================================================== */
+
+@keyframes dash-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dash-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dash-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.dash-rise {
+  animation: dash-rise 0.75s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.dash-fade {
+  animation: dash-fade 0.6s ease-out both;
+}
+
+.dash-grow {
+  transform-origin: left center;
+  animation: dash-grow 0.8s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-rise,
+  .dash-fade,
+  .dash-grow {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   Design 7A navigation rail
+   --------------------------------------------------------------------------
+   The rail sits at 64px and opens to 236px. Every way of opening it — hover,
+   keyboard focus, pin — feeds `--rail-w`, so the page shrinks alongside it and
+   the rail never covers content. Only the pin *persists* — `SideNav` stamps
+   `data-rail-pinned` on <html>; the var and the rail read the same source.
+   ========================================================================== */
+
+:root {
+  --rail-w: 4rem;
+}
+
+:root[data-rail-pinned="true"] {
+  --rail-w: 14.75rem; /* 236px */
+}
+
+/* Hover and keyboard-focus expansion move the page too, so the rail never
+   overlaps content — it opens *beside* it whichever way it was opened. The
+   selectors mirror the two `.kairos-rail` width rules below exactly; `:has` on
+   the root is what lets a sibling's hover state feed a variable the page reads.
+   Below `lg` the rail is `display: none`, so neither can match there. */
+:root:has(.kairos-rail:hover),
+:root:has(.kairos-rail:has(:focus-visible)) {
+  --rail-w: 14.75rem; /* 236px */
+}
+
+@media (min-width: 1024px) {
+  .rail-offset {
+    margin-left: var(--rail-w);
+    /* Same duration and curve as the rail's own `transition-[width]` in
+       `SideNav` (700ms, cubic-bezier(0.2, 0.8, 0.25, 1)). They animate two
+       halves of one movement, so any mismatch shows: at 400ms the page finished
+       sliding while the rail was still mid-shrink, leaving a widening gap on
+       unpin and the page riding ahead of the rail on pin. Change one, change
+       both. */
+    transition: margin-left 700ms cubic-bezier(0.2, 0.8, 0.25, 1);
+  }
+}
+
+/* The pinned rail is drawn from the attribute, not from React state.
+   `SideNav` used to pick its width class off `isRailPinned`, which is read from
+   localStorage in an effect and therefore starts `false` on every load — the
+   rail painted collapsed, then widened, and `.rail-offset` above dragged the
+   whole page along with it. The pre-paint script in `themeInitScript.ts` stamps
+   `data-rail-pinned` before the first frame, so keying the width off it here
+   means the rail is simply the right size to begin with. React still tracks the
+   value, but only to label the pin button.
+
+   Specificity is what makes these win: `:root[data-rail-pinned="true"] .x` is
+   (0,2,1), above Tailwind's `w-16` (0,1,0) and its `hover:` variants (0,2,0),
+   so the hover-to-open behaviour survives untouched while unpinned. */
+:root[data-rail-pinned="true"] .kairos-rail {
+  width: 14.75rem; /* 236px — matches --rail-w */
+}
+
+:root[data-rail-pinned="true"] .kairos-rail-label {
+  opacity: 1;
+}
+
+/* Keyboard users need the rail to open when they tab into it, but it must not
+   stay open after a mouse click — clicking a rail link leaves focus inside the
+   <aside>, and a plain `:focus-within` then pinned the rail open until the user
+   clicked somewhere else. `:focus-visible` only matches the keyboard case, so
+   the rail collapses again as soon as the cursor leaves. */
+.kairos-rail:has(:focus-visible) {
+  width: 14.75rem; /* 236px — matches --rail-w */
+}
+
+.kairos-rail:has(:focus-visible) .kairos-rail-label {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-offset {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   Kairos AI console (/chat/ai)
+   ==========================================================================
+   The AI page is laid out as an audit console: threads on the left, the turn's
+   trail on the right. Its small-caps labels and stamps use the mono face the
+   dashboard already loads, so they read as machine output rather than as prose.
+   ========================================================================== */
+
+.kairos-mono {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-feature-settings: "tnum" 1;
+}
+
+/* A label stamp: uppercase, tracked out, mono. Used for section headings,
+   timestamps and status chips throughout the console. */
+.kairos-stamp {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+@keyframes kairos-console-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.kairos-console-rail {
+  animation: kairos-console-fade 0.45s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kairos-console-rail {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   Projects — new-project drawer
+   --------------------------------------------------------------------------
+   The drawer slides in from the right over a fading scrim, and its fields
+   stagger in behind it on the same curve the dashboard uses for its blocks.
+   The delays live inline on the fields; these are just the curves.
+   ========================================================================== */
+
+@keyframes projects-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes projects-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes projects-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.projects-drawer {
+  animation: projects-drawer-in 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+  /* The panel carries a wide, soft shadow. Promoting it keeps that shadow from
+     being re-rasterised on every frame of the slide. */
+  will-change: transform;
+}
+
+.projects-drawer-scrim {
+  animation: projects-scrim-in 0.35s ease-out both;
+}
+
+.projects-slide-in {
+  animation: projects-slide-in 0.5s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+/* --------------------------------------------------------------------------
+   Leaving.
+
+   Every drawer in the app slides in and then vanishes on close, which reads as
+   a crash rather than a dismissal — the panel is simply not there on the next
+   frame. These are the exit halves. They are separate classes rather than a
+   reversed `animation-direction`, because the element has to be *told* it is
+   leaving and stay mounted for the duration; see `PROFILE_DRAWER_EXIT_MS` in
+   `~/components/profile/ProfileDrawer`, which holds it there.
+
+   The exit is faster than the entrance (0.3s against 0.45s) and rides an
+   ease-in rather than the entrance's overshoot-free ease-out. Dismissal should
+   feel like the panel is getting out of the way; matching the entrance curve
+   makes closing feel reluctant.
+   -------------------------------------------------------------------------- */
+
+@keyframes projects-drawer-out {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes projects-scrim-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.projects-drawer-out {
+  animation: projects-drawer-out 0.3s cubic-bezier(0.4, 0, 0.9, 0.5) both;
+  will-change: transform;
+}
+
+.projects-drawer-scrim-out {
+  animation: projects-scrim-out 0.3s ease-in both;
+  /* The scrim is the click target for "close". Once it is on its way out it
+     must stop accepting clicks, or a second tap during the exit re-fires a
+     close on a drawer that is already gone. */
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .projects-drawer,
+  .projects-drawer-scrim,
+  .projects-slide-in {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* The exit classes keep their end state rather than being neutralised. The
+     rule above sets `opacity: 1; transform: none`, which for a leaving element
+     means "stay fully visible where you are" — so a reduced-motion user would
+     watch the drawer sit still for the whole exit window before blinking out.
+     Jumping straight to the finished state is the honest no-motion version. */
+  .projects-drawer-out {
+    animation: none !important;
+    transform: translateX(100%) !important;
+  }
+
+  .projects-drawer-scrim-out {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
+
+/* ==========================================================================
+   Calendar — workspace motion
+   --------------------------------------------------------------------------
+   Same design language as the new-project drawer: the detail / new-item panel
+   slides in from the right over a fading scrim, its fields stagger in behind
+   it, the toolbar rows rise on load and the filter popover pops open. The
+   stagger delays live inline on the fields; these are just the curves.
+   ========================================================================== */
+
+@keyframes calendar-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes calendar-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes calendar-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes calendar-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes calendar-field-in {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.calendar-rise {
+  animation: calendar-rise 0.6s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.calendar-pop {
+  animation: calendar-pop 0.3s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.calendar-fade {
+  animation: calendar-fade-in 0.4s ease-out both;
+}
+
+.calendar-drawer {
+  animation: calendar-drawer-in 0.4s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+  /* The panel carries a wide, soft shadow; promoting it keeps that shadow from
+     being re-rasterised on every frame of the slide. */
+  will-change: transform;
+}
+
+.calendar-scrim {
+  animation: calendar-fade-in 0.35s ease-out both;
+}
+
+.calendar-field {
+  animation: calendar-field-in 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-rise,
+  .calendar-pop,
+  .calendar-fade,
+  .calendar-drawer,
+  .calendar-scrim,
+  .calendar-field {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   Dashboard task completion
+   --------------------------------------------------------------------------
+   Ticking a task off usually removes it from Today's list. Without an exit the
+   row just blinks away, so removals are held for the length of this collapse
+   and the ring/percent tween to the new value over a comparable beat.
+   ========================================================================== */
+
+@keyframes dash-row-out {
+  0% {
+    opacity: 1;
+    transform: none;
+    max-height: 120px;
+  }
+  40% {
+    opacity: 0;
+    transform: translateX(10px);
+    max-height: 120px;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(10px);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom-width: 0;
+  }
+}
+
+.dash-row-out {
+  overflow: hidden;
+  pointer-events: none;
+  animation: dash-row-out 0.42s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-row-out {
+    animation-duration: 0.01s !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Settings: section transitions and scroll reveal
+   ---------------------------------------------------------------------------
+
+   Switching sections on /settings is a real navigation (`?section=`), so the
+   new section's markup replaces the old one's in a single frame and the page
+   used to snap. Three pieces smooth that over:
+
+   - `.settings-scroll` makes the ledger's scroll container animate the jump
+     back to the top after a section change instead of teleporting.
+   - `.settings-section-enter` is keyed on the active section in
+     `SettingsWorkspace`, so React remounts the wrapper on every switch and the
+     entrance replays. Opacity and transform only — both composited, so a
+     section carrying nine queries still enters at full frame rate.
+   - `.settings-reveal` is the scrolling half: a group starts 14px low and
+     lifts as it crosses into view, driven by the IntersectionObserver in
+     `Ledger.tsx` rather than a scroll handler. `.is-visible` is one-way, so a
+     group that has been read never animates again on the way back up.
+
+   Every one of these is turned off wholesale by the `prefers-reduced-motion`
+   block above, which zeroes animation and transition durations globally. */
+@keyframes kairos-settings-section-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-scroll {
+  scroll-behavior: smooth;
+}
+
+.settings-section-enter {
+  animation: kairos-settings-section-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1)
+    both;
+}
+
+.settings-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.settings-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Without the observer — no JS yet, or an environment that lacks it — the
+   group must still be readable, so the un-revealed state is opt-in. */
+@media (prefers-reduced-motion: reduce) {
+  .settings-reveal {
+    opacity: 1;
+    transform: none;
+  }
 }

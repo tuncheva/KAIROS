@@ -3,119 +3,101 @@ import fs from "fs";
 import path from "path";
 
 /**
- * Settings page and settings components tests — verify white borders 
- * and legacy kairos-* classes have been removed, replaced with design tokens.
+ * Source guards for /settings.
+ *
+ * The page is a ledger now: the shell in `SettingsWorkspace` and the row, group
+ * and control primitives in `ledger/Ledger`, with each section supplying data
+ * rather than markup. So the checks that used to grep every section for
+ * `text-fg-primary` would now pass or fail on where the styling happens to live,
+ * which is not what they were protecting. What they were protecting is the rule
+ * that survived the rewrite: no legacy `kairos-*` utilities, and no hardcoded
+ * colours — every surface goes through a `bg-*` / `fg-*` / `border-*` token, or
+ * light mode and the six accent themes break.
  */
 
-const settingsPagePath = path.resolve(__dirname, "../../src/app/(app)/settings/page.tsx");
-const settingsPageSource = fs.readFileSync(settingsPagePath, "utf-8");
+const read = (relative: string) =>
+  fs.readFileSync(path.resolve(__dirname, "../../src", relative), "utf-8");
 
-const profilePath = path.resolve(__dirname, "../../src/components/settings/ProfileSettingsClient.tsx");
-const profileSource = fs.readFileSync(profilePath, "utf-8");
-
-const securityPath = path.resolve(__dirname, "../../src/components/settings/SecuritySettingsClient.tsx");
-const securitySource = fs.readFileSync(securityPath, "utf-8");
-
-const notificationsPath = path.resolve(__dirname, "../../src/components/settings/NotificationSettingsClient.tsx");
-const notificationsSource = fs.readFileSync(notificationsPath, "utf-8");
-
-const languagePath = path.resolve(__dirname, "../../src/components/settings/LanguageSettingsClient.tsx");
-const languageSource = fs.readFileSync(languagePath, "utf-8");
-
-const appearancePath = path.resolve(__dirname, "../../src/components/settings/AppearanceSettings.tsx");
-const appearanceSource = fs.readFileSync(appearancePath, "utf-8");
+const settingsPageSource = read("app/(app)/settings/page.tsx");
+const ledgerSource = read("components/settings/ledger/Ledger.tsx");
 
 const allSources = [
   { name: "SettingsPage", source: settingsPageSource },
-  { name: "ProfileSettingsClient", source: profileSource },
-  { name: "SecuritySettingsClient", source: securitySource },
-  { name: "NotificationSettingsClient", source: notificationsSource },
-  { name: "LanguageSettingsClient", source: languageSource },
-  { name: "AppearanceSettings", source: appearanceSource },
+  { name: "SettingsWorkspace", source: read("components/settings/SettingsWorkspace.tsx") },
+  { name: "Ledger", source: ledgerSource },
+  { name: "ProfileSettingsClient", source: read("components/settings/ProfileSettingsClient.tsx") },
+  { name: "WorkspaceSettingsClient", source: read("components/settings/WorkspaceSettingsClient.tsx") },
+  { name: "SecuritySettingsClient", source: read("components/settings/SecuritySettingsClient.tsx") },
+  { name: "NotificationSettingsClient", source: read("components/settings/NotificationSettingsClient.tsx") },
+  { name: "LanguageSettingsClient", source: read("components/settings/LanguageSettingsClient.tsx") },
+  { name: "AppearanceSettings", source: read("components/settings/AppearanceSettings.tsx") },
+  { name: "AiSettingsClient", source: read("components/settings/AiSettingsClient.tsx") },
+  { name: "DeveloperSettingsClient", source: read("components/settings/DeveloperSettingsClient.tsx") },
 ];
 
-describe("Settings Page – No White Borders", () => {
-  it("header uses border-white/[0.06] instead of border-border-light", () => {
-    expect(settingsPageSource).toContain("border-white/[0.06]");
-    expect(settingsPageSource).not.toContain("border-border-light");
+const LEGACY_CLASSES = [
+  "kairos-fg-primary",
+  "kairos-fg-secondary",
+  "kairos-fg-tertiary",
+  "kairos-bg-surface",
+  "kairos-bg-tertiary",
+  "kairos-section-border",
+  "kairos-font-body",
+  "kairos-font-display",
+  "kairos-font-caption",
+  "kairos-accent-primary",
+  "kairos-divider",
+];
+
+describe("Settings page shell", () => {
+  it("uses bg-bg-primary as its base background", () => {
+    expect(settingsPageSource).toContain("bg-bg-primary");
   });
 
-  it("sidebar uses border-white/[0.06] instead of border-border-light/20", () => {
-    expect(settingsPageSource).toContain("border-r border-slate-200 dark:border-white/[0.06]");
+  it("stays a server component that delegates to the client workspace", () => {
+    expect(settingsPageSource).toContain("SettingsWorkspace");
   });
 
-  it("uses bg-bg-primary as base background (not bg-bg-secondary)", () => {
-    expect(settingsPageSource).toContain('min-h-screen bg-bg-primary');
-  });
-
-  it("mobile settings button uses subtle border", () => {
-    expect(settingsPageSource).toContain("border border-slate-200 dark:border-white/[0.06]");
-    expect(settingsPageSource).not.toContain("border-border-light");
+  it("keeps the section in the URL, so a settings link is shareable", () => {
+    expect(settingsPageSource).toContain("searchParams");
+    expect(settingsPageSource).toContain("isSettingsSection");
   });
 });
 
-describe("Settings Components – No Legacy Classes", () => {
+describe("Settings components", () => {
   for (const { name, source } of allSources) {
     describe(name, () => {
-      it("does not use kairos-fg-primary", () => {
-        expect(source).not.toContain("kairos-fg-primary");
+      for (const legacy of LEGACY_CLASSES) {
+        it(`does not use ${legacy}`, () => {
+          expect(source).not.toContain(legacy);
+        });
+      }
+
+      it("does not hardcode white-alpha borders", () => {
+        expect(source).not.toContain("border-white/[");
       });
 
-      it("does not use kairos-fg-secondary", () => {
-        expect(source).not.toContain("kairos-fg-secondary");
+      it("does not hardcode palette colours", () => {
+        // Tailwind's own palette bypasses the theme entirely: a `text-red-400`
+        // is the same red in light mode, and a `slate-200` border does not move
+        // with the accent. `text-error` and `border-border-light` do.
+        expect(source).not.toMatch(/\b(bg|text|border)-(slate|gray|zinc|red|green|blue|purple|amber)-\d{2,3}\b/);
       });
 
-      it("does not use kairos-fg-tertiary", () => {
-        expect(source).not.toContain("kairos-fg-tertiary");
-      });
-
-      it("does not use kairos-bg-surface", () => {
-        expect(source).not.toContain("kairos-bg-surface");
-      });
-
-      it("does not use kairos-bg-tertiary", () => {
-        expect(source).not.toContain("kairos-bg-tertiary");
-      });
-
-      it("does not use kairos-section-border", () => {
-        expect(source).not.toContain("kairos-section-border");
-      });
-
-      it("does not use kairos-font-body", () => {
-        expect(source).not.toContain("kairos-font-body");
-      });
-
-      it("does not use kairos-font-display", () => {
-        expect(source).not.toContain("kairos-font-display");
-      });
-
-      it("does not use kairos-font-caption", () => {
-        expect(source).not.toContain("kairos-font-caption");
-      });
-
-      it("does not use kairos-accent-primary", () => {
-        expect(source).not.toContain("kairos-accent-primary");
-      });
-
-      it("does not use kairos-divider", () => {
-        expect(source).not.toContain("kairos-divider");
+      it("does not hardcode hex colours", () => {
+        expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
       });
     });
   }
 });
 
-describe("Settings Components – Design Token Usage", () => {
-  for (const { name, source } of allSources) {
-    if (name === "SettingsPage") continue; // Page has minimal styling
+describe("Ledger primitives", () => {
+  it("style the rows, so sections stay declarative", () => {
+    expect(ledgerSource).toContain("text-fg-primary");
+    expect(ledgerSource).toMatch(/border-border-(light|medium|strong)/);
+  });
 
-    describe(name, () => {
-      it("uses text-fg-primary for primary text", () => {
-        expect(source).toContain("text-fg-primary");
-      });
-
-      it("uses bg-bg- design token backgrounds", () => {
-        expect(source).toMatch(/bg-bg-(primary|secondary|tertiary|elevated)/);
-      });
-    });
-  }
+  it("separate rows with a hairline rather than wrapping each in a card", () => {
+    expect(ledgerSource).toContain("border-t border-border-light");
+  });
 });

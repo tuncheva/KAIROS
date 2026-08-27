@@ -1,209 +1,143 @@
 /**
- * useWebSocket — master hook for Socket.IO connection + event listeners.
+ * useWebSocket — room membership + React Query invalidation for the app socket.
  *
- * Creates a singleton Socket.IO client authenticated with HMAC tickets.
- * Reconnections automatically use the latest token.  On reconnect,
- * notification queries are invalidated to catch up on missed events.
+ * The connection itself belongs to `SocketProvider`; this hook only attaches to
+ * it. It used to create a second `io()` client of its own, which meant every
+ * authenticated user held two sockets and only one of them was ever in the org
+ * and events rooms — see the comment in `SocketProvider` for why that silently
+ * dropped room-scoped events.
+ *
+ * On reconnect, notification and chat queries are invalidated to catch up on
+ * anything missed while the socket was down.
  */
 
 "use client";
 
 import { useEffect, useRef } from "react";
-import { io, type Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import { useQueryClient } from "@tanstack/react-query";
-import { useWsToken } from "./useWsToken";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
+import { useSocket } from "~/components/providers/SocketProvider";
 
-// Module-level singleton — shared across all hook instances
-let globalSocket: Socket | null = null;
-let listenerCount = 0;
+export { getGlobalSocket } from "~/components/providers/SocketProvider";
 
 interface UseWebSocketOptions {
   enabled?: boolean;
   /** Current workspace/org ID to auto-join on connect */
-  orgId?: string | null;
+  orgId?: string | number | null;
 }
 
-export function useWebSocket(options: UseWebSocketOptions = {}) {
+export function useWebSocket(options: UseWebSocketOptions = {}): Socket | null {
   const { enabled = true, orgId } = options;
   const queryClient = useQueryClient();
-  const { data: tokenData } = useWsToken(enabled);
-  const hasToken = !!tokenData?.token;
-
-  // Keep a ref to the latest token so the auth callback always reads fresh
-  const tokenRef = useRef<string | null>(null);
-  if (tokenData?.token) {
-    tokenRef.current = tokenData.token;
-  }
+  const socket = useSocket();
 
   // Track whether we were previously connected for reconnect catch-up
   const wasConnectedRef = useRef(false);
-  const orgIdRef = useRef(orgId);
-  orgIdRef.current = orgId;
 
   useEffect(() => {
-    if (!enabled || !hasToken) return;
+    if (!enabled || !socket) return;
 
-    listenerCount++;
+    const invalidate = (key: string[]) =>
+      void queryClient.invalidateQueries({ queryKey: [key] });
 
-    // Only create the socket once
-    if (!globalSocket) {
-      const socket = io(WS_URL, {
-        // Auth as a function → reconnections always use the latest token
-        auth: (cb) => {
-          cb({ token: tokenRef.current });
-        },
-        transports: ["websocket", "polling"],
-        reconnection: true,
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 1_000,
-        reconnectionDelayMax: 10_000,
-      });
+    const onConnect = () => {
+      // The public events feed. Joined here rather than on the feed page because
+      // this hook owns the `event:updated` / `event:deleted` listeners below, and
+      // they are what keep `getPublicEvents` fresh anywhere it is rendered.
+      socket.emit("join:events");
 
-      // ─── Connection lifecycle ──────────────────────────────────
+      // Reconnect catch-up: the socket missed whatever happened while it was down.
+      if (wasConnectedRef.current) {
+        invalidate(["notification"]);
+        invalidate(["chat"]);
+      }
+      wasConnectedRef.current = true;
+    };
 
-      socket.on("connect", () => {
-        console.log("[ws] connected:", socket.id);
-
-        // Auto-join org room on connect
-        if (orgIdRef.current) {
-          socket.emit("join:org", orgIdRef.current);
-        }
-
-        // The public events feed. Joined here rather than on the feed page because
-        // this hook owns the `event:updated` / `event:deleted` listeners below, and
-        // they are what keep `getPublicEvents` fresh anywhere it is rendered.
-        socket.emit("join:events");
-
-        // Reconnect catch-up: invalidate notification queries
-        if (wasConnectedRef.current) {
-          console.log("[ws] reconnected — invalidating queries for catch-up");
-          void queryClient.invalidateQueries({
-            queryKey: [["notification"]],
-          });
-          void queryClient.invalidateQueries({
-            queryKey: [["chat"]],
-          });
-        }
-        wasConnectedRef.current = true;
-      });
-
-      socket.on("disconnect", (reason: string) => {
-        console.log("[ws] disconnected:", reason);
-      });
-
-      socket.on("connect_error", (err: Error) => {
-        console.warn("[ws] connect_error:", err.message);
-      });
-
-      // ─── Event listeners (React Query invalidation) ────────────
-
+    // ─── Event listeners (React Query invalidation) ────────────
+    const listeners: Array<[string, () => void]> = [
       // Universal notification bell refresh
-      socket.on("notification:new", () => {
-        void queryClient.invalidateQueries({
-          queryKey: [["notification", "getAll"]],
-        });
-        void queryClient.invalidateQueries({
-          queryKey: [["notification", "getUnreadCount"]],
-        });
-      });
+      ["notification:new", () => {
+        invalidate(["notification", "getAll"]);
+        invalidate(["notification", "getUnreadCount"]);
+      }],
 
-      // Chat events
-      socket.on("message:new", () => {
-        void queryClient.invalidateQueries({
-          queryKey: [["chat", "listMessages"]],
-        });
-      });
-
-      socket.on("conversation:updated", () => {
-        void queryClient.invalidateQueries({
-          queryKey: [["chat", "listAllConversations"]],
-        });
-      });
+      /* Chat events.
+         `message:new` is deliberately absent. The chat views write the incoming
+         message straight into the `listMessages` cache, so invalidating here
+         fired a full refetch of every loaded page on top of that — undoing the
+         point of the socket, and racing the optimistic send (the refetch could
+         land between the placeholder going in and the stored row coming back,
+         making a just-sent message flicker). Conversation ordering still needs
+         a refresh, and a dropped connection is covered by the catch-up above. */
+      ["conversation:updated", () => invalidate(["chat", "listAllConversations"])],
 
       // Event feed events
-      socket.on("event:deleted", () => {
-        void queryClient.invalidateQueries({
-          queryKey: [["event", "getPublicEvents"]],
-        });
-      });
-
-      socket.on("event:updated", () => {
-        void queryClient.invalidateQueries({
-          queryKey: [["event", "getPublicEvents"]],
-        });
-      });
+      ["event:deleted", () => invalidate(["event", "getPublicEvents"])],
+      ["event:updated", () => invalidate(["event", "getPublicEvents"])],
 
       // Organization events
-      socket.on("org:member_joined", () => {
-        void queryClient.invalidateQueries({
-          queryKey: [["organization"]],
-        });
-      });
+      ["org:member_joined", () => invalidate(["organization"])],
 
       // Task events
-      socket.on("task:created", () => {
-        void queryClient.invalidateQueries({ queryKey: [["task"]] });
-      });
-      socket.on("task:updated", () => {
-        void queryClient.invalidateQueries({ queryKey: [["task"]] });
-      });
-      socket.on("task:deleted", () => {
-        void queryClient.invalidateQueries({ queryKey: [["task"]] });
-      });
-      socket.on("task:assigned", () => {
-        void queryClient.invalidateQueries({ queryKey: [["task"]] });
-      });
+      ["task:created", () => invalidate(["task"])],
+      ["task:updated", () => invalidate(["task"])],
+      ["task:deleted", () => invalidate(["task"])],
+      ["task:assigned", () => invalidate(["task"])],
+    ];
 
-      // Agent events
-      socket.on("agent:thinking", () => {
-        // These are forwarded directly — consumers use useSocketEvent
-      });
-      socket.on("agent:result", () => {
-        // These are forwarded directly — consumers use useSocketEvent
-      });
+    socket.on("connect", onConnect);
+    for (const [event, handler] of listeners) socket.on(event, handler);
 
-      globalSocket = socket;
-    }
+    // A socket handed over already connected never fires `connect` for us.
+    if (socket.connected) onConnect();
 
     return () => {
-      listenerCount--;
-      // Only disconnect if no more consumers
-      if (listenerCount <= 0 && globalSocket) {
-        globalSocket.disconnect();
-        globalSocket = null;
-        listenerCount = 0;
-        wasConnectedRef.current = false;
-      }
+      socket.off("connect", onConnect);
+      for (const [event, handler] of listeners) socket.off(event, handler);
     };
-  }, [enabled, hasToken, queryClient]);
+  }, [enabled, socket, queryClient]);
 
-  // Re-join org room when orgId changes
+  // Org room, followed across workspace switches and reconnects.
+  //
+  // The cleanup is the important half: without it a workspace switch joined the
+  // new organisation's room while staying in the old one, so the socket kept
+  // receiving events for a workspace the user had left. Re-joining on `connect`
+  // matters too — room membership lives on the server and does not survive a
+  // dropped connection.
   useEffect(() => {
-    if (!globalSocket?.connected || !orgId) return;
-    globalSocket.emit("join:org", orgId);
-  }, [orgId]);
+    if (!enabled || !socket || !orgId) return;
 
-  return globalSocket;
+    const join = () => socket.emit("join:org", orgId);
+    socket.on("connect", join);
+    if (socket.connected) join();
+
+    return () => {
+      socket.off("connect", join);
+      if (socket.connected) socket.emit("leave:org", orgId);
+    };
+  }, [enabled, socket, orgId]);
+
+  return socket;
 }
 
 /**
  * useProjectRoom — join/leave a project room for project-scoped events.
  */
 export function useProjectRoom(projectId: string | number | null | undefined) {
-  useEffect(() => {
-    if (!globalSocket?.connected || !projectId) return;
-    globalSocket.emit("join:project", projectId);
-    return () => {
-      globalSocket?.emit("leave:project", projectId);
-    };
-  }, [projectId]);
-}
+  const socket = useSocket();
 
-/**
- * Get the global socket instance (for components that need direct access).
- */
-export function getGlobalSocket(): Socket | null {
-  return globalSocket;
+  useEffect(() => {
+    if (!socket || !projectId) return;
+
+    const join = () => socket.emit("join:project", projectId);
+    socket.on("connect", join);
+    if (socket.connected) join();
+
+    return () => {
+      socket.off("connect", join);
+      if (socket.connected) socket.emit("leave:project", projectId);
+    };
+  }, [socket, projectId]);
 }

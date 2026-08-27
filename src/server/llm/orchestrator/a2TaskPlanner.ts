@@ -11,9 +11,12 @@ import {
   TRPCError,
 } from "@trpc/server";
 import crypto from "node:crypto";
+
+import { buildBeforeImage } from "~/server/llm/beforeImage";
 import {
-  eq,
   and,
+  eq,
+  inArray,
 } from "drizzle-orm";
 
 import type {
@@ -47,6 +50,15 @@ import {
 } from "~/server/llm/core/jsonRepair";
 
 import {
+  languageAnchorMessages,
+} from "~/server/llm/prompts/languageRules";
+
+import {
+  localized,
+  type LocalizedText,
+} from "~/server/llm/locale";
+
+import {
   tasks,
   taskActivityLog,
   agentTaskPlannerDrafts,
@@ -59,12 +71,69 @@ import {
   mintConfirmationToken,
   readConfirmationToken,
 } from "./shared";
+/**
+ * The plan a refinement is revising, as JSON, or null.
+ *
+ * Never throws. A stale or foreign draft id means "no prior plan", so the turn
+ * degrades to a normal draft rather than failing — the user asked for a change,
+ * and answering with a fresh plan beats answering with an error.
+ */
+async function loadRefinablePlan(
+  ctx: TRPCContext,
+  draftId: string,
+  userId: string,
+): Promise<string | null> {
+  const [row] = await ctx.db
+    .select({
+      planJson: agentTaskPlannerDrafts.planJson,
+      status: agentTaskPlannerDrafts.status,
+      userId: agentTaskPlannerDrafts.userId,
+    })
+    .from(agentTaskPlannerDrafts)
+    .where(eq(agentTaskPlannerDrafts.id, draftId))
+    .limit(1);
+
+  if (row?.userId !== userId) return null;
+  if (row.status === "applied" || row.status === "expired") return null;
+
+  return row.planJson;
+}
+
+/**
+ * The last resort when the model drafted tasks with no project to put them in.
+ *
+ * Injected by this server, so it is the one sentence in an A2 reply the model did
+ * not write — and it used to be English regardless of who was reading it.
+ * Only used when the model asked nothing of its own; its own question is already
+ * in the right language.
+ */
+const NEEDS_PROJECT_QUESTION: LocalizedText = {
+  en: "Which project should I add these tasks to? Please specify the project name.",
+  bg: "В кой проект да добавя тези задачи? Моля, укажете името на проекта.",
+};
+
 export const a2TaskPlanner = {
   async taskPlannerDraft(input: {
     ctx: TRPCContext;
     message: string;
     scope?: { orgId?: string | number; projectId?: number };
     handoffContext?: Record<string, unknown>;
+    /**
+     * The user's own words this turn, when `message` is another agent's
+     * paraphrase of them. Used to pin the reply language, nothing else.
+     */
+    originalMessage?: string;
+    /**
+     * E-3 — the plan this message is refining.
+     *
+     * "Change the third one's due date to Friday and drop the seventh" used to
+     * produce a brand-new plan from the original request, losing every edit the
+     * user had already accepted and often renumbering the items they were
+     * referring to. With the prior plan in context the model revises it instead,
+     * and the resulting hash is recomputed so the confirmation token binds to
+     * what the user actually last saw.
+     */
+    priorDraftId?: string;
   }): Promise<{ draftId: string; plan: TaskPlanDraft }> {
     const userId = requireUserId(input.ctx);
 
@@ -150,14 +219,31 @@ export const a2TaskPlanner = {
 
     const systemPrompt = getA2SystemPrompt(contextPack);
 
+    // E-3: load the plan being refined, if any. Scoped to the caller and to
+    // drafts that have not been applied — refining something already written to
+    // the database is not a refinement, it is a second change, and it should go
+    // through a fresh plan so the diff the user approves is honest.
+    const priorPlanJson = input.priorDraftId
+      ? await loadRefinablePlan(input.ctx, input.priorDraftId, userId)
+      : null;
+
     const parseResult = await completeJson({
       messages: [
         { role: "system", content: systemPrompt },
+        ...(priorPlanJson
+          ? [
+              {
+                role: "system" as const,
+                content: `The user is refining this existing plan. Return the COMPLETE revised plan — every item they did not ask you to change must survive unchanged, with the same wording. Do not start over.\n\n${priorPlanJson}`,
+              },
+            ]
+          : []),
+        ...languageAnchorMessages(input.originalMessage, input.message),
         { role: "user", content: input.message },
       ],
       schema: TaskPlanModelOutputSchema,
       temperature: 0.2,
-      purpose: "a2.draft",
+      purpose: input.priorDraftId ? "a2.refine" : "a2.draft",
       userId,
     });
 
@@ -196,16 +282,18 @@ export const a2TaskPlanner = {
     if (typeof resolvedProjectId !== "number" && hasOperations) {
       // The LLM generated tasks but we have no project to put them in.
       // Return the plan with a questionsForUser entry so the frontend stops the pipeline.
+      const modelQuestions = plan.questionsForUser ?? [];
       const planWithQuestion: TaskPlanDraft = {
         ...plan,
         creates: [],
         updates: [],
         statusChanges: [],
         deletes: [],
-        questionsForUser: [
-          ...(plan.questionsForUser ?? []),
-          "Which project should I add these tasks to? Please specify the project name.",
-        ],
+        // The model's own question, when it asked one, is already in the user's
+        // language. Only fall back to the canned sentence when there is nothing.
+        questionsForUser: modelQuestions.length
+          ? modelQuestions
+          : [localized(NEEDS_PROJECT_QUESTION, contextPack.locale)],
       };
       return { draftId, plan: planWithQuestion };
     }
@@ -359,6 +447,58 @@ export const a2TaskPlanner = {
     const statusChangedTaskIds: number[] = [];
     const deletedTaskIds: number[] = [];
 
+    // Read the rows this plan is about to change, *before* changing them.
+    //
+    // This is the whole of what makes undo a rollback rather than a delete of
+    // whatever was created: the apply row previously recorded which ids were
+    // touched and never what they held, so an edit had nothing to restore from.
+    //
+    // Not inside a transaction, because the apply below is not one either. The
+    // consequence is bounded and worth stating: if the process dies mid-apply the
+    // image describes rows that were only partly changed. That is still strictly
+    // better than the nothing that was recorded before, and making the whole
+    // apply transactional is a separate change with its own failure modes.
+    const touchedIds = [
+      ...plan.updates.map((u) => u.taskId),
+      ...plan.statusChanges.map((c) => c.taskId),
+      ...plan.deletes.filter((d) => d.dangerous).map((d) => d.taskId),
+    ];
+
+    const beforeRows = touchedIds.length
+      ? await input.ctx.db
+          .select({
+            id: tasks.id,
+            title: tasks.title,
+            description: tasks.description,
+            status: tasks.status,
+            priority: tasks.priority,
+            assignedToId: tasks.assignedToId,
+            dueDate: tasks.dueDate,
+            orderIndex: tasks.orderIndex,
+            completedAt: tasks.completedAt,
+            completedById: tasks.completedById,
+            completionNote: tasks.completionNote,
+          })
+          .from(tasks)
+          .where(
+            and(
+              inArray(tasks.id, [...new Set(touchedIds)]),
+              // Scoped to the project being applied to, like every other
+              // statement here. An apply row must not become a way to read a task
+              // from somewhere else.
+              eq(tasks.projectId, targetProjectId),
+            ),
+          )
+      : [];
+
+    const beforeImage = buildBeforeImage({
+      tasks: beforeRows.map((r) => ({
+        ...r,
+        dueDate: r.dueDate ? r.dueDate.toISOString() : null,
+        completedAt: r.completedAt ? r.completedAt.toISOString() : null,
+      })),
+    });
+
     // Apply creates with idempotency.
     for (const c of plan.creates) {
       // idempotency: if a task already exists with this clientRequestId, skip create.
@@ -469,6 +609,7 @@ export const a2TaskPlanner = {
       projectId: draft.projectId,
       planHash: draft.planHash,
       resultJson,
+      beforeJson: JSON.stringify(beforeImage),
     });
 
     await input.ctx.db

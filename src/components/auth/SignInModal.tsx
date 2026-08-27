@@ -3,7 +3,7 @@
 import { signIn } from "next-auth/react";
 import { X, Loader2, Eye, EyeOff, ArrowRight, ArrowLeft, KeyRound, Check } from "lucide-react";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
@@ -31,6 +31,23 @@ export function SignInModal({
   initialEmail?: string;
 }) {
   const t = useTranslations("auth.modal");
+  const searchParams = useSearchParams();
+
+  /**
+   * Where to land after signing in.
+   *
+   * The proxy parks the path someone was trying to reach in `callbackUrl` before
+   * bouncing them here. Ignoring it used to be harmless — everything interesting
+   * was behind the dashboard anyway — but a scanned invite QR carries a one-shot
+   * token in its path, and dropping it means the scan is simply lost. Only
+   * same-site paths are honoured, so the parameter cannot be used to bounce
+   * someone off-site after a successful login.
+   */
+  const callbackUrl = (() => {
+    const raw = searchParams.get("callbackUrl");
+    if (!raw) return "/";
+    return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
+  })();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -139,7 +156,7 @@ export function SignInModal({
         setError(t("signIn.invalidCredentials"));
       } else {
         onClose();
-        router.push("/");
+        router.push(callbackUrl);
         router.refresh();
       }
     } catch (error) {
@@ -182,7 +199,7 @@ export function SignInModal({
   };
 
   const handleGoogleSignIn = async () => {
-    await signIn("google", { callbackUrl: "/" });
+    await signIn("google", { callbackUrl });
   };
 
   const resetForm = () => {

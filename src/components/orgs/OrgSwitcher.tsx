@@ -6,6 +6,7 @@ import { ChevronDown, Plus, Copy, Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
+import { useSwitchOrganization } from "~/hooks/useSwitchOrganization";
 
 export function OrgSwitcher() {
   const tOrg = useTranslations("org");
@@ -37,13 +38,9 @@ export function OrgSwitcher() {
     },
   });
 
-  const setActive = api.organization.setActive.useMutation({
-    onSuccess: async () => {
-      await utils.organization.getActive.invalidate();
-      await utils.organization.listMine.invalidate();
-      await utils.user.getProfile.invalidate();
-      setOpen(false);
-    },
+  const setActive = useSwitchOrganization({
+    onSwitched: () => setOpen(false),
+    onError: (message) => toast.error(message),
   });
 
   const handlePick = useCallback(
@@ -135,9 +132,9 @@ export function OrgSwitcher() {
                       {isActive ? tOrg("active") : tOrg("setActive")}
                     </div>
                   </div>
-                  <div className="shrink-0 text-xs font-mono tracking-[0.15em] text-fg-tertiary">
-                    {org.accessCode}
-                  </div>
+                  {isActive ? (
+                    <Check size={14} className="shrink-0 text-accent-primary" />
+                  ) : null}
                 </button>
               );
             })}

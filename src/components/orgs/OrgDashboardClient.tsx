@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import { QrCode } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
+import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
 import { useToast } from "~/components/providers/ToastProvider";
+import { useSwitchOrganization } from "~/hooks/useSwitchOrganization";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
 
 function roleLabel(role: string, tOrg: (key: string) => string) {
@@ -18,6 +21,10 @@ export function OrgDashboardClient() {
   const tCommon = useTranslations("common");
   const toast = useToast();
   const router = useRouter();
+
+  // Which organisation's invite QR is on screen, by id — the dialog mints its
+  // own token, so nothing about the invite lives in this component's state.
+  const [inviteFor, setInviteFor] = useState<number | null>(null);
 
   const utils = api.useUtils();
   const activeQuery = api.organization.getActive.useQuery();
@@ -37,12 +44,8 @@ export function OrgDashboardClient() {
   );
   useSocketEvent("notification:new", handleNotification);
 
-  const setActive = api.organization.setActive.useMutation({
-    onSuccess: async () => {
-      await utils.organization.getActive.invalidate();
-      await utils.organization.listMine.invalidate();
-      await utils.user.getProfile.invalidate();
-    },
+  const setActive = useSwitchOrganization({
+    onError: (message) => toast.error(message),
   });
 
   const acceptInvite = api.organization.acceptInvite.useMutation({
@@ -155,13 +158,19 @@ export function OrgDashboardClient() {
                 <div className="mt-1 text-sm text-fg-secondary">
                   {tOrg("roleLabel")}: {roleLabel(org.role, tOrg)}
                 </div>
-                <div className="mt-2 text-xs text-fg-tertiary">
-                  {tOrg("accessCode")}: {" "}
-                  <span className="font-mono tracking-[0.2em]">{org.accessCode}</span>
-                </div>
               </div>
 
               <div className="flex items-center gap-3">
+                {org.canInvite ? (
+                  <button
+                    type="button"
+                    onClick={() => setInviteFor(org.id)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-bg-surface shadow-sm text-sm text-accent-primary hover:bg-bg-elevated hover:shadow-md transition"
+                  >
+                    <QrCode size={15} />
+                    {tOrg("inviteWithQr")}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => setActive.mutate({ organizationId: org.id })}
@@ -175,6 +184,14 @@ export function OrgDashboardClient() {
           );
         })}
       </div>
+
+      {inviteFor !== null ? (
+        <InviteQrDialog
+          organizationId={inviteFor}
+          organizationName={items.find((o) => o.id === inviteFor)?.name}
+          onClose={() => setInviteFor(null)}
+        />
+      ) : null}
     </div>
   );
 }

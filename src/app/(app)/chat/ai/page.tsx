@@ -1,7 +1,6 @@
 import { auth } from "~/server/auth";
 import { redirect } from "next/navigation";
 
-import { SideNav } from "~/components/layout/SideNav";
 import { AIChatPageClient } from "~/components/chat/AIChatPageClient";
 
 export default async function KairosAIPage() {
@@ -12,9 +11,7 @@ export default async function KairosAIPage() {
 
   return (
     <div className="h-[100dvh] bg-bg-primary overflow-hidden">
-      <SideNav />
-
-      <main id="main-content" className="lg:ml-16 h-[100dvh] overflow-hidden kairos-page-enter pt-16 lg:pt-0 pb-24 lg:pb-0">
+      <main id="main-content" className="rail-offset h-[100dvh] overflow-hidden kairos-page-enter pt-16 lg:pt-0 pb-24 lg:pb-0">
         <AIChatPageClient />
       </main>
     </div>

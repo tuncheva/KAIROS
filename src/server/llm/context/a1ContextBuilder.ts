@@ -10,10 +10,21 @@
  * A1 has tools now. This pack exists only to tell the model what *exists*, so it
  * can pick the right id to look up: who the user is, which projects they have,
  * and what today is. Everything else is fetched on demand.
+ *
+ * Two things were added that genuinely belong up front, because the model cannot
+ * discover them by looking: the user's language preference (G-2) and the durable
+ * facts they have asked the assistant to remember (C-2).
  */
 import type { TRPCContext } from "~/server/api/trpc";
+
 import { assertProjectAccess } from "~/server/api/authz";
+import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
+import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import { A1_READ_TOOLS } from "~/server/llm/tools/a1/readTools";
+
+// The locale constants moved to `~/server/llm/locale` so every agent can reach
+// them, not just A1. Re-exported because importers still point here.
+export { LOCALE_NAMES, type SupportedLocale } from "~/server/llm/locale";
 
 export interface A1ContextPack {
   session: {
@@ -30,6 +41,10 @@ export interface A1ContextPack {
   }>;
   /** The project the UI is currently scoped to, if any. */
   scopedProjectId: number | null;
+  /** The user's saved interface language — the default for the reply. */
+  locale: SupportedLocale;
+  /** Facts the user asked to be remembered, newest wins per key. */
+  memory: MemoryFact[];
   now: string;
 }
 
@@ -58,7 +73,11 @@ export async function buildA1Context(
     await assertProjectAccess(ctx, scopedProjectId, "read");
   }
 
-  const projects = await A1_READ_TOOLS.listProjects.execute(ctx, { limit: 25 });
+  const [projects, memory, locale] = await Promise.all([
+    A1_READ_TOOLS.listProjects.execute(ctx, { limit: 25 }),
+    loadUserMemory(ctx, sessionResult.userId, "workspace_concierge"),
+    resolveUserLocale(ctx, sessionResult.userId),
+  ]);
 
   return {
     session: {
@@ -73,6 +92,8 @@ export async function buildA1Context(
       status: p.status,
     })),
     scopedProjectId,
+    locale,
+    memory,
     now: new Date().toISOString(),
   };
 }

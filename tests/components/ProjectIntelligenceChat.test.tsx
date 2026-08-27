@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
+import type { TrailEvent } from "~/components/chat/trail";
 
 /**
  * The global next-intl mock (tests/setup.tsx) resolves keys against the real
@@ -36,6 +37,13 @@ function mockAgentStream(events: Array<[string, unknown]> | null) {
       }),
     );
   });
+}
+
+/** The trail as the panel last saw it. */
+function latestTrail(
+  onTrail: ReturnType<typeof vi.fn<(events: TrailEvent[]) => void>>,
+): TrailEvent[] {
+  return onTrail.mock.calls[onTrail.mock.calls.length - 1]![0];
 }
 
 describe("ProjectIntelligenceChat", () => {
@@ -314,5 +322,203 @@ describe("ProjectIntelligenceChat", () => {
     expect(screen.getByText("Hide")).toBeInTheDocument();
     expect(screen.getByText(/Project-scoped AI assistant/)).toBeInTheDocument();
     expect(screen.getByText(/Capabilities: workspace Q&A/)).toBeInTheDocument();
+  });
+
+  /* ---- Delete chat & start over ---- */
+
+  /**
+   * The control is opt-in. Every other mount of this chat — the compact floating
+   * widget, the project panels — should look exactly as it did, because a
+   * destructive one-click control does not belong on a 340px quick-ask surface.
+   */
+  it("hides the start-over control unless asked for", () => {
+    render(<ProjectIntelligenceChat />);
+    expect(screen.queryByTestId("new-chat")).not.toBeInTheDocument();
+  });
+
+  it("offers start-over but disables it on an empty thread", () => {
+    render(<ProjectIntelligenceChat showNewChat />);
+    expect(screen.getByTestId("new-chat")).toBeDisabled();
+  });
+
+  it("confirms before deleting, and clears the thread once confirmed", async () => {
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat showNewChat />);
+
+    await user.type(
+      screen.getByPlaceholderText(/Message KAIROS AI/),
+      "how are my projects?",
+    );
+    await user.click(screen.getByText("Send"));
+    expect(screen.getByText("how are my projects?")).toBeInTheDocument();
+
+    // Nothing is deleted on the first click: this cannot be undone.
+    await user.click(screen.getByTestId("new-chat"));
+    expect(screen.getByText("Delete this chat?")).toBeInTheDocument();
+    expect(screen.getByText("how are my projects?")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("new-chat-confirm"));
+
+    // Back to the empty state, dialog gone, and the message with it.
+    expect(
+      await screen.findByText("Ask a question about your workspace or projects."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("how are my projects?")).not.toBeInTheDocument();
+    expect(screen.queryByText("Delete this chat?")).not.toBeInTheDocument();
+  });
+
+  it("keeps the thread when the confirmation is cancelled", async () => {
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat showNewChat />);
+
+    await user.type(
+      screen.getByPlaceholderText(/Message KAIROS AI/),
+      "keep this",
+    );
+    await user.click(screen.getByText("Send"));
+
+    await user.click(screen.getByTestId("new-chat"));
+    await user.click(screen.getByText("Cancel"));
+
+    expect(screen.queryByText("Delete this chat?")).not.toBeInTheDocument();
+    expect(screen.getByText("keep this")).toBeInTheDocument();
+  });
+
+  /**
+   * The next turn must open a new conversation. If the deleted id were still in
+   * the ref, the server would be asked to continue a thread that no longer
+   * exists — the visible chat would be empty while the model replayed history
+   * the user believed they had thrown away.
+   */
+  it("does not send the deleted conversation id on the next turn", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockAgentStream([
+        ["start", { conversationId: "conv_1" }],
+        [
+          "result",
+          {
+            draftId: "draft_1",
+            conversationId: "conv_1",
+            latencyMs: 10,
+            a1: { intent: { type: "answer" }, answer: { summary: "All good." } },
+          },
+        ],
+      ]),
+    );
+
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat showNewChat />);
+
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
+    await user.type(input, "first");
+    await user.click(screen.getByText("Send"));
+    expect(await screen.findByText("All good.")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("new-chat"));
+    await user.click(screen.getByTestId("new-chat-confirm"));
+    await screen.findByText("Ask a question about your workspace or projects.");
+
+    await user.type(
+      screen.getByPlaceholderText(/Message KAIROS AI/),
+      "second",
+    );
+    await user.click(screen.getByText("Send"));
+
+    const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock
+      .calls as Array<[string, RequestInit]>;
+    const last = JSON.parse(calls[calls.length - 1]![1].body as string) as {
+      message: string;
+      conversationId?: string;
+    };
+    expect(last.message).toBe("second");
+    expect(last.conversationId).toBeUndefined();
+  });
+
+  /* ---- Session trail ---- */
+
+  /**
+   * The trail is the audit surface for the *thread*, not for the last message.
+   * It used to be wiped on every send, so asking a follow-up destroyed the
+   * evidence for the answer the user was still reading.
+   */
+  it("keeps earlier turns in the trail when a new turn starts", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockAgentStream([
+        ["tool_call", { name: "listProjects" }],
+        [
+          "result",
+          {
+            conversationId: "conv_1",
+            latencyMs: 10,
+            a1: { intent: { type: "answer" }, answer: { summary: "Answered." } },
+          },
+        ],
+      ]),
+    );
+
+    const onTrail = vi.fn<(events: TrailEvent[]) => void>();
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat onTrail={onTrail} />);
+
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
+    await user.type(input, "first");
+    await user.click(screen.getByText("Send"));
+    await screen.findByText("Answered.");
+
+    await user.type(screen.getByPlaceholderText(/Message KAIROS AI/), "second");
+    await user.click(screen.getByText("Send"));
+    await vi.waitFor(() => {
+      const latest = latestTrail(onTrail);
+      expect(latest.some((e) => e.turnIndex === 2)).toBe(true);
+    });
+
+    const trail = latestTrail(onTrail);
+
+    // Turn 1 survived in full: its start, its lookup and its answer.
+    const first = trail.filter((e) => e.turnIndex === 1);
+    expect(first.map((e) => e.kind)).toEqual(["start", "tool", "done"]);
+    expect(first.every((e) => e.turnPrompt === "first")).toBe(true);
+
+    // And turn 2 is a group of its own rather than an append to turn 1.
+    const second = trail.filter((e) => e.turnIndex === 2);
+    expect(second.length).toBeGreaterThan(0);
+    expect(second.every((e) => e.turnPrompt === "second")).toBe(true);
+
+    // Ids stay unique across the session, since the list is keyed by them.
+    expect(new Set(trail.map((e) => e.id)).size).toBe(trail.length);
+  });
+
+  it("clears the trail when the thread is thrown away", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockAgentStream([
+        ["tool_call", { name: "listProjects" }],
+        [
+          "result",
+          {
+            conversationId: "conv_1",
+            latencyMs: 10,
+            a1: { intent: { type: "answer" }, answer: { summary: "Answered." } },
+          },
+        ],
+      ]),
+    );
+
+    const onTrail = vi.fn<(events: TrailEvent[]) => void>();
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat showNewChat onTrail={onTrail} />);
+
+    await user.type(screen.getByPlaceholderText(/Message KAIROS AI/), "first");
+    await user.click(screen.getByText("Send"));
+    await screen.findByText("Answered.");
+
+    await user.click(screen.getByTestId("new-chat"));
+    await user.click(screen.getByTestId("new-chat-confirm"));
+
+    await vi.waitFor(() => {
+      expect(latestTrail(onTrail)).toHaveLength(0);
+    });
   });
 });

@@ -11,6 +11,8 @@ const mockContext: A1ContextPack = {
   },
   projects: [{ id: 1, title: "Project Alpha", status: "active" }],
   scopedProjectId: null,
+  locale: "en",
+  memory: [],
   now: new Date().toISOString(),
 };
 
@@ -45,12 +47,116 @@ describe("A1 System Prompt", () => {
     }
   });
 
-  it("states the scope guard and the language rule", () => {
+  it("states the scope guard", () => {
     const prompt = getA1SystemPrompt(mockContext);
     expect(prompt).toContain(
       "Sorry, I am not designed for these type of questions.",
     );
-    expect(prompt).toContain("English or Bulgarian");
+  });
+
+  /**
+   * The prompt used to enumerate the five locales with message files and imply
+   * the reply language was chosen from that list. It is not a list any more:
+   * the model mirrors whatever it was written to in, and the shipped locales
+   * only decide the fallback.
+   */
+  it("tells the model to mirror the message language rather than pick from a list", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    expect(prompt).toContain("Reply in the language of the user's latest message");
+    expect(prompt).toContain(
+      "including languages KAIROS has no interface translation for",
+    );
+    expect(prompt).toContain("Never refuse, defer or shorten a request because of the language");
+  });
+
+  /**
+   * The fallback exists for a message with nothing to detect from — "ok", an id,
+   * a button press — not as a whitelist. It is the user's saved preference so a
+   * Spanish speaker is not answered in English by default.
+   */
+  it("names the user's saved locale as the fallback reply language", () => {
+    const spanish = getA1SystemPrompt({ ...mockContext, locale: "es" });
+    expect(spanish).toContain("Fall back to Spanish (español)");
+
+    const bulgarian = getA1SystemPrompt({ ...mockContext, locale: "bg" });
+    expect(bulgarian).toContain("Fall back to Bulgarian (български)");
+  });
+
+  /**
+   * A1 is the only agent that sees what the user typed. If it translates the
+   * request on the way to a sub-agent, the sub-agent drafts in the wrong
+   * language and there is nothing downstream that can tell.
+   */
+  it("tells A1 to keep the handoff intent in the user's language", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    expect(prompt).toContain("written in the language the user used");
+    expect(prompt).toContain("Do not translate their request into English");
+  });
+
+  it("offers search before drill-down", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    expect(prompt).toContain("searchWorkspace");
+  });
+
+  it("names org_admin as a handoff target now that A5 exists", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    expect(prompt).toContain("org_admin");
+  });
+
+  it("omits the memory block entirely when there is nothing remembered", () => {
+    const prompt = getA1SystemPrompt(mockContext);
+    expect(prompt).not.toContain("What you know about this user");
+  });
+
+  it("includes remembered facts when there are any", () => {
+    const prompt = getA1SystemPrompt({
+      ...mockContext,
+      memory: [
+        {
+          id: 1,
+          key: "sprint_cadence",
+          value: "Sprints run Monday to Friday.",
+          scope: "global",
+          updatedAt: new Date(),
+        },
+      ],
+    });
+    expect(prompt).toContain("What you know about this user");
+    expect(prompt).toContain("Sprints run Monday to Friday.");
+  });
+
+  /**
+   * A fact set for one agent must not read as a general truth: the model has to
+   * be able to tell "they always want Bulgarian" from "when *you* draft tasks,
+   * use Bulgarian", or it will apply the second everywhere.
+   */
+  it("separates agent-scoped facts from global ones", () => {
+    const prompt = getA1SystemPrompt({
+      ...mockContext,
+      memory: [
+        {
+          id: 1,
+          key: "sprint_cadence",
+          value: "Sprints run Monday to Friday.",
+          scope: "global",
+          updatedAt: new Date(),
+        },
+        {
+          id: 2,
+          key: "task_language",
+          value: "Write task titles in Bulgarian.",
+          scope: "task_planner",
+          updatedAt: new Date(),
+        },
+      ],
+    });
+    expect(prompt).toContain("They set these for you in particular");
+    expect(prompt).toContain("Write task titles in Bulgarian.");
+    // The global fact must not have migrated under the scoped heading.
+    const scopedHeadingAt = prompt.indexOf("They set these for you in particular");
+    expect(prompt.indexOf("Sprints run Monday to Friday.")).toBeLessThan(
+      scopedHeadingAt,
+    );
   });
 
   /**

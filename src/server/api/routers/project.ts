@@ -2,9 +2,9 @@
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { assertOrgPermission, assertProjectPermission } from "~/server/api/authz";
-import { projects, tasks, projectCollaborators, users, organizationMembers, notifications } from "~/server/db/schema";
+import { projects, tasks, projectCollaborators, users, organizationMembers } from "~/server/db/schema";
 import { eq, and, desc, inArray, isNull, sql, ne, or } from "drizzle-orm";
-import { emitNotification } from "~/server/ws/emit";
+import { notify } from "~/server/notifications/dispatch";
 import { createLogger } from "~/server/logger";
 
 const log = createLogger("project");
@@ -587,30 +587,19 @@ export const projectRouter = createTRPCRouter({
         const ownerName = owner?.name ?? owner?.email ?? "Someone";
         const permissionText = input.permission === "write" ? "edit" : "view";
 
-        // Create notification (best-effort — don't fail the mutation if notification fails)
-        const projectLink = `/projects`;
-        try {
-          const [notification] = await ctx.db.insert(notifications).values({
-            userId: userToAdd.id,
-            type: "project",
-            title: "New Project Invitation",
-            message: `${ownerName} invited you to ${permissionText} "${project.title}"`,
-            link: projectLink,
-            read: false,
-          }).returning();
-
-          if (notification) {
-            emitNotification(userToAdd.id, {
-              id: notification.id,
-              type: "project",
-              title: "New Project Invitation",
-              message: `${ownerName} invited you to ${permissionText} "${project.title}"`,
-              link: projectLink,
-            });
-          }
-        } catch (notifError) {
-          log.error("collaborator added but notification failed", { err: notifError });
-        }
+        // Best-effort by construction: `notify` never throws, so the local
+        // try/catch that used to guard this one call site is no longer needed —
+        // and the eleven sites that lacked one are covered too.
+        await notify({
+          db: ctx.db,
+          userId: userToAdd.id,
+          actorId: ctx.session.user.id,
+          category: "invite",
+          type: "project",
+          title: "New Project Invitation",
+          message: `${ownerName} invited you to ${permissionText} "${project.title}"`,
+          link: "/projects",
+        });
 
         return { 
           success: true,

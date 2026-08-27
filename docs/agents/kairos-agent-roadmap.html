@@ -1,0 +1,1141 @@
+<!--
+  KAIROS Agent Roadmap — the shareable version of
+  docs/agents/plans/ai-agent-enhancement-plan.md.
+
+  Published as a Claude Code Artifact at:
+    https://claude.ai/code/artifact/1d47f112-6393-444e-9c00-debe0d62a9ae
+
+  This file is the source. To update the published page, edit it here and
+  republish *this path*, passing that URL so it updates in place rather than
+  claiming a new one.
+
+  There is deliberately no <!doctype>, <html>, <head> or <body>: the artifact
+  host wraps the file in that skeleton at publish time. Browsers supply the
+  missing elements themselves, so opening it straight from the repo works too.
+
+  Colours derive from the app's own tokens in src/styles/globals.css, so the
+  page stays recognisably KAIROS rather than generically branded.
+-->
+<title>KAIROS Agent Roadmap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+
+<style>
+  /* ---------------------------------------------------------------
+     Palette derives from the KAIROS app tokens (globals.css):
+     accent purple 168 85 247, brand sky 39 111 191, mint 95 180 156.
+     Neutrals are biased slightly violet so they read as chosen.
+     --------------------------------------------------------------- */
+  :root {
+    --ground:      #FBFAFD;
+    --raised:      #FFFFFF;
+    --sunken:      #F4F2F8;
+    --ink:         #17141F;
+    --ink-soft:    #575070;
+    --ink-faint:   #8A83A0;
+    --rule:        #E4E0EC;
+    --rule-strong: #CFC9DD;
+    --accent:      #8B3FD9;
+    --accent-soft: #F1E7FC;
+    --built:       #2F7D63;
+    --built-soft:  #E3F2EC;
+    --gap:         #B25409;
+    --gap-soft:    #FBEDE0;
+    --sky:         #276FBF;
+    --shadow:      0 1px 2px rgba(23, 20, 31, .05), 0 8px 24px -12px rgba(23, 20, 31, .18);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0B0A11;
+      --raised:      #141220;
+      --sunken:      #100E19;
+      --ink:         #EFECF7;
+      --ink-soft:    #A9A2C0;
+      --ink-faint:   #756D8E;
+      --rule:        #262236;
+      --rule-strong: #3A3450;
+      --accent:      #C08BF5;
+      --accent-soft: #241A36;
+      --built:       #6FCFAA;
+      --built-soft:  #14261F;
+      --gap:         #E9A16A;
+      --gap-soft:    #2A1D12;
+      --sky:         #7FB2EC;
+      --shadow:      0 1px 2px rgba(0, 0, 0, .5), 0 8px 24px -12px rgba(0, 0, 0, .8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #0B0A11;
+    --raised:      #141220;
+    --sunken:      #100E19;
+    --ink:         #EFECF7;
+    --ink-soft:    #A9A2C0;
+    --ink-faint:   #756D8E;
+    --rule:        #262236;
+    --rule-strong: #3A3450;
+    --accent:      #C08BF5;
+    --accent-soft: #241A36;
+    --built:       #6FCFAA;
+    --built-soft:  #14261F;
+    --gap:         #E9A16A;
+    --gap-soft:    #2A1D12;
+    --sky:         #7FB2EC;
+    --shadow:      0 1px 2px rgba(0, 0, 0, .5), 0 8px 24px -12px rgba(0, 0, 0, .8);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 61rem;
+    margin: 0 auto;
+    padding: 0 1.5rem 6rem;
+  }
+
+  /* --- shared type ------------------------------------------------ */
+  .serif {
+    font-family: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.005em;
+    text-wrap: balance;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .6875rem;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  code, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: .86em;
+  }
+
+  code {
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: .08em .34em;
+    color: var(--ink-soft);
+    word-break: break-word;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  /* --- shipped ribbon ---------------------------------------------- */
+  .shipped {
+    margin-top: 2rem;
+    padding: 1.15rem 1.35rem;
+    border: 1px solid color-mix(in srgb, var(--built) 34%, transparent);
+    background: var(--built-soft);
+    border-radius: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .6rem 2rem;
+  }
+  .shipped .headline {
+    font-weight: 600;
+    color: var(--built);
+    font-size: .95rem;
+  }
+  .shipped .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem 1.5rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .74rem;
+    color: var(--ink-soft);
+  }
+
+  .track-status {
+    display: inline-block;
+    margin-left: .6rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .62rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: .16rem .45rem;
+    border-radius: 999px;
+    background: var(--built-soft);
+    color: var(--built);
+    border: 1px solid color-mix(in srgb, var(--built) 30%, transparent);
+    vertical-align: middle;
+  }
+
+  /* --- masthead --------------------------------------------------- */
+  header.masthead {
+    padding: 4.5rem 0 2.5rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .masthead h1 {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(2.7rem, 7vw, 4.5rem);
+    line-height: 1.02;
+    letter-spacing: -0.015em;
+    margin: .7rem 0 0;
+    text-wrap: balance;
+  }
+
+  .masthead h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .standfirst {
+    max-width: 40rem;
+    margin: 1.4rem 0 0;
+    font-size: 1.1rem;
+    color: var(--ink-soft);
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.75rem;
+    margin-top: 2.25rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .meta div { display: flex; flex-direction: column; gap: .2rem; }
+  .meta dt { font-family: "IBM Plex Mono", monospace; font-size: .65rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); }
+  .meta dd { margin: 0; font-size: .875rem; color: var(--ink-soft); }
+
+  /* --- sections --------------------------------------------------- */
+  section { padding-top: 4rem; }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+    padding-bottom: .85rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .section-head h2 {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(1.8rem, 3.6vw, 2.5rem);
+    line-height: 1.12;
+    margin: 0;
+    flex: 1;
+    text-wrap: balance;
+  }
+
+  .lede {
+    max-width: 42rem;
+    font-size: 1.02rem;
+    color: var(--ink-soft);
+    margin: 0 0 2rem;
+  }
+
+  p { max-width: 42rem; }
+
+  /* --- baseline ledger -------------------------------------------- */
+  .ledger {
+    display: grid;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .ledger-row {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr auto;
+    gap: 1rem;
+    align-items: baseline;
+    padding: .8rem 1.1rem;
+    background: var(--raised);
+  }
+
+  .ledger-row .what { font-weight: 500; font-size: .94rem; }
+  .ledger-row .where { color: var(--ink-faint); font-size: .8rem; font-family: "IBM Plex Mono", monospace; word-break: break-all; }
+
+  .pill {
+    justify-self: end;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .66rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: .18rem .5rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .pill.built { background: var(--built-soft); color: var(--built); border: 1px solid color-mix(in srgb, var(--built) 30%, transparent); }
+  .pill.missing { background: var(--gap-soft); color: var(--gap); border: 1px solid color-mix(in srgb, var(--gap) 34%, transparent); }
+
+  .ledger-note {
+    margin-top: 1.5rem;
+    padding-left: 1.1rem;
+    border-left: 3px solid var(--accent);
+    font-size: 1.05rem;
+    max-width: 40rem;
+  }
+
+  /* --- gap cards --------------------------------------------------- */
+  .gaps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    gap: 1rem;
+  }
+
+  .gap-card {
+    background: var(--raised);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 1.4rem 1.35rem 1.5rem;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: .8rem;
+  }
+
+  .gap-card h3 {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-weight: 400;
+    font-size: 1.65rem;
+    line-height: 1.1;
+    margin: 0;
+    color: var(--gap);
+  }
+
+  .gap-card .claim { margin: 0; font-size: .96rem; }
+
+  .evidence {
+    list-style: none;
+    margin: 0;
+    padding: .85rem 0 0;
+    border-top: 1px dashed var(--rule-strong);
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    font-size: .84rem;
+    color: var(--ink-soft);
+  }
+
+  .evidence li { padding-left: 1.05rem; position: relative; }
+  .evidence li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: .58em;
+    width: .4rem; height: .4rem;
+    border-radius: 1px;
+    background: var(--gap);
+    transform: rotate(45deg);
+  }
+
+  /* --- tracks ------------------------------------------------------ */
+  .track {
+    display: grid;
+    grid-template-columns: 3.25rem 1fr;
+    gap: 0 1.35rem;
+    padding: 1.75rem 0;
+    border-top: 1px solid var(--rule);
+  }
+  .track:last-of-type { border-bottom: 1px solid var(--rule); }
+
+  .track-key {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-size: 2.4rem;
+    line-height: 1;
+    color: var(--accent);
+    text-align: center;
+    padding-top: .05rem;
+  }
+
+  .track-body { min-width: 0; }
+
+  .track-body h3 {
+    margin: 0 0 .2rem;
+    font-size: 1.28rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .track-tagline {
+    margin: 0 0 1.1rem;
+    color: var(--ink-soft);
+    font-size: .96rem;
+    max-width: 40rem;
+  }
+
+  .items { display: flex; flex-direction: column; gap: .95rem; margin: 0; padding: 0; list-style: none; }
+
+  .item { display: grid; grid-template-columns: 3.1rem 1fr; gap: .85rem; align-items: start; }
+
+  .item-id {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .7rem;
+    letter-spacing: .06em;
+    color: var(--ink-faint);
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: .18rem 0;
+    text-align: center;
+    margin-top: .18rem;
+  }
+
+  .item-text { font-size: .94rem; min-width: 0; }
+  .item-text strong { font-weight: 600; }
+  .item-text .sub { display: block; color: var(--ink-soft); font-size: .89rem; margin-top: .15rem; }
+
+  .quote {
+    margin: .55rem 0 0;
+    padding: .7rem .9rem;
+    background: var(--sunken);
+    border-left: 2px solid var(--sky);
+    border-radius: 0 6px 6px 0;
+    font-size: .89rem;
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+  .quote b { font-style: normal; color: var(--accent); font-weight: 600; }
+
+  /* --- tool table -------------------------------------------------- */
+  .scroller { overflow-x: auto; margin: 1rem 0 0; border: 1px solid var(--rule); border-radius: 10px; }
+
+  table { border-collapse: collapse; width: 100%; min-width: 32rem; font-size: .875rem; }
+  th, td { text-align: left; padding: .58rem .9rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .64rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--sunken);
+    font-weight: 500;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.tool { font-family: "IBM Plex Mono", monospace; font-size: .8rem; color: var(--accent); white-space: nowrap; }
+  td.q { color: var(--ink-soft); }
+
+  /* --- roadmap ----------------------------------------------------- */
+  .phases { display: flex; flex-direction: column; gap: 0; }
+
+  .phase {
+    display: grid;
+    grid-template-columns: 4.5rem 1fr;
+    gap: 1.35rem;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--rule);
+    position: relative;
+  }
+  .phase:last-child { border-bottom: 1px solid var(--rule); }
+
+  .phase-num {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-size: 3.1rem;
+    line-height: .92;
+    color: var(--rule-strong);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .phase:first-child .phase-num { color: var(--accent); }
+
+  .phase h3 { margin: .35rem 0 .35rem; font-size: 1.2rem; font-weight: 600; }
+  .phase p { margin: 0 0 .7rem; color: var(--ink-soft); font-size: .94rem; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .chip {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .7rem;
+    padding: .2rem .5rem;
+    border-radius: 5px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  }
+
+  .duration {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .7rem;
+    color: var(--ink-faint);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  /* --- risks ------------------------------------------------------- */
+  .risks { display: flex; flex-direction: column; gap: 0; }
+
+  .risk {
+    padding: 1.15rem 0;
+    border-top: 1px solid var(--rule);
+  }
+  .risk:last-child { border-bottom: 1px solid var(--rule); }
+  .risk h3 { margin: 0 0 .3rem; font-size: 1.02rem; font-weight: 600; }
+  .risk p { margin: 0; color: var(--ink-soft); font-size: .94rem; }
+  .risk .verdict { color: var(--ink); }
+  .risk .verdict strong { color: var(--accent); }
+
+  /* --- closing ----------------------------------------------------- */
+  .closing {
+    margin-top: 4rem;
+    padding: 2.25rem 2rem 2.5rem;
+    background: var(--raised);
+    border: 1px solid var(--rule-strong);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .closing h2 {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(1.7rem, 3.4vw, 2.2rem);
+    margin: .4rem 0 1.5rem;
+  }
+
+  .cuts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1.1rem; counter-reset: cut; }
+  .cuts li { display: grid; grid-template-columns: 1.9rem 1fr; gap: 1rem; align-items: baseline; }
+  .cuts li::before {
+    counter-increment: cut;
+    content: counter(cut);
+    font-family: "Instrument Serif", Georgia, serif;
+    font-size: 1.5rem;
+    color: var(--accent);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .cuts .why { display: block; color: var(--ink-soft); font-size: .92rem; margin-top: .1rem; }
+
+  footer {
+    margin-top: 3.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+    font-size: .82rem;
+    color: var(--ink-faint);
+  }
+
+  @media (max-width: 640px) {
+    .ledger-row { grid-template-columns: 1fr auto; }
+    .ledger-row .where { grid-column: 1 / -1; }
+    .track { grid-template-columns: 1fr; gap: .5rem; }
+    .track-key { text-align: left; font-size: 1.9rem; }
+    .phase { grid-template-columns: 1fr; gap: .4rem; }
+    .phase-num { text-align: left; font-size: 2.2rem; }
+    .item { grid-template-columns: 2.8rem 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">Engineering proposal · KAIROS AI</p>
+    <h1>The agent that <em>speaks first</em></h1>
+    <p class="standfirst">
+      KAIROS had four working agents, a hardened draft&nbsp;→&nbsp;confirm&nbsp;→&nbsp;apply
+      lifecycle, and a bounded tool loop. What it lacked was reach, initiative,
+      memory, and proof. This is the plan for all four — and the record of building it.
+    </p>
+    <dl class="meta">
+      <div><dt>Date</dt><dd>21 August 2026</dd></div>
+      <div><dt>Status</dt><dd>Proposal</dd></div>
+      <div><dt>Surface</dt><dd class="mono">src/server/llm/**</dd></div>
+      <div><dt>Horizon</dt><dd>4 phases · ~10 weeks</dd></div>
+    </dl>
+
+    <div class="shipped">
+      <span class="headline">Built — all seven tracks are in the codebase.</span>
+      <span class="facts">
+        <span>21 read tools (was 8)</span>
+        <span>A5 shipped</span>
+        <span>1631 tests green</span>
+        <span>53 eval cases</span>
+        <span>build passing</span>
+      </span>
+    </div>
+  </header>
+
+  <!-- ============================ BASELINE ============================ -->
+  <section>
+    <div class="section-head">
+      <span class="eyebrow">Baseline — before this work</span>
+      <h2>What was already built</h2>
+    </div>
+    <p class="lede">
+      The plumbing was in better shape than most shipped AI features. Everything below
+      already existed — the plan started from it, not around it. The one gap in the
+      list, A5, has since been filled.
+    </p>
+
+    <div class="ledger">
+      <div class="ledger-row">
+        <span class="what">A1 Workspace Concierge — read-only, tool loop</span>
+        <span class="where">orchestrator/a1Concierge.ts</span>
+        <span class="pill built">8 tools</span>
+      </div>
+      <div class="ledger-row">
+        <span class="what">A2 Task Planner — draft, confirm, apply</span>
+        <span class="where">orchestrator/a2TaskPlanner.ts</span>
+        <span class="pill built">Live</span>
+      </div>
+      <div class="ledger-row">
+        <span class="what">A3 Notes Vault — lock-aware, three-layer guard</span>
+        <span class="where">orchestrator/a3NotesVault.ts</span>
+        <span class="pill built">Live</span>
+      </div>
+      <div class="ledger-row">
+        <span class="what">A4 Events Publisher</span>
+        <span class="where">orchestrator/a4EventsPublisher.ts</span>
+        <span class="pill built">Live</span>
+      </div>
+      <div class="ledger-row">
+        <span class="what">A5 Org Admin</span>
+        <span class="where">was routed in handoff.ts with no agent behind it</span>
+        <span class="pill missing">Was a dead end</span>
+      </div>
+      <div class="ledger-row">
+        <span class="what">Confirmation tokens — HMAC + SHA-256 plan hash</span>
+        <span class="where">orchestrator/shared.ts</span>
+        <span class="pill built">Live</span>
+      </div>
+      <div class="ledger-row">
+        <span class="what">Tool loop — allowlist, dedupe cache, 6 iterations, 90s</span>
+        <span class="where">core/toolLoop.ts</span>
+        <span class="pill built">Live</span>
+      </div>
+      <div class="ledger-row">
+        <span class="what">Model client — retry, backoff, fallback, truncation detection</span>
+        <span class="where">core/modelClient.ts</span>
+        <span class="pill built">Live</span>
+      </div>
+      <div class="ledger-row">
+        <span class="what">Progress streaming over Server-Sent Events</span>
+        <span class="where">app/api/ai/chat/route.ts</span>
+        <span class="pill built">Live</span>
+      </div>
+      <div class="ledger-row">
+        <span class="what">Conversation persistence with token and latency columns</span>
+        <span class="where">llm/conversations.ts</span>
+        <span class="pill built">Live</span>
+      </div>
+      <div class="ledger-row">
+        <span class="what">Zod validation with AI-assisted JSON repair</span>
+        <span class="where">core/jsonRepair.ts</span>
+        <span class="pill built">Live</span>
+      </div>
+      <div class="ledger-row">
+        <span class="what">Sliding-window rate limit, Redis-backed</span>
+        <span class="where">security/rateLimit.ts — 50/user/day</span>
+        <span class="pill built">Live</span>
+      </div>
+      <div class="ledger-row">
+        <span class="what">PDF → tasks extraction pipeline</span>
+        <span class="where">pdf/pdfExtractor.ts</span>
+        <span class="pill built">Live</span>
+      </div>
+    </div>
+
+    <p class="ledger-note serif" style="font-size:1.3rem; line-height:1.35;">
+      The gaps are not in the plumbing. They are in what the agent can see,
+      whether it ever acts on its own, what it remembers, and whether anyone
+      can tell if it is any good.
+    </p>
+  </section>
+
+  <!-- ============================== GAPS ============================== -->
+  <section>
+    <div class="section-head">
+      <span class="eyebrow">Diagnosis — what was missing</span>
+      <h2>Four gaps</h2>
+    </div>
+
+    <div class="gaps">
+      <article class="gap-card">
+        <p class="eyebrow">Gap one</p>
+        <h3 class="serif">Reach</h3>
+        <p class="claim">A1 has eight read tools and no search. Whole categories of question are unanswerable by construction.</p>
+        <ul class="evidence">
+          <li>Cannot read a task comment, an org member list, a calendar range, a collaborator, an RSVP, or the activity log</li>
+          <li>“Where did we discuss the payment flow?” — no search tool exists</li>
+          <li>“Who is overloaded this week?” — no cross-project view of assignment</li>
+        </ul>
+      </article>
+
+      <article class="gap-card">
+        <p class="eyebrow">Gap two</p>
+        <h3 class="serif">Initiative</h3>
+        <p class="claim">Every AI action begins with a human typing. The assistant never opens its mouth first.</p>
+        <ul class="evidence">
+          <li>No server-side scheduler exists anywhere in the codebase</li>
+          <li><code>EventReminderService.tsx</code> is a client component — reminders only fire while a browser tab is open</li>
+          <li>No brief, no watch, no nudge, no follow-up</li>
+        </ul>
+      </article>
+
+      <article class="gap-card">
+        <p class="eyebrow">Gap three</p>
+        <h3 class="serif">Memory</h3>
+        <p class="claim">Sixteen raw messages replayed, nothing summarised, nothing carried between conversations.</p>
+        <ul class="evidence">
+          <li><code>ai_conversations.title</code> exists in the schema and is never written — there is no conversation list</li>
+          <li>No durable facts: it cannot know your sprint runs Mon–Fri</li>
+          <li>Long threads either lose their beginning or blow the context budget</li>
+        </ul>
+      </article>
+
+      <article class="gap-card">
+        <p class="eyebrow">Gap four</p>
+        <h3 class="serif">Proof</h3>
+        <p class="claim">One AI test file. No eval set. Every prompt edit is a coin flip.</p>
+        <ul class="evidence">
+          <li><code>ai_messages</code> stores model, tokens and latency on every row — and nothing reads them</li>
+          <li><code>citations</code> is produced by the model and rendered nowhere in the UI</li>
+          <li>Five UI locales shipped, two agent languages supported</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============================= TRACKS ============================= -->
+  <section>
+    <div class="section-head">
+      <span class="eyebrow">The work</span>
+      <h2>Seven tracks</h2>
+    </div>
+    <p class="lede">
+      Track letters are the identifiers used by the roadmap below. Tracks A and F are
+      foundations — everything else gets better once the agent can see more and
+      quality can be measured.
+    </p>
+
+    <!-- A -->
+    <div class="track">
+      <div class="track-key">A</div>
+      <div class="track-body">
+        <h3>Reach — give the agent eyes<span class="track-status">Shipped</span></h3>
+        <p class="track-tagline">Eight read tools become eighteen, and one of them can search.</p>
+        <ul class="items">
+          <li class="item">
+            <span class="item-id">A-1</span>
+            <span class="item-text">
+              <strong>A <code>searchWorkspace</code> tool.</strong>
+              <span class="sub">Postgres full-text search (<code>tsvector</code> + GIN) across tasks, projects, unlocked notes, events and comments. No new infrastructure, no new dependency. Locked notes stay excluded at the query level, matching the existing three-layer rule. The single largest capability unlock available.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">A-2</span>
+            <span class="item-text">
+              <strong>Expand the read-tool surface.</strong>
+              <span class="sub">Keep the design rule that already works — tools return computed answers, not rows for the model to count. <code>getProjectDetail</code> returns pre-computed overdue counts, and that is exactly why progress questions work today.</span>
+              <div class="scroller">
+                <table>
+                  <thead><tr><th scope="col">New tool</th><th scope="col">Question it makes answerable</th></tr></thead>
+                  <tbody>
+                    <tr><td class="tool">searchWorkspace</td><td class="q">Where did we discuss the payment flow?</td></tr>
+                    <tr><td class="tool">listMyWork</td><td class="q">What is on my plate this week, across every project?</td></tr>
+                    <tr><td class="tool">getWorkloadByAssignee</td><td class="q">Who is overloaded?</td></tr>
+                    <tr><td class="tool">listTaskComments</td><td class="q">What has the team said about this?</td></tr>
+                    <tr><td class="tool">getTaskActivity</td><td class="q">What changed on task 42 since Monday?</td></tr>
+                    <tr><td class="tool">listOrgMembers</td><td class="q">Who is in the Design org, and in what role?</td></tr>
+                    <tr><td class="tool">listProjectCollaborators</td><td class="q">Who can edit this project?</td></tr>
+                    <tr><td class="tool">getCalendarRange</td><td class="q">What is due Monday to Friday?</td></tr>
+                    <tr><td class="tool">listNotesMetadata</td><td class="q">Do I have notes about this?</td></tr>
+                    <tr><td class="tool">listEventRsvps</td><td class="q">Who is coming to the kickoff?</td></tr>
+                    <tr><td class="tool">getProjectHealth</td><td class="q">Velocity, overdue clusters, unassigned share</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">A-3</span>
+            <span class="item-text">
+              <strong>Raise the loop ceiling.</strong>
+              <span class="sub">Six iterations is tight once eighteen tools exist. Raise A1 to eight, and run independent reads in parallel — the sequential note in <code>toolLoop.ts</code> cites pool pressure and id chaining, neither of which applies to calls that do not depend on each other.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- B -->
+    <div class="track">
+      <div class="track-key">B</div>
+      <div class="track-body">
+        <h3>Initiative — the headline<span class="track-status">Shipped</span></h3>
+        <p class="track-tagline">This is what separates a chatbot in the corner from an assistant.</p>
+        <ul class="items">
+          <li class="item">
+            <span class="item-id">B-0</span>
+            <span class="item-text">
+              <strong>A scheduler, first — nothing else in this track is possible without one.</strong>
+              <span class="sub">Preferred: <code>ws-server/</code> gains a scheduler. It is already a long-lived Node process with database access and a socket channel to push results, so it is the least new infrastructure — and it fixes the browser-only event reminders as a side effect. Alternatives are Vercel Cron against an authenticated internal route, or a separate worker.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">B-1</span>
+            <span class="item-text">
+              <strong>Daily Brief — a new read-only agent, A6.</strong>
+              <span class="sub">Reuses A1's tool registry and skips the draft lifecycle entirely, because it never writes. Delivered as a notification, a dashboard card, and optionally email through the Resend integration that is already wired.</span>
+              <p class="quote">3 tasks due today. Project Alpha slipped two days — the API work is the blocker. Maria has not been assigned anything this sprint. The kickoff has 4 unanswered RSVPs.</p>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">B-2</span>
+            <span class="item-text">
+              <strong>Risk Radar.</strong>
+              <span class="sub">A scheduled pass over each active project flagging overdue clusters, unassigned tasks, tasks with no acceptance criteria, a completion rate that has flatlined, an event with a date but no description. Emits notifications — never writes.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">B-3</span>
+            <span class="item-text">
+              <strong>Nudges that arrive pre-drafted.</strong>
+              <span class="sub">Every proactive item ships with a drafted fix rather than a complaint. The draft/confirm/apply machinery supports this as-is — the only change is that a watcher creates the A2 draft instead of a chat turn. This is the feature that makes the system feel like it is working for you.</span>
+              <p class="quote">Task #42 is six days overdue and unassigned → assign to Ivan, push to Friday? <b>[ Apply ]</b></p>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">B-4</span>
+            <span class="item-text">
+              <strong>Quota and consent.</strong>
+              <span class="sub">A new <code>ai_schedules</code> table, the rate limit split into interactive and system buckets, and a per-feature toggle in settings that is <em>off by default</em>. Proactive runs must never eat the budget a person was going to spend themselves.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- C -->
+    <div class="track">
+      <div class="track-key">C</div>
+      <div class="track-body">
+        <h3>Memory — an assistant that knows you<span class="track-status">Shipped</span></h3>
+        <p class="track-tagline">The cheapest track here, and the one that most changes how the product feels.</p>
+        <ul class="items">
+          <li class="item">
+            <span class="item-id">C-1</span>
+            <span class="item-text">
+              <strong>Rolling conversation summary.</strong>
+              <span class="sub">Past sixteen turns, fold the oldest half into <code>ai_conversations.summary</code> and replay summary plus the last eight. Long threads stay coherent instead of losing their beginning.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">C-2</span>
+            <span class="item-text">
+              <strong>Durable user facts — a new <code>ai_user_memory</code> table.</strong>
+              <span class="sub">Written only through an explicit <code>rememberFact</code> tool that the user actually triggers, never silently inferred. Every row visible and deletable under Settings → AI Memory, capped at about twenty facts in the prompt.</span>
+              <p class="quote">Sprint runs Mon–Fri. · Wants tasks written in Bulgarian. · Treats “urgent” as within 48 hours.</p>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">C-3</span>
+            <span class="item-text">
+              <strong>Conversation titles and a history browser.</strong>
+              <span class="sub">Generate <code>title</code> from the first turn with one cheap call — the column already exists and has never been written — then list past conversations in the chat sidebar with search.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- D -->
+    <div class="track">
+      <div class="track-key">D</div>
+      <div class="track-body">
+        <h3>Ambient — meet the work where it happens<span class="track-status">Shipped</span></h3>
+        <p class="track-tagline">Every item below is a pre-filled <code>runAgentTurn</code> call with a seeded message and scope. No new plumbing.</p>
+        <ul class="items">
+          <li class="item">
+            <span class="item-id">D-1</span>
+            <span class="item-text">
+              <strong>Inline affordances.</strong>
+              <span class="sub">Task detail → break into subtasks, draft a status comment, why is this blocked. Project → risk radar on demand. Note → summarise, turn into tasks. Event → draft the description, find a time that clears the team's calendar. Notification bell → summarise what I missed.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">D-2</span>
+            <span class="item-text">
+              <strong>Command palette with natural language.</strong>
+              <span class="sub">Type anything; if it does not match a navigation target, it becomes an agent turn. The highest leverage per line of code in this document.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">D-3</span>
+            <span class="item-text">
+              <strong>Selection → AI.</strong>
+              <span class="sub">Select text anywhere — a note, a project description — and get turn into tasks, summarise, or translate.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- E -->
+    <div class="track">
+      <div class="track-key">E</div>
+      <div class="track-body">
+        <h3>Composition — multi-step work, and asking back<span class="track-status">Shipped</span></h3>
+        <p class="track-tagline">One handoff per turn is the current ceiling. Real requests are not that shape.</p>
+        <ul class="items">
+          <li class="item">
+            <span class="item-id">E-1</span>
+            <span class="item-text">
+              <strong>Add a <code>clarify</code> intent.</strong>
+              <span class="sub">The intent schema allows answer, handoff and draft_plan, so an ambiguous request produces a guess. Add one question back plus two to four suggested chips. Good assistants ask; they do not guess.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">E-2</span>
+            <span class="item-text">
+              <strong>Multi-agent turns.</strong>
+              <span class="sub">“Break down Project Alpha, note the risks, and schedule the kickoff” needs three handoffs; <code>runAgentTurn</code> executes exactly one. Make it an ordered <code>handoffs[]</code> capped at three, run sequentially, and render stacked confirm cards. Bounded, and still one request.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">E-3</span>
+            <span class="item-text">
+              <strong>Refinement turns.</strong>
+              <span class="sub">“Change #3's due date to Friday and drop #7” should re-draft against the existing plan, not start over. Pass the current plan in as <code>priorPlan</code> and re-hash — the confirm token is already minted from the hash, so integrity holds automatically.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">E-4</span>
+            <span class="item-text">
+              <strong>Finish A5, the Org Admin.</strong>
+              <span class="sub">Routing exists and the handoff currently returns “not available yet”. Same lifecycle as A2–A4, plus one rule: every write is dangerous and requires typed confirmation, because role changes have long-tail consequences. Already specified in the repository docs.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- F -->
+    <div class="track">
+      <div class="track-key">F</div>
+      <div class="track-body">
+        <h3>Proof — make quality measurable<span class="track-status">Shipped</span></h3>
+        <p class="track-tagline">Until this exists, every prompt edit is a coin flip.</p>
+        <ul class="items">
+          <li class="item">
+            <span class="item-id">F-1</span>
+            <span class="item-text">
+              <strong>An eval harness — 60 to 100 golden cases.</strong>
+              <span class="sub">Run against recorded fixtures in CI, free and fast, and against the live model on demand. Two metrics matter: <em>routing accuracy</em> — did A1 pick the right agent — and <em>schema validity rate</em> — how often does JSON repair have to fire.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">F-2</span>
+            <span class="item-text">
+              <strong>Authorization regression tests.</strong>
+              <span class="sub">For every read tool, assert it fails closed for a non-member. Audit finding P0 #1 was exactly this class of bug — an agent reading any project by id. One test per tool prevents its return.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">F-3</span>
+            <span class="item-text">
+              <strong>An AI observability page.</strong>
+              <span class="sub">Every number is already stored in <code>ai_messages</code> and currently unread: p50 and p95 latency per agent, tokens per day, repair rate, tool failure rate, exhausted-loop rate, top failing tools.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">F-4</span>
+            <span class="item-text">
+              <strong>Model tiering.</strong>
+              <span class="sub">One chain serves everything today. Route by job — a small, cheap model for classification, titles and JSON repair; the strong model for planning and analysis. <code>chatCompletion</code> already accepts a model, so this is a tier parameter and one new environment variable.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- G -->
+    <div class="track">
+      <div class="track-key">G</div>
+      <div class="track-body">
+        <h3>Polish — what users feel on day one<span class="track-status">Shipped</span></h3>
+        <p class="track-tagline">Small changes with an outsized effect on whether the assistant is trusted.</p>
+        <ul class="items">
+          <li class="item">
+            <span class="item-id">G-1</span>
+            <span class="item-text">
+              <strong>Stream the answer, not just the progress.</strong>
+              <span class="sub">Today the tool calls stream and the answer lands as one blob up to ninety seconds later. Split the response so the summary streams as text and the structured envelope arrives last. Perceived latency is the first complaint against any reasoning model.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">G-2</span>
+            <span class="item-text">
+              <strong>Language parity.</strong>
+              <span class="sub">Five agent languages to match five shipped locales, driven by the user's saved language preference rather than the prompt guessing from message text. The prompt currently hardcodes English or Bulgarian.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">G-3</span>
+            <span class="item-text">
+              <strong>Citations that click.</strong>
+              <span class="sub">The model already emits label and ref pairs, and the UI drops them on the floor. Render each as a deep link. Trust comes from being able to check the answer.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">G-4</span>
+            <span class="item-text">
+              <strong>Suggested follow-ups.</strong>
+              <span class="sub">Two or three next questions returned with each answer — same call, one extra field. It is what keeps people using an assistant rather than trying one.</span>
+            </span>
+          </li>
+          <li class="item">
+            <span class="item-id">G-5</span>
+            <span class="item-text">
+              <strong>Undo.</strong>
+              <span class="sub">Every apply already writes a result JSON to an applies table. Add ten minutes of undo, reversing creates by id. The confidence to press Apply comes from knowing you can take it back.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ ROADMAP ============================= -->
+  <section>
+    <div class="section-head">
+      <span class="eyebrow">Sequence</span>
+      <h2>Four phases</h2>
+    </div>
+    <p class="lede">
+      The order below is the order it was built in, and the reason for it held: the
+      eval harness had to exist before prompts changed, and the tool surface before
+      anything downstream could use it. Every phase is now in the codebase — what
+      remains is the setup each one needs, listed at the end.
+    </p>
+
+    <div class="phases">
+      <div class="phase">
+        <div class="phase-num">01</div>
+        <div>
+          <span class="duration">2–3 weeks</span>
+          <h3>Foundation — see more, prove more</h3>
+          <p>Search, the wider tool surface, the eval harness, rolling summaries, and language parity. Nothing user-visible is dramatic; everything after this depends on it.</p>
+          <div class="chips"><span class="chip">A-1</span><span class="chip">A-2</span><span class="chip">F-1</span><span class="chip">C-1</span><span class="chip">G-2</span></div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-num">02</div>
+        <div>
+          <span class="duration">3–4 weeks</span>
+          <h3>Initiative — the headline<span class="track-status">Shipped</span></h3>
+          <p>The scheduler lands first, then the daily brief, the risk radar, pre-drafted nudges, quota separation, and conversation history. This is the phase people notice.</p>
+          <div class="chips"><span class="chip">B-0</span><span class="chip">B-1</span><span class="chip">B-2</span><span class="chip">B-3</span><span class="chip">B-4</span><span class="chip">C-3</span></div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-num">03</div>
+        <div>
+          <span class="duration">~3 weeks</span>
+          <h3>Depth — real conversations</h3>
+          <p>Clarifying questions, multi-agent turns, refinement instead of restart, the finished Org Admin, and undo behind every apply.</p>
+          <div class="chips"><span class="chip">E-1</span><span class="chip">E-2</span><span class="chip">E-3</span><span class="chip">E-4</span><span class="chip">G-5</span></div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-num">04</div>
+        <div>
+          <span class="duration">~2 weeks</span>
+          <h3>Ambient and measured</h3>
+          <p>AI shows up inside tasks, projects, notes and the command palette — and the observability page finally reads the numbers the database has been collecting all along.</p>
+          <div class="chips"><span class="chip">D-1</span><span class="chip">D-2</span><span class="chip">F-3</span><span class="chip">F-4</span><span class="chip">G-1</span><span class="chip">G-3</span><span class="chip">G-4</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== RISKS ============================= -->
+  <section>
+    <div class="section-head">
+      <span class="eyebrow">Before committing</span>
+      <h2>Decisions and risks</h2>
+    </div>
+
+    <div class="risks">
+      <div class="risk">
+        <h3>Background jobs need a home — and this one blocks all of Track B</h3>
+        <p>Next.js route handlers do not run on a schedule. Choose between the <code>ws-server/</code> scheduler, Vercel Cron, and a separate worker <em>before</em> Phase 2 starts.</p>
+      </div>
+      <div class="risk">
+        <h3>Full-text search versus embeddings</h3>
+        <p class="verdict">Postgres FTS is free, needs no extension, and works today. pgvector buys semantic recall at the cost of an embedding call per write and a new extension. <strong>Ship FTS in Phase 1, then measure what search actually misses</strong> before deciding whether vectors earn their keep.</p>
+      </div>
+      <div class="risk">
+        <h3>Proactive AI is a spend multiplier</h3>
+        <p>One brief per user per day is a fixed daily cost with no human in the loop to justify it. Gate it behind explicit opt-in and an organisation-level quota.</p>
+      </div>
+      <div class="risk">
+        <h3>Proactive AI is also a trust risk</h3>
+        <p>An assistant that is wrong when you asked it is annoying. One that is wrong unprompted is noise you switch off permanently. Ship the Risk Radar behind a flag and treat dismissal rate as the primary metric.</p>
+      </div>
+      <div class="risk">
+        <h3>The 50-per-day limit will bite</h3>
+        <p>A multi-agent turn costs three to five model calls. Meter by calls rather than messages — <code>recordExtraAiCall</code> already exists for the tool loop, so extend it to the draft and handoff paths.</p>
+      </div>
+      <div class="risk">
+        <h3>The documentation has drifted</h3>
+        <p>The agent overview still describes code at <code>src/server/agents/</code>, which is now <code>src/server/llm/</code>. Fix it during Phase 1 or the plan inherits the confusion.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= CLOSING ============================ -->
+  <div class="closing">
+    <p class="eyebrow">If there were only one week</p>
+    <h2 class="serif">Three things, in this order</h2>
+    <ol class="cuts">
+      <li>
+        <span>
+          <strong><code>searchWorkspace</code></strong>
+          <span class="why">The largest capability gain per line of code anywhere in this document.</span>
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>An eval harness with forty routing cases</strong>
+          <span class="why">Turns prompt work from guesswork into engineering.</span>
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>The Daily Brief, one user, behind a flag</strong>
+          <span class="why">The demo that makes someone say “that is not a chatbot.”</span>
+        </span>
+      </li>
+    </ol>
+  </div>
+
+  <footer>
+    Plan: <code>docs/agents/plans/ai-agent-enhancement-plan.md</code> ·
+    What shipped, and where: <code>docs/agents/ai-enhancement-implementation.md</code>
+  </footer>
+
+</div>

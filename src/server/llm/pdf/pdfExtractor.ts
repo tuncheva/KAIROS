@@ -60,6 +60,24 @@ const MAX_TEXT_LENGTH = 30_000;
 /** Maximum number of pages to extract text from. */
 const MAX_PAGES = 50;
 
+/**
+ * Per-call overrides.
+ *
+ * The defaults above are sized for the original caller, which puts extracted
+ * text straight into a prompt — so its ceiling is a token budget. Document
+ * ingestion has no such ceiling: the text is chunked and stored, and nothing but
+ * one chunk at a time ever reaches a prompt. Capping ingestion at a prompt's
+ * worth of characters would silently discard most of any real document, so the
+ * limits are parameters rather than constants.
+ *
+ * Also returns per-page text, which the flat `text` cannot express. The chunker
+ * needs it to attribute a passage to a page for citation.
+ */
+export interface ExtractionLimits {
+  maxTextLength?: number;
+  maxPages?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Public interface
 // ---------------------------------------------------------------------------
@@ -68,6 +86,8 @@ export interface PdfExtractionResult {
   text: string;
   numPages: number;
   truncated: boolean;
+  /** Text per page, in order. Empty pages are included as empty strings. */
+  pages: Array<{ page: number; text: string }>;
 }
 
 /**
@@ -80,7 +100,10 @@ export interface PdfExtractionResult {
  */
 export async function extractTextFromPdf(
   base64: string,
+  limits: ExtractionLimits = {},
 ): Promise<PdfExtractionResult> {
+  const maxTextLength = limits.maxTextLength ?? MAX_TEXT_LENGTH;
+  const maxPages = limits.maxPages ?? MAX_PAGES;
   const buffer = Buffer.from(base64, "base64");
 
   // ---- Validation --------------------------------------------------------
@@ -128,9 +151,10 @@ export async function extractTextFromPdf(
   // ---- Extract text page-by-page ----------------------------------------
   try {
     const numPages = doc.numPages;
-    const pagesToExtract = Math.min(numPages, MAX_PAGES);
+    const pagesToExtract = Math.min(numPages, maxPages);
     let fullText = "";
-    let truncated = numPages > MAX_PAGES;
+    let truncated = numPages > maxPages;
+    const pages: Array<{ page: number; text: string }> = [];
 
     for (let i = 1; i <= pagesToExtract; i++) {
       const page = await doc.getPage(i);
@@ -141,10 +165,11 @@ export async function extractTextFromPdf(
         .map((item) => item.str)
         .join(" ");
 
+      pages.push({ page: i, text: pageText });
       fullText += pageText + "\n";
 
-      if (fullText.length > MAX_TEXT_LENGTH) {
-        fullText = fullText.slice(0, MAX_TEXT_LENGTH);
+      if (fullText.length > maxTextLength) {
+        fullText = fullText.slice(0, maxTextLength);
         truncated = true;
         break;
       }
@@ -158,7 +183,7 @@ export async function extractTextFromPdf(
       );
     }
 
-    return { text: fullText, numPages, truncated };
+    return { text: fullText, numPages, truncated, pages };
   } finally {
     doc.destroy();
   }

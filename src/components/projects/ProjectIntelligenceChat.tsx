@@ -1,14 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   useAgentStream,
   type AgentTurnPayload,
 } from "~/hooks/useAgentStream";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
-import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil } from "lucide-react";
+
+import { PlanDiffCard } from "./PlanDiffCard";
+import { UndoApplyButton } from "./UndoApplyButton";
+import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil, ArrowUp, ArrowUpRight } from "lucide-react";
 import { useDateFormat } from "~/hooks/useDateFormat";
+import { humanizeToolName, type TrailEvent } from "~/components/chat/trail";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -47,6 +57,14 @@ type ChatMsg =
       text: string;
       createdAt: Date;
       msgId?: string; // unique ID for tracking edits
+      /**
+       * Which specialist produced this answer, when A1 handed off.
+       *
+       * Read off the turn payload rather than off the picker: the picker holds
+       * what the *next* message will be sent to, so using it for the byline
+       * would relabel every answer above the moment the user changed agent.
+       */
+      agentId?: string;
       actions?: Array<
         | { type: "notes_confirm"; draftId: string }
         | { type: "notes_apply"; draftId: string; confirmationToken: string }
@@ -55,6 +73,7 @@ type ChatMsg =
         | { type: "events_apply"; draftId: string; confirmationToken: string }
         | { type: "events_direct_apply"; draftId: string } // Combined confirm+apply
         | { type: "task_confirm"; draftId: string }
+        | { type: "task_undo"; draftId: string }
         | { type: "task_apply"; draftId: string; confirmationToken: string }
         | { type: "task_direct_apply"; draftId: string } // Combined confirm+apply
       >;
@@ -309,7 +328,7 @@ function EventPreviewCard({
         isEditable ? (
           <input
             type="text"
-            className="w-full text-sm font-semibold text-fg-primary bg-bg-secondary/50 border border-border-secondary rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-accent-primary"
+            className="w-full text-sm font-semibold text-fg-primary bg-bg-secondary/50 border border-border-medium rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-accent-primary"
             defaultValue={item.title}
             onChange={(e) => onFieldChange("title", e.target.value)}
             placeholder="Event title..."
@@ -321,7 +340,7 @@ function EventPreviewCard({
       {item.description && (
         isEditable ? (
           <textarea
-            className="w-full text-xs text-fg-secondary bg-bg-secondary/50 border border-border-secondary rounded-md p-2 mt-1 resize-none focus:outline-none focus:ring-1 focus:ring-accent-primary min-h-[40px]"
+            className="w-full text-xs text-fg-secondary bg-bg-secondary/50 border border-border-medium rounded-md p-2 mt-1 resize-none focus:outline-none focus:ring-1 focus:ring-accent-primary min-h-[40px]"
             defaultValue={item.description}
             onChange={(e) => onFieldChange("description", e.target.value)}
             placeholder="Event description..."
@@ -394,7 +413,7 @@ function NotePreviewCard({
       {item.content && (
         isEditable ? (
           <textarea
-            className="w-full text-xs text-fg-secondary bg-bg-secondary/50 border border-border-secondary rounded-md p-2 resize-none focus:outline-none focus:ring-1 focus:ring-accent-primary min-h-[60px]"
+            className="w-full text-xs text-fg-secondary bg-bg-secondary/50 border border-border-medium rounded-md p-2 resize-none focus:outline-none focus:ring-1 focus:ring-accent-primary min-h-[60px]"
             defaultValue={item.content}
             onChange={(e) => onContentChange(e.target.value)}
             placeholder="Edit note content..."
@@ -414,9 +433,85 @@ function NotePreviewCard({
 /*  Main Component                                                    */
 /* ------------------------------------------------------------------ */
 
-export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMessage?: () => void }) {
-  const { projectId } = props;
+export function ProjectIntelligenceChat(props: {
+  projectId?: number;
+  onAgentMessage?: () => void;
+  /**
+   * D-1/D-2 — a message to send as soon as the chat mounts.
+   *
+   * Set by the command palette and by the "fix this" buttons on risk findings,
+   * so acting on a nudge costs one click rather than retyping the problem back
+   * to the assistant that just reported it. Sent once: re-firing it on every
+   * render would loop the turn.
+   */
+  prefill?: string;
+  /**
+   * A sub-agent pinned in the workspace picker.
+   *
+   * Undefined is Auto — A1 routes and hands off, which is what every caller
+   * outside the expanded workspace passes and what this chat has always done.
+   */
+  pinnedAgentId?: string;
+  /** Tools the last turn called, so the workspace can render an audit trail. */
+  onToolsUsed?: (names: string[]) => void;
+  /**
+   * Offer "delete this chat and start over" in the header.
+   *
+   * Opt-in. The expanded workspace is where a thread gets long enough to be
+   * worth throwing away; a destructive control should not appear on the compact
+   * quick-ask widget just because it was added elsewhere.
+   */
+  showNewChat?: boolean;
+  /**
+   * How the thread is dressed.
+   *
+   * `compact` is the rounded-bubble chat this component has always rendered and
+   * is still the default, so the project panels that embed it are untouched.
+   *
+   * `widget` and `console` are the two designed surfaces — the floating
+   * assistant and the full AI page. They share a shape: answers run full-width
+   * rather than in a bubble, and the composer is a panel that carries the agent
+   * and scope pickers instead of a bare pill. They differ only in density, and
+   * in the console additionally naming the specialist that answered.
+   *
+   * Only the presentation differs. The turn itself is identical in all three.
+   */
+  variant?: "compact" | "widget" | "console";
+  /** The page draws its own header; the built-in one would be a second one. */
+  hideHeader?: boolean;
+  /**
+   * Which stored thread to show.
+   *
+   * `undefined` keeps the original behaviour: rehydrate whichever conversation
+   * was the caller's most recent one for this scope. `null` is an explicitly
+   * empty thread — the user pressed "new conversation", and the previous thread
+   * must not be poured back into it. A string loads that specific thread.
+   */
+  conversationId?: string | null;
+  /** Fires when a turn creates or continues a thread, with its id. */
+  onConversationChange?: (id: string) => void;
+  /** The turn's audit trail, rebuilt from the stream as frames arrive. */
+  onTrail?: (events: TrailEvent[]) => void;
+  /** True while a turn is in flight. */
+  onBusyChange?: (busy: boolean) => void;
+  /** Pickers rendered in the panel composer's control row. */
+  composerControls?: ReactNode;
+  /**
+   * Rendered at the foot of the empty state — the widget's quota line and its
+   * "open full page" link. Supplied by the host because only the host knows
+   * where "full page" is from where it is mounted.
+   */
+  emptyStateFooter?: ReactNode;
+}) {
+  const { projectId, pinnedAgentId } = props;
+  const isConsole = props.variant === "console";
+  /** The two designed surfaces. See `variant`. */
+  const isPanel = isConsole || props.variant === "widget";
   const t = useTranslations("chat");
+  // The console chrome has its own vocabulary — trail nodes, scope chips — and
+  // keeping it out of the `chat` namespace stops the widget's message catalogue
+  // from growing keys it never renders.
+  const tc = useTranslations("aiConsole");
   const utils = api.useUtils();
 
   const [draft, setDraft] = useState("");
@@ -428,6 +523,11 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
   const [noteEdits, setNoteEdits] = useState<Record<string, Record<number, string>>>({});
   const [eventEdits, setEventEdits] = useState<Record<string, Record<number, { title?: string; description?: string }>>>({});
 
+  // Starting over deletes the stored thread, which nothing can undo — so it asks
+  // first, and reports a failed delete instead of pretending the chat is gone.
+  const [confirmNewChat, setConfirmNewChat] = useState(false);
+  const [newChatError, setNewChatError] = useState<string | null>(null);
+
   // Generate unique message IDs
   const generateMsgId = useCallback(() => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`, []);
 
@@ -435,6 +535,18 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
   const rateLimitQuery = api.agent.rateLimitStatus.useQuery(undefined, {
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
+  });
+
+  /**
+   * The agent roster, for the console byline.
+   *
+   * Static content the page has already fetched, so this resolves from cache;
+   * it is enabled only in the console because the widget never renders a
+   * byline and should not pay for the round trip.
+   */
+  const rosterQuery = api.agent.agents.useQuery(undefined, {
+    enabled: isConsole,
+    staleTime: Infinity,
   });
 
   const suggestedQuestions = [
@@ -459,6 +571,82 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
 
   const [progressLabel, setProgressLabel] = useState<string | null>(null);
   const conversationIdRef = useRef<string | undefined>(undefined);
+  /** Tool names this turn has called, in order. Reset when a turn starts. */
+  const toolsThisTurn = useRef<string[]>([]);
+
+  /**
+   * The session's audit trail.
+   *
+   * Kept in a ref and pushed out through `onTrail` rather than held in state:
+   * the trail is rendered by the page's right rail, and re-rendering the whole
+   * transcript on every tool frame in order to move a panel next door is waste.
+   *
+   * It accumulates for as long as the thread is open. The trail used to be
+   * wiped on every send, which meant the panel could only ever answer "what did
+   * the last message do" — and a user auditing an answer is usually looking at
+   * a claim made several messages back. Each event records its turn, so the
+   * panel can still separate them.
+   *
+   * `turnStartedAt` is re-stamped on send, so every node's elapsed time is
+   * measured from the moment *its own* request left the browser. That includes
+   * network time, which is why the panel labels it as time-since-start rather
+   * than as a server-side duration it cannot actually observe.
+   */
+  const trailRef = useRef<TrailEvent[]>([]);
+  const turnStartedAt = useRef(0);
+  /** 1-based; incremented on send, so trail nodes can be grouped by turn. */
+  const turnIndex = useRef(0);
+  /** The message that opened the current turn, used as the group heading. */
+  const turnPrompt = useRef<string | undefined>(undefined);
+
+  const pushTrail = useCallback(
+    (
+      event: Omit<
+        TrailEvent,
+        "id" | "elapsedMs" | "at" | "turnIndex" | "turnPrompt"
+      >,
+    ) => {
+      const now = Date.now();
+      trailRef.current = [
+        ...trailRef.current,
+        {
+          ...event,
+          id: `${String(turnIndex.current)}-${String(trailRef.current.length)}-${event.kind}`,
+          turnIndex: turnIndex.current,
+          turnPrompt: turnPrompt.current,
+          elapsedMs: now - turnStartedAt.current,
+          at: new Date(now),
+        },
+      ];
+      props.onTrail?.(trailRef.current);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  /**
+   * One line of trail for the widget.
+   *
+   * The floating panel has no room for the full timeline the page renders, but
+   * "3 lookups · 5.4s" and the name of the last one is enough to tell a user
+   * that the answer came from their workspace rather than from thin air — and
+   * it is the same data, not a second, looser claim about it.
+   */
+  const [trailSummary, setTrailSummary] = useState<{
+    lastLabel: string;
+    lookups: number;
+    latencyMs: number;
+  } | null>(null);
+
+  const resetTrail = useCallback(() => {
+    trailRef.current = [];
+    turnIndex.current = 0;
+    turnPrompt.current = undefined;
+    setTrailSummary(null);
+    props.onTrail?.([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   /** Render a sub-agent's plan into chat text, previews and action buttons. */
   const buildPlanMessage = useCallback(
@@ -470,8 +658,13 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
       if (!plan) {
         const text = [
           summary,
+          // E-1: a clarifying question is an answer, not a failure — render the
+          // question and the options it offered rather than "no response".
+          payload.a1.clarify?.question,
+          ...(payload.a1.clarify?.options ?? []).map((o) => `• ${o}`),
           ...(payload.a1.answer?.details ?? []).map((d) => `• ${d}`),
-          payload.handoffError,
+          // E-2: a turn can now fail more than one handoff, so this is a list.
+          ...(payload.handoffErrors ?? []),
         ]
           .filter(Boolean)
           .join("\n");
@@ -666,10 +859,19 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
     [generateMsgId, t],
   );
 
-  const { send: sendTurn } = useAgentStream({
-    onToolCall: (name) => setProgressLabel(t("lookingUp", { tool: name })),
+  const { send: sendTurn, cancel: cancelTurn } = useAgentStream({
+    onToolCall: (name) => {
+      setProgressLabel(t("lookingUp", { tool: name }));
+      // The stream already reports every lookup; it was only ever used for a
+      // transient label that the next frame overwrote. Keeping the list turns
+      // the same frames into a record of what the answer was actually based on.
+      toolsThisTurn.current = [...toolsThisTurn.current, name];
+      props.onToolsUsed?.(toolsThisTurn.current);
+      pushTrail({ kind: "tool", label: humanizeToolName(name), code: name });
+    },
     onSubAgent: (agent) => {
       setProgressLabel(t("subAgentWorking", { agent }));
+      pushTrail({ kind: "handoff", label: tc("trailHandoff"), code: agent });
       // Swap the dots for the sub-agent bar: a handoff has actually happened.
       setMessages((prev) =>
         replaceThinking(prev, {
@@ -681,11 +883,51 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
     onResult: (payload) => {
       conversationIdRef.current = payload.conversationId;
       setProgressLabel(null);
-      setMessages((prev) => replaceThinking(prev, buildPlanMessage(payload)));
+
+      // A draft is the only thing in a turn that can still change the
+      // workspace, so it gets its own node rather than being folded into
+      // "answered" — the trail is where a user checks what is pending.
+      for (const plan of payload.plans ?? []) {
+        pushTrail({
+          kind: "draft",
+          label: tc("trailDraft"),
+          detail: tc("trailDraftDetail", { kind: plan.kind }),
+          code: plan.draftId,
+        });
+      }
+      pushTrail({
+        kind: "done",
+        label: tc("trailAnswered"),
+        detail: tc("trailLatency", { ms: payload.latencyMs }),
+      });
+
+      // Per-turn, unlike the trail itself: the widget chip is a claim about
+      // the answer just rendered, not about the session.
+      const lookups = trailRef.current.filter(
+        (e) => e.kind === "tool" && e.turnIndex === turnIndex.current,
+      );
+      setTrailSummary({
+        lastLabel: lookups[lookups.length - 1]?.label ?? tc("trailStarted"),
+        lookups: lookups.length,
+        latencyMs: payload.latencyMs,
+      });
+
+      props.onConversationChange?.(payload.conversationId);
+      props.onBusyChange?.(false);
+      setMessages((prev) =>
+        replaceThinking(prev, {
+          ...buildPlanMessage(payload),
+          agentId:
+            payload.a1.handoff?.targetAgent ??
+            payload.a1.handoffs?.[0]?.targetAgent,
+        }),
+      );
       if (payload.plan?.kind === "tasks") void utils.task.invalidate();
     },
     onError: (message, isRateLimit) => {
       setProgressLabel(null);
+      pushTrail({ kind: "error", label: tc("trailFailed"), detail: message });
+      props.onBusyChange?.(false);
       if (isRateLimit) {
         setRateLimitPopup({ show: true, message });
         void rateLimitQuery.refetch();
@@ -733,20 +975,61 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
    * applied or expired since, and a button that fails on click is worse than no
    * button. The user can ask again.
    */
-  const historyQuery = api.agent.latestConversation.useQuery(
+  /**
+   * `undefined` means "whichever thread was most recent", which is what every
+   * caller outside the AI page passes and what this component has always done.
+   * The page passes an explicit id — or `null` for a deliberately empty thread —
+   * so exactly one of the two queries below is ever enabled.
+   */
+  const pinnedConversationId = props.conversationId;
+  const wantsLatest = pinnedConversationId === undefined;
+
+  const latestQuery = api.agent.latestConversation.useQuery(
     { projectId },
-    { refetchOnWindowFocus: false, staleTime: Infinity },
+    { enabled: wantsLatest, refetchOnWindowFocus: false, staleTime: Infinity },
   );
+
+  const pinnedQuery = api.agent.conversation.useQuery(
+    { conversationId: pinnedConversationId ?? "" },
+    {
+      enabled: typeof pinnedConversationId === "string",
+      refetchOnWindowFocus: false,
+      staleTime: Infinity,
+    },
+  );
+
+  const historyData = wantsLatest
+    ? latestQuery.data
+    : typeof pinnedConversationId === "string" && pinnedQuery.data
+      ? { conversationId: pinnedConversationId, messages: pinnedQuery.data }
+      : undefined;
 
   const hydratedRef = useRef(false);
 
+  /**
+   * A pinned thread's id is known before its messages have loaded. Seeding it
+   * here means a message sent during that window continues the thread the user
+   * is looking at, rather than quietly forking a second one beside it.
+   */
+  useEffect(() => {
+    if (typeof pinnedConversationId === "string") {
+      conversationIdRef.current = pinnedConversationId;
+    } else if (pinnedConversationId === null) {
+      conversationIdRef.current = undefined;
+    }
+  }, [pinnedConversationId]);
+
   useEffect(() => {
     if (hydratedRef.current) return;
-    const data = historyQuery.data;
+    const data = historyData;
     if (!data?.conversationId || data.messages.length === 0) return;
 
     hydratedRef.current = true;
     conversationIdRef.current = data.conversationId;
+    // A restored thread is as much "the conversation you are in" as one you
+    // just started, so the page can name it in the header and highlight it in
+    // the rail without waiting for the next turn to tell it which one this is.
+    props.onConversationChange?.(data.conversationId);
 
     setMessages(
       data.messages.map((m): ChatMsg => {
@@ -772,9 +1055,74 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
         return { role: "agent", text, createdAt: m.createdAt };
       }),
     );
-  }, [historyQuery.data, projectId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyData, projectId]);
+
+  /* ---------- Start over ---------- */
+
+  const deleteConversationMutation = api.agent.deleteConversation.useMutation();
+
+  /**
+   * Throw the thread away — on the server as well as on screen.
+   *
+   * Clearing local state alone would not be starting over: the conversation id
+   * would still ride along with the next message, so the model would keep
+   * replaying a history the user believes they deleted. The row goes first and
+   * the screen is cleared only once it is gone, because a chat that looks empty
+   * while its history still feeds the next answer is the worst of both.
+   *
+   * `hydratedRef` is latched shut on the way out. Rehydration restores *the most
+   * recent* conversation, so the invalidate below would otherwise pour the
+   * previous thread straight into the empty one.
+   */
+  const startNewChat = useCallback(async () => {
+    const doomed = conversationIdRef.current;
+    setNewChatError(null);
+
+    if (doomed) {
+      try {
+        await deleteConversationMutation.mutateAsync({ conversationId: doomed });
+      } catch (err) {
+        setNewChatError(err instanceof Error ? err.message : String(err));
+        return;
+      }
+    }
+
+    // A turn still in flight would call onResult against the thread that no
+    // longer exists and re-seed conversationIdRef with its id.
+    cancelTurn();
+    hydratedRef.current = true;
+    conversationIdRef.current = undefined;
+
+    setMessages([]);
+    setDraft("");
+    setProgressLabel(null);
+    setNoteEdits({});
+    setEventEdits({});
+    toolsThisTurn.current = [];
+    props.onToolsUsed?.([]);
+    resetTrail();
+    setConfirmNewChat(false);
+
+    if (doomed) {
+      void utils.agent.latestConversation.invalidate();
+      void utils.agent.conversations.invalidate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cancelTurn, deleteConversationMutation, resetTrail, utils]);
 
   /* ---------- Scrolling ---------- */
+
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    // Collapse first: without it the box can grow but never shrink back when
+    // the draft is cleared or edited down.
+    el.style.height = "auto";
+    el.style.height = `${String(el.scrollHeight)}px`;
+  }, [draft]);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const scrollToBottom = useCallback(() => {
@@ -791,6 +1139,8 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
 
   /* ---------- Send handler ---------- */
 
+  const prefillSent = useRef(false);
+
   const handleSend = useCallback(
     (text: string) => {
       const msg = text.trim();
@@ -804,14 +1154,49 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
       ]);
       setProgressLabel(null);
 
+      // A new turn starts a new audit trail; otherwise the chip under the answer
+      // would accumulate every lookup of the whole session.
+      toolsThisTurn.current = [];
+      props.onToolsUsed?.([]);
+
+      // The trail is *not* cleared here: it spans the thread, and a new turn
+      // opens a new group inside it rather than replacing it.
+      turnIndex.current += 1;
+      turnPrompt.current = msg;
+      turnStartedAt.current = Date.now();
+      setTrailSummary(null);
+      props.onBusyChange?.(true);
+      pushTrail({
+        kind: "start",
+        label: tc("trailStarted"),
+        detail: pinnedAgentId ? undefined : tc("trailAutoRouting"),
+        code: pinnedAgentId,
+      });
+
       void sendTurn({
         message: clampText(msg),
         projectId,
         conversationId: conversationIdRef.current,
+        agentId: pinnedAgentId,
       });
     },
-    [projectId, sendTurn],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projectId, pinnedAgentId, pushTrail, sendTurn, tc],
   );
+
+  /**
+   * D-1/D-2 — send the prefilled message once, on mount.
+   *
+   * Guarded by a ref rather than by a dependency array: `handleSend` is
+   * recreated on most renders, and depending on it would re-send the message
+   * every time the conversation state changed.
+   */
+  useEffect(() => {
+    if (!props.prefill || prefillSent.current) return;
+    prefillSent.current = true;
+    handleSend(props.prefill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.prefill]);
 
   const isThinking =
     messages.length > 0 &&
@@ -880,7 +1265,64 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
         </div>
       )}
 
+      {/* ---- Delete chat & start over confirmation ---- */}
+      {confirmNewChat && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="kairos-new-chat-title"
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border p-6 shadow-2xl"
+            style={{
+              backgroundColor: "rgb(var(--bg-primary))",
+              borderColor: "rgb(var(--border-medium))",
+            }}
+          >
+            <h3
+              id="kairos-new-chat-title"
+              className="mb-2 text-lg font-bold text-fg-primary"
+            >
+              {t("deleteChatTitle")}
+            </h3>
+            <p className="text-sm text-fg-secondary">
+              {t("deleteChatConfirmMessage")}
+            </p>
+            {newChatError && (
+              <p className="mt-3 text-xs text-red-400" role="alert">
+                {t("deleteChatFailed", { error: newChatError })}
+              </p>
+            )}
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmNewChat(false);
+                  setNewChatError(null);
+                }}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-surface"
+              >
+                {t("cancel")}
+              </button>
+              <button
+                type="button"
+                data-testid="new-chat-confirm"
+                onClick={() => void startNewChat()}
+                disabled={deleteConversationMutation.isPending}
+                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+              >
+                {deleteConversationMutation.isPending
+                  ? t("deleting")
+                  : t("deleteAndStartOver")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ---- Header ---- */}
+      {!props.hideHeader && (
       <div
         className="px-4 py-3 flex items-center justify-between gap-3 border-b"
         style={{
@@ -917,15 +1359,39 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
           </div>
         </div>
 
-        <button
-          type="button"
-          className="text-xs px-2.5 py-1.5 rounded-lg text-fg-secondary transition-colors hover:text-fg-primary"
-          style={{ backgroundColor: "rgb(var(--bg-secondary))" }}
-          onClick={() => setShowAssumptions((v) => !v)}
-        >
-          {showAssumptions ? t("hide") : t("info")}
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {props.showNewChat && (
+            <button
+              type="button"
+              data-testid="new-chat"
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-fg-secondary transition-colors hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-40"
+              style={{ backgroundColor: "rgb(var(--bg-secondary))" }}
+              // Nothing on screen means nothing to start over from — and the
+              // stored thread, if any, is already empty.
+              disabled={messages.length === 0}
+              title={t("newChatTooltip")}
+              aria-label={t("newChatTooltip")}
+              onClick={() => {
+                setNewChatError(null);
+                setConfirmNewChat(true);
+              }}
+            >
+              <Trash2 size={12} />
+              <span className="hidden sm:inline">{t("newChat")}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="text-xs px-2.5 py-1.5 rounded-lg text-fg-secondary transition-colors hover:text-fg-primary"
+            style={{ backgroundColor: "rgb(var(--bg-secondary))" }}
+            onClick={() => setShowAssumptions((v) => !v)}
+          >
+            {showAssumptions ? t("hide") : t("info")}
+          </button>
+        </div>
       </div>
+      )}
 
       {showAssumptions && (
         <div
@@ -949,11 +1415,62 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
       {/* ---- Messages ---- */}
       <div
         ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto px-4 py-6"
+        className={`flex-1 min-h-0 overflow-y-auto ${
+          isConsole ? "px-6 py-7 lg:px-10" : isPanel ? "px-4 py-5" : "px-4 py-6"
+        }`}
         style={{ backgroundColor: "rgb(var(--bg-primary))" }}
       >
-        <div className="w-full space-y-4">
-          {messages.length === 0 ? (
+        <div
+          className={
+            isConsole
+              ? "flex w-full flex-col gap-7"
+              : isPanel
+                ? "flex w-full flex-col gap-4"
+                : "w-full space-y-4"
+          }
+        >
+          {messages.length === 0 && isPanel ? (
+            /*
+             * A menu, not a greeting.
+             *
+             * The old empty state was an icon, two lines of copy and four
+             * pill-shaped chips. The chips were the only useful thing on it and
+             * were also the hardest to read — a suggestion is a sentence, and a
+             * sentence set in an 11px pill wraps badly and reads as decoration.
+             * Full-width rows give each one the line it needs and make it
+             * obvious they are pressable.
+             */
+            <div className="flex h-full flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <p className="text-[17px] font-semibold tracking-[-0.015em] text-fg-primary">
+                  {t("emptyTitle")}
+                </p>
+                <p className="text-[13px] leading-relaxed text-fg-tertiary">
+                  {tc("emptyDescription")}
+                </p>
+              </div>
+
+              <div className="flex flex-col overflow-hidden rounded-[10px] border border-border-medium/70">
+                {suggestedQuestions.map((q, qi) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => handleSend(q)}
+                    className={`flex items-center justify-between gap-2.5 bg-bg-secondary px-3.5 py-3 text-left text-[13px] text-fg-secondary transition-colors hover:bg-bg-tertiary hover:text-fg-primary ${
+                      qi > 0 ? "border-t border-border-medium/50" : ""
+                    }`}
+                  >
+                    {q}
+                    <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
+                  </button>
+                ))}
+              </div>
+
+              {props.emptyStateFooter && (
+                <div className="mt-auto">{props.emptyStateFooter}</div>
+              )}
+            </div>
+          ) : messages.length === 0 ? (
             <div className="py-8 text-center space-y-5">
               <div
                 className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mx-auto"
@@ -1020,17 +1537,52 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
                 >
                   <div
                     className={
-                      m.role === "user"
-                        ? "group max-w-[85%] rounded-2xl rounded-br-md text-white px-4 py-2.5 shadow-sm"
-                        : "group max-w-[85%] rounded-2xl rounded-bl-md text-fg-primary px-4 py-2.5 shadow-sm"
+                      isPanel
+                        ? m.role === "user"
+                          ? // The console's user turn is a quiet raised card
+                            // rather than an accent slab: on a full page the
+                            // accent belongs to the assistant's identity and to
+                            // the controls that change the workspace, not to
+                            // every line the user has ever typed.
+                            "group max-w-[520px] rounded-xl rounded-br-sm border border-border-medium/60 bg-bg-tertiary px-4 py-3 text-fg-primary"
+                          : "group w-full max-w-[720px] text-fg-primary"
+                        : m.role === "user"
+                          ? "group max-w-[85%] rounded-2xl rounded-br-md text-white px-4 py-2.5 shadow-sm"
+                          : "group max-w-[85%] rounded-2xl rounded-bl-md text-fg-primary px-4 py-2.5 shadow-sm"
                     }
-                    style={{
-                      backgroundColor:
-                        m.role === "user"
-                          ? "rgb(var(--accent-primary))"
-                          : "rgb(var(--bg-secondary))",
-                    }}
+                    style={
+                      isPanel
+                        ? undefined
+                        : {
+                            backgroundColor:
+                              m.role === "user"
+                                ? "rgb(var(--accent-primary))"
+                                : "rgb(var(--bg-secondary))",
+                          }
+                    }
                   >
+                    {/* Console byline: who is answering, and how they got here.
+                        An answer that cannot be attributed cannot be checked. */}
+                    {isConsole && m.role === "agent" && (
+                      <div className="mb-3 flex flex-wrap items-center gap-2.5">
+                        <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[7px] bg-accent-primary/15 text-accent-primary">
+                          <Sparkles size={13} />
+                        </span>
+                        <span className="text-[13px] font-semibold text-fg-primary">
+                          {rosterQuery.data?.find(
+                            (a) => a.id === (m as { agentId?: string }).agentId,
+                          )?.name ?? t("title")}
+                        </span>
+                        <span className="kairos-stamp text-[10px] text-fg-tertiary">
+                          {(m as { agentId?: string }).agentId
+                            ? tc("bylineRouted")
+                            : pinnedAgentId
+                              ? tc("bylinePinned")
+                              : tc("bylineAuto")}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Message content */}
                     <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
@@ -1165,6 +1717,23 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
                         })}
                       </div>
                     )}
+
+                    {/*
+                      The real, field-level diff — read from the rows, not from
+                      the model's own description of its plan. Rendered above the
+                      confirm button so the count on the button is something the
+                      user has had a chance to check.
+                    */}
+                    {m.role === "agent"
+                      ? m.actions
+                          ?.filter((a) => a.type === "task_confirm")
+                          .map((a) => (
+                            <PlanDiffCard
+                              key={`diff-${a.draftId}`}
+                              draftId={a.draftId}
+                            />
+                          ))
+                      : null}
 
                     {/* Action buttons */}
                     {m.role === "agent" && m.actions?.length ? (
@@ -1607,6 +2176,21 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
                             );
                           }
 
+                          /* ---- Undo an applied plan ---- */
+                          if (a.type === "task_undo") {
+                            return (
+                              <UndoApplyButton
+                                key={`${a.type}-${a.draftId}-${aIdx}`}
+                                draftId={a.draftId}
+                                kind="tasks"
+                                onUndone={() => {
+                                  void utils.task.invalidate();
+                                  void utils.project.invalidate();
+                                }}
+                              />
+                            );
+                          }
+
                           /* ---- Task Confirm ---- */
                           if (a.type === "task_confirm") {
                             return (
@@ -1723,6 +2307,16 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
                                                 "taskPlannerDoneNoCount",
                                               ),
                                         createdAt: new Date(),
+                                        // The point of the draft/confirm/apply
+                                        // lifecycle: pressing Apply is safe
+                                        // because it can be taken back. Offered
+                                        // here for the first time.
+                                        actions: [
+                                          {
+                                            type: "task_undo",
+                                            draftId: a.draftId,
+                                          },
+                                        ],
                                       },
                                     ]);
                                     // Instant update: invalidate task/project caches
@@ -1762,6 +2356,21 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
               );
             })
           )}
+          {/* The widget's one-line trail. The page renders the full timeline
+              in its right rail, so it would only be a duplicate there. */}
+          {props.variant === "widget" && trailSummary && (
+            <div className="kairos-stamp mt-1 flex items-center gap-2.5 text-[9.5px] text-fg-tertiary">
+              <span className="truncate">{trailSummary.lastLabel}</span>
+              <span className="h-px flex-1 bg-border-medium/60" />
+              <span className="shrink-0">
+                {tc("trailSummary", {
+                  count: trailSummary.lookups,
+                  seconds: (trailSummary.latencyMs / 1000).toFixed(1),
+                })}
+              </span>
+            </div>
+          )}
+
           <div className="h-2" />
         </div>
       </div>
@@ -1780,6 +2389,78 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
           handleSend(draft);
         }}
       >
+        {isPanel ? (
+          /*
+           * The console composer.
+           *
+           * A panel rather than a pill, because it carries more than text: who
+           * answers and what they can see are decisions about the *next*
+           * message, so they sit with the message being written rather than in
+           * a settings pane the user would have to go and find.
+           *
+           * Enter inserts a newline and ⌘/Ctrl+Enter sends. On a full page a
+           * prompt is routinely several lines long, and a composer where Enter
+           * fires the turn makes writing one an exercise in avoiding the key.
+           * The shortcut is spelled out beside the send button rather than left
+           * to be discovered.
+           */
+          <div
+            className={
+              isConsole ? "w-full px-6 pt-4 pb-5 lg:px-10" : "w-full p-3"
+            }
+          >
+            <div className="flex flex-col gap-3 rounded-2xl border border-border-medium/70 bg-bg-secondary px-3 py-2.5 transition-colors focus-within:border-accent-primary">
+              <textarea
+                ref={composerRef}
+                value={draft}
+                rows={1}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    handleSend(draft);
+                  }
+                }}
+                placeholder={t("placeholder")}
+                className="kairos-field-bare max-h-40 min-h-[24px] w-full resize-none bg-transparent text-[14.5px] leading-relaxed text-fg-primary placeholder:text-fg-tertiary focus:outline-none"
+              />
+
+              <div className="flex flex-wrap items-center gap-2">
+                {props.composerControls}
+
+                {isConsole && (
+                  <span className="kairos-stamp ml-auto hidden text-[10px] text-fg-tertiary sm:inline">
+                    {tc("sendShortcut")}
+                  </span>
+                )}
+
+                <button
+                  type="submit"
+                  aria-label={t("send")}
+                  title={tc("sendShortcut")}
+                  className={`${
+                    isConsole ? "" : "ml-auto "
+                  }flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
+                  style={{
+                    backgroundColor:
+                      !isThinking && draft.trim()
+                        ? "rgb(var(--accent-primary))"
+                        : "rgb(var(--bg-tertiary))",
+                  }}
+                  disabled={isThinking || !draft.trim()}
+                >
+                  <ArrowUp size={15} />
+                </button>
+              </div>
+            </div>
+
+            {isConsole && (
+              <p className="mt-2.5 px-0.5 text-[11.5px] leading-relaxed text-fg-tertiary">
+                {tc("composerDisclaimer")}
+              </p>
+            )}
+          </div>
+        ) : (
         <div className="w-full px-4 py-4">
           <div
             className="flex items-end gap-2 rounded-[999px] px-3 py-2 shadow-sm"
@@ -1790,7 +2471,7 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={t("placeholder")}
-              className="flex-1 bg-transparent px-2 py-2 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus-visible:outline-none"
+              className="kairos-field-bare flex-1 bg-transparent px-2 py-2 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus-visible:outline-none"
             />
             <button
               type="submit"
@@ -1810,6 +2491,7 @@ export function ProjectIntelligenceChat(props: { projectId?: number; onAgentMess
             {t("disclaimer")}
           </p>
         </div>
+        )}
       </form>
     </div>
   );

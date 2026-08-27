@@ -14,7 +14,9 @@ import { createServer } from "node:http";
 import { Server, type DefaultEventsMap } from "socket.io";
 import { verifyWsTicket } from "./auth";
 import { registerRoomHandlers, type WsSocketData } from "./rooms";
+import { onlineUserIds, trackConnect, trackDisconnect } from "./presence";
 import { createLogger } from "./logger";
+import { startScheduler } from "./scheduler";
 
 const log = createLogger("ws");
 
@@ -208,8 +210,18 @@ io.on("connection", (socket) => {
   // Register room join/leave handlers (org, project, conversation, typing)
   registerRoomHandlers(socket);
 
+  trackConnect(io, userId);
+
+  /* A client that has just connected has missed every presence broadcast that
+     came before it, so it asks for the current picture once on mount rather
+     than starting blank and filling in only as people come and go. */
+  socket.on("presence:query", () => {
+    socket.emit("presence:snapshot", { userIds: onlineUserIds() });
+  });
+
   socket.on("disconnect", (reason: string) => {
     log.debug("client disconnected", { userId, reason });
+    trackDisconnect(io, userId);
   });
 });
 
@@ -217,4 +229,16 @@ io.on("connection", (socket) => {
 
 httpServer.listen(WS_PORT, () => {
   log.info("websocket server listening", { port: WS_PORT, corsOrigin: CORS_ORIGIN });
+
+  // B-0: this is the only long-lived process in the deployment, so the clock for
+  // proactive AI lives here. It calls into the Next.js app rather than running
+  // the agents itself — see ws-server/scheduler.ts.
+  const stopScheduler = startScheduler();
+
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.once(signal, () => {
+      stopScheduler();
+      httpServer.close(() => process.exit(0));
+    });
+  }
 });

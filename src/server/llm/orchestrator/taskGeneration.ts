@@ -30,6 +30,9 @@ import {
 import {
   extractTextFromPdf,
 } from "~/server/llm/pdf/pdfExtractor";
+import {
+  resolveUserLocale,
+} from "~/server/llm/locale";
 
 import {
   projects,
@@ -136,6 +139,7 @@ export const taskGeneration = {
       projectDescription: effectiveDescription,
       existingTasks,
       availableUsers,
+      locale: await resolveUserLocale(input.ctx, userId),
     });
 
     // 6. Call LLM
@@ -275,6 +279,7 @@ export const taskGeneration = {
       pdfPageCount: pdfResult.numPages,
       existingTasks,
       userMessage: input.message,
+      locale: await resolveUserLocale(input.ctx, userId),
     });
 
     // 6. Call LLM

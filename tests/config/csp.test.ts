@@ -34,6 +34,22 @@ describe("theme init script hash", () => {
     ).toBe(THEME_INIT_SCRIPT_HASH);
   });
 
+  /**
+   * Everything this script decides is something that would otherwise flash.
+   *
+   * It runs synchronously in <head> precisely so the first painted frame is
+   * already correct. The rail is the newest of these and the easiest to lose:
+   * `SideNav` reads the same key, and if this line goes away the rail paints
+   * collapsed and then widens, dragging every page's `.rail-offset` margin
+   * along with it a frame later.
+   */
+  it("settles theme, accent and rail width before the first paint", () => {
+    expect(THEME_INIT_SCRIPT).toContain("localStorage.getItem('theme')");
+    expect(THEME_INIT_SCRIPT).toContain("sessionStorage.getItem('user-accent')");
+    expect(THEME_INIT_SCRIPT).toContain("kairos:railPinned");
+    expect(THEME_INIT_SCRIPT).toContain("dataset.railPinned");
+  });
+
   it("is single-quoted in the source expression", () => {
     // Unquoted, Chrome reports "invalid source ... It will be ignored" and blocks
     // the script anyway. This was a real bug, caught only by loading the page.
@@ -70,16 +86,21 @@ describe("contentSecurityPolicy", () => {
   });
 
   it("allows the hosts the app actually loads from", () => {
-    // Derived from reading the source: Maps SDK, UploadThing, Google avatars, the QR
-    // endpoint used in workspace settings.
+    // Derived from reading the source: Maps SDK, UploadThing, Google avatars.
     for (const host of [
       "https://maps.googleapis.com",
       "https://uploadthing.com",
       "https://lh3.googleusercontent.com",
-      "https://api.qrserver.com",
     ]) {
       expect(policy).toContain(host);
     }
+  });
+
+  it("no longer reaches a third party to draw invite QR codes", () => {
+    // Invite links are bearer credentials for a workspace. They were being handed
+    // to api.qrserver.com on every render; the codes are rendered on our own
+    // server now, so the host has no business being reachable.
+    expect(policy).not.toContain("api.qrserver.com");
   });
 
   it("names the websocket origin in connect-src", () => {

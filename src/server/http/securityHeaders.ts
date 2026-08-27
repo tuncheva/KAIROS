@@ -54,8 +54,12 @@ const ALLOWLIST = {
     "https://*.utfs.io",
     "https://*.ufs.sh",
   ],
-  /** Avatars from Google OAuth, and the QR image endpoint used in settings. */
-  images: ["https://lh3.googleusercontent.com", "https://api.qrserver.com"],
+  /**
+   * Avatars from Google OAuth. Invite QR codes used to come from
+   * api.qrserver.com — they are rendered on our own server now, so the third
+   * party no longer needs to be reachable (and no longer sees invite links).
+   */
+  images: ["https://lh3.googleusercontent.com"],
 } as const;
 
 /**
