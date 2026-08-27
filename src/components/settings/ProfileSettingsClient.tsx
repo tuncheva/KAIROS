@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { ImageUpload } from "~/components/ui/ImageUpload";
 import { useTranslations } from "next-intl";
 import { useDateFormat } from "~/hooks/useDateFormat";
+import { broadcastAvatarUpdate } from "~/lib/avatarEvents";
 
 import {
   LedgerGroup,
@@ -115,6 +116,10 @@ export function ProfileSettingsClient({ user }: ProfileSettingsClientProps) {
     onSuccess: (data: { imageUrl: string }) => {
       setImagePreview(data.imageUrl);
       setIsUploading(false);
+
+      // Tell the rest of the shell — the header menu above all — straight away,
+      // so the new picture is up before any of the cache work below lands.
+      broadcastAvatarUpdate(data.imageUrl);
 
       utils.user.getCurrentUser.setData(undefined, (old) =>
         old ? { ...old, image: data.imageUrl } : old,
