@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 
 import { api } from "~/trpc/react";
+import { ProfileLink } from "~/components/profile/ProfileLink";
 import { useDateFormat } from "~/hooks/useDateFormat";
 import { EditEventForm } from "~/components/events/EditEventForm";
 import {
@@ -72,14 +73,7 @@ const RSVP_OPTIONS: { status: RsvpStatus; key: "going" | "maybe" | "cantGo" }[] 
     { status: "not_going", key: "cantGo" },
   ];
 
-export function EventCard({
-  event,
-  delayMs = 0,
-}: {
-  event: FeedEventForViewer;
-  /** Stagger for the entrance, in feed order. */
-  delayMs?: number;
-}) {
+export function EventCard({ event }: { event: FeedEventForViewer }) {
   const t = useTranslations("publish");
   const locale = useLocale();
   const router = useRouter();
@@ -222,15 +216,24 @@ export function EventCard({
         id={`event-${event.id}`}
         data-testid="event-card"
         className="dash-rise overflow-hidden rounded-2xl border border-slate-200 bg-white target:ring-2 target:ring-accent-primary/50 dark:border-white/10 dark:bg-[#0e0e14]"
-        style={{ animationDelay: `${delayMs}ms` }}
       >
         {/* Who posted it, and how far it reaches. */}
         <div className="flex items-center gap-3 px-4 py-3.5">
-          <PersonAvatar name={event.author.name} image={event.author.image} />
+          {/* The face and the name are one target: tapping either opens the
+              host's profile. Split targets read as two different actions. */}
+          <ProfileLink userId={event.author.id} name={event.author.name}>
+            <PersonAvatar name={event.author.name} image={event.author.image} />
+          </ProfileLink>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-fg-primary">
-              {event.author.name ?? t("someone")}
-            </p>
+            <ProfileLink
+              userId={event.author.id}
+              name={event.author.name}
+              className="block max-w-full rounded-md text-left"
+            >
+              <p className="truncate text-sm font-semibold text-fg-primary">
+                {event.author.name ?? t("someone")}
+              </p>
+            </ProfileLink>
             <Stamp className="normal-case tracking-normal">
               {event.isOwner ? t("youAreHosting") : t("hosting")}
               {event.createdAt
@@ -553,9 +556,15 @@ export function EventCard({
               <ul className="space-y-1.5">
                 {shownComments.map((comment) => (
                   <li key={comment.id} className="text-sm">
-                    <span className="mr-1.5 font-semibold text-fg-primary">
-                      {comment.author.name}
-                    </span>
+                    <ProfileLink
+                      userId={comment.author.id}
+                      name={comment.author.name}
+                      className="mr-1.5 rounded-md align-baseline"
+                    >
+                      <span className="font-semibold text-fg-primary">
+                        {comment.author.name}
+                      </span>
+                    </ProfileLink>
                     <span className="text-fg-secondary">{comment.text}</span>
                   </li>
                 ))}

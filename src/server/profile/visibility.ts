@@ -22,7 +22,7 @@
  * screen previews the drawer through the same procedures.
  */
 
-import { and, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import type { db as Database } from "~/server/db";
 import {
@@ -218,6 +218,3 @@ export function isOnline(lastSeenAt: Date | null | undefined): boolean {
   if (!lastSeenAt) return false;
   return Date.now() - lastSeenAt.getTime() < ONLINE_WINDOW_MS;
 }
-
-/** Re-exported so procedures can build "everyone except me" filters readably. */
-export const notSelf = ne;

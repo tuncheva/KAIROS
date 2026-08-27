@@ -1,4 +1,5 @@
 import { SideNav } from "~/components/layout/SideNav";
+import { ProfilePeekProvider } from "~/components/profile/ProfilePeekProvider";
 
 /**
  * The shell every signed-in page sits inside.
@@ -27,6 +28,13 @@ import { SideNav } from "~/components/layout/SideNav";
  *
  * ## What is deliberately *not* here
  *
+ * `ProfilePeekProvider` *is* here, for the same reason `SideNav` is: it owns the
+ * one profile drawer the whole app opens, and hoisting it means the drawer
+ * survives the navigation it triggers — tapping a shared project inside the
+ * drawer routes `children` underneath while the drawer stays put. It also owns
+ * the presence heartbeat, which has to beat once per session rather than once
+ * per page.
+ *
  * `TopBar`, and the page's own column wrapper. Pages disagree about both — the
  * chat, notes and events pages have no top bar at all, and the height model
  * splits between `min-h-screen` and a definite `h-[100dvh]` for the surfaces
@@ -37,9 +45,9 @@ import { SideNav } from "~/components/layout/SideNav";
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <ProfilePeekProvider>
       <SideNav />
       {children}
-    </>
+    </ProfilePeekProvider>
   );
 }

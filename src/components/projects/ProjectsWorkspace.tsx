@@ -21,6 +21,7 @@ import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { Overlay } from "~/components/ui/Overlay";
 import { NewProjectDrawer } from "./NewProjectDrawer";
+import { ProfileLink } from "~/components/profile/ProfileLink";
 import { ProjectTasksPanel, ProjectTeamPanel } from "./ProjectTasksPanel";
 import {
   isRecent,
@@ -518,7 +519,24 @@ function UpdatedStamp({ row, locale }: { row: ProjectRow; locale: string }) {
   );
 }
 
-function AvatarStack({ people, ringClass }: { people: Person[]; ringClass: string }) {
+/**
+ * The face pile.
+ *
+ * `interactive` is off by default and that is not laziness: two of the three
+ * call sites sit inside a `<button>` row, where a nested button is invalid
+ * markup and where the row's own tap — open the project — is the action the
+ * viewer wants anyway. Only the project header, which is not inside a button,
+ * turns faces into profile links.
+ */
+function AvatarStack({
+  people,
+  ringClass,
+  interactive = false,
+}: {
+  people: Person[];
+  ringClass: string;
+  interactive?: boolean;
+}) {
   const shown = people.slice(0, 4);
   const overflow = people.length - shown.length;
 
@@ -532,26 +550,40 @@ function AvatarStack({ people, ringClass }: { people: Person[]; ringClass: strin
     );
   }
 
+  const face = (person: Person, index: number) =>
+    person.image ? (
+      <Image
+        src={person.image}
+        alt={person.name ?? ""}
+        width={26}
+        height={26}
+        className={`h-[26px] w-[26px] rounded-full border-2 object-cover ${ringClass}`}
+      />
+    ) : (
+      <span
+        title={person.name ?? undefined}
+        style={{ backgroundColor: AVATAR_TINTS[index % AVATAR_TINTS.length] }}
+        className={`flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 text-[11px] font-bold text-[#0a0a10] ${ringClass}`}
+      >
+        {(person.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+      </span>
+    );
+
   return (
     <span className="flex">
       {shown.map((person, index) =>
-        person.image ? (
-          <Image
+        interactive ? (
+          <ProfileLink
             key={person.id}
-            src={person.image}
-            alt={person.name ?? ""}
-            width={26}
-            height={26}
-            className={`-mr-[7px] h-[26px] w-[26px] rounded-full border-2 object-cover ${ringClass}`}
-          />
-        ) : (
-          <span
-            key={person.id}
-            title={person.name ?? undefined}
-            style={{ backgroundColor: AVATAR_TINTS[index % AVATAR_TINTS.length] }}
-            className={`-mr-[7px] flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 text-[11px] font-bold text-[#0a0a10] ${ringClass}`}
+            userId={person.id}
+            name={person.name}
+            className="-mr-[7px]"
           >
-            {(person.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+            {face(person, index)}
+          </ProfileLink>
+        ) : (
+          <span key={person.id} className="-mr-[7px]">
+            {face(person, index)}
           </span>
         ),
       )}
@@ -654,7 +686,7 @@ function ProjectDetail({
           </h1>
           <HealthBadge health={project.health} />
           <span className="hidden flex-1 sm:block" />
-          <AvatarStack people={project.people} ringClass="border-bg-primary" />
+          <AvatarStack people={project.people} ringClass="border-bg-primary" interactive />
         </div>
 
         <p className="m-0 text-[15px] text-fg-tertiary">

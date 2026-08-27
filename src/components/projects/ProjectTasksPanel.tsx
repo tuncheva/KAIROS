@@ -6,6 +6,7 @@ import { Check, Pencil, Plus, StickyNote, Trash2, UserPlus, X } from "lucide-rea
 import { useLocale, useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
+import { ProfileLink } from "~/components/profile/ProfileLink";
 import { useToast } from "~/components/providers/ToastProvider";
 import {
   PRIORITY_DOT,
@@ -516,6 +517,7 @@ export function ProjectTeamPanel({
               name={project.createdBy.name ?? project.createdBy.email ?? ""}
               image={project.createdBy.image ?? null}
               email={project.createdBy.email ?? ""}
+              userId={project.createdById}
             />
             <span className="hidden flex-1 sm:block" />
             <span className={STAMP}>{t("owner")}</span>
@@ -531,6 +533,7 @@ export function ProjectTeamPanel({
               name={row.collaborator?.name ?? row.collaborator?.email ?? ""}
               image={row.collaborator?.image ?? null}
               email={row.collaborator?.email ?? ""}
+              userId={row.collaboratorId}
             />
             <span className="hidden flex-1 sm:block" />
 
@@ -632,8 +635,25 @@ export function ProjectTeamPanel({
   );
 }
 
-function Member({ name, image, email }: { name: string; image: string | null; email: string }) {
-  return (
+/**
+ * A person in the team list.
+ *
+ * `userId` is optional because the same component draws rows that may not have
+ * resolved to a user yet; without one it renders exactly as before, just
+ * inert, rather than offering a tap that goes nowhere.
+ */
+function Member({
+  name,
+  image,
+  email,
+  userId,
+}: {
+  name: string;
+  image: string | null;
+  email: string;
+  userId?: string | null;
+}) {
+  const body = (
     <span className="flex min-w-0 items-center gap-2.5">
       {image ? (
         <Image
@@ -655,5 +675,17 @@ function Member({ name, image, email }: { name: string; image: string | null; em
         )}
       </span>
     </span>
+  );
+
+  if (!userId) return body;
+
+  return (
+    <ProfileLink
+      userId={userId}
+      name={name}
+      className="min-w-0 rounded-lg text-left"
+    >
+      {body}
+    </ProfileLink>
   );
 }

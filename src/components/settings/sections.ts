@@ -1,5 +1,5 @@
 /**
- * The eight settings sections, in rail order.
+ * The settings sections, in rail order.
  *
  * A plain module, deliberately: the server page reads `?section=` and has to
  * validate it before handing it to the client workspace, and a `"use client"`
@@ -9,6 +9,7 @@ export const SETTINGS_SECTIONS = [
   "profile",
   "workspace",
   "notifications",
+  "privacy",
   "security",
   "language",
   "appearance",

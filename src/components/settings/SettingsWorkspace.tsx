@@ -26,7 +26,7 @@ import {
 } from "./ledger/Ledger";
 import { SETTINGS_SECTIONS, type SettingsSectionId } from "./sections";
 /*
- * The eight sections are loaded per section, not all at once.
+ * The sections are loaded per section, not all at once.
  *
  * Only one of them is mounted on a normal visit — that is the whole point of
  * `?section=` — but a static import ships every one of them regardless, and
@@ -47,6 +47,9 @@ const WorkspaceSettingsClient = dynamic(() =>
 );
 const NotificationSettingsClient = dynamic(() =>
   import("./NotificationSettingsClient").then((m) => m.NotificationSettingsClient),
+);
+const PrivacySettingsClient = dynamic(() =>
+  import("./PrivacySettingsClient").then((m) => m.PrivacySettingsClient),
 );
 const SecuritySettingsClient = dynamic(() =>
   import("./SecuritySettingsClient").then((m) => m.SecuritySettingsClient),
@@ -262,6 +265,8 @@ function SectionBody({ id, user }: { id: SettingsSectionId; user: Props["user"] 
       return <WorkspaceSettingsClient />;
     case "notifications":
       return <NotificationSettingsClient />;
+    case "privacy":
+      return <PrivacySettingsClient />;
     case "security":
       return <SecuritySettingsClient />;
     case "language":
