@@ -17,7 +17,7 @@ export async function StaticPage({
     const t = await getTranslations("staticPages");
 
     return (
-        <main id="main-content" className="dark min-h-screen bg-bg-primary px-6 py-24 text-fg-primary lg:px-12">
+        <main id="main-content" className="dark min-h-dvh bg-bg-primary px-6 py-24 text-fg-primary lg:px-12">
             <div className="mx-auto w-full max-w-[720px]">
                 <Link
                     href="/"

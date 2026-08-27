@@ -1,7 +1,7 @@
 export default function CalendarLoading() {
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0">
+    <div className="min-h-dvh bg-bg-primary">
+      <div className="rail-offset min-h-dvh flex flex-col kairos-topbar-gap">
         <header className="sticky top-16 lg:top-0 z-30 topbar-solid">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 flex justify-between items-center">
             <div className="h-7 w-32 bg-bg-secondary rounded animate-pulse" />

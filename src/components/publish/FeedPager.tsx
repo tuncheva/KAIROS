@@ -33,7 +33,9 @@ export function pageWindow(
   const out: (number | null)[] = [];
   let previous = 0;
   for (const number of sorted) {
-    if (previous && number - previous > 1) out.push(null);
+    /* An ellipsis standing in for one page is wider than the page it hides. */
+    if (previous && number - previous === 2) out.push(previous + 1);
+    else if (previous && number - previous > 2) out.push(null);
     out.push(number);
     previous = number;
   }

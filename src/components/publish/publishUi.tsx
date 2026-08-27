@@ -231,7 +231,7 @@ export function InfoToast({
         type="button"
         onClick={onClose}
         aria-label="Dismiss"
-        className="rounded-full p-1 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+        className="kairos-tap rounded-full p-1 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
       >
         <X size={14} />
       </button>

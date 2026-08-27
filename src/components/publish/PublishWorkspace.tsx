@@ -3,21 +3,24 @@
 /**
  * The publish surface: rail, feed, aside.
  *
- * The page used to own the query, the region state, two hand-rolled sidebars and
- * a 240-line feed component that also owned the composer. Everything that
- * decides *what is on screen* now lands here, the panes are given their data,
- * and the rules for filtering live in `feedData.ts` where they can be read.
+ * ## What this owns
  *
- * The view, region and page are in the URL, so a filtered feed is a link you
- * can send and the back button undoes a filter change instead of leaving the
- * page.
+ * Everything that decides *what is on screen*. The panes below are given their
+ * data; the rules for choosing it live on the server now, in `event.getFeed`.
  *
- * The feed is paged rather than infinite. Scrolling used to mount every event
- * ever loaded, each with its own staggered entrance firing as it crossed the
- * viewport, which is what made a long feed look the way it did; a page is a
- * fixed number of cards that arrive together and leave together. The server
- * still hands out cursors, so `fetchNextPage` runs underneath to keep enough
- * rows loaded for the page you are on — see `ensureLoaded` below.
+ * ## Why the query moved
+ *
+ * The feed used to fetch every row and filter them in the browser, which made
+ * the views lie: "Going" filtered whatever the cursor had handed over, so it
+ * showed three events until you paged far enough forward. Source, view, region,
+ * topic and search are all `where` clauses now, and one server page is one feed
+ * page — so a page is full, and page 4 of "Going in Varna" means what it says.
+ *
+ * ## What lives in the URL
+ *
+ * Source, view, region, topic, search and page. All six, because every one of
+ * them changes what a person is looking at, and a feed you cannot send someone
+ * is not a feed you can talk about.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -25,7 +28,7 @@ import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { AlertCircle, CalendarPlus, Loader2 } from "lucide-react";
+import { AlertCircle, CalendarPlus, Loader2, Search, X } from "lucide-react";
 
 import { api } from "~/trpc/react";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
@@ -42,15 +45,17 @@ import { FeedPager } from "./FeedPager";
 import { PublishAside } from "./PublishAside";
 import { PublishRail, type RailCounts } from "./PublishRail";
 import { BandDivider } from "./publishUi";
-import { FEED_QUERY_INPUT } from "./eventMutations";
+import { FEED_PAGE_SIZE } from "./eventMutations";
 import {
+  bandRows,
+  isFeedSource,
   isFeedView,
-  orderForFeed,
-  regionCounts,
+  isRegion,
+  isTopic,
   regionLabel,
-  selectFeed,
-  type FeedEvent,
+  type FeedSource,
   type FeedView,
+  type REGIONS,
 } from "./feedData";
 
 interface ComposerDraft {
@@ -58,8 +63,8 @@ interface ComposerDraft {
   focus: ComposerField;
 }
 
-/** How many cards one page of the feed holds. */
-const PAGE_SIZE = 8;
+/** How long a keystroke waits before it becomes a query. */
+const SEARCH_DEBOUNCE_MS = 300;
 
 export function PublishWorkspace() {
   const t = useTranslations("publish");
@@ -68,39 +73,85 @@ export function PublishWorkspace() {
   const { data: session } = useSession();
   const utils = api.useUtils();
 
+  const rawSource = params.get("source");
+  /**
+   * Discover unless you asked for Following.
+   *
+   * Defaulting a signed-in visitor into Following put everybody who had not
+   * followed anyone yet — which is everybody, on the day this shipped — on an
+   * empty screen with three events one tab away. Following is now somewhere you
+   * go, not somewhere you land.
+   */
+  const source: FeedSource = isFeedSource(rawSource) ? rawSource : "discover";
   const view: FeedView = isFeedView(params.get("view"))
     ? (params.get("view") as FeedView)
     : "all";
-  const region = params.get("region") ?? "";
+  /* `isRegion` has already checked this against the enum; the cast is what
+     carries that fact into the query input's type. */
+  const region = (
+    isRegion(params.get("region")) ? params.get("region")! : ""
+  ) as "" | (typeof REGIONS)[number]["value"];
+  const topicParam = params.get("topic");
+  const topic = isTopic(topicParam) ? topicParam : null;
+  const query = params.get("q") ?? "";
   const page = Math.max(1, Number(params.get("page")) || 1);
   const deepLinkedId = Number(params.get("event")) || null;
 
   const [draft, setDraft] = useState<ComposerDraft | null>(null);
 
-  /**
-   * View, region and page are URL state; replace rather than push so filters do
-   * not pile up in history one keystroke at a time. Changing a filter drops you
-   * back to page one — page 7 of the old feed is rarely page 7 of the new one.
-   */
+  /* The input is local and the URL lags it, so typing stays smooth and the back
+     button gets one entry per search rather than one per keystroke. */
+  const [searchText, setSearchText] = useState(query);
+  useEffect(() => setSearchText(query), [query]);
+
   const setParams = useCallback(
-    (patch: Partial<Record<"view" | "region" | "page", string>>) => {
+    (patch: Record<string, string | null>) => {
       const next = new URLSearchParams(params.toString());
       for (const [key, value] of Object.entries(patch)) {
-        if (value && value !== "all" && value !== "1") next.set(key, value);
-        else next.delete(key);
+        if (value === null || value === "" || value === "all" || value === "1") {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
       }
-      const query = next.toString();
-      router.replace(query ? `/publish?${query}` : "/publish", {
+      const search = next.toString();
+      router.replace(search ? `/publish?${search}` : "/publish", {
         scroll: false,
       });
     },
     [params, router],
   );
 
+  /** Any change to what is being selected drops you back to page one. */
   const setFilter = useCallback(
-    (key: "view" | "region", value: string) =>
-      setParams({ [key]: value, page: "1" }),
+    (patch: Record<string, string | null>) => setParams({ ...patch, page: "1" }),
     [setParams],
+  );
+
+  useEffect(() => {
+    if (searchText === query) return;
+    const timer = setTimeout(
+      () => setFilter({ q: searchText.trim() || null }),
+      SEARCH_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [searchText, query, setFilter]);
+
+  /** A `/publish?event=12` link predates the event page. Send it there. */
+  useEffect(() => {
+    if (deepLinkedId) router.replace(`/events/${deepLinkedId}`);
+  }, [deepLinkedId, router]);
+
+  const feedInput = useMemo(
+    () => ({
+      source,
+      view,
+      region: region || null,
+      topic,
+      query: query || null,
+      limit: FEED_PAGE_SIZE,
+    }),
+    [source, view, region, topic, query],
   );
 
   const {
@@ -110,7 +161,7 @@ export function PublishWorkspace() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = api.event.getPublicEvents.useInfiniteQuery(FEED_QUERY_INPUT, {
+  } = api.event.getFeed.useInfiniteQuery(feedInput, {
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 
@@ -118,122 +169,80 @@ export function PublishWorkspace() {
     enabled: !!session,
   });
 
-  const events = useMemo<FeedEvent[]>(
-    () => pages?.pages.flatMap((serverPage) => serverPage.items) ?? [],
-    [pages?.pages],
-  );
+  const { data: facets } = api.event.getFacets.useQuery({
+    source,
+    query: query || null,
+    region: region || null,
+    topic,
+  });
 
-  const viewerId = session?.user?.id ?? null;
-
-  const visible = useMemo(
-    () => selectFeed({ events, view, region, query: "", viewerId }),
-    [events, view, region, viewerId],
-  );
-
-  /** The whole filtered feed in reading order, each row tagged with its band. */
-  const ordered = useMemo(() => orderForFeed(visible), [visible]);
-  const totals = useMemo(() => regionCounts(events), [events]);
-
-  const pageCount = Math.max(1, Math.ceil(ordered.length / PAGE_SIZE));
+  const loadedPages = useMemo(() => pages?.pages ?? [], [pages?.pages]);
+  /* One server page is one feed page, so the pager counts what has arrived and
+     the `+` on the end says the server has more. */
+  const pageCount = Math.max(1, loadedPages.length);
   const safePage = Math.min(page, pageCount);
-  const slice = useMemo(
-    () => ordered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [ordered, safePage],
-  );
+  const current = loadedPages[safePage - 1];
+  const rows = useMemo(() => bandRows(current?.items ?? []), [current?.items]);
+  const isEmpty = loadedPages.length > 0 && loadedPages[0]?.items.length === 0;
 
-  /**
-   * Keep enough rows loaded to fill the page being read.
-   *
-   * The views filter client-side over what the cursor has handed us, so "going"
-   * can throw away most of a server page. Rather than making the reader press
-   * next through half-empty pages, this pulls the next cursor whenever the last
-   * page is in sight and there is more to have.
-   */
-  const ensureLoaded = ordered.length < (safePage + 1) * PAGE_SIZE;
+  /* Reading forward past what is loaded pulls the next cursor. */
   useEffect(() => {
-    if (!ensureLoaded || !hasNextPage || isFetchingNextPage || isLoading) return;
+    if (page <= loadedPages.length) return;
+    if (!hasNextPage || isFetchingNextPage || isLoading) return;
     void fetchNextPage();
-  }, [ensureLoaded, hasNextPage, isFetchingNextPage, isLoading, fetchNextPage]);
+  }, [
+    page,
+    loadedPages.length,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    fetchNextPage,
+  ]);
 
-  /** More to read beyond the pages we can already prove exist. */
-  const hasMore = !!hasNextPage;
-
-  /* Paging returns you to the top of the feed rather than mid-card. */
   const feedTopRef = useRef<HTMLDivElement | null>(null);
   const goToPage = useCallback(
     (next: number) => {
-      const clamped = Math.max(1, hasMore ? next : Math.min(next, pageCount));
+      const clamped = Math.max(
+        1,
+        hasNextPage ? next : Math.min(next, pageCount),
+      );
       setParams({ page: String(clamped) });
       feedTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
-    [hasMore, pageCount, setParams],
+    [hasNextPage, pageCount, setParams],
   );
 
   /**
-   * The rail's counts come from the server for the three that depend on you —
-   * a paged feed would otherwise report "1 going" until you paged forward — and
-   * from the loaded rows for the two that are only about what is on screen.
+   * The rail's counts come from the server, over the whole table rather than
+   * the loaded page — a paged feed would otherwise report "1 going" until you
+   * paged forward far enough to find the second one.
    */
-  const counts: RailCounts = useMemo(() => {
-    const inRegion = events.filter((e) => region === "" || e.region === region);
-    const now = Date.now();
-    return {
-      all: inRegion.length,
+  const counts: RailCounts = useMemo(
+    () => ({
+      all: facets?.total ?? 0,
       going: summary?.counts.going ?? 0,
       maybe: summary?.counts.maybe ?? 0,
       hosting: summary?.counts.hosting ?? 0,
-      past: inRegion.filter((e) => new Date(e.eventDate).getTime() < now).length,
-    };
-  }, [events, region, summary]);
-
-  /* Real time. */
-  const handleDeleted = useCallback(
-    ({ eventId }: { eventId: number }) => {
-      utils.event.getPublicEvents.setInfiniteData(FEED_QUERY_INPUT, (old) =>
-        old
-          ? {
-              ...old,
-              pages: old.pages.map((serverPage) => ({
-                ...serverPage,
-                items: serverPage.items.filter((e) => e.id !== eventId),
-              })),
-            }
-          : old,
-      );
-    },
-    [utils.event.getPublicEvents],
+      saved: summary?.counts.saved ?? 0,
+      past: summary?.counts.past ?? 0,
+      followers: summary?.counts.followers ?? 0,
+      following: summary?.counts.following ?? 0,
+    }),
+    [facets?.total, summary],
   );
-  useSocketEvent("event:deleted", handleDeleted);
 
-  const handleUpdated = useCallback(() => {
-    void utils.event.getPublicEvents.invalidate();
-  }, [utils.event.getPublicEvents]);
-  useSocketEvent("event:updated", handleUpdated);
+  /* Real time. `event:created` is new — creation used to emit nothing at all,
+     so the one moment a live feed exists for was the one it sat still for. */
+  const refreshFeed = useCallback(() => {
+    void utils.event.getFeed.invalidate();
+    void utils.event.getFacets.invalidate();
+  }, [utils.event.getFeed, utils.event.getFacets]);
 
-  /**
-   * A shared link (`/publish?event=12`) should land on the card, which under
-   * pagination first means landing on the *page* it is on. The row may still be
-   * behind a cursor, so this waits until it is actually in `ordered` rather
-   * than racing the first fetch with a timeout.
-   */
-  const scrolledToRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (!deepLinkedId || scrolledToRef.current === deepLinkedId) return;
+  useSocketEvent("event:created", refreshFeed);
+  useSocketEvent("event:updated", refreshFeed);
+  useSocketEvent("event:deleted", refreshFeed);
 
-    const index = ordered.findIndex((row) => row.event.id === deepLinkedId);
-    if (index === -1) return;
-
-    const target = Math.floor(index / PAGE_SIZE) + 1;
-    if (target !== safePage) {
-      setParams({ page: String(target) });
-      return;
-    }
-
-    const node = document.getElementById(`event-${deepLinkedId}`);
-    if (!node) return;
-    scrolledToRef.current = deepLinkedId;
-    node.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [deepLinkedId, ordered, safePage, setParams]);
+  const viewerId = session?.user?.id ?? null;
 
   const feedBody = () => {
     if (isLoading) {
@@ -259,16 +268,20 @@ export function PublishWorkspace() {
       );
     }
 
-    if (ordered.length === 0) {
-      /* Still pulling cursors for a filter that has not matched anything yet. */
-      if (hasNextPage) {
-        return (
-          <div className="py-20 text-center">
-            <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-accent-primary" />
-            <p className="text-sm text-fg-secondary">{t("loadingMoreEvents")}</p>
-          </div>
-        );
-      }
+    if (isEmpty) {
+      /* An empty Following lane is not an empty app — it means you have not
+         followed anybody yet and are hosting nothing yourself, and the way out
+         is Discover, not a new event. This is the only thing that happens now:
+         the server used to quietly swap the lane for Discover, so the screen
+         below was the rare case rather than the first one everybody sees. */
+      const emptyBody =
+        source === "following"
+          ? t("noEventsFollowing")
+          : query
+            ? t("noEventsSearch", { query })
+            : region
+              ? t("noEventsRegion", { region: regionLabel(region) })
+              : t("noEventsDefault");
 
       return (
         <div className="px-4 py-20 text-center">
@@ -278,11 +291,40 @@ export function PublishWorkspace() {
           <h2 className="mb-2 text-xl font-semibold text-fg-primary">
             {t("noEventsTitle")}
           </h2>
-          <p className="text-sm text-fg-secondary">
-            {region
-              ? t("noEventsRegion", { region: regionLabel(region) })
-              : t("noEventsDefault")}
-          </p>
+          <p className="text-sm text-fg-secondary">{emptyBody}</p>
+
+          {/* An empty feed is usually not an empty app. The two ways out are
+              the other lane and the archive, and which one is worth offering
+              depends on why it came back empty. */}
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {source === "following" && (
+              <button
+                type="button"
+                onClick={() => setFilter({ source: "discover" })}
+                className="h-9 rounded-lg bg-accent-primary px-4 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
+              >
+                {t("sources.discover")}
+              </button>
+            )}
+            {view !== "past" && counts.past > 0 && (
+              <button
+                type="button"
+                onClick={() => setFilter({ view: "past" })}
+                className="h-9 rounded-lg border border-slate-200 px-4 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary dark:border-white/10"
+              >
+                {t("browsePast", { count: counts.past })}
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (!current) {
+      return (
+        <div className="py-20 text-center">
+          <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-accent-primary" />
+          <p className="text-sm text-fg-secondary">{t("loadingMoreEvents")}</p>
         </div>
       );
     }
@@ -292,14 +334,12 @@ export function PublishWorkspace() {
         {/* Keyed on the page so a page turn plays the entrance once, together,
             rather than one card at a time as they scroll past. */}
         <div key={safePage} className="flex flex-col gap-4">
-          {slice.map((row, index) => (
+          {rows.map((row, index) => (
             <div key={row.event.id} className="flex flex-col gap-4">
-              {/* A band heading only where the band actually changes, so a page
-                  sitting inside one band is not re-titled at the top. */}
-              {(index === 0 || slice[index - 1]?.band !== row.band) && (
+              {(index === 0 || rows[index - 1]?.band !== row.band) && (
                 <BandDivider
                   label={t("bands." + row.band)}
-                  accent={row.band === "upcoming"}
+                  accent={row.band === "thisWeek"}
                 />
               )}
               <EventCard
@@ -315,12 +355,12 @@ export function PublishWorkspace() {
         <FeedPager
           page={safePage}
           pageCount={pageCount}
-          hasMore={hasMore}
+          hasMore={!!hasNextPage}
           isLoadingMore={isFetchingNextPage}
           onChange={goToPage}
         />
 
-        {!hasMore && safePage >= pageCount && (
+        {!hasNextPage && safePage >= pageCount && (
           <p className="py-2 text-center text-sm text-fg-tertiary">
             {t("allCaughtUp")}
           </p>
@@ -350,38 +390,80 @@ export function PublishWorkspace() {
           12-column split spent a quarter of the page on two panels of links. */}
       <main
         id="main-content"
-        className="mx-auto grid max-w-[1500px] grid-cols-1 gap-6 px-4 pb-28 pt-6 sm:px-6 sm:pb-8 sm:pt-8 lg:grid-cols-[264px_minmax(0,1fr)] lg:gap-8 lg:px-8 xl:grid-cols-[264px_minmax(0,1fr)_304px]"
+        className="kairos-bottomnav-gap mx-auto grid max-w-[1500px] grid-cols-1 gap-6 px-4 pt-6 sm:px-6 sm:pt-8 lg:grid-cols-[264px_minmax(0,1fr)] lg:gap-8 lg:px-8 xl:grid-cols-[264px_minmax(0,1fr)_304px]"
       >
         <PublishRail
           view={view}
-          onViewChange={(next) => setFilter("view", next)}
+          onViewChange={(next) => setFilter({ view: next })}
           counts={counts}
           region={region}
-          onRegionChange={(next) => setFilter("region", next)}
-          regionTotals={totals}
+          onRegionChange={(next) => setFilter({ region: next || null })}
+          regionTotals={facets?.regions ?? {}}
+          topic={topic}
+          onTopicChange={(next) => setFilter({ topic: next })}
+          topicTotals={facets?.topics ?? {}}
         />
 
         <section className="flex min-w-0 flex-col gap-4">
           <EventComposer onOpen={setDraft} />
 
-          {/* The feed's own toolbar: what you are looking at, how much of it,
-              and the way into the engagement summary. */}
+          {/* The feed's toolbar: whose events, which ones, and the way into the
+              engagement summary. */}
           <div
             ref={feedTopRef}
-            className="flex scroll-mt-24 items-center justify-between gap-3"
+            className="flex scroll-mt-24 flex-wrap items-center gap-2"
           >
-            <span className="flex min-w-0 items-baseline gap-2">
-              <h1 className="truncate text-[15px] font-semibold text-fg-primary">
-                {t("views." + view)}
-              </h1>
-              {ordered.length > 0 && (
-                <span className="kairos-mono shrink-0 text-[11px] text-fg-quaternary">
-                  {t("pageOf", { page: safePage, pages: pageCount })}
-                  {hasMore ? "+" : ""}
-                </span>
+            {session && (
+              <div
+                role="group"
+                aria-label={t("feedSource")}
+                className="flex shrink-0 gap-0.5 rounded-lg bg-slate-100 p-0.5 dark:bg-white/5"
+              >
+                {(["following", "discover"] as const).map((candidate) => (
+                  <button
+                    key={candidate}
+                    type="button"
+                    onClick={() => setFilter({ source: candidate })}
+                    aria-pressed={source === candidate}
+                    className={`kairos-stamp rounded-md px-3 py-1.5 text-[10px] tracking-[0.12em] transition-colors ${
+                      source === candidate
+                        ? "bg-white text-accent-primary shadow-sm dark:bg-white/10"
+                        : "text-fg-tertiary hover:text-fg-secondary"
+                    }`}
+                  >
+                    {t("sources." + candidate)}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="relative min-w-0 flex-1">
+              <Search
+                size={14}
+                aria-hidden="true"
+                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-quaternary"
+              />
+              <input
+                type="search"
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                placeholder={t("searchPlaceholder")}
+                aria-label={t("searchPlaceholder")}
+                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-8 text-[13px] text-fg-primary placeholder:text-fg-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary/40 dark:border-white/10 dark:bg-white/5"
+              />
+              {searchText && (
+                <button
+                  type="button"
+                  onClick={() => setSearchText("")}
+                  aria-label={t("clearSearch")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-fg-quaternary transition-colors hover:text-fg-primary"
+                >
+                  <X size={13} />
+                </button>
               )}
-            </span>
-            <EventProgressButton events={visible} />
+            </div>
+
+            <EventProgressButton />
           </div>
 
           {feedBody()}
@@ -394,7 +476,7 @@ export function PublishWorkspace() {
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl dark:border-white/5 dark:bg-[#1A191E]">
+            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl dark:border-white/5 dark:bg-[#1A191E]">
               <CreateEventForm
                 initialTitle={draft.title}
                 focusField={draft.focus}

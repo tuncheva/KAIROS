@@ -160,7 +160,7 @@ export function CommandPalette({
       role="dialog"
       aria-modal="true"
       aria-label={t("title")}
-      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/40 p-4 pt-[12vh] backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/40 p-4 pt-[12dvh] backdrop-blur-sm"
       onClick={close}
     >
       <div

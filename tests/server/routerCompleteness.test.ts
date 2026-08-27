@@ -117,8 +117,12 @@ describe("Event Router — Procedure Completeness", () => {
   const src = readRouter("event.ts");
 
   for (const proc of [
-    "createEvent", "getPublicEvents", "addComment", "toggleLike",
-    "updateRsvp", "deleteEvent", "sendEventReminders",
+    // `getPublicEvents` became `getFeed` when the feed learned about the
+    // follow graph: same rows, but the source, view, region, topic and search
+    // are `where` clauses now rather than a filter running in the browser.
+    "createEvent", "getFeed", "getFacets", "getById", "getComments",
+    "getAttendees", "addComment", "toggleLike", "toggleSave",
+    "updateRsvp", "deleteEvent", "sendEventReminders", "getHostStats",
   ]) {
     it(`exports "${proc}" procedure`, () => {
       expect(src).toContain(`${proc}:`);

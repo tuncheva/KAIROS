@@ -4,7 +4,14 @@ import { organizations, organizationMembers } from "./organizations";
 import { projects, projectCollaborators } from "./projects";
 import { tasks, taskComments, taskActivityLog } from "./tasks";
 import { notebooks, stickyNotes, noteShares } from "./notes";
-import { events, eventComments, eventLikes, eventRsvps } from "./events";
+import {
+  events,
+  eventCoHosts,
+  eventComments,
+  eventLikes,
+  eventRsvps,
+  eventSaves,
+} from "./events";
 import {
   conversationParticipants,
   directConversations,
@@ -103,6 +110,18 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   comments: many(eventComments),
   likes: many(eventLikes),
   rsvps: many(eventRsvps),
+  coHosts: many(eventCoHosts),
+  saves: many(eventSaves),
+}));
+
+export const eventCoHostsRelations = relations(eventCoHosts, ({ one }) => ({
+  event: one(events, { fields: [eventCoHosts.eventId], references: [events.id] }),
+  user: one(users, { fields: [eventCoHosts.userId], references: [users.id] }),
+}));
+
+export const eventSavesRelations = relations(eventSaves, ({ one }) => ({
+  event: one(events, { fields: [eventSaves.eventId], references: [events.id] }),
+  user: one(users, { fields: [eventSaves.userId], references: [users.id] }),
 }));
 
 export const eventRsvpsRelations = relations(eventRsvps, ({ one }) => ({
@@ -110,9 +129,15 @@ export const eventRsvpsRelations = relations(eventRsvps, ({ one }) => ({
   user: one(users, { fields: [eventRsvps.userId], references: [users.id] }),
 }));
 
-export const eventCommentsRelations = relations(eventComments, ({ one }) => ({
+export const eventCommentsRelations = relations(eventComments, ({ one, many }) => ({
   event: one(events, { fields: [eventComments.eventId], references: [events.id] }),
   author: one(users, { fields: [eventComments.createdById], references: [users.id] }),
+  parent: one(eventComments, {
+    fields: [eventComments.parentId],
+    references: [eventComments.id],
+    relationName: "commentReplies",
+  }),
+  replies: many(eventComments, { relationName: "commentReplies" }),
 }));
 
 export const eventLikesRelations = relations(eventLikes, ({ one }) => ({

@@ -36,13 +36,13 @@ export default async function ProjectsPage({
 
   return (
     <HydrateClient>
-    <div className="min-h-screen bg-bg-primary">
-      <div className="rail-offset kairos-page-enter flex min-h-screen flex-col pt-16 lg:pt-0">
+    <div className="min-h-dvh bg-bg-primary">
+      <div className="rail-offset kairos-page-enter flex min-h-dvh flex-col kairos-topbar-gap">
         {/* Creating a project is the page's one primary action, so it sits in the
             bar rather than competing with the heading below it. */}
         <TopBar actions={<NewProjectDrawer defaultOpen={openNew} />} />
 
-        <main id="main-content" className="w-full flex-1 overflow-auto pb-24 lg:pb-0">
+        <main id="main-content" className="w-full flex-1 overflow-auto kairos-bottomnav-gap">
           <ProjectsWorkspace userId={session.user.id} initialProjectId={initialProjectId} />
         </main>
       </div>

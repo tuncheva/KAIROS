@@ -1,6 +1,6 @@
 import "~/styles/globals.css";
 
-import { type Metadata } from "next";
+import { type Metadata, type Viewport } from "next";
 import { Nunito_Sans, Instrument_Serif, Playfair_Display, IBM_Plex_Mono } from "next/font/google";
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
@@ -21,6 +21,35 @@ export const metadata: Metadata = {
   title: "KAIROS",
   description: "Coordinate events, manage projects, and collaborate with your team",
   icons: [{ rel: "icon", url: "/logo_white.png" }],
+  // Lets iOS render the app full-screen when it is saved to the home screen,
+  // which is the only way the status-bar area is ours to paint.
+  appleWebApp: { capable: true, title: "KAIROS", statusBarStyle: "black-translucent" },
+  formatDetection: { telephone: false, date: false, address: false, email: false },
+};
+
+/**
+ * `viewportFit: "cover"` is the line that matters most on a phone.
+ *
+ * Without it the page is laid out inside the notch-free "safe" rectangle and
+ * every `env(safe-area-inset-*)` resolves to `0px` — which is why the bottom
+ * nav's `pb-[calc(0.5rem+env(safe-area-inset-bottom))]` was, until now, just
+ * `pb-2` on every iPhone and sat underneath the home indicator. With `cover`
+ * the page fills the display and the insets carry real values, so the shell can
+ * pad itself out of the notch, the home indicator and the landscape ears.
+ *
+ * `maximumScale`/`userScalable` are deliberately left at their permissive
+ * defaults: blocking pinch-zoom is an accessibility failure, and the usual
+ * reason people reach for it — iOS zooming in when you focus a field under
+ * 16px — is fixed properly in `globals.css` instead.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0f" },
+  ],
 };
 
 const sans = Nunito_Sans({

@@ -1,7 +1,7 @@
 export default function SettingsLoading() {
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <div className="rail-offset min-h-screen flex flex-col">
+    <div className="min-h-dvh bg-bg-primary">
+      <div className="rail-offset min-h-dvh flex flex-col">
         <header className="sticky top-0 z-30 bg-bg-primary/95 backdrop-blur-md border-b border-border-light px-4 sm:px-6 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">

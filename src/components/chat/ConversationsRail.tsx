@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { PanelLeftClose, Plus, Search } from "lucide-react";
+import { PanelLeftClose, Plus, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useDateFormat } from "~/hooks/useDateFormat";
@@ -127,7 +127,7 @@ export function ConversationsRail({
               onClick={onCollapse}
               title={t("hideConversations")}
               aria-label={t("hideConversations")}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
+              className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
             >
               <PanelLeftClose className="h-[15px] w-[15px]" />
             </button>
@@ -153,6 +153,19 @@ export function ConversationsRail({
             placeholder={t("searchConversations")}
             className="min-w-0 flex-1 bg-transparent text-[13px] text-fg-primary placeholder:text-fg-tertiary focus:outline-none"
           />
+          {/* The only search box in the app that had no clear of its own, and
+              was relying on WebKit's — which is now suppressed for being
+              off-palette and doubled up everywhere else. */}
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label={t("clearSearch")}
+              className="shrink-0 rounded p-0.5 text-fg-tertiary transition-colors hover:text-fg-primary"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </label>
       </div>
 

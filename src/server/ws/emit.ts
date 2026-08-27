@@ -167,6 +167,19 @@ export function emitEventUpdated(eventId: number) {
   publishEventsFeedEvent("event:updated", { eventId });
 }
 
+/**
+ * A new event exists.
+ *
+ * This was the one moment a live feed is for, and it was the one moment that
+ * emitted nothing: creation published no frame at all, so an event only ever
+ * appeared after a refetch. The payload carries the host so a client can decide
+ * whether the row belongs in the lane it is currently reading — a Following
+ * feed should not shuffle for a stranger's event.
+ */
+export function emitEventCreated(payload: { eventId: number; hostId: string }) {
+  publishEventsFeedEvent("event:created", payload);
+}
+
 // -------------------------------------------------------------------------
 // Agent events
 // -------------------------------------------------------------------------

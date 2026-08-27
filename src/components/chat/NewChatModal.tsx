@@ -127,7 +127,7 @@ export function NewChatModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-chat-title"
-        className="w-full max-w-md max-h-[85vh] flex flex-col rounded-2xl bg-bg-elevated kairos-system-card-elevated overflow-hidden"
+        className="w-full max-w-md max-h-[85dvh] flex flex-col rounded-2xl bg-bg-elevated kairos-system-card-elevated overflow-hidden"
       >
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border-light/40 flex-none">
           <h2 id="new-chat-title" className="flex-1 text-lg font-bold text-fg-primary">
@@ -137,7 +137,7 @@ export function NewChatModal({
             type="button"
             onClick={onClose}
             aria-label={t("cancel")}
-            className="p-1.5 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-secondary transition-colors"
+            className="kairos-tap p-1.5 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-secondary transition-colors"
           >
             <X size={18} />
           </button>

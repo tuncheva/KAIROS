@@ -21,7 +21,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
 
   if (needsOnboarding) {
     return (
-      <div className="min-h-screen bg-bg-primary flex items-start justify-center">
+      <div className="min-h-dvh bg-bg-primary flex items-start justify-center">
         <RoleSelectionModal isOpen onComplete={() => setDismissed(true)} />
       </div>
     );

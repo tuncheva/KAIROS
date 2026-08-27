@@ -125,7 +125,7 @@ export function Composer({
             type="button"
             onClick={onCancelReply}
             aria-label={t("cancelReply")}
-            className="p-1 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-tertiary transition-colors flex-shrink-0"
+            className="kairos-tap p-1 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-tertiary transition-colors flex-shrink-0"
           >
             <X size={14} />
           </button>

@@ -161,6 +161,18 @@ interface ApplyResponse {
 const THINKING_SENTINEL = "__THINKING__";
 const SUBAGENT_SENTINEL = "__SUBAGENT__";
 
+/**
+ * Renders one line as a bullet.
+ *
+ * Strips any glyph the text already carries before adding ours. Agent turns are
+ * persisted as raw JSON, so rows written while the prompt (or the hand-built
+ * fallback) still emitted a leading "•" are in the database for good — without
+ * this, every one of them renders as "• • ...".
+ */
+function asBullet(line: string): string {
+  return `• ${line.replace(/^\s*[•\-*]\s*/, "")}`;
+}
+
 function clampText(s: string, max = 20_000): string {
   if (s.length <= max) return s;
   return s.slice(0, max);
@@ -265,7 +277,7 @@ function CopyButton({ text, tooltip }: { text: string; tooltip: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="opacity-50 hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-white/10 text-fg-tertiary hover:text-fg-secondary shrink-0"
+      className="kairos-tap opacity-50 hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-white/10 text-fg-tertiary hover:text-fg-secondary shrink-0"
       title={tooltip}
     >
       {copied ? (
@@ -661,8 +673,8 @@ export function ProjectIntelligenceChat(props: {
           // E-1: a clarifying question is an answer, not a failure — render the
           // question and the options it offered rather than "no response".
           payload.a1.clarify?.question,
-          ...(payload.a1.clarify?.options ?? []).map((o) => `• ${o}`),
-          ...(payload.a1.answer?.details ?? []).map((d) => `• ${d}`),
+          ...(payload.a1.clarify?.options ?? []).map((o) => asBullet(o)),
+          ...(payload.a1.answer?.details ?? []).map((d) => asBullet(d)),
           // E-2: a turn can now fail more than one handoff, so this is a list.
           ...(payload.handoffErrors ?? []),
         ]
@@ -676,7 +688,7 @@ export function ProjectIntelligenceChat(props: {
         const questions = p?.questionsForUser ?? [];
         if (questions.length > 0) {
           return {
-            text: `${t("needMoreInfo")}\n${questions.map((q) => `• ${q}`).join("\n")}`,
+            text: `${t("needMoreInfo")}\n${questions.map((q) => asBullet(q)).join("\n")}`,
             createdAt: new Date(),
             msgId,
           };
@@ -788,7 +800,7 @@ export function ProjectIntelligenceChat(props: {
         : [];
       if (questions.length > 0) {
         return {
-          text: `${t("needMoreInfo")}\n${questions.map((q) => `• ${q}`).join("\n")}`,
+          text: `${t("needMoreInfo")}\n${questions.map((q) => asBullet(q)).join("\n")}`,
           createdAt: new Date(),
           msgId,
         };
@@ -1045,7 +1057,7 @@ export function ProjectIntelligenceChat(props: {
           if (parsed.answer?.summary) {
             text = [
               parsed.answer.summary,
-              ...(parsed.answer.details ?? []).map((d) => `• ${d}`),
+              ...(parsed.answer.details ?? []).map((d) => asBullet(d)),
             ].join("\n");
           }
         } catch {
@@ -2438,7 +2450,7 @@ export function ProjectIntelligenceChat(props: {
                   type="submit"
                   aria-label={t("send")}
                   title={tc("sendShortcut")}
-                  className={`${
+                  className={`kairos-tap ${
                     isConsole ? "" : "ml-auto "
                   }flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
                   style={{

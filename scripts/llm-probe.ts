@@ -38,18 +38,68 @@ function record(name: string, ok: boolean, detail: string, soft = false) {
   console.log(`  ${mark} ${name}${detail ? ` — ${detail}` : ""}`);
 }
 
+/**
+ * The chat-template flags the real client would send for this model.
+ *
+ * Mirrors `CHAT_TEMPLATE_KWARGS` in `src/server/llm/core/modelClient.ts`. A
+ * probe that omits them is not probing what the app sends: hybrid-thinking
+ * DeepSeek V4 on NVIDIA NIM hangs until the request times out when the flag is
+ * absent, so every capability below reported a false negative.
+ *
+ * Matched on the model id with any vendor namespace stripped, and by prefix, so
+ * a dated build ("...-0731") inherits its family's entry.
+ */
+const PROBE_TEMPLATE_KWARGS: ReadonlyArray<
+  readonly [prefix: string, kwargs: Record<string, unknown>]
+> = [
+  ["deepseek-v4-flash", { thinking: true, reasoning_effort: "low" }],
+  ["deepseek-v4-pro", { thinking: true, reasoning_effort: "low" }],
+  ["nemotron-3", { enable_thinking: true }],
+];
+
+const THINKING_MIN_TOKENS = 768;
+
+function templateKwargs(): Record<string, unknown> | undefined {
+  const bare = MODEL.slice(MODEL.lastIndexOf("/") + 1);
+  return PROBE_TEMPLATE_KWARGS.find(([prefix]) => bare.startsWith(prefix))?.[1];
+}
+
 async function post(
   body: Record<string, unknown>,
 ): Promise<{ status: number; json: unknown; text: string }> {
-  const res = await fetch(`${BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60_000),
-  });
+  const kwargs = templateKwargs();
+  if (kwargs && !("chat_template_kwargs" in body)) {
+    body = { ...body, chat_template_kwargs: kwargs };
+  }
+  // Reasoning tokens are spent before the first visible character, so the tiny
+  // budgets below (16-256) can be consumed entirely by thinking and come back
+  // with empty content — which reads as a capability failure when it is only a
+  // budget. Applied to every model, not just ones in the table above: a model
+  // can reason without gating it behind a chat-template flag (Kimi K3 returns
+  // `reasoning_content` and needs no flag at all).
+  const asked = typeof body.max_tokens === "number" ? body.max_tokens : 0;
+  if (asked < THINKING_MIN_TOKENS) {
+    body = { ...body, max_tokens: THINKING_MIN_TOKENS };
+  }
+  // Free tiers rate-limit by the minute, and a probe fires a dozen calls back
+  // to back. Without this every capability after the first few reports 429 and
+  // the verdict claims the endpoint cannot do things it can.
+  let res!: Response;
+  for (let attempt = 0; ; attempt++) {
+    res = await fetch(`${BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (res.status !== 429 || attempt >= 4) break;
+    const wait = 5_000 * 2 ** attempt;
+    console.log(`      (429 — waiting ${wait / 1000}s, retry ${attempt + 1}/4)`);
+    await new Promise((r) => setTimeout(r, wait));
+  }
   const text = await res.text();
   let json: unknown = null;
   try {

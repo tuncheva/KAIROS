@@ -114,3 +114,39 @@ describe("Design System – globals.css", () => {
     expect(css).toMatch(/@import|@tailwind/);
   });
 });
+
+describe("Search inputs – one clear button, not two", () => {
+  /**
+   * WebKit draws its own clear button inside `input[type="search"]`, it takes
+   * no colour, and it lands beside the themed one every search box in this app
+   * supplies. Two crosses, one of them off-palette.
+   */
+  it("suppresses the browser's own clear button", () => {
+    expect(css).toContain("::-webkit-search-cancel-button");
+    const rule = css.slice(
+      css.indexOf('input[type="search"]::-webkit-search-cancel-button'),
+      css.indexOf('input[type="search"]::-webkit-search-cancel-button') + 400,
+    );
+    expect(rule).toContain("-webkit-appearance: none");
+    expect(rule).toContain("appearance: none");
+  });
+
+  it("every search input still offers a clear of its own", () => {
+    // Suppressing the native button is only safe while each box has one.
+    const files = [
+      "src/components/publish/PublishWorkspace.tsx",
+      "src/components/notes/NotesRail.tsx",
+      "src/components/chat/ConversationRail.tsx",
+      "src/components/chat/ConversationsRail.tsx",
+    ];
+
+    for (const file of files) {
+      const source = fs.readFileSync(
+        path.resolve(__dirname, "../../", file),
+        "utf-8",
+      );
+      expect(source, file).toContain('type="search"');
+      expect(source, file).toMatch(/clearSearch/);
+    }
+  });
+});

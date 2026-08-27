@@ -123,7 +123,12 @@ export function ImageUpload({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+            /* Where there is no hover this overlay is permanently on (see the
+               `@media (hover: none)` rule in globals.css — without it the only
+               way to change your photo is invisible on a phone). A 60% scrim
+               that never lifts would leave the avatar looking switched off, so
+               on touch it drops to a tint the face still reads through. */
+            className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-50 [@media(hover:none)]:bg-black/35"
           >
             <Camera className="text-white" size={24} />
           </button>

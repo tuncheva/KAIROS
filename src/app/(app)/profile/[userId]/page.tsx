@@ -21,7 +21,7 @@ export default async function ProfileRoutePage({
   const { userId } = await params;
 
   return (
-    <div className="rail-offset min-h-screen bg-bg-primary">
+    <div className="rail-offset min-h-dvh bg-bg-primary">
       <ProfileRouteOpener userId={userId} />
     </div>
   );

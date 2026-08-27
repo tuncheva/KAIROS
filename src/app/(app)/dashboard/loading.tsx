@@ -1,7 +1,7 @@
 export default function DashboardLoading() {
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <div className="rail-offset min-h-screen flex flex-col pt-16 lg:pt-0">
+    <div className="min-h-dvh bg-bg-primary">
+      <div className="rail-offset min-h-dvh flex flex-col kairos-topbar-gap">
         <header className="sticky top-16 lg:top-0 z-30 topbar-solid">
           <div className="flex items-center justify-between px-4 py-3 sm:px-6 md:px-8 sm:py-4">
             <div className="h-7 w-40 bg-bg-secondary rounded animate-pulse" />

@@ -49,6 +49,39 @@ export const dateFormatEnum
 // tell an account notice from a chat ping.
 export const notificationTypeEnum = pgEnum("notification_type", ["event", "task", "project", "system", "like", "comment", "reply", "message", "event_reminder"]);
 export const rsvpStatusEnum = pgEnum("rsvp_status", ["going", "maybe", "not_going"]);
+/**
+ * What kind of event this is.
+ *
+ * One nullable enum rather than a tags table: an event belongs to one kind
+ * often enough that a join table would be six values of ceremony. If events
+ * routinely span two, this becomes `event_topics` and the column goes away.
+ */
+export const eventTopicEnum = pgEnum("event_topic", [
+  "tech",
+  "music",
+  "food",
+  "sport",
+  "art",
+  "business",
+  "education",
+  "community",
+]);
+/**
+ * The wash behind an event that has no photograph.
+ *
+ * Named for the blend rather than for one colour, because each is two brand
+ * tokens mixed — and stored rather than derived so a host who picked one keeps
+ * it when the palette is extended.
+ */
+export const eventCoverEnum = pgEnum("event_cover", [
+  "dusk",
+  "ember",
+  "meadow",
+  "blush",
+  "sand",
+  "tide",
+]);
+
 export const regionEnum = pgEnum("region", [
   "sofia",
   "plovdiv",

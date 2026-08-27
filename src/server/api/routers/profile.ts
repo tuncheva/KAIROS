@@ -297,6 +297,159 @@ export const profileRouter = createTRPCRouter({
     }),
 
   /**
+   * Who to follow.
+   *
+   * Ranked by the two overlaps this schema can actually prove: people who host
+   * or attend the events you attend, and people in your organisations. No
+   * "people you may know" heuristics beyond that — a suggestion the system
+   * cannot justify is a stranger with a Follow button on them.
+   *
+   * Everyone already followed, and everyone who has turned followers off, is
+   * excluded before ranking rather than filtered out of the results, so asking
+   * for six suggestions does not quietly return two.
+   */
+  getSuggestions: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(20).optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const viewerId = ctx.session.user.id;
+      const limit = input?.limit ?? 5;
+
+      /**
+       * Assembled from plain queries rather than one correlated monster.
+       *
+       * The first draft wrote the subqueries by hand with aliases, which meant
+       * spelling column names in raw SQL — and this database does not use one
+       * naming convention throughout (`event."createdById"` beside
+       * `event_rsvp.user_id`). Every query below goes through drizzle, so the
+       * names come from the schema and cannot drift from it.
+       */
+      const [myRsvps, myOrgs, alreadyFollowing] = await Promise.all([
+        ctx.db
+          .select({ eventId: eventRsvps.eventId })
+          .from(eventRsvps)
+          .where(
+            and(eq(eventRsvps.userId, viewerId), ne(eventRsvps.status, "not_going")),
+          )
+          .orderBy(desc(eventRsvps.createdAt))
+          .limit(200),
+        ctx.db
+          .select({ organizationId: organizationMembers.organizationId })
+          .from(organizationMembers)
+          .where(eq(organizationMembers.userId, viewerId)),
+        ctx.db
+          .select({ id: userFollows.followingId })
+          .from(userFollows)
+          .where(eq(userFollows.followerId, viewerId)),
+      ]);
+
+      const myEventIds = myRsvps.map((row) => row.eventId);
+      const myOrgIds = myOrgs.map((row) => row.organizationId);
+      const excluded = new Set([viewerId, ...alreadyFollowing.map((row) => row.id)]);
+
+      /** userId -> why they are worth suggesting. */
+      const scores = new Map<
+        string,
+        { sharedEvents: number; hostedForYou: number; sharedOrgs: number }
+      >();
+      const bump = (
+        userId: string,
+        key: "sharedEvents" | "hostedForYou" | "sharedOrgs",
+      ) => {
+        if (excluded.has(userId)) return;
+        const entry = scores.get(userId) ?? {
+          sharedEvents: 0,
+          hostedForYou: 0,
+          sharedOrgs: 0,
+        };
+        entry[key] += 1;
+        scores.set(userId, entry);
+      };
+
+      if (myEventIds.length > 0) {
+        const [alsoGoing, hosts] = await Promise.all([
+          ctx.db
+            .select({ userId: eventRsvps.userId })
+            .from(eventRsvps)
+            .where(
+              and(
+                inArray(eventRsvps.eventId, myEventIds),
+                ne(eventRsvps.status, "not_going"),
+              ),
+            )
+            .limit(2000),
+          ctx.db
+            .select({ createdById: events.createdById })
+            .from(events)
+            .where(inArray(events.id, myEventIds)),
+        ]);
+
+        for (const row of alsoGoing) bump(row.userId, "sharedEvents");
+        for (const row of hosts) bump(row.createdById, "hostedForYou");
+      }
+
+      if (myOrgIds.length > 0) {
+        const colleagues = await ctx.db
+          .select({ userId: organizationMembers.userId })
+          .from(organizationMembers)
+          .where(inArray(organizationMembers.organizationId, myOrgIds))
+          .limit(2000);
+
+        for (const row of colleagues) bump(row.userId, "sharedOrgs");
+      }
+
+      const ranked = [...scores.entries()]
+        .map(([id, parts]) => ({
+          id,
+          ...parts,
+          score: parts.hostedForYou * 4 + parts.sharedEvents * 3 + parts.sharedOrgs * 2,
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit * 3);
+
+      if (ranked.length === 0) return [];
+
+      /* Only now fetch the people, and only those still accepting followers. */
+      const candidates = await ctx.db
+        .select({
+          id: users.id,
+          name: users.name,
+          image: users.image,
+          upcomingHosted: sql<number>`(SELECT count(*) FROM ${events} WHERE ${events.createdById} = ${users.id} AND ${events.eventDate} >= now())`.mapWith(
+            Number,
+          ),
+        })
+        .from(users)
+        .where(
+          and(
+            inArray(users.id, ranked.map((row) => row.id)),
+            eq(users.allowFollowers, true),
+          ),
+        );
+
+      const byId = new Map(candidates.map((person) => [person.id, person]));
+
+      return ranked
+        .filter((row) => byId.has(row.id))
+        .slice(0, limit)
+        .map((row) => {
+          const person = byId.get(row.id)!;
+          return {
+            id: person.id,
+            name: person.name,
+            image: person.image,
+            upcomingHosted: person.upcomingHosted,
+            /* Why they are being suggested, so the panel can say it out loud. */
+            reason:
+              row.hostedForYou > 0
+                ? ({ kind: "hostedForYou", count: row.hostedForYou } as const)
+                : row.sharedEvents > 0
+                  ? ({ kind: "sharedEvents", count: row.sharedEvents } as const)
+                  : ({ kind: "sharedOrgs", count: row.sharedOrgs } as const),
+          };
+        });
+    }),
+
+  /**
    * A derived activity feed.
    *
    * Two sources — events this person published, and events they said they are

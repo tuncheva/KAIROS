@@ -15,7 +15,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-primary px-4">
+    <div className="min-h-dvh flex items-center justify-center bg-bg-primary px-4">
       <div className="max-w-md w-full text-center space-y-6">
         <div className="w-16 h-16 mx-auto rounded-2xl bg-red-500/10 flex items-center justify-center">
           <span className="text-3xl">⚠</span>

@@ -132,7 +132,7 @@ export function ProfileSettingsClient({ user }: ProfileSettingsClientProps) {
       void utils.user.getProfile.invalidate();
 
       // Refresh event feed/comment avatars that come from cached queries.
-      void utils.event.getPublicEvents.invalidate();
+      void utils.event.getFeed.invalidate();
 
       // Make sure NextAuth's session (used across the app) reflects the new image.
       // Without this, places like the event comment composer can keep showing the

@@ -341,12 +341,22 @@
 body {
   background-color: rgb(var(--bg-primary));
   color: rgb(var(--text-primary));
+  /* A phone has no horizontal scrollbar to warn you with: one over-wide child
+     just makes the whole page rubber-band sideways, and the fixed top bar and
+     bottom nav stay put while the content slides out from under them. `clip`
+     rather than `hidden` because `hidden` would turn <body> into a scroll
+     container and break every `position: sticky` header in the app. */
+  overflow-x: clip;
+  /* Safari on iOS inflates text when a page is rotated to landscape unless it
+     is told not to. */
+  -webkit-text-size-adjust: 100%;
 }
 
 html {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
 }
 
 /* Professional elevated surfaces with depth */
@@ -1917,6 +1927,9 @@ summary,
   font-size: 14px;
   line-height: 1.7;
   color: rgb(var(--fg-primary));
+  /* Answers arrive as plain text with real newlines between the summary and
+     each detail line, so the breaks have to survive. */
+  white-space: pre-wrap;
 }
 
 .kairos-chat-response strong,
@@ -2799,6 +2812,37 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
   opacity: 1;
 }
 
+/* Hover has to be *deliberate*. Sweeping the cursor past the rail — or leaving
+   it parked there after clicking a nav item — used to fling the rail open the
+   moment the pointer touched it. A `transition-delay` on the hovered state is
+   the whole mechanism: the width/opacity/margin changes are queued but do not
+   begin until the pointer has rested for 1s, and leaving early drops the
+   hover state before the delay elapses, so nothing ever starts. The delay is
+   only ever set on the :hover side — collapsing, keyboard focus, and the pin
+   all stay immediate.
+
+   Every surface that moves with the rail gets the same delay or they tear
+   apart: the rail's own width, the labels' fade, and the page's margin. */
+.kairos-rail:hover,
+.kairos-rail:hover .kairos-rail-label {
+  transition-delay: 1000ms;
+}
+
+@media (min-width: 1024px) {
+  :root:has(.kairos-rail:hover) .rail-offset {
+    transition-delay: 1000ms;
+  }
+}
+
+/* A rail held open by the keyboard (or the pin) must not inherit the wait when
+   the pointer happens to be over it as well. */
+.kairos-rail:hover:has(:focus-visible),
+.kairos-rail:hover:has(:focus-visible) .kairos-rail-label,
+:root[data-rail-pinned="true"] .kairos-rail:hover,
+:root[data-rail-pinned="true"] .kairos-rail:hover .kairos-rail-label {
+  transition-delay: 0ms;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rail-offset {
     transition: none;
@@ -2820,6 +2864,61 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
 
 /* A label stamp: uppercase, tracked out, mono. Used for section headings,
    timestamps and status chips throughout the console. */
+/* ── Search inputs ────────────────────────────────────────────────────────
+
+   WebKit draws its own clear button inside `input[type="search"]`, and it does
+   not take a colour: it renders as a heavy white cross that ignores the theme
+   and sits beside the themed one every search box in this app already supplies.
+   Two clear buttons, one of them off-palette.
+
+   Suppressed here rather than per component because every search input in the
+   app has the same problem, and because the alternative — dropping back to
+   `type="text"` — would also drop the Escape-to-clear behaviour and the input
+   mode keyboards give a search field. */
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-results-button,
+input[type="search"]::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* ── Event covers ─────────────────────────────────────────────────────────
+
+   A soft two-colour wash for events that have no photograph, which is most of
+   them. The alternative was a grey rectangle, and a feed of grey rectangles is
+   a feed nobody scans.
+
+   Built from the brand tokens rather than fixed hex so the palette moves with
+   the theme, and mixed at low alpha over `--bg-tertiary` so the same six
+   choices read as pastels on a light background and as deep washes on a dark
+   one without a second set of values.
+
+   Two off-centre radial stops plus a diagonal do the blending: a single linear
+   gradient reads as a flat band once the card is wider than it is tall. */
+.kairos-cover {
+  --cover-a: var(--brand-purple);
+  --cover-b: var(--brand-sky);
+  background-color: rgb(var(--bg-tertiary));
+  background-image:
+    radial-gradient(120% 140% at 12% 8%, rgb(var(--cover-a) / 0.42), transparent 62%),
+    radial-gradient(120% 140% at 88% 92%, rgb(var(--cover-b) / 0.38), transparent 60%),
+    linear-gradient(135deg, rgb(var(--cover-a) / 0.16), rgb(var(--cover-b) / 0.16));
+}
+
+.kairos-cover-dusk    { --cover-a: var(--brand-purple);     --cover-b: var(--brand-sky); }
+.kairos-cover-ember   { --cover-a: var(--brand-caramel);    --cover-b: var(--brand-strawberry); }
+.kairos-cover-meadow  { --cover-a: var(--brand-mint);       --cover-b: var(--brand-sky); }
+.kairos-cover-blush   { --cover-a: var(--brand-pink);       --cover-b: var(--brand-purple); }
+.kairos-cover-sand    { --cover-a: var(--brand-caramel);    --cover-b: var(--brand-mint); }
+.kairos-cover-tide    { --cover-a: var(--brand-sky);        --cover-b: var(--brand-mint); }
+
+/* The swatch in the picker is the same wash at the size of a button, so what
+   you choose is what you get rather than an approximation of it. */
+.kairos-cover-swatch {
+  background-size: 100% 100%;
+}
+
 .kairos-stamp {
   font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   text-transform: uppercase;
@@ -2907,10 +3006,15 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
    leaving and stay mounted for the duration; see `PROFILE_DRAWER_EXIT_MS` in
    `~/components/profile/ProfileDrawer`, which holds it there.
 
-   The exit is faster than the entrance (0.3s against 0.45s) and rides an
-   ease-in rather than the entrance's overshoot-free ease-out. Dismissal should
-   feel like the panel is getting out of the way; matching the entrance curve
-   makes closing feel reluctant.
+   Durations mirror the entrance exactly — 0.45s for the panel, 0.35s for the
+   scrim — so opening and closing feel like one gesture run in both directions.
+   Keep them in step with `.projects-drawer` and `.projects-drawer-scrim` above,
+   and with `PROFILE_DRAWER_EXIT_MS`, which must not be shorter than the panel's
+   0.45s or the drawer unmounts mid-slide.
+
+   The curve is still the exit's own: an ease-in against the entrance's
+   ease-out, so the panel eases away rather than arriving in reverse. Only the
+   timing is mirrored, not the shape.
    -------------------------------------------------------------------------- */
 
 @keyframes projects-drawer-out {
@@ -2932,12 +3036,12 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
 }
 
 .projects-drawer-out {
-  animation: projects-drawer-out 0.3s cubic-bezier(0.4, 0, 0.9, 0.5) both;
+  animation: projects-drawer-out 0.45s cubic-bezier(0.4, 0, 0.9, 0.5) both;
   will-change: transform;
 }
 
 .projects-drawer-scrim-out {
-  animation: projects-scrim-out 0.3s ease-in both;
+  animation: projects-scrim-out 0.35s ease-in both;
   /* The scrim is the click target for "close". Once it is on its way out it
      must stop accepting clicks, or a second tap during the exit re-fires a
      close on a drawer that is already gone. */
@@ -3170,5 +3274,242 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
   .settings-reveal {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* ==========================================================================
+   Phone foundation
+   --------------------------------------------------------------------------
+   Everything in this block is about the difference between "narrow desktop
+   window" and "an actual phone": a display cut out by a notch or a punch-hole,
+   a browser chrome bar that grows and shrinks as you scroll, a coarse finger
+   instead of a pointer, and a keyboard that eats half the screen.
+
+   It pairs with `viewport: { viewportFit: "cover" }` in `src/app/layout.tsx` —
+   without that export every `env(safe-area-inset-*)` below is `0px` and this
+   block quietly does nothing.
+   ========================================================================== */
+
+:root {
+  /* Aliased once so the rest of the sheet (and any inline style) can read the
+     insets without repeating the `env(..., 0px)` fallback that older Android
+     WebViews need. */
+  --kairos-safe-top: env(safe-area-inset-top, 0px);
+  --kairos-safe-right: env(safe-area-inset-right, 0px);
+  --kairos-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --kairos-safe-left: env(safe-area-inset-left, 0px);
+
+  /* The two fixed chrome bars `SideNav` paints below `lg`. Their heights are
+     asserted by `tests/styles/mobile-shell.test.ts` against the markup, so the
+     page gaps below cannot drift away from the bars they clear. */
+  --kairos-topbar-h: 4rem; /* 64px: 40px of content + `py-3` */
+  --kairos-bottomnav-h: 3.75rem; /* 60px: 44px of targets + `py-2` */
+}
+
+/* ── Clearing the fixed bars ───────────────────────────────────────────────
+   Pages used to write `pt-16 lg:pt-0` / `pb-24 lg:pb-0` by hand. Those numbers
+   were right for a flat-topped phone and wrong for every phone sold since:
+   the bars themselves grow by the safe-area inset, so a fixed 64px gap put the
+   page title under the notch. These two utilities keep the gap and the bar in
+   step. They are unlayered, so they win over Tailwind's `pt-*`/`pb-*` if both
+   are ever present on one element. */
+.kairos-topbar-gap {
+  padding-top: calc(var(--kairos-topbar-h) + var(--kairos-safe-top));
+}
+
+.kairos-bottomnav-gap {
+  padding-bottom: calc(var(--kairos-bottomnav-h) + var(--kairos-safe-bottom) + 1rem);
+}
+
+/* The bars themselves are `lg:hidden`, so their gaps have to go with them. */
+@media (min-width: 1024px) {
+  .kairos-topbar-gap {
+    padding-top: 0;
+  }
+
+  .kairos-bottomnav-gap {
+    padding-bottom: 0;
+  }
+}
+
+/* The bars' own padding, so they sit *beside* the notch and the home indicator
+   rather than under them. In landscape the notch moves to one side, which is
+   what the left/right insets on the top bar are for. */
+.kairos-mobile-topbar {
+  padding-top: calc(0.75rem + var(--kairos-safe-top));
+  padding-left: calc(1rem + var(--kairos-safe-left));
+  padding-right: calc(1rem + var(--kairos-safe-right));
+}
+
+.kairos-mobile-bottomnav {
+  padding-bottom: calc(0.5rem + var(--kairos-safe-bottom));
+  padding-left: calc(0.75rem + var(--kairos-safe-left));
+  padding-right: calc(0.75rem + var(--kairos-safe-right));
+}
+
+/* A left-anchored sheet (the nav drawer) has to clear the landscape notch on
+   its own leading edge; a right-anchored one clears the trailing edge. */
+.kairos-sheet-left {
+  padding-left: var(--kairos-safe-left);
+}
+
+.kairos-sheet-right {
+  padding-right: var(--kairos-safe-right);
+}
+
+/* ── iOS focus zoom ────────────────────────────────────────────────────────
+   Mobile Safari zooms the whole page in when you focus a field whose text is
+   under 16px, and it does not zoom back out. The app's fields are 13–15px by
+   design, which made every text entry on an iPhone a two-step jump-and-pinch.
+
+   The fix is to raise the *field* text to 16px on touch screens only, rather
+   than to disable zooming in the viewport tag — pinch-zoom stays available for
+   people who need it. Desktop keeps the designed sizes because the query is
+   gated on a coarse pointer, and the `1em` floor means a field that is already
+   larger than 16px is left alone. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea,
+  [contenteditable]:not([contenteditable="false"]) {
+    font-size: max(16px, 1em);
+  }
+}
+
+/* ── Touch behaviour ───────────────────────────────────────────────────────
+   `touch-action: manipulation` drops the ~300ms wait a mobile browser spends
+   deciding whether a tap was the start of a double-tap-to-zoom. The tap
+   highlight is a grey box iOS paints over anything tappable; the app already
+   draws its own active states. */
+@media (pointer: coarse) {
+  a,
+  button,
+  [role="button"],
+  summary,
+  label,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Hover styles latch on a touch screen: tap a row, and it stays "hovered"
+     until you tap something else, which reads as a wrong selection. Only the
+     rail is exempt — it is `lg:` only, so a coarse pointer never reaches it. */
+  a:hover,
+  button:hover {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Any panel that scrolls inside the page should stop its scroll at its own
+   edge instead of handing the rest to the document — otherwise flicking a
+   message list to its end drags the whole page and triggers pull-to-refresh. */
+.kairos-scroll-area {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Reaching past the safe area ───────────────────────────────────────────
+   Content that must run edge to edge (a full-bleed hero, a sheet) still needs
+   its *text* inside the safe rectangle. */
+.kairos-safe-x {
+  padding-left: var(--kairos-safe-left);
+  padding-right: var(--kairos-safe-right);
+}
+
+.kairos-safe-bottom {
+  padding-bottom: var(--kairos-safe-bottom);
+}
+
+/* ── Small phones ──────────────────────────────────────────────────────────
+   The narrowest phone still in circulation is 320px CSS pixels (iPhone SE 1st
+   gen, and any phone at 320px with the largest system font). Nothing in the
+   app may assume more than that. This guard catches the common escape hatch —
+   a `white-space: nowrap` heading or a long unbroken URL — and lets it wrap
+   rather than widen the page. */
+@media (max-width: 380px) {
+  h1,
+  h2,
+  h3 {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Long tokens (share links, invite codes, e-mail addresses) are the other way
+   a page gets wider than the phone. */
+.kairos-break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* ── Landscape phones ──────────────────────────────────────────────────────
+   A phone on its side is ~375px tall. Anything that centres itself in a full
+   viewport height has to be allowed to scroll there instead. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .kairos-center-viewport {
+    align-items: flex-start;
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+}
+
+/* ── Controls that only exist on hover ────────────────────────────────────
+   A handful of surfaces hide a control behind `opacity-0 group-hover:
+   opacity-100`: the calendar's "add on this day" button, a message's action
+   row, a note row's overflow menu, a notification's dismiss, the avatar's
+   change-photo overlay. On a mouse that is tidy. On a touch screen there is no
+   hover, so those controls are not merely hard to find — they are unreachable,
+   and the feature behind each one simply does not exist on a phone.
+
+   Revealing them wherever hover is unavailable is the whole fix, and it is one
+   rule rather than six edits because it targets the utility itself. `hover:
+   none` is the right query — not a width breakpoint — so a touch laptop and a
+   phone in landscape both get it, and a narrow desktop window does not.
+
+   The rule is unlayered, so it outranks the `opacity-0` that Tailwind emits in
+   its utilities layer. */
+@media (hover: none) {
+  .group-hover\:opacity-100 {
+    opacity: 1;
+  }
+}
+
+/* ── Thumb-sized hit areas ────────────────────────────────────────────────
+   The app's icon buttons — dialog closes, dismiss X's, a composer's cancel —
+   are drawn at 24–32px. That is the right *painted* size next to a 14px label,
+   and it is roughly half the 44px a thumb can reliably hit.
+
+   `.kairos-tap` widens the hit area without touching the painted one: a
+   centred, invisible pseudo-element at least 44px on a side, which inherits
+   the button's own click because it is a child of it. Nothing reflows, so the
+   class is safe to apply mechanically.
+
+   It is opt-in rather than a blanket rule on `button` for two reasons: a
+   handful of buttons in the sheet already own their `::after` (`.kairos-btn`,
+   `.k-nav`), and `position: relative` on an arbitrary button would re-anchor
+   any absolutely positioned child it happens to contain.
+
+   The `:not()` pair matters: this rule is unlayered, so a bare
+   `position: relative` here would outrank Tailwind's own `absolute`/`fixed`
+   and yank buttons like the notes password-reveal out of the field they are
+   pinned inside. Those are already positioning contexts, so they need the
+   pseudo-element and nothing else. */
+.kairos-tap:not(.absolute):not(.fixed):not(.sticky) {
+  position: relative;
+}
+
+@media (pointer: coarse) {
+  .kairos-tap::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    min-width: 44px;
+    min-height: 44px;
+    transform: translate(-50%, -50%);
   }
 }

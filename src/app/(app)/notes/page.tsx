@@ -21,7 +21,7 @@ export default async function NotesPage() {
       <div className="h-[100dvh] bg-bg-primary overflow-hidden">
         <main
           id="main-content"
-          className="rail-offset h-[100dvh] overflow-hidden kairos-page-enter pt-16 lg:pt-0 pb-24 lg:pb-0"
+          className="rail-offset h-[100dvh] overflow-hidden kairos-page-enter kairos-topbar-gap kairos-bottomnav-gap"
         >
           <NotesWorkspace noteId={null} />
         </main>

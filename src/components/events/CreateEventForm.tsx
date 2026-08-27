@@ -5,9 +5,15 @@ import { api } from '~/trpc/react';
 import { useSession } from 'next-auth/react';
 import { useUploadThing } from '~/lib/uploadthing';
 import Image from 'next/image';
-import { X, ImagePlus, Loader2, MapPin, Calendar, Clock, Plus, ChevronDown } from 'lucide-react';
+import { X, ImagePlus, Loader2, MapPin, Calendar, Clock, ChevronDown } from 'lucide-react';
 import { useToast } from "~/components/providers/ToastProvider";
 import { useTranslations } from "next-intl";
+import {
+  EventDetailFields,
+  EMPTY_DETAILS,
+  toEventDetailInput,
+  type EventDetailValues,
+} from "./EventDetailFields";
 
 const MAX_EVENT_IMAGE_BYTES = 4 * 1024 * 1024;
 
@@ -58,6 +64,11 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
   const [region, setRegion] = useState<string>('sofia');
   const [enableRsvp, setEnableRsvp] = useState(false);
   const [sendReminders, setSendReminders] = useState(false);
+
+  /* End time, venue, address, capacity, topic and co-hosts. The last of these
+     is the one the form has always claimed to collect: "Tag Collaborators" was
+     a dashed plus with no handler behind it and no column to write to. */
+  const [details, setDetails] = useState<EventDetailValues>(EMPTY_DETAILS);
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -141,7 +152,8 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
       setImageFile(null);
       setImagePreview(null);
       localStorage.removeItem(draftKey);
-      void utils.event.getPublicEvents.invalidate();
+      void utils.event.getFeed.invalidate();
+      void utils.event.getFacets.invalidate();
       onSuccess?.();
     },
     onError: (error) => {
@@ -211,6 +223,8 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
         }
       }
 
+      const extra = toEventDetailInput(details, eventDate);
+
       createEvent.mutate({
         title: title.trim(),
         description: description.trim(),
@@ -219,6 +233,12 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
         imageUrl,
         enableRsvp,
         sendReminders: enableRsvp ? sendReminders : false,
+        endsAt: extra.endsAt,
+        venue: extra.venue,
+        address: extra.address,
+        capacity: extra.capacity,
+        topic: extra.topic,
+        coHostIds: extra.coHostIds,
       });
     } catch (error) {
       toast.error(t("validation.uploadError"));
@@ -237,7 +257,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col max-h-[90vh]">
+    <form onSubmit={handleSubmit} className="flex flex-col max-h-[90dvh]">
       {/* Modal Header — matches create-event.html */}
       <div className="px-6 py-4 border-b dark:border-white/5 border-slate-200 flex items-center justify-between shrink-0">
         <h2 className="text-lg font-display font-bold dark:text-white text-slate-900 tracking-tight">{t("createEvent")}</h2>
@@ -245,7 +265,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-accent-primary/60 hover:text-accent-primary transition-colors rounded-full p-1.5 dark:hover:bg-white/5 hover:bg-accent-primary/5"
+            className="kairos-tap text-accent-primary/60 hover:text-accent-primary transition-colors rounded-full p-1.5 dark:hover:bg-white/5 hover:bg-accent-primary/5"
           >
             <X size={20} />
           </button>
@@ -368,30 +388,18 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
             <button
               type="button"
               onClick={removeImage}
-              className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+              className="kairos-tap absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
             >
               <X size={14} />
             </button>
           </div>
         )}
 
-        {/* Tag Collaborators */}
-        <div>
-          <label className="block text-[10px] font-bold dark:text-gray-500 text-slate-500 uppercase tracking-[0.15em] mb-2">
-            {t("tagCollaborators")}
-          </label>
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              className="w-9 h-9 rounded-full border-2 border-dashed dark:border-gray-700 border-slate-300 flex items-center justify-center dark:text-gray-500 text-slate-400 hover:text-accent-primary hover:border-accent-primary transition-all"
-            >
-              <Plus size={18} />
-            </button>
-            <span className="text-xs dark:text-gray-500 text-slate-400 font-medium">
-              {t("addGuestHosts")}
-            </span>
-          </div>
-        </div>
+        <EventDetailFields
+          values={details}
+          onChange={setDetails}
+          disabled={createEvent.isPending || isUploading}
+        />
 
         {/* Toggles */}
         <div className="flex items-center gap-4">

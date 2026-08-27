@@ -328,12 +328,15 @@ export const verificationCodes = createTable(
 export const userFollows = createTable(
   "user_follow",
   (d) => ({
+    /* Named explicitly. Without a name drizzle takes the column from the key —
+       `followerId` — while migration 0030 created `follower_id`, so every query
+       against this table asked for a column that does not exist. */
     followerId: d
-      .varchar({ length: 255 })
+      .varchar("follower_id", { length: 255 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     followingId: d
-      .varchar({ length: 255 })
+      .varchar("following_id", { length: 255 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     createdAt: d

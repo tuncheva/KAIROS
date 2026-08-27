@@ -313,7 +313,7 @@ export function NotesList() {
             onClick={closeExpandedNote}
           >
             <div
-              className="dark:bg-[#16151A] bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-auto p-6 animate-[popIn_200ms_cubic-bezier(0.34,1.56,0.64,1)]"
+              className="dark:bg-[#16151A] bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80dvh] overflow-auto p-6 animate-[popIn_200ms_cubic-bezier(0.34,1.56,0.64,1)]"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
@@ -322,7 +322,7 @@ export function NotesList() {
                 </span>
                 <button
                   onClick={closeExpandedNote}
-                  className="p-1.5 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-secondary transition-colors"
+                  className="kairos-tap p-1.5 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-secondary transition-colors"
                 >
                   <X size={18} />
                 </button>

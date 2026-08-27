@@ -247,7 +247,7 @@ export function AiTaskDraftPanel({
  {onClose && (
  <button
  onClick={onClose}
- className="p-1.5 rounded-full hover:bg-bg-secondary text-fg-secondary transition-colors"
+ className="kairos-tap p-1.5 rounded-full hover:bg-bg-secondary text-fg-secondary transition-colors"
  >
  <X size={16} />
  </button>
