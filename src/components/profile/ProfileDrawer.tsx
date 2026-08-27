@@ -72,13 +72,17 @@ function localTimeIn(timezone: string | null | undefined): string | null {
 /**
  * How long the drawer stays mounted after it has been asked to close.
  *
- * Must match `.projects-drawer-out` / `.projects-drawer-scrim-out` in
- * `globals.css`. A timer rather than an `animationend` listener on purpose:
- * under `prefers-reduced-motion` those rules resolve to `animation: none`, so
- * no `animationend` ever fires and a listener-based unmount would strand the
+ * Must match `.projects-drawer-out` in `globals.css`, which mirrors the
+ * entrance at 0.45s. This is the *panel's* duration, not the scrim's shorter
+ * 0.35s: the panel is the last thing still moving, and unmounting on the scrim
+ * would cut the slide off two thirds of the way through.
+ *
+ * A timer rather than an `animationend` listener on purpose: under
+ * `prefers-reduced-motion` those rules resolve to `animation: none`, so no
+ * `animationend` ever fires and a listener-based unmount would strand the
  * drawer on screen forever. A timer closes in both worlds.
  */
-export const PROFILE_DRAWER_EXIT_MS = 300;
+export const PROFILE_DRAWER_EXIT_MS = 450;
 
 /** Reduced-motion users skip the hold entirely — there is no motion to wait for. */
 function exitDurationMs(): number {
