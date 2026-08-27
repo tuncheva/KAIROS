@@ -42,6 +42,9 @@ export const settingsRouter = createTRPCRouter({
           accentColor: true,
         
           profileVisibility: true,
+          profileAudience: true,
+          allowFollowers: true,
+          showActivityFeed: true,
           showOnlineStatus: true,
           activityTracking: true,
           dataCollection: true,
@@ -236,6 +239,9 @@ export const settingsRouter = createTRPCRouter({
   updatePrivacy: protectedProcedure
     .input(z.object({
       profileVisibility: z.boolean().optional(),
+      profileAudience: z.enum(["everyone", "organization", "shared"]).optional(),
+      allowFollowers: z.boolean().optional(),
+      showActivityFeed: z.boolean().optional(),
       showOnlineStatus: z.boolean().optional(),
       activityTracking: z.boolean().optional(),
       dataCollection: z.boolean().optional(),

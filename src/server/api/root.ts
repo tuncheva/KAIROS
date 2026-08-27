@@ -7,6 +7,7 @@ import { taskRouter } from "~/server/api/routers/task";
 import { calendarRouter } from "~/server/api/routers/calendar";
 import { organizationRouter } from "~/server/api/routers/organization"; // NEW
 import { userRouter } from "~/server/api/routers/user";
+import { profileRouter } from "~/server/api/routers/profile";
 import { notificationRouter } from "~/server/api/routers/notification"; // NEW
 import { settingsRouter } from "~/server/api/routers/settings";
 import { authRouter } from "~/server/api/routers/auth";
@@ -26,6 +27,7 @@ export const appRouter = createTRPCRouter({
   calendar: calendarRouter,
   organization: organizationRouter,
   user: userRouter,
+  profile: profileRouter,
   auth: authRouter,
   notification: notificationRouter,
   chat: chatRouter,
