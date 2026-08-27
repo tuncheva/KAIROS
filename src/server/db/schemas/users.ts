@@ -16,6 +16,7 @@ import {
   languageEnum,
   dateFormatEnum,
   themeEnum,
+  profileAudienceEnum,
 } from "./enums";
 
 export const users = createTable("user", (d) => ({
@@ -133,8 +134,26 @@ export const users = createTable("user", (d) => ({
 
     notesKeepUnlockedUntilClose: boolean("notes_keep_unlocked_until_close").default(false).notNull(),
 
+    /**
+     * Master switch. False hides you from everyone regardless of
+     * `profileAudience` — see `~/server/profile/visibility`.
+     */
     profileVisibility: boolean("profile_visibility").default(true).notNull(),
+    /**
+     * Which audience the master switch admits. Defaults to `organization`
+     * rather than `everyone`: the people who can already see your name in a
+     * member list are the ones a profile tells nothing new to.
+     */
+    profileAudience: profileAudienceEnum("profile_audience")
+      .default("organization")
+      .notNull(),
     showOnlineStatus: boolean("show_online_status").default(true).notNull(),
+    /** Whether other people may follow you at all. */
+    allowFollowers: boolean("allow_followers").default(true).notNull(),
+    /** Whether the drawer's Activity tab renders anything to other viewers. */
+    showActivityFeed: boolean("show_activity_feed").default(true).notNull(),
+    /** Last time this user was seen; drives the online dot. */
+    lastSeenAt: timestamp("last_seen_at", { mode: "date", withTimezone: true }),
     activityTracking: boolean("activity_tracking").default(false).notNull(),
     dataCollection: boolean("data_collection").default(false).notNull(),
 
@@ -176,7 +195,10 @@ export type UserSettings = {
   accentColor: string;
 
   profileVisibility: boolean;
+  profileAudience: "everyone" | "organization" | "shared";
   showOnlineStatus: boolean;
+  allowFollowers: boolean;
+  showActivityFeed: boolean;
   activityTracking: boolean;
   dataCollection: boolean;
 
@@ -248,6 +270,39 @@ export const passwordResetCodes = createTable("password_reset_code", (d) => ({
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 }));
+
+/**
+ * The follow graph.
+ *
+ * Directed and unreciprocated: following someone is a subscription, not a
+ * mutual link, so there is no accept step and no pending state. The composite
+ * primary key is what makes a double-tap on Follow a no-op rather than a
+ * duplicate row, and the reverse index is what makes "who follows me" a lookup
+ * rather than a scan.
+ */
+export const userFollows = createTable(
+  "user_follow",
+  (d) => ({
+    followerId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    followingId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: d
+      .timestamp("created_at", { mode: "date", withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.followerId, t.followingId] }),
+    index("user_follow_following_idx").on(t.followingId),
+  ],
+);
+
+export type UserFollow = InferSelectModel<typeof userFollows>;
 
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;

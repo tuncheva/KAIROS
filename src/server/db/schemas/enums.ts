@@ -23,7 +23,26 @@ export const themeEnum = pgEnum("theme", ["light", "dark", "system"]);
  * are *offered* is a separate decision made by `locales` in `~/i18n/locales`.
  */
 export const languageEnum = pgEnum("language", ["en", "bg", "es", "fr", "de"]);
-export const dateFormatEnum = pgEnum("date_format", ["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"]);
+/**
+ * Who may open your profile drawer.
+ *
+ * This replaces the yes/no that `profileVisibility` used to carry on its own.
+ * That boolean is still the master switch — off means nobody, whatever is
+ * selected here — because turning yourself invisible is a different decision
+ * from choosing an audience, and collapsing the two would have silently widened
+ * the audience of anyone who had it switched off.
+ */
+export const profileAudienceEnum = pgEnum("profile_audience", [
+  /** Any signed-in Kairos user. */
+  "everyone",
+  /** Anyone who shares an organisation with you. */
+  "organization",
+  /** Only people you share a project, event or conversation with. */
+  "shared",
+] as const);
+export const dateFormatEnum
+
+ = pgEnum("date_format", ["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"]);
 // "message" (a direct message) and "event_reminder" (a subscribed event about to
 // start) are new. Both were previously filed as "system", which is how the bell
 // ended up showing a generic gear beside "New message" and why a user could not

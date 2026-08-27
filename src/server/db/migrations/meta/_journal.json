@@ -148,6 +148,13 @@
       "when": 1787961612000,
       "tag": "0020_task_due_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1787961613000,
+      "tag": "0030_social_profiles",
+      "breakpoints": true
     }
   ]
 }
