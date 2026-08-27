@@ -89,13 +89,17 @@ const FIELD =
  * invite is sent against the returned id, so a bad email address costs the
  * invite and not the project.
  */
-export function NewProjectDrawer() {
+export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolean } = {}) {
   const t = useTranslations("projects.drawer");
   const toast = useToast();
   const utils = api.useUtils();
   const titleId = useId();
 
-  const [open, setOpen] = useState(false);
+  /* `defaultOpen` lets a caller land straight in the form — "new project" links
+     from elsewhere in the app point at `/projects?new=1` rather than dropping
+     the user on the list (or, worse, on the empty state) with another click to
+     make. */
+  const [open, setOpen] = useState(defaultOpen);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("private");
