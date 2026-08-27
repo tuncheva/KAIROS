@@ -328,7 +328,7 @@ function EventPreviewCard({
         isEditable ? (
           <input
             type="text"
-            className="w-full text-sm font-semibold text-fg-primary bg-bg-secondary/50 border border-border-secondary rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-accent-primary"
+            className="w-full text-sm font-semibold text-fg-primary bg-bg-secondary/50 border border-border-medium rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-accent-primary"
             defaultValue={item.title}
             onChange={(e) => onFieldChange("title", e.target.value)}
             placeholder="Event title..."
@@ -340,7 +340,7 @@ function EventPreviewCard({
       {item.description && (
         isEditable ? (
           <textarea
-            className="w-full text-xs text-fg-secondary bg-bg-secondary/50 border border-border-secondary rounded-md p-2 mt-1 resize-none focus:outline-none focus:ring-1 focus:ring-accent-primary min-h-[40px]"
+            className="w-full text-xs text-fg-secondary bg-bg-secondary/50 border border-border-medium rounded-md p-2 mt-1 resize-none focus:outline-none focus:ring-1 focus:ring-accent-primary min-h-[40px]"
             defaultValue={item.description}
             onChange={(e) => onFieldChange("description", e.target.value)}
             placeholder="Event description..."
@@ -413,7 +413,7 @@ function NotePreviewCard({
       {item.content && (
         isEditable ? (
           <textarea
-            className="w-full text-xs text-fg-secondary bg-bg-secondary/50 border border-border-secondary rounded-md p-2 resize-none focus:outline-none focus:ring-1 focus:ring-accent-primary min-h-[60px]"
+            className="w-full text-xs text-fg-secondary bg-bg-secondary/50 border border-border-medium rounded-md p-2 resize-none focus:outline-none focus:ring-1 focus:ring-accent-primary min-h-[60px]"
             defaultValue={item.content}
             onChange={(e) => onContentChange(e.target.value)}
             placeholder="Edit note content..."
@@ -2409,7 +2409,7 @@ export function ProjectIntelligenceChat(props: {
               isConsole ? "w-full px-6 pt-4 pb-5 lg:px-10" : "w-full p-3"
             }
           >
-            <div className="flex flex-col gap-3 rounded-xl border border-border-medium/70 bg-bg-secondary px-3 py-2.5 focus-within:border-accent-primary/40">
+            <div className="flex flex-col gap-3 rounded-2xl border border-border-medium/70 bg-bg-secondary px-3 py-2.5 transition-colors focus-within:border-accent-primary">
               <textarea
                 ref={composerRef}
                 value={draft}
@@ -2422,7 +2422,7 @@ export function ProjectIntelligenceChat(props: {
                   }
                 }}
                 placeholder={t("placeholder")}
-                className="max-h-40 min-h-[24px] w-full resize-none bg-transparent text-[14.5px] leading-relaxed text-fg-primary placeholder:text-fg-tertiary focus:outline-none"
+                className="kairos-field-bare max-h-40 min-h-[24px] w-full resize-none bg-transparent text-[14.5px] leading-relaxed text-fg-primary placeholder:text-fg-tertiary focus:outline-none"
               />
 
               <div className="flex flex-wrap items-center gap-2">
@@ -2471,7 +2471,7 @@ export function ProjectIntelligenceChat(props: {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={t("placeholder")}
-              className="flex-1 bg-transparent px-2 py-2 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus-visible:outline-none"
+              className="kairos-field-bare flex-1 bg-transparent px-2 py-2 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus-visible:outline-none"
             />
             <button
               type="submit"

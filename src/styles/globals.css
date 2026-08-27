@@ -415,10 +415,28 @@ summary,
   outline-offset: 2px;
 }
 
+/* Text fields default to soft corners; any `rounded-*` utility still overrides. */
+@layer base {
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+    textarea,
+    select
+  ) {
+    border-radius: 10px;
+  }
+}
+
 /* Inputs/textareas/selects keep their own border-radius on focus */
 :where(input, textarea, select):focus-visible {
   outline: 2px solid rgb(var(--accent-primary));
   outline-offset: 2px;
+}
+
+/* A bare field painted inside a wrapper that owns the frame: the wrapper shows
+   focus with `focus-within`, so a second outline just draws a box inside a box. */
+.kairos-field-bare:focus,
+.kairos-field-bare:focus-visible {
+  outline: none;
 }
 
 /* Skip link for keyboard and screen readers */
@@ -1018,6 +1036,27 @@ summary,
     0 10px 32px -6px rgba(0, 0, 0, 0.4);
 }
 
+/* A menu panel: the elevated card's shape, without its translucency.
+   `kairos-system-card-elevated` sets a background at 0.9 alpha and blurs what
+   is behind it, which reads fine over a page but not over a menu — the note
+   rows underneath show through the items you are trying to click. */
+.kairos-menu-surface {
+  /* No radius of its own — the element's `rounded-*` utility decides that, so a
+     dialog and a menu can share the surface at different sizes. */
+  background: rgb(var(--bg-elevated));
+  box-shadow:
+    0 0 0 0.5px rgba(var(--border-light) / 0.8),
+    0 4px 12px -2px rgba(0, 0, 0, 0.12),
+    0 8px 24px -4px rgba(0, 0, 0, 0.1);
+}
+
+.dark .kairos-menu-surface {
+  box-shadow:
+    0 0 0 0.5px rgba(var(--border-light) / 0.9),
+    0 4px 16px -2px rgba(0, 0, 0, 0.55),
+    0 10px 32px -6px rgba(0, 0, 0, 0.45);
+}
+
 .kairos-system-header {
   background: rgb(var(--bg-surface) / 0.85);
   border-bottom: 0.5px solid rgba(var(--border-light) / 0.5);
@@ -1555,21 +1594,36 @@ summary,
    ============================================================================ */
 
 /* Page entrance animation – soft reveal from bottom */
+/* The entrance every page plays on arrival.
+
+   It used to animate `filter: blur(4px)` down to zero alongside the fade. A
+   blur is not a compositor-only property: the browser has to rasterise the
+   whole page subtree and re-run a separable convolution over it every frame,
+   for the entire duration. On a dashboard-sized tree that is the single most
+   expensive thing on the navigation path, and it lands at exactly the moment
+   the page is also hydrating and running its first queries — so the two
+   compete, and the blur wins, which is why switching pages felt heavy.
+
+   What is left is `opacity` and `transform`, both of which the compositor can
+   run on its own thread without touching layout or paint. The duration comes
+   down with it: 600ms was long enough that the animation, not the data, was
+   what you were waiting for. 280ms still reads as a deliberate entrance.
+
+   `will-change` is deliberately absent — the animation is short and promoting
+   every page to its own layer for the whole session costs more than it saves. */
 @keyframes kairos-page-enter {
   0% {
     opacity: 0;
-    transform: translateY(24px);
-    filter: blur(4px);
+    transform: translateY(8px);
   }
   100% {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0px);
   }
 }
 
 .kairos-page-enter {
-  animation: kairos-page-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: kairos-page-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* Progress: the leaderboard person card.
@@ -2697,8 +2751,47 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
 @media (min-width: 1024px) {
   .rail-offset {
     margin-left: var(--rail-w);
-    transition: margin-left 0.4s cubic-bezier(0.2, 0.8, 0.25, 1);
+    /* Same duration and curve as the rail's own `transition-[width]` in
+       `SideNav` (700ms, cubic-bezier(0.2, 0.8, 0.25, 1)). They animate two
+       halves of one movement, so any mismatch shows: at 400ms the page finished
+       sliding while the rail was still mid-shrink, leaving a widening gap on
+       unpin and the page riding ahead of the rail on pin. Change one, change
+       both. */
+    transition: margin-left 700ms cubic-bezier(0.2, 0.8, 0.25, 1);
   }
+}
+
+/* The pinned rail is drawn from the attribute, not from React state.
+   `SideNav` used to pick its width class off `isRailPinned`, which is read from
+   localStorage in an effect and therefore starts `false` on every load — the
+   rail painted collapsed, then widened, and `.rail-offset` above dragged the
+   whole page along with it. The pre-paint script in `themeInitScript.ts` stamps
+   `data-rail-pinned` before the first frame, so keying the width off it here
+   means the rail is simply the right size to begin with. React still tracks the
+   value, but only to label the pin button.
+
+   Specificity is what makes these win: `:root[data-rail-pinned="true"] .x` is
+   (0,2,1), above Tailwind's `w-16` (0,1,0) and its `hover:` variants (0,2,0),
+   so the hover-to-open behaviour survives untouched while unpinned. */
+:root[data-rail-pinned="true"] .kairos-rail {
+  width: 14.75rem; /* 236px — matches --rail-w */
+}
+
+:root[data-rail-pinned="true"] .kairos-rail-label {
+  opacity: 1;
+}
+
+/* Keyboard users need the rail to open when they tab into it, but it must not
+   stay open after a mouse click — clicking a rail link leaves focus inside the
+   <aside>, and a plain `:focus-within` then pinned the rail open until the user
+   clicked somewhere else. `:focus-visible` only matches the keyboard case, so
+   the rail collapses again as soon as the cursor leaves. */
+.kairos-rail:has(:focus-visible) {
+  width: 14.75rem; /* 236px — matches --rail-w */
+}
+
+.kairos-rail:has(:focus-visible) .kairos-rail-label {
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2906,5 +2999,109 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   Dashboard task completion
+   --------------------------------------------------------------------------
+   Ticking a task off usually removes it from Today's list. Without an exit the
+   row just blinks away, so removals are held for the length of this collapse
+   and the ring/percent tween to the new value over a comparable beat.
+   ========================================================================== */
+
+@keyframes dash-row-out {
+  0% {
+    opacity: 1;
+    transform: none;
+    max-height: 120px;
+  }
+  40% {
+    opacity: 0;
+    transform: translateX(10px);
+    max-height: 120px;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(10px);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom-width: 0;
+  }
+}
+
+.dash-row-out {
+  overflow: hidden;
+  pointer-events: none;
+  animation: dash-row-out 0.42s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-row-out {
+    animation-duration: 0.01s !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Settings: section transitions and scroll reveal
+   ---------------------------------------------------------------------------
+
+   Switching sections on /settings is a real navigation (`?section=`), so the
+   new section's markup replaces the old one's in a single frame and the page
+   used to snap. Three pieces smooth that over:
+
+   - `.settings-scroll` makes the ledger's scroll container animate the jump
+     back to the top after a section change instead of teleporting.
+   - `.settings-section-enter` is keyed on the active section in
+     `SettingsWorkspace`, so React remounts the wrapper on every switch and the
+     entrance replays. Opacity and transform only — both composited, so a
+     section carrying nine queries still enters at full frame rate.
+   - `.settings-reveal` is the scrolling half: a group starts 14px low and
+     lifts as it crosses into view, driven by the IntersectionObserver in
+     `Ledger.tsx` rather than a scroll handler. `.is-visible` is one-way, so a
+     group that has been read never animates again on the way back up.
+
+   Every one of these is turned off wholesale by the `prefers-reduced-motion`
+   block above, which zeroes animation and transition durations globally. */
+@keyframes kairos-settings-section-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-scroll {
+  scroll-behavior: smooth;
+}
+
+.settings-section-enter {
+  animation: kairos-settings-section-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1)
+    both;
+}
+
+.settings-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.settings-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Without the observer — no JS yet, or an environment that lacks it — the
+   group must still be readable, so the un-revealed state is opt-in. */
+@media (prefers-reduced-motion: reduce) {
+  .settings-reveal {
+    opacity: 1;
+    transform: none;
   }
 }
