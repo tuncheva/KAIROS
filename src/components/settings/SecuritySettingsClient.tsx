@@ -29,6 +29,12 @@ export function SecuritySettingsClient() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Address-confirmation form state. Kept apart from the PIN state below
+  // because the two share a screen and nothing else.
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [codeSent, setCodeSent] = useState(false);
+
   // Reset PIN form state.
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
@@ -69,6 +75,24 @@ export function SecuritySettingsClient() {
     },
   });
 
+  const sendVerificationCode = api.settings.sendEmailVerificationCode.useMutation({
+    onSuccess: () => {
+      setCodeSent(true);
+      setVerifyError(null);
+    },
+    onError: (e) => setVerifyError(e.message),
+  });
+
+  const confirmVerificationCode = api.settings.confirmEmailVerificationCode.useMutation({
+    onSuccess: async () => {
+      await utils.settings.get.invalidate();
+      setVerifyCode("");
+      setCodeSent(false);
+      setVerifyError(null);
+    },
+    onError: (e) => setVerifyError(e.message),
+  });
+
   const deleteAllData = api.settings.deleteAllData.useMutation();
 
   // Which formats this plan includes. The server refuses the rest with a 403, so
@@ -77,6 +101,9 @@ export function SecuritySettingsClient() {
   const { entitlements } = useEntitlements();
   const exportFormats = entitlements.exportFormats;
 
+  const emailVerified = !!data?.emailVerified;
+  const accountEmail = data?.email ?? "";
+
   const notesKeepUnlockedUntilClose = data?.notesKeepUnlockedUntilClose ?? false;
   const hasResetPin = data?.hasResetPin ?? false;
 
@@ -84,6 +111,8 @@ export function SecuritySettingsClient() {
     isLoading ||
     updateSecurity.isPending ||
     updateResetPin.isPending ||
+    sendVerificationCode.isPending ||
+    confirmVerificationCode.isPending ||
     deleteAllData.isPending;
 
   const onSignOut = async () => {
@@ -112,6 +141,84 @@ export function SecuritySettingsClient() {
     }
     void save.run(() => updateResetPin.mutateAsync({ pin, confirmPin, hint }));
   };
+
+  const submitVerifyCode = () => {
+    if (!/^\d{8}$/.test(verifyCode)) {
+      setVerifyError(t("errors.codeFormat"));
+      return;
+    }
+    void save.run(() => confirmVerificationCode.mutateAsync({ code: verifyCode }));
+  };
+
+  /**
+   * A confirmed address needs one row saying so; an unconfirmed one needs the
+   * whole apparatus. Building the list conditionally rather than disabling the
+   * controls keeps the settled state from looking like an unfinished task.
+   */
+  const emailRows: LedgerRow[] = emailVerified
+    ? [
+        {
+          id: "emailStatus",
+          title: t("emailAddress"),
+          desc: t("emailVerifiedDesc"),
+          descText: t("emailVerifiedDesc"),
+          control: <LedgerValue tone="good">{t("emailVerified")}</LedgerValue>,
+        },
+      ]
+    : [
+        {
+          id: "emailStatus",
+          title: t("emailAddress"),
+          desc: t("emailUnverifiedDesc"),
+          descText: t("emailUnverifiedDesc"),
+          control: <LedgerValue tone="dim">{t("emailUnverified")}</LedgerValue>,
+        },
+        {
+          id: "sendCode",
+          title: t("sendCode"),
+          desc: codeSent ? t("codeSentTo", { email: accountEmail }) : t("sendCodeDesc"),
+          descText: codeSent ? t("codeSentTo", { email: accountEmail }) : t("sendCodeDesc"),
+          control: (
+            <LedgerAction
+              disabled={isBusy}
+              onClick={() => void sendVerificationCode.mutateAsync().catch(() => undefined)}
+            >
+              {sendVerificationCode.isPending
+                ? t("sending")
+                : codeSent
+                  ? t("resendCode")
+                  : t("sendCode")}
+            </LedgerAction>
+          ),
+        },
+        {
+          id: "verifyCode",
+          title: t("enterCode"),
+          desc: verifyError ? <LedgerError>{verifyError}</LedgerError> : undefined,
+          descText: verifyError ?? "",
+          control: (
+            <>
+              <LedgerInput
+                inputMode="numeric"
+                value={verifyCode}
+                maxLength={8}
+                disabled={isBusy}
+                ariaLabel={t("enterCode")}
+                placeholder={t("codePlaceholder")}
+                // Digits only, so a pasted code with spaces or a stray letter
+                // does not fail validation for a reason the user cannot see.
+                onChange={(next) => {
+                  setVerifyCode(next.replace(/\D/g, "").slice(0, 8));
+                  setVerifyError(null);
+                }}
+              />
+              <LedgerAction disabled={isBusy || !verifyCode} onClick={submitVerifyCode}>
+                {confirmVerificationCode.isPending ? t("verifying") : t("confirmEmail")}
+              </LedgerAction>
+            </>
+          ),
+        },
+      ];
 
   const pinRows: LedgerRow[] = [
     {
@@ -238,6 +345,8 @@ export function SecuritySettingsClient() {
       title={t("title")}
       subtitle={t("subtitle")}
     >
+      <LedgerGroup label={t("groupEmail")} hint={t("groupEmailHint")} rows={emailRows} />
+
       <LedgerGroup
         label={t("groupNotes")}
         hint={t("groupNotesHint")}

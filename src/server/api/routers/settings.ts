@@ -6,6 +6,19 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { users, accounts, sessions } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import * as argon2 from "argon2";
+import { TRPCError } from "@trpc/server";
+import {
+  consumeVerificationCode,
+  issueVerificationCode,
+} from "~/server/email/verificationCodes";
+import { sendEmailVerificationCode } from "~/server/email/email";
+import {
+  consumeAuthRateLimit,
+  createAuthRateLimitKey,
+} from "~/server/security/authRateLimit";
+import { createLogger } from "~/server/logger";
+
+const log = createLogger("settings.router");
 
 export const settingsRouter = createTRPCRouter({
  
@@ -17,6 +30,7 @@ export const settingsRouter = createTRPCRouter({
           id: true,
           name: true,
           email: true,
+          emailVerified: true,
           image: true,
           bio: true,
          
@@ -154,6 +168,112 @@ export const settingsRouter = createTRPCRouter({
           updatedAt: new Date(),
         })
         .where(eq(users.id, ctx.session.user.id));
+
+      return { success: true };
+    }),
+
+  /**
+   * Email a confirmation code for the signed-in user's own address.
+   *
+   * Signup sends a link, because at that moment there is no session and the
+   * mail client is the only place the person can be reached. This is the other
+   * situation: they are signed in, looking at Settings, and can type eight
+   * digits into the form that is already on screen.
+   *
+   * Rate-limited on the account, not the IP: the caller is authenticated, so
+   * there is nobody to enumerate and the only abuse left is using somebody's
+   * own session to send themselves mail in a loop.
+   */
+  sendEmailVerificationCode: protectedProcedure.mutation(async ({ ctx }) => {
+    const user = await ctx.db.query.users.findFirst({
+      where: eq(users.id, ctx.session.user.id),
+      columns: { name: true, email: true, emailVerified: true },
+    });
+
+    if (!user?.email) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "No email on file." });
+    }
+
+    if (user.emailVerified) {
+      // Not an error the UI should ever provoke — the row hides the control
+      // once verified — but a second tab with a stale query could.
+      return { success: true, alreadyVerified: true as const };
+    }
+
+    await consumeAuthRateLimit(
+      createAuthRateLimitKey("verify_code_send", ctx.session.user.id),
+    );
+
+    const code = await issueVerificationCode(ctx.db, "email_verify", user.email);
+
+    // Awaited, unlike signup's fire-and-forget: the user is watching a button
+    // and a failure here has to reach them rather than a log line.
+    try {
+      await sendEmailVerificationCode({
+        email: user.email,
+        userName: user.name ?? user.email,
+        code,
+      });
+    } catch (err) {
+      log.error("failed to send verification code", { err });
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Couldn't send the code. Try again in a moment.",
+      });
+    }
+
+    return { success: true, alreadyVerified: false as const };
+  }),
+
+  /**
+   * Redeem a code and mark the address confirmed.
+   *
+   * Confirming here has the same effect as clicking the emailed link: it is
+   * what lifts the sign-in refusal in `auth/config.ts`, so a user who never
+   * found the signup mail can rescue the account from inside a session they
+   * still have.
+   */
+  confirmEmailVerificationCode: protectedProcedure
+    .input(z.object({ code: z.string().regex(/^\d{8}$/, "Enter the 8-digit code") }))
+    .mutation(async ({ ctx, input }) => {
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("verify_code_confirm", ctx.session.user.id),
+      );
+
+      const user = await ctx.db.query.users.findFirst({
+        where: eq(users.id, ctx.session.user.id),
+        columns: { id: true, email: true, emailVerified: true },
+      });
+
+      if (!user?.email) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No email on file." });
+      }
+
+      if (user.emailVerified) return { success: true };
+
+      const result = await consumeVerificationCode(
+        ctx.db,
+        "email_verify",
+        user.email,
+        input.code,
+      );
+
+      if (!result.ok) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            result.reason === "expired"
+              ? "That code has expired. Send yourself a new one."
+              : result.reason === "too_many_attempts"
+                ? "Too many incorrect attempts. Send yourself a new code."
+                : "That code is not valid.",
+        });
+      }
+
+      await ctx.db
+        .update(users)
+        .set({ emailVerified: new Date(), updatedAt: new Date() })
+        .where(eq(users.id, user.id));
 
       return { success: true };
     }),
