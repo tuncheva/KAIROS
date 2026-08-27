@@ -8,6 +8,13 @@ import Image from 'next/image';
 import { X, ImagePlus, Loader2, MapPin, Calendar, Clock, ChevronDown } from 'lucide-react';
 import { useToast } from "~/components/providers/ToastProvider";
 import { useTranslations } from "next-intl";
+import {
+  EventDetailFields,
+  EMPTY_DETAILS,
+  toEventDetailInput,
+  type EventDetailValues,
+} from "./EventDetailFields";
+import type { CoverTheme, EventTopic } from "~/components/publish/feedData";
 
 const MAX_EVENT_IMAGE_BYTES = 4 * 1024 * 1024;
 
@@ -29,9 +36,21 @@ interface EventData {
   title: string;
   description: string;
   eventDate: Date;
+  endsAt: Date | null;
   region: string;
+  venue: string | null;
+  address: string | null;
+  capacity: number | null;
+  topic: EventTopic | null;
+  coverTheme: CoverTheme | null;
   imageUrl: string | null;
   enableRsvp: boolean;
+}
+
+/** `2026-09-04`, in local time rather than UTC. */
+function dayString(value: Date): string {
+  const offset = value.getTimezoneOffset() * 60_000;
+  return new Date(value.getTime() - offset).toISOString().slice(0, 10);
 }
 
 interface EditEventFormProps {
@@ -60,6 +79,23 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
   const [enableRsvp, setEnableRsvp] = useState(event.enableRsvp);
   const [sendReminders, setSendReminders] = useState(false);
 
+  /* The columns an event grew: when it ends, where exactly, how many fit, and
+     what kind of thing it is. All optional, all editable — which the edit form
+     could not do for any of them before. */
+  const [details, setDetails] = useState<EventDetailValues>(() => ({
+    ...EMPTY_DETAILS,
+    endTime: event.endsAt ? new Date(event.endsAt).toTimeString().slice(0, 5) : "",
+    endDate:
+      event.endsAt && dayString(new Date(event.endsAt)) !== dayString(new Date(event.eventDate))
+        ? dayString(new Date(event.endsAt))
+        : "",
+    venue: event.venue ?? "",
+    address: event.address ?? "",
+    capacity: event.capacity !== null ? String(event.capacity) : "",
+    topic: event.topic,
+    coverTheme: event.coverTheme,
+  }));
+
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(event.imageUrl);
   const [isUploading, setIsUploading] = useState(false);
@@ -75,7 +111,8 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
 
   const updateEvent = api.event.updateEvent.useMutation({
     onSuccess: () => {
-      void utils.event.getPublicEvents.invalidate();
+      void utils.event.getFeed.invalidate();
+      void utils.event.getById.invalidate({ eventId: event.id });
       toast.success(t('edit.success'));
       onSuccess?.();
     },
@@ -155,6 +192,8 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
         imageUrl = null;
       }
 
+      const extra = toEventDetailInput(details, eventDate);
+
       updateEvent.mutate({
         eventId: event.id,
         title: title.trim(),
@@ -164,6 +203,12 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
         ...(imageUrl !== undefined ? { imageUrl } : {}),
         enableRsvp,
         sendReminders: enableRsvp ? sendReminders : false,
+        endsAt: extra.endsAt,
+        venue: extra.venue,
+        address: extra.address,
+        capacity: extra.capacity,
+        topic: extra.topic,
+        coverTheme: extra.coverTheme,
       });
     } catch (error) {
       toast.error(t("validation.uploadError"));
@@ -182,7 +227,7 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col max-h-[90vh]">
+    <form onSubmit={handleSubmit} className="flex flex-col max-h-[90dvh]">
       {/* Modal Header */}
       <div className="px-6 py-4 border-b dark:border-white/5 border-slate-200 flex items-center justify-between shrink-0">
         <h2 className="text-lg font-display font-bold dark:text-white text-slate-900 tracking-tight">{t("edit.title")}</h2>
@@ -190,7 +235,7 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
           <button
             type="button"
             onClick={onClose}
-            className="text-accent-primary/60 hover:text-accent-primary transition-colors rounded-full p-1.5 dark:hover:bg-white/5 hover:bg-accent-primary/5"
+            className="kairos-tap text-accent-primary/60 hover:text-accent-primary transition-colors rounded-full p-1.5 dark:hover:bg-white/5 hover:bg-accent-primary/5"
           >
             <X size={20} />
           </button>
@@ -281,6 +326,13 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
               required
             />
           </div>
+
+          <EventDetailFields
+            values={details}
+            onChange={setDetails}
+            disabled={updateEvent.isPending || isUploading}
+            showCoHosts={false}
+          />
         </div>
 
         {/* Image upload */}
@@ -296,7 +348,7 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
             <button
               type="button"
               onClick={removeImage}
-              className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+              className="kairos-tap absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
             >
               <X size={14} />
             </button>
