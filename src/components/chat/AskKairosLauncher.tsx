@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -8,6 +8,30 @@ import { api } from "~/trpc/react";
 
 interface Props {
   onOpen: (prefill?: string) => void;
+}
+
+type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+const CORNER_STORAGE_KEY = "kairos:launcher-corner";
+
+const CORNER_CLASSES: Record<Corner, string> = {
+  "bottom-right": "right-4 bottom-4 flex-col items-end lg:right-6 lg:bottom-6",
+  "bottom-left": "left-4 bottom-4 flex-col items-start lg:left-6 lg:bottom-6",
+  "top-right": "top-4 right-4 flex-col-reverse items-end lg:top-6 lg:right-6",
+  "top-left": "top-4 left-4 flex-col-reverse items-start lg:top-6 lg:left-6",
+};
+
+/* The flattened corner of the nudge bubble points at the pill, so it moves
+ * with it: below the bubble in the bottom corners, above it in the top ones. */
+const NUDGE_TAIL_CLASSES: Record<Corner, string> = {
+  "bottom-right": "rounded-br-[3px]",
+  "bottom-left": "rounded-bl-[3px]",
+  "top-right": "rounded-tr-[3px]",
+  "top-left": "rounded-tl-[3px]",
+};
+
+function isCorner(value: string | null): value is Corner {
+  return value !== null && value in CORNER_CLASSES;
 }
 
 /**
@@ -27,10 +51,34 @@ interface Props {
  * finding, because the finding is about the workspace and closing a bubble has
  * not changed the workspace. The Risk Radar panel is where a finding is
  * actually dismissed.
+ *
+ * The pill can also be dragged: releasing it snaps to whichever screen corner
+ * is nearest, and the choice persists across pages. Free placement is
+ * deliberately not offered — corners are the only positions guaranteed not to
+ * sit on top of page content, and snapping means there is no state where the
+ * pill half-overlaps something and has to be nudged pixel by pixel.
  */
 export function AskKairosLauncher({ onOpen }: Props) {
   const t = useTranslations("aiConsole");
   const [nudgeHidden, setNudgeHidden] = useState(false);
+  const [corner, setCorner] = useState<Corner>("bottom-right");
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  /* A drag ends with the same pointerup that fires the button's click, so the
+   * click handler needs to know it is the tail end of a drag and not a tap. */
+  const didDrag = useRef(false);
+
+  // localStorage is read after mount rather than in the initializer so the
+  // server and first client render agree on the default corner.
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(CORNER_STORAGE_KEY);
+      if (isCorner(stored)) setCorner(stored);
+    } catch {
+      // Storage being unavailable just means the pill starts bottom-right.
+    }
+  }, []);
 
   const findingsQuery = api.agent.findings.useQuery(undefined, {
     refetchOnWindowFocus: false,
@@ -39,10 +87,66 @@ export function AskKairosLauncher({ onOpen }: Props) {
 
   const nudge = nudgeHidden ? null : (findingsQuery.data?.[0] ?? null);
 
+  const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    didDrag.current = false;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!dragStart.current) return;
+    // A few pixels of slop keeps an ordinary tap from registering as a drag.
+    if (
+      !didDrag.current &&
+      Math.hypot(e.clientX - dragStart.current.x, e.clientY - dragStart.current.y) < 6
+    ) {
+      return;
+    }
+    didDrag.current = true;
+    setDragPos({ x: e.clientX, y: e.clientY });
+  };
+
+  const onPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    dragStart.current = null;
+    if (!didDrag.current) return;
+    const next: Corner = `${e.clientY < window.innerHeight / 2 ? "top" : "bottom"}-${
+      e.clientX < window.innerWidth / 2 ? "left" : "right"
+    }`;
+    setCorner(next);
+    setDragPos(null);
+    try {
+      localStorage.setItem(CORNER_STORAGE_KEY, next);
+    } catch {
+      // The pill still moves for this page view; it just will not stick.
+    }
+  };
+
+  const onPointerCancel = () => {
+    dragStart.current = null;
+    didDrag.current = false;
+    setDragPos(null);
+  };
+
   return (
-    <div className="fixed right-4 bottom-4 z-40 flex flex-col items-end gap-2.5 lg:right-6 lg:bottom-6">
-      {nudge && (
-        <div className="kairos-console-rail flex max-w-[240px] items-start gap-2 rounded-[11px] rounded-br-[3px] border border-border-medium/70 bg-bg-secondary px-3 py-2.5 shadow-lg">
+    <div
+      className={`fixed z-40 flex gap-2.5 ${CORNER_CLASSES[corner]}`}
+      style={
+        dragPos
+          ? {
+              left: dragPos.x,
+              top: dragPos.y,
+              right: "auto",
+              bottom: "auto",
+              transform: "translate(-50%, -50%)",
+            }
+          : undefined
+      }
+    >
+      {nudge && !dragPos && (
+        <div
+          className={`kairos-console-rail flex max-w-[240px] items-start gap-2 rounded-[11px] border border-border-medium/70 bg-bg-secondary px-3 py-2.5 shadow-lg ${NUDGE_TAIL_CLASSES[corner]}`}
+        >
           <button
             type="button"
             // The nudge is a shortcut, not just a notice: opening the assistant
@@ -67,8 +171,18 @@ export function AskKairosLauncher({ onOpen }: Props) {
       <button
         type="button"
         data-testid="ask-kairos"
-        onClick={() => onOpen()}
-        className="flex items-center gap-2.5 rounded-xl bg-accent-primary px-4 py-2.5 text-[13.5px] font-semibold text-white shadow-[0_8px_24px_rgb(var(--accent-primary)/0.28)] transition-[filter] hover:brightness-110"
+        onClick={() => {
+          if (didDrag.current) {
+            didDrag.current = false;
+            return;
+          }
+          onOpen();
+        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        className="flex touch-none items-center gap-2.5 rounded-xl bg-accent-primary px-4 py-2.5 text-[13.5px] font-semibold text-white shadow-lg transition-[filter] select-none hover:brightness-110"
       >
         <Sparkles className="h-4 w-4" />
         {t("askKairos")}
