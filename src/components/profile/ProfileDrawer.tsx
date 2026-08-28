@@ -39,6 +39,7 @@ import { Overlay } from "~/components/ui/Overlay";
 import { useToast } from "~/components/providers/ToastProvider";
 import { api } from "~/trpc/react";
 import { useProfilePeek } from "./ProfilePeekProvider";
+import { DRAWER_EXIT_MS, exitDurationMs } from "~/components/ui/drawerExit";
 
 type TabId = "shared" | "activity" | "followers";
 
@@ -70,29 +71,11 @@ function localTimeIn(timezone: string | null | undefined): string | null {
 }
 
 /**
- * How long the drawer stays mounted after it has been asked to close.
- *
- * Must match `.projects-drawer-out` in `globals.css`, which mirrors the
- * entrance at 0.45s. This is the *panel's* duration, not the scrim's shorter
- * 0.35s: the panel is the last thing still moving, and unmounting on the scrim
- * would cut the slide off two thirds of the way through.
- *
- * A timer rather than an `animationend` listener on purpose: under
- * `prefers-reduced-motion` those rules resolve to `animation: none`, so no
- * `animationend` ever fires and a listener-based unmount would strand the
- * drawer on screen forever. A timer closes in both worlds.
+ * Re-exported under its old name for the callers and tests that use it. The
+ * number, and the reason it is a timer rather than an `animationend` listener,
+ * live with the other drawers in `~/components/ui/drawerExit`.
  */
-export const PROFILE_DRAWER_EXIT_MS = 450;
-
-/** Reduced-motion users skip the hold entirely — there is no motion to wait for. */
-function exitDurationMs(): number {
-  if (typeof window === "undefined" || !window.matchMedia) {
-    return PROFILE_DRAWER_EXIT_MS;
-  }
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ? 0
-    : PROFILE_DRAWER_EXIT_MS;
-}
+export const PROFILE_DRAWER_EXIT_MS = DRAWER_EXIT_MS;
 
 export function ProfileDrawer({
   userId,

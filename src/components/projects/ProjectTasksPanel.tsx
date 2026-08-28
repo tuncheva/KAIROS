@@ -227,7 +227,10 @@ export function ProjectTasksPanel({
           <button
             type="button"
             onClick={openCreate}
-            className="flex items-center gap-2 rounded-lg bg-accent-primary px-[15px] py-[9px] text-[13px] font-semibold text-white transition-all duration-300 hover:-translate-y-px hover:bg-accent-hover"
+            /* Colour only on hover. The lift-and-brighten this used to do made
+               the one button in a panel of quiet filter pills twitch under the
+               cursor, and `transition-all` animated its layout with it. */
+            className="flex items-center gap-2 rounded-lg bg-accent-primary px-[15px] py-[9px] text-[13px] font-semibold text-white transition-colors duration-200 hover:bg-accent-hover"
           >
             <Plus size={15} aria-hidden />
             {t("new")}

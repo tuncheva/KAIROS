@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { Overlay } from "~/components/ui/Overlay";
+import { exitDurationMs } from "~/components/ui/drawerExit";
 
 type Visibility = "private" | "shared_read" | "shared_write";
 type Permission = "read" | "write";
@@ -100,6 +101,16 @@ export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolea
      the user on the list (or, worse, on the empty state) with another click to
      make. */
   const [open, setOpen] = useState(defaultOpen);
+  /**
+   * The drawer has been asked to close but is still on screen playing its exit.
+   *
+   * Without this the panel was unmounted on the same frame as the click, so the
+   * 0.45s entrance had no counterpart — the drawer arrived by sliding and left
+   * by disappearing. The exit halves already existed in `globals.css`
+   * (`.projects-drawer-out` / `.projects-drawer-scrim-out`); nothing here ever
+   * asked for them.
+   */
+  const [closing, setClosing] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("private");
@@ -107,6 +118,7 @@ export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolea
   const [permission, setPermission] = useState<Permission>("read");
 
   const nameRef = useRef<HTMLInputElement>(null);
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reset = useCallback(() => {
     setTitle("");
@@ -116,10 +128,42 @@ export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolea
     setPermission("read");
   }, []);
 
+  /**
+   * Hold the drawer mounted for the length of its exit, then unmount and clear
+   * the form. Matches `.projects-drawer-out` (0.45s — the panel's duration, not
+   * the scrim's shorter 0.35s), and is a timer rather than an `animationend`
+   * listener because under `prefers-reduced-motion` the rules resolve to
+   * `animation: none` and no such event ever fires.
+   *
+   * The reset waits for the exit too: clearing the fields on the click would
+   * mean watching an emptied form slide away.
+   */
   const close = useCallback(() => {
-    setOpen(false);
-    reset();
+    setClosing((already) => {
+      if (already) return already;
+      exitTimer.current = setTimeout(() => {
+        setOpen(false);
+        setClosing(false);
+        reset();
+      }, exitDurationMs());
+      return true;
+    });
   }, [reset]);
+
+  const openDrawer = useCallback(() => {
+    // Reopening mid-exit cancels it, or the pending timer would close the
+    // drawer that was just reopened.
+    if (exitTimer.current) {
+      clearTimeout(exitTimer.current);
+      exitTimer.current = null;
+    }
+    setClosing(false);
+    setOpen(true);
+  }, []);
+
+  useEffect(() => () => {
+    if (exitTimer.current) clearTimeout(exitTimer.current);
+  }, []);
 
   const addCollaborator = api.project.addCollaborator.useMutation({
     onError: (error) => toast.error(error.message),
@@ -143,14 +187,16 @@ export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolea
   // Escape closes, and focus lands in the name field — the drawer exists to be
   // typed into, so opening it should not cost a click.
   useEffect(() => {
-    if (!open) return;
+    // Ignored once the drawer is already leaving: a second Escape would ask a
+    // closing drawer to close again.
+    if (!open || closing) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
     window.addEventListener("keydown", onKeyDown);
     nameRef.current?.focus();
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, close]);
+  }, [open, closing, close]);
 
   const pending = createProject.isPending || addCollaborator.isPending;
   const canSubmit = title.trim().length > 0 && !pending;
@@ -168,7 +214,7 @@ export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolea
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openDrawer}
         className="flex items-center gap-2 rounded-lg bg-accent-primary px-[15px] py-[9px] text-[13px] font-semibold text-white transition-all duration-300 hover:-translate-y-px hover:bg-accent-hover"
       >
         <Plus size={15} aria-hidden />
@@ -177,15 +223,24 @@ export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolea
 
       {open && (
         <Overlay>
-        <div className="fixed inset-0 z-[60] flex justify-end" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <div
+          className={`fixed inset-0 z-[60] flex justify-end ${closing ? "pointer-events-none" : ""}`}
+          role="dialog" aria-modal="true" aria-labelledby={titleId}>
           <button
             type="button"
             aria-label={t("close")}
             onClick={close}
-            className="projects-drawer-scrim absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+            disabled={closing}
+            className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] ${
+              closing ? "projects-drawer-scrim-out" : "projects-drawer-scrim"
+            }`}
           />
 
-          <aside className="projects-drawer relative flex h-full w-full max-w-[440px] flex-col border-l border-border-light/60 bg-bg-secondary shadow-[-28px_0_60px_rgba(0,0,0,0.5)]">
+          <aside
+            className={`relative flex h-full w-full max-w-[440px] flex-col border-l border-border-light/60 bg-bg-secondary shadow-[-28px_0_60px_rgba(0,0,0,0.5)] ${
+              closing ? "projects-drawer-out" : "projects-drawer"
+            }`}
+          >
             <div className="flex items-center justify-between gap-4 border-b border-border-light/50 px-[26px] py-5">
               <h2 id={titleId} className="m-0 text-[17px] font-semibold tracking-[-0.01em] text-fg-primary">
                 {t("title")}
