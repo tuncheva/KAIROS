@@ -1,9 +1,21 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { api } from "~/trpc/react";
-import { Bell, X, Calendar, CheckCircle2, AlertCircle, Trash2, Heart, MessageCircle, MessageSquare, FolderKanban, Clock } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import {
+  Bell,
+  X,
+  Calendar,
+  CheckCircle2,
+  AlertCircle,
+  Heart,
+  MessageCircle,
+  MessageSquare,
+  FolderKanban,
+  Clock,
+} from "lucide-react";
+import { formatDistanceToNowStrict, isToday, isYesterday, format } from "date-fns";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
 
@@ -38,6 +50,17 @@ function asNotificationType(value: unknown): NotificationType {
     : "system";
 }
 
+/**
+ * Types where another person is addressing you directly, as opposed to the app
+ * reporting on itself. This is what the "Mentions" filter narrows to — the rows
+ * people actually come to the bell looking for.
+ */
+const MENTION_TYPES: ReadonlySet<NotificationType> = new Set<NotificationType>([
+  "message",
+  "comment",
+  "reply",
+]);
+
 interface Notification {
   id: string;
   type: NotificationType;
@@ -56,9 +79,74 @@ interface FloatingNotif {
   link?: string;
 }
 
+type Filter = "all" | "unread" | "mentions";
+
+/**
+ * Colour carries the category, so the row does not need a tinted 40px tile to
+ * say what kind of thing it is. One 16px glyph, tinted, on the page background.
+ */
+const TONE: Record<NotificationType, string> = {
+  event: "text-event-upcoming",
+  event_reminder: "text-event-upcoming",
+  task: "text-success",
+  project: "text-warning",
+  message: "text-accent-primary",
+  comment: "text-accent-primary",
+  reply: "text-accent-primary",
+  like: "text-error",
+  system: "text-fg-quaternary",
+};
+
+function GlyphFor({ type, size = 16 }: { type: NotificationType; size?: number }) {
+  const className = TONE[type];
+  switch (type) {
+    case "event":
+      return <Calendar className={className} size={size} strokeWidth={1.7} />;
+    case "event_reminder":
+      return <Clock className={className} size={size} strokeWidth={1.7} />;
+    case "task":
+      return <CheckCircle2 className={className} size={size} strokeWidth={1.7} />;
+    case "project":
+      return <FolderKanban className={className} size={size} strokeWidth={1.7} />;
+    case "message":
+      return <MessageSquare className={className} size={size} strokeWidth={1.7} />;
+    case "like":
+      return <Heart className={className} size={size} strokeWidth={1.7} />;
+    case "comment":
+    case "reply":
+      return <MessageCircle className={className} size={size} strokeWidth={1.7} />;
+    default:
+      return <AlertCircle className={className} size={size} strokeWidth={1.7} />;
+  }
+}
+
+/** `2m`, `26m`, `Wed`, `12 Aug` — short enough to sit at the end of the title row. */
+function shortWhen(date: Date): string {
+  if (isToday(date)) {
+    return formatDistanceToNowStrict(date)
+      .replace(/ seconds?/, "s")
+      .replace(/ minutes?/, "m")
+      .replace(/ hours?/, "h");
+  }
+  if (isYesterday(date)) return "Yest";
+  const now = Date.now();
+  const withinWeek = now - date.getTime() < 7 * 24 * 60 * 60 * 1000;
+  return withinWeek ? format(date, "EEE") : format(date, "d MMM");
+}
+
+function dayLabel(date: Date): string {
+  if (isToday(date)) return "Today";
+  if (isYesterday(date)) return "Yesterday";
+  return format(date, "d MMMM");
+}
+
+const COLLAPSED_VISIBLE = 20;
+
 export function NotificationSystem() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [expanded, setExpanded] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [floatingNotifs, setFloatingNotifs] = useState<FloatingNotif[]>([]);
   const floatingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -157,26 +245,29 @@ export function NotificationSystem() {
     }
   };
 
+  const invalidateBell = useCallback(() => {
+    void utils.notification.getAll.invalidate();
+    void utils.notification.getUnreadCount.invalidate();
+  }, [utils]);
+
   const markAsReadMutation = api.notification.markAsRead.useMutation({
-    onSuccess: () => {
-      void utils.notification.getAll.invalidate();
-      void utils.notification.getUnreadCount.invalidate();
+    onSuccess: invalidateBell,
+  });
+
+  /**
+   * Replaces the old `Clear All`. Emptying the list was the only bulk action on
+   * this panel, so the quickest way to silence the badge was to destroy the
+   * history behind it — including anything not yet read.
+   */
+  const markAllAsReadMutation = api.notification.markAllAsRead.useMutation({
+    onMutate: () => {
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     },
+    onSettled: invalidateBell,
   });
 
   const deleteMutation = api.notification.delete.useMutation({
-    onSuccess: () => {
-      void utils.notification.getAll.invalidate();
-      void utils.notification.getUnreadCount.invalidate();
-    },
-  });
-
-  const deleteAllMutation = api.notification.deleteAll.useMutation({
-    onSuccess: () => {
-      setNotifications([]);
-      void utils.notification.getAll.invalidate();
-      void utils.notification.getUnreadCount.invalidate();
-    },
+    onSuccess: invalidateBell,
   });
 
   useEffect(() => {
@@ -199,12 +290,48 @@ export function NotificationSystem() {
   useEffect(() => {
     if (isOpen) {
       void refetch();
+    } else {
+      // A filter or an expanded list is a reading position, not a preference —
+      // the next open starts from the top again.
+      setFilter("all");
+      setExpanded(false);
     }
   }, [isOpen, refetch]);
 
   // Use server count if available, fall back to local state count
   const localUnread = notifications.filter((n) => !n.read).length;
   const unreadCount = Math.max(localUnread, serverUnreadCount ?? 0);
+  const mentionCount = notifications.filter((n) => MENTION_TYPES.has(n.type)).length;
+
+  const visible = useMemo(() => {
+    const matches = notifications.filter((n) => {
+      if (filter === "unread") return !n.read;
+      if (filter === "mentions") return MENTION_TYPES.has(n.type);
+      return true;
+    });
+    return expanded ? matches : matches.slice(0, COLLAPSED_VISIBLE);
+  }, [notifications, filter, expanded]);
+
+  /** Rows in order, with a day heading inserted whenever the date changes. */
+  const grouped = useMemo(() => {
+    const out: { label: string; items: Notification[] }[] = [];
+    for (const item of visible) {
+      const label = dayLabel(item.createdAt);
+      const last = out[out.length - 1];
+      if (last?.label === label) last.items.push(item);
+      else out.push({ label, items: [item] });
+    }
+    return out;
+  }, [visible]);
+
+  const hiddenCount = useMemo(() => {
+    const total = notifications.filter((n) => {
+      if (filter === "unread") return !n.read;
+      if (filter === "mentions") return MENTION_TYPES.has(n.type);
+      return true;
+    }).length;
+    return Math.max(0, total - visible.length);
+  }, [notifications, filter, visible.length]);
 
   const handleMarkAsRead = (id: string) => {
     markAsReadMutation.mutate({ notificationId: id });
@@ -212,11 +339,8 @@ export function NotificationSystem() {
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
     deleteMutation.mutate({ notificationId: id });
-  };
-
-  const handleClearAll = () => {
-    deleteAllMutation.mutate();
   };
 
   const handleNotificationClick = (notification: Notification) => {
@@ -230,84 +354,102 @@ export function NotificationSystem() {
     }
   };
 
-  const iconFor = (type: string, size: number) => {
-    switch (type) {
-      case "event":
-        return <Calendar className="text-event-upcoming" size={size} />;
-      case "event_reminder":
-        return <Clock className="text-event-upcoming" size={size} />;
-      case "task":
-        return <CheckCircle2 className="text-success" size={size} />;
-      case "project":
-        return <FolderKanban className="text-warning" size={size} />;
-      case "message":
-        return <MessageSquare className="text-accent-primary" size={size} />;
-      case "like":
-        return <Heart className="text-error" size={size} />;
-      case "comment":
-      case "reply":
-        return <MessageCircle className="text-accent-primary" size={size} />;
-      default:
-        return <AlertCircle className="text-fg-tertiary" size={size} />;
-    }
-  };
-
-  const getIcon = (type: string) => iconFor(type, 20);
-
   // The floating toast falls back to the bell rather than a warning triangle: an
   // unrecognised type popping up as an alert reads as an error.
-  const getFloatingIcon = (type: string) =>
-    type === "system" ? <Bell className="text-accent-primary" size={18} /> : iconFor(type, 18);
+  const floatingGlyph = (type: string) =>
+    type === "system" ? (
+      <Bell className="text-accent-primary" size={16} strokeWidth={1.7} />
+    ) : (
+      <GlyphFor type={asNotificationType(type)} />
+    );
+
+  const label = "font-mono text-[10px] uppercase tracking-[0.14em]";
+
+  const segment = (value: Filter, text: string, count: number) => (
+    <button
+      key={value}
+      type="button"
+      onClick={() => {
+        setFilter(value);
+        setExpanded(false);
+      }}
+      className={`${label} rounded-[7px] px-2.5 py-1.5 transition-colors ${
+        filter === value
+          ? "bg-bg-secondary text-fg-primary"
+          : "text-fg-tertiary hover:text-fg-primary"
+      }`}
+    >
+      {text}
+      <span className="ml-1.5 text-fg-quaternary">{count}</span>
+    </button>
+  );
 
   return (
     <>
       {/* Floating notification popups — visible without clicking bell */}
-      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
+      <div className="pointer-events-none fixed right-4 top-4 z-[100] flex flex-col gap-2">
         {floatingNotifs.map((notif) => (
           <div
             key={notif.id}
-            className="pointer-events-auto w-80 max-w-[calc(100vw-2rem)] bg-bg-elevated dark:bg-[#1e1d24] border dark:border-white/10 border-slate-200 rounded-xl shadow-2xl p-4 animate-in slide-in-from-right-5 fade-in duration-300 cursor-pointer hover:bg-bg-secondary/80 transition-colors"
+            className="animate-in slide-in-from-right-5 fade-in pointer-events-auto flex w-[340px] max-w-[calc(100vw-2rem)] cursor-pointer items-start gap-3 rounded-[13px] border border-border-light bg-bg-elevated p-3.5 shadow-2xl duration-300 hover:bg-bg-secondary/60"
             onClick={() => {
               dismissFloating(notif.id);
               if (notif.link) router.push(notif.link);
             }}
           >
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-9 h-9 bg-accent-primary/10 rounded-lg flex items-center justify-center">
-                {getFloatingIcon(notif.type)}
+            <span className="mt-px flex h-[22px] w-[22px] flex-none items-center justify-center">
+              {floatingGlyph(notif.type)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-2">
+                <h4 className="truncate text-[13.5px] font-bold tracking-[-0.01em] text-fg-primary">
+                  {notif.title}
+                </h4>
+                <span className={`${label} ml-auto flex-none text-fg-quaternary`}>now</span>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <h4 className="font-semibold text-sm text-fg-primary truncate">{notif.title}</h4>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      dismissFloating(notif.id);
-                    }}
-                    className="flex-shrink-0 p-0.5 hover:bg-bg-surface rounded transition-colors"
-                  >
-                    <X size={14} className="text-fg-tertiary" />
-                  </button>
-                </div>
-                <p className="text-xs text-fg-secondary mt-0.5 line-clamp-2">{notif.message}</p>
-              </div>
+              {notif.message && (
+                <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-[1.45] text-fg-tertiary">
+                  {notif.message}
+                </p>
+              )}
             </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                dismissFloating(notif.id);
+              }}
+              className="flex h-5 w-5 flex-none items-center justify-center rounded-md text-fg-quaternary transition-colors hover:bg-error/10 hover:text-error"
+              aria-label="Dismiss"
+            >
+              <X size={12} strokeWidth={2.2} />
+            </button>
           </div>
         ))}
       </div>
 
-      {/* Bell icon + dropdown */}
+      {/* Bell + panel */}
       <div className="relative">
         <button
+          type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="relative p-2 text-fg-secondary hover:text-fg-primary hover:bg-bg-secondary/60 rounded-lg transition-colors"
-          aria-label="Notifications"
+          className={`relative flex h-8 w-8 items-center justify-center rounded-[9px] transition-colors ${
+            isOpen
+              ? "bg-accent-primary/12 text-accent-primary"
+              : "text-fg-secondary hover:bg-bg-secondary/60 hover:text-fg-primary"
+          }`}
+          aria-label={
+            unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
+          }
+          aria-expanded={isOpen}
         >
-          <Bell size={22} />
+          <Bell size={19} strokeWidth={1.6} />
+          {/*
+            A dot, not a number. The count is one tap away in the panel header,
+            and a two-digit badge on a 19px glyph was the loudest thing in the bar.
+          */}
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent-primary text-white text-xs font-bold rounded-full flex items-center justify-center">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
+            <span className="absolute right-[5px] top-[5px] h-[7px] w-[7px] rounded-full bg-accent-primary ring-2 ring-bg-primary" />
           )}
         </button>
 
@@ -318,82 +460,150 @@ export function NotificationSystem() {
               onClick={() => setIsOpen(false)}
               aria-hidden="true"
             />
-            <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 backdrop-blur-xl rounded-2xl dark:bg-[#16151A] bg-white dark:border-white/[0.06] border border-slate-200 shadow-2xl z-50 max-h-[600px] overflow-hidden animate-in slide-in-from-top-2 duration-200">
-              <div className="p-4 border-b dark:border-white/[0.06] border-slate-200 flex items-center justify-between sticky top-0 dark:bg-[#16151A]/95 bg-white/95 backdrop-blur-sm z-10">
-                <div>
-                  <h3 className="text-lg font-bold text-fg-primary">Notifications</h3>
-                  {unreadCount > 0 && (
-                    <p className="text-xs text-fg-tertiary">{unreadCount} unread</p>
-                  )}
-                </div>
-                {notifications.length > 0 && (
+            {/*
+              380px on a laptop and right-anchored under the bell: the panel does
+              not widen with the viewport, because a 700px row is no easier to
+              scan. Below `sm` it becomes a full-width sheet under the bar.
+            */}
+            <div className="animate-in slide-in-from-top-2 absolute right-0 z-50 mt-2 w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-border-light bg-bg-elevated shadow-2xl duration-200 sm:w-[380px]">
+              <div className="flex items-baseline gap-2.5 px-[18px] pb-3 pt-4">
+                <h3 className="text-[15px] font-bold tracking-[-0.012em] text-fg-primary">
+                  Notifications
+                </h3>
+                {unreadCount > 0 && (
+                  <span className={`${label} text-accent-primary`}>{unreadCount} new</span>
+                )}
+                <span className="flex-1" />
+                {unreadCount > 0 && (
                   <button
-                    onClick={handleClearAll}
-                    disabled={deleteAllMutation.isPending}
-                    className="text-xs text-error/90 hover:text-error transition-colors disabled:opacity-50 flex items-center gap-1"
+                    type="button"
+                    onClick={() => markAllAsReadMutation.mutate()}
+                    disabled={markAllAsReadMutation.isPending}
+                    className="text-[12px] text-fg-tertiary transition-colors hover:text-fg-primary disabled:opacity-50"
                   >
-                    <Trash2 size={14} />
-                    {deleteAllMutation.isPending ? "Clearing..." : "Clear All"}
+                    Mark all read
                   </button>
                 )}
               </div>
 
-              <div className="overflow-y-auto max-h-[500px]">
+              {notifications.length > 0 && (
+                <div className="flex gap-1 px-3.5 pb-3">
+                  {segment("all", "All", notifications.length)}
+                  {segment("unread", "Unread", localUnread)}
+                  {segment("mentions", "Mentions", mentionCount)}
+                </div>
+              )}
+
+              <div
+                className={`overflow-y-auto ${expanded ? "max-h-[640px]" : "max-h-[400px]"}`}
+              >
                 {notifications.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <Bell className="mx-auto text-fg-quaternary/60 mb-3" size={48} />
-                    <p className="text-fg-secondary">No notifications</p>
-                    <p className="text-xs text-fg-tertiary mt-2">You are all caught up!</p>
+                  <div className="px-6 pb-14 pt-[52px] text-center">
+                    <span className="mx-auto mb-3.5 flex h-10 w-10 items-center justify-center rounded-full border border-border-light text-fg-quaternary">
+                      <Bell size={17} strokeWidth={1.6} />
+                    </span>
+                    <strong className="block text-[13.5px] font-bold text-fg-primary">
+                      Nothing waiting
+                    </strong>
+                    <span className="text-[12px] text-fg-tertiary">
+                      New activity lands here first.
+                    </span>
+                  </div>
+                ) : visible.length === 0 ? (
+                  <div className="px-6 pb-12 pt-10 text-center">
+                    <strong className="block text-[13.5px] font-bold text-fg-primary">
+                      {filter === "unread" ? "All caught up" : "No mentions"}
+                    </strong>
+                    <span className="text-[12px] text-fg-tertiary">
+                      {filter === "unread"
+                        ? "Nothing unread right now."
+                        : "Nobody has written to you lately."}
+                    </span>
                   </div>
                 ) : (
-                  <div className="divide-y divide-border-light/30">
-                    {notifications.map((notification) => (
+                  grouped.map((group) => (
+                    <div key={group.label}>
                       <div
-                        key={notification.id}
-                        onClick={() => handleNotificationClick(notification)}
-                        className={`p-4 hover:bg-bg-secondary/50 transition-all cursor-pointer group ${
-                          !notification.read ? "bg-accent-primary/5 border-l-2 border-accent-primary" : ""
-                        }`}
+                        className={`${label} border-t border-border-light px-[18px] pb-1.5 pt-3 text-fg-quaternary`}
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-10 h-10 bg-accent-primary/10 shadow-sm rounded-lg flex items-center justify-center">
-                            {getIcon(notification.type)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <h4
-                                className={`font-semibold text-sm ${
-                                  !notification.read ? "text-fg-primary" : "text-fg-secondary"
-                                }`}
-                              >
-                                {notification.title}
-                                {!notification.read && (
-                                  <span className="ml-2 inline-block w-2 h-2 bg-accent-primary rounded-full"></span>
-                                )}
-                              </h4>
-                              <button
-                                onClick={(e) => handleDelete(notification.id, e)}
-                                className="flex-shrink-0 p-1 hover:bg-error/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-                                aria-label="Delete notification"
-                              >
-                                <X size={16} className="text-error/90" />
-                              </button>
-                            </div>
-                            <p className="text-sm text-fg-secondary mt-1">{notification.message}</p>
-                            <div className="flex items-center justify-between mt-2">
-                              <p className="text-xs text-fg-tertiary">
-                                {formatDistanceToNow(notification.createdAt, { addSuffix: true })}
-                              </p>
-                              {notification.link && (
-                                <span className="text-xs text-accent-primary font-medium">Click to view &rarr;</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                        {group.label}
                       </div>
-                    ))}
-                  </div>
+                      {group.items.map((notification) => (
+                        <div
+                          key={notification.id}
+                          onClick={() => handleNotificationClick(notification)}
+                          className={`group relative flex cursor-pointer gap-3 border-t border-border-light/60 px-[18px] py-3.5 transition-colors hover:bg-bg-secondary/60 ${
+                            notification.read ? "opacity-[0.62]" : ""
+                          }`}
+                        >
+                          {!notification.read && (
+                            <span
+                              aria-hidden="true"
+                              className="absolute left-2 top-[21px] h-1 w-1 rounded-full bg-accent-primary"
+                            />
+                          )}
+                          <span className="mt-px flex h-[22px] w-[22px] flex-none items-center justify-center">
+                            <GlyphFor type={notification.type} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline gap-2">
+                              <h4 className="truncate text-[13.5px] font-bold tracking-[-0.01em] text-fg-primary">
+                                {notification.title}
+                              </h4>
+                              <span
+                                className={`${label} ml-auto flex-none text-fg-quaternary`}
+                              >
+                                {shortWhen(notification.createdAt)}
+                              </span>
+                            </div>
+                            {notification.message && (
+                              <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-[1.45] text-fg-tertiary">
+                                {notification.message}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDelete(notification.id, e)}
+                            className="flex h-5 w-5 flex-none items-center justify-center self-start rounded-md text-fg-quaternary opacity-0 transition-colors hover:bg-error/10 hover:text-error focus-visible:opacity-100 group-hover:opacity-100"
+                            aria-label="Delete notification"
+                          >
+                            <X size={12} strokeWidth={2.2} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ))
                 )}
+              </div>
+
+              <div className="flex items-center justify-between border-t border-border-light px-[18px] py-2.5">
+                {hiddenCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setExpanded(true)}
+                    className="text-[12px] text-fg-tertiary transition-colors hover:text-fg-primary"
+                  >
+                    See all ({hiddenCount} more)
+                  </button>
+                ) : expanded ? (
+                  <button
+                    type="button"
+                    onClick={() => setExpanded(false)}
+                    className="text-[12px] text-fg-tertiary transition-colors hover:text-fg-primary"
+                  >
+                    Show less
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <Link
+                  href="/settings?section=notifications"
+                  onClick={() => setIsOpen(false)}
+                  className="text-[12px] text-fg-quaternary transition-colors hover:text-fg-primary"
+                >
+                  Notification settings
+                </Link>
               </div>
             </div>
           </>

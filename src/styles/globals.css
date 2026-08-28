@@ -3003,18 +3003,20 @@ input[type="search"]::-webkit-search-results-decoration {
    a crash rather than a dismissal — the panel is simply not there on the next
    frame. These are the exit halves. They are separate classes rather than a
    reversed `animation-direction`, because the element has to be *told* it is
-   leaving and stay mounted for the duration; see `PROFILE_DRAWER_EXIT_MS` in
-   `~/components/profile/ProfileDrawer`, which holds it there.
+   leaving and stay mounted for the duration; see `DRAWER_EXIT_MS` in
+   `~/components/ui/drawerExit`, which holds it there.
 
    Durations mirror the entrance exactly — 0.45s for the panel, 0.35s for the
    scrim — so opening and closing feel like one gesture run in both directions.
    Keep them in step with `.projects-drawer` and `.projects-drawer-scrim` above,
-   and with `PROFILE_DRAWER_EXIT_MS`, which must not be shorter than the panel's
-   0.45s or the drawer unmounts mid-slide.
+   and with `DRAWER_EXIT_MS`, which must not be shorter than the panel's 0.45s
+   or the drawer unmounts mid-slide.
 
-   The curve is still the exit's own: an ease-in against the entrance's
-   ease-out, so the panel eases away rather than arriving in reverse. Only the
-   timing is mirrored, not the shape.
+   The panel uses the entrance's curve unchanged, not a reversed or ease-in
+   version of it. Both of those start almost flat, so the first frames of the
+   exit are a panel sitting still under a cursor that has already clicked —
+   which reads as a stall, then a lurch. An ease-out leaves on the first frame
+   and settles into the edge instead. Same for the scrim.
    -------------------------------------------------------------------------- */
 
 @keyframes projects-drawer-out {
@@ -3036,12 +3038,12 @@ input[type="search"]::-webkit-search-results-decoration {
 }
 
 .projects-drawer-out {
-  animation: projects-drawer-out 0.45s cubic-bezier(0.4, 0, 0.9, 0.5) both;
+  animation: projects-drawer-out 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
   will-change: transform;
 }
 
 .projects-drawer-scrim-out {
-  animation: projects-scrim-out 0.35s ease-in both;
+  animation: projects-scrim-out 0.35s ease-out both;
   /* The scrim is the click target for "close". Once it is on its way out it
      must stop accepting clicks, or a second tap during the exit re-fires a
      close on a drawer that is already gone. */
