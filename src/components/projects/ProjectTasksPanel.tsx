@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
+
+import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { Check, Pencil, Plus, StickyNote, Trash2, UserPlus, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -327,7 +329,12 @@ export function ProjectTasksPanel({
                             className="h-[18px] w-[18px] rounded-full object-cover"
                           />
                         ) : (
-                          <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-bg-tertiary text-[10px] font-bold text-fg-tertiary">
+                          <span
+                            style={avatarGradientStyle(
+                              task.assignedTo.id ?? task.assignedTo.name,
+                            )}
+                            className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] font-bold text-white"
+                          >
                             {(task.assignedTo.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
                           </span>
                         )}
@@ -667,7 +674,10 @@ function Member({
           className="h-[26px] w-[26px] flex-none rounded-full object-cover"
         />
       ) : (
-        <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full bg-bg-tertiary text-[11px] font-bold text-fg-tertiary">
+        <span
+          style={avatarGradientStyle(userId ?? email)}
+          className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full text-[11px] font-bold text-white"
+        >
           {(name || "?").trim().charAt(0).toUpperCase() || "?"}
         </span>
       )}

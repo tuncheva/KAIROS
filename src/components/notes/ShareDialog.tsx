@@ -12,6 +12,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+
+import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useTranslations } from "next-intl";
 import { Loader2, Share2, X } from "lucide-react";
 
@@ -342,7 +344,8 @@ function PersonAvatar({
   return (
     <span
       aria-hidden="true"
-      className="w-7 h-7 rounded-full bg-accent-primary/15 grid place-items-center text-[10px] font-bold text-accent-primary flex-shrink-0"
+      style={avatarGradientStyle(email ?? name)}
+      className="w-7 h-7 rounded-full grid place-items-center text-[10px] font-bold text-white flex-shrink-0"
     >
       {(name ?? email ?? "?").trim().charAt(0).toUpperCase()}
     </span>

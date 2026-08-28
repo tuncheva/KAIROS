@@ -47,12 +47,18 @@ export const env = createEnv({
      */
     LLM_MODEL_FAST: z.string().optional(),
     /**
-     * Chain-of-thought budget for the strong tier on models that take a
-     * `reasoning_effort` chat-template flag. Reasoning is emitted before the
-     * first visible character, so this is the main dial on how long a turn
-     * looks like it is doing nothing. Unset = "medium".
+     * Chain-of-thought budget for the strong tier, on models that expose one —
+     * either as a `reasoning_effort` chat-template flag or as a top-level
+     * `reasoning_effort` field. Reasoning is emitted before the first visible
+     * character, so this is the main dial on how long a turn looks like it is
+     * doing nothing. Unset = "medium".
+     *
+     * Not every model offers every rung: Kimi K3's ladder is low/high/max, and a
+     * value it does not support resolves downwards to one it does. "max" is here
+     * because K3 accepts it, and it is almost never what you want — it is that
+     * model's *default*, which is precisely the latency this dial exists to cut.
      */
-    LLM_REASONING_EFFORT: z.enum(["low", "medium", "high"]).optional(),
+    LLM_REASONING_EFFORT: z.enum(["low", "medium", "high", "max"]).optional(),
     /** AI requests per user per rolling 24h window. */
     AI_RATE_LIMIT: z.coerce.number().int().positive().default(50),
     /**

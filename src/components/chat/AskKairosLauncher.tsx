@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
@@ -188,9 +188,21 @@ export function AskKairosLauncher({ onOpen }: Props) {
           }
           onOpen();
         }}
-        className="flex touch-none items-center gap-2.5 rounded-xl bg-accent-primary px-4 py-2.5 text-[13.5px] font-semibold text-white shadow-lg transition-[filter] select-none hover:brightness-110"
+        /*
+         * The closed state of the panel, and shaped like it.
+         *
+         * It used to be a solid accent slab with a sparkle in it — a different
+         * object from the panel it opens, in a colour the app otherwise
+         * reserves for the assistant's own voice. Same surface, same accent
+         * dot, so opening it reads as the pill growing rather than as one
+         * control being swapped for another.
+         */
+        className="kairos-menu-surface flex touch-none items-center gap-2.5 rounded-full px-4 py-2.5 text-[13.5px] font-semibold text-fg-primary transition-colors select-none hover:bg-bg-tertiary"
       >
-        <Sparkles className="h-4 w-4" />
+        <span
+          className="h-[7px] w-[7px] rounded-full bg-accent-primary shadow-[0_0_0_3px_rgb(var(--accent-primary)/0.14)]"
+          aria-hidden
+        />
         {t("askKairos")}
       </button>
     </div>

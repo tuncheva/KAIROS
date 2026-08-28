@@ -46,8 +46,14 @@ describe("A1ChatWidgetOverlay – Topbar", () => {
     expect(widgetSource).not.toContain("bg-bg-elevated/70");
   });
 
-  it("topbar uses design token for background (inline or class)", () => {
-    expect(widgetSource).toMatch(/bg-bg-elevated|bg-bg-secondary|--bg-elevated|--bg-secondary/);
+  it("takes its surface from a design-system class, not a literal", () => {
+    // `kairos-menu-surface` supplies the background, the hairline and both
+    // theme shadows, which is why the panel no longer names a background of
+    // its own.
+    expect(widgetSource).toMatch(
+      /kairos-menu-surface|bg-bg-elevated|bg-bg-secondary|--bg-elevated|--bg-secondary/,
+    );
+    expect(widgetSource).not.toContain("rgba(0,0,0,.5)");
   });
 });
 

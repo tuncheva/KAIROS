@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Minimal redesign proposal for the KAIROS floating AI chat widget: launcher pill, open panel, empty state, answer state and minimised bar.">
+<title>AI Chat Widget Redesign — KAIROS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Nunito+Sans:wght@300;400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* ── KAIROS tokens, ported from src/styles/globals.css ────────────────── */
+:root{
+  --ground:#FCFDFF; --secondary:#F8FAFC; --surface:#FAFBFD; --elevated:#FDFEFF; --tertiary:#F1F5F9;
+  --ink:#0F172A; --muted:#475569; --faint:#64748B; --ghost:#94A3B8;
+  --hair:#C8C8C8; --hair-soft:rgba(200,200,200,.5);
+  --accent:#A855F7; --accent-2:#C084FC; --accent-3:#D8B4FE; --accent-hover:#9333EA;
+  --mint:#5FB49C; --caramel:#E9A86C; --straw:#F03A47; --sky:#276FBF;
+  --panel:#FDFEFF; --bar:#FFFFFF; --app:#F8FAFC;
+  --shadow-pop:0 0 0 .5px rgba(200,200,200,.6),0 4px 12px -2px rgba(0,0,0,.10),0 16px 40px -8px rgba(0,0,0,.12);
+  --shadow-frame:0 0 0 .5px rgba(200,200,200,.6),0 24px 64px -16px rgba(0,0,0,.16);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#08080C; --secondary:#0E0E12; --surface:#0C0C10; --elevated:#121216; --tertiary:#14141A;
+    --ink:#FFFFFF; --muted:#DCDCE4; --faint:#AAAAB4; --ghost:#787884;
+    --hair:#3C3C3C; --hair-soft:rgba(60,60,60,.9);
+    --accent:#A855F7; --accent-2:#C084FC; --accent-3:#D8B4FE; --accent-hover:#D8B4FE;
+    --mint:#7FCBB5; --caramel:#F0BC8B; --straw:#FF6069; --sky:#5C9EDD;
+    --panel:#16151A; --bar:#0E0E12; --app:#0A0A0E;
+    --shadow-pop:0 0 0 .5px rgba(255,255,255,.07),0 4px 16px -2px rgba(0,0,0,.55),0 24px 56px -12px rgba(0,0,0,.6);
+    --shadow-frame:0 0 0 .5px rgba(255,255,255,.06),0 30px 80px -20px rgba(0,0,0,.8);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#08080C; --secondary:#0E0E12; --surface:#0C0C10; --elevated:#121216; --tertiary:#14141A;
+  --ink:#FFFFFF; --muted:#DCDCE4; --faint:#AAAAB4; --ghost:#787884;
+  --hair:#3C3C3C; --hair-soft:rgba(60,60,60,.9);
+  --accent:#A855F7; --accent-2:#C084FC; --accent-3:#D8B4FE; --accent-hover:#D8B4FE;
+  --mint:#7FCBB5; --caramel:#F0BC8B; --straw:#FF6069; --sky:#5C9EDD;
+  --panel:#16151A; --bar:#0E0E12; --app:#0A0A0E;
+  --shadow-pop:0 0 0 .5px rgba(255,255,255,.07),0 4px 16px -2px rgba(0,0,0,.55),0 24px 56px -12px rgba(0,0,0,.6);
+  --shadow-frame:0 0 0 .5px rgba(255,255,255,.06),0 30px 80px -20px rgba(0,0,0,.8);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box;}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0;}
+svg{display:block;}
+body{
+  margin:0;background:var(--ground);color:var(--ink);
+  font-family:"Nunito Sans",ui-sans-serif,system-ui,sans-serif;font-size:16px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.stage{max-width:1240px;margin:0 auto;padding:52px 24px 120px;}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;}
+.caption{font-family:"IBM Plex Mono",monospace;font-size:.62rem;letter-spacing:.17em;text-transform:uppercase;color:var(--faint);margin:0 0 14px;}
+.title{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:clamp(1.9rem,4.4vw,2.5rem);line-height:1;letter-spacing:-.015em;margin:0 0 8px;}
+.h2{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:1.6rem;line-height:1.1;letter-spacing:-.01em;margin:0 0 6px;}
+.lede{margin:0 0 38px;max-width:60ch;font-size:.92rem;color:var(--muted);}
+section{margin-top:76px;}
+.rule{height:.5px;background:var(--hair-soft);border:0;margin:76px 0 0;}
+
+/* ── laptop frame ─────────────────────────────────────────────────────── */
+.laptop{border-radius:14px;overflow:hidden;background:var(--app);box-shadow:var(--shadow-frame);}
+.chrome{display:flex;align-items:center;gap:7px;height:30px;padding:0 13px;background:var(--bar);border-bottom:.5px solid var(--hair-soft);}
+.chrome i{width:9px;height:9px;border-radius:999px;background:var(--hair);display:block;}
+.chrome span{margin-left:12px;font-family:"IBM Plex Mono",monospace;font-size:.6rem;letter-spacing:.06em;color:var(--ghost);}
+.app{display:flex;min-height:560px;position:relative;}
+
+.rail{flex:none;width:56px;padding:14px 0;background:var(--bar);border-right:.5px solid var(--hair-soft);display:flex;flex-direction:column;align-items:center;gap:16px;}
+.rail .logo{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--sky));}
+.rail em{width:18px;height:18px;border-radius:5px;background:var(--tertiary);display:block;}
+.rail em.sel{background:color-mix(in srgb,var(--accent) 26%,transparent);}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;}
+.topbar{display:flex;align-items:center;gap:14px;height:52px;padding:0 20px;background:var(--bar);border-bottom:.5px solid var(--hair-soft);}
+.ws{display:flex;align-items:center;gap:9px;font-size:.85rem;font-weight:700;letter-spacing:-.01em;}
+.ws .tag{width:20px;height:20px;border-radius:6px;background:linear-gradient(135deg,var(--accent-2),var(--accent-3));}
+.ws u{font-family:"IBM Plex Mono",monospace;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ghost);font-weight:400;text-decoration:none;}
+.spacer{flex:1;}
+.avatar{width:26px;height:26px;border-radius:999px;background:linear-gradient(135deg,var(--accent-2),var(--sky));}
+.page{flex:1;padding:26px 28px;background:var(--app);}
+.ghostrow{height:11px;border-radius:5px;background:var(--tertiary);margin-bottom:12px;}
+.ghostcard{height:92px;border-radius:12px;background:var(--secondary);box-shadow:0 0 0 .5px var(--hair-soft);margin-bottom:14px;}
+
+/* ── the widget ───────────────────────────────────────────────────────── */
+.widget{
+  position:absolute;right:20px;bottom:20px;width:352px;
+  display:flex;flex-direction:column;overflow:hidden;
+  border-radius:16px;background:var(--panel);box-shadow:var(--shadow-pop);
+}
+.widget.free{position:static;}
+.wbar{display:flex;align-items:center;gap:9px;height:44px;padding:0 8px 0 14px;border-bottom:.5px solid var(--hair-soft);cursor:grab;}
+.wdot{width:7px;height:7px;border-radius:999px;background:var(--accent);flex:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent);}
+.wname{font-size:.8rem;font-weight:700;letter-spacing:-.01em;}
+.wsub{font-family:"IBM Plex Mono",monospace;font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ghost);}
+.wbtn{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--ghost);}
+.wbtn:hover{background:var(--tertiary);color:var(--muted);}
+
+.thread{padding:16px 14px;display:flex;flex-direction:column;gap:16px;}
+.msg-user{align-self:flex-end;max-width:82%;padding:8px 12px;border-radius:14px 14px 4px 14px;
+  background:color-mix(in srgb,var(--accent) 12%,transparent);font-size:.83rem;line-height:1.5;}
+.msg-ai{max-width:94%;font-size:.83rem;line-height:1.62;color:var(--ink);}
+.byline{font-family:"IBM Plex Mono",monospace;font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ghost);margin-bottom:6px;display:flex;gap:8px;align-items:center;}
+.byline b{font-weight:500;color:var(--accent-hover);}
+.msg-ai p{margin:0 0 8px;}
+.cite{display:inline-flex;align-items:center;gap:5px;font-family:"IBM Plex Mono",monospace;font-size:.58rem;letter-spacing:.08em;color:var(--faint);padding:2px 7px;border-radius:6px;box-shadow:0 0 0 .5px var(--hair-soft);}
+.caret{display:inline-block;width:6px;height:13px;vertical-align:-2px;background:var(--accent);border-radius:1px;animation:blink 1.1s steps(1) infinite;}
+@keyframes blink{50%{opacity:0;}}
+
+.empty{padding:20px 14px 12px;display:flex;flex-direction:column;gap:2px;}
+.emptyhead{font-family:"Instrument Serif",Georgia,serif;font-size:1.25rem;line-height:1.2;margin:0 0 4px;}
+.emptysub{font-size:.78rem;color:var(--faint);margin:0 0 14px;}
+.sugg{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 2px;font-size:.8rem;color:var(--muted);border-top:.5px solid var(--hair-soft);}
+.sugg:last-of-type{border-bottom:.5px solid var(--hair-soft);}
+.sugg i{color:var(--ghost);font-size:.7rem;font-style:normal;}
+
+.composer{margin-top:auto;padding:10px 12px;border-top:.5px solid var(--hair-soft);background:var(--elevated);}
+.field{font-size:.83rem;color:var(--ghost);padding:4px 2px 10px;}
+.ctrls{display:flex;align-items:center;gap:6px;}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:8px;font-size:.7rem;color:var(--faint);box-shadow:0 0 0 .5px var(--hair-soft);}
+.chip.on{color:var(--accent-hover);box-shadow:0 0 0 .5px color-mix(in srgb,var(--accent) 40%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent);}
+.send{margin-left:auto;width:26px;height:26px;border-radius:999px;background:var(--tertiary);color:var(--ghost);display:flex;align-items:center;justify-content:center;}
+.quota{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;font-size:.57rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ghost);padding:8px 2px 0;}
+.quota a{color:var(--accent-hover);text-decoration:none;}
+
+/* launcher pill */
+.pill{display:inline-flex;align-items:center;gap:9px;height:40px;padding:0 16px 0 13px;border-radius:999px;background:var(--panel);box-shadow:var(--shadow-pop);font-size:.8rem;font-weight:600;}
+.pill em{font-family:"IBM Plex Mono",monospace;font-size:.58rem;letter-spacing:.12em;color:var(--ghost);padding:2px 6px;border-radius:5px;box-shadow:0 0 0 .5px var(--hair-soft);font-weight:400;font-style:normal;}
+.nudge{max-width:250px;padding:10px 12px;border-radius:12px 12px 3px 12px;background:var(--panel);box-shadow:var(--shadow-pop);font-size:.76rem;color:var(--muted);line-height:1.45;}
+.nudge b{display:block;font-family:"IBM Plex Mono",monospace;font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--caramel);font-weight:500;margin-bottom:4px;}
+
+/* minimised bar */
+.mini{width:352px;display:flex;align-items:center;gap:9px;height:44px;padding:0 8px 0 14px;border-radius:16px;background:var(--panel);box-shadow:var(--shadow-pop);}
+
+/* states grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:34px;align-items:start;}
+.cell{display:flex;flex-direction:column;gap:12px;}
+.cellcap{font-family:"IBM Plex Mono",monospace;font-size:.58rem;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:0;}
+.cellnote{font-size:.8rem;color:var(--muted);margin:0;}
+.pad{background:var(--app);border-radius:14px;padding:22px;box-shadow:0 0 0 .5px var(--hair-soft);display:flex;justify-content:center;}
+
+/* spec + comparison */
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:28px;}
+.spec{margin:0;padding:0;list-style:none;font-size:.85rem;}
+.spec li{padding:11px 0;border-top:.5px solid var(--hair-soft);display:flex;gap:14px;justify-content:space-between;}
+.spec li:last-child{border-bottom:.5px solid var(--hair-soft);}
+.spec b{font-weight:600;color:var(--ink);}
+.spec span{color:var(--faint);font-family:"IBM Plex Mono",monospace;font-size:.72rem;text-align:right;}
+.ba{display:grid;grid-template-columns:1fr 1fr;font-size:.85rem;}
+.ba div{padding:11px 14px;border-top:.5px solid var(--hair-soft);}
+.ba div:nth-child(odd){color:var(--faint);}
+.ba div:nth-child(even){color:var(--ink);box-shadow:inset .5px 0 var(--hair-soft);}
+.ba .hd{font-family:"IBM Plex Mono",monospace;font-size:.58rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ghost);border-top:0;padding-bottom:4px;}
+code{font-family:"IBM Plex Mono",monospace;font-size:.78em;color:var(--accent-hover);}
+.steps{counter-reset:s;list-style:none;margin:0;padding:0;font-size:.87rem;}
+.steps li{counter-increment:s;position:relative;padding:12px 0 12px 34px;border-top:.5px solid var(--hair-soft);color:var(--muted);}
+.steps li:last-child{border-bottom:.5px solid var(--hair-soft);}
+.steps li::before{content:counter(s,decimal-leading-zero);position:absolute;left:0;top:12px;font-family:"IBM Plex Mono",monospace;font-size:.62rem;color:var(--ghost);}
+.steps b{color:var(--ink);font-weight:600;}
+@media(max-width:640px){.app{min-height:480px;}.widget{right:12px;bottom:12px;width:300px;}.ba{grid-template-columns:1fr;}.ba div:nth-child(even){box-shadow:none;}}
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <p class="caption">KAIROS · Design proposal · <span class="mono">docs/ui</span></p>
+  <h1 class="title">The AI widget, reduced to the ask</h1>
+  <p class="lede">
+    The floating assistant currently carries six pieces of chrome before a single word of the answer:
+    a grip, a sparkle, a title, an agent stamp, three window buttons and a resize glyph. This proposal keeps
+    every capability and removes the decoration around it — one hairline surface, one accent, and text that
+    starts at the top of the panel instead of a third of the way down it.
+  </p>
+
+  <!-- ── HERO ──────────────────────────────────────────────────────────── -->
+  <div class="laptop">
+    <div class="chrome"><i></i><i></i><i></i><span>kairos.app / projects</span></div>
+    <div class="app">
+      <div class="rail">
+        <div class="logo"></div><em></em><em class="sel"></em><em></em><em></em>
+      </div>
+      <div class="main">
+        <div class="topbar">
+          <div class="ws"><div class="tag"></div>Velocity <u>workspace</u></div>
+          <div class="spacer"></div><div class="avatar"></div>
+        </div>
+        <div class="page">
+          <div class="ghostrow" style="width:180px"></div>
+          <div class="ghostcard"></div><div class="ghostcard"></div><div class="ghostcard" style="height:60px"></div>
+        </div>
+      </div>
+
+      <!-- widget: answering -->
+      <div class="widget" style="height:470px">
+        <div class="wbar">
+          <span class="wdot"></span>
+          <span class="wname">Kairos</span>
+          <span class="spacer"></span>
+          <button class="wbtn" title="Clear conversation">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5"/></svg>
+          </button>
+          <button class="wbtn" title="Open full page">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 3h6v6M21 3l-8 8M9 21H3v-6M3 21l8-8"/></svg>
+          </button>
+          <button class="wbtn" title="Close">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="thread">
+          <div class="msg-user">Which reviews have been open more than a week?</div>
+          <div class="msg-ai">
+            <div class="byline"><b>Task Planner</b> · 4 sources</div>
+            <p>Three, all on <strong>Velocity CRM</strong>. The oldest is the schema review, opened 11 days ago and still unassigned.</p>
+            <p style="margin-bottom:10px">The other two are waiting on the same reviewer<span class="caret"></span></p>
+            <span class="cite">◆ velocity-crm · 3 tasks</span>
+          </div>
+        </div>
+
+        <div class="composer">
+          <div class="field">Ask anything…</div>
+          <div class="ctrls">
+            <span class="chip on">◆ Task Planner</span>
+            <span class="chip">All projects</span>
+            <button class="send" title="Send">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STATES ────────────────────────────────────────────────────────── -->
+  <section>
+    <p class="caption">02 — States</p>
+    <h2 class="h2">Four states, one surface</h2>
+    <p class="lede" style="margin-bottom:34px">
+      Closed, minimised, empty, answering. Each is the same 16px card with the same hairline;
+      nothing gains a border, a gradient or a second shadow on the way between them.
+    </p>
+
+    <div class="grid">
+
+      <div class="cell">
+        <p class="cellcap">Closed — launcher</p>
+        <div class="pad" style="flex-direction:column;align-items:flex-end;gap:10px">
+          <div class="nudge"><b>Risk radar</b>Two tasks on Velocity CRM went overdue yesterday.</div>
+          <span class="pill"><span class="wdot"></span>Ask Kairos <em>⌘K</em></span>
+        </div>
+        <p class="cellnote">The sparkle becomes the same 7px accent dot the panel uses, so the closed and open states read as one object. The nudge keeps its flattened corner pointing at the pill, and the pill keeps corner-snap dragging.</p>
+      </div>
+
+      <div class="cell">
+        <p class="cellcap">Minimised</p>
+        <div class="pad">
+          <div class="mini">
+            <span class="wdot"></span><span class="wname">Kairos</span>
+            <span class="wsub" style="margin-left:6px">Task&nbsp;Planner</span>
+            <span class="spacer"></span>
+            <button class="wbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+            <button class="wbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </div>
+        </div>
+        <p class="cellnote">Collapsed, the bar earns a chevron and shows which agent is pinned — the one moment that label is genuinely useful, because the thread is hidden. Expanded, the same gesture is a double-click on the title bar.</p>
+      </div>
+
+      <div class="cell">
+        <p class="cellcap">Empty — first open</p>
+        <div class="pad">
+          <div class="widget free" style="height:400px">
+            <div class="wbar">
+              <span class="wdot"></span><span class="wname">Kairos</span><span class="spacer"></span>
+              <button class="wbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 3h6v6M21 3l-8 8M9 21H3v-6M3 21l8-8"/></svg></button>
+              <button class="wbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="empty">
+              <p class="emptyhead">What should we look at?</p>
+              <p class="emptysub">Scoped to all projects.</p>
+              <div class="sugg"><span>What slipped this week?</span><i>↗</i></div>
+              <div class="sugg"><span>Summarise Velocity CRM</span><i>↗</i></div>
+              <div class="sugg"><span>Who is overloaded?</span><i>↗</i></div>
+            </div>
+            <div class="composer">
+              <div class="field">Ask anything…</div>
+              <div class="ctrls">
+                <span class="chip on">◆ Auto</span><span class="chip">All projects</span>
+                <button class="send"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+              </div>
+              <div class="quota"><span>12 / 60 today</span><a href="#">Full page ↗</a></div>
+            </div>
+          </div>
+        </div>
+        <p class="cellnote">The clear-conversation icon is absent here: there is nothing to clear, and an action that is permanently disabled is just chrome. It appears with the first message. Four suggestion cards become three hairline rows — a suggestion is a sentence, and a sentence reads better on a line than inside a box. The quota stamp stays on the empty state only, as it does today.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- ── THE EDIT ──────────────────────────────────────────────────────── -->
+  <section>
+    <p class="caption">03 — The edit</p>
+    <h2 class="h2">What is removed, and what replaces it</h2>
+    <p class="lede">Nothing here removes a capability. Drag, resize, minimise, agent choice, scope choice and the escape hatch to <code>/chat/ai</code> all survive; they simply stop announcing themselves.</p>
+
+    <div class="ba">
+      <div class="hd">Today</div><div class="hd">Proposed</div>
+      <div>Grip + sparkle + title + agent stamp in a 46px bar</div><div>Accent dot and “Kairos” in a 44px bar. The whole bar is already the drag handle, so the grip was labelling itself</div>
+      <div>Minimise / maximise / close</div><div>Clear / expand / close. Minimise becomes a double-click on the bar, and a chevron once collapsed</div>
+      <div>No way to drop a thread without opening the full page</div><div>A clear-conversation action in the bar, shown only once the thread has a message and confirmed in place before it fires</div>
+      <div>Decorative resize glyph, bottom-right</div><div>Nothing painted. The 8px edge hit-areas already exist and announce themselves through the cursor</div>
+      <div>Agent and scope pickers as filled composer buttons</div><div>Text chips on one row; only the active agent carries accent</div>
+      <div>Assistant answers in a bubble, same weight as the question</div><div>Assistant answers as plain text on the panel ground; only the user's message keeps a bubble</div>
+      <div>Agent name in the title bar, every message</div><div>Agent name in the answer byline, where it describes the thing next to it</div>
+      <div>Four suggestion cards</div><div>Three hairline rows</div>
+      <div>Hard-coded <code>rgba(0,0,0,.5)</code> shadow and inline border styles</div><div><code>kairos-menu-surface</code>, so light and dark are handled by the system rather than by the component</div>
+    </div>
+  </section>
+
+  <section>
+    <p class="caption">04 — Tokens</p>
+    <h2 class="h2">Nothing new is invented</h2>
+    <div class="cols" style="margin-top:22px">
+      <ul class="spec">
+        <li><b>Panel surface</b><span>kairos-menu-surface</span></li>
+        <li><b>Corner radius</b><span>16px · 999px pill</span></li>
+        <li><b>Hairlines</b><span>0.5px border-light/50</span></li>
+        <li><b>Title bar height</b><span>44px</span></li>
+        <li><b>Accent</b><span>--accent-primary only</span></li>
+      </ul>
+      <ul class="spec">
+        <li><b>Body text</b><span>13.5px / 1.62</span></li>
+        <li><b>Micro-labels</b><span>kairos-stamp · 9.5px</span></li>
+        <li><b>Icon buttons</b><span>26px · kairos-tap</span></li>
+        <li><b>Min panel size</b><span>340 × 380 unchanged</span></li>
+        <li><b>Motion</b><span>height 200ms ease-out</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <p class="caption">05 — Build order</p>
+    <h2 class="h2">Four commits, no migration</h2>
+    <ol class="steps">
+      <li><b>Title bar.</b> Rewrite the header in <code>A1ChatWidgetOverlay.tsx</code>: drop the grip and sparkle, replace the inline shadow and border with <code>kairos-menu-surface</code>, move minimise onto a double-click handler, delete the resize glyph, and add the clear-conversation button — rendered only when the thread has messages, and asking for confirmation inline in the bar rather than in a dialog.</li>
+      <li><b>Byline.</b> Move the agent label out of the header and into the answer byline that <code>ProjectIntelligenceChat</code> already renders on the page variant — the widget stops hiding it rather than growing a new element.</li>
+      <li><b>Composer.</b> Restyle the two <code>ComposerMenu</code> triggers as text chips, keeping the accent tone for the agent picker only, and hold the send button at rest until the field has text.</li>
+      <li><b>Empty state.</b> Suggestions from cards to rows in the <code>isPanel</code> branch, and the list from four down to three.</li>
+    </ol>
+    <p class="lede" style="margin-top:26px">
+      All four are contained to the widget path — the full page at <code>/chat/ai</code> is untouched, so the two surfaces
+      can be compared side by side before the same reduction is proposed for the page.
+    </p>
+  </section>
+
+</div>
+</body>
+</html>

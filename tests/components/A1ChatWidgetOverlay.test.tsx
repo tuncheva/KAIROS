@@ -42,12 +42,28 @@ describe("A1ChatWidgetOverlay", () => {
     expect(getPanel()).toBeInTheDocument();
   });
 
-  it("shows minimise, full screen, and close buttons in header", () => {
+  it("shows full screen and close buttons in header", () => {
     render(<A1ChatWidgetOverlay isOpen />);
 
-    expect(screen.getByLabelText("Minimise")).toBeInTheDocument();
     expect(screen.getByLabelText("Open full screen")).toBeInTheDocument();
     expect(screen.getByLabelText("Close")).toBeInTheDocument();
+  });
+
+  // Minimise lost its button in the redesign: the bar is two verbs plus the
+  // identity, and rolling a window up by double-clicking its title bar is the
+  // gesture the desktop already provides.
+  it("has no minimise button", () => {
+    render(<A1ChatWidgetOverlay isOpen />);
+
+    expect(screen.queryByLabelText("Minimise")).not.toBeInTheDocument();
+  });
+
+  // The thread is empty on mount, so there is nothing to throw away and the
+  // destructive control is not painted at all.
+  it("hides the clear button while the thread is empty", () => {
+    render(<A1ChatWidgetOverlay isOpen />);
+
+    expect(screen.queryByTestId("widget-clear")).not.toBeInTheDocument();
   });
 
   it("closes the panel when close button is clicked", async () => {
@@ -63,19 +79,22 @@ describe("A1ChatWidgetOverlay", () => {
     expect(getPanel()).not.toBeInTheDocument();
   });
 
-  it("minimises the panel (hides body)", async () => {
+  it("minimises the panel on a title-bar double-click", async () => {
     const user = userEvent.setup();
     render(<A1ChatWidgetOverlay isOpen />);
 
     const panel = getPanel();
     expect(panel).toBeInTheDocument();
 
-    await user.click(screen.getByLabelText("Minimise"));
+    await user.dblClick(document.querySelector("[class*='cursor-grab']")!);
 
-    // After minimise, panel height should be 48px (title bar only)
+    // Collapsed, the panel is exactly its title bar.
     await waitFor(() => {
-      expect(panel?.style.height).toBe("46px");
+      expect(panel?.style.height).toBe("44px");
     });
+
+    // And collapsed, it offers the chevron back out.
+    expect(screen.getByLabelText("Expand")).toBeInTheDocument();
   });
 
   it("navigates to the full page instead of stretching the panel", async () => {
@@ -128,29 +147,23 @@ describe("A1ChatWidgetOverlay", () => {
     expect(getPanel()).toBeInTheDocument();
   });
 
-  it("renders with solid background styling", () => {
+  // The panel takes its surface from the design system rather than painting a
+  // background, a border and a dark-mode shadow of its own.
+  it("renders on the shared menu surface", () => {
     render(<A1ChatWidgetOverlay isOpen />);
 
     const panel = getPanel();
-    expect(panel?.style.backgroundColor).toContain("var(--bg-primary)");
+    expect(panel?.className).toContain("kairos-menu-surface");
     expect(panel?.className).not.toContain("kairos-glass");
+    expect(panel?.style.backgroundColor).toBe("");
   });
 
-  it("shows resize indicator in normal mode", () => {
+  // The decorative resize grip is gone; the edge hit-areas that actually do
+  // the resizing are unchanged and announce themselves through the cursor.
+  it("paints no resize indicator", () => {
     render(<A1ChatWidgetOverlay isOpen />);
 
-    const svg = document.querySelector("svg");
-    expect(svg).toBeInTheDocument();
-  });
-
-  it("hides resize indicator when minimised", async () => {
-    const user = userEvent.setup();
-    render(<A1ChatWidgetOverlay isOpen />);
-
-    await user.click(screen.getByLabelText("Minimise"));
-
-    const indicators = document.querySelectorAll(".pointer-events-none svg");
-    expect(indicators.length).toBe(0);
+    expect(document.querySelectorAll(".pointer-events-none svg").length).toBe(0);
   });
 
   it("supports drag via pointer events on header", () => {

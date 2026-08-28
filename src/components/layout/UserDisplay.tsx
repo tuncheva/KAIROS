@@ -5,6 +5,7 @@ import { ChevronDown, LogIn, LogOut, Users } from"lucide-react";
 import { signIn, signOut, useSession } from"next-auth/react";
 import { useState, useRef, useEffect } from"react";
 import Image from"next/image";
+import { avatarGradientStyle } from"~/lib/avatarGradient";
 import { useTranslations } from"next-intl";
 import { onAvatarUpdate } from"~/lib/avatarEvents";
 
@@ -235,7 +236,7 @@ export function UserDisplay() {
  {avatarSrc ? (
  <Image src={avatarSrc} alt={user.name ??"User"} width={32} height={32} unoptimized className="w-8 h-8 rounded-full object-cover ring-2 ring-border-light/20 group-hover:ring-accent-primary/50 transition-all" />
  ) : (
- <div className="w-8 h-8 bg-accent-primary rounded-full flex items-center justify-center text-white text-sm font-bold group-hover:bg-accent-secondary transition-colors">
+ <div style={avatarGradientStyle(user.id ?? user.email ?? user.name)} className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold">
  {user.name?.charAt(0).toUpperCase() ??"U"}
  </div>
  )}
@@ -264,7 +265,7 @@ export function UserDisplay() {
  className="w-12 h-12 rounded-full object-cover ring-2 ring-border-light/20"
  />
  ) : (
- <div className="w-12 h-12 bg-accent-primary rounded-full flex items-center justify-center text-white text-lg font-bold">
+ <div style={avatarGradientStyle(user.id ?? user.email ?? user.name)} className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold">
  {user.name?.charAt(0).toUpperCase() ??"U"}
  </div>
  )}

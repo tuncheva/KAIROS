@@ -38,6 +38,7 @@ import { useTranslations } from "next-intl";
 import { Overlay } from "~/components/ui/Overlay";
 import { useToast } from "~/components/providers/ToastProvider";
 import { api } from "~/trpc/react";
+import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useProfilePeek } from "./ProfilePeekProvider";
 import { DRAWER_EXIT_MS, exitDurationMs } from "~/components/ui/drawerExit";
 
@@ -290,7 +291,8 @@ export function ProfileDrawer({
                     ) : (
                       <span
                         aria-hidden="true"
-                        className="grid h-[76px] w-[76px] place-items-center rounded-full bg-accent-primary text-[28px] font-bold text-white"
+                        style={avatarGradientStyle(profile.id ?? profile.name)}
+                        className="grid h-[76px] w-[76px] place-items-center rounded-full text-[28px] font-bold text-white"
                       >
                         {initialOf(profile.name)}
                       </span>
@@ -556,7 +558,8 @@ export function ProfileDrawer({
                               ) : (
                                 <span
                                   aria-hidden="true"
-                                  className="grid h-[30px] w-[30px] place-items-center rounded-full bg-accent-primary text-[12px] font-bold text-white"
+                                  style={avatarGradientStyle(person.id ?? person.name)}
+                                  className="grid h-[30px] w-[30px] place-items-center rounded-full text-[12px] font-bold text-white"
                                 >
                                   {initialOf(person.name)}
                                 </span>

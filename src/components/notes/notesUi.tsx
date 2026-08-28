@@ -11,6 +11,8 @@
 
 import Image from "next/image";
 
+import { avatarGradientStyle } from "~/lib/avatarGradient";
+
 import type { NoteUser } from "./notesData";
 
 export function initialOf(user: Pick<NoteUser, "name" | "email"> | null | undefined): string {
@@ -47,7 +49,8 @@ export function NoteAvatar({
   ) : (
     <span
       aria-hidden="true"
-      className={`${cls} rounded-full grid place-items-center font-bold text-white bg-gradient-to-br from-accent-primary to-accent-secondary ring-2 ${ringClass}`}
+      className={`${cls} rounded-full grid place-items-center font-bold text-white ring-2 ${ringClass}`}
+      style={avatarGradientStyle(user.id)}
     >
       {initialOf(user)}
     </span>

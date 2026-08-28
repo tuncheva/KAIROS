@@ -1,6 +1,7 @@
 "use client";
 
 import Image from"next/image";
+import { avatarGradientStyle } from"~/lib/avatarGradient";
 import { ChevronDown } from"lucide-react";
 import { useState } from"react";
 
@@ -43,7 +44,7 @@ export function CollaboratorItem({
  className="rounded-full object-cover"
  />
  ) : (
- <div className="w-[30px] h-[30px] rounded-full bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center">
+ <div style={avatarGradientStyle(user.id ?? user.email)} className="w-[30px] h-[30px] rounded-full flex items-center justify-center">
  <span className="text-[13px] font-[590] text-white">
  {user.name?.[0]?.toUpperCase() ?? user.email[0]?.toUpperCase() ??"?"}
  </span>

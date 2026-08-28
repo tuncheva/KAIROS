@@ -9,6 +9,8 @@
  */
 
 import Image from "next/image";
+
+import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useEffect } from "react";
 import { AlertCircle, Check, X } from "lucide-react";
 
@@ -53,7 +55,8 @@ export function PersonAvatar({
   return (
     <span
       aria-hidden="true"
-      className={`${cls} ${shape} grid shrink-0 place-items-center bg-accent-primary font-bold text-white`}
+      className={`${cls} ${shape} grid shrink-0 place-items-center font-bold text-white`}
+      style={avatarGradientStyle(name)}
     >
       {initialOf(name)}
     </span>

@@ -116,6 +116,84 @@ function strongTierReasoningEffort(): string {
 }
 
 /**
+ * Models that take reasoning effort as a **top-level** `reasoning_effort` field.
+ *
+ * A second, incompatible way of asking for the same thing. Kimi K3 dropped the
+ * K2.x `chat_template_kwargs.thinking` flag entirely: reasoning is always on and
+ * the only dial is `reasoning_effort` at the request root, with its own ladder —
+ * `low` / `high` / `max`, defaulting to **`max`**.
+ *
+ * That default is why this table exists. {@link CHAT_TEMPLATE_KWARGS} matches
+ * nothing for `kimi-k3`, so the client sent no effort at all and the provider
+ * applied `max` to every call — routing a one-line question and repairing a
+ * stray brace both paid the deepest chain-of-thought the model has, emitted
+ * before the first visible character. The fast tier existed but bought nothing.
+ *
+ * Each family carries its own ladder *and* its own strong-tier default, because
+ * the global default ("medium") is not a rung on K3's. Resolving it onto that
+ * ladder would land on `low` and make the strong tier identical to the fast one,
+ * quietly deleting the distinction the two tiers exist to draw.
+ */
+const REASONING_EFFORT_MODELS: ReadonlyArray<
+  readonly [
+    prefix: string,
+    spec: { supported: readonly string[]; strongDefault: string },
+  ]
+> = [
+  ["kimi-k3", { supported: ["low", "high", "max"], strongDefault: "high" }],
+  // Measured on NVIDIA NIM: low 739ms / medium 1419ms / high 3099ms on the same
+  // prompt, all returning the same answer. A full ladder, so the global default
+  // needs no resolving here.
+  [
+    "gpt-oss",
+    { supported: ["low", "medium", "high"], strongDefault: "medium" },
+  ],
+];
+
+/**
+ * Map an explicitly configured effort onto a ladder that may not contain it.
+ *
+ * Unsupported values resolve *downwards* — `medium` on a `low`/`high`/`max`
+ * model becomes `low`. This dial exists to buy latency back, so the ambiguous
+ * case should not silently cost more than was asked for. Only reached when
+ * `LLM_REASONING_EFFORT` is set; an unset dial takes the family's own default
+ * rather than being resolved from the global one.
+ */
+function nearestSupportedEffort(
+  requested: string,
+  supported: readonly string[],
+): string {
+  if (supported.includes(requested)) return requested;
+  const ladder = ["low", "medium", "high", "max"];
+  const wanted = ladder.indexOf(requested);
+  if (wanted < 0) return supported[0]!;
+  for (let i = wanted - 1; i >= 0; i--) {
+    const candidate = ladder[i]!;
+    if (supported.includes(candidate)) return candidate;
+  }
+  return supported[0]!;
+}
+
+/** Top-level `reasoning_effort` for one request, or undefined if unsupported. */
+function reasoningEffortFor(
+  model: string,
+  tier: "fast" | "strong",
+): string | undefined {
+  const bare = model.slice(model.lastIndexOf("/") + 1);
+  const spec = REASONING_EFFORT_MODELS.find(([prefix]) =>
+    bare.startsWith(prefix),
+  )?.[1];
+  if (!spec) return undefined;
+  if (tier === "fast") {
+    return nearestSupportedEffort(FAST_TIER_REASONING_EFFORT, spec.supported);
+  }
+  const configured = env.LLM_REASONING_EFFORT;
+  return configured
+    ? nearestSupportedEffort(configured, spec.supported)
+    : spec.strongDefault;
+}
+
+/**
  * The chat-template flags for one request: the model's family entry, plus the
  * reasoning effort for the tier it is being served on.
  *
@@ -422,6 +500,11 @@ function buildBody(
     body.chat_template_kwargs = templateKwargs;
   }
 
+  const reasoningEffort = reasoningEffortFor(model, req.tier ?? "strong");
+  if (reasoningEffort) {
+    body.reasoning_effort = reasoningEffort;
+  }
+
   if (stream) {
     body.stream = true;
     // Without this a streamed call reports no usage at all, so streaming would
@@ -480,6 +563,32 @@ function isFatalForChain(err: unknown): boolean {
   // The caller hung up. Nobody is waiting for a fallback answer.
   if (err instanceof Error && err.name === "AbortError") return true;
   return false;
+}
+
+/**
+ * A 429 that backing off will not clear.
+ *
+ * 429 covers two unlike failures. A burst limit clears in a moment and the
+ * provider says so with `Retry-After`; a per-account quota does not clear within
+ * any backoff this client is willing to wait, and providers signal that by
+ * sending no `Retry-After` at all.
+ *
+ * Retrying the second kind costs the full ladder — three attempts capped at 8s,
+ * then the same again on the fallback model — before advancing to a model that
+ * could have been tried immediately. Measured against NVIDIA's free NIM gateway
+ * under quota exhaustion, that was ~40s of sleeping per model call, on a tool
+ * loop that may make eight of them.
+ *
+ * So: honour `Retry-After` when it is offered, and treat its absence on a 429 as
+ * "this endpoint is done for now" — the same reasoning as the first-byte rule,
+ * which also trades a doomed retry for an immediate move down the chain.
+ */
+function isQuotaExhausted(err: unknown): boolean {
+  return (
+    err instanceof LlmHttpError &&
+    err.status === 429 &&
+    err.retryAfterMs === undefined
+  );
 }
 
 function isRetriable(err: unknown): boolean {
@@ -712,6 +821,10 @@ export async function chatCompletion(req: ChatRequest): Promise<ChatResponse> {
           log.warn("endpoint sent no first byte, advancing the chain", { model, err });
           break;
         }
+        if (isQuotaExhausted(err)) {
+          log.warn("model is out of quota, advancing the chain", { model });
+          break;
+        }
 
         const isLastAttempt = attempt === MAX_ATTEMPTS_PER_MODEL - 1;
         if (isLastAttempt) {
@@ -868,6 +981,10 @@ export async function* streamCompletion(
         // reliable "not serving" and the fallback should be tried at once.
         if (err instanceof LlmTimeoutError && err.phase === "first-byte") {
           log.warn("stream sent no first byte, advancing the chain", { model, err });
+          break;
+        }
+        if (isQuotaExhausted(err)) {
+          log.warn("stream model is out of quota, advancing the chain", { model });
           break;
         }
         if (attempt < MAX_ATTEMPTS_PER_MODEL - 1) {

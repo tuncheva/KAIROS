@@ -10,6 +10,8 @@ import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 
+import { avatarGradientStyle } from "~/lib/avatarGradient";
+
 import {
   LedgerAction,
   LedgerGroup,
@@ -642,7 +644,10 @@ export function WorkspaceSettingsClient() {
           className="h-8 w-8 flex-none rounded-full object-cover"
         />
       ) : (
-        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-bg-tertiary text-xs font-medium text-fg-tertiary">
+        <span
+          style={avatarGradientStyle(member.email)}
+          className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-xs font-bold text-white"
+        >
           {(member.name ?? member.email)?.[0]?.toUpperCase() ?? "?"}
         </span>
       ),

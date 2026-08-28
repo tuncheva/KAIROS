@@ -10,6 +10,8 @@
 
 import Image from "next/image";
 
+import { avatarGradientStyle } from "~/lib/avatarGradient";
+
 export interface ChatUser {
   id: string;
   name: string | null;
@@ -63,7 +65,8 @@ export function Avatar({
         />
       ) : (
         <div
-          className={`${cls} rounded-full bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center text-white font-bold`}
+          className={`${cls} rounded-full flex items-center justify-center text-white font-bold`}
+          style={avatarGradientStyle(user?.id ?? user?.email ?? user?.name)}
           aria-hidden="true"
         >
           {initialOf(user)}

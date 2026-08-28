@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Minus, X, Maximize2, GripVertical, Sparkles, FolderKanban } from "lucide-react";
+import {
+  X,
+  Maximize2,
+  Sparkles,
+  FolderKanban,
+  Trash2,
+  Check,
+  ChevronUp,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
 import { AUTO_AGENT } from "~/components/agents/AgentPicker";
@@ -128,6 +136,19 @@ export function A1ChatWidgetOverlay(props: {
   const router = useRouter();
   const t = useTranslations("aiConsole");
   const tAgents = useTranslations("agents");
+  const tChat = useTranslations("chat");
+
+  /*
+   * Throwing the thread away.
+   *
+   * The thread lives in `ProjectIntelligenceChat`, so the button here can only
+   * ask: `clearKey` is the request and `canClear` is the answer to "is there
+   * anything to throw away". The confirmation is owned here rather than there
+   * because it is this bar that has to turn into it.
+   */
+  const [clearKey, setClearKey] = useState(0);
+  const [canClear, setCanClear] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   /*
    * Who answers, and what they can see.
@@ -325,7 +346,8 @@ export function A1ChatWidgetOverlay(props: {
     left: rect.x,
     top: rect.y,
     width: rect.w,
-    height: minimised ? 46 : rect.h,
+    /* Collapsed, the panel is exactly its title bar. */
+    height: minimised ? 44 : rect.h,
   };
 
   return (
@@ -333,63 +355,142 @@ export function A1ChatWidgetOverlay(props: {
       ref={panelRef}
       data-testid="ai-widget-panel"
 
-      className="fixed z-50 flex flex-col overflow-hidden rounded-[14px] shadow-[0_24px_60px_rgba(0,0,0,.5)] transition-[height] duration-200 ease-out"
-      style={{
-        ...panelStyle,
-        backgroundColor: 'rgb(var(--bg-primary))',
-        border: '1px solid rgb(var(--border-medium))'
-      }}
+      /*
+       * `kairos-menu-surface` rather than a hand-rolled border and shadow.
+       * The panel used to paint a half-opaque black drop shadow and a 1px
+       * border regardless of theme — a dark-mode shadow shown over a white
+       * page in light mode. The shared surface carries both, in both themes,
+       * and keeps carrying them when either one is retuned.
+       */
+      className="kairos-menu-surface fixed z-50 flex flex-col overflow-hidden rounded-2xl transition-[height] duration-200 ease-out"
+      style={panelStyle}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
     >
       {/* ─── title bar ─── */}
+      {/*
+        The bar carries an identity and three verbs, and nothing else.
+        It used to open with a grip and a sparkle: the grip labelled a drag
+        handle that is the whole bar anyway, and the sparkle said "AI" directly
+        above the words "KAIROS AI". The accent dot does the identity, and the
+        agent name has moved to the byline on each answer, where it describes
+        the answer instead of the panel.
+      */}
       <div
         onPointerDown={handleHeaderPointerDown}
-        className="flex h-[46px] shrink-0 cursor-grab items-center gap-2.5 border-b border-border-medium/60 bg-bg-secondary px-3 select-none active:cursor-grabbing"
+        /* Minimise has no button of its own any more. Double-clicking a title
+           bar to roll a window up is the gesture every OS already uses, and it
+           bought back the third of the bar the button was occupying. */
+        onDoubleClick={toggleMinimise}
+        className="flex h-11 shrink-0 cursor-grab items-center gap-2.5 border-b border-border-medium/50 px-3 select-none active:cursor-grabbing"
       >
-        <GripVertical className="h-3.5 w-3.5 shrink-0" style={{ color: 'rgb(var(--fg-tertiary))', opacity: 0.7 }} />
-        <Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: 'rgb(var(--accent-primary))' }} />
-        <span className="flex-1 truncate text-[13px] font-semibold" style={{ color: 'rgb(var(--fg-primary))' }}>KAIROS AI</span>
-        {/* Which specialist is answering — the widget has no room for the
-            byline the page prints above each answer, and a user needs to know
-            whether they are talking to a router or to a write agent. */}
-        <span className="kairos-stamp hidden shrink-0 truncate text-[9.5px] text-fg-tertiary sm:inline">
-          {agentLabel}
-        </span>
+        <span
+          className="h-[7px] w-[7px] shrink-0 rounded-full bg-accent-primary shadow-[0_0_0_3px_rgb(var(--accent-primary)/0.14)]"
+          aria-hidden
+        />
 
-        <span className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={toggleMinimise}
-            className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
-            aria-label={minimised ? "Expand" : "Minimise"}
-          >
-            <Minus className="h-3.5 w-3.5" />
-          </button>
+        {confirmClear ? (
+          /* The confirmation happens in the bar rather than in a modal. The
+             panel is 352px of quick-ask surface; darkening the entire app
+             behind it to ask about it is out of proportion to what is being
+             thrown away. */
+          <>
+            <span className="flex-1 truncate text-[12.5px] font-medium text-fg-primary">
+              {tChat("deleteChatTitle")}
+            </span>
+            <span className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                data-testid="widget-clear-confirm"
+                onClick={() => {
+                  setClearKey((k) => k + 1);
+                  setConfirmClear(false);
+                }}
+                className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-red-400 transition-colors hover:bg-red-500/15"
+                aria-label={tChat("deleteAndStartOver")}
+                title={tChat("deleteAndStartOver")}
+              >
+                <Check className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmClear(false)}
+                className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
+                aria-label={tChat("cancel")}
+                title={tChat("cancel")}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="flex-1 truncate text-[13px] font-semibold text-fg-primary">
+              {tChat("title")}
+            </span>
 
-          <button
-            type="button"
-            onClick={goFullScreen}
-            className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-accent-primary/15 hover:text-accent-primary"
-            aria-label="Open full screen"
-            title="Open full screen"
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-          </button>
+            {/* Collapsed, the thread is hidden — which is the one moment the
+                pinned agent is worth naming in the chrome, because there is no
+                byline on screen to name it. */}
+            {minimised && (
+              <span className="kairos-stamp hidden shrink-0 truncate text-[9.5px] text-fg-tertiary sm:inline">
+                {agentLabel}
+              </span>
+            )}
 
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              setMinimised(false);
-            }}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-red-500/20 hover:text-red-400"
-            aria-label="Close"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </span>
+            <span className="flex shrink-0 items-center gap-1">
+              {/* Painted only when it would do something. A permanently
+                  disabled destructive control is chrome that never earns its
+                  place, and the thread is empty for the whole first visit. */}
+              {canClear && !minimised && (
+                <button
+                  type="button"
+                  data-testid="widget-clear"
+                  onClick={() => setConfirmClear(true)}
+                  className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-red-500/15 hover:text-red-400"
+                  aria-label={tChat("newChatTooltip")}
+                  title={tChat("newChatTooltip")}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+
+              {minimised && (
+                <button
+                  type="button"
+                  onClick={toggleMinimise}
+                  className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
+                  aria-label="Expand"
+                >
+                  <ChevronUp className="h-3.5 w-3.5" />
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={goFullScreen}
+                className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-accent-primary/15 hover:text-accent-primary"
+                aria-label="Open full screen"
+                title="Open full screen"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setMinimised(false);
+                }}
+                className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-red-500/15 hover:text-red-400"
+                aria-label="Close"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          </>
+        )}
       </div>
 
       {/* ─── body ─── */}
@@ -404,6 +505,8 @@ export function A1ChatWidgetOverlay(props: {
             key={props.threadKey}
             variant="widget"
             hideHeader
+            clearKey={clearKey}
+            onCanClearChange={setCanClear}
             prefill={props.prefill}
             projectId={scopeProjectId}
             pinnedAgentId={pinnedAgentId}
@@ -488,15 +591,10 @@ export function A1ChatWidgetOverlay(props: {
         </div>
       )}
 
-      {/* ─── resize indicator (bottom-right corner, visual only) ─── */}
-      {!minimised && (
-        <div className="pointer-events-none absolute bottom-1 right-1.5" style={{ color: 'rgb(var(--fg-tertiary))', opacity: 0.3 }}>
-          <svg width="12" height="12" viewBox="0 0 12 12">
-            <path d="M11 1v10H1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            <path d="M11 5v6H5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </div>
-      )}
+      {/* The resize grip used to be drawn here. Nothing is painted now: the
+          8px hit-areas on every edge do the resizing, they already announce
+          themselves by swapping the cursor, and a glyph in one corner
+          advertised the least of the eight ways to do it. */}
     </div>
   );
 }

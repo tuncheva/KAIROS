@@ -22,6 +22,7 @@ import { useToast } from "~/components/providers/ToastProvider";
 import { Overlay } from "~/components/ui/Overlay";
 import { NewProjectDrawer } from "./NewProjectDrawer";
 import { ProfileLink } from "~/components/profile/ProfileLink";
+import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { ProjectTasksPanel, ProjectTeamPanel } from "./ProjectTasksPanel";
 import {
   isRecent,
@@ -91,7 +92,6 @@ const HEALTH_BORDER: Record<Health, string> = {
  * tokens: they distinguish people from each other, so an accent switch must not
  * collapse four collaborators into one colour.
  */
-const AVATAR_TINTS = ["#c084fc", "#22d3ee", "#fbbf24", "#4ade80", "#f87171", "#a5b4fc"];
 
 const EVENT_ICON: Record<EventKind, typeof Check> = {
   task: Check,
@@ -550,7 +550,7 @@ function AvatarStack({
     );
   }
 
-  const face = (person: Person, index: number) =>
+  const face = (person: Person) =>
     person.image ? (
       <Image
         src={person.image}
@@ -562,8 +562,8 @@ function AvatarStack({
     ) : (
       <span
         title={person.name ?? undefined}
-        style={{ backgroundColor: AVATAR_TINTS[index % AVATAR_TINTS.length] }}
-        className={`flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 text-[11px] font-bold text-[#0a0a10] ${ringClass}`}
+        style={avatarGradientStyle(person.id)}
+        className={`flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 text-[11px] font-bold text-white ${ringClass}`}
       >
         {(person.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
       </span>
@@ -571,7 +571,7 @@ function AvatarStack({
 
   return (
     <span className="flex">
-      {shown.map((person, index) =>
+      {shown.map((person) =>
         interactive ? (
           <ProfileLink
             key={person.id}
@@ -579,11 +579,11 @@ function AvatarStack({
             name={person.name}
             className="-mr-[7px]"
           >
-            {face(person, index)}
+            {face(person)}
           </ProfileLink>
         ) : (
           <span key={person.id} className="-mr-[7px]">
-            {face(person, index)}
+            {face(person)}
           </span>
         ),
       )}

@@ -64,12 +64,34 @@ function templateKwargs(): Record<string, unknown> | undefined {
   return PROBE_TEMPLATE_KWARGS.find(([prefix]) => bare.startsWith(prefix))?.[1];
 }
 
+/**
+ * Models taking a top-level `reasoning_effort`, mirroring `REASONING_EFFORT_MODELS`
+ * in `src/server/llm/core/modelClient.ts`.
+ *
+ * Probed at "low" because that is the cheapest rung the app ever asks for, and
+ * because the alternative is the model's own default — `max` on Kimi K3 — which
+ * would have every probe below spend its whole tiny budget thinking and report a
+ * false negative. Same reasoning as the flags above: probe what the app sends.
+ */
+const PROBE_REASONING_EFFORT: ReadonlyArray<readonly [prefix: string, effort: string]> = [
+  ["kimi-k3", "low"],
+];
+
+function reasoningEffort(): string | undefined {
+  const bare = MODEL.slice(MODEL.lastIndexOf("/") + 1);
+  return PROBE_REASONING_EFFORT.find(([prefix]) => bare.startsWith(prefix))?.[1];
+}
+
 async function post(
   body: Record<string, unknown>,
 ): Promise<{ status: number; json: unknown; text: string }> {
   const kwargs = templateKwargs();
   if (kwargs && !("chat_template_kwargs" in body)) {
     body = { ...body, chat_template_kwargs: kwargs };
+  }
+  const effort = reasoningEffort();
+  if (effort && !("reasoning_effort" in body)) {
+    body = { ...body, reasoning_effort: effort };
   }
   // Reasoning tokens are spent before the first visible character, so the tiny
   // budgets below (16-256) can be consumed entirely by thinking and come back
@@ -157,6 +179,14 @@ async function probeModels() {
       true,
       `${String(ids.length)} models; "${MODEL}" ${listed ? "listed" : "NOT listed"}`,
       true,
+    );
+    // This check says nothing about the key. NVIDIA serves `/models` as a public
+    // catalog — it returns 200 for a deliberately invalid key — so a ✓ here reads
+    // as "credentials fine, endpoint fine" when it means only "the host is up".
+    // A whole debugging session went into rate limits and model choice while the
+    // real failure was a dead key, because this line looked like proof it wasn't.
+    console.log(
+      "      (note: this endpoint is public — a ✓ here does NOT validate the API key)",
     );
     if (!listed && ids.length > 0) {
       const near = ids.filter((id) => id.toLowerCase().includes("deepseek"));
