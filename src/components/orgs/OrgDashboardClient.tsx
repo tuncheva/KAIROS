@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { QrCode } from "lucide-react";
+import { QrCode } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";

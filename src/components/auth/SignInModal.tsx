@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { X, Loader2, Eye, EyeOff, ArrowRight, ArrowLeft, KeyRound, Check } from "lucide-react";
+import { X, Loader2, Eye, EyeOff, ArrowRight, ArrowLeft, KeyRound, Check } from "~/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";

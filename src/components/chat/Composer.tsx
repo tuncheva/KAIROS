@@ -11,7 +11,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { CornerUpLeft, FileText, ImageIcon, Loader2, Paperclip, Send, X } from "lucide-react";
+import { CornerUpLeft, FileText, ImageIcon, Loader2, Paperclip, Send, X } from "~/components/ui/icons";
 
 import { formatFileSize, isImageMime } from "./chatUi";
 import type { ThreadMessage } from "./MessageBubble";

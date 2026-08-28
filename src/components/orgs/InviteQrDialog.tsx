@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, Link2, Loader2, RefreshCw, ShieldOff, X } from "lucide-react";
+import { Check, Copy, Link2, Loader2, RefreshCw, ShieldOff, X } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { useToast } from "~/components/providers/ToastProvider";

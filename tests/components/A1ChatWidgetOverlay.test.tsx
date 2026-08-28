@@ -49,13 +49,20 @@ describe("A1ChatWidgetOverlay", () => {
     expect(screen.getByLabelText("Close")).toBeInTheDocument();
   });
 
-  // Minimise lost its button in the redesign: the bar is two verbs plus the
-  // identity, and rolling a window up by double-clicking its title bar is the
-  // gesture the desktop already provides.
-  it("has no minimise button", () => {
+  // Double-clicking the title bar still rolls the panel up, but the gesture is
+  // undiscoverable and unreachable by keyboard, so the same verb also has a
+  // chevron that flips to "Expand" once the panel is collapsed.
+  it("minimises and expands from the one chevron", async () => {
+    const user = userEvent.setup();
     render(<A1ChatWidgetOverlay isOpen />);
 
+    await user.click(screen.getByLabelText("Minimise"));
+
     expect(screen.queryByLabelText("Minimise")).not.toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Expand"));
+
+    expect(screen.getByLabelText("Minimise")).toBeInTheDocument();
   });
 
   // The thread is empty on mount, so there is nothing to throw away and the

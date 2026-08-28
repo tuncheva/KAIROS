@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Info, Loader2, MessageSquare, Search } from "lucide-react";
+import { ArrowLeft, Info, Loader2, MessageSquare, Search } from "~/components/ui/icons";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
@@ -877,6 +877,7 @@ export function ChatShell({
                 size="lg"
                 online={isOnline(otherUser.id)}
                 fallbackLabel={t("userFallback")}
+                peek
               />
               <div className="min-w-0 flex-1">
                 <h2 className="text-sm font-bold text-fg-primary truncate">

@@ -11,6 +11,7 @@
 import Image from "next/image";
 
 import { avatarGradientStyle } from "~/lib/avatarGradient";
+import { ProfileLink } from "~/components/profile/ProfileLink";
 
 export interface ChatUser {
   id: string;
@@ -42,6 +43,7 @@ export function Avatar({
   online,
   ringClass = "ring-bg-surface",
   fallbackLabel = "User",
+  peek = false,
 }: {
   user: ChatUser | null | undefined;
   size?: keyof typeof SIZES;
@@ -50,10 +52,20 @@ export function Avatar({
   /** The dot's border has to match whatever surface it sits on. */
   ringClass?: string;
   fallbackLabel?: string;
+  /**
+   * Make the face open the profile drawer.
+   *
+   * Off by default because half of this component's call sites sit *inside* a
+   * button — a conversation row, a person row in the new-chat modal — and
+   * `ProfileLink` renders a real button, which cannot legally nest. Those rows
+   * also already mean something else when tapped, so the opt-in is the honest
+   * default: switch it on where the avatar is the only thing under the finger.
+   */
+  peek?: boolean;
 }) {
   const { px, cls } = SIZES[size];
 
-  return (
+  const face = (
     <div className={`relative flex-shrink-0 ${cls}`}>
       {user?.image ? (
         <Image
@@ -80,6 +92,18 @@ export function Avatar({
         />
       )}
     </div>
+  );
+
+  if (!peek) return face;
+
+  return (
+    <ProfileLink
+      userId={user?.id}
+      name={displayName(user, fallbackLabel)}
+      className="flex-shrink-0"
+    >
+      {face}
+    </ProfileLink>
   );
 }
 

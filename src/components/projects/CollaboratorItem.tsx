@@ -2,7 +2,8 @@
 
 import Image from"next/image";
 import { avatarGradientStyle } from"~/lib/avatarGradient";
-import { ChevronDown } from"lucide-react";
+import { ProfileLink } from "~/components/profile/ProfileLink";
+import { ChevronDown } from "~/components/ui/icons";
 import { useState } from"react";
 
 interface User {
@@ -35,6 +36,7 @@ export function CollaboratorItem({
  <div className="relative">
  <div className="flex items-center justify-between pl-4 pr-[18px] py-[11px] active:bg-bg-tertiary transition-colors">
  <div className="flex items-center gap-3 flex-1 min-w-0">
+ <ProfileLink userId={user.id} name={user.name ?? user.email}>
  {user.image ? (
  <Image
  src={user.image}
@@ -50,6 +52,7 @@ export function CollaboratorItem({
  </span>
  </div>
  )}
+ </ProfileLink>
  <div className="flex-1 min-w-0">
  <p className="text-[17px] leading-[1.235] tracking-[-0.016em] text-fg-primary font-[590] truncate">
  {user.name ?? user.email}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, X } from "lucide-react";
+import { MessageSquare, X } from "~/components/ui/icons";
 import { ProjectIntelligenceChat } from "./ProjectIntelligenceChat";
 
 /**

@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Building2, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, Building2, CheckCircle2, Loader2 } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { useToast } from "~/components/providers/ToastProvider";

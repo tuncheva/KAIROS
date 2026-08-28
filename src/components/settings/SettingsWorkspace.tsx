@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Search } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import {

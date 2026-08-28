@@ -1,8 +1,21 @@
 import type { A2ContextPack } from "../context/a2ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
-import { languageRule } from "~/server/llm/prompts/languageRules";
+import {
+  languageRule,
+  wantsBulgarianGuidance,
+  wantsLocaleFallback,
+} from "~/server/llm/prompts/languageRules";
 
-export function getA2SystemPrompt(context: A2ContextPack): string {
+/**
+ * @param userText - The user's own words this turn (the message, and on the
+ *   handoff path the original message behind the paraphrase). Used only to
+ *   decide whether the Bulgarian guidance is worth including; see
+ *   `wantsBulgarianGuidance`. Omit it and the guidance stays on.
+ */
+export function getA2SystemPrompt(
+  context: A2ContextPack,
+  ...userText: Array<string | undefined | null>
+): string {
   // Memory is rendered as prose below, not dumped with the rest of the pack: a
   // preference buried in a JSON blob reads as data to describe rather than an
   // instruction to follow.
@@ -54,20 +67,22 @@ You are in DRAFT mode.
 - You must not execute writes. The application will handle Confirm → Apply after human approval.
 
 ${languageRule({
-    locale: context.locale,
-    fields: [
-      "summary",
-      "reason",
-      "diffPreview entries",
-      "questionsForUser",
-      "risks",
-      "task titles",
-      "descriptions",
-      "acceptanceCriteria",
-    ],
-    bulgarianTerms: ["задача", "проект", "състояние", "приоритет"],
-    writesStoredContent: true,
-  })}
+  locale: context.locale,
+  bulgarianGuidance: wantsBulgarianGuidance(...userText),
+  localeFallback: wantsLocaleFallback(...userText),
+  fields: [
+    "summary",
+    "reason",
+    "diffPreview entries",
+    "questionsForUser",
+    "risks",
+    "task titles",
+    "descriptions",
+    "acceptanceCriteria",
+  ],
+  bulgarianTerms: ["задача", "проект", "състояние", "приоритет"],
+  writesStoredContent: true,
+})}
 Write Bulgarian task titles as natural noun phrases: "Имплементиране на потребителска автентикация", not "имплементиране потребителска автентикация".
 
 ## WRITING QUALITY (CRITICAL)

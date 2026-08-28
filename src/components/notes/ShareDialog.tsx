@@ -15,7 +15,7 @@ import Image from "next/image";
 
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useTranslations } from "next-intl";
-import { Loader2, Share2, X } from "lucide-react";
+import { Loader2, Share2, X } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";

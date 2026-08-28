@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, AlertCircle, Mail } from "lucide-react";
+import { CheckCircle, AlertCircle, Mail } from "~/components/ui/icons";
 import { api } from "~/trpc/react";
 
 /**

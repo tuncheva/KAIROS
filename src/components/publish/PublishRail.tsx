@@ -27,7 +27,7 @@ import {
   Home,
   Megaphone,
   SlidersHorizontal,
-} from "lucide-react";
+} from "~/components/ui/icons";
 
 import {
   FEED_VIEWS,

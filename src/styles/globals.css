@@ -3515,3 +3515,49 @@ input[type="search"]::-webkit-search-results-decoration {
     transform: translate(-50%, -50%);
   }
 }
+
+/* ─── AI chat widget: expand / collapse ─── */
+/*
+   The panel opens with a short rise-and-settle from its own bottom edge, so it
+   reads as growing out of the launcher rather than being pasted over the page.
+   Collapsing and expanding is a height transition on the panel itself (see
+   `.kairos-ai-widget`), with the body fading a little ahead of it so the
+   content never looks squashed on the way down.
+
+   Reduced motion is already neutralised globally, so nothing extra is needed
+   here.
+*/
+.kairos-ai-widget {
+  transform-origin: bottom right;
+  animation: kairos-ai-widget-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: height 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* While the user is dragging a resize handle, height follows the pointer with
+   no easing — otherwise every frame chases the last one and the edge lags. */
+.kairos-ai-widget[data-interacting="true"] {
+  transition: none;
+}
+
+@keyframes kairos-ai-widget-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.kairos-ai-widget-body {
+  transition:
+    opacity 0.18s ease,
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.kairos-ai-widget-body[data-collapsed="true"] {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}

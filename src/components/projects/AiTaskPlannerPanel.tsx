@@ -2,7 +2,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from"react";
-import { AlertCircle, CheckCircle2, Loader2, Shield, Sparkles, Upload, X } from"lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, Shield, Sparkles, Upload, X } from "~/components/ui/icons";
 import { motion, AnimatePresence } from"motion/react";
 
 import { api } from"~/trpc/react";

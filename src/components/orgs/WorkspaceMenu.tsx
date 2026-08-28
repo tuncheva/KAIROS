@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Building2, Check, ChevronDown, QrCode, User } from "lucide-react";
+import { Building2, Check, ChevronDown, QrCode, User } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";

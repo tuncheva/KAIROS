@@ -16,7 +16,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
-import { Loader2, MessageCircle, Send } from "lucide-react";
+import { Loader2, MessageCircle, Send } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { ProfileLink } from "~/components/profile/ProfileLink";

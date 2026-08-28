@@ -31,7 +31,7 @@ import {
   Share2,
   Trash2,
   X,
-} from "lucide-react";
+} from "~/components/ui/icons";
 
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from "./Menu";
 import { LockGate } from "./LockGate";
@@ -568,6 +568,7 @@ export function NotePage({
             users={note.sharedWith}
             ringClass="ring-bg-surface"
             label={t("sharing.sharedWith")}
+            peek
           />
         )}
         {!locked && (

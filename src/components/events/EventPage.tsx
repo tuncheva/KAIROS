@@ -34,7 +34,7 @@ import {
   Share2,
   UserPlus,
   Users,
-} from "lucide-react";
+} from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { ProfileLink } from "~/components/profile/ProfileLink";

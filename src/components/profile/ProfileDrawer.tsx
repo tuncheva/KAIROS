@@ -32,7 +32,7 @@ import {
   UserMinus,
   UserPlus,
   X,
-} from "lucide-react";
+} from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { Overlay } from "~/components/ui/Overlay";
@@ -379,17 +379,23 @@ export function ProfileDrawer({
                       </div>
                     ) : (
                       <div className="flex gap-2.5 px-[26px] pt-5">
-                        <button
-                          type="button"
-                          disabled={startChat.isPending}
-                          onClick={() =>
-                            startChat.mutate({ otherUserId: full.id })
-                          }
-                          className="flex flex-1 items-center justify-center gap-2 rounded-[9px] border border-border-light/70 py-2.5 text-[14px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
-                        >
-                          <MessageCircle size={15} aria-hidden />
-                          {t("message")}
-                        </button>
+                        {/* Messaging is for connections only — a mutual
+                            follow. Absent rather than disabled: a greyed-out
+                            button invites a tap that can never work, and the
+                            hint below already says what would unlock it. */}
+                        {full.isConnection ? (
+                          <button
+                            type="button"
+                            disabled={startChat.isPending}
+                            onClick={() =>
+                              startChat.mutate({ otherUserId: full.id })
+                            }
+                            className="flex flex-1 items-center justify-center gap-2 rounded-[9px] border border-border-light/70 py-2.5 text-[14px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
+                          >
+                            <MessageCircle size={15} aria-hidden />
+                            {t("message")}
+                          </button>
+                        ) : null}
 
                         {full.canFollow ? (
                           <button
@@ -425,6 +431,16 @@ export function ProfileDrawer({
                     {full.followsYou && !full.isSelf ? (
                       <p className="px-[26px] pt-2.5 text-[12px] text-fg-tertiary">
                         {t("followsYou")}
+                      </p>
+                    ) : null}
+
+                    {/* Only worth saying where following is actually on offer.
+                        Someone with followers switched off can never become a
+                        connection, and telling them to follow back would be
+                        pointing at a door that is not there. */}
+                    {!full.isSelf && !full.isConnection && full.canFollow ? (
+                      <p className="px-[26px] pt-2.5 text-[12px] text-fg-tertiary">
+                        {t("messageNeedsConnection")}
                       </p>
                     ) : null}
 

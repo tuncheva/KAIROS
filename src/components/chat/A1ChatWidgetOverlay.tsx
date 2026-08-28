@@ -11,7 +11,8 @@ import {
   Trash2,
   Check,
   ChevronUp,
-} from "lucide-react";
+  ChevronDown,
+} from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
 import { AUTO_AGENT } from "~/components/agents/AgentPicker";
@@ -132,6 +133,12 @@ export function A1ChatWidgetOverlay(props: {
     : setSelfOpen;
   const [minimised, setMinimised] = useState(false);
   const [rect, setRect] = useState<Rect>(defaultRect);
+  /*
+   * Mirrors the drag/resize refs into render, purely so the panel can switch
+   * its height easing off while the pointer is driving the size. Eased height
+   * plus a per-frame height change means the resized edge trails the cursor.
+   */
+  const [interacting, setInteracting] = useState(false);
 
   const router = useRouter();
   const t = useTranslations("aiConsole");
@@ -241,6 +248,7 @@ export function A1ChatWidgetOverlay(props: {
       const edge = detectEdge(el, e.clientX, e.clientY);
       if (edge) {
         resizing.current = edge;
+        setInteracting(true);
         origin.current = { mx: e.clientX, my: e.clientY, rect: { ...rect } };
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
         e.preventDefault();
@@ -254,6 +262,7 @@ export function A1ChatWidgetOverlay(props: {
       /* don't start drag if clicking a button */
       if ((e.target as HTMLElement).closest("button")) return;
       dragging.current = true;
+      setInteracting(true);
       origin.current = { mx: e.clientX, my: e.clientY, rect: { ...rect } };
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       e.preventDefault();
@@ -311,6 +320,7 @@ export function A1ChatWidgetOverlay(props: {
   const handlePointerUp = useCallback(() => {
     dragging.current = false;
     resizing.current = null;
+    setInteracting(false);
   }, []);
 
   /* ─── maximise / minimise helpers ─── */
@@ -362,7 +372,13 @@ export function A1ChatWidgetOverlay(props: {
        * page in light mode. The shared surface carries both, in both themes,
        * and keeps carrying them when either one is retuned.
        */
-      className="kairos-menu-surface fixed z-50 flex flex-col overflow-hidden rounded-2xl transition-[height] duration-200 ease-out"
+      /*
+       * `kairos-ai-widget` carries the two motions the panel has: the open
+       * animation and the collapse/expand height transition. Both live in
+       * globals.css, where the reduced-motion override can reach them.
+       */
+      className="kairos-menu-surface kairos-ai-widget fixed z-50 flex flex-col overflow-hidden rounded-2xl"
+      data-interacting={interacting}
       style={panelStyle}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -379,9 +395,10 @@ export function A1ChatWidgetOverlay(props: {
       */}
       <div
         onPointerDown={handleHeaderPointerDown}
-        /* Minimise has no button of its own any more. Double-clicking a title
-           bar to roll a window up is the gesture every OS already uses, and it
-           bought back the third of the bar the button was occupying. */
+        /* Double-clicking a title bar to roll a window up is the gesture every
+           OS already uses, so it stays — but it is a gesture you have to know,
+           and it is not reachable by keyboard. The chevron beside it is the
+           discoverable half of the same verb. */
         onDoubleClick={toggleMinimise}
         className="flex h-11 shrink-0 cursor-grab items-center gap-2.5 border-b border-border-medium/50 px-3 select-none active:cursor-grabbing"
       >
@@ -456,16 +473,23 @@ export function A1ChatWidgetOverlay(props: {
                 </button>
               )}
 
-              {minimised && (
-                <button
-                  type="button"
-                  onClick={toggleMinimise}
-                  className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
-                  aria-label="Expand"
-                >
+              {/* One control, two directions: the chevron points the way the
+                  panel is about to move. */}
+              <button
+                type="button"
+                data-testid="widget-minimise"
+                onClick={toggleMinimise}
+                className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
+                aria-label={minimised ? "Expand" : "Minimise"}
+                title={minimised ? "Expand" : "Minimise"}
+                aria-expanded={!minimised}
+              >
+                {minimised ? (
                   <ChevronUp className="h-3.5 w-3.5" />
-                </button>
-              )}
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </button>
 
               <button
                 type="button"
@@ -498,98 +522,105 @@ export function A1ChatWidgetOverlay(props: {
         The widget is the quick-ask surface and nothing else. Everything that
         needs room — the agent picker, the tool inspector, the memory editor,
         the audit trail — lives on `/chat/ai`, which the maximise button opens.
+
+        The body stays mounted while collapsed rather than being torn down: the
+        height transition needs something to collapse over, and an unmount
+        would also throw the live thread away every time the user minimises.
+        It is faded and inert at zero height instead.
       */}
-      {!minimised && (
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <ProjectIntelligenceChat
-            key={props.threadKey}
-            variant="widget"
-            hideHeader
-            clearKey={clearKey}
-            onCanClearChange={setCanClear}
-            prefill={props.prefill}
-            projectId={scopeProjectId}
-            pinnedAgentId={pinnedAgentId}
-            composerControls={
-              <>
+      <div
+        className="kairos-ai-widget-body flex-1 min-h-0 overflow-hidden"
+        data-collapsed={minimised}
+        aria-hidden={minimised}
+      >
+        <ProjectIntelligenceChat
+          key={props.threadKey}
+          variant="widget"
+          hideHeader
+          clearKey={clearKey}
+          onCanClearChange={setCanClear}
+          prefill={props.prefill}
+          projectId={scopeProjectId}
+          pinnedAgentId={pinnedAgentId}
+          composerControls={
+            <>
+              <ComposerMenu
+                tone="accent"
+                title={tAgents("chooseAgent")}
+                label={agentLabel}
+                icon={<Sparkles className="h-3 w-3 shrink-0" />}
+                selected={selectedAgent}
+                onSelect={setSelectedAgent}
+                options={[
+                  {
+                    id: AUTO_AGENT,
+                    label: tAgents("auto"),
+                    description: tAgents("autoDescription"),
+                  },
+                  ...agents
+                    .filter((a) => a.kind === "conversational")
+                    .map((a) => ({
+                      id: a.id,
+                      label: a.name,
+                      description: a.description,
+                    })),
+                  ...agents
+                    .filter((a) => a.kind === "scheduled")
+                    .map((a) => ({
+                      id: a.id,
+                      label: a.name,
+                      description: a.description,
+                      disabled: true,
+                    })),
+                ]}
+              />
+
+              {/* A widget mounted against a project is already scoped by its
+                  host, so the picker would be offering a choice it cannot
+                  honour. */}
+              {props.projectId === undefined && (
                 <ComposerMenu
-                  tone="accent"
-                  title={tAgents("chooseAgent")}
-                  label={agentLabel}
-                  icon={<Sparkles className="h-3 w-3 shrink-0" />}
-                  selected={selectedAgent}
-                  onSelect={setSelectedAgent}
+                  title={t("scopeTitle")}
+                  label={scopeProject?.title ?? t("allProjects")}
+                  icon={<FolderKanban className="h-3 w-3 shrink-0" />}
+                  selected={scope}
+                  onSelect={setScope}
                   options={[
                     {
-                      id: AUTO_AGENT,
-                      label: tAgents("auto"),
-                      description: tAgents("autoDescription"),
+                      id: ALL_PROJECTS,
+                      label: t("allProjects"),
+                      description: t("allProjectsHint"),
                     },
-                    ...agents
-                      .filter((a) => a.kind === "conversational")
-                      .map((a) => ({
-                        id: a.id,
-                        label: a.name,
-                        description: a.description,
-                      })),
-                    ...agents
-                      .filter((a) => a.kind === "scheduled")
-                      .map((a) => ({
-                        id: a.id,
-                        label: a.name,
-                        description: a.description,
-                        disabled: true,
-                      })),
+                    ...projects.map((pr) => ({
+                      id: String(pr.id),
+                      label: pr.title,
+                    })),
                   ]}
                 />
-
-                {/* A widget mounted against a project is already scoped by its
-                    host, so the picker would be offering a choice it cannot
-                    honour. */}
-                {props.projectId === undefined && (
-                  <ComposerMenu
-                    title={t("scopeTitle")}
-                    label={scopeProject?.title ?? t("allProjects")}
-                    icon={<FolderKanban className="h-3 w-3 shrink-0" />}
-                    selected={scope}
-                    onSelect={setScope}
-                    options={[
-                      {
-                        id: ALL_PROJECTS,
-                        label: t("allProjects"),
-                        description: t("allProjectsHint"),
-                      },
-                      ...projects.map((pr) => ({
-                        id: String(pr.id),
-                        label: pr.title,
-                      })),
-                    ]}
-                  />
-                )}
-              </>
-            }
-            emptyStateFooter={
-              <div className="kairos-stamp flex items-center justify-between gap-3 text-[9.5px] text-fg-tertiary">
-                <span>
-                  {quotaQuery.data
-                    ? t("requestsToday", {
-                        used: quotaQuery.data.limit - quotaQuery.data.remaining,
-                        limit: quotaQuery.data.limit,
-                      })
-                    : "\u2014"}
-                </span>
-                <Link
-                  href="/chat/ai"
-                  onClick={() => setOpen(false)}
-                  className="text-accent-primary transition-opacity hover:opacity-80"
-                >
-                  {t("openFullPage")}
-                </Link>
-              </div>
-            }
-          />
-        </div>
-      )}
+              )}
+            </>
+          }
+          emptyStateFooter={
+            <div className="kairos-stamp flex items-center justify-between gap-3 text-[9.5px] text-fg-tertiary">
+              <span>
+                {quotaQuery.data
+                  ? t("requestsToday", {
+                      used: quotaQuery.data.limit - quotaQuery.data.remaining,
+                      limit: quotaQuery.data.limit,
+                    })
+                  : "\u2014"}
+              </span>
+              <Link
+                href="/chat/ai"
+                onClick={() => setOpen(false)}
+                className="text-accent-primary transition-opacity hover:opacity-80"
+              >
+                {t("openFullPage")}
+              </Link>
+            </div>
+          }
+        />
+      </div>
 
       {/* The resize grip used to be drawn here. Nothing is painted now: the
           8px hit-areas on every edge do the resizing, they already announce

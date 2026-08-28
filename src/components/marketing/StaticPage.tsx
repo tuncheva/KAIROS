@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "~/components/ui/icons.server";
 
 /**
  * Shell for the small pre-auth pages the footer links to. Deliberately plain —

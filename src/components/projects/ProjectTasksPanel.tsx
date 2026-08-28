@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 
 import { avatarGradientStyle } from "~/lib/avatarGradient";
-import { Check, Pencil, Plus, StickyNote, Trash2, UserPlus, X } from "lucide-react";
+import { Check, Pencil, Plus, StickyNote, Trash2, UserPlus, X } from "~/components/ui/icons";
 import { useLocale, useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";

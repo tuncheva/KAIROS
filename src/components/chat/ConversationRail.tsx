@@ -12,7 +12,7 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { BellOff, MessageCircle, Plus, Search, X } from "lucide-react";
+import { BellOff, MessageCircle, Plus, Search, X } from "~/components/ui/icons";
 
 import type { RouterOutputs } from "~/trpc/react";
 import { Avatar, displayName, formatRailTimestamp, type ChatUser } from "./chatUi";

@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowDown, Loader2, MessageSquare } from "lucide-react";
+import { ArrowDown, Loader2, MessageSquare } from "~/components/ui/icons";
 
 import { formatDayLabel, isSameDay, type ChatUser } from "./chatUi";
 import { MessageBubble, type SendStatus, type ThreadMessage } from "./MessageBubble";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Globe, ChevronDown, Check } from "lucide-react";
+import { Globe, ChevronDown, Check } from "~/components/ui/icons";
 import { useLocale } from "next-intl";
 import { LOCALE_METADATA, locales, type Locale } from "~/i18n/locales";
 

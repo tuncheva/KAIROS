@@ -1,7 +1,7 @@
 "use client";
 
 import { api } from"~/trpc/react";
-import { ChevronDown, LogIn, LogOut, Users } from"lucide-react";
+import { ChevronDown, LogIn, LogOut, Users } from "~/components/ui/icons";
 import { signIn, signOut, useSession } from"next-auth/react";
 import { useState, useRef, useEffect } from"react";
 import Image from"next/image";

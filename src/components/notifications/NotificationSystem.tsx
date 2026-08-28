@@ -13,7 +13,7 @@ import {
   MessageSquare,
   FolderKanban,
   Clock,
-} from "lucide-react";
+} from "~/components/ui/icons";
 import { formatDistanceToNowStrict, isToday, isYesterday, format } from "date-fns";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

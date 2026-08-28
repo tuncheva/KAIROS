@@ -19,7 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FolderOpen,
-} from "lucide-react";
+} from "~/components/ui/icons";
 
 type TaskStatus = "pending" | "in_progress" | "completed" | "blocked";
 

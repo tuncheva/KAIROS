@@ -2,20 +2,12 @@
  * A3 — Notes Vault: draft, confirm and apply changes to a user's notes.
  */
 
-import {
-  TRPCError,
-} from "@trpc/server";
-import {
-  and,
-  eq,
-  inArray,
-} from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { buildBeforeImage } from "~/server/llm/beforeImage";
 
-import type {
-  TRPCContext,
-} from "~/server/api/trpc";
+import type { TRPCContext } from "~/server/api/trpc";
 
 import {
   NotesVaultDraftSchema,
@@ -23,21 +15,13 @@ import {
   type NotesVaultApplyOutput,
 } from "~/server/llm/schemas/a3NotesVaultSchemas";
 
-import {
-  buildA3Context,
-} from "~/server/llm/context/a3ContextBuilder";
+import { buildA3Context } from "~/server/llm/context/a3ContextBuilder";
 
-import {
-  getA3SystemPrompt,
-} from "~/server/llm/prompts/a3Prompts";
+import { getA3SystemPrompt } from "~/server/llm/prompts/a3Prompts";
 
-import {
-  completeJson,
-} from "~/server/llm/core/jsonRepair";
+import { completeJson } from "~/server/llm/core/jsonRepair";
 
-import {
-  languageAnchorMessages,
-} from "~/server/llm/prompts/languageRules";
+import { languageAnchorMessages } from "~/server/llm/prompts/languageRules";
 
 import {
   stickyNotes,
@@ -70,7 +54,11 @@ export const a3NotesVault = {
       handoffContext: input.handoffContext,
     });
 
-    const systemPrompt = getA3SystemPrompt(contextPack);
+    const systemPrompt = getA3SystemPrompt(
+      contextPack,
+      input.originalMessage,
+      input.message,
+    );
 
     const parseResult = await completeJson({
       messages: [
@@ -100,7 +88,9 @@ export const a3NotesVault = {
       ...parseResult.data,
       operations: parseResult.data.operations.map((op) => {
         if (op.type !== "update") return op;
-        const requiresUnlocked = lockedIds.has(op.noteId) ? true : op.requiresUnlocked;
+        const requiresUnlocked = lockedIds.has(op.noteId)
+          ? true
+          : op.requiresUnlocked;
         return { ...op, requiresUnlocked };
       }),
     };
@@ -124,7 +114,15 @@ export const a3NotesVault = {
     ctx: TRPCContext;
     draftId: string;
     edits?: Array<{ index: number; content: string }>;
-  }): Promise<{ confirmationToken: string; summary: { creates: number; updates: number; deletes: number; blocked: number } }> {
+  }): Promise<{
+    confirmationToken: string;
+    summary: {
+      creates: number;
+      updates: number;
+      deletes: number;
+      blocked: number;
+    };
+  }> {
     const userId = requireUserId(input.ctx);
 
     const [draft] = await input.ctx.db
@@ -140,17 +138,20 @@ export const a3NotesVault = {
       .where(eq(agentNotesVaultDrafts.id, input.draftId))
       .limit(1);
 
-    if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+    if (!draft)
+      throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
     if (draft.userId !== userId) throw new TRPCError({ code: "FORBIDDEN" });
     if (draft.status === "confirmed") {
       // Idempotent confirm: allow the UI to recover if the user clicks Confirm twice.
       return {
-        confirmationToken: draft.confirmationToken ?? mintConfirmationToken({
-          userId,
-          draftId: draft.id,
-          planHash: draft.planHash,
-          expiresAt: Date.now() + 10 * 60 * 1000,
-        }),
+        confirmationToken:
+          draft.confirmationToken ??
+          mintConfirmationToken({
+            userId,
+            draftId: draft.id,
+            planHash: draft.planHash,
+            expiresAt: Date.now() + 10 * 60 * 1000,
+          }),
         summary: {
           creates: 0,
           updates: 0,
@@ -167,7 +168,9 @@ export const a3NotesVault = {
       });
     }
 
-    let plan = NotesVaultDraftSchema.parse(JSON.parse(draft.planJson) as unknown);
+    let plan = NotesVaultDraftSchema.parse(
+      JSON.parse(draft.planJson) as unknown,
+    );
 
     // The hash the confirmation token is minted against. It must match whatever
     // ends up in the `planHash` column, or apply rejects every edited plan.
@@ -182,7 +185,10 @@ export const a3NotesVault = {
           if (op?.type === "create") {
             updatedOperations[edit.index] = { ...op, content: edit.content };
           } else if (op?.type === "update") {
-            updatedOperations[edit.index] = { ...op, nextContent: edit.content };
+            updatedOperations[edit.index] = {
+              ...op,
+              nextContent: edit.content,
+            };
           }
           // Don't allow editing delete operations
         }
@@ -258,10 +264,16 @@ export const a3NotesVault = {
 
     const payload = readConfirmationToken(input.confirmationToken);
     if (payload.userId !== userId || payload.draftId !== input.draftId) {
-      throw new TRPCError({ code: "FORBIDDEN", message: "Confirmation token does not match user/draft" });
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Confirmation token does not match user/draft",
+      });
     }
     if (Date.now() > payload.expiresAt) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Confirmation token expired" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Confirmation token expired",
+      });
     }
 
     const [draft] = await input.ctx.db
@@ -277,27 +289,46 @@ export const a3NotesVault = {
       .where(eq(agentNotesVaultDrafts.id, input.draftId))
       .limit(1);
 
-    if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+    if (!draft)
+      throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
     if (draft.userId !== userId) throw new TRPCError({ code: "FORBIDDEN" });
     if (draft.status !== "confirmed") {
-      throw new TRPCError({ code: "BAD_REQUEST", message: `Draft is not applicable (status=${draft.status})` });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Draft is not applicable (status=${draft.status})`,
+      });
     }
     if (draft.planHash !== payload.planHash) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Plan hash mismatch" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Plan hash mismatch",
+      });
     }
     if (draft.confirmationToken !== input.confirmationToken) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Confirmation token mismatch" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Confirmation token mismatch",
+      });
     }
 
-    const plan = NotesVaultDraftSchema.parse(JSON.parse(draft.planJson) as unknown);
-
-    // Apply-time guard: only allow locked-note updates/deletes if the plaintext is present in handoffContext.
-    const contextPack = await buildA3Context({ ctx: input.ctx, handoffContext: input.handoffContext });
-    const unlockedIds = new Set(
-      contextPack.notes.filter((n) => n.isLocked && n.unlockedContent).map((n) => n.id),
+    const plan = NotesVaultDraftSchema.parse(
+      JSON.parse(draft.planJson) as unknown,
     );
 
-    const lockedIds = new Set(contextPack.notes.filter((n) => n.isLocked).map((n) => n.id));
+    // Apply-time guard: only allow locked-note updates/deletes if the plaintext is present in handoffContext.
+    const contextPack = await buildA3Context({
+      ctx: input.ctx,
+      handoffContext: input.handoffContext,
+    });
+    const unlockedIds = new Set(
+      contextPack.notes
+        .filter((n) => n.isLocked && n.unlockedContent)
+        .map((n) => n.id),
+    );
+
+    const lockedIds = new Set(
+      contextPack.notes.filter((n) => n.isLocked).map((n) => n.id),
+    );
 
     const createdNoteIds: number[] = [];
     const updatedNoteIds: number[] = [];
@@ -361,7 +392,12 @@ export const a3NotesVault = {
         await input.ctx.db
           .update(stickyNotes)
           .set({ content: op.nextContent })
-          .where(and(eq(stickyNotes.id, op.noteId), eq(stickyNotes.createdById, userId)));
+          .where(
+            and(
+              eq(stickyNotes.id, op.noteId),
+              eq(stickyNotes.createdById, userId),
+            ),
+          );
         updatedNoteIds.push(op.noteId);
         continue;
       }
@@ -380,20 +416,28 @@ export const a3NotesVault = {
 
         await input.ctx.db
           .delete(stickyNotes)
-          .where(and(eq(stickyNotes.id, op.noteId), eq(stickyNotes.createdById, userId)));
+          .where(
+            and(
+              eq(stickyNotes.id, op.noteId),
+              eq(stickyNotes.createdById, userId),
+            ),
+          );
         deletedNoteIds.push(op.noteId);
       }
     }
 
-    await input.ctx.db
-      .insert(agentNotesVaultApplies)
-      .values({
-        draftId: draft.id,
-        userId,
-        planHash: draft.planHash,
-        resultJson: JSON.stringify({ createdNoteIds, updatedNoteIds, deletedNoteIds, blockedNoteIds }),
-        beforeJson: JSON.stringify(beforeImage),
-      });
+    await input.ctx.db.insert(agentNotesVaultApplies).values({
+      draftId: draft.id,
+      userId,
+      planHash: draft.planHash,
+      resultJson: JSON.stringify({
+        createdNoteIds,
+        updatedNoteIds,
+        deletedNoteIds,
+        blockedNoteIds,
+      }),
+      beforeJson: JSON.stringify(beforeImage),
+    });
 
     await input.ctx.db
       .update(agentNotesVaultDrafts)
@@ -402,7 +446,12 @@ export const a3NotesVault = {
 
     return {
       applied: true as const,
-      results: { createdNoteIds, updatedNoteIds, deletedNoteIds, blockedNoteIds },
+      results: {
+        createdNoteIds,
+        updatedNoteIds,
+        deletedNoteIds,
+        blockedNoteIds,
+      },
     };
   },
 

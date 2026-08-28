@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, CalendarClock, FolderKanban, Radar, ShieldCheck, Sparkles, StickyNote, Users } from "lucide-react";
+import { Bot, CalendarClock, FolderKanban, Radar, ShieldCheck, Sparkles, StickyNote, Users } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import type { AgentSummary } from "./types";
@@ -9,7 +9,7 @@ import type { AgentSummary } from "./types";
  * Which icon stands for which agent.
  *
  * Keyed by id rather than carried in the registry: the registry is server code
- * and importing `lucide-react` into it would pull a client library across the
+ * and importing the icon module into it would pull a client library across the
  * `server-only` boundary for the sake of a glyph.
  */
 const ICONS: Record<string, typeof Bot> = {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";

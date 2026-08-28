@@ -25,7 +25,7 @@ import {
   Tag,
   Users,
   X,
-} from "lucide-react";
+} from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import {

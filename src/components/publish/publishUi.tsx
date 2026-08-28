@@ -12,7 +12,7 @@ import Image from "next/image";
 
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useEffect } from "react";
-import { AlertCircle, Check, X } from "lucide-react";
+import { AlertCircle, Check, X } from "~/components/ui/icons";
 
 export function initialOf(name: string | null | undefined): string {
   return (name ?? "").trim().charAt(0).toUpperCase() || "?";

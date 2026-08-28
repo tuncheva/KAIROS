@@ -16,7 +16,7 @@ import { api } from "~/trpc/react";
 
 import { PlanDiffCard } from "./PlanDiffCard";
 import { UndoApplyButton } from "./UndoApplyButton";
-import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil, ArrowUp, ArrowUpRight } from "lucide-react";
+import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil, ArrowUp, ArrowUpRight } from "~/components/ui/icons";
 import { useDateFormat } from "~/hooks/useDateFormat";
 import { humanizeToolName, type TrailEvent } from "~/components/chat/trail";
 

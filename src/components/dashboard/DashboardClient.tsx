@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, ChevronRight, Plus } from "lucide-react";
+import { Check, ChevronRight, Plus } from "~/components/ui/icons";
 
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { api } from "~/trpc/react";

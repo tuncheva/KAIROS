@@ -20,7 +20,7 @@ import {
   CalendarCheck,
   Plus,
   Pin,
-} from "lucide-react";
+} from "~/components/ui/icons";
 
 const RAIL_PIN_KEY = "kairos:railPinned";
 

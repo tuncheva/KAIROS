@@ -7,21 +7,13 @@
  * a permission the caller lacks.
  */
 
-import {
-  TRPCError,
-} from "@trpc/server";
+import { TRPCError } from "@trpc/server";
 import crypto from "node:crypto";
 
 import { buildBeforeImage } from "~/server/llm/beforeImage";
-import {
-  and,
-  eq,
-  inArray,
-} from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
-import type {
-  TRPCContext,
-} from "~/server/api/trpc";
+import type { TRPCContext } from "~/server/api/trpc";
 import {
   assertProjectAccess,
   assertProjectPermission,
@@ -33,30 +25,17 @@ import {
   type TaskPlanDraft,
 } from "~/server/llm/schemas/a2TaskPlannerSchemas";
 
-import {
-  buildA2Context,
-} from "~/server/llm/context/a2ContextBuilder";
+import { buildA2Context } from "~/server/llm/context/a2ContextBuilder";
 
-import {
-  getA2SystemPrompt,
-} from "~/server/llm/prompts/a2Prompts";
+import { getA2SystemPrompt } from "~/server/llm/prompts/a2Prompts";
 
-import {
-  A1_READ_TOOLS,
-} from "~/server/llm/tools/a1/readTools";
+import { A1_READ_TOOLS } from "~/server/llm/tools/a1/readTools";
 
-import {
-  completeJson,
-} from "~/server/llm/core/jsonRepair";
+import { completeJson } from "~/server/llm/core/jsonRepair";
 
-import {
-  languageAnchorMessages,
-} from "~/server/llm/prompts/languageRules";
+import { languageAnchorMessages } from "~/server/llm/prompts/languageRules";
 
-import {
-  localized,
-  type LocalizedText,
-} from "~/server/llm/locale";
+import { localized, type LocalizedText } from "~/server/llm/locale";
 
 import {
   tasks,
@@ -139,9 +118,10 @@ export const a2TaskPlanner = {
 
     // Allow draft calls without projectId. A2 will respond with questionsForUser.
     // Try to resolve projectId from handoffContext (A1 may pass it there) or from project name.
-    const hc = (input.handoffContext ?? {});
+    const hc = input.handoffContext ?? {};
     const requestedNameRaw = hc.projectName;
-    const requestedName = typeof requestedNameRaw === "string" ? requestedNameRaw.trim() : "";
+    const requestedName =
+      typeof requestedNameRaw === "string" ? requestedNameRaw.trim() : "";
 
     let resolvedProjectId: number | undefined = input.scope?.projectId;
 
@@ -166,11 +146,15 @@ export const a2TaskPlanner = {
 
       const norm = (s: string) => s.trim().toLowerCase();
       // Exact match first
-      let matches = userProjects.filter((p) => norm(p.title) === norm(requestedName));
+      let matches = userProjects.filter(
+        (p) => norm(p.title) === norm(requestedName),
+      );
       // Fallback: partial/includes match (e.g. "Test" matches "Test project")
       if (matches.length === 0) {
         matches = userProjects.filter(
-          (p) => norm(p.title).includes(norm(requestedName)) || norm(requestedName).includes(norm(p.title)),
+          (p) =>
+            norm(p.title).includes(norm(requestedName)) ||
+            norm(requestedName).includes(norm(p.title)),
         );
       }
 
@@ -182,7 +166,10 @@ export const a2TaskPlanner = {
         input.handoffContext = {
           ...(input.handoffContext ?? {}),
           projectNameAmbiguous: true,
-          projectNameCandidates: matches.map((m) => ({ id: m.id, title: m.title })),
+          projectNameCandidates: matches.map((m) => ({
+            id: m.id,
+            title: m.title,
+          })),
         };
       } else {
         // Not found; let A2 ask for a valid project name.
@@ -217,7 +204,11 @@ export const a2TaskPlanner = {
       handoffContext: input.handoffContext,
     });
 
-    const systemPrompt = getA2SystemPrompt(contextPack);
+    const systemPrompt = getA2SystemPrompt(
+      contextPack,
+      input.originalMessage,
+      input.message,
+    );
 
     // E-3: load the plan being refined, if any. Scoped to the caller and to
     // drafts that have not been applied — refining something already written to
@@ -275,9 +266,10 @@ export const a2TaskPlanner = {
     // Check if the plan has actual operations that require a project
     const hasOperations =
       (plan.creates?.length ?? 0) +
-      (plan.updates?.length ?? 0) +
-      (plan.statusChanges?.length ?? 0) +
-      (plan.deletes?.length ?? 0) > 0;
+        (plan.updates?.length ?? 0) +
+        (plan.statusChanges?.length ?? 0) +
+        (plan.deletes?.length ?? 0) >
+      0;
 
     if (typeof resolvedProjectId !== "number" && hasOperations) {
       // The LLM generated tasks but we have no project to put them in.
@@ -317,7 +309,15 @@ export const a2TaskPlanner = {
   async taskPlannerConfirm(input: {
     ctx: TRPCContext;
     draftId: string;
-  }): Promise<{ confirmationToken: string; summary: { creates: number; updates: number; statusChanges: number; deletes: number } }> {
+  }): Promise<{
+    confirmationToken: string;
+    summary: {
+      creates: number;
+      updates: number;
+      statusChanges: number;
+      deletes: number;
+    };
+  }> {
     const userId = requireUserId(input.ctx);
 
     const [draft] = await input.ctx.db
@@ -332,13 +332,19 @@ export const a2TaskPlanner = {
       .where(eq(agentTaskPlannerDrafts.id, input.draftId))
       .limit(1);
 
-    if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+    if (!draft)
+      throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
     if (draft.userId !== userId) throw new TRPCError({ code: "FORBIDDEN" });
     if (draft.status !== "draft") {
-      throw new TRPCError({ code: "BAD_REQUEST", message: `Draft is not confirmable (status=${draft.status})` });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Draft is not confirmable (status=${draft.status})`,
+      });
     }
 
-    const plan = TaskPlanDraftSchema.parse(JSON.parse(draft.planJson) as unknown);
+    const plan = TaskPlanDraftSchema.parse(
+      JSON.parse(draft.planJson) as unknown,
+    );
     const confirmationToken = mintConfirmationToken({
       userId,
       draftId: draft.id,
@@ -371,15 +377,29 @@ export const a2TaskPlanner = {
     ctx: TRPCContext;
     draftId: string;
     confirmationToken: string;
-  }): Promise<{ applied: true; results: { createdTaskIds: number[]; updatedTaskIds: number[]; statusChangedTaskIds: number[]; deletedTaskIds: number[] } }> {
+  }): Promise<{
+    applied: true;
+    results: {
+      createdTaskIds: number[];
+      updatedTaskIds: number[];
+      statusChangedTaskIds: number[];
+      deletedTaskIds: number[];
+    };
+  }> {
     const userId = requireUserId(input.ctx);
 
     const payload = readConfirmationToken(input.confirmationToken);
     if (payload.userId !== userId || payload.draftId !== input.draftId) {
-      throw new TRPCError({ code: "FORBIDDEN", message: "Confirmation token does not match user/draft" });
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Confirmation token does not match user/draft",
+      });
     }
     if (Date.now() > payload.expiresAt) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Confirmation token expired" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Confirmation token expired",
+      });
     }
 
     const [draft] = await input.ctx.db
@@ -396,19 +416,31 @@ export const a2TaskPlanner = {
       .where(eq(agentTaskPlannerDrafts.id, input.draftId))
       .limit(1);
 
-    if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+    if (!draft)
+      throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
     if (draft.userId !== userId) throw new TRPCError({ code: "FORBIDDEN" });
     if (draft.status !== "confirmed") {
-      throw new TRPCError({ code: "BAD_REQUEST", message: `Draft is not applicable (status=${draft.status})` });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Draft is not applicable (status=${draft.status})`,
+      });
     }
     if (draft.planHash !== payload.planHash) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Plan hash mismatch" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Plan hash mismatch",
+      });
     }
     if (draft.confirmationToken !== input.confirmationToken) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Confirmation token mismatch" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Confirmation token mismatch",
+      });
     }
 
-    const plan = TaskPlanDraftSchema.parse(JSON.parse(draft.planJson) as unknown);
+    const plan = TaskPlanDraftSchema.parse(
+      JSON.parse(draft.planJson) as unknown,
+    );
 
     // `plan.scope.projectId` round-trips through the LLM's JSON output, so it is
     // not a trusted value. `draft.projectId` is the column this server wrote at
@@ -419,7 +451,8 @@ export const a2TaskPlanner = {
     if (plan.scope.projectId !== targetProjectId) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "Plan scope does not match the project this draft was created for",
+        message:
+          "Plan scope does not match the project this draft was created for",
       });
     }
 
@@ -431,13 +464,25 @@ export const a2TaskPlanner = {
     // does. Otherwise the agent would be a way to launder a capability the caller
     // does not have.
     if (plan.creates.length > 0) {
-      await assertProjectPermission(input.ctx, targetProjectId, "canAssignTasks");
+      await assertProjectPermission(
+        input.ctx,
+        targetProjectId,
+        "canAssignTasks",
+      );
     }
     if (plan.updates.length > 0 || plan.statusChanges.length > 0) {
-      await assertProjectPermission(input.ctx, targetProjectId, "canEditProjects");
+      await assertProjectPermission(
+        input.ctx,
+        targetProjectId,
+        "canEditProjects",
+      );
     }
     if (plan.deletes.length > 0) {
-      await assertProjectPermission(input.ctx, targetProjectId, "canDeleteTasks");
+      await assertProjectPermission(
+        input.ctx,
+        targetProjectId,
+        "canDeleteTasks",
+      );
     }
     // An empty plan still needs basic write access to be a legitimate request.
     await assertProjectAccess(input.ctx, targetProjectId, "write");
@@ -505,7 +550,12 @@ export const a2TaskPlanner = {
       const existing = await input.ctx.db
         .select({ id: tasks.id })
         .from(tasks)
-        .where(and(eq(tasks.projectId, targetProjectId), eq(tasks.clientRequestId, c.clientRequestId)))
+        .where(
+          and(
+            eq(tasks.projectId, targetProjectId),
+            eq(tasks.clientRequestId, c.clientRequestId),
+          ),
+        )
         .limit(1);
 
       if (existing[0]?.id) {
@@ -554,13 +604,17 @@ export const a2TaskPlanner = {
               : undefined,
           dueDate:
             "dueDate" in u.patch
-              ? (u.patch.dueDate ? new Date(u.patch.dueDate) : null)
+              ? u.patch.dueDate
+                ? new Date(u.patch.dueDate)
+                : null
               : undefined,
           lastEditedById: userId,
           lastEditedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(and(eq(tasks.id, u.taskId), eq(tasks.projectId, targetProjectId)));
+        .where(
+          and(eq(tasks.id, u.taskId), eq(tasks.projectId, targetProjectId)),
+        );
       updatedTaskIds.push(u.taskId);
       await input.ctx.db.insert(taskActivityLog).values({
         taskId: u.taskId,
@@ -583,7 +637,9 @@ export const a2TaskPlanner = {
           lastEditedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(and(eq(tasks.id, s.taskId), eq(tasks.projectId, targetProjectId)));
+        .where(
+          and(eq(tasks.id, s.taskId), eq(tasks.projectId, targetProjectId)),
+        );
       statusChangedTaskIds.push(s.taskId);
       await input.ctx.db.insert(taskActivityLog).values({
         taskId: s.taskId,
@@ -597,11 +653,18 @@ export const a2TaskPlanner = {
       if (!d.dangerous) continue;
       await input.ctx.db
         .delete(tasks)
-        .where(and(eq(tasks.id, d.taskId), eq(tasks.projectId, targetProjectId)));
+        .where(
+          and(eq(tasks.id, d.taskId), eq(tasks.projectId, targetProjectId)),
+        );
       deletedTaskIds.push(d.taskId);
     }
 
-    const resultJson = JSON.stringify({ createdTaskIds, updatedTaskIds, statusChangedTaskIds, deletedTaskIds });
+    const resultJson = JSON.stringify({
+      createdTaskIds,
+      updatedTaskIds,
+      statusChangedTaskIds,
+      deletedTaskIds,
+    });
 
     await input.ctx.db.insert(agentTaskPlannerApplies).values({
       draftId: draft.id,
@@ -619,7 +682,12 @@ export const a2TaskPlanner = {
 
     return {
       applied: true as const,
-      results: { createdTaskIds, updatedTaskIds, statusChangedTaskIds, deletedTaskIds },
+      results: {
+        createdTaskIds,
+        updatedTaskIds,
+        statusChangedTaskIds,
+        deletedTaskIds,
+      },
     };
   },
 

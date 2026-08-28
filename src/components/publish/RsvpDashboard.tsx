@@ -8,7 +8,7 @@
  */
 
 import { useTranslations } from "next-intl";
-import { BarChart3, Calendar, TrendingUp, Users, X } from "lucide-react";
+import { BarChart3, Calendar, TrendingUp, Users, X } from "~/components/ui/icons";
 
 import { useDateFormat } from "~/hooks/useDateFormat";
 import type { FeedEvent } from "./feedData";

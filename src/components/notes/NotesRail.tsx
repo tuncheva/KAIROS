@@ -21,7 +21,7 @@ import {
   Trash2,
   Users,
   X,
-} from "lucide-react";
+} from "~/components/ui/icons";
 
 import { Menu, MenuItem, MenuSeparator } from "./Menu";
 import { notebookIdOfView, type NoteView } from "./notesData";

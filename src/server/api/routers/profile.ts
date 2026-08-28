@@ -172,6 +172,13 @@ export const profileRouter = createTRPCRouter({
         followingCount: followingCount[0]?.n ?? 0,
         isFollowing: outgoing.length > 0,
         followsYou: incoming.length > 0,
+        // A connection is a *mutual* follow. This is the app's only symmetric
+        // relationship between two people, and it is what gates the drawer's
+        // message button: following someone is a subscription and says nothing
+        // about whether they want to hear from you, whereas both directions
+        // together is the closest thing here to two people agreeing to talk.
+        isConnection:
+          !access.isSelf && outgoing.length > 0 && incoming.length > 0,
         canFollow: !access.isSelf && user.allowFollowers,
         showsActivity: user.showActivityFeed || access.isSelf,
       };

@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { BookOpen, Loader2, X } from "lucide-react";
+import { BookOpen, Loader2, X } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";

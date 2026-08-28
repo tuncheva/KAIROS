@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from"react";
 import { api } from"~/trpc/react";
-import { AlertCircle } from"lucide-react";
+import { AlertCircle } from "~/components/ui/icons";
 import { useRouter } from"next/navigation";
 import { useTranslations } from"next-intl";
 import { Doughnut } from"react-chartjs-2";

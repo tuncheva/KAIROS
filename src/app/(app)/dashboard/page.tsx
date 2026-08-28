@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { Plus } from "lucide-react";
+import { Plus } from "~/components/ui/icons.server";
 
 import { AiInsightsPanel } from "~/components/dashboard/AiInsightsPanel";
 import { DashboardClient } from "~/components/dashboard/DashboardClient";

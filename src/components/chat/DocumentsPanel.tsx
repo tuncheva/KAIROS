@@ -9,7 +9,7 @@ import {
   ScanLine,
   Trash2,
   Upload,
-} from "lucide-react";
+} from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { useEntitlement } from "~/hooks/useEntitlements";

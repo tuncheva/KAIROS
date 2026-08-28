@@ -1,10 +1,23 @@
 import type { A4ContextPack } from "../context/a4ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
-import { languageRule } from "~/server/llm/prompts/languageRules";
+import {
+  languageRule,
+  wantsBulgarianGuidance,
+  wantsLocaleFallback,
+} from "~/server/llm/prompts/languageRules";
 
-export function getA4SystemPrompt(context: A4ContextPack): string {
+/**
+ * @param userText - The user's own words this turn (the message, and on the
+ *   handoff path the original message behind the paraphrase). Used only to
+ *   decide whether the Bulgarian guidance is worth including; see
+ *   `wantsBulgarianGuidance`. Omit it and the guidance stays on.
+ */
+export function getA4SystemPrompt(
+  context: A4ContextPack,
+  ...userText: Array<string | undefined | null>
+): string {
   const now = new Date();
-  const currentDate = now.toISOString().split('T')[0];
+  const currentDate = now.toISOString().split("T")[0];
   const currentYear = now.getFullYear();
 
   return `You are the KAIROS Events Publisher (A4) — a specialized AI embedded in the KAIROS platform that manages public events.
@@ -110,18 +123,20 @@ For ANY action that creates or modifies events, you MUST follow this exact flow:
 - Format the diffPreview cleanly so it's easy to scan.
 
 ${languageRule({
-    locale: context.locale,
-    fields: [
-      "summary",
-      "risks",
-      "questionsForUser",
-      "diffPreview entries",
-      "event titles",
-      "descriptions",
-    ],
-    bulgarianTerms: ["събитие", "заглавие", "описание", "дата"],
-    writesStoredContent: true,
-  })}
+  locale: context.locale,
+  bulgarianGuidance: wantsBulgarianGuidance(...userText),
+  localeFallback: wantsLocaleFallback(...userText),
+  fields: [
+    "summary",
+    "risks",
+    "questionsForUser",
+    "diffPreview entries",
+    "event titles",
+    "descriptions",
+  ],
+  bulgarianTerms: ["събитие", "заглавие", "описание", "дата"],
+  writesStoredContent: true,
+})}
 Write Bulgarian event titles as natural phrases: "Работна среща на екипа в София", not "работна среща екип софия".
 
 ## WRITING QUALITY (CRITICAL)

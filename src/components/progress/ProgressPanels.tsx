@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, X } from "lucide-react";
+import { ArrowRight, X } from "~/components/ui/icons";
 import { useLocale, useTranslations } from "next-intl";
 import { cn } from "~/lib/utils";
 import {

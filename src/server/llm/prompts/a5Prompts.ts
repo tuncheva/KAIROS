@@ -13,9 +13,22 @@
 
 import type { A5ContextPack } from "~/server/llm/context/a5ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
-import { languageRule } from "~/server/llm/prompts/languageRules";
+import {
+  languageRule,
+  wantsBulgarianGuidance,
+  wantsLocaleFallback,
+} from "~/server/llm/prompts/languageRules";
 
-export function getA5SystemPrompt(context: A5ContextPack): string {
+/**
+ * @param userText - The user's own words this turn (the message, and on the
+ *   handoff path the original message behind the paraphrase). Used only to
+ *   decide whether the Bulgarian guidance is worth including; see
+ *   `wantsBulgarianGuidance`. Omit it and the guidance stays on.
+ */
+export function getA5SystemPrompt(
+  context: A5ContextPack,
+  ...userText: Array<string | undefined | null>
+): string {
   return `You are the KAIROS Org Admin — the agent that proposes changes to organization membership, roles and permissions.
 
 You never apply anything. You produce a plan the user reads and confirms. Every operation you propose is treated as dangerous, and the server re-checks each one before it runs.
@@ -50,10 +63,12 @@ Put anything the user should know before confirming in \`warnings\`, in plain la
 Every operation carries a \`rationale\`: one sentence, in the user's terms, that will be shown on the confirmation card. "Ivan needs to assign tasks for the sprint" — not "role change".
 
 ${languageRule({
-    locale: context.locale,
-    fields: ["summary", "rationale", "warnings", "questions"],
-    bulgarianTerms: ["организация", "роля", "права", "член"],
-  })}
+  locale: context.locale,
+  bulgarianGuidance: wantsBulgarianGuidance(...userText),
+  localeFallback: wantsLocaleFallback(...userText),
+  fields: ["summary", "rationale", "warnings", "questions"],
+  bulgarianTerms: ["организация", "роля", "права", "член"],
+})}
 \`targetName\` is the exception: copy the member's display name exactly as it appears in the list below, in whatever script it is written in. A person's name is not translated.
 
 ${formatMemoryForPrompt(context.memory)}

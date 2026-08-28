@@ -12,6 +12,7 @@
 import Image from "next/image";
 
 import { avatarGradientStyle } from "~/lib/avatarGradient";
+import { ProfileLink } from "~/components/profile/ProfileLink";
 
 import type { NoteUser } from "./notesData";
 
@@ -29,15 +30,22 @@ export function NoteAvatar({
   user,
   size = "sm",
   ringClass = "ring-bg-secondary",
+  peek = false,
 }: {
   user: NoteUser;
   size?: keyof typeof AVATAR_SIZES;
   ringClass?: string;
+  /**
+   * Make the face open the profile drawer. Off by default for the same reason
+   * as the chat avatar: the note list draws these inside the row button, and
+   * `ProfileLink` is itself a button. See `~/components/chat/chatUi`.
+   */
+  peek?: boolean;
 }) {
   const { px, cls } = AVATAR_SIZES[size];
   const label = user.name ?? user.email ?? "";
 
-  return user.image ? (
+  const face = user.image ? (
     <Image
       src={user.image}
       alt={label}
@@ -55,6 +63,14 @@ export function NoteAvatar({
       {initialOf(user)}
     </span>
   );
+
+  if (!peek) return face;
+
+  return (
+    <ProfileLink userId={user.id} name={label}>
+      {face}
+    </ProfileLink>
+  );
 }
 
 /** Overlapping avatars for the people a note is shared with. */
@@ -63,11 +79,14 @@ export function SharedAvatars({
   max = 3,
   ringClass = "ring-bg-secondary",
   label,
+  peek = false,
 }: {
   users: NoteUser[];
   max?: number;
   ringClass?: string;
   label: string;
+  /** Passed straight through to each face. See `NoteAvatar`. */
+  peek?: boolean;
 }) {
   if (users.length === 0) return null;
   const shown = users.slice(0, max);
@@ -77,7 +96,7 @@ export function SharedAvatars({
     <span className="flex items-center" title={label}>
       {shown.map((user, index) => (
         <span key={user.id} className={index === 0 ? "" : "-ml-1.5"}>
-          <NoteAvatar user={user} ringClass={ringClass} />
+          <NoteAvatar user={user} ringClass={ringClass} peek={peek} />
         </span>
       ))}
       {overflow > 0 && (

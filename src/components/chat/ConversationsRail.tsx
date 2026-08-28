@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { PanelLeftClose, Plus, Search, X } from "lucide-react";
+import { PanelLeftClose, Plus, Search, X } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { useDateFormat } from "~/hooks/useDateFormat";

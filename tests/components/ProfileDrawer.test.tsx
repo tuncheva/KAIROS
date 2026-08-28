@@ -34,6 +34,7 @@ const profile = {
   followingCount: 1,
   isFollowing: false,
   followsYou: false,
+  isConnection: false,
   canFollow: true,
   showsActivity: true,
 };
@@ -139,5 +140,37 @@ describe("ProfileDrawer — closing", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(panel()?.className).not.toContain("projects-drawer-out");
+  });
+});
+
+/**
+ * Messaging is for connections — a mutual follow — and the drawer is where that
+ * rule is visible. The fixture object is the same reference the mocked query
+ * hands back on every render, so flipping the flag on it is enough to re-render
+ * the other case without a second mock.
+ */
+describe("ProfileDrawer — messaging is gated on a connection", () => {
+  afterEach(() => {
+    profile.isConnection = false;
+  });
+
+  it("hides the message button, and says why, when the two are not connected", () => {
+    profile.isConnection = false;
+    render(<ProfileDrawer userId="u1" onClose={vi.fn()} />);
+
+    expect(
+      screen.queryByRole("button", { name: /message/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/follow each other/i)).toBeInTheDocument();
+  });
+
+  it("offers the message button, and drops the hint, once they are", () => {
+    profile.isConnection = true;
+    render(<ProfileDrawer userId="u1" onClose={vi.fn()} />);
+
+    expect(
+      screen.getByRole("button", { name: /message/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/follow each other/i)).not.toBeInTheDocument();
   });
 });

@@ -96,7 +96,7 @@ export const a1Concierge = {
     const userId = requireUserId(input.ctx);
     const draftId = createDraftId();
     const contextPack = await buildA1Context(input.ctx, input.scope);
-    const systemPrompt = getA1SystemPrompt(contextPack);
+    const systemPrompt = getA1SystemPrompt(contextPack, input.message);
 
     let outputJson: A1Output;
     try {
