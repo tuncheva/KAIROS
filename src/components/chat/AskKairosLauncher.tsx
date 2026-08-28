@@ -87,14 +87,16 @@ export function AskKairosLauncher({ onOpen }: Props) {
 
   const nudge = nudgeHidden ? null : (findingsQuery.data?.[0] ?? null);
 
-  const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button") && !target.closest("[data-drag-handle]")) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     dragStart.current = { x: e.clientX, y: e.clientY };
     didDrag.current = false;
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
-  const onPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragStart.current) return;
     // A few pixels of slop keeps an ordinary tap from registering as a drag.
     if (
@@ -107,7 +109,7 @@ export function AskKairosLauncher({ onOpen }: Props) {
     setDragPos({ x: e.clientX, y: e.clientY });
   };
 
-  const onPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     dragStart.current = null;
     if (!didDrag.current) return;
     const next: Corner = `${e.clientY < window.innerHeight / 2 ? "top" : "bottom"}-${
@@ -131,6 +133,10 @@ export function AskKairosLauncher({ onOpen }: Props) {
   return (
     <div
       className={`fixed z-40 flex gap-2.5 ${CORNER_CLASSES[corner]}`}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
       style={
         dragPos
           ? {
@@ -171,6 +177,7 @@ export function AskKairosLauncher({ onOpen }: Props) {
       <button
         type="button"
         data-testid="ask-kairos"
+        data-drag-handle
         onClick={() => {
           if (didDrag.current) {
             didDrag.current = false;
@@ -178,10 +185,6 @@ export function AskKairosLauncher({ onOpen }: Props) {
           }
           onOpen();
         }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
         className="flex touch-none items-center gap-2.5 rounded-xl bg-accent-primary px-4 py-2.5 text-[13.5px] font-semibold text-white shadow-lg transition-[filter] select-none hover:brightness-110"
       >
         <Sparkles className="h-4 w-4" />
