@@ -93,7 +93,6 @@ export function AskKairosLauncher({ onOpen }: Props) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     dragStart.current = { x: e.clientX, y: e.clientY };
     didDrag.current = false;
-    e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -105,6 +104,10 @@ export function AskKairosLauncher({ onOpen }: Props) {
     ) {
       return;
     }
+    /* Capture only once a real drag has started. Capturing on pointerdown
+     * retargets the pointerup to this container, so the pill's click never
+     * fires and a plain tap stops opening the assistant. */
+    if (!didDrag.current) e.currentTarget.setPointerCapture(e.pointerId);
     didDrag.current = true;
     setDragPos({ x: e.clientX, y: e.clientY });
   };
