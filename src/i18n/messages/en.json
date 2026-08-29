@@ -775,6 +775,7 @@
         "create": "Create Organization",
         "join": "Join Organization",
         "namePlaceholder": "Organization name",
+        "uploadLogo": "Replace",
         "accessCodePlaceholder": "Enter access code (e.g. XXXX-XXXX-XXXX)",
         "showQr": "Show QR",
         "scanQrHint": "Scan this QR code to open the join link on mobile.",

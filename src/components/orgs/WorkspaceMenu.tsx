@@ -6,26 +6,13 @@ import { Building2, Check, ChevronDown, QrCode, User } from "~/components/ui/ico
 import { useTranslations } from "next-intl";
 
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
+import { OrgBadge } from "~/components/orgs/OrgBadge";
 import { useToast } from "~/components/providers/ToastProvider";
 import {
   useSwitchOrganization,
   useSwitchToPersonal,
 } from "~/hooks/useSwitchOrganization";
 import { api } from "~/trpc/react";
-
-/**
- * Two-letter monogram for an organisation.
- *
- * Initials of the first two words when there are two, otherwise the first two
- * letters — "Tina's Organization" reads as TO, "Kairos" as KA.
- */
-function monogram(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length >= 2) {
-    return `${words[0]![0]!}${words[1]![0]!}`.toUpperCase();
-  }
-  return (words[0] ?? "?").slice(0, 2).toUpperCase();
-}
 
 /**
  * The workspace identity in the topbar.
@@ -111,15 +98,17 @@ export function WorkspaceMenu() {
             open ? "bg-bg-elevated" : "hover:bg-bg-elevated"
           }`}
         >
-          <span
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-semibold tracking-wide ${
-              isPersonal
-                ? "bg-bg-secondary text-fg-tertiary"
-                : "bg-accent-primary/15 text-accent-primary"
-            }`}
-          >
-            {isPersonal ? <User size={15} /> : monogram(orgName ?? "")}
-          </span>
+          {isPersonal ? (
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-bg-secondary text-fg-tertiary">
+              <User size={15} />
+            </span>
+          ) : (
+            <OrgBadge
+              id={active?.organization?.id ?? orgName ?? ""}
+              name={orgName ?? ""}
+              image={active?.organization?.image}
+            />
+          )}
 
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold leading-tight text-fg-primary">
@@ -198,9 +187,7 @@ export function WorkspaceMenu() {
                       isActive ? "bg-accent-primary/10" : "hover:bg-bg-elevated"
                     }`}
                   >
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-primary/15 text-[10px] font-semibold text-accent-primary">
-                      {monogram(org.name)}
-                    </span>
+                    <OrgBadge id={org.id} name={org.name} image={org.image} size={28} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-fg-primary">
                         {org.name}

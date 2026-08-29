@@ -171,6 +171,7 @@ export const organizationRouter = createTRPCRouter({
     return memberships.map((m) => ({
       id: m.organization.id,
       name: m.organization.name,
+      image: m.organization.image,
       canInvite: canInvite(m),
       /* Only the creator may delete the workspace, and the row has to know
          that before it can decide whether to paint the control. */
@@ -248,6 +249,7 @@ export const organizationRouter = createTRPCRouter({
           organization: {
             id: membership.organization.id,
             name: membership.organization.name,
+            image: membership.organization.image,
           },
           role: membership.role,
           canInvite: canInvite(membership),
@@ -280,11 +282,50 @@ export const organizationRouter = createTRPCRouter({
       organization: {
         id: fallback.organization.id,
         name: fallback.organization.name,
+        image: fallback.organization.image,
       },
       role: fallback.role,
       canInvite: canInvite(fallback),
     };
   }),
+
+  /**
+   * Set or clear the workspace's logo. Admin-only, mirroring the other
+   * organization-wide settings — a logo is branding, not a personal preference.
+   */
+  updateImage: protectedProcedure
+    .input(
+      z.object({
+        organizationId: z.number(),
+        image: z.string().url().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [membership] = await ctx.db
+        .select({ role: organizationMembers.role })
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.userId, ctx.session.user.id),
+            eq(organizationMembers.organizationId, input.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!membership || membership.role !== "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only an admin can change the workspace logo.",
+        });
+      }
+
+      await ctx.db
+        .update(organizations)
+        .set({ image: input.image, updatedAt: new Date() })
+        .where(eq(organizations.id, input.organizationId));
+
+      return { success: true, image: input.image };
+    }),
 
   setActive: protectedProcedure
     .input(z.object({ organizationId: z.number() }))

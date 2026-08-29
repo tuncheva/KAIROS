@@ -12,7 +12,9 @@ import { useTranslations } from "next-intl";
 import Image from "next/image";
 
 import { avatarGradientStyle } from "~/lib/avatarGradient";
+import { OrgBadge } from "~/components/orgs/OrgBadge";
 import { ProfileLink } from "~/components/profile/ProfileLink";
+import { useUploadThing } from "~/lib/uploadthing";
 
 import {
   LedgerAction,
@@ -119,6 +121,63 @@ function PermissionGrid({
   );
 }
 
+/**
+ * A workspace's logo: the uploaded image when it has one, otherwise the same
+ * seeded gradient monogram profiles fall back to — seeded by id so the
+ * colour survives a rename. Admins get a "Replace" control next to it; other
+ * members just see the badge.
+ */
+function OrgLogoCell({
+  org,
+  canEdit,
+  isUploading,
+  onUpload,
+  uploadLabel,
+}: {
+  org: { id: number; name: string; image?: string | null };
+  canEdit: boolean;
+  isUploading: boolean;
+  onUpload: (file: File) => Promise<void>;
+  uploadLabel: string;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const badge = (
+    <OrgBadge id={org.id} name={org.name} image={org.image} size={40} rounded="rounded-full" />
+  );
+
+  if (!canEdit) return badge;
+
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024 || !file.type.startsWith("image/")) return;
+    await onUpload(file);
+  };
+
+  return (
+    <span className="flex items-center gap-3">
+      {badge}
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isUploading}
+        className="rounded-[7px] border border-border-medium px-[13px] py-1.5 text-[12.5px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {uploadLabel}
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleChange}
+        className="hidden"
+      />
+    </span>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -219,6 +278,32 @@ export function WorkspaceSettingsClient() {
   });
 
   const activeOrgId = activeOrg?.organization?.id;
+
+  // ---- Org logo upload ----
+  const [uploadingOrgId, setUploadingOrgId] = useState<number | null>(null);
+  const { startUpload: startLogoUpload } = useUploadThing("imageUploader");
+  const updateOrgImage = api.organization.updateImage.useMutation({
+    onSuccess: () => {
+      void utils.organization.listMine.invalidate();
+      void utils.organization.getActive.invalidate();
+    },
+    onSettled: () => setUploadingOrgId(null),
+  });
+
+  const handleOrgLogoUpload = (organizationId: number) => async (file: File) => {
+    setUploadingOrgId(organizationId);
+    await save.run(async () => {
+      try {
+        const uploadResult = await startLogoUpload([file]);
+        const url = uploadResult?.[0]?.url;
+        if (!url) throw new Error("Upload failed");
+        await updateOrgImage.mutateAsync({ organizationId, image: url });
+      } catch (e) {
+        setUploadingOrgId(null);
+        throw e;
+      }
+    });
+  };
 
   const { data: members } = api.organization.getMembers.useQuery(
     { organizationId: activeOrgId! },
@@ -468,6 +553,15 @@ export function WorkspaceSettingsClient() {
     title: org.name,
     // "Active" belongs in the control column beside Switch, not repeated here.
     desc: translateRoleLabel(org.role),
+    leading: (
+      <OrgLogoCell
+        org={org}
+        canEdit={org.role === "admin"}
+        isUploading={uploadingOrgId === org.id}
+        onUpload={handleOrgLogoUpload(org.id)}
+        uploadLabel={t("organizations.uploadLogo")}
+      />
+    ),
     control: (
       <>
         {activeOrgId === org.id ? <LedgerValue tone="good">{t("organizations.active")}</LedgerValue> : null}

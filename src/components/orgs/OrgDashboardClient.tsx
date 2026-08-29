@@ -6,6 +6,8 @@ import { QrCode } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
+import { MemberAvatarStack } from "~/components/orgs/MemberAvatarStack";
+import { OrgBadge } from "~/components/orgs/OrgBadge";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useSwitchOrganization } from "~/hooks/useSwitchOrganization";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
@@ -146,17 +148,23 @@ export function OrgDashboardClient() {
                 isActive ? "border border-accent-primary/30" : ""
               }`}
             >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <div className="text-lg font-semibold text-fg-primary truncate">{org.name}</div>
-                  {isActive ? (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-accent-primary/10 text-accent-primary shadow-sm">
-                      {tOrg("active")}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="mt-1 text-sm text-fg-secondary">
-                  {tOrg("roleLabel")}: {roleLabel(org.role, tOrg)}
+              <div className="flex min-w-0 items-center gap-3">
+                <OrgBadge id={org.id} name={org.name} image={org.image} size={40} rounded="rounded-xl" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <div className="text-lg font-semibold text-fg-primary truncate">{org.name}</div>
+                    {isActive ? (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-accent-primary/10 text-accent-primary shadow-sm">
+                        {tOrg("active")}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-1 text-sm text-fg-secondary">
+                    {tOrg("roleLabel")}: {roleLabel(org.role, tOrg)}
+                  </div>
+                  <div className="mt-2">
+                    <MemberAvatarStack organizationId={org.id} />
+                  </div>
                 </div>
               </div>
 
