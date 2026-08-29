@@ -22,6 +22,7 @@
  */
 
 import "server-only";
+import { toPlainText } from "~/server/llm/core/plainText";
 
 import { and, desc, eq, gte, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
 
@@ -335,7 +336,7 @@ Reply with the retrospective text only.`,
       ],
     });
 
-    const text = res.content.trim();
+    const text = toPlainText(res.content);
     return text.length > 0 ? text : fallbackRetro(facts);
   } catch (err) {
     log.warn("retro generation failed, sending the plain version", { err });

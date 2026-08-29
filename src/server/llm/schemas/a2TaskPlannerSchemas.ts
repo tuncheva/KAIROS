@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { plainString } from "~/server/llm/core/plainText";
+
 // ---------------------------------------------------------------------------
 // Enums (must match DB + task router)
 // ---------------------------------------------------------------------------
@@ -36,12 +38,12 @@ const ISODateTimeStringSchema = z
  */
 export const TaskCreateModelSchema = z
   .object({
-    title: z.string().min(1).max(256),
+    title: plainString(z.string().min(1).max(256)),
     description: z.string().max(5000).default(""),
     priority: TaskPrioritySchema.default("medium"),
     assignedToId: z.string().min(1).optional(),
     acceptanceCriteria: z
-      .array(z.string().min(1).max(200))
+      .array(plainString(z.string().min(1).max(200)))
       .max(20)
       .default([]),
     orderIndex: z.number().int().min(0).optional(),
@@ -60,14 +62,14 @@ export const TaskUpdateDraftSchema = z
     taskId: z.number().int().positive(),
     patch: z
       .object({
-        title: z.string().min(1).max(256).optional(),
+        title: plainString(z.string().min(1).max(256)).optional(),
         description: z.string().max(5000).optional(),
         priority: TaskPrioritySchema.optional(),
         assignedToId: z.string().min(1).nullable().optional(),
         dueDate: ISODateTimeStringSchema.nullable().optional(),
       })
       .strip(),
-    reason: z.string().max(500).optional(),
+    reason: plainString(z.string().max(500)).optional(),
   })
   .strip();
 
@@ -75,14 +77,14 @@ export const TaskStatusChangeDraftSchema = z
   .object({
     taskId: z.number().int().positive(),
     status: TaskStatusSchema,
-    reason: z.string().max(500).optional(),
+    reason: plainString(z.string().max(500)).optional(),
   })
   .strip();
 
 export const TaskDeleteDraftSchema = z
   .object({
     taskId: z.number().int().positive(),
-    reason: z.string().min(1).max(500),
+    reason: plainString(z.string().min(1).max(500)),
     /** Must be true for deletes to be considered at all */
     dangerous: z.boolean(),
   })
@@ -91,10 +93,10 @@ export const TaskDeleteDraftSchema = z
 export const TaskPlanDiffPreviewSchema = z
   .object({
     // Models may omit individual arrays; default them so validation remains robust.
-    creates: z.array(z.string().min(1)).max(50).default([]),
-    updates: z.array(z.string().min(1)).max(50).default([]),
-    statusChanges: z.array(z.string().min(1)).max(50).default([]),
-    deletes: z.array(z.string().min(1)).max(50).default([]),
+    creates: z.array(plainString(z.string().min(1))).max(50).default([]),
+    updates: z.array(plainString(z.string().min(1))).max(50).default([]),
+    statusChanges: z.array(plainString(z.string().min(1))).max(50).default([]),
+    deletes: z.array(plainString(z.string().min(1))).max(50).default([]),
   })
   .strip();
 
@@ -133,8 +135,8 @@ export const TaskPlanModelOutputSchema = z
     orderingRationale: z.string().max(2000).optional(),
     assigneeRationale: z.string().max(2000).optional(),
 
-    risks: z.array(z.string().min(1).max(300)).max(20).default([]),
-    questionsForUser: z.array(z.string().min(1).max(300)).max(10).default([]),
+    risks: z.array(plainString(z.string().min(1).max(300))).max(20).default([]),
+    questionsForUser: z.array(plainString(z.string().min(1).max(300))).max(10).default([]),
 
     diffPreview: TaskPlanDiffPreviewSchema.default({
       creates: [],
@@ -164,8 +166,8 @@ export const TaskPlanDraftSchema = z
     orderingRationale: z.string().max(2000).optional(),
     assigneeRationale: z.string().max(2000).optional(),
 
-    risks: z.array(z.string().min(1).max(300)).max(20).default([]),
-    questionsForUser: z.array(z.string().min(1).max(300)).max(10).default([]),
+    risks: z.array(plainString(z.string().min(1).max(300))).max(20).default([]),
+    questionsForUser: z.array(plainString(z.string().min(1).max(300))).max(10).default([]),
 
     // Models sometimes omit this; default it so the backend can still persist + show a plan.
     diffPreview: TaskPlanDiffPreviewSchema.default({

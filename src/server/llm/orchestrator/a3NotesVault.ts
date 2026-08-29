@@ -21,7 +21,7 @@ import { getA3SystemPrompt } from "~/server/llm/prompts/a3Prompts";
 
 import { completeJson } from "~/server/llm/core/jsonRepair";
 
-import { languageAnchorMessages } from "~/server/llm/prompts/languageRules";
+import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
 
 import {
   stickyNotes,
@@ -63,7 +63,11 @@ export const a3NotesVault = {
     const parseResult = await completeJson({
       messages: [
         { role: "system", content: systemPrompt },
-        ...languageAnchorMessages(input.originalMessage, input.message),
+        ...replyLanguageMessages({
+          locale: contextPack.locale,
+          message: input.message,
+          originalMessage: input.originalMessage,
+        }),
         { role: "user", content: input.message },
       ],
       schema: NotesVaultDraftSchema,

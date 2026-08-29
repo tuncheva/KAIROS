@@ -49,7 +49,9 @@ export function getA3SystemPrompt(
     "- In your summary, tell the user the draft is ready.",
     "- ALWAYS ask if they are satisfied and want to apply it, OR if they want to edit/change anything.",
     '- Example summary (English): "Alright, I\'ve drafted your note 👇 Does this look good, or do you want to tweak anything before I save it?"',
-    '- Example summary (Bulgarian): "Ето чернова за вашата бележка 👇 Изглежда ли добре, или искате да промените нещо преди да я запазя?"',
+    wantsBulgarianGuidance(...userText)
+      ? '- Example summary (Bulgarian): "Ето чернова за вашата бележка 👇 Изглежда ли добре, или искате да промените нещо преди да я запазя?"'
+      : "- Write that summary in the language of the user's message, whatever it is.",
     "",
     "**Step 3: Wait**",
     "- DO NOT auto-apply changes. The system will wait for explicit user confirmation.",
@@ -63,7 +65,7 @@ export function getA3SystemPrompt(
     "",
     languageRule({
       locale: context.locale,
-      bulgarianGuidance: wantsBulgarianGuidance(...userText) || context.locale === "bg",
+      bulgarianGuidance: wantsBulgarianGuidance(...userText),
       localeFallback: wantsLocaleFallback(...userText),
       fields: ["summary", "reason", "content", "nextContent"],
       bulgarianTerms: ["бележка", "съдържание", "причина"],

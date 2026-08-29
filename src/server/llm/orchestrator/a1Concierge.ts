@@ -14,6 +14,7 @@ import {
 } from "~/server/llm/schemas/a1WorkspaceConciergeSchemas";
 import { buildA1Context } from "~/server/llm/context/a1ContextBuilder";
 import { getA1SystemPrompt } from "~/server/llm/prompts/a1Prompts";
+import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
 import { parseAndValidate } from "~/server/llm/core/jsonRepair";
 import { runToolLoop } from "~/server/llm/core/toolLoop";
 import { A1_READ_TOOLS } from "~/server/llm/tools/a1/readTools";
@@ -145,6 +146,16 @@ ${input.conversationSummary}`,
               ]
             : []),
           ...historyMessages,
+          // After the history, not before it. A thread that ran in Bulgarian
+          // for ten turns and then gets an English message is the case that
+          // kept failing: whatever the system prompt says about mirroring the
+          // user is thousands of tokens back, while ten Bulgarian turns sit
+          // right next to the message being answered. This is the last thing
+          // the model reads before that message.
+          ...replyLanguageMessages({
+            locale: contextPack.locale,
+            message: input.message,
+          }),
           { role: "user", content: input.message },
         ],
         tools: toolDefinitionsFor(

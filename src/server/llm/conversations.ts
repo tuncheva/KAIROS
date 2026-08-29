@@ -23,6 +23,7 @@
  */
 
 import "server-only";
+import { toPlainText } from "~/server/llm/core/plainText";
 
 import { and, asc, desc, eq, gt, lt, sql } from "drizzle-orm";
 
@@ -344,7 +345,9 @@ export async function ensureTitle(
       ],
     });
 
-    const title = res.content.trim().replace(/^["'“”]|["'“”]$/g, "").slice(0, 120);
+    const title = toPlainText(res.content)
+      .replace(/^["'“”]|["'“”]$/g, "")
+      .slice(0, 120);
     if (!title) return;
 
     await ctx.db
@@ -456,7 +459,7 @@ export async function maybeSummarize(
       ],
     });
 
-    const summary = res.content.trim().slice(0, MAX_SUMMARY_CHARS);
+    const summary = toPlainText(res.content).slice(0, MAX_SUMMARY_CHARS);
     if (!summary) return;
 
     await ctx.db

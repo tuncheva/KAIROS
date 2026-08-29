@@ -33,7 +33,7 @@ import { A1_READ_TOOLS } from "~/server/llm/tools/a1/readTools";
 
 import { completeJson } from "~/server/llm/core/jsonRepair";
 
-import { languageAnchorMessages } from "~/server/llm/prompts/languageRules";
+import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
 
 import { localized, type LocalizedText } from "~/server/llm/locale";
 
@@ -229,7 +229,11 @@ export const a2TaskPlanner = {
               },
             ]
           : []),
-        ...languageAnchorMessages(input.originalMessage, input.message),
+        ...replyLanguageMessages({
+          locale: contextPack.locale,
+          message: input.message,
+          originalMessage: input.originalMessage,
+        }),
         { role: "user", content: input.message },
       ],
       schema: TaskPlanModelOutputSchema,

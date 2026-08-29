@@ -18,7 +18,7 @@ import { buildA4Context } from "~/server/llm/context/a4ContextBuilder";
 import { getA4SystemPrompt } from "~/server/llm/prompts/a4Prompts";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 
-import { languageAnchorMessages } from "~/server/llm/prompts/languageRules";
+import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
 
 import {
   events as eventsTable,
@@ -92,7 +92,11 @@ export const a4EventsPublisher = {
     const parseResult = await completeJson({
       messages: [
         { role: "system", content: systemPrompt },
-        ...languageAnchorMessages(input.originalMessage, input.message),
+        ...replyLanguageMessages({
+          locale: contextPack.locale,
+          message: input.message,
+          originalMessage: input.originalMessage,
+        }),
         { role: "user", content: input.message },
       ],
       schema: EventsPublisherDraftSchema,

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { plainString } from "~/server/llm/core/plainText";
+
 /**
  * A1's output contract.
  *
@@ -56,8 +58,8 @@ export type HandoffPlan = z.infer<typeof HandoffPlanSchema>;
  */
 export const ClarifySchema = z
   .object({
-    question: z.string().min(1).max(300),
-    options: z.array(z.string().min(1).max(80)).max(4).default([]),
+    question: plainString(z.string().min(1).max(300)),
+    options: z.array(plainString(z.string().min(1).max(80))).max(4).default([]),
   })
   .strip();
 
@@ -106,7 +108,7 @@ export const ActionPlanDraftSchema = z
  */
 export const CitationSchema = z
   .object({
-    label: z.string().min(1),
+    label: plainString(z.string().min(1)),
     ref: z.string().min(1),
   })
   .strip();
@@ -116,8 +118,8 @@ const A1BaseSchema = z
     intent: ConciergeIntentSchema,
     answer: z
       .object({
-        summary: z.string().min(1),
-        details: z.array(z.string()).optional(),
+        summary: plainString(z.string().min(1)),
+        details: z.array(plainString(z.string())).optional(),
       })
       .strip()
       .optional(),
@@ -127,7 +129,7 @@ const A1BaseSchema = z
     clarify: ClarifySchema.optional(),
     draftPlan: ActionPlanDraftSchema.optional(),
     citations: z.array(CitationSchema).optional(),
-    followUps: z.array(z.string().min(1).max(120)).max(3).optional(),
+    followUps: z.array(plainString(z.string().min(1).max(120))).max(3).optional(),
   })
   .strip();
 

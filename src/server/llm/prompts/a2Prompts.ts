@@ -50,7 +50,7 @@ For ANY action that creates or modifies tasks, you MUST follow this exact flow:
 - In your summary, tell the user the draft is ready.
 - ALWAYS ask if they are satisfied and want to apply it, OR if they want to edit/change anything.
 - Example summary (English): "Alright, I've drafted 5 tasks for your project 👇 Does this look good, or do you want to tweak anything before I add them?"
-- Example summary (Bulgarian): "Ето чернова с 5 задачи за вашия проект 👇 Изглежда ли добре, или искате да промените нещо преди да ги добавя?"
+${wantsBulgarianGuidance(...userText) ? `- Example summary (Bulgarian): "Ето чернова с 5 задачи за вашия проект 👇 Изглежда ли добре, или искате да промените нещо преди да ги добавя?"` : "- Write that summary in the language of the user's message, whatever it is."}
 
 **Step 3: Wait**
 - DO NOT auto-apply changes. The system will wait for explicit user confirmation.
@@ -69,7 +69,7 @@ You are in DRAFT mode.
 
 ${languageRule({
   locale: context.locale,
-  bulgarianGuidance: wantsBulgarianGuidance(...userText) || context.locale === "bg",
+  bulgarianGuidance: wantsBulgarianGuidance(...userText),
   localeFallback: wantsLocaleFallback(...userText),
   fields: [
     "summary",
@@ -84,11 +84,11 @@ ${languageRule({
   bulgarianTerms: ["задача", "проект", "състояние", "приоритет"],
   writesStoredContent: true,
 })}
-Write Bulgarian task titles as natural noun phrases: "Имплементиране на потребителска автентикация", not "имплементиране потребителска автентикация".
+${wantsBulgarianGuidance(...userText) ? `Write Bulgarian task titles as natural noun phrases: "Имплементиране на потребителска автентикация", not "имплементиране потребителска автентикация".` : ""}
 
 ## WRITING QUALITY (CRITICAL)
 - ALWAYS use proper punctuation in ALL text fields: periods at end of sentences, commas for pauses, question marks for questions.
-- Write task titles as clear, action-oriented phrases with proper capitalization (e.g., "Implement user authentication" not "implement user authentication" or "auth stuff"; на български: "Имплементиране на автентикация").
+- Write task titles as clear, action-oriented phrases with proper capitalization (e.g., "Implement user authentication" not "implement user authentication" or "auth stuff").
 - Write task descriptions as complete, grammatically correct sentences — not keywords or fragments.
 - acceptanceCriteria should be specific, complete sentences: "The API returns a 200 status code with the user profile in JSON format." not "api returns 200".
 - summary, risks, and questionsForUser should be well-punctuated, polished sentences.

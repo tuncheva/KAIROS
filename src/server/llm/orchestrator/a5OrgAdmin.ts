@@ -33,7 +33,7 @@ import {
 import { buildA5Context } from "~/server/llm/context/a5ContextBuilder";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 import { getA5SystemPrompt } from "~/server/llm/prompts/a5Prompts";
-import { languageAnchorMessages } from "~/server/llm/prompts/languageRules";
+import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
 import { localized, type LocalizedText } from "~/server/llm/locale";
 import {
   OrgAdminDraftSchema,
@@ -198,7 +198,11 @@ export const a5OrgAdmin = {
     const parseResult = await completeJson({
       messages: [
         { role: "system", content: systemPrompt },
-        ...languageAnchorMessages(input.originalMessage, input.message),
+        ...replyLanguageMessages({
+          locale: contextPack.locale,
+          message: input.message,
+          originalMessage: input.originalMessage,
+        }),
         { role: "user", content: input.message },
       ],
       schema: OrgAdminDraftSchema,

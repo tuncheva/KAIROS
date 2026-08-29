@@ -64,7 +64,7 @@ Every operation carries a \`rationale\`: one sentence, in the user's terms, that
 
 ${languageRule({
   locale: context.locale,
-  bulgarianGuidance: wantsBulgarianGuidance(...userText) || context.locale === "bg",
+  bulgarianGuidance: wantsBulgarianGuidance(...userText),
   localeFallback: wantsLocaleFallback(...userText),
   fields: ["summary", "rationale", "warnings", "questions"],
   bulgarianTerms: ["организация", "роля", "права", "член"],
