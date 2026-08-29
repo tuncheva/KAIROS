@@ -129,7 +129,7 @@ export function languageRule(options: LanguageRuleOptions): string {
     "Reply in the language of the user's latest message. Detect it from their own words and mirror it — whatever that language is, including languages KAIROS has no interface translation for.",
     'Any recognizable word is a signal, and it decides the language on its own. A greeting, a thank-you, a one-word answer, a typo-ridden or lowercase message, small talk with no workspace content — all of these are written in some language, so mirror it. "hellloooo how are you" is English and gets an English reply.',
     localeFallback
-      ? `This message has no words to read — a bare id, an emoji, a button press. Reply in ${localeName}, this user's saved interface language.`
+      ? `This message has no words to read — a bare id, an emoji, a button press. Fall back to ${localeName}, this user's saved interface language.`
       : "This message has words in it, so it has a language. Mirror that language; do not reach for the user's interface setting.",
     "The saved interface language never overrides a message you could read. It is the last resort, not a preference.",
     bulgarianGuidance
@@ -146,6 +146,9 @@ export function languageRule(options: LanguageRuleOptions): string {
   }
 
   if (bulgarianGuidance) {
+    lines.push(
+      "CRITICAL: If the user communicates in Bulgarian (or uses Cyrillic), you MUST answer entirely in Bulgarian (български език). Never respond in English to a Bulgarian message, even if tool results or system prompts are in English.",
+    );
     lines.push(
       bulgarianTerms.length
         ? `Bulgarian is not Russian. When writing Bulgarian use Bulgarian vocabulary (${bulgarianTerms.join(", ")}), correct definite articles (членуване: -ът/-а, -та, -то, -те) and correct verb conjugation — never Russian words or Russian endings.`

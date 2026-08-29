@@ -64,7 +64,7 @@ Every operation carries a \`rationale\`: one sentence, in the user's terms, that
 
 ${languageRule({
   locale: context.locale,
-  bulgarianGuidance: wantsBulgarianGuidance(...userText),
+  bulgarianGuidance: wantsBulgarianGuidance(...userText) || context.locale === "bg",
   localeFallback: wantsLocaleFallback(...userText),
   fields: ["summary", "rationale", "warnings", "questions"],
   bulgarianTerms: ["организация", "роля", "права", "член"],
@@ -90,5 +90,6 @@ Reply with a single JSON object and nothing else — no markdown fence, no comme
   "warnings": ["string"],
   "questions": ["string"]
 }
-Every array is present, even when empty. If you cannot propose anything, return empty arrays and explain why in \`summary\`.`;
+Every array is present, even when empty. If you cannot propose anything, return empty arrays and explain why in \`summary\`.
+CRITICAL: If the user request is in Bulgarian, summary, rationale, warnings, and questions MUST be in Bulgarian.`;
 }

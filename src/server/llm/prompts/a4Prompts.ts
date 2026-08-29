@@ -103,7 +103,7 @@ For ANY action that creates or modifies events, you MUST follow this exact flow:
 **Step 2: Notify + Ask for Confirmation**  
 - In your summary, tell the user the draft is ready.
 - ALWAYS ask if they are satisfied and want to apply it, OR if they want to edit/change anything.
-- Example summary: "Alright, I've drafted your event 👇
+- Example summary (English): "Alright, I've drafted your event 👇
 
   **Team Meeting**
   📅 Date: March 25
@@ -111,6 +111,15 @@ For ANY action that creates or modifies events, you MUST follow this exact flow:
   📝 Notes: Discuss Q2 goals
 
   Does this look good, or do you want to tweak anything before I add it?"
+
+- Example summary (Bulgarian): "Ето чернова за събитието 👇
+
+  **Среща на екипа**
+  📅 Дата: 25 март
+  🕐 Час: 15:00 ч.
+  📝 Бележки: Обсъждане на целите за второто тримесечие
+
+  Изглежда ли добре, или искате да промените нещо преди да го добавя?"
 
 **Step 3: Wait**
 - DO NOT auto-apply changes. The system will wait for explicit user confirmation.
@@ -124,7 +133,7 @@ For ANY action that creates or modifies events, you MUST follow this exact flow:
 
 ${languageRule({
   locale: context.locale,
-  bulgarianGuidance: wantsBulgarianGuidance(...userText),
+  bulgarianGuidance: wantsBulgarianGuidance(...userText) || context.locale === "bg",
   localeFallback: wantsLocaleFallback(...userText),
   fields: [
     "summary",
@@ -256,5 +265,6 @@ Return ONLY a JSON object matching this exact shape:
     "comments": ["human-readable line per comment action"],
     "rsvps": ["human-readable line per RSVP change"]
   }
-}`;
+}
+CRITICAL: If the user request is in Bulgarian, event title, description, summary, and diffPreview MUST be in Bulgarian.`;
 }

@@ -48,7 +48,8 @@ export function getA3SystemPrompt(
     "**Step 2: Notify + Ask for Confirmation**",
     "- In your summary, tell the user the draft is ready.",
     "- ALWAYS ask if they are satisfied and want to apply it, OR if they want to edit/change anything.",
-    '- Example summary: "Alright, I\'ve drafted your note 👇 Does this look good, or do you want to tweak anything before I save it?"',
+    '- Example summary (English): "Alright, I\'ve drafted your note 👇 Does this look good, or do you want to tweak anything before I save it?"',
+    '- Example summary (Bulgarian): "Ето чернова за вашата бележка 👇 Изглежда ли добре, или искате да промените нещо преди да я запазя?"',
     "",
     "**Step 3: Wait**",
     "- DO NOT auto-apply changes. The system will wait for explicit user confirmation.",
@@ -62,7 +63,7 @@ export function getA3SystemPrompt(
     "",
     languageRule({
       locale: context.locale,
-      bulgarianGuidance: wantsBulgarianGuidance(...userText),
+      bulgarianGuidance: wantsBulgarianGuidance(...userText) || context.locale === "bg",
       localeFallback: wantsLocaleFallback(...userText),
       fields: ["summary", "reason", "content", "nextContent"],
       bulgarianTerms: ["бележка", "съдържание", "причина"],
@@ -125,5 +126,6 @@ export function getA3SystemPrompt(
     "- Group related operations logically (e.g., if creating multiple notes, order them coherently).",
     "- When the user says 'organize' or 'clean up', suggest updates that improve structure without losing information.",
     "- Always provide a human-readable summary explaining what the plan will do and why.",
+    "- CRITICAL: If the user communicates in Bulgarian, all note content, summary, and reasons MUST be in Bulgarian.",
   ].join("\n");
 }

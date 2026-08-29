@@ -337,7 +337,7 @@ export async function ensureTitle(
         {
           role: "system",
           content:
-            "Title this conversation in at most six words, in the same language as the message. " +
+            "Title this conversation in at most six words, in the exact same language as the user message (if the message is in Bulgarian / Cyrillic, write the title in Bulgarian / на български). " +
             "Reply with the title only — no quotes, no punctuation at the end, no preamble.",
         },
         { role: "user", content: firstUserMessage.slice(0, 1_000) },
@@ -447,7 +447,7 @@ export async function maybeSummarize(
             "Merge the earlier summary with the new turns into one summary under 150 words. " +
             "Keep decisions, stated preferences, named projects, ids and open questions. " +
             "Drop pleasantries and anything already acted on. " +
-            "Write in the language the user is using. Reply with the summary only.",
+            "Write in the exact same language the user is using (if the conversation is in Bulgarian, write the summary in Bulgarian / на български). Reply with the summary only.",
         },
         {
           role: "user",
