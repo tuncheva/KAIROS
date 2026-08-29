@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { plainString } from "~/server/llm/core/plainText";
+
 import { ORG_ROLES, PERMISSION_FLAG_KEYS } from "~/lib/permissions";
 
 /**
@@ -69,7 +71,7 @@ export const MemberInviteSchema = z
 export const OrgAdminDraftSchema = z
   .object({
     /** One or two sentences the user reads before deciding. */
-    summary: z.string().min(1).max(600),
+    summary: plainString(z.string().min(1).max(600)),
     roleChanges: z.array(RoleChangeSchema).max(10).default([]),
     permissionChanges: z.array(PermissionChangeSchema).max(10).default([]),
     removals: z.array(MemberRemovalSchema).max(5).default([]),
@@ -78,9 +80,9 @@ export const OrgAdminDraftSchema = z
      * What the user should know before confirming — a demotion that removes the
      * last admin, a removal that orphans assigned tasks.
      */
-    warnings: z.array(z.string().min(1).max(300)).max(10).default([]),
+    warnings: z.array(plainString(z.string().min(1).max(300))).max(10).default([]),
     /** Anything A5 could not resolve and needs answered before applying. */
-    questions: z.array(z.string().min(1).max(300)).max(5).default([]),
+    questions: z.array(plainString(z.string().min(1).max(300))).max(5).default([]),
     planHash: z.string().optional(),
   })
   .strip();

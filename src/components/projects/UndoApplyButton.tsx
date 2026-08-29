@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Undo2 } from "lucide-react";
+import { Undo2 } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";

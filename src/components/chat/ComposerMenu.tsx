@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "~/components/ui/icons";
 
 export interface ComposerMenuOption {
   id: string;
@@ -74,10 +74,19 @@ export function ComposerMenu({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={`flex max-w-[190px] items-center gap-1.5 rounded-[7px] border px-2.5 py-1.5 text-[12.5px] transition-colors ${
+        /*
+         * A text chip, not a button.
+         *
+         * Both pickers used to be filled controls sitting directly under the
+         * textarea, which gave the composer three competing surfaces before
+         * the send button. A hairline ring is enough to say "pressable" at
+         * this size, and it leaves the accent to mean one thing — who is
+         * answering — instead of two.
+         */
+        className={`flex max-w-[190px] items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] transition-colors ${
           tone === "accent"
-            ? "border-accent-primary/35 bg-accent-primary/10 font-medium text-accent-primary hover:bg-accent-primary/20"
-            : "border-border-medium/70 text-fg-secondary hover:bg-bg-tertiary"
+            ? "bg-accent-primary/[0.08] text-accent-primary shadow-[0_0_0_0.5px_rgb(var(--accent-primary)/0.4)] hover:bg-accent-primary/15"
+            : "text-fg-tertiary shadow-[0_0_0_0.5px_rgb(var(--border-medium)/0.8)] hover:text-fg-secondary"
         }`}
       >
         {icon}
@@ -88,7 +97,7 @@ export function ComposerMenu({
       {open && (
         <div
           role="listbox"
-          className="absolute bottom-[calc(100%+6px)] left-0 z-30 max-h-72 w-72 overflow-y-auto rounded-xl border border-border-medium/70 bg-bg-surface p-1.5 shadow-xl"
+          className="kairos-menu-surface absolute bottom-[calc(100%+6px)] left-0 z-30 max-h-72 w-72 overflow-y-auto rounded-xl p-1.5"
         >
           {options.map((option) => {
             const isSelected = option.id === selected;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "~/components/ui/icons";
 
 const CARDS = [
     { n: "01", tag: "ORG", titleKey: "wsOrgTitle", bodyKey: "wsOrgBody" },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "~/components/ui/icons";
 
 const ROWS = [
     { n: "01", titleKey: "whyOneWorkflowTitle", bodyKey: "whyOneWorkflowBody" },

@@ -90,7 +90,7 @@ describe("SideNav", () => {
 
   it("uses elegant icon set (no legacy icon names in DOM)", () => {
     const { container } = render(<SideNav />);
-    // The component should render SVG icons from lucide-react
+    // The component should render SVG icons from ~/components/ui/icons
     const svgs = container.querySelectorAll("svg");
     expect(svgs.length).toBeGreaterThan(0);
   });

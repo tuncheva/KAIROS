@@ -359,6 +359,71 @@ html {
   overflow-x: clip;
 }
 
+/* ─── Global Selection & Highlight Styling ───
+   Ensures text selection across the entire platform — normal chat,
+   AI chat, inputs, textareas, notes, and anywhere else — is clearly
+   visible with the active theme accent color. */
+::selection {
+  background-color: rgb(var(--accent-primary) / 0.28);
+  color: inherit;
+}
+
+::-moz-selection {
+  background-color: rgb(var(--accent-primary) / 0.28);
+  color: inherit;
+}
+
+input::selection,
+textarea::selection,
+[contenteditable="true"]::selection {
+  background-color: rgb(var(--accent-primary) / 0.35);
+  color: inherit;
+}
+
+input::-moz-selection,
+textarea::-moz-selection,
+[contenteditable="true"]::-moz-selection {
+  background-color: rgb(var(--accent-primary) / 0.35);
+  color: inherit;
+}
+
+.dark ::selection {
+  background-color: rgb(var(--accent-primary) / 0.45);
+  color: inherit;
+}
+
+.dark ::-moz-selection {
+  background-color: rgb(var(--accent-primary) / 0.45);
+  color: inherit;
+}
+
+.dark input::selection,
+.dark textarea::selection,
+.dark [contenteditable="true"]::selection {
+  background-color: rgb(var(--accent-primary) / 0.5);
+  color: inherit;
+}
+
+.dark input::-moz-selection,
+.dark textarea::-moz-selection,
+.dark [contenteditable="true"]::-moz-selection {
+  background-color: rgb(var(--accent-primary) / 0.5);
+  color: inherit;
+}
+
+/* Inside own message bubbles with solid/gradient accent backgrounds */
+.bg-gradient-to-br ::selection,
+[class*="from-accent"] ::selection {
+  background-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+.bg-gradient-to-br ::-moz-selection,
+[class*="from-accent"] ::-moz-selection {
+  background-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
 /* Professional elevated surfaces with depth */
 .surface-elevated {
   background-color: rgb(var(--bg-elevated));
@@ -3003,18 +3068,20 @@ input[type="search"]::-webkit-search-results-decoration {
    a crash rather than a dismissal — the panel is simply not there on the next
    frame. These are the exit halves. They are separate classes rather than a
    reversed `animation-direction`, because the element has to be *told* it is
-   leaving and stay mounted for the duration; see `PROFILE_DRAWER_EXIT_MS` in
-   `~/components/profile/ProfileDrawer`, which holds it there.
+   leaving and stay mounted for the duration; see `DRAWER_EXIT_MS` in
+   `~/components/ui/drawerExit`, which holds it there.
 
    Durations mirror the entrance exactly — 0.45s for the panel, 0.35s for the
    scrim — so opening and closing feel like one gesture run in both directions.
    Keep them in step with `.projects-drawer` and `.projects-drawer-scrim` above,
-   and with `PROFILE_DRAWER_EXIT_MS`, which must not be shorter than the panel's
-   0.45s or the drawer unmounts mid-slide.
+   and with `DRAWER_EXIT_MS`, which must not be shorter than the panel's 0.45s
+   or the drawer unmounts mid-slide.
 
-   The curve is still the exit's own: an ease-in against the entrance's
-   ease-out, so the panel eases away rather than arriving in reverse. Only the
-   timing is mirrored, not the shape.
+   The panel uses the entrance's curve unchanged, not a reversed or ease-in
+   version of it. Both of those start almost flat, so the first frames of the
+   exit are a panel sitting still under a cursor that has already clicked —
+   which reads as a stall, then a lurch. An ease-out leaves on the first frame
+   and settles into the edge instead. Same for the scrim.
    -------------------------------------------------------------------------- */
 
 @keyframes projects-drawer-out {
@@ -3036,12 +3103,12 @@ input[type="search"]::-webkit-search-results-decoration {
 }
 
 .projects-drawer-out {
-  animation: projects-drawer-out 0.45s cubic-bezier(0.4, 0, 0.9, 0.5) both;
+  animation: projects-drawer-out 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
   will-change: transform;
 }
 
 .projects-drawer-scrim-out {
-  animation: projects-scrim-out 0.35s ease-in both;
+  animation: projects-scrim-out 0.35s ease-out both;
   /* The scrim is the click target for "close". Once it is on its way out it
      must stop accepting clicks, or a second tap during the exit re-fires a
      close on a drawer that is already gone. */
@@ -3512,4 +3579,50 @@ input[type="search"]::-webkit-search-results-decoration {
     min-height: 44px;
     transform: translate(-50%, -50%);
   }
+}
+
+/* ─── AI chat widget: expand / collapse ─── */
+/*
+   The panel opens with a short rise-and-settle from its own bottom edge, so it
+   reads as growing out of the launcher rather than being pasted over the page.
+   Collapsing and expanding is a height transition on the panel itself (see
+   `.kairos-ai-widget`), with the body fading a little ahead of it so the
+   content never looks squashed on the way down.
+
+   Reduced motion is already neutralised globally, so nothing extra is needed
+   here.
+*/
+.kairos-ai-widget {
+  transform-origin: bottom right;
+  animation: kairos-ai-widget-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: height 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* While the user is dragging a resize handle, height follows the pointer with
+   no easing — otherwise every frame chases the last one and the edge lags. */
+.kairos-ai-widget[data-interacting="true"] {
+  transition: none;
+}
+
+@keyframes kairos-ai-widget-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.kairos-ai-widget-body {
+  transition:
+    opacity 0.18s ease,
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.kairos-ai-widget-body[data-collapsed="true"] {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
 }

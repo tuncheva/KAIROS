@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye } from "lucide-react";
+import { Eye } from "~/components/ui/icons";
 
 /**
  * Banner displayed at the top of pages when the current user has a view-only

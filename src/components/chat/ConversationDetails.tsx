@@ -22,7 +22,7 @@ import {
   LogOut,
   Pin,
   X,
-} from "lucide-react";
+} from "~/components/ui/icons";
 
 import type { RouterOutputs } from "~/trpc/react";
 import { Avatar, displayName, formatFileSize, isImageMime, type ChatUser } from "./chatUi";
@@ -80,7 +80,7 @@ export function ConversationDetails({
       <div className="flex-1 overflow-y-auto">
         <section className="px-4 py-5 text-center border-b border-border-light/40">
           <div className="inline-block">
-            <Avatar user={user} size="xl" online={online} fallbackLabel={t("userFallback")} />
+            <Avatar user={user} size="xl" online={online} fallbackLabel={t("userFallback")} peek />
           </div>
           <p className="mt-2.5 text-base font-bold text-fg-primary truncate">
             {displayName(user, t("userFallback"))}

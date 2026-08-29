@@ -14,7 +14,7 @@
  */
 
 import { useTranslations } from "next-intl";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "~/components/ui/icons";
 
 /** Page numbers around `page`, with `null` standing in for an elision. */
 export function pageWindow(

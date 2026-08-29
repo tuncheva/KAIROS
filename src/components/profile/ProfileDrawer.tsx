@@ -32,13 +32,15 @@ import {
   UserMinus,
   UserPlus,
   X,
-} from "lucide-react";
+} from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { Overlay } from "~/components/ui/Overlay";
 import { useToast } from "~/components/providers/ToastProvider";
 import { api } from "~/trpc/react";
+import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useProfilePeek } from "./ProfilePeekProvider";
+import { DRAWER_EXIT_MS, exitDurationMs } from "~/components/ui/drawerExit";
 
 type TabId = "shared" | "activity" | "followers";
 
@@ -70,29 +72,11 @@ function localTimeIn(timezone: string | null | undefined): string | null {
 }
 
 /**
- * How long the drawer stays mounted after it has been asked to close.
- *
- * Must match `.projects-drawer-out` in `globals.css`, which mirrors the
- * entrance at 0.45s. This is the *panel's* duration, not the scrim's shorter
- * 0.35s: the panel is the last thing still moving, and unmounting on the scrim
- * would cut the slide off two thirds of the way through.
- *
- * A timer rather than an `animationend` listener on purpose: under
- * `prefers-reduced-motion` those rules resolve to `animation: none`, so no
- * `animationend` ever fires and a listener-based unmount would strand the
- * drawer on screen forever. A timer closes in both worlds.
+ * Re-exported under its old name for the callers and tests that use it. The
+ * number, and the reason it is a timer rather than an `animationend` listener,
+ * live with the other drawers in `~/components/ui/drawerExit`.
  */
-export const PROFILE_DRAWER_EXIT_MS = 450;
-
-/** Reduced-motion users skip the hold entirely — there is no motion to wait for. */
-function exitDurationMs(): number {
-  if (typeof window === "undefined" || !window.matchMedia) {
-    return PROFILE_DRAWER_EXIT_MS;
-  }
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ? 0
-    : PROFILE_DRAWER_EXIT_MS;
-}
+export const PROFILE_DRAWER_EXIT_MS = DRAWER_EXIT_MS;
 
 export function ProfileDrawer({
   userId,
@@ -307,7 +291,8 @@ export function ProfileDrawer({
                     ) : (
                       <span
                         aria-hidden="true"
-                        className="grid h-[76px] w-[76px] place-items-center rounded-full bg-accent-primary text-[28px] font-bold text-white"
+                        style={avatarGradientStyle(profile.id ?? profile.name)}
+                        className="grid h-[76px] w-[76px] place-items-center rounded-full text-[28px] font-bold text-white"
                       >
                         {initialOf(profile.name)}
                       </span>
@@ -394,17 +379,23 @@ export function ProfileDrawer({
                       </div>
                     ) : (
                       <div className="flex gap-2.5 px-[26px] pt-5">
-                        <button
-                          type="button"
-                          disabled={startChat.isPending}
-                          onClick={() =>
-                            startChat.mutate({ otherUserId: full.id })
-                          }
-                          className="flex flex-1 items-center justify-center gap-2 rounded-[9px] border border-border-light/70 py-2.5 text-[14px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
-                        >
-                          <MessageCircle size={15} aria-hidden />
-                          {t("message")}
-                        </button>
+                        {/* Messaging is for connections only — a mutual
+                            follow. Absent rather than disabled: a greyed-out
+                            button invites a tap that can never work, and the
+                            hint below already says what would unlock it. */}
+                        {full.isConnection ? (
+                          <button
+                            type="button"
+                            disabled={startChat.isPending}
+                            onClick={() =>
+                              startChat.mutate({ otherUserId: full.id })
+                            }
+                            className="flex flex-1 items-center justify-center gap-2 rounded-[9px] border border-border-light/70 py-2.5 text-[14px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
+                          >
+                            <MessageCircle size={15} aria-hidden />
+                            {t("message")}
+                          </button>
+                        ) : null}
 
                         {full.canFollow ? (
                           <button
@@ -440,6 +431,16 @@ export function ProfileDrawer({
                     {full.followsYou && !full.isSelf ? (
                       <p className="px-[26px] pt-2.5 text-[12px] text-fg-tertiary">
                         {t("followsYou")}
+                      </p>
+                    ) : null}
+
+                    {/* Only worth saying where following is actually on offer.
+                        Someone with followers switched off can never become a
+                        connection, and telling them to follow back would be
+                        pointing at a door that is not there. */}
+                    {!full.isSelf && !full.isConnection && full.canFollow ? (
+                      <p className="px-[26px] pt-2.5 text-[12px] text-fg-tertiary">
+                        {t("messageNeedsConnection")}
                       </p>
                     ) : null}
 
@@ -573,7 +574,8 @@ export function ProfileDrawer({
                               ) : (
                                 <span
                                   aria-hidden="true"
-                                  className="grid h-[30px] w-[30px] place-items-center rounded-full bg-accent-primary text-[12px] font-bold text-white"
+                                  style={avatarGradientStyle(person.id ?? person.name)}
+                                  className="grid h-[30px] w-[30px] place-items-center rounded-full text-[12px] font-bold text-white"
                                 >
                                   {initialOf(person.name)}
                                 </span>

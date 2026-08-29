@@ -16,7 +16,7 @@ import { api } from "~/trpc/react";
 
 import { PlanDiffCard } from "./PlanDiffCard";
 import { UndoApplyButton } from "./UndoApplyButton";
-import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil, ArrowUp, ArrowUpRight } from "lucide-react";
+import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil, ArrowUp, ArrowUpRight } from "~/components/ui/icons";
 import { useDateFormat } from "~/hooks/useDateFormat";
 import { humanizeToolName, type TrailEvent } from "~/components/chat/trail";
 
@@ -514,6 +514,23 @@ export function ProjectIntelligenceChat(props: {
    * where "full page" is from where it is mounted.
    */
   emptyStateFooter?: ReactNode;
+  /**
+   * Bumped by the host to throw the thread away.
+   *
+   * The widget's clear button lives in its title bar, which is outside this
+   * component, so the action has to be reachable from there. A counter rather
+   * than a callback prop because the host also owns the confirmation — by the
+   * time this changes the user has already said yes, and a second dialog from
+   * in here would be asking twice.
+   */
+  clearKey?: number;
+  /**
+   * Whether there is anything to clear.
+   *
+   * The host paints a destructive control only once it would do something, and
+   * only this component knows whether the thread has messages in it.
+   */
+  onCanClearChange?: (canClear: boolean) => void;
 }) {
   const { projectId, pinnedAgentId } = props;
   const isConsole = props.variant === "console";
@@ -550,14 +567,15 @@ export function ProjectIntelligenceChat(props: {
   });
 
   /**
-   * The agent roster, for the console byline.
+   * The agent roster, for the byline.
    *
-   * Static content the page has already fetched, so this resolves from cache;
-   * it is enabled only in the console because the widget never renders a
-   * byline and should not pay for the round trip.
+   * Static content both designed surfaces have already fetched — the page for
+   * its picker, the widget for its own — so this resolves from cache rather
+   * than costing a second round trip. The compact variant renders no byline
+   * and so does not ask.
    */
   const rosterQuery = api.agent.agents.useQuery(undefined, {
-    enabled: isConsole,
+    enabled: isPanel,
     staleTime: Infinity,
   });
 
@@ -1123,6 +1141,25 @@ export function ProjectIntelligenceChat(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cancelTurn, deleteConversationMutation, resetTrail, utils]);
 
+  /*
+   * The host's clear button, wired to the same teardown as the header's.
+   *
+   * The first value is the mount value and must not fire: a widget that
+   * deleted the thread it had just rehydrated would be unusable. Only a change
+   * is a request.
+   */
+  const clearKeySeen = useRef(props.clearKey);
+  useEffect(() => {
+    if (props.clearKey === clearKeySeen.current) return;
+    clearKeySeen.current = props.clearKey;
+    void startNewChat();
+  }, [props.clearKey, startNewChat]);
+
+  useEffect(() => {
+    props.onCanClearChange?.(messages.length > 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length]);
+
   /* ---------- Scrolling ---------- */
 
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
@@ -1462,14 +1499,22 @@ export function ProjectIntelligenceChat(props: {
                 </p>
               </div>
 
-              <div className="flex flex-col overflow-hidden rounded-[10px] border border-border-medium/70">
-                {suggestedQuestions.map((q, qi) => (
+              {/* Hairline rows rather than a bordered box: the box was a
+                  second frame drawn just inside the panel's own, and the rows
+                  read as a list without it. The widget shows three — the
+                  fourth was the one that pushed the quota line off the bottom
+                  of a 380px panel. */}
+              <div className="flex flex-col">
+                {(isConsole
+                  ? suggestedQuestions
+                  : suggestedQuestions.slice(0, 3)
+                ).map((q, qi) => (
                   <button
                     key={q}
                     type="button"
                     onClick={() => handleSend(q)}
-                    className={`flex items-center justify-between gap-2.5 bg-bg-secondary px-3.5 py-3 text-left text-[13px] text-fg-secondary transition-colors hover:bg-bg-tertiary hover:text-fg-primary ${
-                      qi > 0 ? "border-t border-border-medium/50" : ""
+                    className={`flex items-center justify-between gap-2.5 border-b border-border-medium/50 px-0.5 py-3 text-left text-[13px] text-fg-secondary transition-colors hover:text-fg-primary ${
+                      qi === 0 ? "border-t" : ""
                     }`}
                   >
                     {q}
@@ -1573,19 +1618,43 @@ export function ProjectIntelligenceChat(props: {
                           }
                     }
                   >
-                    {/* Console byline: who is answering, and how they got here.
-                        An answer that cannot be attributed cannot be checked. */}
-                    {isConsole && m.role === "agent" && (
-                      <div className="mb-3 flex flex-wrap items-center gap-2.5">
-                        <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[7px] bg-accent-primary/15 text-accent-primary">
-                          <Sparkles size={13} />
-                        </span>
-                        <span className="text-[13px] font-semibold text-fg-primary">
+                    {/* The byline: who is answering, and how they got here.
+                        An answer that cannot be attributed cannot be checked.
+
+                        The widget carries it too. It used to print the agent
+                        name once in its title bar, where it described the
+                        panel rather than the answer and went stale the moment
+                        Auto routed a turn somewhere else; here it sits against
+                        the thing it names. The console keeps the avatar, the
+                        widget does not — 26px of chrome per answer is a real
+                        cost in a 352px panel. */}
+                    {isPanel && m.role === "agent" && (
+                      <div
+                        className={`flex flex-wrap items-center ${
+                          isConsole ? "mb-3 gap-2.5" : "mb-1.5 gap-2"
+                        }`}
+                      >
+                        {isConsole && (
+                          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[7px] bg-accent-primary/15 text-accent-primary">
+                            <Sparkles size={13} />
+                          </span>
+                        )}
+                        <span
+                          className={
+                            isConsole
+                              ? "text-[13px] font-semibold text-fg-primary"
+                              : "kairos-stamp text-[9.5px] text-accent-primary"
+                          }
+                        >
                           {rosterQuery.data?.find(
                             (a) => a.id === (m as { agentId?: string }).agentId,
                           )?.name ?? t("title")}
                         </span>
-                        <span className="kairos-stamp text-[10px] text-fg-tertiary">
+                        <span
+                          className={`kairos-stamp text-fg-tertiary ${
+                            isConsole ? "text-[10px]" : "text-[9.5px]"
+                          }`}
+                        >
                           {(m as { agentId?: string }).agentId
                             ? tc("bylineRouted")
                             : pinnedAgentId
@@ -2387,6 +2456,18 @@ export function ProjectIntelligenceChat(props: {
         </div>
       </div>
 
+      {/* A failed clear, for hosts that have no header to report it in.
+          Silence here would read as "the thread was deleted" while the stored
+          conversation is still there feeding the next answer. */}
+      {props.hideHeader && newChatError && (
+        <div
+          role="alert"
+          className="shrink-0 border-t border-border-medium/60 bg-red-500/10 px-4 py-2 text-[11.5px] text-red-400"
+        >
+          {t("deleteChatFailed", { error: newChatError })}
+        </div>
+      )}
+
       {/* ---- Input form ---- */}
       <form
         className="shrink-0 border-t"
@@ -2428,7 +2509,7 @@ export function ProjectIntelligenceChat(props: {
                 rows={1}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleSend(draft);
                   }
@@ -2440,18 +2521,11 @@ export function ProjectIntelligenceChat(props: {
               <div className="flex flex-wrap items-center gap-2">
                 {props.composerControls}
 
-                {isConsole && (
-                  <span className="kairos-stamp ml-auto hidden text-[10px] text-fg-tertiary sm:inline">
-                    {tc("sendShortcut")}
-                  </span>
-                )}
-
                 <button
                   type="submit"
                   aria-label={t("send")}
-                  title={tc("sendShortcut")}
                   className={`kairos-tap ${
-                    isConsole ? "" : "ml-auto "
+                    isConsole ? "ml-auto " : "ml-auto "
                   }flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
                   style={{
                     backgroundColor:

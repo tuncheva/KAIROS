@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Globe, Plus, Trash2, X } from "lucide-react";
+import { Globe, Plus, Trash2, X } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";

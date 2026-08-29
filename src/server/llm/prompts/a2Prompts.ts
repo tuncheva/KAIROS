@@ -1,8 +1,21 @@
 import type { A2ContextPack } from "../context/a2ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
-import { languageRule } from "~/server/llm/prompts/languageRules";
+import {
+  languageRule,
+  wantsBulgarianGuidance,
+  wantsLocaleFallback,
+} from "~/server/llm/prompts/languageRules";
 
-export function getA2SystemPrompt(context: A2ContextPack): string {
+/**
+ * @param userText - The user's own words this turn (the message, and on the
+ *   handoff path the original message behind the paraphrase). Used only to
+ *   decide whether the Bulgarian guidance is worth including; see
+ *   `wantsBulgarianGuidance`. Omit it and the guidance stays on.
+ */
+export function getA2SystemPrompt(
+  context: A2ContextPack,
+  ...userText: Array<string | undefined | null>
+): string {
   // Memory is rendered as prose below, not dumped with the rest of the pack: a
   // preference buried in a JSON blob reads as data to describe rather than an
   // instruction to follow.
@@ -36,7 +49,8 @@ For ANY action that creates or modifies tasks, you MUST follow this exact flow:
 **Step 2: Notify + Ask for Confirmation**  
 - In your summary, tell the user the draft is ready.
 - ALWAYS ask if they are satisfied and want to apply it, OR if they want to edit/change anything.
-- Example summary: "Alright, I've drafted 5 tasks for your project 👇 Does this look good, or do you want to tweak anything before I add them?"
+- Example summary (English): "Alright, I've drafted 5 tasks for your project 👇 Does this look good, or do you want to tweak anything before I add them?"
+${wantsBulgarianGuidance(...userText) ? `- Example summary (Bulgarian): "Ето чернова с 5 задачи за вашия проект 👇 Изглежда ли добре, или искате да промените нещо преди да ги добавя?"` : "- Write that summary in the language of the user's message, whatever it is."}
 
 **Step 3: Wait**
 - DO NOT auto-apply changes. The system will wait for explicit user confirmation.
@@ -54,21 +68,23 @@ You are in DRAFT mode.
 - You must not execute writes. The application will handle Confirm → Apply after human approval.
 
 ${languageRule({
-    locale: context.locale,
-    fields: [
-      "summary",
-      "reason",
-      "diffPreview entries",
-      "questionsForUser",
-      "risks",
-      "task titles",
-      "descriptions",
-      "acceptanceCriteria",
-    ],
-    bulgarianTerms: ["задача", "проект", "състояние", "приоритет"],
-    writesStoredContent: true,
-  })}
-Write Bulgarian task titles as natural noun phrases: "Имплементиране на потребителска автентикация", not "имплементиране потребителска автентикация".
+  locale: context.locale,
+  bulgarianGuidance: wantsBulgarianGuidance(...userText),
+  localeFallback: wantsLocaleFallback(...userText),
+  fields: [
+    "summary",
+    "reason",
+    "diffPreview entries",
+    "questionsForUser",
+    "risks",
+    "task titles",
+    "descriptions",
+    "acceptanceCriteria",
+  ],
+  bulgarianTerms: ["задача", "проект", "състояние", "приоритет"],
+  writesStoredContent: true,
+})}
+${wantsBulgarianGuidance(...userText) ? `Write Bulgarian task titles as natural noun phrases: "Имплементиране на потребителска автентикация", not "имплементиране потребителска автентикация".` : ""}
 
 ## WRITING QUALITY (CRITICAL)
 - ALWAYS use proper punctuation in ALL text fields: periods at end of sentences, commas for pauses, question marks for questions.
@@ -160,5 +176,6 @@ Return ONLY a JSON object matching:
     "statusChanges": ["string"],
     "deletes": ["string"]
   }
-}`;
+}
+CRITICAL: Every string field (summary, task titles, descriptions, acceptanceCriteria, risks, diffPreview) MUST be in the language of the request. If the user asked in Bulgarian, write EVERYTHING in Bulgarian.`;
 }

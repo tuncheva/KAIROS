@@ -5,7 +5,7 @@ import { api } from '~/trpc/react';
 import { useSession } from 'next-auth/react';
 import { useUploadThing } from '~/lib/uploadthing';
 import Image from 'next/image';
-import { X, ImagePlus, Loader2, MapPin, Calendar, Clock, ChevronDown } from 'lucide-react';
+import { X, ImagePlus, Loader2, MapPin, Calendar, Clock, ChevronDown } from "~/components/ui/icons.server";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useTranslations } from "next-intl";
 import {

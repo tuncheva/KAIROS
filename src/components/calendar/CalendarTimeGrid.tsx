@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, Plus } from "lucide-react";
+import { Lock, Plus } from "~/components/ui/icons";
 import { cn } from "~/lib/utils";
 import {
   ROW_HEIGHT,

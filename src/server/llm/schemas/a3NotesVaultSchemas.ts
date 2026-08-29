@@ -1,10 +1,12 @@
 import { z } from "zod";
 
+import { plainString } from "~/server/llm/core/plainText";
+
 export const NotesVaultOperationCreateSchema = z
   .object({
     type: z.literal("create"),
     content: z.string().min(1).max(20_000),
-    reason: z.string().max(500).optional(),
+    reason: plainString(z.string().max(500)).optional(),
   })
   // Use strip() instead of strict() — LLMs sometimes add extra keys
   .strip();
@@ -14,7 +16,7 @@ export const NotesVaultOperationUpdateSchema = z
     type: z.literal("update"),
     noteId: z.number().int().positive(),
     nextContent: z.string().min(1).max(20_000),
-    reason: z.string().max(500).optional(),
+    reason: plainString(z.string().max(500)).optional(),
     /**
      * Must be true when the target note is password-protected.
      * Enforced server-side at draft validation time.
@@ -27,7 +29,7 @@ export const NotesVaultOperationDeleteSchema = z
   .object({
     type: z.literal("delete"),
     noteId: z.number().int().positive(),
-    reason: z.string().min(1).max(500),
+    reason: plainString(z.string().min(1).max(500)),
     /** Must be true for deletes to be considered at all */
     dangerous: z.literal(true),
   })
@@ -48,13 +50,13 @@ export const NotesVaultDraftSchema = z
         z
           .object({
             noteId: z.number().int().positive(),
-            reason: z.string().min(1).max(500),
+            reason: plainString(z.string().min(1).max(500)),
           })
           .strip(),
       )
       .max(50)
       .default([]),
-    summary: z.string().min(1).max(2000),
+    summary: plainString(z.string().min(1).max(2000)),
     /** Computed server-side from normalized plan JSON; model may omit */
     planHash: z.string().min(8).max(128).optional(),
   })

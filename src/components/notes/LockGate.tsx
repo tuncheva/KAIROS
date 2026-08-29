@@ -15,7 +15,7 @@
 
 import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { AlertCircle, Eye, EyeOff, Loader2, Lock } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Loader2, Lock } from "~/components/ui/icons";
 
 export function LockGate({
   password,

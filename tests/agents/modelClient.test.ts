@@ -190,7 +190,9 @@ describe("modelClient — responses", () => {
   it.each([
     [
       "deepseek-ai/deepseek-v4-flash-0731",
-      { thinking: true, reasoning_effort: "high" },
+      // "medium" is the strong-tier default with `LLM_REASONING_EFFORT` unset,
+      // which is how the env is mocked at the top of this file.
+      { thinking: true, reasoning_effort: "medium" },
     ],
     ["nvidia/nemotron-3-super-120b-a12b", { enable_thinking: true }],
   ])("sends the chat template kwargs %s expects", async (model, expected) => {
@@ -202,6 +204,45 @@ describe("modelClient — responses", () => {
     // The dated suffix on the DeepSeek id is deliberate — entries match by
     // prefix, so a new build of a known family inherits its flags for free.
     expect(requestBody(0).chat_template_kwargs).toEqual(expected);
+  });
+
+  /**
+   * Kimi K3 takes effort as a *top-level* field, not a chat-template flag, and
+   * defaults to "max" when it is absent. Omitting it is therefore not a neutral
+   * default — it is the most expensive setting the model has, on every call.
+   */
+  it("sends a top-level reasoning_effort for models that take one", async () => {
+    fetchMock.mockResolvedValue(completion({ role: "assistant", content: "ok" }));
+
+    await chatCompletion({ messages: USER, model: "moonshotai/kimi-k3" });
+
+    const body = requestBody(0);
+    expect(body.reasoning_effort).toBe("high");
+    // K3 dropped the K2.x flag entirely; sending it back is a silent no-op at
+    // best and a template error at worst.
+    expect(body).not.toHaveProperty("chat_template_kwargs");
+  });
+
+  it("drops the fast tier to the cheapest rung the model offers", async () => {
+    fetchMock.mockResolvedValue(completion({ role: "assistant", content: "ok" }));
+
+    await chatCompletion({
+      messages: USER,
+      model: "moonshotai/kimi-k3",
+      tier: "fast",
+    });
+
+    // The whole point of a separate tier: titles and JSON repair should never
+    // pay the reasoning budget that planning a backlog does.
+    expect(requestBody(0).reasoning_effort).toBe("low");
+  });
+
+  it("sends no reasoning_effort for a model without that dial", async () => {
+    fetchMock.mockResolvedValue(completion({ role: "assistant", content: "ok" }));
+
+    await chatCompletion({ messages: USER, model: "meta/some-instruct-model" });
+
+    expect(requestBody(0)).not.toHaveProperty("reasoning_effort");
   });
 
   it("sends no chat template kwargs for a plain instruct model", async () => {
@@ -297,7 +338,7 @@ describe("modelClient — truncation", () => {
 });
 
 describe("modelClient — retries and fallback", () => {
-  it.each([408, 425, 429, 500, 502, 503, 504])(
+  it.each([408, 425, 500, 502, 503, 504])(
     "retries HTTP %i",
     async (status) => {
       fetchMock
@@ -339,6 +380,48 @@ describe("modelClient — retries and fallback", () => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
     },
   );
+
+  /**
+   * 429 splits in two. A burst limit clears in a moment and says so with
+   * `Retry-After`; a per-account quota does not clear at all, and providers
+   * signal that by sending no header. Sleeping through the second kind cost the
+   * full ladder on both models before reaching one that could answer.
+   */
+  it("advances the chain immediately on a 429 with no Retry-After", async () => {
+    fetchMock
+      .mockResolvedValueOnce(errorResponse(429))
+      .mockResolvedValueOnce(
+        completion({ role: "assistant", content: "from fallback" }, {
+          model: "fallback-model",
+        }),
+      );
+
+    const res = await chatCompletion({ messages: USER });
+
+    expect(res.content).toBe("from fallback");
+    // One attempt on the primary, not three: the quota will not clear inside a
+    // backoff, so the attempts after the first are pure latency.
+    expect(fetchMock.mock.calls.map((_c, i) => requestBody(i).model)).toEqual([
+      "primary-model",
+      "fallback-model",
+    ]);
+  });
+
+  it("still retries the same model on a 429 that carries Retry-After", async () => {
+    fetchMock
+      .mockResolvedValueOnce(errorResponse(429, { "Retry-After": "0" }))
+      .mockResolvedValueOnce(completion({ role: "assistant", content: "ok" }));
+
+    const res = await chatCompletion({ messages: USER });
+
+    expect(res.content).toBe("ok");
+    // The provider named a wait, so it is a burst limit and the same model is
+    // expected to serve the next attempt.
+    expect(fetchMock.mock.calls.map((_c, i) => requestBody(i).model)).toEqual([
+      "primary-model",
+      "primary-model",
+    ]);
+  });
 
   it("falls back to the secondary model once the primary is exhausted", async () => {
     fetchMock

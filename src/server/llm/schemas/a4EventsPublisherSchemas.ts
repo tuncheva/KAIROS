@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { plainString } from "~/server/llm/core/plainText";
+
 /* ─── Regions (mirrors event router enum) ─── */
 const RegionEnum = z.enum([
   "sofia",
@@ -18,7 +20,7 @@ const RegionEnum = z.enum([
 
 export const EventCreateSchema = z
   .object({
-    title: z.string().min(1).max(256),
+    title: plainString(z.string().min(1).max(256)),
     description: z.string().min(1).max(5000),
     eventDate: z.string().describe("ISO-8601 UTC datetime"),
     region: RegionEnum,
@@ -37,7 +39,7 @@ export const EventUpdateSchema = z
     eventId: z.number().int().positive(),
     patch: z
       .object({
-        title: z.string().min(1).max(256).optional(),
+        title: plainString(z.string().min(1).max(256)).optional(),
         description: z.string().min(1).max(5000).optional(),
         eventDate: z.string().optional(),
         region: RegionEnum.optional(),
@@ -49,14 +51,14 @@ export const EventUpdateSchema = z
         ),
       })
       .strict(),
-    reason: z.string().max(500).optional(),
+    reason: plainString(z.string().max(500)).optional(),
   })
   .strict();
 
 export const EventDeleteSchema = z
   .object({
     eventId: z.number().int().positive(),
-    reason: z.string().min(1).max(500),
+    reason: plainString(z.string().min(1).max(500)),
     dangerous: z.literal(true),
   })
   .strip();
@@ -64,7 +66,7 @@ export const EventDeleteSchema = z
 export const EventCommentAddSchema = z
   .object({
     eventId: z.number().int().positive(),
-    text: z.string().min(1).max(500),
+    text: plainString(z.string().min(1).max(500)),
   })
   .strip();
 
@@ -72,7 +74,7 @@ export const EventCommentDeleteSchema = z
   .object({
     eventId: z.number().int().positive(),
     commentId: z.number().int().positive(),
-    reason: z.string().min(1).max(500),
+    reason: plainString(z.string().min(1).max(500)),
     dangerous: z.literal(true),
   })
   .strip();
@@ -107,16 +109,16 @@ export const EventsPublisherDraftSchema = z
       .default({ add: [], remove: [] }),
     rsvps: z.array(EventRsvpSchema).max(20).default([]),
     likes: z.array(EventLikeToggleSchema).max(20).default([]),
-    summary: z.string().min(1).max(2000),
-    risks: z.array(z.string().max(500)).max(10).default([]),
-    questionsForUser: z.array(z.string().max(500)).max(5).default([]),
+    summary: plainString(z.string().min(1).max(2000)),
+    risks: z.array(plainString(z.string().max(500))).max(10).default([]),
+    questionsForUser: z.array(plainString(z.string().max(500))).max(5).default([]),
     diffPreview: z
       .object({
-        creates: z.array(z.string()).default([]),
-        updates: z.array(z.string()).default([]),
-        deletes: z.array(z.string()).default([]),
-        comments: z.array(z.string()).default([]),
-        rsvps: z.array(z.string()).default([]),
+        creates: z.array(plainString(z.string())).default([]),
+        updates: z.array(plainString(z.string())).default([]),
+        deletes: z.array(plainString(z.string())).default([]),
+        comments: z.array(plainString(z.string())).default([]),
+        rsvps: z.array(plainString(z.string())).default([]),
       })
       .strip()
       .default({ creates: [], updates: [], deletes: [], comments: [], rsvps: [] }),

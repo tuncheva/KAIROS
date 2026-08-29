@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "~/components/ui/icons";
 
 const STEPS = [
     { n: "01", titleKey: "howOpenTitle", bodyKey: "howOpenBody" },

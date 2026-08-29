@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "~/components/ui/icons";
 import { useLocale, useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";

@@ -25,6 +25,7 @@ import type { TRPCContext } from "~/server/api/trpc";
 import { externalEvents, projects, tasks } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
 import { chatCompletion } from "~/server/llm/core/modelClient";
+import { toPlainText } from "~/server/llm/core/plainText";
 import {
   LOCALE_NAMES,
   type SupportedLocale,
@@ -266,7 +267,7 @@ Reply with the message text only.`,
       ],
     });
 
-    const text = res.content.trim();
+    const text = toPlainText(res.content);
     return text.length > 0 ? text : fallbackPrep(facts);
   } catch (err) {
     log.warn("meeting prep generation failed, sending the plain version", { err });

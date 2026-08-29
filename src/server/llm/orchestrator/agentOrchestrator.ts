@@ -18,24 +18,12 @@
  * did not change. Import a specific module directly when you only need one agent.
  */
 
-import {
-  a1Concierge,
-} from "./a1Concierge";
-import {
-  a2TaskPlanner,
-} from "./a2TaskPlanner";
-import {
-  a3NotesVault,
-} from "./a3NotesVault";
-import {
-  a4EventsPublisher,
-} from "./a4EventsPublisher";
-import {
-  a5OrgAdmin,
-} from "./a5OrgAdmin";
-import {
-  taskGeneration,
-} from "./taskGeneration";
+import { a1Concierge } from "./a1Concierge";
+import { a2TaskPlanner } from "./a2TaskPlanner";
+import { a3NotesVault } from "./a3NotesVault";
+import { a4EventsPublisher } from "./a4EventsPublisher";
+import { a5OrgAdmin } from "./a5OrgAdmin";
+import { taskGeneration } from "./taskGeneration";
 export type {
   AgentId,
   AgentDraftInput,

@@ -40,6 +40,7 @@ import {
   type ToolCall,
   type ToolDefinition,
 } from "./modelClient";
+import { createPlainTextFilter } from "~/server/llm/core/plainText";
 import { createSummaryStream } from "./summaryStream";
 
 const log = createLogger("llm.toolLoop");
@@ -227,7 +228,12 @@ async function streamAnswer(
   request: Parameters<typeof chatCompletion>[0],
   onAnswerDelta: (text: string) => void,
 ): Promise<ChatResponse> {
-  const scanner = createSummaryStream({ onDelta: onAnswerDelta });
+  // The client renders these deltas as plain text, so the Markdown the model
+  // insists on writing has to come off before they leave the server — not just
+  // off the final object, or the user watches the asterisks type themselves out
+  // and then vanish. See `createPlainTextFilter`.
+  const plain = createPlainTextFilter(onAnswerDelta);
+  const scanner = createSummaryStream({ onDelta: (text) => plain.push(text) });
 
   for await (const event of streamCompletion(request)) {
     if (event.type === "content") {
@@ -236,6 +242,7 @@ async function streamAnswer(
     }
     if (event.type === "done") {
       scanner.end();
+      plain.end();
       return {
         content: event.content,
         reasoning: event.reasoning,
@@ -253,6 +260,7 @@ async function streamAnswer(
   // was cut. Surfaced as an error rather than an empty answer, so the caller's
   // fallback path runs instead of the user seeing a blank reply.
   scanner.end();
+  plain.end();
   throw new Error("The model stream ended without completing.");
 }
 

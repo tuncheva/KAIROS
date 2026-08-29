@@ -171,7 +171,11 @@ export const organizationRouter = createTRPCRouter({
     return memberships.map((m) => ({
       id: m.organization.id,
       name: m.organization.name,
+      image: m.organization.image,
       canInvite: canInvite(m),
+      /* Only the creator may delete the workspace, and the row has to know
+         that before it can decide whether to paint the control. */
+      isOwner: m.organization.createdById === ctx.session.user.id,
       role: m.role,
       joinedAt: m.joinedAt,
       createdAt: m.organization.createdAt,
@@ -245,6 +249,7 @@ export const organizationRouter = createTRPCRouter({
           organization: {
             id: membership.organization.id,
             name: membership.organization.name,
+            image: membership.organization.image,
           },
           role: membership.role,
           canInvite: canInvite(membership),
@@ -277,11 +282,50 @@ export const organizationRouter = createTRPCRouter({
       organization: {
         id: fallback.organization.id,
         name: fallback.organization.name,
+        image: fallback.organization.image,
       },
       role: fallback.role,
       canInvite: canInvite(fallback),
     };
   }),
+
+  /**
+   * Set or clear the workspace's logo. Admin-only, mirroring the other
+   * organization-wide settings — a logo is branding, not a personal preference.
+   */
+  updateImage: protectedProcedure
+    .input(
+      z.object({
+        organizationId: z.number(),
+        image: z.string().url().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [membership] = await ctx.db
+        .select({ role: organizationMembers.role })
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.userId, ctx.session.user.id),
+            eq(organizationMembers.organizationId, input.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (!membership || membership.role !== "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only an admin can change the workspace logo.",
+        });
+      }
+
+      await ctx.db
+        .update(organizations)
+        .set({ image: input.image, updatedAt: new Date() })
+        .where(eq(organizations.id, input.organizationId));
+
+      return { success: true, image: input.image };
+    }),
 
   setActive: protectedProcedure
     .input(z.object({ organizationId: z.number() }))
@@ -725,6 +769,104 @@ export const organizationRouter = createTRPCRouter({
       }
 
       return { success: true };
+    }),
+
+  /**
+   * Deleting the whole workspace.
+   *
+   * Restricted to the creator: an admin can be promoted by another admin, but
+   * destroying everyone else's projects, tasks and threads is the one act that
+   * stays with whoever made the place.
+   *
+   * `confirmName` is checked here and not only in the dialog. The typed-name
+   * gate is what makes this irreversible action deliberate, and a gate that
+   * lives only in the client is not a gate — it protects nobody calling the
+   * API directly, and nobody whose UI state got out of step with the row they
+   * meant to delete.
+   *
+   * Everything owned by the organization goes with it through the foreign-key
+   * cascades (members, roles, invites, join codes, projects, conversations).
+   * `users.active_organization_id` is the exception: it is a plain integer with
+   * no reference, so it would be left pointing at an organization that no
+   * longer exists. Members are repointed by hand, below.
+   */
+  delete: protectedProcedure
+    .input(
+      z.object({
+        organizationId: z.number(),
+        confirmName: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [organization] = await ctx.db
+        .select()
+        .from(organizations)
+        .where(eq(organizations.id, input.organizationId))
+        .limit(1);
+
+      if (!organization) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Organization not found",
+        });
+      }
+
+      if (organization.createdById !== ctx.session.user.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only the workspace owner can delete it",
+        });
+      }
+
+      /* Trimmed, because the name is typed by hand and a trailing space is a
+         typing artefact rather than a different answer. Case is not folded:
+         the point of the gate is that the user reproduced the name. */
+      if (input.confirmName.trim() !== organization.name) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The name you typed does not match the workspace name",
+        });
+      }
+
+      /* Read the membership before the delete cascades it away. */
+      const members = await ctx.db
+        .select({ userId: organizationMembers.userId })
+        .from(organizationMembers)
+        .where(eq(organizationMembers.organizationId, organization.id));
+
+      await ctx.db
+        .delete(organizations)
+        .where(eq(organizations.id, organization.id));
+
+      /* Each former member lands on another workspace of theirs, or back in
+         personal mode — the same repointing `leave` does, applied to everyone
+         at once. */
+      for (const member of members) {
+        const [user] = await ctx.db
+          .select({ activeOrganizationId: users.activeOrganizationId })
+          .from(users)
+          .where(eq(users.id, member.userId))
+          .limit(1);
+
+        if (user?.activeOrganizationId !== organization.id) continue;
+
+        const [nextMembership] = await ctx.db
+          .select({ organizationId: organizationMembers.organizationId })
+          .from(organizationMembers)
+          .where(eq(organizationMembers.userId, member.userId))
+          .limit(1);
+
+        await ctx.db
+          .update(users)
+          .set(
+            nextMembership
+              ? { activeOrganizationId: nextMembership.organizationId }
+              : { usageMode: "personal", activeOrganizationId: null },
+          )
+          .where(eq(users.id, member.userId));
+      }
+
+      return { success: true, name: organization.name };
     }),
 
   updateMemberPermissions: protectedProcedure

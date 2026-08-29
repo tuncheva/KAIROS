@@ -760,12 +760,22 @@
         "copyJoinLink": "Copy join link",
         "switch": "Switch",
         "leave": "Leave organization",
+        "leaveTitle": "Leave {name}?",
         "leaveConfirm": "Are you sure you want to leave this organization?",
+        "delete": "Delete organization",
+        "deleteTitle": "Delete {name}?",
+        "deleteWarning": "This permanently deletes {name} for every member, along with its projects, tasks, roles, invites and conversations. This cannot be undone.",
+        "deleteContinue": "Continue",
+        "deleteConfirmTitle": "Type the name to confirm",
+        "deleteConfirmMessage": "To confirm, type the workspace name exactly as it appears: {name}",
+        "deleteConfirmLabel": "Workspace name",
+        "deleteFinal": "Delete forever",
         "emptyTitle": "No organizations yet",
         "emptyDesc": "Create or join an organization to collaborate with your team",
         "create": "Create Organization",
         "join": "Join Organization",
         "namePlaceholder": "Organization name",
+        "uploadLogo": "Replace",
         "accessCodePlaceholder": "Enter access code (e.g. XXXX-XXXX-XXXX)",
         "showQr": "Show QR",
         "scanQrHint": "Scan this QR code to open the join link on mobile.",
@@ -832,6 +842,7 @@
         "organizationJoined": "Joined {name}",
         "organizationSwitched": "Switched organization",
         "organizationLeft": "Left organization",
+        "organizationDeleted": "Deleted {name}",
         "roleUpdated": "Role updated",
         "memberRemoved": "Member removed",
         "inviteSent": "Invite sent",
@@ -846,7 +857,8 @@
       "common": {
         "create": "Create",
         "cancel": "Cancel",
-        "join": "Join"
+        "join": "Join",
+        "working": "Working…"
       }
     },
     "ai": {
@@ -2376,6 +2388,7 @@
     "follow": "Follow",
     "unfollow": "Unfollow",
     "message": "Message",
+    "messageNeedsConnection": "Follow each other to start a chat.",
     "editProfile": "Edit your profile",
     "localTime": "Local time",
     "organization": "Organization",

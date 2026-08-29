@@ -33,7 +33,7 @@ import {
 import { buildA5Context } from "~/server/llm/context/a5ContextBuilder";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 import { getA5SystemPrompt } from "~/server/llm/prompts/a5Prompts";
-import { languageAnchorMessages } from "~/server/llm/prompts/languageRules";
+import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
 import { localized, type LocalizedText } from "~/server/llm/locale";
 import {
   OrgAdminDraftSchema,
@@ -189,12 +189,20 @@ export const a5OrgAdmin = {
       return { draftId, plan: stored };
     }
 
-    const systemPrompt = getA5SystemPrompt(contextPack);
+    const systemPrompt = getA5SystemPrompt(
+      contextPack,
+      input.originalMessage,
+      input.message,
+    );
 
     const parseResult = await completeJson({
       messages: [
         { role: "system", content: systemPrompt },
-        ...languageAnchorMessages(input.originalMessage, input.message),
+        ...replyLanguageMessages({
+          locale: contextPack.locale,
+          message: input.message,
+          originalMessage: input.originalMessage,
+        }),
         { role: "user", content: input.message },
       ],
       schema: OrgAdminDraftSchema,
@@ -231,24 +239,28 @@ export const a5OrgAdmin = {
         (op) =>
           inScope(op) &&
           notSelf(op) &&
-          (administrable.get(op.organizationId)?.myFlags.canManageRoles ?? false),
+          (administrable.get(op.organizationId)?.myFlags.canManageRoles ??
+            false),
       ),
       permissionChanges: raw.permissionChanges.filter(
         (op) =>
           inScope(op) &&
           notSelf(op) &&
-          (administrable.get(op.organizationId)?.myFlags.canManageRoles ?? false),
+          (administrable.get(op.organizationId)?.myFlags.canManageRoles ??
+            false),
       ),
       removals: raw.removals.filter(
         (op) =>
           inScope(op) &&
           notSelf(op) &&
-          (administrable.get(op.organizationId)?.myFlags.canKickMembers ?? false),
+          (administrable.get(op.organizationId)?.myFlags.canKickMembers ??
+            false),
       ),
       invites: raw.invites.filter(
         (op) =>
           inScope(op) &&
-          (administrable.get(op.organizationId)?.myFlags.canAddMembers ?? false),
+          (administrable.get(op.organizationId)?.myFlags.canAddMembers ??
+            false),
       ),
     };
 
@@ -267,10 +279,7 @@ export const a5OrgAdmin = {
     return { draftId, plan };
   },
 
-  async orgAdminConfirm(input: {
-    ctx: TRPCContext;
-    draftId: string;
-  }): Promise<{
+  async orgAdminConfirm(input: { ctx: TRPCContext; draftId: string }): Promise<{
     confirmationToken: string;
     summary: {
       roleChanges: number;
@@ -343,10 +352,16 @@ export const a5OrgAdmin = {
     const tokenPayload = readConfirmationToken(input.confirmationToken);
 
     if (tokenPayload.userId !== userId) {
-      throw new TRPCError({ code: "FORBIDDEN", message: "Token user mismatch" });
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Token user mismatch",
+      });
     }
     if (tokenPayload.draftId !== input.draftId) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Token/draft mismatch" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Token/draft mismatch",
+      });
     }
     if (Date.now() > tokenPayload.expiresAt) {
       throw new TRPCError({
@@ -398,7 +413,10 @@ export const a5OrgAdmin = {
     const callerCache = new Map<number, CallerMembership | null>();
     const caller = async (orgId: number) => {
       if (!callerCache.has(orgId)) {
-        callerCache.set(orgId, await callerMembership(db as never, orgId, userId));
+        callerCache.set(
+          orgId,
+          await callerMembership(db as never, orgId, userId),
+        );
       }
       return callerCache.get(orgId) ?? null;
     };
@@ -417,7 +435,9 @@ export const a5OrgAdmin = {
         continue;
       }
       if (op.targetUserId === userId) {
-        results.refused.push(`${op.targetName}: you cannot change your own role.`);
+        results.refused.push(
+          `${op.targetName}: you cannot change your own role.`,
+        );
         continue;
       }
 
@@ -457,7 +477,8 @@ export const a5OrgAdmin = {
         .returning({ id: organizationMembers.id });
 
       if (updated[0]) results.rolesChanged += 1;
-      else results.refused.push(`${op.targetName}: they are no longer a member.`);
+      else
+        results.refused.push(`${op.targetName}: they are no longer a member.`);
     }
 
     // ---- permission changes
@@ -507,7 +528,8 @@ export const a5OrgAdmin = {
         .returning({ id: organizationMembers.id });
 
       if (updated[0]) results.permissionsChanged += 1;
-      else results.refused.push(`${op.targetName}: they are no longer a member.`);
+      else
+        results.refused.push(`${op.targetName}: they are no longer a member.`);
     }
 
     // ---- removals

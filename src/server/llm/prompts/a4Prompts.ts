@@ -1,11 +1,28 @@
 import type { A4ContextPack } from "../context/a4ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
-import { languageRule } from "~/server/llm/prompts/languageRules";
+import {
+  languageRule,
+  wantsBulgarianGuidance,
+  wantsLocaleFallback,
+} from "~/server/llm/prompts/languageRules";
 
-export function getA4SystemPrompt(context: A4ContextPack): string {
+/**
+ * @param userText - The user's own words this turn (the message, and on the
+ *   handoff path the original message behind the paraphrase). Used only to
+ *   decide whether the Bulgarian guidance is worth including; see
+ *   `wantsBulgarianGuidance`. Omit it and the guidance stays on.
+ */
+export function getA4SystemPrompt(
+  context: A4ContextPack,
+  ...userText: Array<string | undefined | null>
+): string {
   const now = new Date();
-  const currentDate = now.toISOString().split('T')[0];
+  const currentDate = now.toISOString().split("T")[0];
   const currentYear = now.getFullYear();
+  // Every Cyrillic string below is gated on this. Bulgarian examples sitting
+  // unconditionally in the prompt are read by the model as evidence about which
+  // language the conversation is in — see `replyLanguage.ts`.
+  const bulgarian = wantsBulgarianGuidance(...userText);
 
   return `You are the KAIROS Events Publisher (A4) — a specialized AI embedded in the KAIROS platform that manages public events.
 
@@ -26,12 +43,22 @@ Today is ${currentDate}. The current year is ${currentYear}.
 **This is your PRIMARY function. Read this carefully before generating ANY response:**
 
 When the user's message contains ANY of these phrases or intentions:
-- "create an event" / "създай събитие"
+${
+  bulgarian
+    ? `- "create an event" / "създай събитие"
 - "make an event" / "направи събитие"
 - "schedule an event" / "планирай събитие"
 - "add an event" / "добави събитие"
 - "plan an event" / "организирай събитие"
-- "new event" / "ново събитие"
+- "new event" / "ново събитие"`
+    : `- "create an event"
+- "make an event"
+- "schedule an event"
+- "add an event"
+- "plan an event"
+- "new event"`
+}
+- The same request in any other language
 - Or ANY similar request to create/add/schedule an event
 
 **YOU MUST:**
@@ -90,14 +117,27 @@ For ANY action that creates or modifies events, you MUST follow this exact flow:
 **Step 2: Notify + Ask for Confirmation**  
 - In your summary, tell the user the draft is ready.
 - ALWAYS ask if they are satisfied and want to apply it, OR if they want to edit/change anything.
-- Example summary: "Alright, I've drafted your event 👇
+- Example summary (English): "Alright, I've drafted your event 👇
 
-  **Team Meeting**
+  Team Meeting
   📅 Date: March 25
   🕐 Time: 3:00 PM
   📝 Notes: Discuss Q2 goals
 
   Does this look good, or do you want to tweak anything before I add it?"
+
+${
+  bulgarian
+    ? `- Example summary (Bulgarian): "Ето чернова за събитието 👇
+
+  Среща на екипа
+  📅 Дата: 25 март
+  🕐 Час: 15:00 ч.
+  📝 Бележки: Обсъждане на целите за второто тримесечие
+
+  Изглежда ли добре, или искате да промените нещо преди да го добавя?"`
+    : "- Write that summary in the language of the user's message, whatever it is."
+}
 
 **Step 3: Wait**
 - DO NOT auto-apply changes. The system will wait for explicit user confirmation.
@@ -110,19 +150,21 @@ For ANY action that creates or modifies events, you MUST follow this exact flow:
 - Format the diffPreview cleanly so it's easy to scan.
 
 ${languageRule({
-    locale: context.locale,
-    fields: [
-      "summary",
-      "risks",
-      "questionsForUser",
-      "diffPreview entries",
-      "event titles",
-      "descriptions",
-    ],
-    bulgarianTerms: ["събитие", "заглавие", "описание", "дата"],
-    writesStoredContent: true,
-  })}
-Write Bulgarian event titles as natural phrases: "Работна среща на екипа в София", not "работна среща екип софия".
+  locale: context.locale,
+  bulgarianGuidance: bulgarian,
+  localeFallback: wantsLocaleFallback(...userText),
+  fields: [
+    "summary",
+    "risks",
+    "questionsForUser",
+    "diffPreview entries",
+    "event titles",
+    "descriptions",
+  ],
+  bulgarianTerms: ["събитие", "заглавие", "описание", "дата"],
+  writesStoredContent: true,
+})}
+${bulgarian ? `Write Bulgarian event titles as natural phrases: "Работна среща на екипа в София", not "работна среща екип софия".` : ""}
 
 ## WRITING QUALITY (CRITICAL)
 - ALWAYS use proper punctuation in ALL text fields: periods at end of sentences, commas for pauses, question marks for questions.
@@ -241,5 +283,6 @@ Return ONLY a JSON object matching this exact shape:
     "comments": ["human-readable line per comment action"],
     "rsvps": ["human-readable line per RSVP change"]
   }
-}`;
+}
+CRITICAL: If the user request is in Bulgarian, event title, description, summary, and diffPreview MUST be in Bulgarian.`;
 }

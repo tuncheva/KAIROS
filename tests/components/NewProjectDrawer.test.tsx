@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /** Captures what the drawer actually sends to `project.create`. */
@@ -24,6 +24,13 @@ vi.mock("~/trpc/react", () => {
 });
 
 const { NewProjectDrawer } = await import("~/components/projects/NewProjectDrawer");
+const { DRAWER_EXIT_MS } = await import("~/components/ui/drawerExit");
+
+/** The drawer holds itself on screen for its exit, so closing is not synchronous. */
+const waitForClose = () =>
+  waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), {
+    timeout: DRAWER_EXIT_MS + 500,
+  });
 
 const setup = () => {
   const user = userEvent.setup();
@@ -49,11 +56,18 @@ describe("NewProjectDrawer", () => {
     expect(await screen.findByPlaceholderText(/Thesis, Q4 launch/)).toHaveFocus();
   });
 
-  it("closes on Escape", async () => {
+  it("closes on Escape, playing its exit on the way out", async () => {
     const { user } = setup();
     await user.click(screen.getByRole("button", { name: "New project" }));
     await user.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // Still mounted, sliding away and no longer swallowing clicks. Unmounting
+    // on the keypress is what made the drawer look like it had crashed.
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.className).toContain("pointer-events-none");
+    expect(dialog.querySelector("aside")?.className).toContain("projects-drawer-out");
+
+    await waitForClose();
   });
 
   it("labels the two identically-worded pill sets apart", async () => {
@@ -124,6 +138,11 @@ describe("NewProjectDrawer", () => {
 
     await user.type(screen.getByPlaceholderText(/Thesis, Q4 launch/), "Abandoned");
     await user.click(screen.getByRole("button", { name: "Cancel" }));
+    // The fields survive the exit — an emptied form sliding away reads as a
+    // glitch — so the reset only lands once the drawer is gone.
+    expect(screen.getByPlaceholderText(/Thesis, Q4 launch/)).toHaveValue("Abandoned");
+    await waitForClose();
+
     await user.click(screen.getByRole("button", { name: "New project" }));
     expect(screen.getByPlaceholderText(/Thesis, Q4 launch/)).toHaveValue("");
   });

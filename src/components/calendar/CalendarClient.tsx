@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Filter, Plus, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Filter, Plus, Search } from "~/components/ui/icons";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { useLocale, useTranslations } from "next-intl";

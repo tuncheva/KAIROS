@@ -14,7 +14,7 @@ import {
   Search,
   StickyNote,
   Trash2,
-} from "lucide-react";
+} from "~/components/ui/icons";
 import { useLocale, useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
@@ -22,6 +22,7 @@ import { useToast } from "~/components/providers/ToastProvider";
 import { Overlay } from "~/components/ui/Overlay";
 import { NewProjectDrawer } from "./NewProjectDrawer";
 import { ProfileLink } from "~/components/profile/ProfileLink";
+import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { ProjectTasksPanel, ProjectTeamPanel } from "./ProjectTasksPanel";
 import {
   isRecent,
@@ -52,7 +53,13 @@ const rise = (delay: number) => ({ animationDelay: `${delay}s` });
 
 const FILTERS: FilterKey[] = ["all", "track", "risk", "done"];
 const SORTS: SortKey[] = ["updated", "progress", "name"];
-const TIMELINE_FILTERS: TimelineFilter[] = ["all", "task", "status", "note", "due"];
+const TIMELINE_FILTERS: TimelineFilter[] = [
+  "all",
+  "task",
+  "status",
+  "note",
+  "due",
+];
 
 /** The three readings of one project: what to do, who is on it, what happened. */
 const DETAIL_TABS = ["tasks", "team", "timeline"] as const;
@@ -91,7 +98,6 @@ const HEALTH_BORDER: Record<Health, string> = {
  * tokens: they distinguish people from each other, so an accent switch must not
  * collapse four collaborators into one colour.
  */
-const AVATAR_TINTS = ["#c084fc", "#22d3ee", "#fbbf24", "#4ade80", "#f87171", "#a5b4fc"];
 
 const EVENT_ICON: Record<EventKind, typeof Check> = {
   task: Check,
@@ -150,9 +156,15 @@ export function ProjectsWorkspace({
     [projectsQuery.data, now],
   );
 
-  const shown = useMemo(() => visibleRows(rows, { query, filter, sort }), [rows, query, filter, sort]);
+  const shown = useMemo(
+    () => visibleRows(rows, { query, filter, sort }),
+    [rows, query, filter, sort],
+  );
   const totals = useMemo(() => workspaceTotals(rows), [rows]);
-  const opened = useMemo(() => rows.find((row) => row.id === openId) ?? null, [rows, openId]);
+  const opened = useMemo(
+    () => rows.find((row) => row.id === openId) ?? null,
+    [rows, openId],
+  );
 
   if (projectsQuery.isLoading) {
     return <LoadingState />;
@@ -184,10 +196,10 @@ export function ProjectsWorkspace({
       ) : (
         <>
           <header className="dash-rise" style={rise(0.05)}>
-            <h1 className="m-0 text-[34px] font-semibold leading-[1.1] tracking-[-0.025em] text-fg-primary">
+            <h1 className="text-fg-primary m-0 text-[34px] leading-[1.1] font-semibold tracking-[-0.025em]">
               {t("title")}
             </h1>
-            <p className="mt-2.5 text-[15px] text-fg-tertiary">
+            <p className="text-fg-tertiary mt-2.5 text-[15px]">
               {t("summary", {
                 shown: shown.length,
                 projects: rows.length,
@@ -197,23 +209,34 @@ export function ProjectsWorkspace({
             </p>
           </header>
 
-          <div className="dash-rise flex flex-wrap items-center gap-3" style={rise(0.1)}>
-            <label className="flex h-9 w-full items-center gap-2.5 rounded-lg border border-border-light/60 bg-bg-secondary px-3 sm:w-[260px]">
-              <Search size={15} className="flex-none text-fg-quaternary" aria-hidden />
+          <div
+            className="dash-rise flex flex-wrap items-center gap-3"
+            style={rise(0.1)}
+          >
+            <label className="border-border-light/60 bg-bg-secondary flex h-9 w-full items-center gap-2.5 rounded-lg border px-3 sm:w-[260px]">
+              <Search
+                size={15}
+                className="text-fg-quaternary flex-none"
+                aria-hidden
+              />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={t("searchPlaceholder")}
                 aria-label={t("searchPlaceholder")}
-                className="min-w-0 flex-1 bg-transparent text-sm text-fg-primary outline-none placeholder:text-fg-quaternary"
+                className="text-fg-primary placeholder:text-fg-quaternary min-w-0 flex-1 bg-transparent text-sm outline-none"
               />
             </label>
 
             <div className="flex gap-1.5">
               {FILTERS.map((key) => (
-                <Toggle key={key} active={filter === key} onClick={() => setFilter(key)}>
+                <Toggle
+                  key={key}
+                  active={filter === key}
+                  onClick={() => setFilter(key)}
+                >
                   {t(`filters.${key}`)}
-                  <span className="font-mono text-[11px] text-fg-quaternary">
+                  <span className="text-fg-quaternary font-mono text-[11px]">
                     {rows.filter((row) => matchesFilter(row, key)).length}
                   </span>
                 </Toggle>
@@ -223,10 +246,10 @@ export function ProjectsWorkspace({
             <span className="hidden flex-1 lg:block" />
 
             <div className="flex items-center gap-2">
-              <span className="kairos-stamp text-[10px] tracking-[0.14em] text-fg-quaternary">
+              <span className="kairos-stamp text-fg-quaternary text-[10px] tracking-[0.14em]">
                 {t("sortLabel")}
               </span>
-              <div className="flex overflow-hidden rounded-lg border border-border-light/60">
+              <div className="border-border-light/60 flex overflow-hidden rounded-lg border">
                 {SORTS.map((key) => (
                   <button
                     key={key}
@@ -245,13 +268,11 @@ export function ProjectsWorkspace({
               </div>
             </div>
 
-            <div className="flex overflow-hidden rounded-lg border border-border-light/60">
-              {(
-                [
-                  { key: "list" as ViewMode, Icon: List },
-                  { key: "grid" as ViewMode, Icon: LayoutGrid },
-                ]
-              ).map(({ key, Icon }) => (
+            <div className="border-border-light/60 flex overflow-hidden rounded-lg border">
+              {[
+                { key: "list" as ViewMode, Icon: List },
+                { key: "grid" as ViewMode, Icon: LayoutGrid },
+              ].map(({ key, Icon }) => (
                 <button
                   key={key}
                   type="button"
@@ -272,8 +293,10 @@ export function ProjectsWorkspace({
           </div>
 
           {shown.length === 0 ? (
-            <div className="dash-fade px-1 py-9 text-sm text-fg-tertiary">
-              {query.trim() ? t("noMatch", { query: query.trim() }) : t("noneInFilter")}
+            <div className="dash-fade text-fg-tertiary px-1 py-9 text-sm">
+              {query.trim()
+                ? t("noMatch", { query: query.trim() })
+                : t("noneInFilter")}
             </div>
           ) : view === "list" ? (
             <ProjectTable rows={shown} locale={locale} onOpen={setOpenId} />
@@ -285,8 +308,16 @@ export function ProjectsWorkspace({
             items={[
               { label: t("stats.active"), value: String(totals.active) },
               { label: t("stats.tasks"), value: String(totals.tasks) },
-              { label: t("stats.completed"), value: String(totals.completed), tone: "text-success" },
-              { label: t("stats.overall"), value: `${totals.percent}%`, tone: "text-accent-secondary" },
+              {
+                label: t("stats.completed"),
+                value: String(totals.completed),
+                tone: "text-success",
+              },
+              {
+                label: t("stats.overall"),
+                value: `${totals.percent}%`,
+                tone: "text-accent-secondary",
+              },
             ]}
           />
         </>
@@ -340,41 +371,61 @@ function ProjectTable({
   const t = useTranslations("projects");
 
   return (
-    <div className="dash-fade border-t border-border-light/60">
-      <div className="hidden grid-cols-[minmax(0,1fr)_190px_52px_96px_116px_16px] items-center gap-5 border-b border-border-light/50 px-1 py-3 lg:grid">
-        {(["colProject", "colProgress", "", "colTeam", "colUpdated", ""] as const).map(
-          (key, index) => (
-            <span
-              key={index}
-              className="kairos-stamp text-[10px] tracking-[0.14em] text-fg-quaternary"
-            >
-              {key ? t(key) : ""}
-            </span>
-          ),
-        )}
+    <div className="dash-fade border-border-light/60 border-t">
+      <div className="border-border-light/50 hidden grid-cols-[minmax(0,1fr)_190px_52px_96px_116px_16px] items-center gap-5 border-b px-1 py-3 lg:grid">
+        {(
+          [
+            "colProject",
+            "colProgress",
+            "",
+            "colTeam",
+            "colUpdated",
+            "",
+          ] as const
+        ).map((key, index) => (
+          <span
+            key={index}
+            className="kairos-stamp text-fg-quaternary text-[10px] tracking-[0.14em]"
+          >
+            {key ? t(key) : ""}
+          </span>
+        ))}
       </div>
 
       {rows.map((row, index) => (
-        <button
+        /* The row is a div with a full-bleed button laid over it rather than
+           one big button, because the collaborator faces inside it have to be
+           buttons of their own and a button cannot nest. The overlay carries
+           the click, the focus ring and the accessible name; anything that
+           needs to sit above it says so with `relative z-10`. */
+        <div
           key={row.id}
-          type="button"
-          onClick={() => onOpen(row.id)}
           style={rise(0.14 + index * 0.05)}
-          className="dash-rise grid w-full grid-cols-[minmax(0,1fr)_52px] items-center gap-5 border-b border-border-light/50 px-1 py-4 text-left transition-colors duration-[350ms] hover:bg-accent-primary/[0.07] lg:grid-cols-[minmax(0,1fr)_190px_52px_96px_116px_16px]"
+          className="dash-rise border-border-light/50 hover:bg-accent-primary/[0.07] relative grid w-full grid-cols-[minmax(0,1fr)_52px] items-center gap-5 border-b px-1 py-4 text-left transition-colors duration-[350ms] lg:grid-cols-[minmax(0,1fr)_190px_52px_96px_116px_16px]"
         >
+          <button
+            type="button"
+            onClick={() => onOpen(row.id)}
+            aria-label={row.title || t("untitled")}
+            className="focus-visible:ring-accent-primary absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-inset"
+          />
+
           <span className="min-w-0">
-            <span className="block truncate text-base font-medium tracking-[-0.01em] text-fg-primary">
+            <span className="text-fg-primary block truncate text-base font-medium tracking-[-0.01em]">
               {row.title || t("untitled")}
             </span>
-            <span className="mt-1 block truncate text-[13px] text-fg-tertiary">
+            <span className="text-fg-tertiary mt-1 block truncate text-[13px]">
               {row.description || t("noDescription")}
             </span>
           </span>
 
-          <span className="hidden h-[3px] overflow-hidden rounded-sm bg-border-light/70 lg:block">
+          <span className="bg-border-light/70 hidden h-[3px] overflow-hidden rounded-sm lg:block">
             <span
               className={`dash-grow block h-full rounded-sm ${HEALTH_BAR[row.health]}`}
-              style={{ width: `${row.percent}%`, animationDelay: `${0.14 + index * 0.05}s` }}
+              style={{
+                width: `${row.percent}%`,
+                animationDelay: `${0.14 + index * 0.05}s`,
+              }}
             />
           </span>
 
@@ -384,16 +435,24 @@ function ProjectTable({
             {row.total > 0 ? `${row.percent}%` : "—"}
           </span>
 
-          <span className="hidden lg:block">
-            <AvatarStack people={row.people} ringClass="border-bg-primary" />
+          <span className="relative z-10 hidden lg:block">
+            <AvatarStack
+              people={row.people}
+              ringClass="border-bg-primary"
+              interactive
+            />
           </span>
 
-          <span className="hidden font-mono text-[11px] text-fg-quaternary lg:block">
+          <span className="text-fg-quaternary hidden font-mono text-[11px] lg:block">
             <UpdatedStamp row={row} locale={locale} />
           </span>
 
-          <ChevronRight size={16} className="hidden text-fg-quaternary lg:block" aria-hidden />
-        </button>
+          <ChevronRight
+            size={16}
+            className="text-fg-quaternary hidden lg:block"
+            aria-hidden
+          />
+        </div>
       ))}
     </div>
   );
@@ -414,45 +473,60 @@ function ProjectGrid({
   return (
     <div className="dash-fade grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {rows.map((row, index) => (
-        <button
+        /* Overlay-button row, for the same reason as the table above. */
+        <div
           key={row.id}
-          type="button"
-          onClick={() => onOpen(row.id)}
           style={rise(0.14 + index * 0.05)}
-          className="dash-rise flex flex-col gap-[18px] rounded-xl border border-border-light/60 bg-bg-elevated p-[22px] pb-[18px] text-left transition-colors duration-[350ms] hover:border-accent-primary/40 hover:bg-bg-tertiary"
+          className="dash-rise border-border-light/60 bg-bg-elevated hover:border-accent-primary/40 hover:bg-bg-tertiary relative flex flex-col gap-[18px] rounded-xl border p-[22px] pb-[18px] text-left transition-colors duration-[350ms]"
         >
+          <button
+            type="button"
+            onClick={() => onOpen(row.id)}
+            aria-label={row.title || t("untitled")}
+            className="focus-visible:ring-accent-primary absolute inset-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-inset"
+          />
+
           <span>
-            <span className="block truncate text-base font-semibold tracking-[-0.01em] text-fg-primary">
+            <span className="text-fg-primary block truncate text-base font-semibold tracking-[-0.01em]">
               {row.title || t("untitled")}
             </span>
-            <span className="mt-1.5 block text-[13px] leading-[1.45] text-fg-tertiary">
+            <span className="text-fg-tertiary mt-1.5 block text-[13px] leading-[1.45]">
               {row.description || t("noDescription")}
             </span>
           </span>
 
           <span className="flex items-end justify-between gap-3">
             <span
-              className={`text-[38px] font-semibold leading-none tabular-nums tracking-[-0.03em] ${HEALTH_TEXT[row.health]}`}
+              className={`text-[38px] leading-none font-semibold tracking-[-0.03em] tabular-nums ${HEALTH_TEXT[row.health]}`}
             >
               {row.total > 0 ? `${row.percent}%` : "—"}
             </span>
             <HealthBadge health={row.health} />
           </span>
 
-          <span className="h-1 overflow-hidden rounded-sm bg-border-light/70">
+          <span className="bg-border-light/70 h-1 overflow-hidden rounded-sm">
             <span
               className={`dash-grow block h-full rounded-sm ${HEALTH_BAR[row.health]}`}
-              style={{ width: `${row.percent}%`, animationDelay: `${0.14 + index * 0.05}s` }}
+              style={{
+                width: `${row.percent}%`,
+                animationDelay: `${0.14 + index * 0.05}s`,
+              }}
             />
           </span>
 
-          <span className="flex items-center justify-between gap-3 border-t border-border-light/50 pt-3.5">
-            <AvatarStack people={row.people} ringClass="border-bg-elevated" />
-            <span className="font-mono text-[11px] text-fg-quaternary">
+          <span className="border-border-light/50 flex items-center justify-between gap-3 border-t pt-3.5">
+            <span className="relative z-10">
+              <AvatarStack
+                people={row.people}
+                ringClass="border-bg-elevated"
+                interactive
+              />
+            </span>
+            <span className="text-fg-quaternary font-mono text-[11px]">
               <UpdatedStamp row={row} locale={locale} />
             </span>
           </span>
-        </button>
+        </div>
       ))}
     </div>
   );
@@ -476,19 +550,19 @@ function StatStrip({
 }) {
   return (
     <div
-      className="dash-rise grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-border-light/60 bg-border-light/60 sm:grid-cols-4"
+      className="dash-rise border-border-light/60 bg-border-light/60 grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border sm:grid-cols-4"
       style={rise(0.3)}
     >
       {items.map((item) => (
         <div
           key={item.label}
-          className="bg-bg-elevated px-5 py-[18px] transition-colors duration-[350ms] hover:bg-bg-tertiary"
+          className="bg-bg-elevated hover:bg-bg-tertiary px-5 py-[18px] transition-colors duration-[350ms]"
         >
-          <div className="kairos-stamp text-[10px] tracking-[0.14em] text-fg-tertiary">
+          <div className="kairos-stamp text-fg-tertiary text-[10px] tracking-[0.14em]">
             {item.label}
           </div>
           <div
-            className={`mt-2 text-[26px] font-semibold tabular-nums tracking-[-0.02em] ${item.tone ?? "text-fg-primary"}`}
+            className={`mt-2 text-[26px] font-semibold tracking-[-0.02em] tabular-nums ${item.tone ?? "text-fg-primary"}`}
           >
             {item.value}
           </div>
@@ -509,7 +583,8 @@ function UpdatedStamp({ row, locale }: { row: ProjectRow; locale: string }) {
   if (days === 0) return <>{t("updated.today")}</>;
   if (days < 7) return <>{t("updated.days", { count: days })}</>;
   if (days < 14) return <>{t("updated.week")}</>;
-  if (days < 60) return <>{t("updated.weeks", { count: Math.round(days / 7) })}</>;
+  if (days < 60)
+    return <>{t("updated.weeks", { count: Math.round(days / 7) })}</>;
   return (
     <>
       {new Intl.DateTimeFormat(locale, { month: "short", year: "numeric" })
@@ -543,14 +618,14 @@ function AvatarStack({
   if (people.length === 0) {
     return (
       <span
-        className={`flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 bg-bg-tertiary text-[11px] font-bold text-fg-quaternary ${ringClass}`}
+        className={`bg-bg-tertiary text-fg-quaternary flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 text-[11px] font-bold ${ringClass}`}
       >
         —
       </span>
     );
   }
 
-  const face = (person: Person, index: number) =>
+  const face = (person: Person) =>
     person.image ? (
       <Image
         src={person.image}
@@ -562,8 +637,8 @@ function AvatarStack({
     ) : (
       <span
         title={person.name ?? undefined}
-        style={{ backgroundColor: AVATAR_TINTS[index % AVATAR_TINTS.length] }}
-        className={`flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 text-[11px] font-bold text-[#0a0a10] ${ringClass}`}
+        style={avatarGradientStyle(person.id)}
+        className={`flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 text-[11px] font-bold text-white ${ringClass}`}
       >
         {(person.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
       </span>
@@ -571,7 +646,7 @@ function AvatarStack({
 
   return (
     <span className="flex">
-      {shown.map((person, index) =>
+      {shown.map((person) =>
         interactive ? (
           <ProfileLink
             key={person.id}
@@ -579,17 +654,17 @@ function AvatarStack({
             name={person.name}
             className="-mr-[7px]"
           >
-            {face(person, index)}
+            {face(person)}
           </ProfileLink>
         ) : (
           <span key={person.id} className="-mr-[7px]">
-            {face(person, index)}
+            {face(person)}
           </span>
         ),
       )}
       {overflow > 0 && (
         <span
-          className={`-mr-[7px] flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 bg-bg-tertiary text-[10px] font-bold text-fg-tertiary ${ringClass}`}
+          className={`bg-bg-tertiary text-fg-tertiary -mr-[7px] flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 text-[10px] font-bold ${ringClass}`}
         >
           +{overflow}
         </span>
@@ -640,12 +715,19 @@ function ProjectDetail({
       .map((row) => toTimelineEvent(row, someone))
       .filter((event): event is TimelineEvent => event !== null)
       .sort((a, b) => b.at.getTime() - a.at.getTime());
-    const future = upcomingEvents((tasksQuery.data ?? []) as UpcomingTask[], now);
+    const future = upcomingEvents(
+      (tasksQuery.data ?? []) as UpcomingTask[],
+      now,
+    );
     return { past, future };
   }, [activityQuery.data, tasksQuery.data, now, someone]);
 
-  const future = events.future.filter((event) => matchesTimelineFilter(event, kind));
-  const past = events.past.filter((event) => matchesTimelineFilter(event, kind));
+  const future = events.future.filter((event) =>
+    matchesTimelineFilter(event, kind),
+  );
+  const past = events.past.filter((event) =>
+    matchesTimelineFilter(event, kind),
+  );
   const recent = past.filter((event) => isRecent(event, now));
   const earlier = past.length - recent.length;
   const shownPast = showEarlier ? past : recent;
@@ -658,7 +740,7 @@ function ProjectDetail({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-2 text-[13px] font-medium text-fg-tertiary transition-colors hover:text-fg-primary"
+          className="text-fg-tertiary hover:text-fg-primary flex items-center gap-2 text-[13px] font-medium transition-colors"
         >
           <ArrowLeft size={15} aria-hidden />
           {t("back")}
@@ -671,7 +753,7 @@ function ProjectDetail({
               onClick={onDelete}
               aria-label={t("delete.title")}
               title={t("delete.title")}
-              className="flex h-[34px] w-[34px] items-center justify-center rounded-lg border border-border-light/60 text-fg-quaternary transition-colors duration-300 hover:border-error/40 hover:text-error"
+              className="border-border-light/60 text-fg-quaternary hover:border-error/40 hover:text-error flex h-[34px] w-[34px] items-center justify-center rounded-lg border transition-colors duration-300"
             >
               <Trash2 size={16} strokeWidth={1.5} aria-hidden />
             </button>
@@ -681,15 +763,19 @@ function ProjectDetail({
 
       <div className="dash-rise flex flex-col gap-[18px]" style={rise(0.05)}>
         <div className="flex flex-wrap items-center gap-3.5">
-          <h1 className="m-0 text-[32px] font-semibold leading-[1.1] tracking-[-0.025em] text-fg-primary">
+          <h1 className="text-fg-primary m-0 text-[32px] leading-[1.1] font-semibold tracking-[-0.025em]">
             {project.title || t("untitled")}
           </h1>
           <HealthBadge health={project.health} />
           <span className="hidden flex-1 sm:block" />
-          <AvatarStack people={project.people} ringClass="border-bg-primary" interactive />
+          <AvatarStack
+            people={project.people}
+            ringClass="border-bg-primary"
+            interactive
+          />
         </div>
 
-        <p className="m-0 text-[15px] text-fg-tertiary">
+        <p className="text-fg-tertiary m-0 text-[15px]">
           {project.description || t("noDescription")}
         </p>
 
@@ -700,14 +786,25 @@ function ProjectDetail({
               value: project.total > 0 ? `${project.percent}%` : "—",
               tone: HEALTH_TEXT[project.health],
             },
-            { label: t("stats.done"), value: String(project.done), tone: "text-success" },
-            { label: t("stats.inProgress"), value: String(project.inProgress), tone: "text-warning" },
+            {
+              label: t("stats.done"),
+              value: String(project.done),
+              tone: "text-success",
+            },
+            {
+              label: t("stats.inProgress"),
+              value: String(project.inProgress),
+              tone: "text-warning",
+            },
             { label: t("stats.todo"), value: String(project.todo) },
           ]}
         />
       </div>
 
-      <div className="dash-rise flex overflow-hidden rounded-lg border border-border-light/60 self-start" style={rise(0.08)}>
+      <div
+        className="dash-rise border-border-light/60 flex self-start overflow-hidden rounded-lg border"
+        style={rise(0.08)}
+      >
         {DETAIL_TABS.map((key) => (
           <button
             key={key}
@@ -725,93 +822,109 @@ function ProjectDetail({
         ))}
       </div>
 
-      {tab === "tasks" && <ProjectTasksPanel projectId={project.id} userId={userId} />}
+      {tab === "tasks" && (
+        <ProjectTasksPanel projectId={project.id} userId={userId} />
+      )}
 
-      {tab === "team" && <ProjectTeamPanel projectId={project.id} userId={userId} />}
+      {tab === "team" && (
+        <ProjectTeamPanel projectId={project.id} userId={userId} />
+      )}
 
       {tab === "timeline" && (
-      <>
-      <div className="dash-rise flex flex-wrap items-center gap-3" style={rise(0.1)}>
-        <span className="kairos-stamp text-[10px] tracking-[0.14em] text-fg-quaternary">
-          {t("timeline.label")}
-        </span>
-        {TIMELINE_FILTERS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setKind(key)}
-            aria-pressed={kind === key}
-            className={`h-8 rounded-lg border px-3 text-[13px] font-medium transition-colors duration-300 ${
-              kind === key
-                ? "border-accent-primary/55 bg-accent-primary/[0.14] text-fg-primary"
-                : "border-border-light/60 text-fg-tertiary hover:border-border-strong/60 hover:text-fg-secondary"
-            }`}
+        <>
+          <div
+            className="dash-rise flex flex-wrap items-center gap-3"
+            style={rise(0.1)}
           >
-            {t(`timeline.kinds.${key}`)}
-          </button>
-        ))}
-        <span className="hidden flex-1 sm:block" />
-        <span className="font-mono text-[11px] text-fg-quaternary">
-          {t("timeline.count", { count: future.length + past.length })}
-        </span>
-      </div>
-
-      <div className="flex flex-col">
-        {loading ? (
-          <TimelineSkeleton />
-        ) : future.length + past.length === 0 ? (
-          <p className="px-1 py-8 text-sm text-fg-tertiary">{t("timeline.empty")}</p>
-        ) : (
-          <>
-            {future.map((event, index) => (
-              <TimelineRow
-                key={event.key}
-                event={event}
-                locale={locale}
-                now={now}
-                previous={future[index - 1]}
-                index={index}
-              />
+            <span className="kairos-stamp text-fg-quaternary text-[10px] tracking-[0.14em]">
+              {t("timeline.label")}
+            </span>
+            {TIMELINE_FILTERS.map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setKind(key)}
+                aria-pressed={kind === key}
+                className={`h-8 rounded-lg border px-3 text-[13px] font-medium transition-colors duration-300 ${
+                  kind === key
+                    ? "border-accent-primary/55 bg-accent-primary/[0.14] text-fg-primary"
+                    : "border-border-light/60 text-fg-tertiary hover:border-border-strong/60 hover:text-fg-secondary"
+                }`}
+              >
+                {t(`timeline.kinds.${key}`)}
+              </button>
             ))}
+            <span className="hidden flex-1 sm:block" />
+            <span className="text-fg-quaternary font-mono text-[11px]">
+              {t("timeline.count", { count: future.length + past.length })}
+            </span>
+          </div>
 
-            <NowMarker now={now} locale={locale} />
-
-            {shownPast.map((event, index) => (
-              <TimelineRow
-                key={event.key}
-                event={event}
-                locale={locale}
-                now={now}
-                previous={shownPast[index - 1]}
-                index={index}
-              />
-            ))}
-
-            {earlier > 0 && (
-              <div className="grid grid-cols-[52px_26px_minmax(0,1fr)] items-center gap-3.5 px-1 pt-1.5 sm:grid-cols-[62px_26px_minmax(0,1fr)]">
-                <span />
-                <span className="relative flex min-h-[28px] self-stretch justify-center">
-                  <span className="absolute -top-3.5 bottom-3.5 w-0.5 bg-accent-primary/40" aria-hidden />
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowEarlier((value) => !value)}
-                  className="flex h-[34px] items-center gap-2.5 justify-self-start rounded-lg border border-border-light/60 bg-bg-secondary px-3.5 text-[13px] font-medium text-fg-secondary transition-colors duration-300 hover:border-accent-primary/40 hover:text-fg-primary"
-                >
-                  {showEarlier ? t("timeline.hideEarlier") : t("timeline.showEarlier")}
-                  <span className="font-mono text-[11px] text-fg-quaternary">{earlier}</span>
-                  <ChevronDown
-                    size={14}
-                    aria-hidden
-                    className={`transition-transform duration-[350ms] ${showEarlier ? "rotate-180" : ""}`}
+          <div className="flex flex-col">
+            {loading ? (
+              <TimelineSkeleton />
+            ) : future.length + past.length === 0 ? (
+              <p className="text-fg-tertiary px-1 py-8 text-sm">
+                {t("timeline.empty")}
+              </p>
+            ) : (
+              <>
+                {future.map((event, index) => (
+                  <TimelineRow
+                    key={event.key}
+                    event={event}
+                    locale={locale}
+                    now={now}
+                    previous={future[index - 1]}
+                    index={index}
                   />
-                </button>
-              </div>
+                ))}
+
+                <NowMarker now={now} locale={locale} />
+
+                {shownPast.map((event, index) => (
+                  <TimelineRow
+                    key={event.key}
+                    event={event}
+                    locale={locale}
+                    now={now}
+                    previous={shownPast[index - 1]}
+                    index={index}
+                  />
+                ))}
+
+                {earlier > 0 && (
+                  <div className="grid grid-cols-[52px_26px_minmax(0,1fr)] items-center gap-3.5 px-1 pt-1.5 sm:grid-cols-[62px_26px_minmax(0,1fr)]">
+                    <span />
+                    <span className="relative flex min-h-[28px] justify-center self-stretch">
+                      <span
+                        className="bg-accent-primary/40 absolute -top-3.5 bottom-3.5 w-0.5"
+                        aria-hidden
+                      />
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowEarlier((value) => !value)}
+                      className="border-border-light/60 bg-bg-secondary text-fg-secondary hover:border-accent-primary/40 hover:text-fg-primary flex h-[34px] items-center gap-2.5 justify-self-start rounded-lg border px-3.5 text-[13px] font-medium transition-colors duration-300"
+                    >
+                      {showEarlier
+                        ? t("timeline.hideEarlier")
+                        : t("timeline.showEarlier")}
+                      <span className="text-fg-quaternary font-mono text-[11px]">
+                        {earlier}
+                      </span>
+                      <ChevronDown
+                        size={14}
+                        aria-hidden
+                        className={`transition-transform duration-[350ms] ${showEarlier ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
-      </div>
-      </>
+          </div>
+        </>
       )}
     </div>
   );
@@ -827,7 +940,8 @@ function dayHeading(
 ): string | null {
   if (previous && isSameDay(previous.at, event.at)) return null;
   if (isSameDay(event.at, now)) return labels.today;
-  if (isSameDay(event.at, new Date(now.getTime() - 86_400_000))) return labels.yesterday;
+  if (isSameDay(event.at, new Date(now.getTime() - 86_400_000)))
+    return labels.yesterday;
   return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" })
     .format(event.at)
     .toUpperCase();
@@ -854,9 +968,10 @@ function TimelineRow({
     yesterday: t("timeline.yesterday"),
   });
 
-  const time = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(
-    event.at,
-  );
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(event.at);
 
   return (
     <div
@@ -864,14 +979,16 @@ function TimelineRow({
       style={rise(0.1 + index * 0.04)}
     >
       {heading && (
-        <div className="kairos-stamp px-1 pt-4 pb-2.5 text-[10px] tracking-[0.16em] text-fg-quaternary">
+        <div className="kairos-stamp text-fg-quaternary px-1 pt-4 pb-2.5 text-[10px] tracking-[0.16em]">
           {heading}
         </div>
       )}
-      <div className="grid grid-cols-[52px_26px_minmax(0,1fr)] items-start gap-3.5 px-1 py-3.5 transition-colors duration-[350ms] hover:bg-accent-primary/[0.06] sm:grid-cols-[62px_26px_minmax(0,1fr)]">
-        <span className="pt-[3px] font-mono text-[11px] text-fg-quaternary">{time}</span>
+      <div className="hover:bg-accent-primary/[0.06] grid grid-cols-[52px_26px_minmax(0,1fr)] items-start gap-3.5 px-1 py-3.5 transition-colors duration-[350ms] sm:grid-cols-[62px_26px_minmax(0,1fr)]">
+        <span className="text-fg-quaternary pt-[3px] font-mono text-[11px]">
+          {time}
+        </span>
 
-        <span className="relative flex self-stretch justify-center">
+        <span className="relative flex justify-center self-stretch">
           <span
             aria-hidden
             className={`absolute -top-3.5 -bottom-3.5 w-0.5 ${
@@ -879,22 +996,35 @@ function TimelineRow({
             }`}
           />
           <span
-            className={`relative mt-1 flex h-[15px] w-[15px] items-center justify-center rounded-full border bg-bg-primary ${
-              event.future ? "border-border-medium/70" : "border-accent-primary/50"
+            className={`bg-bg-primary relative mt-1 flex h-[15px] w-[15px] items-center justify-center rounded-full border ${
+              event.future
+                ? "border-border-medium/70"
+                : "border-accent-primary/50"
             }`}
           >
-            <Icon size={8} strokeWidth={3} className={EVENT_TINT[event.kind]} aria-hidden />
+            <Icon
+              size={8}
+              strokeWidth={3}
+              className={EVENT_TINT[event.kind]}
+              aria-hidden
+            />
           </span>
         </span>
 
         <span className="flex min-w-0 flex-col gap-1">
-          <span className="text-[15px] leading-[1.4] text-fg-secondary">
-            <span className="font-semibold text-fg-primary">{event.actor}</span>{" "}
+          <span className="text-fg-secondary text-[15px] leading-[1.4]">
+            <span className="text-fg-primary font-semibold">{event.actor}</span>{" "}
             {t(`timeline.verbs.${event.verb}`)}{" "}
-            {event.target && <span className="font-medium text-fg-primary">{event.target}</span>}
+            {event.target && (
+              <span className="text-fg-primary font-medium">
+                {event.target}
+              </span>
+            )}
           </span>
           {event.detail && (
-            <span className="truncate text-[13px] text-fg-quaternary">{event.detail}</span>
+            <span className="text-fg-quaternary truncate text-[13px]">
+              {event.detail}
+            </span>
           )}
         </span>
       </div>
@@ -905,19 +1035,24 @@ function TimelineRow({
 /** The hinge between what is coming and what has happened. */
 function NowMarker({ now, locale }: { now: Date; locale: string }) {
   const t = useTranslations("projects");
-  const time = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(now);
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(now);
 
   return (
     <div className="grid grid-cols-[52px_26px_minmax(0,1fr)] items-center gap-3.5 px-1 py-2 sm:grid-cols-[62px_26px_minmax(0,1fr)]">
-      <span className="font-mono text-[11px] text-accent-secondary">{time}</span>
+      <span className="text-accent-secondary font-mono text-[11px]">
+        {time}
+      </span>
       <span className="flex justify-center">
-        <span className="h-[11px] w-[11px] rounded-full bg-accent-primary shadow-[0_0_0_4px_rgb(var(--accent-primary)/0.18)]" />
+        <span className="bg-accent-primary h-[11px] w-[11px] rounded-full shadow-[0_0_0_4px_rgb(var(--accent-primary)/0.18)]" />
       </span>
       <span className="flex items-center gap-3">
-        <span className="kairos-stamp text-[10px] tracking-[0.18em] text-accent-secondary">
+        <span className="kairos-stamp text-accent-secondary text-[10px] tracking-[0.18em]">
           {t("timeline.now")}
         </span>
-        <span className="h-px flex-1 bg-gradient-to-r from-accent-primary/50 to-transparent" />
+        <span className="from-accent-primary/50 h-px flex-1 bg-gradient-to-r to-transparent" />
       </span>
     </div>
   );
@@ -927,8 +1062,8 @@ function TimelineSkeleton() {
   return (
     <div className="flex flex-col">
       {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className="border-b border-border-light/50 px-1 py-4">
-          <div className="h-4 w-2/3 animate-pulse rounded bg-bg-tertiary" />
+        <div key={index} className="border-border-light/50 border-b px-1 py-4">
+          <div className="bg-bg-tertiary h-4 w-2/3 animate-pulse rounded" />
         </div>
       ))}
     </div>
@@ -940,12 +1075,15 @@ function TimelineSkeleton() {
 function LoadingState() {
   return (
     <div className="flex flex-col gap-[26px] px-4 pt-9 pb-14 sm:px-10">
-      <div className="h-9 w-64 animate-pulse rounded bg-bg-tertiary" />
-      <div className="h-9 w-full max-w-xl animate-pulse rounded bg-bg-tertiary" />
-      <div className="border-t border-border-light/60">
+      <div className="bg-bg-tertiary h-9 w-64 animate-pulse rounded" />
+      <div className="bg-bg-tertiary h-9 w-full max-w-xl animate-pulse rounded" />
+      <div className="border-border-light/60 border-t">
         {Array.from({ length: 5 }).map((_, index) => (
-          <div key={index} className="border-b border-border-light/50 px-1 py-5">
-            <div className="h-4 w-1/3 animate-pulse rounded bg-bg-tertiary" />
+          <div
+            key={index}
+            className="border-border-light/50 border-b px-1 py-5"
+          >
+            <div className="bg-bg-tertiary h-4 w-1/3 animate-pulse rounded" />
           </div>
         ))}
       </div>
@@ -963,13 +1101,13 @@ function FirstRun() {
   return (
     <div className="flex min-h-[420px] flex-col justify-center gap-6 px-4 py-16 sm:px-10">
       <div className="dash-rise" style={rise(0.05)}>
-        <div className="kairos-stamp text-[11px] tracking-[0.16em] text-accent-secondary">
+        <div className="kairos-stamp text-accent-secondary text-[11px] tracking-[0.16em]">
           {t("empty.tag")}
         </div>
-        <h1 className="mt-3.5 max-w-[620px] text-[34px] font-semibold leading-[1.08] tracking-[-0.03em] text-fg-primary">
+        <h1 className="text-fg-primary mt-3.5 max-w-[620px] text-[34px] leading-[1.08] font-semibold tracking-[-0.03em]">
           {t("empty.title")}
         </h1>
-        <p className="mt-3 max-w-[520px] text-[17px] leading-[1.6] text-fg-tertiary">
+        <p className="text-fg-tertiary mt-3 max-w-[520px] text-[17px] leading-[1.6]">
           {t("empty.body")}
         </p>
       </div>
@@ -993,34 +1131,41 @@ function DeleteDialog({
 
   return (
     <Overlay>
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <button type="button" aria-label={t("delete.cancel")} onClick={onCancel} className="absolute inset-0" />
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="relative w-full max-w-sm rounded-2xl border border-border-light/60 bg-bg-secondary p-6 shadow-2xl"
-      >
-        <h2 className="m-0 text-lg font-semibold text-fg-primary">{t("delete.title")}</h2>
-        <p className="mt-2 text-sm text-fg-tertiary">{t("delete.body")}</p>
-        <div className="mt-6 flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
-          >
-            {t("delete.cancel")}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={pending}
-            className="rounded-lg bg-error px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            {t("delete.confirm")}
-          </button>
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <button
+          type="button"
+          aria-label={t("delete.cancel")}
+          onClick={onCancel}
+          className="absolute inset-0"
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="border-border-light/60 bg-bg-secondary relative w-full max-w-sm rounded-2xl border p-6 shadow-2xl"
+        >
+          <h2 className="text-fg-primary m-0 text-lg font-semibold">
+            {t("delete.title")}
+          </h2>
+          <p className="text-fg-tertiary mt-2 text-sm">{t("delete.body")}</p>
+          <div className="mt-6 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="text-fg-secondary hover:bg-bg-tertiary hover:text-fg-primary rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+            >
+              {t("delete.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={pending}
+              className="bg-error rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {t("delete.confirm")}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
     </Overlay>
   );
 }

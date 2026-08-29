@@ -2,17 +2,10 @@
  * A4 — Events Publisher: draft, confirm and apply event changes.
  */
 
-import {
-  TRPCError,
-} from "@trpc/server";
-import {
-  eq,
-  and,
-} from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import { eq, and } from "drizzle-orm";
 
-import type {
-  TRPCContext,
-} from "~/server/api/trpc";
+import type { TRPCContext } from "~/server/api/trpc";
 
 import {
   EventsPublisherDraftSchema,
@@ -20,20 +13,12 @@ import {
   type EventsPublisherApplyOutput,
 } from "~/server/llm/schemas/a4EventsPublisherSchemas";
 
-import {
-  buildA4Context,
-} from "~/server/llm/context/a4ContextBuilder";
+import { buildA4Context } from "~/server/llm/context/a4ContextBuilder";
 
-import {
-  getA4SystemPrompt,
-} from "~/server/llm/prompts/a4Prompts";
-import {
-  completeJson,
-} from "~/server/llm/core/jsonRepair";
+import { getA4SystemPrompt } from "~/server/llm/prompts/a4Prompts";
+import { completeJson } from "~/server/llm/core/jsonRepair";
 
-import {
-  languageAnchorMessages,
-} from "~/server/llm/prompts/languageRules";
+import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
 
 import {
   events as eventsTable,
@@ -71,7 +56,8 @@ async function loadDraft(ctx: TRPCContext, draftId: string, userId: string) {
     .where(eq(agentEventsPublisherDrafts.id, draftId))
     .limit(1);
 
-  if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+  if (!draft)
+    throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
   if (draft.userId !== userId) throw new TRPCError({ code: "FORBIDDEN" });
   return draft;
 }
@@ -97,12 +83,20 @@ export const a4EventsPublisher = {
     const draftId = createDraftId();
 
     const contextPack = await buildA4Context({ ctx: input.ctx });
-    const systemPrompt = getA4SystemPrompt(contextPack);
+    const systemPrompt = getA4SystemPrompt(
+      contextPack,
+      input.originalMessage,
+      input.message,
+    );
 
     const parseResult = await completeJson({
       messages: [
         { role: "system", content: systemPrompt },
-        ...languageAnchorMessages(input.originalMessage, input.message),
+        ...replyLanguageMessages({
+          locale: contextPack.locale,
+          message: input.message,
+          originalMessage: input.originalMessage,
+        }),
         { role: "user", content: input.message },
       ],
       schema: EventsPublisherDraftSchema,
@@ -184,7 +178,7 @@ export const a4EventsPublisher = {
       const editableItems = [...plan.creates, ...plan.updates];
       const updatedCreates = [...plan.creates];
       const updatedUpdates = [...plan.updates];
-      
+
       for (const edit of input.edits) {
         if (edit.index >= 0 && edit.index < plan.creates.length) {
           // Edit a create item
@@ -196,7 +190,10 @@ export const a4EventsPublisher = {
               ...(edit.description && { description: edit.description }),
             };
           }
-        } else if (edit.index >= plan.creates.length && edit.index < editableItems.length) {
+        } else if (
+          edit.index >= plan.creates.length &&
+          edit.index < editableItems.length
+        ) {
           // Edit an update item
           const updateIdx = edit.index - plan.creates.length;
           const existing = updatedUpdates[updateIdx];
@@ -212,7 +209,7 @@ export const a4EventsPublisher = {
           }
         }
       }
-      
+
       plan = { ...plan, creates: updatedCreates, updates: updatedUpdates };
     }
 
@@ -263,13 +260,22 @@ export const a4EventsPublisher = {
     const tokenPayload = readConfirmationToken(input.confirmationToken);
 
     if (tokenPayload.userId !== userId) {
-      throw new TRPCError({ code: "FORBIDDEN", message: "Token user mismatch" });
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Token user mismatch",
+      });
     }
     if (tokenPayload.draftId !== input.draftId) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Token/draft mismatch" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Token/draft mismatch",
+      });
     }
     if (Date.now() > tokenPayload.expiresAt) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Confirmation token expired" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Confirmation token expired",
+      });
     }
 
     const draft = await loadDraft(input.ctx, input.draftId, userId);
@@ -280,17 +286,26 @@ export const a4EventsPublisher = {
       });
     }
     if (draft.planHash !== tokenPayload.planHash) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Plan was modified after confirmation" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Plan was modified after confirmation",
+      });
     }
     if (draft.confirmationToken !== input.confirmationToken) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Confirmation token mismatch" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Confirmation token mismatch",
+      });
     }
 
     const plan = EventsPublisherDraftSchema.parse(
       JSON.parse(draft.planJson) as unknown,
     );
     if (hashPlan(plan) !== draft.planHash) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Plan was modified after confirmation" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Plan was modified after confirmation",
+      });
     }
 
     const results: EventsPublisherApplyOutput["results"] = {
@@ -334,12 +349,24 @@ export const a4EventsPublisher = {
       const patched = await db
         .update(eventsTable)
         .set({
-          ...(update.patch.title !== undefined && { title: update.patch.title }),
-          ...(update.patch.description !== undefined && { description: update.patch.description }),
-          ...(update.patch.eventDate !== undefined && { eventDate: new Date(update.patch.eventDate) }),
-          ...(update.patch.region !== undefined && { region: update.patch.region }),
-          ...(update.patch.enableRsvp !== undefined && { enableRsvp: update.patch.enableRsvp }),
-          ...(update.patch.sendReminders !== undefined && { sendReminders: update.patch.sendReminders }),
+          ...(update.patch.title !== undefined && {
+            title: update.patch.title,
+          }),
+          ...(update.patch.description !== undefined && {
+            description: update.patch.description,
+          }),
+          ...(update.patch.eventDate !== undefined && {
+            eventDate: new Date(update.patch.eventDate),
+          }),
+          ...(update.patch.region !== undefined && {
+            region: update.patch.region,
+          }),
+          ...(update.patch.enableRsvp !== undefined && {
+            enableRsvp: update.patch.enableRsvp,
+          }),
+          ...(update.patch.sendReminders !== undefined && {
+            sendReminders: update.patch.sendReminders,
+          }),
         })
         .where(
           and(
@@ -356,7 +383,10 @@ export const a4EventsPublisher = {
       const removed = await db
         .delete(eventsTable)
         .where(
-          and(eq(eventsTable.id, del.eventId), eq(eventsTable.createdById, userId)),
+          and(
+            eq(eventsTable.id, del.eventId),
+            eq(eventsTable.createdById, userId),
+          ),
         )
         .returning({ id: eventsTable.id });
       if (removed[0]) results.deletedEventIds.push(del.eventId);
@@ -418,12 +448,14 @@ export const a4EventsPublisher = {
         ),
       });
       if (existing) {
-        await db.delete(eventLikes).where(
-          and(
-            eq(eventLikes.eventId, like.eventId),
-            eq(eventLikes.createdById, userId),
-          ),
-        );
+        await db
+          .delete(eventLikes)
+          .where(
+            and(
+              eq(eventLikes.eventId, like.eventId),
+              eq(eventLikes.createdById, userId),
+            ),
+          );
       } else {
         await db.insert(eventLikes).values({
           eventId: like.eventId,

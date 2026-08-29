@@ -28,7 +28,7 @@ import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { AlertCircle, CalendarPlus, Loader2, Search, X } from "lucide-react";
+import { AlertCircle, CalendarPlus, Loader2, Search, X } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useSocketEvent } from "~/hooks/useSocketEvent";

@@ -1,14 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Check, Loader2, QrCode, Trash2, X } from "lucide-react";
+import { Check, Loader2, QrCode, Trash2, X } from "~/components/ui/icons";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
 import { useSwitchOrganization } from "~/hooks/useSwitchOrganization";
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
+
+import { avatarGradientStyle } from "~/lib/avatarGradient";
+import { OrgBadge } from "~/components/orgs/OrgBadge";
+import { ProfileLink } from "~/components/profile/ProfileLink";
+import { useUploadThing } from "~/lib/uploadthing";
 
 import {
   LedgerAction,
@@ -115,6 +121,63 @@ function PermissionGrid({
   );
 }
 
+/**
+ * A workspace's logo: the uploaded image when it has one, otherwise the same
+ * seeded gradient monogram profiles fall back to — seeded by id so the
+ * colour survives a rename. Admins get a "Replace" control next to it; other
+ * members just see the badge.
+ */
+function OrgLogoCell({
+  org,
+  canEdit,
+  isUploading,
+  onUpload,
+  uploadLabel,
+}: {
+  org: { id: number; name: string; image?: string | null };
+  canEdit: boolean;
+  isUploading: boolean;
+  onUpload: (file: File) => Promise<void>;
+  uploadLabel: string;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const badge = (
+    <OrgBadge id={org.id} name={org.name} image={org.image} size={40} rounded="rounded-full" />
+  );
+
+  if (!canEdit) return badge;
+
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024 || !file.type.startsWith("image/")) return;
+    await onUpload(file);
+  };
+
+  return (
+    <span className="flex items-center gap-3">
+      {badge}
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isUploading}
+        className="rounded-[7px] border border-border-medium px-[13px] py-1.5 text-[12.5px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {uploadLabel}
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleChange}
+        className="hidden"
+      />
+    </span>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -136,6 +199,28 @@ export function WorkspaceSettingsClient() {
   const [inviteRole, setInviteRole] = useState("member");
   const [bulkInviteInput, setBulkInviteInput] = useState("");
   const [inviteQrForOrgId, setInviteQrForOrgId] = useState<number | null>(null);
+
+  // ---- Leave-organization confirmation ----
+  // The org being left, plus the last failure for it: leaving can be refused
+  // (sole admin), and that reason has to survive long enough to be read.
+  const [leaveTarget, setLeaveTarget] = useState<{ id: number; name: string } | null>(null);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
+
+  // ---- Delete-organization confirmation ----
+  /*
+   * Two gates, not one. `step` is which of them is on screen: "warn" spells out
+   * what is about to be destroyed and for whom, and "type" asks for the
+   * workspace name back before the button will fire. Deleting a workspace takes
+   * every project, task and thread in it away from everybody, and there is no
+   * undo — a single "are you sure?" is the same click the user has already
+   * learned to dismiss.
+   */
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    name: string;
+    step: "warn" | "type";
+  } | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [emailLookupDebouncedEmail, setEmailLookupDebouncedEmail] = useState("");
 
   // ---- Custom role creation state ----
@@ -193,6 +278,32 @@ export function WorkspaceSettingsClient() {
   });
 
   const activeOrgId = activeOrg?.organization?.id;
+
+  // ---- Org logo upload ----
+  const [uploadingOrgId, setUploadingOrgId] = useState<number | null>(null);
+  const { startUpload: startLogoUpload } = useUploadThing("imageUploader");
+  const updateOrgImage = api.organization.updateImage.useMutation({
+    onSuccess: () => {
+      void utils.organization.listMine.invalidate();
+      void utils.organization.getActive.invalidate();
+    },
+    onSettled: () => setUploadingOrgId(null),
+  });
+
+  const handleOrgLogoUpload = (organizationId: number) => async (file: File) => {
+    setUploadingOrgId(organizationId);
+    await save.run(async () => {
+      try {
+        const uploadResult = await startLogoUpload([file]);
+        const url = uploadResult?.[0]?.url;
+        if (!url) throw new Error("Upload failed");
+        await updateOrgImage.mutateAsync({ organizationId, image: url });
+      } catch (e) {
+        setUploadingOrgId(null);
+        throw e;
+      }
+    });
+  };
 
   const { data: members } = api.organization.getMembers.useQuery(
     { organizationId: activeOrgId! },
@@ -296,13 +407,41 @@ export function WorkspaceSettingsClient() {
   });
 
   const leaveOrg = api.organization.leave.useMutation({
-    onSuccess: () => {
+    // Awaited, not fired and forgotten: the row must be gone from the list
+    // before the dialog closes, or leaving looks like it did nothing.
+    onSuccess: async () => {
       toast.success(t("messages.organizationLeft"));
-      void utils.organization.listMine.invalidate();
-      void utils.organization.getActive.invalidate();
-      void utils.user.getProfile.invalidate();
+      await Promise.all([
+        utils.organization.listMine.invalidate(),
+        utils.organization.getActive.invalidate(),
+        utils.user.getProfile.invalidate(),
+      ]);
+      setLeaveTarget(null);
+      setLeaveError(null);
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e) => {
+      setLeaveError(e.message);
+      toast.error(e.message);
+    },
+  });
+
+  const deleteOrg = api.organization.delete.useMutation({
+    // Awaited for the same reason as `leave`: the row has to be gone before the
+    // dialog closes, or the deletion looks like it did nothing.
+    onSuccess: async (data) => {
+      toast.success(t("messages.organizationDeleted", { name: data.name }));
+      await Promise.all([
+        utils.organization.listMine.invalidate(),
+        utils.organization.getActive.invalidate(),
+        utils.user.getProfile.invalidate(),
+      ]);
+      setDeleteTarget(null);
+      setDeleteError(null);
+    },
+    onError: (e) => {
+      setDeleteError(e.message);
+      toast.error(e.message);
+    },
   });
 
   const updateMemberRole = api.organization.updateMemberRole.useMutation({
@@ -414,6 +553,15 @@ export function WorkspaceSettingsClient() {
     title: org.name,
     // "Active" belongs in the control column beside Switch, not repeated here.
     desc: translateRoleLabel(org.role),
+    leading: (
+      <OrgLogoCell
+        org={org}
+        canEdit={org.role === "admin"}
+        isUploading={uploadingOrgId === org.id}
+        onUpload={handleOrgLogoUpload(org.id)}
+        uploadLabel={t("organizations.uploadLogo")}
+      />
+    ),
     control: (
       <>
         {activeOrgId === org.id ? <LedgerValue tone="good">{t("organizations.active")}</LedgerValue> : null}
@@ -443,13 +591,27 @@ export function WorkspaceSettingsClient() {
           danger
           disabled={leaveOrg.isPending}
           onClick={() => {
-            if (confirm(t("organizations.leaveConfirm"))) {
-              void save.run(() => leaveOrg.mutateAsync({ organizationId: org.id }));
-            }
+            setLeaveError(null);
+            setLeaveTarget({ id: org.id, name: org.name });
           }}
         >
           {t("organizations.leave")}
         </LedgerAction>
+        {/* Only the creator can delete, so only the creator is shown the
+            control — an admin who would be refused by the server has no
+            business being offered the button. */}
+        {org.isOwner ? (
+          <LedgerAction
+            danger
+            disabled={deleteOrg.isPending}
+            onClick={() => {
+              setDeleteError(null);
+              setDeleteTarget({ id: org.id, name: org.name, step: "warn" });
+            }}
+          >
+            {t("organizations.delete")}
+          </LedgerAction>
+        ) : null}
       </>
     ),
   }));
@@ -632,19 +794,32 @@ export function WorkspaceSettingsClient() {
       id: `member-${member.id}`,
       title: member.name ?? member.email,
       desc: member.email,
-      leading: member.image ? (
-        <Image
-          src={member.image}
-          alt=""
-          width={32}
-          height={32}
-          unoptimized
-          className="h-8 w-8 flex-none rounded-full object-cover"
-        />
-      ) : (
-        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-bg-tertiary text-xs font-medium text-fg-tertiary">
-          {(member.name ?? member.email)?.[0]?.toUpperCase() ?? "?"}
-        </span>
+      // `member.id` is the *user* id — `getMembers` selects `users.id`, not the
+      // membership row — so it is the right thing to hand the profile drawer.
+      leading: (
+        <ProfileLink
+          userId={member.id}
+          name={member.name ?? member.email}
+          className="flex-none"
+        >
+          {member.image ? (
+            <Image
+              src={member.image}
+              alt=""
+              width={32}
+              height={32}
+              unoptimized
+              className="h-8 w-8 flex-none rounded-full object-cover"
+            />
+          ) : (
+            <span
+              style={avatarGradientStyle(member.email)}
+              className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-xs font-bold text-white"
+            >
+              {(member.name ?? member.email)?.[0]?.toUpperCase() ?? "?"}
+            </span>
+          )}
+        </ProfileLink>
       ),
       control: (
         <>
@@ -1006,6 +1181,74 @@ export function WorkspaceSettingsClient() {
           organizationId={inviteQrForOrgId}
           organizationName={myOrgs?.find((o) => o.id === inviteQrForOrgId)?.name}
           onClose={() => setInviteQrForOrgId(null)}
+        />
+      ) : null}
+
+      {leaveTarget !== null ? (
+        <ConfirmDialog
+          destructive
+          title={t("organizations.leaveTitle", { name: leaveTarget.name })}
+          message={t("organizations.leaveConfirm")}
+          confirmLabel={leaveOrg.isPending ? t("common.working") : t("organizations.leave")}
+          cancelLabel={t("common.cancel")}
+          error={leaveError}
+          isPending={leaveOrg.isPending}
+          onCancel={() => {
+            setLeaveTarget(null);
+            setLeaveError(null);
+          }}
+          onConfirm={() => {
+            setLeaveError(null);
+            void save.run(() => leaveOrg.mutateAsync({ organizationId: leaveTarget.id }));
+          }}
+        />
+      ) : null}
+
+      {/* Gate one: what is about to happen, in words, with no way to type
+          ahead of it. */}
+      {deleteTarget?.step === "warn" ? (
+        <ConfirmDialog
+          destructive
+          title={t("organizations.deleteTitle", { name: deleteTarget.name })}
+          message={t("organizations.deleteWarning", { name: deleteTarget.name })}
+          confirmLabel={t("organizations.deleteContinue")}
+          cancelLabel={t("common.cancel")}
+          isPending={false}
+          onCancel={() => {
+            setDeleteTarget(null);
+            setDeleteError(null);
+          }}
+          onConfirm={() => setDeleteTarget({ ...deleteTarget, step: "type" })}
+        />
+      ) : null}
+
+      {/* Gate two: the name, typed back. The server checks it again. */}
+      {deleteTarget?.step === "type" ? (
+        <ConfirmDialog
+          destructive
+          title={t("organizations.deleteConfirmTitle")}
+          message={t("organizations.deleteConfirmMessage", { name: deleteTarget.name })}
+          requireText={deleteTarget.name}
+          requireTextLabel={t("organizations.deleteConfirmLabel")}
+          confirmLabel={
+            deleteOrg.isPending ? t("common.working") : t("organizations.deleteFinal")
+          }
+          cancelLabel={t("common.cancel")}
+          error={deleteError}
+          isPending={deleteOrg.isPending}
+          onCancel={() => {
+            setDeleteTarget(null);
+            setDeleteError(null);
+          }}
+          onConfirm={(typed) => {
+            setDeleteError(null);
+            void save.run(() =>
+              deleteOrg.mutateAsync({
+                organizationId: deleteTarget.id,
+                confirmName: typed,
+              }),
+            );
+          }}
         />
       ) : null}
     </LedgerSection>

@@ -2,7 +2,7 @@
 
 import { type ReactNode, useMemo, useState } from "react";
 import { GoogleMap, LoadScript, MarkerF } from "@react-google-maps/api";
-import { MapPin, Search } from "lucide-react";
+import { MapPin, Search } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 export type RegionOption = {

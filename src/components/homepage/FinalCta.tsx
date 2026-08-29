@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "~/components/ui/icons";
 
 /** The one place the accent is used as light rather than ink. */
 export function FinalCta({ onSignIn }: { onSignIn: () => void }) {

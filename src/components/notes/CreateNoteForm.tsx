@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2 } from "~/components/ui/icons";
 import { api } from "~/trpc/react";
 import { useTranslations } from "next-intl";
 import { useToast } from "~/components/providers/ToastProvider";

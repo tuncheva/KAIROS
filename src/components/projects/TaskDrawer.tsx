@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles, X } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { Overlay } from "~/components/ui/Overlay";
+import { exitDurationMs } from "~/components/ui/drawerExit";
 
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 export type TaskStatus = "pending" | "in_progress" | "completed" | "blocked";
@@ -143,6 +144,45 @@ export function TaskDrawer({
   >([]);
 
   const titleRef = useRef<HTMLInputElement>(null);
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Whether the drawer is on screen, which is not the same as `open`.
+   *
+   * The parent flips `open` to false on the click; the panel still has its
+   * 0.45s exit to play, so mounting is latched here and only released when that
+   * is over. Before this the drawer slid in and then vanished on the next frame,
+   * which reads as a crash rather than a dismissal.
+   */
+  const [mounted, setMounted] = useState(open);
+  const closing = mounted && !open;
+
+  useEffect(() => {
+    if (exitTimer.current) {
+      clearTimeout(exitTimer.current);
+      exitTimer.current = null;
+    }
+
+    if (open) {
+      // Reopening mid-exit cancels it, rather than letting the old timer
+      // unmount the drawer that was just reopened.
+      setMounted(true);
+      return;
+    }
+
+    if (!mounted) return;
+
+    // A timer, not an `animationend` listener: under `prefers-reduced-motion`
+    // the exit rules resolve to `animation: none`, so no such event fires and a
+    // listener-based unmount would strand the drawer on screen.
+    exitTimer.current = setTimeout(() => setMounted(false), exitDurationMs());
+    return () => {
+      if (exitTimer.current) clearTimeout(exitTimer.current);
+    };
+    // `mounted` is read but must not re-trigger this: it is set *by* this
+    // effect, and depending on it would restart the exit timer mid-flight.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Each opening starts from the task it was opened for, so a create after an
   // edit does not inherit the edited task's fields.
@@ -160,6 +200,8 @@ export function TaskDrawer({
   const close = useCallback(() => onClose(), [onClose]);
 
   useEffect(() => {
+    // Ignored once the drawer is already leaving: a second Escape would ask a
+    // closing drawer to close again.
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
@@ -255,12 +297,12 @@ export function TaskDrawer({
     close();
   };
 
-  if (!open) return null;
+  if (!mounted) return null;
 
   return (
     <Overlay>
       <div
-        className="fixed inset-0 z-[60] flex justify-end"
+        className={`fixed inset-0 z-[60] flex justify-end ${closing ? "pointer-events-none" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -269,10 +311,17 @@ export function TaskDrawer({
           type="button"
           aria-label={t("close")}
           onClick={close}
-          className="projects-drawer-scrim absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+          disabled={closing}
+          className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] ${
+            closing ? "projects-drawer-scrim-out" : "projects-drawer-scrim"
+          }`}
         />
 
-        <aside className="projects-drawer relative flex h-full w-full max-w-[440px] flex-col border-l border-border-light/60 bg-bg-secondary shadow-[-28px_0_60px_rgba(0,0,0,0.5)]">
+        <aside
+          className={`relative flex h-full w-full max-w-[440px] flex-col border-l border-border-light/60 bg-bg-secondary shadow-[-28px_0_60px_rgba(0,0,0,0.5)] ${
+            closing ? "projects-drawer-out" : "projects-drawer"
+          }`}
+        >
           <div className="flex items-center justify-between gap-4 border-b border-border-light/50 px-[26px] py-5">
             <h2
               id={titleId}

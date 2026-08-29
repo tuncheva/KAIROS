@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "~/components/ui/icons";
 import { gsap } from "gsap";
 import { prefersReducedMotion } from "~/components/homepage/useLandingReveals";
 

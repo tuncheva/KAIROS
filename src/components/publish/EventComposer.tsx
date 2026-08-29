@@ -13,7 +13,7 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { CalendarDays, ImagePlus, MapPin, Users } from "lucide-react";
+import { CalendarDays, ImagePlus, MapPin, Users } from "~/components/ui/icons";
 
 import { MetaChip, PersonAvatar, Stamp } from "./publishUi";
 import type { ComposerField } from "~/components/events/CreateEventForm";

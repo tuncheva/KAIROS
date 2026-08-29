@@ -22,6 +22,7 @@
  */
 
 import "server-only";
+import { toPlainText } from "~/server/llm/core/plainText";
 
 import type { TRPCContext } from "~/server/api/trpc";
 import { createLogger } from "~/server/logger";
@@ -178,7 +179,7 @@ export async function runCustomSchedule(input: {
       purpose: "a6.customSchedule",
     });
 
-    const text = result.content.trim();
+    const text = toPlainText(result.content);
 
     if (result.exhausted) {
       // Ran out of tool budget mid-investigation. Whatever it has is a partial

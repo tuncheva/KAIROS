@@ -1,6 +1,6 @@
 "use client";
 
-import { Download } from "lucide-react";
+import { Download } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import type { TrailEvent, TrailKind } from "./trail";

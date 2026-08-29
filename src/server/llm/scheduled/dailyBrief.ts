@@ -18,6 +18,7 @@
  */
 
 import "server-only";
+import { toPlainText } from "~/server/llm/core/plainText";
 
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 
@@ -234,7 +235,7 @@ Reply with the brief text only.`,
       ],
     });
 
-    const text = res.content.trim();
+    const text = toPlainText(res.content);
     return text.length > 0 ? text : fallbackBrief(facts, findings);
   } catch (err) {
     log.warn("brief generation failed, sending the plain version", { err });

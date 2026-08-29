@@ -14,6 +14,7 @@ import {
 } from "~/server/llm/schemas/a1WorkspaceConciergeSchemas";
 import { buildA1Context } from "~/server/llm/context/a1ContextBuilder";
 import { getA1SystemPrompt } from "~/server/llm/prompts/a1Prompts";
+import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
 import { parseAndValidate } from "~/server/llm/core/jsonRepair";
 import { runToolLoop } from "~/server/llm/core/toolLoop";
 import { A1_READ_TOOLS } from "~/server/llm/tools/a1/readTools";
@@ -55,22 +56,35 @@ export function isFallbackTurn(content: string): boolean {
   return content.includes(`"${AI_UNAVAILABLE_REF}"`);
 }
 
-function buildFallbackResponse(input: AgentDraftInput): A1Output {
+function buildFallbackResponse(
+  input: AgentDraftInput,
+  locale?: string,
+): A1Output {
   const safeScope = input.scope ?? {};
+  const isBg =
+    locale === "bg" ||
+    (typeof input.message === "string" && /[Ѐ-ӿ]/.test(input.message));
+
   return {
     intent: {
       type: "answer" as const,
       scope: { orgId: safeScope.orgId, projectId: safeScope.projectId },
     },
     answer: {
-      summary:
-        "I’m having trouble generating an AI response right now. Try rephrasing your question or be more specific about what you need.",
+      summary: isBg
+        ? "В момента има проблем с генерирането на отговор от изкуствения интелект. Моля, опитайте да преформулирате въпроса си или уточнете какво ви е необходимо."
+        : "I’m having trouble generating an AI response right now. Try rephrasing your question or be more specific about what you need.",
       // No bullet glyphs here: every renderer of `answer.details` adds its own,
       // and a hand-written one shows up as a doubled bullet.
-      details: [
-        "Ask a direct question (e.g., ‘What’s the status of Project X?’)",
-        "If you want tasks created, say ‘create tasks for …’ and I’ll hand it off to the Task Planner",
-      ],
+      details: isBg
+        ? [
+            "Задайте директен въпрос (напр. „Какъв е статусът на проект X?“)",
+            "Ако искате да създадете задачи, кажете „създай задачи за …“ и ще прехвърля заявката към Task Planner",
+          ]
+        : [
+            "Ask a direct question (e.g., ‘What’s the status of Project X?’)",
+            "If you want tasks created, say ‘create tasks for …’ and I’ll hand it off to the Task Planner",
+          ],
     },
     // Normalized by `A1OutputSchema`'s transform on the happy path; set here
     // because a hand-built fallback never passes through it.
@@ -96,7 +110,7 @@ export const a1Concierge = {
     const userId = requireUserId(input.ctx);
     const draftId = createDraftId();
     const contextPack = await buildA1Context(input.ctx, input.scope);
-    const systemPrompt = getA1SystemPrompt(contextPack);
+    const systemPrompt = getA1SystemPrompt(contextPack, input.message);
 
     let outputJson: A1Output;
     try {
@@ -132,6 +146,16 @@ ${input.conversationSummary}`,
               ]
             : []),
           ...historyMessages,
+          // After the history, not before it. A thread that ran in Bulgarian
+          // for ten turns and then gets an English message is the case that
+          // kept failing: whatever the system prompt says about mirroring the
+          // user is thousands of tokens back, while ten Bulgarian turns sit
+          // right next to the message being answered. This is the last thing
+          // the model reads before that message.
+          ...replyLanguageMessages({
+            locale: contextPack.locale,
+            message: input.message,
+          }),
           { role: "user", content: input.message },
         ],
         tools: toolDefinitionsFor(
@@ -149,7 +173,10 @@ ${input.conversationSummary}`,
         log.warn("A1 could not finish within its tool budget", {
           toolCalls: loopResult.toolCallsMade.length,
         });
-        return { draftId, outputJson: buildFallbackResponse(input) };
+        return {
+          draftId,
+          outputJson: buildFallbackResponse(input, contextPack.locale),
+        };
       }
 
       const parseResult = await parseAndValidate(
@@ -162,14 +189,18 @@ ${input.conversationSummary}`,
         outputJson = parseResult.data;
       } else {
         const safeScope = input.scope ?? {};
+        const isBg =
+          contextPack.locale === "bg" ||
+          (typeof input.message === "string" && /[Ѐ-ӿ]/.test(input.message));
         outputJson = {
           intent: {
             type: "answer" as const,
             scope: { orgId: safeScope.orgId, projectId: safeScope.projectId },
           },
           answer: {
-            summary:
-              "I encountered an error processing your request. Please try rephrasing.",
+            summary: isBg
+              ? "Възникна грешка при обработката на вашата заявка. Моля, опитайте да преформулирате."
+              : "I encountered an error processing your request. Please try rephrasing.",
             details: [parseResult.error],
           },
           handoff: undefined,
@@ -178,7 +209,10 @@ ${input.conversationSummary}`,
       }
     } catch (err) {
       log.error("LLM call failed", { agentId: input.agentId, err });
-      outputJson = buildFallbackResponse(input);
+      outputJson = buildFallbackResponse(
+        input,
+        contextPack?.locale ?? undefined,
+      );
     }
 
     return { draftId, outputJson };

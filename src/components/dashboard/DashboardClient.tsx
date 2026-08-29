@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, ChevronRight, Plus } from "lucide-react";
+import { Check, ChevronRight, Plus } from "~/components/ui/icons";
 
+import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import {
@@ -1001,7 +1002,10 @@ function ActivityItem({ row, now }: { row: ActivityRow; now: Date }) {
 
   const body = (
     <>
-      <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-accent-primary/15 text-[11px] font-semibold text-accent-secondary">
+      <span
+        style={avatarGradientStyle(row.user?.id ?? row.user?.email ?? who)}
+        className="flex h-[26px] w-[26px] items-center justify-center rounded-full text-[11px] font-semibold text-white"
+      >
         {initial}
       </span>
       <span className="truncate text-[15px] text-fg-secondary">{message}</span>

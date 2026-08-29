@@ -1,5 +1,5 @@
 import { type InferInsertModel, type InferSelectModel, sql } from "drizzle-orm";
-import { index, timestamp, varchar, integer, boolean, uniqueIndex } from "drizzle-orm/pg-core";
+import { index, timestamp, varchar, integer, boolean, text, uniqueIndex } from "drizzle-orm/pg-core";
 import { createTable, orgRoleEnum } from "./enums";
 import { users } from "./users";
 
@@ -9,6 +9,8 @@ export const organizations = createTable(
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     name: varchar("name", { length: 256 }).notNull(),
     accessCode: varchar("access_code", { length: 14 }).notNull().unique(),
+    /** Org logo/pfp URL. Null falls back to the same gradient monogram profiles use. */
+    image: text("image"),
     createdById: varchar("created_by_id", { length: 255 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

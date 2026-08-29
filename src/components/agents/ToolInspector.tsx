@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, Lock, Plus, Wrench } from "lucide-react";
+import { ChevronRight, Lock, Plus, Wrench } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import type { AgentSummary } from "./types";

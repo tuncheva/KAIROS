@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from"react";
 import { api } from"~/trpc/react";
-import { AlertCircle } from"lucide-react";
+import { AlertCircle } from "~/components/ui/icons";
 import { useRouter } from"next/navigation";
 import { useTranslations } from"next-intl";
 import { Doughnut } from"react-chartjs-2";
 import { ensureChartJsRegistered } from"~/components/charts/chartjs";
 import { useResolvedThemeColors } from "~/components/charts/themeColors";
 import Image from "next/image";
+
+import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { formatDistanceToNow } from "date-fns";
 
 interface Collaborator {
@@ -325,7 +327,7 @@ export function ProjectsListWorkspace() {
  className="w-7 h-7 rounded-full border-2 border-bg-secondary object-cover"
  />
  ) : (
- <div key={collab.id} className="w-7 h-7 rounded-full border-2 border-bg-secondary bg-bg-tertiary flex items-center justify-center text-[10px] font-bold text-fg-tertiary">
+ <div key={collab.id} style={avatarGradientStyle(collab.id)} className="w-7 h-7 rounded-full border-2 border-bg-secondary flex items-center justify-center text-[10px] font-bold text-white">
  {(collab.name ?? "?").charAt(0).toUpperCase()}
  </div>
  )

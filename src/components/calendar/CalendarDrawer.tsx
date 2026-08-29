@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { X } from "~/components/ui/icons";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { useToast } from "~/components/providers/ToastProvider";

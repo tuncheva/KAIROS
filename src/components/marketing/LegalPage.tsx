@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "~/components/ui/icons.server";
 
 export type LegalSection = {
     /** Anchor target. Must be unique within the document — the ToC links to it. */

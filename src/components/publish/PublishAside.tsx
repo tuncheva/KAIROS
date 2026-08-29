@@ -13,7 +13,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
-import { UserPlus } from "lucide-react";
+import { UserPlus } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { ProfileLink } from "~/components/profile/ProfileLink";

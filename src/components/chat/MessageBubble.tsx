@@ -24,7 +24,7 @@ import {
   Smile,
   Trash2,
   X,
-} from "lucide-react";
+} from "~/components/ui/icons";
 
 import type { RouterOutputs } from "~/trpc/react";
 import { Avatar, formatFileSize, formatTime, isImageMime, type ChatUser } from "./chatUi";
@@ -139,7 +139,7 @@ export function MessageBubble({
       } transition-colors`}
     >
       {showAvatar && !isOwn ? (
-        <Avatar user={sender} size="sm" fallbackLabel={t("userFallback")} />
+        <Avatar user={sender} size="sm" fallbackLabel={t("userFallback")} peek />
       ) : (
         <div className="w-[26px] flex-shrink-0" />
       )}

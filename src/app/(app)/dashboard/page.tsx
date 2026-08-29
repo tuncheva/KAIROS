@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { Plus } from "lucide-react";
+import { Plus } from "~/components/ui/icons.server";
 
 import { AiInsightsPanel } from "~/components/dashboard/AiInsightsPanel";
 import { DashboardClient } from "~/components/dashboard/DashboardClient";
@@ -26,19 +26,24 @@ export default async function DashboardPage() {
    * already talking to the database to resolve the session, so it is the
    * cheapest possible place to also ask for what the page is about to want.
    *
-   * Deliberately not awaited. `HydrateClient` streams each result down as it
-   * resolves, so the three run concurrently and none of them holds up the
-   * shell; the client queries below them adopt whatever has landed and only
-   * fetch what has not.
+   * Awaited (as `Promise.all`, so the three still run concurrently): dehydrating
+   * the query client before it knows the result is what produced the
+   * hydration-mismatch bug where the server occasionally rendered the "no notes
+   * yet" empty state while the client — hydrating slightly later, once the
+   * prefetch had actually resolved — rendered the populated list. `dehydrate()`
+   * only ever captures what has already resolved, so an unawaited prefetch was
+   * racing the render instead of feeding it.
    *
    * `getForCalendar` is missing from this list on purpose: its input is a date
    * range built from `new Date()` in the client component, so a range computed
    * here would produce a different query key and prefetch into a cache entry
    * nothing ever reads.
    */
-  void api.project.getMyProjects.prefetch();
-  void api.note.getAll.prefetch();
-  void api.task.getOrgActivity.prefetch({ limit: 6, scope: "all" });
+  await Promise.all([
+    api.project.getMyProjects.prefetch(),
+    api.note.getAll.prefetch(),
+    api.task.getOrgActivity.prefetch({ limit: 6, scope: "all" }),
+  ]);
 
   return (
     <HydrateClient>

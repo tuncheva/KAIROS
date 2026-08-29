@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "~/trpc/react";
-import { Lock, Trash2, Eye, EyeOff, AlertCircle, RefreshCw, KeyRound, X } from "lucide-react";
+import { Lock, Trash2, Eye, EyeOff, AlertCircle, RefreshCw, KeyRound, X } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 import { useToast } from "~/components/providers/ToastProvider";
 import { cn } from "~/lib/utils";

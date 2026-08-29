@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
-import { ChevronDown, Plus, Copy, Check } from "lucide-react";
+import { ChevronDown, Plus, Copy, Check } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";

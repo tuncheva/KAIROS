@@ -15,7 +15,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertCircle, Eye, EyeOff, Lock, X } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Lock, X } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";

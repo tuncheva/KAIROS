@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight } from "~/components/ui/icons";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useTranslations } from "next-intl";
 

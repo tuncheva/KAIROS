@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Brain, Wrench } from "lucide-react";
+import { Brain, Wrench } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";

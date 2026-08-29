@@ -25,7 +25,7 @@ import {
   Loader2,
   MessageCircle,
   X,
-} from "lucide-react";
+} from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { eventDateParts, regionLabel } from "./feedData";

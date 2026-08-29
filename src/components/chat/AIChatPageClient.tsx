@@ -11,7 +11,7 @@ import {
   Sparkles,
   Trash2,
   Wrench,
-} from "lucide-react";
+} from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { AUTO_AGENT } from "~/components/agents/AgentPicker";

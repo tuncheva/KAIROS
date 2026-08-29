@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { Check, Pencil, Plus, StickyNote, Trash2, UserPlus, X } from "lucide-react";
+
+import { avatarGradientStyle } from "~/lib/avatarGradient";
+import { Check, Pencil, Plus, StickyNote, Trash2, UserPlus, X } from "~/components/ui/icons";
 import { useLocale, useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
@@ -227,7 +229,10 @@ export function ProjectTasksPanel({
           <button
             type="button"
             onClick={openCreate}
-            className="flex items-center gap-2 rounded-lg bg-accent-primary px-[15px] py-[9px] text-[13px] font-semibold text-white transition-all duration-300 hover:-translate-y-px hover:bg-accent-hover"
+            /* Colour only on hover. The lift-and-brighten this used to do made
+               the one button in a panel of quiet filter pills twitch under the
+               cursor, and `transition-all` animated its layout with it. */
+            className="flex items-center gap-2 rounded-lg bg-accent-primary px-[15px] py-[9px] text-[13px] font-semibold text-white transition-colors duration-200 hover:bg-accent-hover"
           >
             <Plus size={15} aria-hidden />
             {t("new")}
@@ -324,7 +329,12 @@ export function ProjectTasksPanel({
                             className="h-[18px] w-[18px] rounded-full object-cover"
                           />
                         ) : (
-                          <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-bg-tertiary text-[10px] font-bold text-fg-tertiary">
+                          <span
+                            style={avatarGradientStyle(
+                              task.assignedTo.id ?? task.assignedTo.name,
+                            )}
+                            className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] font-bold text-white"
+                          >
                             {(task.assignedTo.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
                           </span>
                         )}
@@ -664,7 +674,10 @@ function Member({
           className="h-[26px] w-[26px] flex-none rounded-full object-cover"
         />
       ) : (
-        <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full bg-bg-tertiary text-[11px] font-bold text-fg-tertiary">
+        <span
+          style={avatarGradientStyle(userId ?? email)}
+          className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full text-[11px] font-bold text-white"
+        >
           {(name || "?").trim().charAt(0).toUpperCase() || "?"}
         </span>
       )}

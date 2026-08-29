@@ -12,7 +12,7 @@ import {
  AlertCircle,
  Loader2,
  BrainCircuit
-} from"lucide-react";
+} from "~/components/ui/icons";
 import { motion, AnimatePresence } from"motion/react";
 import { useTranslations } from"next-intl";
 import { api } from"~/trpc/react";

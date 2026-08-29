@@ -11,7 +11,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { CornerUpLeft, FileText, ImageIcon, Loader2, Paperclip, Send, X } from "lucide-react";
+import { CornerUpLeft, FileText, ImageIcon, Loader2, Paperclip, Send, X } from "~/components/ui/icons";
 
 import { formatFileSize, isImageMime } from "./chatUi";
 import type { ThreadMessage } from "./MessageBubble";
@@ -162,7 +162,7 @@ export function Composer({
       )}
 
       <div
-        className={`flex items-end gap-2 rounded-2xl bg-bg-secondary px-2 py-2 ring-1 transition-colors ${
+        className={`flex items-end gap-2 rounded-2xl bg-bg-secondary px-2 py-2 ring-1 transition-colors focus-within:ring-accent-primary ${
           dragActive ? "ring-accent-primary" : "ring-border-light/50"
         }`}
       >

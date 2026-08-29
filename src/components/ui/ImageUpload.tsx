@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Camera, Upload } from "lucide-react";
+import { Camera, Upload } from "~/components/ui/icons";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 

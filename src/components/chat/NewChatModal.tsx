@@ -10,7 +10,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2, MessageCircle, Search, Users, X } from "lucide-react";
+import { Loader2, MessageCircle, Search, Users, X } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { Avatar, displayName, type ChatUser } from "./chatUi";
