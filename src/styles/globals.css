@@ -359,6 +359,71 @@ html {
   overflow-x: clip;
 }
 
+/* ─── Global Selection & Highlight Styling ───
+   Ensures text selection across the entire platform — normal chat,
+   AI chat, inputs, textareas, notes, and anywhere else — is clearly
+   visible with the active theme accent color. */
+::selection {
+  background-color: rgb(var(--accent-primary) / 0.28);
+  color: inherit;
+}
+
+::-moz-selection {
+  background-color: rgb(var(--accent-primary) / 0.28);
+  color: inherit;
+}
+
+input::selection,
+textarea::selection,
+[contenteditable="true"]::selection {
+  background-color: rgb(var(--accent-primary) / 0.35);
+  color: inherit;
+}
+
+input::-moz-selection,
+textarea::-moz-selection,
+[contenteditable="true"]::-moz-selection {
+  background-color: rgb(var(--accent-primary) / 0.35);
+  color: inherit;
+}
+
+.dark ::selection {
+  background-color: rgb(var(--accent-primary) / 0.45);
+  color: inherit;
+}
+
+.dark ::-moz-selection {
+  background-color: rgb(var(--accent-primary) / 0.45);
+  color: inherit;
+}
+
+.dark input::selection,
+.dark textarea::selection,
+.dark [contenteditable="true"]::selection {
+  background-color: rgb(var(--accent-primary) / 0.5);
+  color: inherit;
+}
+
+.dark input::-moz-selection,
+.dark textarea::-moz-selection,
+.dark [contenteditable="true"]::-moz-selection {
+  background-color: rgb(var(--accent-primary) / 0.5);
+  color: inherit;
+}
+
+/* Inside own message bubbles with solid/gradient accent backgrounds */
+.bg-gradient-to-br ::selection,
+[class*="from-accent"] ::selection {
+  background-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+.bg-gradient-to-br ::-moz-selection,
+[class*="from-accent"] ::-moz-selection {
+  background-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
 /* Professional elevated surfaces with depth */
 .surface-elevated {
   background-color: rgb(var(--bg-elevated));

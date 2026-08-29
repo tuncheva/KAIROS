@@ -2509,7 +2509,7 @@ export function ProjectIntelligenceChat(props: {
                 rows={1}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleSend(draft);
                   }
@@ -2521,18 +2521,11 @@ export function ProjectIntelligenceChat(props: {
               <div className="flex flex-wrap items-center gap-2">
                 {props.composerControls}
 
-                {isConsole && (
-                  <span className="kairos-stamp ml-auto hidden text-[10px] text-fg-tertiary sm:inline">
-                    {tc("sendShortcut")}
-                  </span>
-                )}
-
                 <button
                   type="submit"
                   aria-label={t("send")}
-                  title={tc("sendShortcut")}
                   className={`kairos-tap ${
-                    isConsole ? "" : "ml-auto "
+                    isConsole ? "ml-auto " : "ml-auto "
                   }flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
                   style={{
                     backgroundColor:

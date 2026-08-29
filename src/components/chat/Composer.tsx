@@ -162,7 +162,7 @@ export function Composer({
       )}
 
       <div
-        className={`flex items-end gap-2 rounded-2xl bg-bg-secondary px-2 py-2 ring-1 transition-colors ${
+        className={`flex items-end gap-2 rounded-2xl bg-bg-secondary px-2 py-2 ring-1 transition-colors focus-within:ring-accent-primary ${
           dragActive ? "ring-accent-primary" : "ring-border-light/50"
         }`}
       >
