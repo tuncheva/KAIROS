@@ -42,6 +42,10 @@ const COLUMNS: Array<[string, string]> = [
   ["user", "social_notifications"],
   ["user", "invite_notifications"],
   ["user", "workspace_notifications"],
+  // Where the on-screen notifications go. Missing, `settings.get` returns a row
+  // without it, the picker falls back to the default, and the user's choice
+  // silently stops sticking rather than failing.
+  ["user", "notification_position"],
   // Idempotency for the task due-reminder sweep. Without it the sweep cannot
   // tell a reminder it already sent from one it has not, so it sends every tick.
   ["tasks", "due_reminder_sent_at"],

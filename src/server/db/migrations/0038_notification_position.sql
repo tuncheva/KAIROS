@@ -4,4 +4,4 @@ EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "notification_position" "notification_position" DEFAULT 'top-right' NOT NULL;
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "notification_position" "notification_position" DEFAULT 'top-right' NOT NULL;
