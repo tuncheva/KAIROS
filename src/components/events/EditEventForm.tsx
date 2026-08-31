@@ -407,7 +407,7 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
           <button
             type="submit"
             disabled={updateEvent.isPending || isUploading || !title.trim() || !description.trim() || !eventDate || !region}
-            className="bg-accent-primary hover:bg-accent-hover text-white px-7 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-accent-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+            className="bg-accent-primary hover:bg-accent-hover text-white px-7 py-2.5 rounded-xl font-bold text-sm shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
           >
             {isUploading || updateEvent.isPending ? (
               <>

@@ -232,7 +232,7 @@ export function AiTaskDraftPanel({
  {/* Header */}
  <div className="px-5 py-4 flex items-center justify-between border-b border-border-light/20">
  <div className="flex items-center gap-3">
- <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center text-white shadow-lg shadow-accent-primary/20">
+ <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center text-white shadow-lg">
  <BrainCircuit size={18} />
  </div>
  <div>
@@ -300,7 +300,7 @@ export function AiTaskDraftPanel({
  <button
  onClick={handleGenerate}
  disabled={isPending || (!projectDescription && !descInstructions.trim())}
- className="w-full py-2.5 rounded-xl bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-medium text-[13px] flex items-center justify-center gap-2 shadow-lg shadow-accent-primary/10 hover:shadow-accent-primary/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:grayscale disabled:scale-100"
+ className="w-full py-2.5 rounded-xl bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-medium text-[13px] flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:grayscale disabled:scale-100"
  >
  {isPending ? (
  <>
@@ -406,7 +406,7 @@ export function AiTaskDraftPanel({
  <button
  onClick={handleGenerate}
  disabled={isPending || !pdfBase64}
- className="w-full py-2.5 rounded-xl bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-medium text-[13px] flex items-center justify-center gap-2 shadow-lg shadow-accent-primary/10 hover:shadow-accent-primary/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:grayscale disabled:scale-100"
+ className="w-full py-2.5 rounded-xl bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-medium text-[13px] flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:grayscale disabled:scale-100"
  >
  {isPending ? (
  <>

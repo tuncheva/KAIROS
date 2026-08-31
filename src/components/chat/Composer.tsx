@@ -226,7 +226,7 @@ export function Composer({
           onClick={onSend}
           disabled={!canSend}
           aria-label={t("send")}
-          className="p-2.5 rounded-xl bg-gradient-to-br from-accent-primary to-accent-secondary text-white shadow-accent disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 transition-all flex-shrink-0"
+          className="p-2.5 rounded-xl bg-gradient-to-br from-accent-primary to-accent-secondary text-white shadow-lg disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 transition-all flex-shrink-0"
         >
           {isUploading || isSending ? (
             <Loader2 size={16} className="animate-spin" />

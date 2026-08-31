@@ -15,7 +15,7 @@ export default function NotFound() {
         </div>
         <Link
           href="/"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-accent-primary text-white font-medium rounded-xl hover:opacity-90 transition-all duration-200 shadow-md shadow-accent-primary/20 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] kairos-btn"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-accent-primary text-white font-medium rounded-xl hover:opacity-90 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] kairos-btn"
         >
           Go Home
         </Link>

@@ -140,7 +140,7 @@ export function AiTaskPlannerPanel(props: {
  <div className="bg-bg-secondary rounded-2xl overflow-hidden border border-white/[0.06]">
  <div className="px-5 py-4 flex items-center justify-between border-b border-white/[0.06]">
  <div className="flex items-center gap-3">
- <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center text-white shadow-lg shadow-accent-primary/20">
+ <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center text-white shadow-lg">
  <Sparkles size={18} />
  </div>
  <div>
@@ -291,7 +291,7 @@ export function AiTaskPlannerPanel(props: {
  className={cn(
 "inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition",
 "bg-accent-primary text-white hover:opacity-95 disabled:opacity-50",
-"shadow-lg shadow-accent-primary/20",
+"shadow-lg",
  )}
  >
  {pdfExtractMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}

@@ -7,7 +7,7 @@
 /* ─── Tailwind v4 Theme Registration ───
    Registers custom design-token colors, fonts and shadows so that utility
    classes like `text-accent-primary`, `bg-fg-secondary/50`, `font-display`,
-   `shadow-accent` etc. are generated.  Values reference the CSS custom
+   `shadow-lg` etc. are generated.  Values reference the CSS custom
    properties defined further down in :root / .dark so they stay dynamic. */
 @theme inline {
   /* Background palette */
@@ -63,8 +63,6 @@
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif, "KairosEmoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-display: var(--font-display), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 
-  /* Box shadows */
-  --shadow-accent: 0 10px 25px -5px rgb(var(--accent-primary) / 0.3);
 }
 
 :root {
@@ -150,7 +148,6 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-  --shadow-accent: 0 10px 25px -5px rgb(var(--accent-primary) / 0.3);
 }
 
 /* Accent (theme) variants */
@@ -280,7 +277,6 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.5);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.7);
-  --shadow-accent: 0 10px 25px -5px rgb(var(--accent-primary) / 0.4);
 }
 
 /* Accent (theme) variants - Dark Mode */
@@ -548,7 +544,7 @@ summary,
   font-weight: 600;
   border-radius: 0.75rem;
   border: none;
-  box-shadow: var(--shadow-md), var(--shadow-accent);
+  box-shadow: var(--shadow-md);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -570,7 +566,7 @@ summary,
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-xl), var(--shadow-accent);
+  box-shadow: var(--shadow-xl);
 }
 
 .btn-primary:active {
@@ -664,14 +660,6 @@ summary,
 }
 
 /* Events page utilities */
-.purple-glow {
-  box-shadow: 0 0 20px rgb(var(--accent-primary) / 0.15);
-}
-
-.purple-glow-soft {
-  box-shadow: 0 4px 20px rgb(var(--accent-primary) / 0.08);
-}
-
 .card-shadow {
   box-shadow: 0 2px 15px rgb(0 0 0 / 0.04);
 }
@@ -680,9 +668,6 @@ summary,
   background: radial-gradient(circle at top right, rgb(var(--accent-primary) / 0.08), transparent);
 }
 
-.progress-bar-glow {
-  box-shadow: 0 0 8px rgb(var(--accent-primary) / 0.4);
-}
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

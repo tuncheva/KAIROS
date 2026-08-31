@@ -1008,7 +1008,7 @@ export function ChatShell({
               <button
                 type="button"
                 onClick={() => setShowNewChat(true)}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-br from-accent-primary to-accent-secondary text-white text-sm font-semibold shadow-accent hover:brightness-110 transition-all"
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-br from-accent-primary to-accent-secondary text-white text-sm font-semibold shadow-lg hover:brightness-110 transition-all"
               >
                 {t("startNewChat")}
               </button>

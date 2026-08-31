@@ -104,7 +104,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
           {step === "choose" && (
             <>
               <div className="text-center mb-8">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-accent-primary to-accent-hover rounded-2xl flex items-center justify-center shadow-accent">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-accent-primary to-accent-hover rounded-2xl flex items-center justify-center shadow-lg">
                   <span className="text-3xl font-bold text-white">K</span>
                 </div>
                 <h3 className="text-3xl font-bold text-fg-primary mb-2">
@@ -118,7 +118,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
               <div className="space-y-4">
                 <button
                   onClick={() => setStep("admin-setup")}
-                  className="w-full p-6 bg-gradient-to-br from-accent-primary/10 to-accent-secondary/10 hover:from-accent-primary/20 hover:to-accent-secondary/20 rounded-2xl transition-all duration-200 text-left group border-2 border-accent-primary/30 hover:border-accent-primary/60 hover:shadow-accent"
+                  className="w-full p-6 bg-gradient-to-br from-accent-primary/10 to-accent-secondary/10 hover:from-accent-primary/20 hover:to-accent-secondary/20 rounded-2xl transition-all duration-200 text-left group border-2 border-accent-primary/30 hover:border-accent-primary/60 hover:shadow-lg"
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -214,7 +214,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
               <button
                 onClick={handleCreateOrganization}
                 disabled={createOrganization.isPending}
-                className="w-full px-6 py-4 bg-gradient-to-r from-accent-primary to-accent-hover text-white font-semibold rounded-xl hover:shadow-accent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                className="w-full px-6 py-4 bg-gradient-to-r from-accent-primary to-accent-hover text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {createOrganization.isPending ? t("createOrg.loading") : t("createOrg.submit")}
               </button>
@@ -241,7 +241,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
               </p>
               <button
                 onClick={handleCopyCode}
-                className="px-6 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-semibold shadow-md hover:shadow-accent"
+                className="px-6 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-semibold shadow-md hover:shadow-lg"
               >
                 {t("createOrg.copyButton")}
               </button>
@@ -252,7 +252,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
                 void utils.user.checkOnboardingStatus.invalidate();
                 onComplete();
               }}
-              className="w-full px-6 py-4 bg-gradient-to-r from-accent-primary to-accent-hover text-white font-semibold rounded-xl hover:shadow-accent transition-all duration-200"
+              className="w-full px-6 py-4 bg-gradient-to-r from-accent-primary to-accent-hover text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-200"
             >
               {t("common.continueButton")}
             </button>

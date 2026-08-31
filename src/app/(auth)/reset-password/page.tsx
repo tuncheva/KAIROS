@@ -77,7 +77,7 @@ function ResetPasswordForm() {
           </p>
           <Link
             href="/notes"
-            className="inline-block px-6 py-3 bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-accent transition-all"
+            className="inline-block px-6 py-3 bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-lg transition-all"
           >
             {t("goToNotes")}
           </Link>
@@ -207,7 +207,7 @@ function ResetPasswordForm() {
           <button
             type="submit"
             disabled={resetPassword.isPending || !newPassword || !confirmPassword || !resetPin}
-            className="w-full px-6 py-3 bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-semibold rounded-lg hover:shadow-xl hover:shadow-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full px-6 py-3 bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-semibold rounded-lg hover:shadow-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Lock size={18} />
             {resetPassword.isPending ? t("submitting") : t("submit")}

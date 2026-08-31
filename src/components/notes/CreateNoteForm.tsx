@@ -62,7 +62,7 @@ export function CreateNoteForm() {
       {!showForm ? (
         <button
           onClick={() => setShowForm(true)}
-          className="w-full p-5 rounded-xl bg-accent-primary text-white shadow-xl shadow-accent-primary/20 hover:shadow-2xl hover:shadow-accent-primary/30 hover:brightness-[1.02] transition-all"
+          className="w-full p-5 rounded-xl bg-accent-primary text-white shadow-xl hover:shadow-2xl hover:brightness-[1.02] transition-all"
         >
           <div className="flex items-center justify-center gap-2">
             <span className="text-lg sm:text-xl font-bold tracking-[-0.02em]">{t("notes.actions.createNew")}</span>

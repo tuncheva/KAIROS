@@ -100,7 +100,7 @@ export function LockGate({
         <button
           type="submit"
           disabled={!password || isPending}
-          className="w-full mt-2.5 py-2.5 rounded-xl bg-accent-primary text-white text-sm font-semibold shadow-accent hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full mt-2.5 py-2.5 rounded-xl bg-accent-primary text-white text-sm font-semibold shadow-lg hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {isPending && <Loader2 size={14} className="animate-spin" />}
           {isPending ? t("actions.unlocking") : t("actions.unlock")}

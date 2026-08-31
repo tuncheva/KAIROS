@@ -702,7 +702,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                   title={blocked ? t("soldOut") : undefined}
                   className={`h-9 flex-1 rounded-lg text-[12.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                     active
-                      ? "bg-accent-primary text-white shadow-[0_5px_14px_-6px_rgb(var(--accent-primary)/0.85)]"
+                      ? "bg-accent-primary text-white"
                       : "bg-slate-100 text-fg-secondary hover:text-fg-primary dark:bg-white/5"
                   }`}
                 >
