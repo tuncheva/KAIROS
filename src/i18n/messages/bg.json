@@ -2464,5 +2464,31 @@
       "retry": "Опитайте отново",
       "dashboard": "Към таблото"
     }
+  },
+  "notifications": {
+    "title": "Известия",
+    "unreadBadge": "{count} нови",
+    "markAllRead": "Прочети всички",
+    "filterAll": "Всички",
+    "filterUnread": "Непрочетени",
+    "filterMentions": "Споменавания",
+    "emptyTitle": "Няма нищо ново",
+    "emptyBody": "Новата активност се появява тук.",
+    "caughtUpTitle": "Всичко е прочетено",
+    "caughtUpBody": "В момента няма непрочетени.",
+    "noMentionsTitle": "Няма споменавания",
+    "noMentionsBody": "Никой не ви е писал наскоро.",
+    "seeAll": "Виж всички (още {count})",
+    "showLess": "Покажи по-малко",
+    "settingsLink": "Настройки на известията",
+    "open": "Известия",
+    "openUnread": "Известия, {count} непрочетени",
+    "markRead": "Маркирай като прочетено",
+    "deleteOne": "Изтрий известието",
+    "dismiss": "Затвори",
+    "now": "сега",
+    "today": "Днес",
+    "yesterday": "Вчера",
+    "yesterdayShort": "Вчера"
   }
 }

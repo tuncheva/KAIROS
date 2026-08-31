@@ -2464,5 +2464,31 @@
       "retry": "Try again",
       "dashboard": "Back to dashboard"
     }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "unreadBadge": "{count} new",
+    "markAllRead": "Mark all read",
+    "filterAll": "All",
+    "filterUnread": "Unread",
+    "filterMentions": "Mentions",
+    "emptyTitle": "Nothing waiting",
+    "emptyBody": "New activity lands here first.",
+    "caughtUpTitle": "All caught up",
+    "caughtUpBody": "Nothing unread right now.",
+    "noMentionsTitle": "No mentions",
+    "noMentionsBody": "Nobody has written to you lately.",
+    "seeAll": "See all ({count} more)",
+    "showLess": "Show less",
+    "settingsLink": "Notification settings",
+    "open": "Notifications",
+    "openUnread": "Notifications, {count} unread",
+    "markRead": "Mark as read",
+    "deleteOne": "Delete notification",
+    "dismiss": "Dismiss",
+    "now": "now",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "yesterdayShort": "Yest"
   }
 }

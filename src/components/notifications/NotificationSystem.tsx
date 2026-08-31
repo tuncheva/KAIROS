@@ -14,9 +14,17 @@ import {
   FolderKanban,
   Clock,
 } from "~/components/ui/icons";
-import { formatDistanceToNowStrict, isToday, isYesterday, format } from "date-fns";
+import {
+  formatDistanceToNowStrict,
+  isToday,
+  isYesterday,
+  format,
+  type Locale,
+} from "date-fns";
+import { bg as bgLocale, enUS } from "date-fns/locale";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
 
 /**
@@ -120,31 +128,55 @@ function GlyphFor({ type, size = 16 }: { type: NotificationType; size?: number }
   }
 }
 
-/** `2m`, `26m`, `Wed`, `12 Aug` — short enough to sit at the end of the title row. */
-function shortWhen(date: Date): string {
+/**
+ * `2m`, `26m`, `Wed`, `12 Aug` — short enough to sit at the end of the title row.
+ *
+ * Takes the date-fns locale rather than relying on the default. Weekday and
+ * month names came out English on a Bulgarian workspace, which is the same
+ * defect as the hardcoded copy around them, just harder to notice.
+ */
+function shortWhen(date: Date, locale: Locale, yesterdayShort: string): string {
   if (isToday(date)) {
-    return formatDistanceToNowStrict(date)
+    return formatDistanceToNowStrict(date, { locale })
       .replace(/ seconds?/, "s")
       .replace(/ minutes?/, "m")
       .replace(/ hours?/, "h");
   }
-  if (isYesterday(date)) return "Yest";
+  if (isYesterday(date)) return yesterdayShort;
   const now = Date.now();
   const withinWeek = now - date.getTime() < 7 * 24 * 60 * 60 * 1000;
-  return withinWeek ? format(date, "EEE") : format(date, "d MMM");
+  return withinWeek ? format(date, "EEE", { locale }) : format(date, "d MMM", { locale });
 }
 
-function dayLabel(date: Date): string {
-  if (isToday(date)) return "Today";
-  if (isYesterday(date)) return "Yesterday";
-  return format(date, "d MMMM");
+function dayLabel(
+  date: Date,
+  locale: Locale,
+  labels: { today: string; yesterday: string },
+): string {
+  if (isToday(date)) return labels.today;
+  if (isYesterday(date)) return labels.yesterday;
+  return format(date, "d MMMM", { locale });
 }
 
 const COLLAPSED_VISIBLE = 20;
 
+/**
+ * How many floating popups can be on screen at once.
+ *
+ * The stack was unbounded — a burst of activity pushed cards down the whole
+ * viewport from `top-4`, over the TopBar. Oldest fall off first; the panel
+ * still has every one of them.
+ */
+const MAX_FLOATING = 3;
+
 export function NotificationSystem() {
   const router = useRouter();
+  const t = useTranslations("notifications");
+  const localeCode = useLocale();
+  const dateLocale = localeCode.startsWith("bg") ? bgLocale : enUS;
   const [isOpen, setIsOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const bellRef = useRef<HTMLButtonElement | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [expanded, setExpanded] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -200,7 +232,19 @@ export function NotificationSystem() {
           type: data.type ?? "system",
           link: data.link ?? undefined,
         };
-        setFloatingNotifs((prev) => [...prev, notif]);
+        setFloatingNotifs((prev) => {
+          const next = [...prev, notif];
+          /* Cap the stack, and clear the timers of anything pushed off it so a
+             dropped card cannot fire a state update later. */
+          for (const stale of next.slice(0, Math.max(0, next.length - MAX_FLOATING))) {
+            const staleTimer = floatingTimers.current.get(stale.id);
+            if (staleTimer) {
+              clearTimeout(staleTimer);
+              floatingTimers.current.delete(stale.id);
+            }
+          }
+          return next.slice(-MAX_FLOATING);
+        });
 
         // Optimistically add to notifications list so badge updates immediately
         setNotifications((prev) => [
@@ -298,6 +342,36 @@ export function NotificationSystem() {
     }
   }, [isOpen, refetch]);
 
+  /* Escape closes and hands focus back to the bell. The panel had neither, so a
+     keyboard user could open it and then had no way out except Tab-ing through
+     every row to reach the page behind it. */
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      setIsOpen(false);
+      bellRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isOpen]);
+
+  /* Tabbing past the last row should leave the panel rather than walk the page
+     underneath it while an overlay is up. */
+  useEffect(() => {
+    if (!isOpen) return;
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (panelRef.current?.contains(target)) return;
+      if (bellRef.current?.contains(target)) return;
+      setIsOpen(false);
+    };
+    document.addEventListener("focusin", onFocusIn);
+    return () => document.removeEventListener("focusin", onFocusIn);
+  }, [isOpen]);
+
   // Use server count if available, fall back to local state count
   const localUnread = notifications.filter((n) => !n.read).length;
   const unreadCount = Math.max(localUnread, serverUnreadCount ?? 0);
@@ -315,14 +389,15 @@ export function NotificationSystem() {
   /** Rows in order, with a day heading inserted whenever the date changes. */
   const grouped = useMemo(() => {
     const out: { label: string; items: Notification[] }[] = [];
+    const labels = { today: t("today"), yesterday: t("yesterday") };
     for (const item of visible) {
-      const label = dayLabel(item.createdAt);
+      const label = dayLabel(item.createdAt, dateLocale, labels);
       const last = out[out.length - 1];
       if (last?.label === label) last.items.push(item);
       else out.push({ label, items: [item] });
     }
     return out;
-  }, [visible]);
+  }, [visible, dateLocale, t]);
 
   const hiddenCount = useMemo(() => {
     const total = notifications.filter((n) => {
@@ -341,6 +416,14 @@ export function NotificationSystem() {
     e.stopPropagation();
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     deleteMutation.mutate({ notificationId: id });
+  };
+
+  /* Reading a row and going where it points were the same gesture, so the only
+     way to clear the badge was to leave the page — once per notification. */
+  const handleMarkReadOnly = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    markAsReadMutation.mutate({ notificationId: id });
   };
 
   const handleNotificationClick = (notification: Notification) => {
@@ -405,7 +488,7 @@ export function NotificationSystem() {
                 <h4 className="truncate text-[13.5px] font-bold tracking-[-0.01em] text-fg-primary">
                   {notif.title}
                 </h4>
-                <span className={`${label} ml-auto flex-none text-fg-quaternary`}>now</span>
+                <span className={`${label} ml-auto flex-none text-fg-quaternary`}>{t("now")}</span>
               </div>
               {notif.message && (
                 <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-[1.45] text-fg-tertiary">
@@ -420,7 +503,7 @@ export function NotificationSystem() {
                 dismissFloating(notif.id);
               }}
               className="flex h-5 w-5 flex-none items-center justify-center rounded-md text-fg-quaternary transition-colors hover:bg-error/10 hover:text-error"
-              aria-label="Dismiss"
+              aria-label={t("dismiss")}
             >
               <X size={12} strokeWidth={2.2} />
             </button>
@@ -431,6 +514,7 @@ export function NotificationSystem() {
       {/* Bell + panel */}
       <div className="relative">
         <button
+          ref={bellRef}
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className={`relative flex h-8 w-8 items-center justify-center rounded-[9px] transition-colors ${
@@ -438,10 +522,9 @@ export function NotificationSystem() {
               ? "bg-accent-primary/12 text-accent-primary"
               : "text-fg-secondary hover:bg-bg-secondary/60 hover:text-fg-primary"
           }`}
-          aria-label={
-            unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
-          }
+          aria-label={unreadCount > 0 ? t("openUnread", { count: unreadCount }) : t("open")}
           aria-expanded={isOpen}
+          aria-haspopup="dialog"
         >
           <Bell size={19} strokeWidth={1.6} />
           {/*
@@ -465,13 +548,20 @@ export function NotificationSystem() {
               not widen with the viewport, because a 700px row is no easier to
               scan. Below `sm` it becomes a full-width sheet under the bar.
             */}
-            <div className="animate-in slide-in-from-top-2 absolute right-0 z-50 mt-2 w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-border-light bg-bg-elevated shadow-2xl duration-200 sm:w-[380px]">
+            <div
+              ref={panelRef}
+              role="dialog"
+              aria-label={t("title")}
+              className="animate-in slide-in-from-top-2 absolute right-0 z-50 mt-2 w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-border-light bg-bg-elevated shadow-2xl duration-200 sm:w-[380px]"
+            >
               <div className="flex items-baseline gap-2.5 px-[18px] pb-3 pt-4">
                 <h3 className="text-[15px] font-bold tracking-[-0.012em] text-fg-primary">
-                  Notifications
+                  {t("title")}
                 </h3>
                 {unreadCount > 0 && (
-                  <span className={`${label} text-accent-primary`}>{unreadCount} new</span>
+                  <span className={`${label} text-accent-primary`}>
+                    {t("unreadBadge", { count: unreadCount })}
+                  </span>
                 )}
                 <span className="flex-1" />
                 {unreadCount > 0 && (
@@ -481,16 +571,16 @@ export function NotificationSystem() {
                     disabled={markAllAsReadMutation.isPending}
                     className="text-[12px] text-fg-tertiary transition-colors hover:text-fg-primary disabled:opacity-50"
                   >
-                    Mark all read
+                    {t("markAllRead")}
                   </button>
                 )}
               </div>
 
               {notifications.length > 0 && (
                 <div className="flex gap-1 px-3.5 pb-3">
-                  {segment("all", "All", notifications.length)}
-                  {segment("unread", "Unread", localUnread)}
-                  {segment("mentions", "Mentions", mentionCount)}
+                  {segment("all", t("filterAll"), notifications.length)}
+                  {segment("unread", t("filterUnread"), localUnread)}
+                  {segment("mentions", t("filterMentions"), mentionCount)}
                 </div>
               )}
 
@@ -503,21 +593,17 @@ export function NotificationSystem() {
                       <Bell size={17} strokeWidth={1.6} />
                     </span>
                     <strong className="block text-[13.5px] font-bold text-fg-primary">
-                      Nothing waiting
+                      {t("emptyTitle")}
                     </strong>
-                    <span className="text-[12px] text-fg-tertiary">
-                      New activity lands here first.
-                    </span>
+                    <span className="text-[12px] text-fg-tertiary">{t("emptyBody")}</span>
                   </div>
                 ) : visible.length === 0 ? (
                   <div className="px-6 pb-12 pt-10 text-center">
                     <strong className="block text-[13.5px] font-bold text-fg-primary">
-                      {filter === "unread" ? "All caught up" : "No mentions"}
+                      {filter === "unread" ? t("caughtUpTitle") : t("noMentionsTitle")}
                     </strong>
                     <span className="text-[12px] text-fg-tertiary">
-                      {filter === "unread"
-                        ? "Nothing unread right now."
-                        : "Nobody has written to you lately."}
+                      {filter === "unread" ? t("caughtUpBody") : t("noMentionsBody")}
                     </span>
                   </div>
                 ) : (
@@ -553,7 +639,11 @@ export function NotificationSystem() {
                               <span
                                 className={`${label} ml-auto flex-none text-fg-quaternary`}
                               >
-                                {shortWhen(notification.createdAt)}
+                                {shortWhen(
+                                  notification.createdAt,
+                                  dateLocale,
+                                  t("yesterdayShort"),
+                                )}
                               </span>
                             </div>
                             {notification.message && (
@@ -562,14 +652,35 @@ export function NotificationSystem() {
                               </p>
                             )}
                           </div>
-                          <button
-                            type="button"
-                            onClick={(e) => handleDelete(notification.id, e)}
-                            className="flex h-5 w-5 flex-none items-center justify-center self-start rounded-md text-fg-quaternary opacity-0 transition-colors hover:bg-error/10 hover:text-error focus-visible:opacity-100 group-hover:opacity-100"
-                            aria-label="Delete notification"
-                          >
-                            <X size={12} strokeWidth={2.2} />
-                          </button>
+                          {/*
+                            Always visible below `sm`, revealed on hover/focus
+                            above it. These were `opacity-0 group-hover:…`,
+                            and a phone has no hover — so on the devices where
+                            the panel is hardest to use, dismissing a row was
+                            impossible.
+                          */}
+                          <span className="flex flex-none items-center gap-1 self-start opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+                            {!notification.read && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleMarkReadOnly(notification.id, e)}
+                                className="flex h-6 w-6 items-center justify-center rounded-md text-fg-quaternary transition-colors hover:bg-success/10 hover:text-success focus-visible:opacity-100"
+                                aria-label={t("markRead")}
+                                title={t("markRead")}
+                              >
+                                <CheckCircle2 size={13} strokeWidth={2} />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => handleDelete(notification.id, e)}
+                              className="flex h-6 w-6 items-center justify-center rounded-md text-fg-quaternary transition-colors hover:bg-error/10 hover:text-error focus-visible:opacity-100"
+                              aria-label={t("deleteOne")}
+                              title={t("deleteOne")}
+                            >
+                              <X size={13} strokeWidth={2.2} />
+                            </button>
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -584,7 +695,7 @@ export function NotificationSystem() {
                     onClick={() => setExpanded(true)}
                     className="text-[12px] text-fg-tertiary transition-colors hover:text-fg-primary"
                   >
-                    See all ({hiddenCount} more)
+                    {t("seeAll", { count: hiddenCount })}
                   </button>
                 ) : expanded ? (
                   <button
@@ -592,7 +703,7 @@ export function NotificationSystem() {
                     onClick={() => setExpanded(false)}
                     className="text-[12px] text-fg-tertiary transition-colors hover:text-fg-primary"
                   >
-                    Show less
+                    {t("showLess")}
                   </button>
                 ) : (
                   <span />
@@ -602,7 +713,7 @@ export function NotificationSystem() {
                   onClick={() => setIsOpen(false)}
                   className="text-[12px] text-fg-quaternary transition-colors hover:text-fg-primary"
                 >
-                  Notification settings
+                  {t("settingsLink")}
                 </Link>
               </div>
             </div>
