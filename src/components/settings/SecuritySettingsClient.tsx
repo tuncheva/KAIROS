@@ -57,6 +57,23 @@ export function SecuritySettingsClient() {
     if (data?.resetPinHint) setHint(data.resetPinHint);
   }, [data?.resetPinHint]);
 
+  /* The subscribable calendar feed. One mutation mints and rotates, because
+     from the user's side those are the same request; a second one revokes. */
+  const rotateFeed = api.settings.rotateCalendarFeedToken.useMutation({
+    onSuccess: () => utils.settings.get.invalidate(),
+  });
+  const revokeFeed = api.settings.revokeCalendarFeedToken.useMutation({
+    onSuccess: () => utils.settings.get.invalidate(),
+  });
+
+  const feedToken = data?.calendarFeedToken ?? null;
+  /* Built in the browser: the origin is whatever host the user actually
+     reached the app on, and a server-rendered guess at that is how a copied
+     URL ends up pointing at localhost. */
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
+  const feedUrl = feedToken ? `${origin}/api/calendar/feed/${feedToken}.ics` : null;
+
   const updateSecurity = api.settings.updateSecurity.useMutation({
     onSuccess: async () => {
       await utils.settings.get.invalidate();
@@ -292,6 +309,60 @@ export function SecuritySettingsClient() {
   ];
 
   const dataRows: LedgerRow[] = [
+    {
+      /* Above Export on purpose. The one-shot `.ics` download was the only
+         calendar option, and a file starts going stale the moment it is
+         imported — a calendar that is quietly wrong is worse than none. The
+         subscription is what most people actually want, so it is offered
+         first rather than buried under the thing it replaces. */
+      id: "calendar-feed",
+      title: t("calendarFeed"),
+      desc: feedUrl ? (
+        <span className="flex flex-col gap-1">
+          <span>{t("calendarFeedDesc")}</span>
+          <code className="break-all rounded bg-bg-secondary px-1.5 py-1 text-[11px] text-fg-secondary">
+            {feedUrl}
+          </code>
+          <span className="text-[11px] text-fg-quaternary">
+            {t("calendarFeedSecret")}
+          </span>
+        </span>
+      ) : (
+        t("calendarFeedDesc")
+      ),
+      descText: t("calendarFeedDesc"),
+      keywords: "calendar ics subscribe feed",
+      control: feedUrl ? (
+        <>
+          <LedgerAction
+            onClick={() => {
+              void navigator.clipboard?.writeText(feedUrl);
+            }}
+          >
+            {t("calendarFeedCopy")}
+          </LedgerAction>
+          <LedgerAction
+            disabled={rotateFeed.isPending}
+            onClick={() => void save.run(() => rotateFeed.mutateAsync())}
+          >
+            {t("calendarFeedRotate")}
+          </LedgerAction>
+          <LedgerAction
+            disabled={revokeFeed.isPending}
+            onClick={() => void save.run(() => revokeFeed.mutateAsync())}
+          >
+            {t("calendarFeedRevoke")}
+          </LedgerAction>
+        </>
+      ) : (
+        <LedgerAction
+          disabled={rotateFeed.isPending}
+          onClick={() => void save.run(() => rotateFeed.mutateAsync())}
+        >
+          {t("calendarFeedCreate")}
+        </LedgerAction>
+      ),
+    },
     {
       id: "export",
       title: t("exportData"),

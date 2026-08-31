@@ -93,6 +93,11 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/trpc")) return true;
   if (pathname.startsWith("/api/account-switch")) return true;
   if (pathname.startsWith("/api/uploadthing")) return true;
+  /* The subscribable calendar feed. Google, Apple and Outlook fetch it from
+     their own servers on their own schedule, so there is no cookie to gate on
+     — the 64-character token in the path is the credential, and the route
+     checks it before it reads anything. */
+  if (pathname.startsWith("/api/calendar/feed/")) return true;
   // Machine-to-machine routes. These carry no session cookie by design — they
   // authenticate with the shared ws credential, compared in constant time inside
   // the route handler, and a missing credential closes them rather than opening

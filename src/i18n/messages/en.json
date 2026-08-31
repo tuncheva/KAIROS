@@ -750,7 +750,14 @@
       "enterCode": "Confirmation code",
       "codePlaceholder": "12345678",
       "confirmEmail": "Confirm",
-      "verifying": "Confirming..."
+      "verifying": "Confirming...",
+      "calendarFeed": "Calendar subscription",
+      "calendarFeedDesc": "A live calendar URL for Google, Apple or Outlook. It updates on its own, unlike the one-off .ics download below.",
+      "calendarFeedSecret": "Anyone with this link can read your calendar. Rotate it if you share it by mistake.",
+      "calendarFeedCreate": "Create link",
+      "calendarFeedCopy": "Copy link",
+      "calendarFeedRotate": "Rotate",
+      "calendarFeedRevoke": "Turn off"
     },
     "language": {
       "title": "Language & Region",

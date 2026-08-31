@@ -750,7 +750,14 @@
       "enterCode": "Код за потвърждение",
       "codePlaceholder": "12345678",
       "confirmEmail": "Потвърди",
-      "verifying": "Потвърждава се..."
+      "verifying": "Потвърждава се...",
+      "calendarFeed": "Абонамент за календар",
+      "calendarFeedDesc": "Жив адрес на календар за Google, Apple или Outlook. Обновява се сам, за разлика от еднократното .ics изтегляне по-долу.",
+      "calendarFeedSecret": "Всеки с тази връзка може да чете календара ви. Подновете я, ако я споделите по погрешка.",
+      "calendarFeedCreate": "Създаване на връзка",
+      "calendarFeedCopy": "Копиране",
+      "calendarFeedRotate": "Подновяване",
+      "calendarFeedRevoke": "Изключване"
     },
     "language": {
       "title": "Език и регион",
