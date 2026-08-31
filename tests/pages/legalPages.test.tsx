@@ -75,14 +75,20 @@ describe("privacy policy content", () => {
   });
 });
 
+const { LegalPage } = await import("~/components/marketing/LegalPage");
+
 describe("LegalPage", () => {
   const sections = [
     { id: "first-thing", heading: "First thing", body: <p>Body of the first thing.</p> },
     { id: "second-thing", heading: "Second thing", body: <p>Body of the second thing.</p> },
   ];
 
+  /* Imported once at module scope rather than inside the helper. Resolving this
+     module pulls in the marketing tree, which under a full-suite run took
+     longer than the 5s per-test budget — so whichever test happened to go first
+     paid for it and timed out, while the file passed in isolation. Top-level
+     await is collection time, not test time. */
   async function renderLegalPage() {
-    const { LegalPage } = await import("~/components/marketing/LegalPage");
     return render(
       await LegalPage({ title: "Test Policy", lastUpdated: "1 January 2026", sections }),
     );

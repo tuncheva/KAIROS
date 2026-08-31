@@ -138,13 +138,30 @@ function matchesQuery(row: ProjectRow, query: string): boolean {
 
 export function visibleRows(
   rows: ProjectRow[],
-  { query, filter, sort }: { query: string; filter: FilterKey; sort: SortKey },
+  {
+    query,
+    filter,
+    sort,
+    locale = "bg",
+  }: { query: string; filter: FilterKey; sort: SortKey; locale?: string },
 ): ProjectRow[] {
   const kept = rows.filter((row) => matchesFilter(row, filter) && matchesQuery(row, query));
 
+  /* Sorting by name has to collate in the *reader's* language, not the
+     runtime's. `localeCompare` with no locale uses the host default — `en-US`
+     under Node and whatever the browser is set to in the app — and Latin
+     collates before Cyrillic there, so a Bulgarian workspace sorting A→Z had
+     every Cyrillic project dumped below every Latin one. Under `bg` they lead,
+     which is what "alphabetical" means to the person reading it.
+
+     `Intl.Collator` rather than a bare `localeCompare` per comparison: it
+     builds the collation table once instead of on every one of the n log n
+     comparisons. `numeric` makes "Sprint 2" precede "Sprint 10". */
+  const collator = new Intl.Collator(locale, { numeric: true, sensitivity: "base" });
+
   const sorted = [...kept];
   if (sort === "progress") sorted.sort((a, b) => b.percent - a.percent);
-  else if (sort === "name") sorted.sort((a, b) => a.title.localeCompare(b.title));
+  else if (sort === "name") sorted.sort((a, b) => collator.compare(a.title, b.title));
   else sorted.sort((a, b) => a.ageDays - b.ageDays);
 
   return sorted;

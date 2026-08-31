@@ -157,8 +157,8 @@ export function ProjectsWorkspace({
   );
 
   const shown = useMemo(
-    () => visibleRows(rows, { query, filter, sort }),
-    [rows, query, filter, sort],
+    () => visibleRows(rows, { query, filter, sort, locale }),
+    [rows, query, filter, sort, locale],
   );
   const totals = useMemo(() => workspaceTotals(rows), [rows]);
   const opened = useMemo(

@@ -184,6 +184,27 @@ const setup = () => {
   return user;
 };
 
+/** The four project titles in the fixture, as the rows are named. */
+const PROJECT_TITLES = new Set([
+  "Дипломна работа",
+  "Apartment move",
+  "Team onboarding kit",
+  "Reading list",
+]);
+
+/**
+ * The project rows in the order they are rendered.
+ *
+ * Each row's accessible name lives on an empty overlay button, so the rows
+ * cannot be read by their text. Filtering every button down to the ones named
+ * after a project skips the filter, sort and view controls.
+ */
+const rowOrder = () =>
+  screen
+    .getAllByRole("button")
+    .map((node) => node.getAttribute("aria-label") ?? "")
+    .filter((label) => PROJECT_TITLES.has(label));
+
 beforeEach(() => {
   deleteMutate.mockClear();
   createTaskMutate.mockClear();
@@ -210,11 +231,12 @@ describe("ProjectsWorkspace — browse", () => {
 
   it("orders by recency of update by default", () => {
     setup();
-    const titles = screen
-      .getAllByRole("button")
-      .map((node) => node.textContent ?? "")
-      .filter((text) => text.includes("%") || text.includes("—"));
-    expect(titles[0]).toContain("Дипломна работа");
+    // A row is a div with a full-bleed overlay button over it — the collaborator
+    // faces inside have to be buttons themselves and a button cannot nest. So
+    // the row's accessible name is on that empty overlay, and reading rows by
+    // `textContent` finds nothing. `rowOrder` reads the labels instead, which
+    // is both what a screen reader hears and DOM order.
+    expect(rowOrder()[0]).toBe("Дипломна работа");
   });
 
   it("falls back to a placeholder when a project has no description", () => {
@@ -281,7 +303,8 @@ describe("ProjectsWorkspace — browse", () => {
 
 describe("ProjectsWorkspace — detail", () => {
   const open = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(screen.getByText("Дипломна работа"));
+    // The title span is inert; the overlay button carries the click.
+    await user.click(screen.getByRole("button", { name: "Дипломна работа" }));
   };
 
   /* A project opens on its tasks — the timeline is one tab over. */
@@ -370,7 +393,8 @@ describe("ProjectsWorkspace — detail", () => {
 
 describe("ProjectsWorkspace — tasks", () => {
   const open = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(screen.getByText("Дипломна работа"));
+    // The title span is inert; the overlay button carries the click.
+    await user.click(screen.getByRole("button", { name: "Дипломна работа" }));
   };
 
   it("opens a project on its task board", async () => {
