@@ -29,6 +29,8 @@ export function WorkspaceMenu() {
   const [open, setOpen] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   /*
    * The workspace name sits in the top bar, so this mounts on every page. The
@@ -62,7 +64,32 @@ export function WorkspaceMenu() {
       if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        /* Back to the trigger. Closing a menu and leaving focus on the
+           document body strands a keyboard user at the top of the page. */
+        triggerRef.current?.focus();
+        return;
+      }
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+
+      /* `role="menu"` was here without any of the behaviour it promises: a
+         screen reader announced a menu, and then arrow keys did nothing.
+         `notes/Menu.tsx` already does this correctly; this is the same walk. */
+      const items = menuRef.current?.querySelectorAll<HTMLElement>(
+        '[role="menuitem"]:not([disabled])',
+      );
+      if (!items || items.length === 0) return;
+      event.preventDefault();
+
+      const list = Array.from(items);
+      const index = list.indexOf(document.activeElement as HTMLElement);
+      const next =
+        event.key === "ArrowDown"
+          ? list[(index + 1) % list.length]
+          : list[(index - 1 + list.length) % list.length];
+      next?.focus();
     };
 
     document.addEventListener("mousedown", onPointerDown);
@@ -71,6 +98,13 @@ export function WorkspaceMenu() {
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
+  }, [open]);
+
+  /* Opening a menu puts you on its first item — otherwise Tab walks from the
+     trigger into the page behind the open menu. */
+  useEffect(() => {
+    if (!open) return;
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
   }, [open]);
 
   const active = activeQuery.data;
@@ -91,6 +125,7 @@ export function WorkspaceMenu() {
     <>
       <div className="relative" ref={containerRef}>
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-haspopup="menu"
@@ -132,6 +167,7 @@ export function WorkspaceMenu() {
 
         {open ? (
           <div
+            ref={menuRef}
             role="menu"
             className="absolute left-0 z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-border-light/60 bg-bg-surface shadow-2xl"
           >
