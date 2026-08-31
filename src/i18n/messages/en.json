@@ -259,7 +259,13 @@
       "removed": "Password removed",
       "pinRequired": "Enter your reset PIN",
       "incorrectPin": "Incorrect reset PIN",
-      "pinLocked": "Too many wrong PINs. Try again in a few minutes."
+      "pinLocked": "Too many wrong PINs. Try again in a few minutes.",
+      "noPinTitle": "Set a recovery PIN first",
+      "noPinBody": "You don't have one yet. The password is never stored, so without a PIN this note cannot be recovered by anyone — including us — if you forget it.",
+      "pinLabel": "Recovery PIN (4+ digits)",
+      "pinConfirmLabel": "Confirm PIN",
+      "pinTooShort": "The PIN must be at least 4 digits.",
+      "pinsMismatch": "The PINs don't match."
     },
     "saveChanges": "Save changes",
     "meta": {

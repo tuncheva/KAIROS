@@ -37,10 +37,33 @@ export function LockNoteDialog({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [reveal, setReveal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+
+  /* The warning under this form says the recovery PIN is the only way back. For
+     a user who has never set one that sentence describes a door that is not
+     there: the note becomes unrecoverable the moment it is encrypted, and
+     nothing on screen said so. `hasResetPin` is what the dialog branches on —
+     if there is no PIN, one is set here, in the same submit, before the note is
+     encrypted at all. */
+  const settings = api.settings.get.useQuery();
+  const hasResetPin = settings.data?.hasResetPin ?? false;
+  /* Until the query answers, neither branch is honest — so the button waits
+     rather than showing the wrong warning for a frame. */
+  const pinKnown = settings.isSuccess;
 
   const dialogRef = useRef<HTMLFormElement | null>(null);
   const passwordRef = useRef<HTMLInputElement | null>(null);
   const restoreTo = useRef<HTMLElement | null>(null);
+
+  const setResetPin = api.settings.updateResetPin.useMutation({
+    onSuccess: () => {
+      void settings.refetch();
+      /* Only now is there a way back, so only now is it safe to encrypt. */
+      setNotePassword.mutate({ noteId, password });
+    },
+    onError: (mutationError) => setError(mutationError.message),
+  });
 
   const setNotePassword = api.note.setPassword.useMutation({
     onSuccess: (_result, variables) => {
@@ -92,6 +115,21 @@ export function LockNoteDialog({
     }
     if (password !== confirmPassword) {
       setError(t("password.passwordsMismatch"));
+      return;
+    }
+    if (!hasResetPin) {
+      if (!/^\d{4,}$/.test(pin)) {
+        setError(t("password.pinTooShort"));
+        return;
+      }
+      if (pin !== confirmPin) {
+        setError(t("password.pinsMismatch"));
+        return;
+      }
+      setError(null);
+      /* The note is encrypted in this mutation's `onSuccess`, not here — a PIN
+         that failed to save must not leave an unrecoverable note behind. */
+      setResetPin.mutate({ pin, confirmPin });
       return;
     }
     setError(null);
@@ -180,7 +218,47 @@ export function LockNoteDialog({
           </div>
         </div>
 
-        <p className="mt-3.5 text-xs text-fg-tertiary">{t("password.protectWarning")}</p>
+        {pinKnown && !hasResetPin ? (
+          <div className="mt-4 space-y-3.5 rounded-xl border border-warning/25 bg-warning/[0.07] p-3.5">
+            <p className="text-xs font-semibold text-fg-primary">{t("password.noPinTitle")}</p>
+            <p className="text-xs text-fg-secondary">{t("password.noPinBody")}</p>
+
+            <div>
+              <label htmlFor="notes-lock-pin" className="block text-xs font-semibold text-fg-secondary mb-1.5">
+                {t("password.pinLabel")}
+              </label>
+              <input
+                id="notes-lock-pin"
+                type="password"
+                inputMode="numeric"
+                value={pin}
+                onChange={(event) => {
+                  setPin(event.target.value);
+                  setError(null);
+                }}
+                autoComplete="off"
+                className="w-full px-3.5 py-2.5 text-sm bg-bg-secondary rounded-lg text-fg-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/35"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="notes-lock-pin-confirm" className="block text-xs font-semibold text-fg-secondary mb-1.5">
+                {t("password.pinConfirmLabel")}
+              </label>
+              <input
+                id="notes-lock-pin-confirm"
+                type="password"
+                inputMode="numeric"
+                value={confirmPin}
+                onChange={(event) => setConfirmPin(event.target.value)}
+                autoComplete="off"
+                className="w-full px-3.5 py-2.5 text-sm bg-bg-secondary rounded-lg text-fg-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/35"
+              />
+            </div>
+          </div>
+        ) : (
+          <p className="mt-3.5 text-xs text-fg-tertiary">{t("password.protectWarning")}</p>
+        )}
 
         {error && (
           <p role="alert" className="flex items-center gap-1.5 mt-3.5 text-xs text-error">
@@ -198,7 +276,7 @@ export function LockNoteDialog({
           </button>
           <button
             type="submit"
-            disabled={setNotePassword.isPending}
+            disabled={setNotePassword.isPending || setResetPin.isPending || !pinKnown}
             className="flex-1 px-4 py-2.5 rounded-xl bg-accent-primary text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             {setNotePassword.isPending ? t("common.working") : t("actions.lock")}

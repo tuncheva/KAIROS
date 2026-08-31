@@ -1,0 +1,1416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Rendered UI proposals for the twelve surfaces the KAIROS UX audit found missing, unreachable or broken — toasts, org invites, public event pages, onboarding, project chat, AI undo, note recovery, project detail, mobile nav, search, notifications and one confirm dialog.">
+<title>UX Fix — UI Proposal — KAIROS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Nunito+Sans:wght@300;400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+/* ── KAIROS tokens, ported from src/styles/globals.css ────────────────── */
+:root{
+  --ground:#FCFDFF; --secondary:#F8FAFC; --surface:#FAFBFD; --elevated:#FDFEFF; --tertiary:#F1F5F9;
+  --ink:#0F172A; --muted:#475569; --faint:#64748B; --ghost:#94A3B8;
+  --hair:#C8C8C8; --hair-soft:rgba(200,200,200,.5); --rule:#CBD5E1;
+  --accent:#A855F7; --accent-2:#C084FC; --accent-3:#D8B4FE; --accent-hover:#9333EA;
+  --mint:#5FB49C; --caramel:#E9A86C; --straw:#F03A47; --sky:#276FBF;
+  --paper:#FDFEFF;
+  --shadow-card:0 0 0 .5px rgba(200,200,200,.55),0 2px 8px -2px rgba(0,0,0,.08),0 4px 16px -4px rgba(0,0,0,.06);
+  --shadow-pop:0 0 0 .5px rgba(200,200,200,.6),0 4px 12px -2px rgba(0,0,0,.10),0 8px 24px -4px rgba(0,0,0,.08);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#08080C; --secondary:#0E0E12; --surface:#0C0C10; --elevated:#121216; --tertiary:#14141A;
+    --ink:#FFFFFF; --muted:#DCDCE4; --faint:#AAAAB4; --ghost:#787884;
+    --hair:#3C3C3C; --hair-soft:rgba(60,60,60,.9); --rule:#3C3C44;
+    --accent:#A855F7; --accent-2:#C084FC; --accent-3:#D8B4FE; --accent-hover:#D8B4FE;
+    --mint:#7FCBB5; --caramel:#F0BC8B; --straw:#FF6069; --sky:#5C9EDD;
+    --paper:#121216;
+    --shadow-card:0 0 0 .5px rgba(60,60,60,.9),0 2px 12px -2px rgba(0,0,0,.4),0 6px 24px -6px rgba(0,0,0,.3);
+    --shadow-pop:0 0 0 .5px rgba(60,60,60,1),0 4px 16px -2px rgba(0,0,0,.5),0 10px 32px -6px rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#08080C; --secondary:#0E0E12; --surface:#0C0C10; --elevated:#121216; --tertiary:#14141A;
+  --ink:#FFFFFF; --muted:#DCDCE4; --faint:#AAAAB4; --ghost:#787884;
+  --hair:#3C3C3C; --hair-soft:rgba(60,60,60,.9); --rule:#3C3C44;
+  --accent:#A855F7; --accent-2:#C084FC; --accent-3:#D8B4FE; --accent-hover:#D8B4FE;
+  --mint:#7FCBB5; --caramel:#F0BC8B; --straw:#FF6069; --sky:#5C9EDD;
+  --paper:#121216;
+  --shadow-card:0 0 0 .5px rgba(60,60,60,.9),0 2px 12px -2px rgba(0,0,0,.4),0 6px 24px -6px rgba(0,0,0,.3);
+  --shadow-pop:0 0 0 .5px rgba(60,60,60,1),0 4px 16px -2px rgba(0,0,0,.5),0 10px 32px -6px rgba(0,0,0,.4);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box;}
+img,svg{max-width:100%;}
+button{font:inherit;color:inherit;cursor:pointer;}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"Nunito Sans",ui-sans-serif,system-ui,sans-serif;
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 96px;}
+.col{max-width:74ch;margin:0 auto;}
+
+/* ── type ─────────────────────────────────────────────────────────────── */
+h1,h2,h3{font-family:"Instrument Serif",Georgia,serif;font-weight:400;text-wrap:balance;letter-spacing:.005em;}
+h1{font-size:clamp(2.6rem,6vw,4.1rem);line-height:1.02;margin:0;}
+h2{font-size:clamp(1.85rem,3.4vw,2.5rem);line-height:1.12;margin:0 0 .35em;}
+h3{font-size:1.32rem;line-height:1.25;margin:0 0 .4em;}
+h4{font-size:.95rem;font-weight:800;margin:0 0 .35em;letter-spacing:-.005em;}
+p{margin:0 0 1.05em;color:var(--muted);}
+.lede{font-size:1.16rem;color:var(--muted);}
+strong{color:var(--ink);font-weight:700;}
+a{color:var(--accent-hover);text-underline-offset:3px;}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.7rem;font-weight:500;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:0 0 .9em;
+}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.855em;}
+code{background:var(--tertiary);border-radius:5px;padding:.1em .38em;color:var(--ink);}
+
+/* ── structure ────────────────────────────────────────────────────────── */
+header.top{padding:96px 0 56px;}
+.kicker{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--accent-hover);margin:0 0 1.4em;
+}
+.meta{display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:34px;padding-top:22px;border-top:.5px solid var(--hair);}
+.meta div{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;color:var(--faint);letter-spacing:.05em;}
+.meta b{display:block;font-family:"Nunito Sans",sans-serif;font-size:.9rem;font-weight:700;color:var(--ink);letter-spacing:0;margin-top:2px;}
+
+section{padding:52px 0;border-top:.5px solid var(--hair-soft);}
+section:first-of-type{border-top:0;}
+.snum{font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.16em;color:var(--accent-hover);margin:0 0 .8em;}
+.card{background:var(--surface);border-radius:16px;box-shadow:var(--shadow-card);padding:28px 30px;margin:26px 0;}
+.card.tight{padding:20px 24px;}
+
+ul.clean{list-style:none;padding:0;margin:0 0 1.1em;display:flex;flex-direction:column;gap:11px;}
+ul.clean li{position:relative;padding-left:20px;color:var(--muted);}
+ul.clean li::before{content:"";position:absolute;left:2px;top:.62em;width:6px;height:6px;border-radius:2px;background:var(--accent-3);}
+
+/* ── chips ────────────────────────────────────────────────────────────── */
+.chip{
+  display:inline-flex;align-items:center;gap:6px;font-family:"IBM Plex Mono",monospace;
+  font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:6px;white-space:nowrap;
+}
+.chip::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;}
+.chip.have{color:var(--mint);background:color-mix(in srgb,var(--mint) 14%,transparent);}
+.chip.partial{color:var(--caramel);background:color-mix(in srgb,var(--caramel) 15%,transparent);}
+.chip.gap{color:var(--straw);background:color-mix(in srgb,var(--straw) 13%,transparent);}
+.chip.plain{color:var(--faint);background:var(--tertiary);}
+.chip.plain::before{display:none;}
+
+/* ── tables ───────────────────────────────────────────────────────────── */
+.tablewrap{overflow-x:auto;margin:24px 0;border-radius:14px;box-shadow:var(--shadow-card);background:var(--surface);}
+table{border-collapse:collapse;width:100%;min-width:660px;font-size:.895rem;}
+th{
+  text-align:left;font-family:"IBM Plex Mono",monospace;font-size:.66rem;font-weight:500;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint);padding:14px 18px;border-bottom:.5px solid var(--hair);white-space:nowrap;
+}
+td{padding:13px 18px;border-bottom:.5px solid var(--hair-soft);color:var(--muted);vertical-align:top;}
+tbody tr:last-child td{border-bottom:0;}
+td:first-child{color:var(--ink);font-weight:600;}
+td .mono{color:var(--faint);}
+
+/* ── mockup frame ─────────────────────────────────────────────────────── */
+.stage{margin:34px 0 12px;}
+.stagescroll{overflow-x:auto;padding:4px;}
+.figcap{max-width:74ch;margin:14px auto 0;font-size:.86rem;color:var(--faint);}
+.figcap b{color:var(--muted);}
+.pair{display:flex;gap:20px;align-items:flex-start;}
+
+.app{
+  width:1108px;display:grid;grid-template-columns:60px 1fr;
+  background:var(--ground);border-radius:18px;box-shadow:var(--shadow-pop);overflow:hidden;
+  font-size:13px;line-height:1.5;position:relative;
+}
+.app.h668{height:668px;}
+.app.h560{height:560px;}
+.app.solo{grid-template-columns:1fr;}
+.app.phone{width:372px;height:668px;grid-template-columns:1fr;}
+.app.med{width:720px;}
+.pane{min-width:0;min-height:0;display:flex;flex-direction:column;}
+.pane.body{background:var(--ground);}
+
+/* collapsed rail stand-in */
+.rail{background:var(--surface);border-right:.5px solid var(--hair-soft);display:flex;flex-direction:column;
+  align-items:center;gap:5px;padding:12px 0;}
+.rail .logo{width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  display:grid;place-items:center;color:#fff;font-weight:800;font-size:12px;margin-bottom:8px;flex:none;}
+.ri{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:var(--ghost);flex:none;}
+.ri svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.ri.on{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent-hover);}
+.ri.push{margin-top:auto;}
+
+/* topbar */
+.tbar{flex:none;display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:.5px solid var(--hair-soft);background:var(--surface);}
+.ws{display:flex;align-items:center;gap:8px;padding:5px 9px;border-radius:10px;background:var(--tertiary);font-size:12px;color:var(--ink);font-weight:700;}
+.ws .dot{width:16px;height:16px;border-radius:5px;background:linear-gradient(135deg,var(--sky),#6FA8DC);}
+.ws svg{width:12px;height:12px;stroke:var(--ghost);fill:none;stroke-width:2;}
+.tbspacer{flex:1;}
+.iconbtn{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--faint);background:transparent;border:0;flex:none;position:relative;}
+.iconbtn.solid{background:var(--accent);color:#fff;}
+.iconbtn.ghost{background:var(--tertiary);}
+.iconbtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.badge{position:absolute;top:2px;right:2px;min-width:14px;height:14px;border-radius:7px;background:var(--straw);color:#fff;
+  font-family:"IBM Plex Mono",monospace;font-size:8.5px;font-weight:500;display:grid;place-items:center;padding:0 3px;
+  box-shadow:0 0 0 1.5px var(--surface);}
+.av{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;
+  font-size:8.5px;background:linear-gradient(135deg,var(--accent),var(--accent-2));flex:none;}
+.av.sky{background:linear-gradient(135deg,var(--sky),#6FA8DC);}
+.av.mint{background:linear-gradient(135deg,var(--mint),#8FD3C0);}
+.av.caramel{background:linear-gradient(135deg,var(--caramel),#F3CFA8);}
+.av.lg{width:26px;height:26px;font-size:11px;}
+.av.xl{width:38px;height:38px;font-size:14px;border-radius:12px;}
+.avs{display:flex;}
+.avs .av{box-shadow:0 0 0 1.5px var(--surface);margin-left:-5px;}
+.avs .av:first-child{margin-left:0;}
+
+/* topbar search field (§10) */
+.tsearch{display:flex;align-items:center;gap:8px;background:var(--tertiary);border-radius:10px;padding:6px 10px;
+  color:var(--ghost);font-size:12.5px;width:290px;box-shadow:inset 0 0 0 .5px var(--hair-soft);}
+.tsearch svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;flex:none;}
+.kbd{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--ghost);background:var(--surface);
+  border-radius:5px;padding:1px 5px;box-shadow:inset 0 0 0 .5px var(--hair-soft);margin-left:auto;}
+
+/* generic page body */
+.pbody{flex:1;min-height:0;overflow:hidden;padding:22px 26px;display:flex;flex-direction:column;gap:14px;position:relative;}
+.pbody.center{align-items:center;justify-content:center;}
+.ptitle{font-family:"Instrument Serif",serif;font-size:26px;color:var(--ink);line-height:1.1;}
+.psub{font-size:12px;color:var(--faint);}
+.mono-lbl{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ghost);}
+.btn{border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;background:var(--accent);color:#fff;border:0;
+  display:inline-flex;align-items:center;gap:7px;}
+.btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+.btn.ghost{background:var(--tertiary);color:var(--ink);box-shadow:inset 0 0 0 .5px var(--hair-soft);}
+.btn.danger{background:var(--straw);}
+.btn.sm{padding:5px 11px;font-size:11px;}
+.field{display:flex;align-items:center;gap:8px;background:var(--tertiary);border-radius:11px;padding:9px 12px;
+  box-shadow:inset 0 0 0 .5px var(--hair-soft);color:var(--ghost);font-size:12px;}
+.field svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;flex:none;}
+.field .caret{display:inline-block;width:1.5px;height:1em;background:var(--accent);vertical-align:-2px;}
+.field.filled{color:var(--ink);font-family:"IBM Plex Mono",monospace;letter-spacing:.18em;}
+
+/* §1 toasts */
+.toaststack{position:absolute;left:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;width:308px;}
+.toast{display:flex;align-items:flex-start;gap:9px;background:var(--elevated);border-radius:12px;padding:10px 11px;
+  box-shadow:var(--shadow-pop);font-size:12px;color:var(--ink);line-height:1.45;}
+.toast .ic{width:18px;height:18px;border-radius:6px;display:grid;place-items:center;flex:none;margin-top:1px;}
+.toast .ic svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round;}
+.toast.ok .ic{background:color-mix(in srgb,var(--mint) 16%,transparent);color:var(--mint);}
+.toast.err .ic{background:color-mix(in srgb,var(--straw) 15%,transparent);color:var(--straw);}
+.toast.info .ic{background:color-mix(in srgb,var(--sky) 15%,transparent);color:var(--sky);}
+.toast .txt{flex:1;min-width:0;}
+.toast .x{color:var(--ghost);flex:none;display:flex;margin-top:2px;}
+.toast .x svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;}
+.toast .bar{position:absolute;left:0;bottom:0;height:2px;border-radius:2px;background:currentColor;opacity:.35;}
+.toast.err{box-shadow:var(--shadow-pop),inset 2px 0 0 var(--straw);}
+.toast.ok{box-shadow:var(--shadow-pop),inset 2px 0 0 var(--mint);}
+.toast.info{box-shadow:var(--shadow-pop),inset 2px 0 0 var(--sky);}
+.livehint{position:absolute;left:16px;bottom:150px;font-family:"IBM Plex Mono",monospace;font-size:9px;
+  letter-spacing:.1em;color:var(--ghost);text-transform:uppercase;}
+
+/* callout box inside mock */
+.notice{border-radius:12px;padding:11px 13px;display:flex;gap:10px;align-items:flex-start;font-size:11.5px;line-height:1.5;}
+.notice svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;flex:none;margin-top:2px;stroke-linecap:round;stroke-linejoin:round;}
+.notice.warn{background:color-mix(in srgb,var(--straw) 9%,transparent);color:var(--straw);
+  box-shadow:inset 0 0 0 .5px color-mix(in srgb,var(--straw) 30%,transparent);}
+.notice.warn b{color:var(--straw);}
+.notice.acc{background:color-mix(in srgb,var(--accent) 9%,transparent);color:var(--accent-hover);
+  box-shadow:inset 0 0 0 .5px color-mix(in srgb,var(--accent) 26%,transparent);}
+.notice .body{color:var(--muted);}
+
+/* §2 invite / empty state cards */
+.ecard{background:var(--elevated);border-radius:14px;box-shadow:var(--shadow-card);padding:16px 18px;}
+.ecard.acc{background:color-mix(in srgb,var(--accent) 7%,transparent);
+  box-shadow:inset 0 0 0 .5px color-mix(in srgb,var(--accent) 26%,transparent);}
+.rowflex{display:flex;align-items:center;gap:12px;}
+.rowflex .grow{flex:1;min-width:0;}
+.nm{font-weight:700;color:var(--ink);font-size:13px;}
+.sb{font-size:11.5px;color:var(--faint);}
+.emptyill{width:54px;height:54px;border-radius:17px;display:grid;place-items:center;margin:0 auto 12px;
+  background:color-mix(in srgb,var(--accent) 11%,transparent);color:var(--accent-hover);}
+.emptyill svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.split{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;margin-top:4px;}
+.orline{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.14em;color:var(--ghost);text-transform:uppercase;}
+
+/* §3 event page */
+.hero{height:190px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 40%,#1b1b2a),color-mix(in srgb,var(--sky) 45%,#1b1b2a));
+  position:relative;flex:none;display:flex;align-items:flex-end;padding:18px 26px;}
+.hero .htitle{font-family:"Instrument Serif",serif;font-size:32px;color:#fff;line-height:1.06;text-shadow:0 2px 18px rgba(0,0,0,.4);}
+.hero .hchip{position:absolute;top:16px;left:26px;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.13em;
+  text-transform:uppercase;background:rgba(255,255,255,.16);color:#fff;padding:4px 9px;border-radius:7px;backdrop-filter:blur(6px);}
+.evgrid{display:grid;grid-template-columns:1fr 268px;gap:24px;padding:20px 26px;}
+.facts{display:flex;flex-direction:column;gap:11px;}
+.fact{display:flex;gap:10px;align-items:flex-start;font-size:12px;color:var(--muted);}
+.fact svg{width:14px;height:14px;stroke:var(--accent-hover);fill:none;stroke-width:2;flex:none;margin-top:2px;stroke-linecap:round;stroke-linejoin:round;}
+.fact b{display:block;color:var(--ink);font-size:12.5px;}
+.ogcard{border-radius:12px;box-shadow:var(--shadow-card);background:var(--elevated);overflow:hidden;margin-top:6px;}
+.ogcard .ogimg{height:64px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 40%,#1b1b2a),color-mix(in srgb,var(--sky) 45%,#1b1b2a));}
+.ogcard .ogtxt{padding:9px 11px;}
+.ogcard .ogurl{font-family:"IBM Plex Mono",monospace;font-size:9px;color:var(--ghost);letter-spacing:.06em;text-transform:uppercase;}
+
+/* §4 onboarding cards */
+.modal{background:var(--elevated);border-radius:18px;box-shadow:var(--shadow-pop);padding:26px 28px;width:640px;position:relative;}
+.modal.sm{width:400px;padding:22px 24px;}
+.modal .close{position:absolute;top:14px;right:14px;}
+.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px;}
+.choice{border-radius:14px;padding:15px 14px;background:var(--surface);box-shadow:inset 0 0 0 .5px var(--hair-soft);
+  display:flex;flex-direction:column;gap:7px;}
+.choice.on{background:color-mix(in srgb,var(--accent) 8%,transparent);
+  box-shadow:inset 0 0 0 1.2px color-mix(in srgb,var(--accent) 45%,transparent);}
+.choice .ci{width:32px;height:32px;border-radius:11px;display:grid;place-items:center;background:var(--tertiary);color:var(--faint);}
+.choice.on .ci{background:var(--accent);color:#fff;}
+.choice .ci svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.choice .ct{font-weight:800;font-size:12.5px;color:var(--ink);}
+.choice .cd{font-size:11px;color:var(--faint);line-height:1.45;}
+
+/* §5 chat rail */
+.app.chat3{grid-template-columns:60px 246px 1fr;}
+.pane.list{background:var(--secondary);border-right:.5px solid var(--hair-soft);}
+.phead{padding:13px 14px 9px;display:flex;align-items:center;gap:9px;flex:none;}
+.phead .t{font-family:"Instrument Serif",serif;font-size:20px;color:var(--ink);flex:1;}
+.dlabel{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ghost);
+  padding:12px 14px 6px;display:flex;align-items:center;gap:6px;}
+.dlabel svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2.4;}
+.dlabel .n{margin-left:auto;}
+.crow{margin:0 8px;padding:8px 10px;border-radius:11px;display:flex;align-items:center;gap:9px;position:relative;}
+.crow.on{background:var(--paper);box-shadow:var(--shadow-card);}
+.crow.on::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:2px;border-radius:2px;background:var(--accent);}
+.crow .grow{flex:1;min-width:0;}
+.crow .cn{font-weight:700;font-size:12.4px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.crow .cp{font-size:11px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.crow .ct{font-family:"IBM Plex Mono",monospace;font-size:9px;color:var(--ghost);flex:none;}
+.gicon{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;flex:none;color:#fff;
+  background:linear-gradient(135deg,var(--sky),#6FA8DC);}
+.gicon.mint{background:linear-gradient(135deg,var(--mint),#8FD3C0);}
+.gicon.caramel{background:linear-gradient(135deg,var(--caramel),#F3CFA8);}
+.gicon svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2;}
+.unread{min-width:16px;height:16px;border-radius:8px;background:var(--accent);color:#fff;font-family:"IBM Plex Mono",monospace;
+  font-size:8.5px;display:grid;place-items:center;padding:0 4px;flex:none;}
+
+/* chat thread */
+.thread{flex:1;min-height:0;overflow:hidden;padding:16px 22px;display:flex;flex-direction:column;gap:11px;}
+.msg{display:flex;gap:9px;align-items:flex-start;max-width:70%;}
+.msg .bub{background:var(--tertiary);border-radius:13px;padding:8px 12px;font-size:12.3px;color:var(--ink);line-height:1.5;}
+.msg .who{font-size:10px;color:var(--faint);margin-bottom:3px;font-weight:700;}
+.msg.me{align-self:flex-end;flex-direction:row-reverse;}
+.msg.me .bub{background:var(--accent);color:#fff;}
+.tabs{display:flex;gap:4px;padding:3px;background:var(--tertiary);border-radius:11px;}
+.tab{padding:5px 13px;border-radius:9px;font-size:11.5px;font-weight:700;color:var(--faint);}
+.tab.on{background:var(--elevated);color:var(--ink);box-shadow:var(--shadow-card);}
+
+/* §6 undo bar */
+.turn{background:var(--surface);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-card);}
+.undobar{display:flex;align-items:center;gap:11px;margin-top:11px;padding:10px 12px;border-radius:11px;
+  background:color-mix(in srgb,var(--mint) 9%,transparent);
+  box-shadow:inset 0 0 0 .5px color-mix(in srgb,var(--mint) 32%,transparent);}
+.undobar .ic{width:20px;height:20px;border-radius:7px;display:grid;place-items:center;background:var(--mint);color:#fff;flex:none;}
+.undobar .ic svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;}
+.undobar .grow{flex:1;min-width:0;}
+.undobar .ttl{font-size:12px;font-weight:700;color:var(--ink);}
+.undobar .sub{font-size:11px;color:var(--faint);}
+.count{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--mint);font-variant-numeric:tabular-nums;
+  display:flex;align-items:center;gap:6px;}
+.ring{width:15px;height:15px;border-radius:50%;flex:none;
+  background:conic-gradient(var(--mint) 0 62%,color-mix(in srgb,var(--mint) 22%,transparent) 62% 100%);
+  -webkit-mask:radial-gradient(circle,transparent 52%,#000 54%);mask:radial-gradient(circle,transparent 52%,#000 54%);}
+.undobar.spent{background:var(--tertiary);box-shadow:none;}
+.undobar.spent .ic{background:var(--ghost);}
+.applied{display:flex;flex-direction:column;gap:5px;margin-top:9px;}
+.aline{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted);}
+.aline .dot{width:5px;height:5px;border-radius:2px;background:var(--accent-3);flex:none;}
+
+/* §8 project detail */
+.crumb{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--faint);}
+.crumb svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;}
+.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;}
+.stat{background:var(--elevated);border-radius:12px;padding:11px 13px;box-shadow:var(--shadow-card);}
+.stat .v{font-family:"Instrument Serif",serif;font-size:23px;color:var(--ink);line-height:1;}
+.stat .l{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ghost);margin-top:4px;}
+.stat .v.mint{color:var(--mint);} .stat .v.caramel{color:var(--caramel);}
+.twocol{display:grid;grid-template-columns:1fr 250px;gap:16px;min-height:0;flex:1;}
+.tk{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:11px;background:var(--elevated);box-shadow:var(--shadow-card);}
+.tk .box{width:13px;height:13px;border-radius:4px;box-shadow:inset 0 0 0 1.2px var(--rule);flex:none;}
+.tk .box.done{background:var(--mint);box-shadow:none;display:grid;place-items:center;}
+.tk .box.done svg{width:9px;height:9px;stroke:#fff;fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;}
+.tk .tt{flex:1;font-size:12.2px;color:var(--ink);font-weight:600;}
+.tk .tt.done{color:var(--ghost);text-decoration:line-through;}
+.tk .pill{font-family:"IBM Plex Mono",monospace;font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;
+  padding:2px 7px;border-radius:5px;background:var(--tertiary);color:var(--faint);}
+.tk .pill.hi{background:color-mix(in srgb,var(--straw) 13%,transparent);color:var(--straw);}
+.sidebox{background:var(--surface);border-radius:13px;padding:13px;box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:9px;}
+
+/* §9 mobile */
+.mtop{flex:none;display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:.5px solid var(--hair-soft);background:var(--surface);}
+.mobbar{display:flex;padding:7px 6px 9px;border-top:.5px solid var(--hair-soft);background:var(--surface);
+  justify-content:space-around;flex:none;position:relative;z-index:2;}
+.mb{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--ghost);flex:1;}
+.mb svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.mb .lb{font-size:9px;font-weight:700;letter-spacing:.01em;}
+.mb.on{color:var(--accent-hover);}
+.mb.fabitem svg{width:22px;height:22px;stroke-width:2.4;}
+.mb .fabsq{width:34px;height:28px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center;
+  box-shadow:var(--shadow-card);}
+.launcher{position:absolute;right:14px;bottom:74px;width:46px;height:46px;border-radius:15px;display:grid;place-items:center;
+  background:var(--accent);color:#fff;box-shadow:var(--shadow-pop);z-index:1;}
+.launcher svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+.launcher.bad{bottom:8px;background:var(--straw);z-index:3;}
+.chiprow{display:flex;gap:6px;padding:9px 14px;overflow:hidden;flex:none;border-bottom:.5px solid var(--hair-soft);background:var(--ground);}
+.fchip{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+  padding:5px 10px;border-radius:8px;color:var(--faint);background:var(--tertiary);white-space:nowrap;display:flex;align-items:center;gap:5px;}
+.fchip svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2.4;}
+.fchip.on{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-hover);
+  box-shadow:inset 0 0 0 .5px color-mix(in srgb,var(--accent) 35%,transparent);}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--elevated);border-radius:18px 18px 0 0;
+  box-shadow:var(--shadow-pop);padding:10px 16px 18px;z-index:4;}
+.grab{width:34px;height:4px;border-radius:2px;background:var(--rule);margin:0 auto 12px;}
+.scrim{position:absolute;inset:0;background:rgba(8,8,12,.42);z-index:3;}
+.evcard{border-radius:13px;background:var(--elevated);box-shadow:var(--shadow-card);overflow:hidden;flex:none;}
+.evcard .im{height:70px;background:linear-gradient(135deg,color-mix(in srgb,var(--sky) 42%,#1b1b2a),color-mix(in srgb,var(--mint) 38%,#1b1b2a));}
+.evcard .tx{padding:9px 11px;}
+
+/* §10 palette */
+.palette{width:560px;background:var(--elevated);border-radius:16px;box-shadow:var(--shadow-pop);overflow:hidden;}
+.pinput{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:.5px solid var(--hair-soft);font-size:14px;color:var(--ink);}
+.pinput svg{width:16px;height:16px;stroke:var(--ghost);fill:none;stroke-width:2;}
+.pgroup{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ghost);padding:10px 16px 5px;}
+.prow{display:flex;align-items:center;gap:10px;padding:7px 12px;margin:0 6px;border-radius:10px;font-size:12.5px;color:var(--muted);}
+.prow svg{width:14px;height:14px;stroke:var(--ghost);fill:none;stroke-width:2;flex:none;stroke-linecap:round;stroke-linejoin:round;}
+.prow .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
+.prow .hint{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ghost);}
+.prow .snip{color:var(--faint);font-size:11.5px;}
+.prow mark{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--accent-hover);border-radius:3px;padding:0 2px;}
+.prow.on{background:color-mix(in srgb,var(--accent) 10%,transparent);}
+.prow.on svg{color:var(--accent-hover);}
+.pfoot{display:flex;gap:14px;padding:9px 16px;border-top:.5px solid var(--hair-soft);background:var(--surface);
+  font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ghost);}
+
+/* §11 notifications */
+.ndrop{width:352px;background:var(--elevated);border-radius:15px;box-shadow:var(--shadow-pop);overflow:hidden;}
+.nhead{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:.5px solid var(--hair-soft);}
+.nhead .t{font-weight:800;font-size:13px;color:var(--ink);flex:1;}
+.nitem{display:flex;gap:10px;padding:11px 14px;border-bottom:.5px solid var(--hair-soft);align-items:flex-start;}
+.nitem:last-child{border-bottom:0;}
+.nitem.unread{background:color-mix(in srgb,var(--accent) 5%,transparent);}
+.nitem .ndot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none;margin-top:6px;}
+.nitem .ndot.read{background:transparent;}
+.nitem .grow{flex:1;min-width:0;}
+.nitem .nt{font-size:12.2px;color:var(--ink);line-height:1.45;}
+.nitem .nm2{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ghost);margin-top:3px;}
+.nacts{display:flex;gap:4px;flex:none;}
+.nx{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;color:var(--ghost);background:var(--tertiary);}
+.nx svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;}
+.nfoot{display:flex;align-items:center;gap:8px;padding:9px 14px;border-top:.5px solid var(--hair-soft);background:var(--surface);}
+.nlink{font-size:11px;font-weight:700;color:var(--accent-hover);}
+.nlink.danger{color:var(--straw);margin-left:auto;}
+
+/* §12 confirm */
+.cdicon{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;flex:none;
+  background:color-mix(in srgb,var(--straw) 12%,transparent);color:var(--straw);}
+.cdicon svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.btnrow{display:flex;gap:9px;justify-content:flex-end;margin-top:16px;}
+
+/* §13 notification position picker */
+.setrow{display:flex;align-items:flex-start;gap:14px;padding:13px 0;border-bottom:.5px solid var(--hair-soft);}
+.setrow:last-child{border-bottom:0;}
+.setrow .grow{flex:1;min-width:0;}
+.setrow .st{font-weight:700;font-size:12.8px;color:var(--ink);}
+.setrow .sd{font-size:11.5px;color:var(--faint);}
+.tgl{width:34px;height:19px;border-radius:10px;background:var(--rule);position:relative;flex:none;margin-top:3px;}
+.tgl::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;}
+.tgl.on{background:var(--accent);}
+.tgl.on::after{left:auto;right:2px;}
+.poswrap{display:flex;gap:20px;align-items:flex-start;margin-top:12px;}
+.posscreen{width:250px;height:158px;border-radius:12px;background:var(--tertiary);flex:none;position:relative;
+  box-shadow:inset 0 0 0 .5px var(--hair-soft);display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr;
+  gap:7px;padding:9px;}
+.posscreen .fakebar{position:absolute;left:9px;right:9px;top:9px;height:12px;border-radius:5px;background:var(--surface);opacity:.7;}
+.posslot{border-radius:8px;box-shadow:inset 0 0 0 1px var(--rule);display:grid;place-items:center;position:relative;}
+.posslot .pill{width:70%;height:7px;border-radius:3px;background:var(--rule);opacity:.55;}
+.posslot.on{box-shadow:inset 0 0 0 1.4px var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);}
+.posslot.on .pill{background:var(--accent);opacity:1;}
+.posslot.paired{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--mint) 50%,transparent);
+  background:color-mix(in srgb,var(--mint) 7%,transparent);}
+.posslot.paired .pill{background:var(--mint);opacity:.8;}
+.posslot .tag{position:absolute;bottom:3px;font-family:"IBM Plex Mono",monospace;font-size:7.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ghost);}
+.posslot.on .tag{color:var(--accent-hover);}
+.posslot.paired .tag{color:var(--mint);}
+.poskey{display:flex;flex-direction:column;gap:7px;font-size:11.5px;color:var(--muted);}
+.poskey .k{display:flex;align-items:center;gap:7px;}
+.poskey .sw{width:9px;height:9px;border-radius:3px;flex:none;}
+.poskey .sw.a{background:var(--accent);} .poskey .sw.m{background:var(--mint);}
+
+/* misc doc bits */
+.phase{display:grid;grid-template-columns:auto 1fr;gap:18px;padding:20px 0;border-top:.5px solid var(--hair-soft);}
+.phase:first-of-type{border-top:0;}
+.pnum{font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--accent-hover);letter-spacing:.1em;padding-top:.35em;}
+.phase p{margin:0;font-size:.94rem;}
+.phase h4{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+.callout{border-left:2px solid var(--straw);padding:2px 0 2px 18px;margin:22px 0;}
+.callout p:last-child{margin-bottom:0;}
+.callout .eyebrow{color:var(--straw);}
+.callout.good{border-left-color:var(--mint);}
+.callout.good .eyebrow{color:var(--mint);}
+
+footer{padding:44px 0 0;border-top:.5px solid var(--hair);margin-top:16px;}
+footer p{font-size:.85rem;color:var(--faint);margin:0;}
+
+@media (max-width:640px){
+  .wrap{padding:0 18px 64px;}
+  header.top{padding:56px 0 36px;}
+  .card{padding:20px 18px;}
+  section{padding:38px 0;}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="col">
+    <p class="kicker">KAIROS · UI proposal · UX audit remediation</p>
+    <h1>Thirteen surfaces<br>that need drawing</h1>
+    <p class="lede" style="margin-top:26px;">The <a href="ux-audit-2026-08-31.md">UX audit</a> lists 45 findings. Most are one-line edits with no design content — a wrong <code>href</code>, a <code>sessionStorage</code> that should be <code>localStorage</code>, a <code>z-index</code> collision. This document covers the remainder: the <strong>places where something has to be drawn before it can be built</strong> — twelve from the audit, plus one new feature (§13) requested on top of it. Every mockup uses the existing KAIROS tokens, unchanged — no new colours, no new type scale, no new radii. The point is that these surfaces should look like they were always there.</p>
+    <div class="meta">
+      <div>Source<b>ux-audit-2026-08-31.md</b></div>
+      <div>Plan<b>ux-fix-plan-2026-08-31.md</b></div>
+      <div>Design system<b>KAIROS tokens · unchanged</b></div>
+      <div>Status<b>Proposal for review</b></div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="col">
+    <p class="eyebrow">Scope</p>
+    <h2>What needs drawing, and what does not</h2>
+    <p>Of the 45 audit items, 33 are code fixes with an obvious shape — retarget a link, hoist a return, add a breakpoint. They belong in the plan, not here. The twelve below either have no UI at all today, or have one that has to be replaced rather than adjusted. §13 is not an audit item at all: it is a new preference, included here because it changes a decision §1 depends on.</p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>§</th><th>Surface</th><th>Audit items</th><th>State today</th><th>Wave</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Toast viewport</td><td class="mono">P0-1</td><td><span class="chip gap">nothing renders</span></td><td>1</td></tr>
+        <tr><td>2</td><td>Org invites &amp; empty state</td><td class="mono">P0-2 · P1-30</td><td><span class="chip gap">unreachable</span></td><td>2</td></tr>
+        <tr><td>3</td><td>Public event page</td><td class="mono">P0-5</td><td><span class="chip gap">no route</span></td><td>2</td></tr>
+        <tr><td>4</td><td>Onboarding, three ways</td><td class="mono">P0-6 · P1-29</td><td><span class="chip partial">two of three</span></td><td>2</td></tr>
+        <tr><td>5</td><td>Project chat</td><td class="mono">P0-7</td><td><span class="chip gap">orphaned component</span></td><td>4</td></tr>
+        <tr><td>6</td><td>AI undo window</td><td class="mono">P0-8</td><td><span class="chip gap">server only</span></td><td>4</td></tr>
+        <tr><td>7</td><td>Note lock &amp; recovery</td><td class="mono">P0-4 · P1-21</td><td><span class="chip gap">dead end</span></td><td>4</td></tr>
+        <tr><td>8</td><td>Project detail page</td><td class="mono">P1-9</td><td><span class="chip gap">no route</span></td><td>4</td></tr>
+        <tr><td>9</td><td>Mobile navigation</td><td class="mono">P1-16 · P1-17 · P1-18</td><td><span class="chip partial">wrong IA</span></td><td>5</td></tr>
+        <tr><td>10</td><td>Search in the TopBar</td><td class="mono">P1-11 · P1-12</td><td><span class="chip gap">invisible</span></td><td>6</td></tr>
+        <tr><td>11</td><td>Notification centre</td><td class="mono">P1-20</td><td><span class="chip partial">six defects</span></td><td>6</td></tr>
+        <tr><td>12</td><td>One confirm dialog</td><td class="mono">P1-26 · P1-27</td><td><span class="chip partial">five patterns</span></td><td>6</td></tr>
+        <tr><td>13</td><td>Notification position</td><td class="mono">NEW-1 · new scope</td><td><span class="chip gap">no control</span></td><td>6+</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══ 1 ═══════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="snum">§ 01 — Wave 1 · P0-1</p>
+    <h2>The app learns to speak</h2>
+    <p><code>ToastProvider</code> already has a correct <code>ToastManager</code> — TTL timers, dismiss, cleanup on unmount. It destructures the state value away and renders no viewport, so <strong>126 calls across 23 files produce nothing</strong>. This is the whole design: a stack in the one free corner.</p>
+  </div>
+
+  <div class="stage"><div class="stagescroll">
+    <div class="app h560">
+      <div class="rail">
+        <div class="logo">K</div>
+        <div class="ri on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div class="ri"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></div>
+        <div class="ri"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 012-2h12a2 2 0 012 2v14"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></div>
+        <div class="ri"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+        <div class="ri push"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.14.63.7 1.08 1.35 1.09H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+      </div>
+      <div class="pane body">
+        <div class="tbar">
+          <div class="ws"><span class="dot"></span>Ustrem OOD<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+          <div class="tbspacer"></div>
+          <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="badge">3</span></button>
+          <span class="av lg">TT</span>
+        </div>
+        <div class="pbody">
+          <div class="ptitle">Dashboard</div>
+          <div class="statgrid">
+            <div class="stat"><div class="v">7</div><div class="l">Open tasks</div></div>
+            <div class="stat"><div class="v mint">3</div><div class="l">Due today</div></div>
+            <div class="stat"><div class="v">2</div><div class="l">Projects</div></div>
+            <div class="stat"><div class="v caramel">12</div><div class="l">Unread</div></div>
+          </div>
+          <div style="flex:1"></div>
+          <div class="livehint">aria-live region · bottom-left · max 3</div>
+          <div class="toaststack">
+            <div class="toast info" style="position:relative">
+              <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></span>
+              <span class="txt">Switched to <strong>Ustrem OOD</strong></span>
+              <span class="x"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></span>
+            </div>
+            <div class="toast err" style="position:relative">
+              <span class="ic"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L14.7 3.9a2 2 0 00-3.4 0z"/></svg></span>
+              <span class="txt">That invite code has expired. Ask for a new one.</span>
+              <span class="x"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></span>
+            </div>
+            <div class="toast ok" style="position:relative">
+              <span class="ic"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+              <span class="txt">Note saved</span>
+              <span class="x"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="figcap"><b>Bottom-left by default — but read from a token, not a hardcoded class.</b> Top-right belongs to the floating notification stack (P1-20-5) and bottom-right to <code>AskKairosLauncher</code>, which leaves exactly one free corner today. §13 turns that into a user preference, so the viewport should take its anchor from a CSS custom property from the first commit rather than being retrofitted later. On mobile the stack lifts to <code>bottom-24</code> so it clears the nav — the same offset the launcher needs in §9.</p>
+  </div>
+
+  <div class="col">
+    <div class="card">
+      <h4>Rules the viewport has to follow</h4>
+      <ul class="clean">
+        <li><strong>Two live regions, not one.</strong> <code>role="status" aria-live="polite"</code> carries success and info; <code>role="alert" aria-live="assertive"</code> carries errors. A save confirmation must not interrupt a screen reader mid-sentence; a failure must.</li>
+        <li><strong>Capped at three.</strong> The unbounded stack is exactly the bug P1-20-5 documents in the notification popups. Do not ship the same defect twice in one release.</li>
+        <li><strong>Errors persist longer.</strong> 3 s for success, 6 s for errors, and errors do not auto-dismiss while the tab is hidden.</li>
+        <li><strong>Dismissible by pointer and by key.</strong> Click anywhere on the toast, plus an explicit × with a <code>focus-visible</code> ring.</li>
+        <li><strong>Left rule as the variant carrier.</strong> A 2 px inset border in mint / strawberry / sky, so the kind survives a greyscale screenshot and does not depend on the icon alone.</li>
+        <li><strong>Neutral elevation, no coloured halo.</strong> The toast sits on <code>--shadow-pop</code> like every other floating surface. Accent-coloured drop shadows are coming off buttons across the app — see the closing note.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 2 ═══════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="snum">§ 02 — Wave 2 · P0-2 · P1-30</p>
+    <h2>The invitation you cannot accept</h2>
+    <p>In <code>OrgDashboardClient</code>, <code>if (!items.length)</code> returns above the pending-invitations block. The invite is fetched, polled every thirty seconds, and never rendered — for precisely the user who has nothing else on the page. It is a complete funnel stop for team adoption, and the fix is to move eleven lines up.</p>
+  </div>
+
+  <div class="stage"><div class="stagescroll">
+    <div class="app h560 med solo">
+      <div class="pane body">
+        <div class="tbar">
+          <div class="ws"><span class="dot" style="background:linear-gradient(135deg,var(--ghost),var(--rule))"></span>Personal<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+          <div class="tbspacer"></div>
+          <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="badge">1</span></button>
+          <span class="av lg">TT</span>
+        </div>
+        <div class="pbody">
+          <div class="ptitle">Organizations</div>
+
+          <div class="mono-lbl" style="margin-top:2px">Pending invitations · 1</div>
+          <div class="ecard acc">
+            <div class="rowflex">
+              <span class="av xl sky">U</span>
+              <span class="grow">
+                <span class="nm">Ustrem OOD</span>
+                <span class="sb">Invited as <strong>Project manager</strong> by kalina@ustrem.bg · 2 days ago</span>
+              </span>
+              <button class="btn sm">Accept</button>
+              <button class="btn sm ghost">Decline</button>
+            </div>
+          </div>
+
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+            <div style="text-align:center;max-width:400px;">
+              <div class="emptyill"><svg viewBox="0 0 24 24"><path d="M3 21V7l9-4 9 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 11h.01M15 11h.01"/></svg></div>
+              <div style="font-family:'Instrument Serif',serif;font-size:20px;color:var(--ink);">You are not in an organization yet</div>
+              <div class="psub" style="margin:5px 0 16px;">Organizations are how KAIROS shares projects, tasks and chat between people. You can start one, or join a team that already exists.</div>
+              <div class="split">
+                <button class="btn" style="justify-content:center;width:100%"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Create an organization</button>
+                <span class="orline">or</span>
+                <div style="display:flex;gap:7px;">
+                  <div class="field" style="flex:1"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Invite code<span class="caret"></span></div>
+                  <button class="btn ghost">Join</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="figcap"><b>The invite sits above everything, always.</b> The empty state below it stops being a sentence and becomes the two things a person in this position can actually do — and the same component is what <code>WorkspaceMenu</code> renders instead of a bare <code>t("noOrgs")</code> (P1-30).</p>
+  </div>
+</section>
+
+<!-- ═══ 3 ═══════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="snum">§ 03 — Wave 2 · P0-5</p>
+    <h2>An event you can actually send someone</h2>
+    <p>Share currently copies <code>/publish?event={id}</code>. Nothing reads <code>?event=</code>, and <code>/publish</code> is not in <code>PUBLIC_PATHS</code>, so the recipient signs in and lands on the top of an unfiltered feed. For an events product this is the core distribution action, and no event in KAIROS is addressable, indexable or shareable today.</p>
+  </div>
+
+  <div class="stage"><div class="stagescroll">
+    <div class="app h668 solo" style="width:900px">
+      <div class="pane body">
+        <div class="tbar">
+          <div style="display:flex;align-items:center;gap:8px;"><span style="width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;color:#fff;font-weight:800;font-size:10px;">K</span><span style="font-weight:800;font-size:13px;">KAIROS</span></div>
+          <div class="tbspacer"></div>
+          <span class="mono-lbl">public page · no sign-in</span>
+          <button class="btn sm ghost">Sign in</button>
+        </div>
+        <div class="hero">
+          <span class="hchip">Upcoming · Plovdiv</span>
+          <div class="htitle">Ustrem Open Day<br>2026</div>
+        </div>
+        <div class="evgrid">
+          <div>
+            <div class="facts">
+              <div class="fact"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span><b>Saturday, 19 September 2026</b>10:00 – 17:00 EEST</span></div>
+              <div class="fact"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span><b>Kapana Creative District</b>ul. Hristo Dyukmedzhiev 12, Plovdiv</span></div>
+              <div class="fact"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg><span><b>Hosted by Ustrem OOD</b>128 people going · 40 places left</span></div>
+            </div>
+            <p style="font-size:12.5px;margin:16px 0 0;">A day inside the studio — the projects we shipped this year, the ones we did not, and an open workshop on scheduling systems in the afternoon. Bring a laptop if you want to join the second session.</p>
+            <div style="display:flex;gap:8px;margin-top:16px;">
+              <button class="btn"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>RSVP</button>
+              <button class="btn ghost"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Add to calendar</button>
+              <button class="btn ghost"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><path d="M16 6l-4-4-4 4M12 2v13"/></svg>Share</button>
+            </div>
+          </div>
+          <div>
+            <div class="mono-lbl">Link preview</div>
+            <div class="ogcard">
+              <div class="ogimg"></div>
+              <div class="ogtxt">
+                <div class="ogurl">kairos.bg/events/482</div>
+                <div class="nm" style="margin-top:2px">Ustrem Open Day 2026</div>
+                <div class="sb">19 Sept · Kapana, Plovdiv · 128 going</div>
+              </div>
+            </div>
+            <p style="font-size:11.5px;margin-top:10px;">The reason the route exists. <code>generateMetadata</code> gives it Open Graph and Twitter tags, so a link pasted into Viber, Messenger or Slack unfurls into this.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="figcap"><b>A server component at <code>/events/[eventId]</code>, added to <code>PUBLIC_PATHS</code>.</b> RSVP is the only gated action, and it carries a <code>callbackUrl</code> back to this page — the same pattern <code>/join/[code]</code> already uses correctly.</p>
+  </div>
+</section>
+
+<!-- ═══ 4 ═══════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="snum">§ 04 — Wave 2 · P0-6 · P1-29</p>
+    <h2>Onboarding, with the option people actually need</h2>
+    <p>The gate is mounted on <code>/create</code> and <code>/notes/*</code>. Sign-in lands on <code>/dashboard</code>. So the workspace-shape decision — the one that drives roles, visibility and the entire data model — is skipped for anyone who does not wander into Notes. And when it does appear it offers two doors, neither of which is <em>join the team that just invited me</em>.</p>
+  </div>
+
+  <div class="stage"><div class="stagescroll" style="display:flex;justify-content:center;">
+    <div class="modal">
+      <button class="iconbtn ghost close"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      <div class="mono-lbl">Step 1 of 1</div>
+      <div style="font-family:'Instrument Serif',serif;font-size:26px;color:var(--ink);line-height:1.1;margin-top:4px;">How will you use KAIROS?</div>
+      <div class="psub" style="margin-top:6px;max-width:46ch;">This sets up your workspace. You can change it later in Settings — nothing here is permanent.</div>
+
+      <div class="choices">
+        <div class="choice">
+          <span class="ci"><svg viewBox="0 0 24 24"><path d="M3 21V7l9-4 9 4v14"/><path d="M9 21v-6h6v6"/></svg></span>
+          <span class="ct">Start an organization</span>
+          <span class="cd">For a team. Projects, roles, shared chat and invitations.</span>
+        </div>
+        <div class="choice on">
+          <span class="ci"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></span>
+          <span class="ct">Join with a code</span>
+          <span class="cd">Someone already invited you, or gave you a six-character code.</span>
+          <div style="display:flex;gap:6px;margin-top:5px;">
+            <div class="field filled" style="flex:1;padding:7px 10px;">K7·B2Q9<span class="caret"></span></div>
+          </div>
+        </div>
+        <div class="choice">
+          <span class="ci"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a6 6 0 016-6h4a6 6 0 016 6v2"/></svg></span>
+          <span class="ct">Just me</span>
+          <span class="cd">Personal notes, tasks and calendar. No team, no roles.</span>
+        </div>
+      </div>
+
+      <div class="notice acc" style="margin-top:16px;">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span class="body">You have <strong>1 pending invitation</strong> from Ustrem OOD. Choosing <em>Join with a code</em> accepts it directly — no code needed.</span>
+      </div>
+
+      <div class="btnrow">
+        <button class="btn ghost">Decide later</button>
+        <button class="btn">Continue</button>
+      </div>
+    </div>
+  </div>
+  <p class="figcap"><b>Three doors, a close button, and a shortcut when the answer is already known.</b> If the user has a pending invite, the modal says so and the join card becomes a one-click accept. The close button matters: <code>RoleSelectionModal</code> has none today, so a keyboard user who cannot operate it is trapped (P1-27).</p>
+  </div>
+
+  <div class="col">
+    <div class="card tight">
+      <h4>Three behaviour fixes that ship with it</h4>
+      <ul class="clean">
+        <li><strong>Mounted in <code>(app)/layout.tsx</code></strong>, so every route is gated — not just the two that happen to import it.</li>
+        <li><strong><code>return null</code> while loading</strong>, not <code>return children</code>. Today the dashboard paints and the modal then slams over the top of it.</li>
+        <li><strong><code>dismissed</code> lifts out of local state.</strong> As component state the gate re-arms on every navigation until the mutation lands.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 5 ═══════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="snum">§ 05 — Wave 4 · P0-7</p>
+    <h2>Project chat has a server, a component, and no door</h2>
+    <p><code>ProjectChat.tsx</code> is 14 KB with <strong>zero importers</strong>, and it is the only caller of three tRPC procedures. Meanwhile <code>ChatShell</code> — the good surface, with focus traps, <code>aria-live</code>, drafts, presence, reactions and search — is 1:1 DM only. Project members appear as <em>suggestions for a direct message</em>. There is no way to create any group conversation in KAIROS.</p>
+  </div>
+
+  <div class="stage"><div class="stagescroll">
+    <div class="app h668 chat3">
+      <div class="rail">
+        <div class="logo">K</div>
+        <div class="ri"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div class="ri"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></div>
+        <div class="ri on"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+        <div class="ri"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 012-2h12a2 2 0 012 2v14"/><path d="M8 7h8M8 11h8"/></svg></div>
+      </div>
+
+      <div class="pane list">
+        <div class="phead"><span class="t">Chat</span>
+          <button class="iconbtn solid"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+        </div>
+        <div style="padding:0 12px 8px"><div class="field" style="padding:6px 10px;"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search messages</div></div>
+
+        <div class="dlabel"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>Projects<span class="n">3</span></div>
+        <div class="crow on">
+          <span class="gicon"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span>
+          <span class="grow"><span class="cn">Kapana Rebuild</span><span class="cp">Kalina: the survey came back —</span></span>
+          <span class="ct">14:02</span>
+        </div>
+        <div class="crow">
+          <span class="gicon mint"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span>
+          <span class="grow"><span class="cn">Open Day 2026</span><span class="cp">Niko: booked the second room</span></span>
+          <span class="unread">4</span>
+        </div>
+        <div class="crow">
+          <span class="gicon caramel"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span>
+          <span class="grow"><span class="cn">Website refresh</span><span class="cp">You: pushed the new nav</span></span>
+          <span class="ct">Mon</span>
+        </div>
+
+        <div class="dlabel"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>Direct messages<span class="n">5</span></div>
+        <div class="crow">
+          <span class="av lg sky" style="width:26px;height:26px;font-size:11px;">KP</span>
+          <span class="grow"><span class="cn">Kalina Petrova</span><span class="cp">sounds good, tomorrow then</span></span>
+          <span class="ct">11:40</span>
+        </div>
+        <div class="crow">
+          <span class="av lg mint" style="width:26px;height:26px;font-size:11px;">NG</span>
+          <span class="grow"><span class="cn">Nikolay Georgiev</span><span class="cp">typing…</span></span>
+          <span class="unread">2</span>
+        </div>
+        <div class="crow">
+          <span class="av lg caramel" style="width:26px;height:26px;font-size:11px;">MD</span>
+          <span class="grow"><span class="cn">Maria Dimitrova</span><span class="cp">📎 contract-v3.pdf</span></span>
+          <span class="ct">Tue</span>
+        </div>
+
+        <div class="dlabel"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>Assistant</div>
+        <div class="crow">
+          <span class="gicon" style="background:linear-gradient(135deg,var(--accent),var(--accent-2))"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/></svg></span>
+          <span class="grow"><span class="cn">Kairos AI</span><span class="cp">Applied 12 tasks · undo available</span></span>
+        </div>
+      </div>
+
+      <div class="pane body">
+        <div class="tbar">
+          <span class="gicon"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span>
+          <span><span class="nm">Kapana Rebuild</span><span class="sb">5 members · 2 online</span></span>
+          <div class="tbspacer"></div>
+          <div class="avs"><span class="av">TT</span><span class="av sky">KP</span><span class="av mint">NG</span><span class="av caramel">MD</span></div>
+          <button class="iconbtn ghost"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>
+        </div>
+        <div class="thread">
+          <div class="msg"><span class="av sky">KP</span><span><span class="who">Kalina Petrova</span><span class="bub">The survey came back — the north facade is worse than the drawings said.</span></span></div>
+          <div class="msg"><span class="av mint">NG</span><span><span class="who">Nikolay Georgiev</span><span class="bub">How much worse? Does it move the September date?</span></span></div>
+          <div class="msg me"><span class="bub">Not September. It moves the scaffolding order forward by two weeks though — I'll put it on the board.</span></div>
+          <div class="msg"><span class="av sky">KP</span><span><span class="who">Kalina Petrova</span><span class="bub">👍 attaching the report</span></span></div>
+          <div style="flex:1"></div>
+          <div class="field" style="border-radius:13px;"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Message Kapana Rebuild<span class="caret"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="figcap"><b>A Projects section in <code>ConversationRail</code>, backed by the <code>listProjectConversations</code> procedure that already exists.</b> Group rows carry the project's square icon rather than an avatar, so the two kinds of conversation are distinguishable at a glance in a collapsed rail. <code>NewChatModal</code> gains a Direct / Project toggle. Then <code>ProjectChat.tsx</code> gets deleted — not ported.</p>
+  </div>
+</section>
+
+<!-- ═══ 6 ═══════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="snum">§ 06 — Wave 4 · P0-8</p>
+    <h2>The undo window nobody can reach</h2>
+    <p><code>agent.undoAvailability</code> and <code>agent.undoApply</code> exist and work. Their only appearances outside the router are two boolean flags in <code>entitlements.ts</code>. Zero callers in <code>src/components</code>. This is the README's central trust claim for the agent suite, and four of the five agents write real data — a user who lets A2 generate a twenty-task backlog has no way to take it back.</p>
+  </div>
+
+  <div class="stage"><div class="stagescroll" style="display:flex;justify-content:center;">
+    <div style="width:620px;display:flex;flex-direction:column;gap:14px;">
+
+      <div class="turn">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;">
+          <span class="gicon" style="background:linear-gradient(135deg,var(--accent),var(--accent-2))"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/></svg></span>
+          <span class="nm">Kairos AI</span><span class="chip plain">A2 · Task planner</span>
+        </div>
+        <p style="font-size:12.5px;margin:0;">Applied your backlog for <strong>Kapana Rebuild</strong>.</p>
+        <div class="applied">
+          <div class="aline"><span class="dot"></span>12 tasks created across 3 milestones</div>
+          <div class="aline"><span class="dot"></span>2 existing tasks re-dated</div>
+          <div class="aline"><span class="dot"></span>1 milestone added — <em>Scaffolding order</em></div>
+        </div>
+        <div class="undobar">
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+          <span class="grow">
+            <span class="ttl">Applied · 15 changes</span>
+            <span class="sub">You can put this back exactly as it was.</span>
+          </span>
+          <span class="count"><span class="ring"></span>4:38 left</span>
+          <button class="btn sm ghost"><svg viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-15-6.7L3 13"/></svg>Undo</button>
+        </div>
+      </div>
+
+      <div class="turn">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;">
+          <span class="gicon" style="background:linear-gradient(135deg,var(--accent),var(--accent-2))"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/></svg></span>
+          <span class="nm">Kairos AI</span><span class="chip plain">A3 · Note rewrite</span>
+        </div>
+        <p style="font-size:12.5px;margin:0;">Rewrote <strong>Site survey — north facade</strong>.</p>
+        <div class="undobar spent">
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+          <span class="grow">
+            <span class="ttl" style="color:var(--faint)">Applied · 1 note</span>
+            <span class="sub">The undo window closed 12 minutes ago. Version history still has the original.</span>
+          </span>
+          <button class="btn sm ghost">View history</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <p class="figcap"><b>A bar inside the turn, not a toast.</b> Toasts live for three seconds; the undo window runs for minutes. The countdown is polled from <code>undoAvailability</code>, and when it expires the bar goes quiet rather than disappearing — a user scrolling back should be able to see what the agent did and that the window has closed, not find an empty space where a control used to be.</p>
+  </div>
+</section>
+
+<!-- ═══ 7 ═══════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="snum">§ 07 — Wave 4 · P0-4 · P1-21</p>
+    <h2>The warning that has to come before the recovery</h2>
+    <p>Note content is AES-256-GCM under a key derived from the password. The entire copy at lock time is <em>"Protect with a password"</em>. Nothing says the content is encrypted, nothing says KAIROS cannot recover it, and the recovery PIN lives in Settings → Security where nobody will find it. Then <code>resetPasswordWithPin</code> throws <code>"No reset PIN configured"</code>. A user can permanently destroy their own data by forgetting a password they were never told mattered.</p>
+  </div>
+
+  <div class="stage"><div class="stagescroll" style="display:flex;justify-content:center;gap:22px;align-items:flex-start;">
+    <div class="modal sm">
+      <div class="rowflex" style="align-items:flex-start;gap:12px;">
+        <span class="cdicon" style="background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent-hover);"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></span>
+        <span class="grow">
+          <span class="nm" style="font-size:15px;">Lock this note</span>
+          <span class="sb">Site survey — north facade</span>
+        </span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;">
+        <div class="field"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Password<span class="caret"></span></div>
+        <div class="field"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Confirm password</div>
+      </div>
+
+      <div class="notice warn" style="margin-top:13px;">
+        <svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L14.7 3.9a2 2 0 00-3.4 0z"/></svg>
+        <span class="body"><b>This cannot be undone by us.</b> The note is encrypted with this password. KAIROS never stores it and cannot read or reset it. If you forget it, the only way back in is a recovery PIN.</span>
+      </div>
+
+      <div class="notice acc" style="margin-top:9px;flex-direction:column;gap:8px;">
+        <span class="body" style="display:flex;gap:9px;"><svg viewBox="0 0 24 24" style="stroke:var(--accent-hover)"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>You have no recovery PIN. Set one now — it takes ten seconds.</span>
+        <div class="field filled" style="width:100%">· · · ·<span class="caret"></span></div>
+      </div>
+
+      <div class="btnrow">
+        <button class="btn ghost">Cancel</button>
+        <button class="btn">Lock note</button>
+      </div>
+    </div>
+
+    <div class="app h560" style="width:430px;grid-template-columns:1fr;">
+      <div class="pane body">
+        <div class="tbar">
+          <div style="display:flex;align-items:center;gap:8px;"><span style="width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;color:#fff;font-weight:800;font-size:10px;">K</span><span style="font-weight:800;font-size:13px;">KAIROS</span></div>
+          <div class="tbspacer"></div>
+          <span class="mono-lbl">/notes/318/recover</span>
+        </div>
+        <div class="pbody center" style="text-align:center;">
+          <div class="emptyill" style="background:color-mix(in srgb,var(--straw) 11%,transparent);color:var(--straw);"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg></div>
+          <div style="font-family:'Instrument Serif',serif;font-size:21px;color:var(--ink);">Recover “Site survey”</div>
+          <div class="psub" style="margin:5px 0 4px;max-width:34ch;">You followed the recovery link from your email. Set a new password for this note.</div>
+          <div class="chip have" style="margin-bottom:14px;">Link verified · expires in 41 min</div>
+          <div style="display:flex;flex-direction:column;gap:8px;width:280px;">
+            <div class="field"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>New password<span class="caret"></span></div>
+            <div class="field"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Confirm</div>
+            <button class="btn" style="justify-content:center;">Unlock and open note</button>
+            <div style="font-size:10.5px;color:var(--faint);">No link? <span style="color:var(--accent-hover);font-weight:700;">Use your recovery PIN instead</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="figcap"><b>Left: the dialog that should exist before anything is encrypted</b> — plain language, and the PIN offered inline rather than named in a settings page the user has never opened. <b>Right: <code>/notes/[noteId]/recover</code></b>, which honours the <code>token</code> the email has been sending all along, keeps the PIN as the fallback, and returns the user to the note they just unlocked instead of to the deprecated <code>/create?action=new_note</code>.</p>
+  </div>
+</section>
+
+<!-- ═══ 8 ═══════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="snum">§ 08 — Wave 4 · P1-9</p>
+    <h2>A project should be a place</h2>
+    <p>The code says it plainly: <code>const projectHref = (id) =&gt; `/create?action=new_project&amp;projectId=${id}`</code>, under a comment reading <em>"Tasks and the board still live behind the create flow."</em> Opening a project navigates to a URL that says <em>create a new project</em>. You cannot share a link to a project, and both the palette and chat have to point somewhere that 404s.</p>
+  </div>
+
+  <div class="stage"><div class="stagescroll">
+    <div class="app h668">
+      <div class="rail">
+        <div class="logo">K</div>
+        <div class="ri"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div class="ri on"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></div>
+        <div class="ri"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 012-2h12a2 2 0 012 2v14"/><path d="M8 7h8M8 11h8"/></svg></div>
+        <div class="ri"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+      </div>
+      <div class="pane body">
+        <div class="tbar">
+          <div class="ws"><span class="dot"></span>Ustrem OOD<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+          <div class="tbspacer"></div>
+          <div class="tsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search KAIROS<span class="kbd">⌘K</span></div>
+          <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg></button>
+          <span class="av lg">TT</span>
+        </div>
+        <div class="pbody">
+          <div class="crumb">Projects<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg><span style="color:var(--ink);font-weight:700">Kapana Rebuild</span><span class="mono-lbl" style="margin-left:8px">/projects/41</span></div>
+          <div class="rowflex">
+            <span class="grow"><span class="ptitle">Kapana Rebuild</span></span>
+            <div class="avs"><span class="av lg">TT</span><span class="av lg sky">KP</span><span class="av lg mint">NG</span><span class="av lg caramel">MD</span></div>
+            <button class="btn sm ghost"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Project chat</button>
+            <button class="btn sm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New task</button>
+          </div>
+
+          <div class="tabs" style="align-self:flex-start;">
+            <span class="tab on">Overview</span><span class="tab">Tasks</span><span class="tab">Timeline</span><span class="tab">People</span>
+          </div>
+
+          <div class="statgrid">
+            <div class="stat"><div class="v">24</div><div class="l">Tasks</div></div>
+            <div class="stat"><div class="v mint">15</div><div class="l">Done</div></div>
+            <div class="stat"><div class="v caramel">3</div><div class="l">Overdue</div></div>
+            <div class="stat"><div class="v">19 Sep</div><div class="l">Next milestone</div></div>
+          </div>
+
+          <div class="twocol">
+            <div style="display:flex;flex-direction:column;gap:7px;min-height:0;overflow:hidden;">
+              <div class="mono-lbl">Up next</div>
+              <div class="tk"><span class="box done"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><span class="tt done">Structural survey — north facade</span><span class="pill">Done</span></div>
+              <div class="tk"><span class="box"></span><span class="tt">Order scaffolding (moved forward 2 weeks)</span><span class="pill hi">Overdue</span><span class="av sky">KP</span></div>
+              <div class="tk"><span class="box"></span><span class="tt">Permit resubmission — Plovdiv municipality</span><span class="pill">5 Sep</span><span class="av mint">NG</span></div>
+              <div class="tk"><span class="box"></span><span class="tt">Confirm contractor availability</span><span class="pill">12 Sep</span><span class="av caramel">MD</span></div>
+              <div class="tk"><span class="box"></span><span class="tt">Update the client on the revised sequence</span><span class="pill">14 Sep</span><span class="av">TT</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:11px;">
+              <div class="sidebox">
+                <div class="mono-lbl">Recent activity</div>
+                <div class="aline"><span class="dot"></span>Kalina closed <em>Structural survey</em></div>
+                <div class="aline"><span class="dot"></span>Kairos AI applied 15 changes</div>
+                <div class="aline"><span class="dot"></span>Niko joined the project</div>
+              </div>
+              <div class="sidebox">
+                <div class="mono-lbl">Linked notes</div>
+                <div class="aline"><span class="dot"></span>Site survey — north facade</div>
+                <div class="aline"><span class="dot"></span>Contractor quotes 2026</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="figcap"><b><code>/projects/[projectId]</code> with real sub-routes.</b> Overview / Tasks / Timeline / People as nested routes, not query params — so the back button works, the URL is honest, and the command palette and <code>ConversationDetails</code> finally have somewhere true to point. <code>ProjectManagement</code> and <code>InteractiveTimeline</code> move under here, which is also the right moment to give them the breakpoints they have never had (P1-19).</p>
+  </div>
+</section>
+
+<!-- ═══ 9 ═══════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="snum">§ 09 — Wave 5 · P1-16 · P1-17 · P1-18</p>
+    <h2>The phone, which currently hides the product</h2>
+    <p>Three separate defects meet at the bottom of the screen. The bottom bar is Events · Progress · New · Calendar · Settings, so Dashboard, Projects, Chat and Notes are all in a hamburger. Every item is icon-only with a <code>title</code>, which does nothing on touch. And <code>AskKairosLauncher</code> is <code>bottom-4 z-40</code> against a nav that is also <code>z-40</code> — the launcher renders later, so it wins, covering Settings and Calendar on every phone.</p>
+  </div>
+
+  <div class="stage"><div class="stagescroll" style="display:flex;justify-content:center;gap:20px;align-items:flex-start;">
+
+    <div class="app phone" style="height:600px">
+      <div class="mtop"><span class="mono-lbl" style="color:var(--straw)">Today</span><span class="tbspacer"></span></div>
+      <div class="pbody" style="padding:14px;gap:10px;">
+        <div class="ptitle" style="font-size:21px">Events</div>
+        <div class="evcard"><div class="im"></div><div class="tx"><div class="nm">Ustrem Open Day</div><div class="sb">19 Sep · Plovdiv</div></div></div>
+        <div class="evcard"><div class="im" style="background:linear-gradient(135deg,color-mix(in srgb,var(--caramel) 45%,#1b1b2a),color-mix(in srgb,var(--straw) 35%,#1b1b2a))"></div><div class="tx"><div class="nm">Kapana Night Market</div><div class="sb">26 Sep · Plovdiv</div></div></div>
+      </div>
+      <div class="launcher bad"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/></svg></div>
+      <div class="mobbar">
+        <span class="mb on"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>
+        <span class="mb"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/></svg></span>
+        <span class="mb"><span class="fabsq"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></span>
+        <span class="mb"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M9 14l2 2 4-4"/></svg></span>
+        <span class="mb"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82 2 2 0 11-2.83 2.83 1.65 1.65 0 00-2.82 1.18 2 2 0 11-4 0 1.65 1.65 0 00-2.82-1.18 2 2 0 11-2.83-2.83A1.65 1.65 0 004.6 15a2 2 0 110-4 1.65 1.65 0 001.18-2.82 2 2 0 112.83-2.83A1.65 1.65 0 0011.4 4.6a2 2 0 114 0 1.65 1.65 0 002.83 1.18 2 2 0 11-.83 5.22"/></svg></span>
+      </div>
+    </div>
+
+    <div class="app phone" style="height:600px">
+      <div class="mtop">
+        <span class="ws" style="padding:4px 8px;font-size:11px;"><span class="dot" style="width:14px;height:14px"></span>Ustrem<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>
+        <span class="tbspacer"></span>
+        <span class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+        <span class="iconbtn"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="badge">3</span></span>
+        <span class="av lg">TT</span>
+      </div>
+      <div class="chiprow">
+        <span class="fchip on"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/></svg>Plovdiv<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>
+        <span class="fchip">This week</span>
+        <span class="fchip">Free</span>
+        <span class="fchip">Music</span>
+      </div>
+      <div class="pbody" style="padding:14px;gap:10px;">
+        <div class="evcard"><div class="im"></div><div class="tx"><div class="nm">Ustrem Open Day</div><div class="sb">19 Sep · Kapana, Plovdiv</div></div></div>
+        <div class="evcard"><div class="im" style="background:linear-gradient(135deg,color-mix(in srgb,var(--caramel) 45%,#1b1b2a),color-mix(in srgb,var(--straw) 35%,#1b1b2a))"></div><div class="tx"><div class="nm">Kapana Night Market</div><div class="sb">26 Sep · Plovdiv</div></div></div>
+      </div>
+      <div class="launcher"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/></svg></div>
+      <div class="mobbar">
+        <span class="mb on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="lb">Home</span></span>
+        <span class="mb"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg><span class="lb">Projects</span></span>
+        <span class="mb fabitem"><span class="fabsq"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="lb">New</span></span>
+        <span class="mb"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="lb">Chat</span></span>
+        <span class="mb"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 012-2h12a2 2 0 012 2v14"/><path d="M8 7h8M8 11h8"/></svg><span class="lb">Notes</span></span>
+      </div>
+    </div>
+
+    <div class="app phone" style="height:600px">
+      <div class="mtop"><span class="nm">Events</span><span class="tbspacer"></span><span class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span></div>
+      <div class="chiprow">
+        <span class="fchip on"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/></svg>Plovdiv</span>
+        <span class="fchip">This week</span><span class="fchip">Free</span>
+      </div>
+      <div class="pbody" style="padding:14px;gap:10px;"><div class="evcard"><div class="im"></div><div class="tx"><div class="nm">Ustrem Open Day</div><div class="sb">19 Sep · Plovdiv</div></div></div></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="rowflex" style="margin-bottom:11px;"><span class="grow nm">Region</span><span class="iconbtn ghost"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <span class="fchip">All Bulgaria</span><span class="fchip on">Plovdiv</span><span class="fchip">Sofia</span>
+          <span class="fchip">Varna</span><span class="fchip">Burgas</span><span class="fchip">Stara Zagora</span>
+          <span class="fchip">Ruse</span><span class="fchip">Veliko Tarnovo</span><span class="fchip">Blagoevgrad</span>
+        </div>
+        <button class="btn" style="width:100%;justify-content:center;margin-top:14px;">Show 14 events</button>
+      </div>
+    </div>
+
+  </div>
+  <p class="figcap"><b>Left, today:</b> the launcher sits on top of Settings, and five icons carry no labels. <b>Centre, proposed:</b> the five most-used destinations, each with a visible label; Events, Progress, Calendar and Settings move to the drawer where secondary destinations belong; the launcher lifts to <code>bottom-24 lg:bottom-6</code> and the nav goes to <code>z-50</code>. <b>Right:</b> the region filter, which below 1024 px does not exist at all today — a sticky chip row opening a bottom sheet, on a feed whose whole model is Bulgarian regions.</p>
+  </div>
+</section>
+
+<!-- ═══ 10 ═══════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="snum">§ 10 — Wave 6 · P1-11 · P1-12</p>
+    <h2>Search, and somewhere to put it</h2>
+    <p>Two findings, one surface. The command palette is the best-engineered thing in the shell — local matching, accent-insensitive, an explicit AI fallback — and <strong>nothing in the UI mentions it exists</strong>. Meanwhile the README promises full-text search across the workspace, and <code>scripts/sql/search-indexes.sql</code> is a zero-byte file. Give the palette a visible front door and it becomes the home for the search that has to be built anyway.</p>
+  </div>
+
+  <div class="stage"><div class="stagescroll" style="display:flex;justify-content:center;">
+    <div class="palette">
+      <div class="pinput"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span>facade<span class="field caret" style="display:inline-block;width:1.5px;height:1em;background:var(--accent);vertical-align:-2px;padding:0;box-shadow:none;"></span></span></div>
+
+      <div class="pgroup">Notes</div>
+      <div class="prow on"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 012-2h12a2 2 0 012 2v14"/><path d="M8 7h8M8 11h8M8 15h5"/></svg><span class="grow">Site survey — north <mark>facade</mark></span><span class="hint">Notes</span></div>
+      <div class="prow"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 012-2h12a2 2 0 012 2v14"/><path d="M8 7h8M8 11h8"/></svg><span class="grow">Contractor quotes 2026 <span class="snip">— “…<mark>facade</mark> works quoted separately…”</span></span><span class="hint">Notes</span></div>
+
+      <div class="pgroup">Tasks</div>
+      <div class="prow"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span class="grow">Structural survey — north <mark>facade</mark></span><span class="hint">Kapana Rebuild</span></div>
+      <div class="prow"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span class="grow"><mark>Facade</mark> repair — cost revision</span><span class="hint">Kapana Rebuild</span></div>
+
+      <div class="pgroup">Go to</div>
+      <div class="prow"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg><span class="grow">Kapana Rebuild</span><span class="hint">Project</span></div>
+
+      <div class="pgroup">Ask</div>
+      <div class="prow"><svg viewBox="0 0 24 24" style="stroke:var(--accent-hover)"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/></svg><span class="grow">Ask Kairos AI about “facade”</span><span class="hint">↵</span></div>
+
+      <div class="pfoot"><span>↑↓ navigate</span><span>↵ open</span><span>⌘K toggle</span><span>esc close</span></div>
+    </div>
+  </div>
+  <p class="figcap"><b>The palette gains a Notes / Tasks / Events group above the destinations</b>, fed by a new <code>search.workspace</code> procedure — and the SQL indexes that empty file was a placeholder for. The <code>⌘K</code> field in the TopBar (visible in §8) is what makes any of it discoverable: a real input that focuses the palette, with the shortcut printed inside it.</p>
+  </div>
+</section>
+
+<!-- ═══ 11 ═══════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="snum">§ 11 — Wave 6 · P1-20</p>
+    <h2>The notification centre, six defects at once</h2>
+    <p>It is the one component visible on nearly every page, and it is entirely unlocalized in a Bulgarian-first product with exact <code>bg</code> parity everywhere else. Clear All permanently deletes everything on one click. Per-item delete is <code>opacity-0 group-hover:opacity-100</code>, so it does not exist on touch. There is no mark-all-as-read, and clicking an item to read it also navigates away — so the badge cannot be cleared without leaving the page, fifty times.</p>
+  </div>
+
+  <div class="stage"><div class="stagescroll" style="display:flex;justify-content:center;">
+    <div class="ndrop">
+      <div class="nhead">
+        <span class="t">Известия</span>
+        <span class="chip plain">3 непрочетени</span>
+        <button class="iconbtn ghost"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+
+      <div class="nitem unread">
+        <span class="ndot"></span>
+        <span class="grow">
+          <span class="nt"><strong>Калина Петрова</strong> ви покани в проект <strong>Kapana Rebuild</strong></span>
+          <span class="nm2">преди 12 минути</span>
+        </span>
+        <span class="nacts"><span class="nx"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><span class="nx"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></span></span>
+      </div>
+      <div class="nitem unread">
+        <span class="ndot"></span>
+        <span class="grow">
+          <span class="nt">Задача <strong>Order scaffolding</strong> е просрочена</span>
+          <span class="nm2">преди 2 часа</span>
+        </span>
+        <span class="nacts"><span class="nx"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><span class="nx"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></span></span>
+      </div>
+      <div class="nitem unread">
+        <span class="ndot"></span>
+        <span class="grow">
+          <span class="nt">Kairos AI приложи <strong>15 промени</strong> — можете да ги върнете</span>
+          <span class="nm2">преди 3 часа</span>
+        </span>
+        <span class="nacts"><span class="nx"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span><span class="nx"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></span></span>
+      </div>
+      <div class="nitem">
+        <span class="ndot read"></span>
+        <span class="grow">
+          <span class="nt">Николай Георгиев се присъедини към <strong>Ustrem OOD</strong></span>
+          <span class="nm2">вчера</span>
+        </span>
+        <span class="nacts"><span class="nx"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></span></span>
+      </div>
+
+      <div class="nfoot">
+        <span class="nlink">Маркирай всички като прочетени</span>
+        <span class="nlink danger">Изчисти всички</span>
+      </div>
+    </div>
+  </div>
+  <p class="figcap"><b>Rendered in Bulgarian because that is the point of the finding.</b> Relative times come from the project's own <code>useDateFormat</code>, not bare <code>formatDistanceToNow</code>. Each row carries a persistent ✓ (mark read, stay on the page) and × (dismiss) — always visible, never <code>opacity-0</code>, both keyboard-reachable. <em>Изчисти всички</em> routes through the confirm dialog in §12. The bell gets <code>aria-expanded</code> and <code>aria-haspopup</code>, Escape closes, focus returns to the bell, and the floating popup stack is capped at three.</p>
+  </div>
+</section>
+
+<!-- ═══ 12 ═══════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="snum">§ 12 — Wave 6 · P1-26 · P1-27 · P1-28</p>
+    <h2>One way to ask “are you sure”</h2>
+    <p>KAIROS has five. Native <code>confirm()</code> for leave-organization, remove-member and delete-role — the three highest-stakes actions in the product, in an unstyled, unthemed dialog. A custom modal in notes and chat. A two-click arm with a four-second timeout on delete-event, which silently disarms while the user is reading it. An inline button swap on delete-task. An overlay on delete-project.</p>
+  </div>
+
+  <div class="stage"><div class="stagescroll" style="display:flex;justify-content:center;gap:20px;align-items:flex-start;">
+    <div class="modal sm">
+      <div class="rowflex" style="align-items:flex-start;gap:13px;">
+        <span class="cdicon"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></span>
+        <span class="grow">
+          <span class="nm" style="font-size:15px;">Delete “Kapana Rebuild”?</span>
+          <span class="sb" style="display:block;margin-top:4px;">24 tasks, 3 milestones and the project conversation will be deleted. Collaborators lose access immediately. This cannot be undone.</span>
+        </span>
+      </div>
+      <div style="margin-top:14px;">
+        <div class="mono-lbl" style="margin-bottom:5px;">Type the project name to confirm</div>
+        <div class="field"><span style="color:var(--ink);font-family:'IBM Plex Mono',monospace;">Kapana Reb<span class="caret"></span></span></div>
+      </div>
+      <div class="btnrow">
+        <button class="btn ghost">Cancel</button>
+        <button class="btn danger">Delete project</button>
+      </div>
+    </div>
+
+    <div class="modal sm">
+      <div class="rowflex" style="align-items:flex-start;gap:13px;">
+        <span class="cdicon" style="background:color-mix(in srgb,var(--caramel) 14%,transparent);color:var(--caramel);"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg></span>
+        <span class="grow">
+          <span class="nm" style="font-size:15px;">Clear all notifications?</span>
+          <span class="sb" style="display:block;margin-top:4px;">All 27 notifications will be permanently removed. You cannot get them back.</span>
+        </span>
+      </div>
+      <div class="btnrow">
+        <button class="btn ghost">Cancel</button>
+        <button class="btn danger">Clear all</button>
+      </div>
+    </div>
+  </div>
+  <p class="figcap"><b>One component, two weights.</b> <code>components/ui/ConfirmDialog.tsx</code>, promoted from <code>notes/ConfirmDialog</code> — the implementation that already gets focus trap, Escape and <code>activeElement</code> restore right. Type-to-confirm is opt-in and reserved for the genuinely irreversible; everything else gets the plain two-button form. The dialog shell it sits on (<code>components/ui/Modal.tsx</code>) is what <code>SignInModal</code>, <code>RoleSelectionModal</code> and the four other inaccessible modals adopt in the same wave — including the body-scroll lock that no overlay in the app currently has.</p>
+  </div>
+</section>
+
+<!-- ═══ 13 ═════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="snum">§ 13 — Wave 6+ · NEW-1 · new scope</p>
+    <h2>Where notifications appear, as a choice</h2>
+    <p>Not an audit finding — a feature on top of the remediation. <code>settings.notifications</code> already exists with five toggles, and every one of them answers <em>what to notify about</em>. This is the first control for <em>where</em>. It sits in the same panel, as a second group above them.</p>
+
+    <div class="callout">
+      <p class="eyebrow">The decision this forces</p>
+      <p>KAIROS has <strong>two</strong> on-screen surfaces: the toast viewport (§1) and the floating notification popups (P1-20-5). §1 puts toasts bottom-left <em>because</em> top-right and bottom-right were already taken. The moment position becomes user-chosen, that reasoning collapses — both surfaces cannot own the corner the user picked.</p>
+      <p><strong>One preference, not two.</strong> The picker positions the notification popups; the toast stack automatically takes the <strong>diagonally opposite</strong> corner. One decision for the user, and a collision becomes structurally impossible. Two independent pickers would re-create the exact overlap this plan is fixing in §9.</p>
+    </div>
+  </div>
+
+  <div class="stage"><div class="stagescroll" style="display:flex;justify-content:center;">
+    <div class="app h668" style="width:840px;">
+      <div class="rail">
+        <div class="logo">K</div>
+        <div class="ri"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div class="ri"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></div>
+        <div class="ri"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+        <div class="ri on push"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82 2 2 0 11-2.83 2.83 1.65 1.65 0 00-2.82 1.18 2 2 0 11-4 0 1.65 1.65 0 00-2.82-1.18 2 2 0 11-2.83-2.83A1.65 1.65 0 004.6 15a2 2 0 110-4 1.65 1.65 0 001.18-2.82 2 2 0 112.83-2.83A1.65 1.65 0 0011.4 4.6a2 2 0 114 0 1.65 1.65 0 002.83 1.18 2 2 0 11-.83 5.22"/></svg></div>
+      </div>
+      <div class="pane body">
+        <div class="tbar">
+          <div class="ws"><span class="dot"></span>Ustrem OOD<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+          <div class="tbspacer"></div>
+          <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg></button>
+          <span class="av lg">TT</span>
+        </div>
+        <div style="display:grid;grid-template-columns:172px 1fr;flex:1;min-height:0;">
+          <div style="border-right:.5px solid var(--hair-soft);padding:14px 10px;display:flex;flex-direction:column;gap:2px;background:var(--surface);">
+            <div class="mono-lbl" style="padding:0 8px 7px;">Settings</div>
+            <div class="prow" style="margin:0"><span class="grow" style="color:var(--muted);font-weight:400">Profile</span></div>
+            <div class="prow" style="margin:0"><span class="grow" style="color:var(--muted);font-weight:400">Workspace</span></div>
+            <div class="prow on" style="margin:0"><span class="grow" style="font-weight:700">Notifications</span></div>
+            <div class="prow" style="margin:0"><span class="grow" style="color:var(--muted);font-weight:400">Security</span></div>
+            <div class="prow" style="margin:0"><span class="grow" style="color:var(--muted);font-weight:400">Language</span></div>
+            <div class="prow" style="margin:0"><span class="grow" style="color:var(--muted);font-weight:400">AI</span></div>
+            <div class="prow" style="margin:0"><span class="grow" style="color:var(--muted);font-weight:400">Appearance</span></div>
+          </div>
+
+          <div class="pbody" style="padding:20px 24px;gap:0;overflow:hidden;">
+            <div class="ptitle" style="font-size:23px;">Notifications</div>
+
+            <div class="mono-lbl" style="margin:18px 0 2px;">On screen</div>
+            <div class="setrow" style="border-bottom:0;padding-bottom:4px;">
+              <span class="grow">
+                <span class="st">Where notifications appear</span>
+                <span class="sd">Pick a corner. Toasts — saved, deleted, failed — take the opposite one, so the two never overlap.</span>
+              </span>
+              <button class="btn sm ghost"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>Preview</button>
+            </div>
+
+            <div class="poswrap">
+              <div class="posscreen">
+                <span class="fakebar"></span>
+                <span class="posslot"><span class="pill"></span><span class="tag">Top left</span></span>
+                <span class="posslot"><span class="pill"></span><span class="tag">Top</span></span>
+                <span class="posslot paired"><span class="pill"></span><span class="tag">Toasts</span></span>
+                <span class="posslot on"><span class="pill"></span><span class="tag">Bottom left</span></span>
+                <span class="posslot"><span class="pill"></span><span class="tag">Bottom</span></span>
+                <span class="posslot"><span class="pill"></span><span class="tag">Reserved</span></span>
+              </div>
+              <div class="poskey">
+                <span class="k"><span class="sw a"></span>Notifications — <strong>bottom left</strong></span>
+                <span class="k"><span class="sw m"></span>Toasts — top right, automatically</span>
+                <span class="k"><span class="sw" style="background:var(--rule)"></span>Bottom right is reserved for Ask&nbsp;Kairos</span>
+                <div class="notice acc" style="margin-top:5px;">
+                  <svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>
+                  <span class="body">On a phone there are no corners — both surfaces go full-width, top or bottom, and bottom clears the nav bar.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mono-lbl" style="margin:18px 0 2px;">What to notify me about</div>
+            <div class="setrow"><span class="grow"><span class="st">Email notifications</span><span class="sd">A summary to your inbox</span></span><span class="tgl on"></span></div>
+            <div class="setrow"><span class="grow"><span class="st">Project updates</span><span class="sd">Tasks assigned to you, and status changes</span></span><span class="tgl on"></span></div>
+            <div class="setrow"><span class="grow"><span class="st">Event reminders</span><span class="sd">Before an event you have RSVP’d to</span></span><span class="tgl"></span></div>
+
+            <div style="flex:1"></div>
+            <div class="btnrow" style="margin-top:10px;"><button class="btn ghost">Reset</button><button class="btn">Save changes</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="figcap"><b>A picker you can see the answer in.</b> Six slots on a miniature screen rather than a dropdown of position names — and <b>Preview</b> fires a real sample toast into the chosen corner, because a position control whose result you cannot see is a guess rather than a choice. The mint slot is not selectable: it shows where toasts land as a consequence of the choice. Bottom-right is drawn as reserved, so the <code>AskKairosLauncher</code> collision from §9 cannot be re-created from the settings panel.</p>
+  </div>
+
+  <div class="col">
+    <div class="card tight">
+      <h4>What ships with it</h4>
+      <ul class="clean">
+        <li><strong>One column, one enum.</strong> <code>notificationPosition</code> on <code>users</code>, defaulting to <code>top-right</code> — today’s behaviour, so no existing user sees a change until they ask for one. <code>updateNotifications</code> already spreads its input into the update, so the Zod schema is the only router edit.</li>
+        <li><strong>CSS custom properties, not conditional class strings.</strong> <code>--notif-anchor-*</code> is set once on the document root and the toast viewport derives its own anchor by inverting it. Two components reading one token beats two components each holding a position <code>switch</code>.</li>
+        <li><strong>Pre-painted.</strong> The value joins <code>railPinned</code> and the accent in <code>themeInitScript</code> (plan §3.2), so a toast firing early does not appear in the default corner and jump. Same CSP-hash bump, ideally the same commit.</li>
+        <li><strong>Direction follows the edge.</strong> Anchored top, a toast slides down; anchored bottom, up — and both are suppressed under <code>prefers-reduced-motion</code>.</li>
+        <li><strong>Six labels into <code>en</code> and <code>bg</code> together</strong>, like every other string this plan adds.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SEQUENCING ═══════════════════════════════════════════════════════ -->
+<section>
+  <div class="col">
+    <p class="eyebrow">Delivery</p>
+    <h2>What order, and what shares what</h2>
+    <p>These twelve surfaces are not independent. Four shared pieces carry most of them, and building those first is what keeps the total near two weeks rather than four.</p>
+
+    <div class="card">
+      <h4>Built once, used everywhere</h4>
+      <ul class="clean">
+        <li><strong><code>components/ui/Modal.tsx</code></strong> — dialog role, <code>aria-modal</code>, Escape, focus trap, <code>activeElement</code> restore, body-scroll lock. Extracted from the newer surfaces that already do it correctly. Used by §4, §7, §9, §12 and the six retrofits in P1-27.</li>
+        <li><strong><code>components/ui/ConfirmDialog.tsx</code></strong> — §12, and the five call sites that currently roll their own, plus §11's Clear All.</li>
+        <li><strong><code>(app)/layout.tsx</code></strong> — one shell. §4 mounts inside it, §8 and §10 depend on the TopBar it provides, and the six pages currently missing a TopBar get one for free.</li>
+        <li><strong><code>OrgEmptyState</code></strong> — §2, and <code>WorkspaceMenu</code>'s dead end (P1-30), and the join card in §4.</li>
+      </ul>
+    </div>
+
+    <div class="phase"><span class="pnum">W1</span><div><h4>Toasts <span class="chip plain">§1</span></h4><p>Half a day. Nothing else in the plan changes as much per line — 126 call sites start working at once.</p></div></div>
+    <div class="phase"><span class="pnum">W2</span><div><h4>The dead ends <span class="chip plain">§2 §3 §4</span></h4><p>A day and a half. Invites become acceptable, events become shareable, onboarding reaches everyone and offers the third door.</p></div></div>
+    <div class="phase"><span class="pnum">W3</span><div><h4>The shell <span class="chip plain">no new UI</span></h4><p>Two days, and a prerequisite for §8 and §10. Fixes the remount, the rail jump, the six missing TopBars and the discarded <code>callbackUrl</code> in one change.</p></div></div>
+    <div class="phase"><span class="pnum">W4</span><div><h4>The promised features <span class="chip plain">§5 §6 §7 §8</span></h4><p>Three days. Everything here already exists on the server; this wave is entirely about the front door. §8 lands before §5's project links and §10's palette rows have somewhere to point.</p></div></div>
+    <div class="phase"><span class="pnum">W5</span><div><h4>Mobile <span class="chip plain">§9</span></h4><p>Two days. The <code>z-index</code> collision is ten minutes of it; the bottom-bar IA and the region sheet are the rest. <code>ProjectManagement</code>'s breakpoints follow §8, not this wave.</p></div></div>
+    <div class="phase"><span class="pnum">W6</span><div><h4>Trust and polish <span class="chip plain">§10 §11 §12</span></h4><p>Three to four days, and the only wave that can be split across people — search, notifications and the dialog work touch nothing in common except <code>Modal</code>.</p></div></div>
+    <div class="phase"><span class="pnum">W6+</span><div><h4>New scope <span class="chip plain">§13</span> <span class="chip partial">not from the audit</span></h4><p>One day. The position preference needs both the toast viewport and the rebuilt notification centre to exist, so it lands last. The button-glow removal rides along in the same visual pass.</p></div></div>
+
+    <div class="callout good">
+      <p class="eyebrow">A note on the design system</p>
+      <p>Nothing in this document introduces a token. Every colour is <code>--accent</code>, <code>--mint</code>, <code>--caramel</code>, <code>--straw</code>, <code>--sky</code> or a foreground/border step already in <code>globals.css</code>; every radius and mono label matches the notes and chat surfaces shipped in <code>9535b5f</code>. The audit's finding is that KAIROS reads as three generations of UI stacked on each other. Thirteen new surfaces are thirteen chances to make that worse — so they are drawn from the newest tier's vocabulary, deliberately, and the older tier moves toward them rather than the other way round.</p>
+      <p><strong>One thing does change: the glow comes off.</strong> No button in this document carries a coloured drop shadow. The app currently has 41 uses of <code>shadow-accent</code>, plus <code>shadow-accent-primary/20–30</code>, ad-hoc <code>shadow-[0_0_15px_rgb(var(--accent-primary)/0.3)]</code>, and <code>.purple-glow</code> / <code>.purple-glow-soft</code> / <code>.progress-bar-glow</code> in <code>globals.css</code>. A primary button is already identified by its accent fill — the halo carries no information, and it is the strongest single tell between the older tier and the newer one. Depth stays where depth does real work: neutral elevation on cards, modals, popovers and the toast viewport. <code>:focus-visible</code> rings are untouched, because those are an accessibility affordance rather than decoration. The cheapest route is to redefine <code>--shadow-accent</code> as a neutral elevation shadow first, so all 41 call sites move in one reviewable edit, and retire the class afterwards.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="col">
+    <p>KAIROS · UI proposal for the 2026-08-31 UX audit · companion to <code>docs/ui/ux-fix-plan-2026-08-31.md</code> · tokens ported unchanged from <code>src/styles/globals.css</code></p>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>

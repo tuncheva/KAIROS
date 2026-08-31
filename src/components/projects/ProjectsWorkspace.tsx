@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -63,6 +63,11 @@ const TIMELINE_FILTERS: TimelineFilter[] = [
 
 /** The three readings of one project: what to do, who is on it, what happened. */
 const DETAIL_TABS = ["tasks", "team", "timeline"] as const;
+
+/** Narrows a `?tab=` value; anything unrecognised falls back to the board. */
+export function isDetailTab(value: string | null | undefined): value is DetailTab {
+  return value !== null && value !== undefined && DETAIL_TABS.includes(value as DetailTab);
+}
 type DetailTab = (typeof DETAIL_TABS)[number];
 
 /**
@@ -116,10 +121,13 @@ const EVENT_TINT: Record<EventKind, string> = {
 export function ProjectsWorkspace({
   userId,
   initialProjectId = null,
+  initialTab = "tasks",
 }: {
   userId: string;
   /** `/projects?projectId=` opens straight into one project. */
   initialProjectId?: number | null;
+  /** `&tab=` opens that project on its board, team or timeline. */
+  initialTab?: DetailTab;
 }) {
   const t = useTranslations("projects");
   const toast = useToast();
@@ -131,7 +139,61 @@ export function ProjectsWorkspace({
   const [sort, setSort] = useState<SortKey>("updated");
   const [view, setView] = useState<ViewMode>("list");
   const [openId, setOpenId] = useState<number | null>(initialProjectId);
+  const [tab, setTab] = useState<DetailTab>(initialTab);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  /* A project opened in place used to leave the URL on `/projects`, so the one
+     thing people do with a project they are looking at — send it to someone —
+     was impossible, and Back skipped past the whole detail view to whatever
+     came before the page.
+
+     History API rather than `router.push`: the detail is already rendered on
+     the client from a list this page has in cache, so a real navigation would
+     re-run the server component to arrive at the state we are already in.
+     Opening pushes (Back should close the project); switching tabs replaces
+     (a tab is a refinement, not a step of its own). */
+  const projectUrl = useCallback(
+    (id: number | null, detailTab: DetailTab) =>
+      id === null ? "/projects" : `/projects?projectId=${id}&tab=${detailTab}`,
+    [],
+  );
+
+  const openProject = useCallback(
+    (id: number) => {
+      setOpenId(id);
+      setTab("tasks");
+      window.history.pushState(null, "", projectUrl(id, "tasks"));
+    },
+    [projectUrl],
+  );
+
+  const selectTab = useCallback(
+    (next: DetailTab) => {
+      setTab(next);
+      if (openId !== null) window.history.replaceState(null, "", projectUrl(openId, next));
+    },
+    [openId, projectUrl],
+  );
+
+  /* Back and Forward move between the list and the open project, so the state
+     has to follow the URL rather than the other way round. */
+  useEffect(() => {
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get("projectId");
+      const id = raw === null ? null : Number(raw);
+      setOpenId(id !== null && Number.isInteger(id) && id > 0 ? id : null);
+      const nextTab = params.get("tab");
+      setTab(isDetailTab(nextTab) ? nextTab : "tasks");
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  const closeProject = useCallback(() => {
+    setOpenId(null);
+    window.history.pushState(null, "", projectUrl(null, "tasks"));
+  }, [projectUrl]);
 
   const projectsQuery = api.project.getMyProjects.useQuery(undefined, {
     staleTime: 1000 * 60 * 5,
@@ -187,10 +249,12 @@ export function ProjectsWorkspace({
       {opened ? (
         <ProjectDetail
           project={opened}
+          tab={tab}
+          onTabChange={selectTab}
           userId={userId}
           locale={locale}
           now={now}
-          onBack={() => setOpenId(null)}
+          onBack={closeProject}
           onDelete={() => setConfirmDeleteId(opened.id)}
         />
       ) : (
@@ -299,9 +363,9 @@ export function ProjectsWorkspace({
                 : t("noneInFilter")}
             </div>
           ) : view === "list" ? (
-            <ProjectTable rows={shown} locale={locale} onOpen={setOpenId} />
+            <ProjectTable rows={shown} locale={locale} onOpen={openProject} />
           ) : (
-            <ProjectGrid rows={shown} locale={locale} onOpen={setOpenId} />
+            <ProjectGrid rows={shown} locale={locale} onOpen={openProject} />
           )}
 
           <StatStrip
@@ -687,6 +751,8 @@ function ProjectDetail({
   userId,
   locale,
   now,
+  tab,
+  onTabChange,
   onBack,
   onDelete,
 }: {
@@ -694,11 +760,14 @@ function ProjectDetail({
   userId: string;
   locale: string;
   now: Date;
+  /* Lifted to the workspace, because the tab is part of the URL now. */
+  tab: DetailTab;
+  onTabChange: (tab: DetailTab) => void;
   onBack: () => void;
   onDelete: () => void;
 }) {
   const t = useTranslations("projects");
-  const [tab, setTab] = useState<DetailTab>("tasks");
+
   const [kind, setKind] = useState<TimelineFilter>("all");
   const [showEarlier, setShowEarlier] = useState(false);
 
@@ -809,7 +878,7 @@ function ProjectDetail({
           <button
             key={key}
             type="button"
-            onClick={() => setTab(key)}
+            onClick={() => onTabChange(key)}
             aria-pressed={tab === key}
             className={`h-[34px] px-4 text-[13px] font-medium transition-colors duration-300 ${
               tab === key
