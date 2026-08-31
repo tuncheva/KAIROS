@@ -556,12 +556,24 @@ export function ChatShell({
     onError: (error) => toast.error(error.message),
   });
 
+  const openCreatedConversation = async (data: { conversationId: number }) => {
+    await utils.chat.listAllConversations.invalidate();
+    setShowNewChat(false);
+    router.push(`/chat/${data.conversationId}`);
+  };
+
   const createConversation = api.chat.getOrCreateDirectConversation.useMutation({
-    onSuccess: async (data) => {
-      await utils.chat.listAllConversations.invalidate();
-      setShowNewChat(false);
-      router.push(`/chat/${data.conversationId}`);
-    },
+    onSuccess: openCreatedConversation,
+    onError: (error) => toast.error(error.message),
+  });
+
+  /* Picked from under a project heading, so the conversation belongs to that
+     project. Same shape as a DM — `direct_conversations` holds exactly two
+     participants — but tagged, which is what lights up the project badge on the
+     row and makes the rail's "Projects" filter mean something. The procedure
+     re-checks that both people can actually reach the project. */
+  const createProjectConversation = api.chat.getOrCreateProjectConversation.useMutation({
+    onSuccess: openCreatedConversation,
     onError: (error) => toast.error(error.message),
   });
 
@@ -1046,8 +1058,12 @@ export function ChatShell({
       {showNewChat && (
         <NewChatModal
           onClose={() => setShowNewChat(false)}
-          onSelect={(otherUserId) => createConversation.mutate({ otherUserId })}
-          isCreating={createConversation.isPending}
+          onSelect={(otherUserId, projectId) =>
+            projectId === undefined
+              ? createConversation.mutate({ otherUserId })
+              : createProjectConversation.mutate({ projectId, otherUserId })
+          }
+          isCreating={createConversation.isPending || createProjectConversation.isPending}
           currentUserId={userId}
         />
       )}
