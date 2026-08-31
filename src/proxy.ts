@@ -41,6 +41,10 @@ const PUBLIC_PATHS = new Set([
   "/",
   "/api/auth",
   "/verify-email",
+  // A failed sign-in has, by definition, no session cookie. Gating the page that
+  // explains the failure sent it back to `/` with the error code buried in a
+  // query string nothing reads — the dead end this page exists to end.
+  "/auth-error",
   // The footer and the consent line under the sign-up button link here. A visitor
   // has to be able to read what they are agreeing to *before* they have a session,
   // so these cannot sit behind the cookie gate.

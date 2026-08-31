@@ -39,6 +39,50 @@ function VerifyEmailContent() {
   const isVerified = verify.isSuccess;
   const hasFailed = verify.isError;
 
+  /* Shared by both dead ends below: a link that never arrived and a link that
+     no longer works need the same escape hatch, and the "no token" branch used
+     to offer none at all. */
+  const resendForm =
+    resent ? (
+        <p className="text-sm text-center text-fg-secondary">
+          If that address needs confirming, a new link is on its way.
+        </p>
+      ) : (
+        <form
+          className="space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            resend.mutate({ email: resendEmail });
+          }}
+        >
+          <label
+            htmlFor="resend-email"
+            className="block text-sm text-fg-secondary"
+          >
+            Send a new confirmation link
+          </label>
+          <input
+            id="resend-email"
+            type="email"
+            required
+            value={resendEmail}
+            onChange={(e) => setResendEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="w-full px-3 py-2 rounded-lg bg-bg-primary text-fg-primary border border-border-light/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary"
+          />
+          <button
+            type="submit"
+            disabled={resend.isPending}
+            className="w-full px-6 py-2.5 bg-accent-primary text-white font-medium rounded-lg hover:bg-accent-secondary transition-colors disabled:opacity-60"
+          >
+            {resend.isPending ? "Sending…" : "Send link"}
+          </button>
+          {resend.isError ? (
+            <p className="text-xs text-red-500">{resend.error.message}</p>
+          ) : null}
+        </form>
+  );
+
   return (
     <div className="min-h-dvh bg-bg-primary flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-bg-secondary/60 border border-border-light/40 rounded-2xl p-8">
@@ -49,8 +93,10 @@ function VerifyEmailContent() {
               Nothing to confirm
             </h1>
             <p className="text-sm text-fg-secondary">
-              This page needs the confirmation link from your email.
+              This page needs the confirmation link from your email. Lost it, or
+              never got one? Ask for another below.
             </p>
+            {resendForm}
           </div>
         ) : verify.isPending ? (
           <div className="space-y-3 text-center">
@@ -87,45 +133,7 @@ function VerifyEmailContent() {
               </p>
             </div>
 
-            {resent ? (
-              <p className="text-sm text-center text-fg-secondary">
-                If that address needs confirming, a new link is on its way.
-              </p>
-            ) : (
-              <form
-                className="space-y-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  resend.mutate({ email: resendEmail });
-                }}
-              >
-                <label
-                  htmlFor="resend-email"
-                  className="block text-sm text-fg-secondary"
-                >
-                  Send a new confirmation link
-                </label>
-                <input
-                  id="resend-email"
-                  type="email"
-                  required
-                  value={resendEmail}
-                  onChange={(e) => setResendEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full px-3 py-2 rounded-lg bg-bg-primary text-fg-primary border border-border-light/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary"
-                />
-                <button
-                  type="submit"
-                  disabled={resend.isPending}
-                  className="w-full px-6 py-2.5 bg-accent-primary text-white font-medium rounded-lg hover:bg-accent-secondary transition-colors disabled:opacity-60"
-                >
-                  {resend.isPending ? "Sending…" : "Send link"}
-                </button>
-                {resend.isError ? (
-                  <p className="text-xs text-red-500">{resend.error.message}</p>
-                ) : null}
-              </form>
-            )}
+            {resendForm}
           </div>
         )}
       </div>

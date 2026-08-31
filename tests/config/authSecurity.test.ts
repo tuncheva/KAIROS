@@ -44,6 +44,26 @@ describe("Auth Config — Account Linking", () => {
   it("allows dangerous email account linking", () => {
     expect(configSource).toContain("allowDangerousEmailAccountLinking");
   });
+
+  /**
+   * An unconfirmed row may be claimed by a provider-verified identity, but the
+   * password on it must not survive the claim: that password is the whole of the
+   * takeover attack email-linking otherwise enables.
+   */
+  it("clears the unproven password when claiming an unverified account", () => {
+    expect(configSource).toContain("password: null");
+    expect(configSource).toContain("resetPinHash: null");
+  });
+
+  it("only claims an unverified account when the provider verifies the email", () => {
+    expect(configSource).toMatch(
+      /if \(!providerVerifiesEmail\) \{[\s\S]*?return false;/,
+    );
+  });
+
+  it("sends sign-in failures to a real page instead of the built-in error code", () => {
+    expect(configSource).toContain('error: "/auth-error"');
+  });
 });
 
 describe("Auth Config — No Hardcoded Secrets", () => {

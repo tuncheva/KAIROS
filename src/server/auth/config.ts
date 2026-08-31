@@ -36,6 +36,7 @@ import {
   accounts,
   sessions,
   users,
+  verificationCodes,
   verificationTokens,
 } from "~/server/db/schema";
 
@@ -383,8 +384,67 @@ export const authConfig = {
         });
 
         if (!linkedAlready && existingByEmail && !existingByEmail.emailVerified) {
-          log.warn("refused OAuth link into unverified account", { email });
-          return false;
+          // The row exists but was never confirmed. Refusing outright was a dead
+          // end for the ordinary case that produces it: someone signs up with a
+          // password, never opens the confirmation email, then comes back and
+          // clicks "continue with Google". They own the address, and the only
+          // feedback they got was a bare "Access Denied".
+          //
+          // When the provider itself asserts the address is verified, that is the
+          // proof the unopened email would have supplied, so the row is claimed
+          // rather than refused. The takeover attack this branch exists to stop
+          // lives entirely in the *password* on the unconfirmed row, so claiming
+          // the row discards it — along with any half-finished recovery state and
+          // any outstanding confirmation code. Whoever created that password is
+          // left with nothing; the person the provider vouched for gets in, and
+          // can set a new password through the normal reset flow.
+          if (!providerVerifiesEmail) {
+            // Provider says nothing about the address (e.g. Entra on the `common`
+            // tenant), so there is no proof to substitute and the refusal stands.
+            log.warn("refused OAuth link into unverified account", {
+              email,
+              provider: account?.provider,
+            });
+            return false;
+          }
+
+          const claimedAt = new Date();
+          await db
+            .update(users)
+            .set({
+              emailVerified: claimedAt,
+              updatedAt: claimedAt,
+              // The unproven credential and everything that could be used to
+              // recover it.
+              password: null,
+              resetPinHash: null,
+              resetPinHint: null,
+              resetPinFailedAttempts: 0,
+              resetPinLockedUntil: null,
+              resetPinLastFailedAt: null,
+              loginFailedAttempts: 0,
+              loginLockedUntil: null,
+              loginLastFailedAt: null,
+            })
+            .where(eq(users.id, existingByEmail.id));
+
+          // Consume any live confirmation code for the address: it was minted for
+          // the signup that is now superseded, and the address is already proven.
+          await db
+            .update(verificationCodes)
+            .set({ consumedAt: claimedAt })
+            .where(
+              and(
+                eq(verificationCodes.email, email.toLowerCase()),
+                eq(verificationCodes.purpose, "email_verify"),
+                isNull(verificationCodes.consumedAt),
+              ),
+            );
+
+          log.warn("claimed unverified account via verified OAuth identity", {
+            email,
+            provider: account?.provider,
+          });
         }
 
         // The provider vouching for the address is proof, so record it. This also
@@ -518,5 +578,12 @@ export const authConfig = {
 
   pages: {
     signIn: "/",
+    /**
+     * NextAuth's built-in error page renders the bare error code — "Access
+     * Denied", with no hint of which of the several causes applied or what to do
+     * next. Everything a signed-out person can hit lands here, so it gets a real
+     * page.
+     */
+    error: "/auth-error",
   },
 } satisfies NextAuthConfig;
