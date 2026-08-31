@@ -57,27 +57,3 @@ describe("A1ChatWidgetOverlay – Topbar", () => {
   });
 });
 
-describe("AiTaskPlannerPanel – Border Styling", () => {
-  const panelPath = path.resolve(__dirname, "../../src/components/projects/AiTaskPlannerPanel.tsx");
-  const panelSource = fs.readFileSync(panelPath, "utf-8");
-
-  it("does not use border-border-light/20 (white outlines)", () => {
-    expect(panelSource).not.toContain("border-border-light/20");
-  });
-
-  it("uses border-white/[0.06] for subtle borders", () => {
-    expect(panelSource).toContain("border-white/[0.06]");
-  });
-
-  it("uses bg-bg-secondary for outer container", () => {
-    expect(panelSource).toContain("bg-bg-secondary rounded-2xl");
-  });
-
-  it("does not use kairos-bg-surface class", () => {
-    expect(panelSource).not.toContain("kairos-bg-surface");
-  });
-
-  it("does not use kairos-section-border class", () => {
-    expect(panelSource).not.toContain("kairos-section-border");
-  });
-});

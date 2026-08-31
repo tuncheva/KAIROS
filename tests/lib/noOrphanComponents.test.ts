@@ -20,34 +20,15 @@ const root = path.resolve(__dirname, "../..");
 const componentsDir = path.join(root, "src/components");
 
 /**
- * Quarantine, not permission.
+ * Files that are deliberately not imported by anything.
  *
- * These nine are what this check found the first time it ran — roughly 55 KB
- * of components with no caller anywhere in `src`. They are listed rather than
- * deleted because at least one of them was clearly *meant* to be live:
- * `AiTaskPlannerPanel` (16 KB) is named in the UX plan's own list of surfaces
- * whose placeholders need translating, which means it was understood to be
- * part of the product. Whether each is wired up or removed is a decision, and
- * a decision should not be made silently by a test file.
- *
- * `RegionMapPicker` and `AiTaskPlannerPanel` do appear in the suite, but only
- * in tests that read them as text and assert on their design tokens — so those
- * blocks are testing components nothing renders.
- *
- * Every entry here should be resolved. A growing list means the check has
- * stopped meaning anything.
+ * Empty, and it should stay that way. The first run of this check found nine
+ * orphans totalling about 55 KB — two of them AI panels the UX plan itself
+ * assumed were live — and all nine were deleted rather than listed. An entry
+ * here is a standing exception, and a growing list means the check has stopped
+ * meaning anything.
  */
-const ALLOWED = new Set<string>([
-  "src/components/agents/AgentWorkspace.tsx",
-  "src/components/events/RegionMapPicker.tsx",
-  "src/components/homepage/ScrollFloat.tsx",
-  "src/components/homepage/SplitText.tsx",
-  "src/components/layout/Toggle.tsx",
-  "src/components/projects/AiTaskDraftPanel.tsx",
-  "src/components/projects/AiTaskPlannerPanel.tsx",
-  "src/components/projects/CollaboratorItem.tsx",
-  "src/components/projects/ProjectsIntelligencePageChat.tsx",
-]);
+const ALLOWED = new Set<string>([]);
 
 function walk(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
