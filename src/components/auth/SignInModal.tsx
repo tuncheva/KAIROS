@@ -8,6 +8,8 @@ import { api } from "~/trpc/react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 
+import { useModalBehavior } from "~/components/ui/Modal";
+
 /* ─── Types ─── */
 type ModalView =
   | "signIn"
@@ -77,6 +79,7 @@ export function SignInModal({
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const codeInputsRef = useRef<(HTMLInputElement | null)[]>([]);
+  const shellRef = useRef<HTMLDivElement>(null);
 
   const router = useRouter();
   const signupMutation = api.auth.signup.useMutation();
@@ -142,6 +145,12 @@ export function SignInModal({
       return () => clearTimeout(t);
     }
   }, [isOpen, initialEmail]);
+
+  /* The front door had no dialog semantics at all: no `role`, no `aria-modal`,
+     no Escape, no focus trap and no focus restore — on the one surface every
+     new user has to get through. `useModalBehavior` is the same implementation
+     the newer surfaces already had; see `~/components/ui/Modal`. */
+  useModalBehavior({ containerRef: shellRef, onDismiss: onClose, enabled: isOpen });
 
   /* ─── Early return AFTER all hooks ─── */
   if (!isOpen) return null;
@@ -701,7 +710,13 @@ export function SignInModal({
     <div className="dark fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl overflow-hidden rounded-[18px] border border-white/10 bg-[#08080c] lg:grid-cols-2">
+      <div
+        ref={shellRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="kairos-auth-title"
+        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl overflow-hidden rounded-[18px] border border-white/10 bg-[#08080c] lg:grid-cols-2"
+      >
         {/* ─── Left: brand panel (hidden on narrow screens) ─── */}
         <div className="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.08] bg-[#0a0a10] p-11 lg:flex">
           <div
@@ -765,7 +780,10 @@ export function SignInModal({
           </button>
 
           <div className={eyebrowClass}>{step}</div>
-          <h2 className="mt-4 font-display text-[38px] font-normal leading-[1.06] tracking-[-0.01em] text-white sm:text-[46px]">
+          <h2
+            id="kairos-auth-title"
+            className="mt-4 font-display text-[38px] font-normal leading-[1.06] tracking-[-0.01em] text-white sm:text-[46px]"
+          >
             {title}
           </h2>
           <p className="mt-3 max-w-[380px] text-base leading-[1.65] text-white/60">{sub}</p>

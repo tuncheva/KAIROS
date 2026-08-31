@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
+
+import { useModalBehavior } from "~/components/ui/Modal";
 import { api } from "~/trpc/react";
 import { ChevronRight, X } from "~/components/ui/icons";
 import { useToast } from "~/components/providers/ToastProvider";
@@ -71,21 +73,24 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
   };
 
   /* P1-27: the modal had no dismissal at all — no close control and no Escape
-     handler — so a keyboard user who opened it had no way back out. */
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onComplete();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, onComplete]);
+     handler — so a keyboard user who opened it had no way back out. Escape now
+     comes from `useModalBehavior`, along with the focus trap, the focus
+     restore and the scroll lock it also lacked. Onboarding is one of the two
+     dialogs a *first-time* user must get through, and it had none of it. */
+  const shellRef = useRef<HTMLDivElement>(null);
+  useModalBehavior({ containerRef: shellRef, onDismiss: onComplete, enabled: isOpen });
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-bg-elevated shadow-2xl rounded-3xl border border-accent-primary/20 kairos-page-enter overflow-hidden">
+      <div
+        ref={shellRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("welcome.title")}
+        className="w-full max-w-lg bg-bg-elevated shadow-2xl rounded-3xl border border-accent-primary/20 kairos-page-enter overflow-hidden"
+      >
         {/* Purple gradient header */}
         <div className="h-2 bg-gradient-to-r from-accent-primary via-accent-secondary to-accent-tertiary" />
 

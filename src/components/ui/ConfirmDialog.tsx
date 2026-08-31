@@ -15,16 +15,14 @@
  * lands somewhere the user is already looking, and it can demand the name
  * typed back for the handful of actions that destroy other people's work.
  *
- * Focus is trapped and returned on close, and Escape cancels.
- *
- * Rendered through a portal onto `document.body`: callers live inside
- * ancestors that carry transforms and filters, and a `position: fixed` overlay
- * inside one of those is contained by it rather than by the viewport — the
- * backdrop covers only part of the page and the card lands wherever the row is.
+ * The focus trap, Escape, `activeElement` restore, body-scroll lock and portal
+ * all come from `./Modal`, which is where that behaviour lives for every
+ * dialog in the app.
  */
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+
+import { Modal } from "./Modal";
 
 export function ConfirmDialog({
   title,
@@ -67,82 +65,26 @@ export function ConfirmDialog({
      The server checks this again; see `organization.delete`. */
   const textOk = requireText === undefined || typed.trim() === requireText;
 
-  const dialogRef = useRef<HTMLDivElement | null>(null);
   const confirmRef = useRef<HTMLButtonElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const restoreTo = useRef<HTMLElement | null>(null);
-  // Portals need a DOM to aim at, which the server render does not have.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
 
+  /* The caret belongs in the gate when there is one: focusing a button that
+     cannot yet be pressed leaves the user hunting for what is missing. Runs
+     after `useModalBehavior` has focused the first element, and overrides it. */
   useEffect(() => {
-    restoreTo.current = document.activeElement as HTMLElement | null;
-    /* With a gate to pass, the caret belongs in it: focusing a button that
-       cannot yet be pressed leaves the user hunting for what is missing. */
     if (inputRef.current) inputRef.current.focus();
     else confirmRef.current?.focus();
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onCancel();
-        return;
-      }
-      if (e.key !== "Tab") return;
-
-      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      if (!focusable || focusable.length === 0) return;
-      const first = focusable[0]!;
-      const last = focusable[focusable.length - 1]!;
-
-      /* Wrap at both ends, so Tab can never walk out of the dialog into the
-         page behind it. */
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      restoreTo.current?.focus();
-    };
-  }, [onCancel]);
-
-  /* Body-scroll lock. No overlay in the app had one, which on iOS lets the
-     page behind the dialog scroll under your finger while the question is
-     still on screen. */
-  useEffect(() => {
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
   }, []);
 
-  if (!mounted) return null;
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto overscroll-contain bg-black/60 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
+  return (
+    <Modal
+      role="alertdialog"
+      labelledBy="kairos-confirm-title"
+      describedBy="kairos-confirm-message"
+      onDismiss={onCancel}
+      className="w-full max-w-sm p-6 rounded-2xl bg-bg-elevated kairos-menu-surface"
     >
-      <div
-        ref={dialogRef}
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="kairos-confirm-title"
-        aria-describedby="kairos-confirm-message"
-        className="w-full max-w-sm p-6 rounded-2xl bg-bg-elevated kairos-menu-surface"
-      >
+      <>
         <h2 id="kairos-confirm-title" className="text-lg font-bold text-fg-primary mb-2">
           {title}
         </h2>
@@ -195,8 +137,7 @@ export function ConfirmDialog({
             {confirmLabel}
           </button>
         </div>
-      </div>
-    </div>,
-    document.body,
+      </>
+    </Modal>
   );
 }
