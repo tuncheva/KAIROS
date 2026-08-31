@@ -1543,7 +1543,8 @@
       "tide": "Прилив"
     },
     "edited": "Редактирано",
-    "editedOn": "Редактирано на {date}"
+    "editedOn": "Редактирано на {date}",
+    "rsvps": "Потвърждения"
   },
   "auth": {
     "signIn": "Вход",
@@ -1740,7 +1741,8 @@
     "createNameLabel": "Име на организацията",
     "createNamePlaceholder": "напр. Дизайн екип",
     "creating": "Създаване…",
-    "createdOrg": "Създадохте {name}."
+    "createdOrg": "Създадохте {name}.",
+    "namePlaceholder": "Име на организацията…"
   },
   "ai": {
     "title": "AI Генератор на задачи",
@@ -2156,7 +2158,17 @@
     "saving": "Запазва се…",
     "cancel": "Отказ",
     "forget": "Забрави",
-    "loading": "Зарежда се…"
+    "loading": "Зарежда се…",
+    "eventTitlePlaceholder": "Заглавие на събитието…",
+    "eventDescriptionPlaceholder": "Описание на събитието…",
+    "noteContentPlaceholder": "Редактиране на бележката…",
+    "previewNewEvent": "Ново събитие",
+    "previewUpdateEvent": "Промяна на събитие",
+    "previewDeleteEvent": "Изтриване на събитие",
+    "previewClickToEdit": "(натиснете, за да редактирате)",
+    "previewNewNote": "Нова бележка",
+    "previewUpdateNote": "Промяна на бележка",
+    "previewDeleteNote": "Изтриване на бележка"
   },
   "aiConsole": {
     "conversations": "Разговори",
@@ -2488,6 +2500,17 @@
       "body": "Останалата част от приложението работи — навигацията ви е тук. Опитайте отново или се върнете към таблото.",
       "retry": "Опитайте отново",
       "dashboard": "Към таблото"
+    },
+    "root": {
+      "title": "Нещо се обърка",
+      "body": "Възникна неочаквана грешка. Опитайте отново или се върнете към началната страница.",
+      "retry": "Опитайте отново",
+      "home": "Към началото"
+    },
+    "notFound": {
+      "title": "Страницата не е намерена",
+      "body": "За съжаление страницата, която търсите, не съществува.",
+      "home": "Към началото"
     }
   },
   "notifications": {

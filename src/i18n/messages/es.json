@@ -797,7 +797,8 @@
     "createNameLabel": "Nombre de la organización",
     "createNamePlaceholder": "p. ej. Equipo de diseño",
     "creating": "Creando…",
-    "createdOrg": "{name} creada."
+    "createdOrg": "{name} creada.",
+    "namePlaceholder": "Nombre de la organización…"
   },
   "ai": {
     "title": "Generador de tareas con IA",

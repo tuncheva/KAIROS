@@ -15,7 +15,7 @@ describe("NotFound (404) Page", () => {
 
   it("shows Page Not Found heading", () => {
     const { getByText } = render(<NotFound />);
-    expect(getByText("Page Not Found")).toBeInTheDocument();
+    expect(getByText("Page not found")).toBeInTheDocument();
   });
 
   it("shows helpful description text", () => {
@@ -27,7 +27,7 @@ describe("NotFound (404) Page", () => {
 
   it("has Go Home link pointing to /", () => {
     const { getByText } = render(<NotFound />);
-    const link = getByText("Go Home");
+    const link = getByText("Go home");
     expect(link).toBeInTheDocument();
     expect(link.closest("a")).toHaveAttribute("href", "/");
   });
@@ -40,7 +40,7 @@ describe("NotFound (404) Page", () => {
 
   it("applies kairos-btn class to go home link", () => {
     const { getByText } = render(<NotFound />);
-    const link = getByText("Go Home").closest("a");
+    const link = getByText("Go home").closest("a");
     expect(link?.className).toContain("kairos-btn");
   });
 

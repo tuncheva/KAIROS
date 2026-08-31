@@ -143,6 +143,7 @@ export function A1ChatWidgetOverlay(props: {
   const router = useRouter();
   const t = useTranslations("aiConsole");
   const tAgents = useTranslations("agents");
+  const tCommon = useTranslations("common");
   const tChat = useTranslations("chat");
 
   /*
@@ -495,8 +496,8 @@ export function A1ChatWidgetOverlay(props: {
                 type="button"
                 onClick={goFullScreen}
                 className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-accent-primary/15 hover:text-accent-primary"
-                aria-label="Open full screen"
-                title="Open full screen"
+                aria-label={t("openFullPage")}
+                title={t("openFullPage")}
               >
                 <Maximize2 className="h-3.5 w-3.5" />
               </button>
@@ -508,7 +509,7 @@ export function A1ChatWidgetOverlay(props: {
                   setMinimised(false);
                 }}
                 className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-red-500/15 hover:text-red-400"
-                aria-label="Close"
+                aria-label={tCommon("close")}
               >
                 <X className="h-3.5 w-3.5" />
               </button>

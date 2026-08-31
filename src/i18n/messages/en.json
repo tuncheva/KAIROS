@@ -1543,7 +1543,8 @@
       "tide": "Tide"
     },
     "edited": "Edited",
-    "editedOn": "Edited {date}"
+    "editedOn": "Edited {date}",
+    "rsvps": "RSVPs"
   },
   "auth": {
     "signIn": "Sign In",
@@ -1740,7 +1741,8 @@
     "createNameLabel": "Organization name",
     "createNamePlaceholder": "e.g. Design Team",
     "creating": "Creating…",
-    "createdOrg": "Created {name}."
+    "createdOrg": "Created {name}.",
+    "namePlaceholder": "Organization name…"
   },
   "ai": {
     "title": "AI Task Generator",
@@ -2156,7 +2158,17 @@
     "saving": "Saving…",
     "cancel": "Cancel",
     "forget": "Forget",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "eventTitlePlaceholder": "Event title…",
+    "eventDescriptionPlaceholder": "Event description…",
+    "noteContentPlaceholder": "Edit note content…",
+    "previewNewEvent": "New event",
+    "previewUpdateEvent": "Update event",
+    "previewDeleteEvent": "Delete event",
+    "previewClickToEdit": "(click to edit)",
+    "previewNewNote": "New note",
+    "previewUpdateNote": "Update note",
+    "previewDeleteNote": "Delete note"
   },
   "aiConsole": {
     "conversations": "Conversations",
@@ -2488,6 +2500,17 @@
       "body": "The rest of the app is fine — your navigation is still there. Try again, or head back to the dashboard.",
       "retry": "Try again",
       "dashboard": "Back to dashboard"
+    },
+    "root": {
+      "title": "Something went wrong",
+      "body": "An unexpected error occurred. Try again, or go back to the home page.",
+      "retry": "Try again",
+      "home": "Go home"
+    },
+    "notFound": {
+      "title": "Page not found",
+      "body": "Sorry, the page you are looking for does not exist.",
+      "home": "Go home"
     }
   },
   "notifications": {

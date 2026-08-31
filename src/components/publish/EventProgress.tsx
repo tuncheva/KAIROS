@@ -85,7 +85,7 @@ function EventProgressDialog({ onClose }: { onClose: () => void }) {
         { Icon: CalendarDays, value: data.totals.events, label: t("title") },
         { Icon: Heart, value: data.totals.likes, label: t("likes") },
         { Icon: MessageCircle, value: data.totals.comments, label: t("comments") },
-        { Icon: Activity, value: data.totals.rsvps, label: "RSVPs" },
+        { Icon: Activity, value: data.totals.rsvps, label: t("rsvps") },
         { Icon: Bookmark, value: data.totals.saves, label: t("saves") },
       ]
     : [];

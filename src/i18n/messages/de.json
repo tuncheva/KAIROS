@@ -797,7 +797,8 @@
     "createNameLabel": "Name der Organisation",
     "createNamePlaceholder": "z. B. Designteam",
     "creating": "Wird erstellt…",
-    "createdOrg": "{name} erstellt."
+    "createdOrg": "{name} erstellt.",
+    "namePlaceholder": "Name der Organisation…"
   },
   "ai": {
     "title": "KI-Aufgabengenerator",

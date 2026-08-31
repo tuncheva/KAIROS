@@ -45,7 +45,7 @@ describe("A1ChatWidgetOverlay", () => {
   it("shows full screen and close buttons in header", () => {
     render(<A1ChatWidgetOverlay isOpen />);
 
-    expect(screen.getByLabelText("Open full screen")).toBeInTheDocument();
+    expect(screen.getByLabelText("Open full page")).toBeInTheDocument();
     expect(screen.getByLabelText("Close")).toBeInTheDocument();
   });
 
@@ -108,7 +108,7 @@ describe("A1ChatWidgetOverlay", () => {
     const user = userEvent.setup();
     render(<A1ChatWidgetOverlay isOpen />);
 
-    await user.click(screen.getByLabelText("Open full screen"));
+    await user.click(screen.getByLabelText("Open full page"));
 
     expect(push).toHaveBeenCalledWith("/chat/ai");
     // The panel keeps its size on the way out. Growing it first would flash a
@@ -121,7 +121,7 @@ describe("A1ChatWidgetOverlay", () => {
     const onOpenChange = vi.fn();
     render(<A1ChatWidgetOverlay isOpen onOpenChange={onOpenChange} />);
 
-    await user.click(screen.getByLabelText("Open full screen"));
+    await user.click(screen.getByLabelText("Open full page"));
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });

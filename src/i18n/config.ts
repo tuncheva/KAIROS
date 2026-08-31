@@ -1,7 +1,8 @@
 import { getRequestConfig } from 'next-intl/server';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import type { AbstractIntlMessages } from 'next-intl';
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from './locales';
+import { pickLocaleFromAcceptLanguage } from './acceptLanguage';
 
 // Re-exported so existing server-side importers keep working; client components
 // should import from `~/i18n/locales` directly.
@@ -16,7 +17,15 @@ export default getRequestConfig(async () => {
   // English, and `locale` still claimed to be whatever the cookie said — so
   // date and number formatting followed a locale the copy did not.
   const cookieLocale = cookieStore.get('NEXT_LOCALE')?.value;
-  const locale: Locale = isSupportedLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE;
+
+  /* Cookie first — it is an explicit choice, and it must beat the browser's
+     standing preference or the switcher would not stick. `Accept-Language`
+     only decides the *first* visit, which is exactly the visit that used to
+     land a Bulgarian speaker in English on a Bulgarian-market product. */
+  const locale: Locale = isSupportedLocale(cookieLocale)
+    ? cookieLocale
+    : pickLocaleFromAcceptLanguage((await headers()).get('accept-language')) ??
+      DEFAULT_LOCALE;
 
   let messages: AbstractIntlMessages = {};
   try {
