@@ -47,6 +47,7 @@ export const settingsRouter = createTRPCRouter({
           workspaceNotifications: true,
           emailNotifications: true,
           marketingEmailsNotifications: true,
+          notificationPosition: true,
         
           language: true,
           timezone: true,
@@ -130,6 +131,25 @@ export const settingsRouter = createTRPCRouter({
       workspaceNotifications: z.boolean().optional(),
       emailNotifications: z.boolean().optional(),
       marketingEmailsNotifications: z.boolean().optional(),
+      /**
+       * Where the notification popups appear. The one *where* control among a
+       * panel of *what* switches, folded in here because the mutation already
+       * spreads its input into the update.
+       *
+       * `bottom-right` is accepted so a stored legacy value round-trips, but
+       * the picker never offers it — that corner belongs to Ask Kairos. See
+       * `~/lib/notificationPosition`.
+       */
+      notificationPosition: z
+        .enum([
+          "top-left",
+          "top-center",
+          "top-right",
+          "bottom-left",
+          "bottom-center",
+          "bottom-right",
+        ])
+        .optional(),
     }).refine((v) => Object.keys(v).length > 0, {
       message: "No notification preferences supplied",
     }))

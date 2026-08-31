@@ -469,12 +469,17 @@ export function NotificationSystem() {
 
   return (
     <>
-      {/* Floating notification popups — visible without clicking bell */}
-      <div className="pointer-events-none fixed right-4 top-4 z-[100] flex flex-col gap-2">
+      {/* Floating notification popups — visible without clicking bell.
+          The corner is the user's choice (Settings → Notifications → On
+          screen); the toast stack takes the opposite one automatically, so
+          the two can never overlap. Both read the same custom properties,
+          which the pre-paint script sets before the first frame. */}
+      <div className="notif-region">
+        <div className="notif-stack">
         {floatingNotifs.map((notif) => (
           <div
             key={notif.id}
-            className="animate-in slide-in-from-right-5 fade-in pointer-events-auto flex w-[340px] max-w-[calc(100vw-2rem)] cursor-pointer items-start gap-3 rounded-[13px] border border-border-light bg-bg-elevated p-3.5 shadow-2xl duration-300 hover:bg-bg-secondary/60"
+            className="animate-in fade-in pointer-events-auto flex w-full max-w-[calc(100vw-2rem)] cursor-pointer items-start gap-3 rounded-[13px] border border-border-light bg-bg-elevated p-3.5 shadow-2xl duration-300 hover:bg-bg-secondary/60"
             onClick={() => {
               dismissFloating(notif.id);
               if (notif.link) router.push(notif.link);
@@ -509,6 +514,7 @@ export function NotificationSystem() {
             </button>
           </div>
         ))}
+        </div>
       </div>
 
       {/* Bell + panel */}

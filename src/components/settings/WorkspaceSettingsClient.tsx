@@ -203,6 +203,17 @@ export function WorkspaceSettingsClient() {
   // ---- Leave-organization confirmation ----
   // The org being left, plus the last failure for it: leaving can be refused
   // (sole admin), and that reason has to survive long enough to be read.
+  /* Removing a member and deleting a role were the last two `window.confirm`
+     calls in the app: an unstyled, untranslated browser box asking about
+     someone else's access. Both now go through the same dialog as leaving and
+     deleting an organisation. */
+  const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(
+    null,
+  );
+  const [roleDeleteTarget, setRoleDeleteTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [leaveTarget, setLeaveTarget] = useState<{ id: number; name: string } | null>(null);
   const [leaveError, setLeaveError] = useState<string | null>(null);
 
@@ -851,20 +862,12 @@ export function WorkspaceSettingsClient() {
               aria-label={t("members.remove")}
               title={t("members.remove")}
               disabled={removeMember.isPending}
-              onClick={() => {
-                if (
-                  confirm(
-                    t("members.removeConfirm", { name: member.name ?? member.email }),
-                  )
-                ) {
-                  void save.run(() =>
-                    removeMember.mutateAsync({
-                      organizationId: activeOrgId,
-                      userId: member.id,
-                    }),
-                  );
-                }
-              }}
+              onClick={() =>
+                setRemoveTarget({
+                  id: member.id,
+                  name: member.name ?? member.email,
+                })
+              }
               className="rounded p-1.5 text-fg-tertiary transition hover:text-error disabled:opacity-50"
             >
               <Trash2 size={14} />
@@ -1117,16 +1120,7 @@ export function WorkspaceSettingsClient() {
                   type="button"
                   aria-label={t("roles.deleteConfirm", { name: role.name })}
                   disabled={deleteRole.isPending}
-                  onClick={() => {
-                    if (confirm(t("roles.deleteConfirm", { name: role.name }))) {
-                      void save.run(() =>
-                        deleteRole.mutateAsync({
-                          organizationId: activeOrgId,
-                          roleId: role.id,
-                        }),
-                      );
-                    }
-                  }}
+                  onClick={() => setRoleDeleteTarget({ id: role.id, name: role.name })}
                   className="rounded p-1 text-fg-tertiary transition hover:text-error disabled:opacity-50"
                 >
                   <Trash2 size={13} />
@@ -1181,6 +1175,46 @@ export function WorkspaceSettingsClient() {
           organizationId={inviteQrForOrgId}
           organizationName={myOrgs?.find((o) => o.id === inviteQrForOrgId)?.name}
           onClose={() => setInviteQrForOrgId(null)}
+        />
+      ) : null}
+
+      {removeTarget !== null && activeOrgId ? (
+        <ConfirmDialog
+          destructive
+          title={t("members.removeTitle", { name: removeTarget.name })}
+          message={t("members.removeBody")}
+          confirmLabel={
+            removeMember.isPending ? t("common.working") : t("members.remove")
+          }
+          cancelLabel={t("common.cancel")}
+          isPending={removeMember.isPending}
+          onCancel={() => setRemoveTarget(null)}
+          onConfirm={() => {
+            const userId = removeTarget.id;
+            setRemoveTarget(null);
+            void save.run(() =>
+              removeMember.mutateAsync({ organizationId: activeOrgId, userId }),
+            );
+          }}
+        />
+      ) : null}
+
+      {roleDeleteTarget !== null && activeOrgId ? (
+        <ConfirmDialog
+          destructive
+          title={t("roles.deleteConfirm", { name: roleDeleteTarget.name })}
+          message={t("roles.deleteBody")}
+          confirmLabel={deleteRole.isPending ? t("common.working") : t("roles.delete")}
+          cancelLabel={t("common.cancel")}
+          isPending={deleteRole.isPending}
+          onCancel={() => setRoleDeleteTarget(null)}
+          onConfirm={() => {
+            const roleId = roleDeleteTarget.id;
+            setRoleDeleteTarget(null);
+            void save.run(() =>
+              deleteRole.mutateAsync({ organizationId: activeOrgId, roleId }),
+            );
+          }}
         />
       ) : null}
 

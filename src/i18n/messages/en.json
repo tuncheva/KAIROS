@@ -667,7 +667,22 @@
       "eventUpdatesDesc": "When an event you subscribed to is moved or cancelled",
       "eventRsvps": "Replies to my events",
       "eventRsvpsDesc": "When someone subscribes to an event you organise",
-      "securityAlwaysOn": "Account and security notices are always delivered and cannot be switched off."
+      "securityAlwaysOn": "Account and security notices are always delivered and cannot be switched off.",
+      "groupPositionTitle": "On screen",
+      "groupPositionDesc": "Where notifications appear. Pick a corner — toasts (saved, deleted, failed) take the opposite one, so the two never overlap.",
+      "positionLabel": "Notification position",
+      "posTopLeft": "Top left",
+      "posTopCenter": "Top",
+      "posTopRight": "Top right",
+      "posBottomLeft": "Bottom left",
+      "posBottomCenter": "Bottom",
+      "posBottomRight": "Bottom right",
+      "positionToasts": "Toasts",
+      "positionReserved": "Reserved",
+      "positionSummary": "Notifications — {notifications}. Toasts — {toasts}, automatically. Bottom right is reserved for Ask Kairos.",
+      "positionPreview": "Preview",
+      "positionPreviewToast": "This is where your notifications will appear.",
+      "positionMobileNote": "On a phone there are no corners: both go full width, top or bottom."
     },
     "security": {
       "title": "Security Settings",
@@ -841,7 +856,9 @@
         "expiresOn": "Expires on {date}",
         "noExpiry": "No expiry",
         "remove": "Remove member",
-        "removeConfirm": "Remove {name} from the organization?"
+        "removeConfirm": "Remove {name} from the organization?",
+        "removeTitle": "Remove {name}?",
+        "removeBody": "They lose access to this organization's projects, events and conversations. You can invite them back later."
       },
       "roles": {
         "admin": "Admin",
@@ -855,7 +872,9 @@
         "createRole": "Create Role",
         "template": "Template",
         "custom": "Custom",
-        "deleteConfirm": "Delete the role \"{name}\"?"
+        "deleteConfirm": "Delete the role \"{name}\"?",
+        "delete": "Delete role",
+        "deleteBody": "Members holding this role keep their membership, but lose the permissions it granted."
       },
       "permissions": {
         "createProjects": "Create projects",

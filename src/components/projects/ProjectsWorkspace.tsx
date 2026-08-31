@@ -19,7 +19,7 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
-import { Overlay } from "~/components/ui/Overlay";
+import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { NewProjectDrawer } from "./NewProjectDrawer";
 import { ProfileLink } from "~/components/profile/ProfileLink";
 import { avatarGradientStyle } from "~/lib/avatarGradient";
@@ -1198,43 +1198,20 @@ function DeleteDialog({
 }) {
   const t = useTranslations("projects");
 
+  /* This used to be a hand-rolled overlay with `role="dialog"` and nothing
+     else: no focus trap, no Escape, no focus restore, and a full-bleed
+     invisible button for the backdrop. Deleting a project is one of the five
+     destructive actions the app asked about five different ways. */
   return (
-    <Overlay>
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-        <button
-          type="button"
-          aria-label={t("delete.cancel")}
-          onClick={onCancel}
-          className="absolute inset-0"
-        />
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="border-border-light/60 bg-bg-secondary relative w-full max-w-sm rounded-2xl border p-6 shadow-2xl"
-        >
-          <h2 className="text-fg-primary m-0 text-lg font-semibold">
-            {t("delete.title")}
-          </h2>
-          <p className="text-fg-tertiary mt-2 text-sm">{t("delete.body")}</p>
-          <div className="mt-6 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="text-fg-secondary hover:bg-bg-tertiary hover:text-fg-primary rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-            >
-              {t("delete.cancel")}
-            </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={pending}
-              className="bg-error rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            >
-              {t("delete.confirm")}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Overlay>
+    <ConfirmDialog
+      destructive
+      title={t("delete.title")}
+      message={t("delete.body")}
+      confirmLabel={t("delete.confirm")}
+      cancelLabel={t("delete.cancel")}
+      isPending={pending}
+      onCancel={onCancel}
+      onConfirm={() => onConfirm()}
+    />
   );
 }

@@ -384,7 +384,9 @@ describe("ProjectsWorkspace — detail", () => {
     await open(user);
     await user.click(screen.getByRole("button", { name: "Delete project" }));
 
-    const dialog = screen.getByRole("dialog");
+    /* `alertdialog`, since the shared ConfirmDialog took over from the
+       bespoke overlay this surface used to draw. */
+    const dialog = screen.getByRole("alertdialog");
     expect(deleteMutate).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     expect(deleteMutate).toHaveBeenCalledWith({ id: 1 });

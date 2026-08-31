@@ -204,6 +204,13 @@
       "when": 1787961613007,
       "tag": "0037_organization_image",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1787961613008,
+      "tag": "0038_notification_position",
+      "breakpoints": true
     }
   ]
 }

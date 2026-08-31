@@ -52,6 +52,44 @@ export const THEME_INIT_SCRIPT = `
     // the first paint already has the right width.
     document.documentElement.dataset.railPinned =
       localStorage.getItem('kairos:railPinned') === 'true' ? 'true' : 'false';
+
+    // Notification/toast anchors. One preference: the popups take the chosen
+    // corner and the toasts take the diagonally opposite one, except that
+    // bottom-right belongs to Ask Kairos and is never used by either. Set
+    // here rather than after hydration because a toast can fire before React
+    // has mounted, and it must not appear in the default corner and jump.
+    // Mirrors ~/lib/notificationPosition; tests/lib/notificationPosition.test.ts
+    // asserts the two stay in step.
+    var slots = ['top-left','top-center','top-right','bottom-left','bottom-center','bottom-right'];
+    var pos = localStorage.getItem('kairos:notifPosition');
+    if (slots.indexOf(pos) === -1) pos = 'top-right';
+    var opposite = {
+      'top-left': 'bottom-center',
+      'top-center': 'bottom-left',
+      'top-right': 'bottom-left',
+      'bottom-left': 'top-right',
+      'bottom-center': 'top-right',
+      'bottom-right': 'top-left'
+    };
+    var flex = { start: 'flex-start', center: 'center', end: 'flex-end' };
+    var axes = function (value) {
+      var parts = value.split('-');
+      return {
+        block: parts[0] === 'top' ? 'start' : 'end',
+        inline: parts[1] === 'left' ? 'start' : parts[1] === 'right' ? 'end' : 'center'
+      };
+    };
+    var notif = axes(pos);
+    var toast = axes(opposite[pos]);
+    var root = document.documentElement;
+    root.dataset.notifBlock = notif.block;
+    root.dataset.notifInline = notif.inline;
+    root.dataset.toastBlock = toast.block;
+    root.dataset.toastInline = toast.inline;
+    root.style.setProperty('--notif-anchor-block', flex[notif.block]);
+    root.style.setProperty('--notif-anchor-inline', flex[notif.inline]);
+    root.style.setProperty('--toast-anchor-block', flex[toast.block]);
+    root.style.setProperty('--toast-anchor-inline', flex[toast.inline]);
   } catch (e) {}
 })();
 `;
@@ -62,7 +100,7 @@ export const THEME_INIT_SCRIPT = `
  * Regenerate by running the CSP test — it prints the expected value on failure.
  */
 export const THEME_INIT_SCRIPT_HASH =
-  "sha256-DaNwBtTjzGJPJoL/ARkBKD71r+IuIfEoSmzCzDf7p7w=";
+  "sha256-H7shTO5KpT+6ZMcT+63Ioe5PemPyaJM+d71J/XZehtA=";
 
 /**
  * The same hash as a `script-src` source expression.

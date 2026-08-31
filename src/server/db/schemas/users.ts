@@ -15,6 +15,7 @@ import {
   usageModeEnum,
   languageEnum,
   dateFormatEnum,
+  notificationPositionEnum,
   themeEnum,
   profileAudienceEnum,
   verificationCodePurposeEnum,
@@ -126,6 +127,16 @@ export const users = createTable("user", (d) => ({
      */
     marketingEmailsNotifications: boolean("marketing_emails_notifications").default(false).notNull(),
 
+    /**
+     * Which corner the notification popups occupy. The toast stack takes the
+     * diagonally opposite one, so the two surfaces can never collide — one
+     * decision, not two. Defaults to today's behaviour so no existing user
+     * sees a change until they ask for one.
+     */
+    notificationPosition: notificationPositionEnum("notification_position")
+      .default("top-right")
+      .notNull(),
+
     language: languageEnum("language").default("en").notNull(),
     timezone: varchar("timezone", { length: 100 }).default("UTC").notNull(),
     dateFormat: dateFormatEnum("date_format").default("MM/DD/YYYY").notNull(),
@@ -187,6 +198,14 @@ export type UserSettings = {
   workspaceNotifications: boolean;
   emailNotifications: boolean;
   marketingEmailsNotifications: boolean;
+
+  notificationPosition:
+    | "top-left"
+    | "top-center"
+    | "top-right"
+    | "bottom-left"
+    | "bottom-center"
+    | "bottom-right";
 
   language: "en" | "bg" | "es" | "fr" | "de";
   timezone: string;

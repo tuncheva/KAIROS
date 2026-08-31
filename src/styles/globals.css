@@ -3328,6 +3328,67 @@ input[type="search"]::-webkit-search-results-decoration {
   }
 }
 
+/* Anchored top, the region has to clear the TopBar rather than sit under it. */
+:root[data-toast-block="start"] .toast-region {
+  padding-top: 4.5rem;
+}
+
+/* ─── Notification popup region ────────────────────────────────────────────
+   The floating popups `NotificationSystem` pushes when a notification arrives
+   over the socket. Same shape as the toast region and the same tokens, one
+   axis apart: the user picks this corner in settings and the toast region
+   takes the diagonally opposite one. See `~/lib/notificationPosition` for why
+   there is one preference rather than two. */
+.notif-region {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: var(--notif-anchor-block, flex-start);
+  justify-content: var(--notif-anchor-inline, flex-end);
+  padding: 1rem;
+  padding-bottom: 6rem;
+  pointer-events: none;
+}
+
+:root[data-notif-block="start"] .notif-region {
+  padding-top: 4.5rem;
+}
+
+@media (min-width: 1024px) {
+  .notif-region {
+    padding-bottom: 1.5rem;
+  }
+}
+
+.notif-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(22rem, 100%);
+}
+
+:root[data-notif-block="start"] .notif-stack {
+  flex-direction: column-reverse;
+}
+
+/* ─── Both regions on a phone ──────────────────────────────────────────────
+   Corners are meaningless at 375px: there is one column and it is the width
+   of the screen. Below `lg` the horizontal half of the preference is dropped
+   and both surfaces go full-width on their chosen edge — the settings panel
+   says so rather than letting the choice silently not apply. */
+@media (max-width: 1023px) {
+  .toast-region,
+  .notif-region {
+    justify-content: stretch;
+  }
+
+  .toast-stack,
+  .notif-stack {
+    width: 100%;
+  }
+}
+
 .toast-stack {
   display: flex;
   flex-direction: column;

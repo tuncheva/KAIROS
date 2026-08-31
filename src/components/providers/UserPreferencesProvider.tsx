@@ -4,6 +4,11 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { api } from "~/trpc/react";
+import {
+  applyNotificationPosition,
+  isNotificationPosition,
+  NOTIFICATION_POSITION_STORAGE_KEY,
+} from "~/lib/notificationPosition";
 
 const DEFAULT_ACCENT = "purple";
 
@@ -76,6 +81,20 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       updateAppearance.mutate({ accentColor: accent });
     }
   }, [data?.accentColor, enabled, updateAppearance]);
+
+  /* Same shape as the accent above, and for the same reason: the pre-paint
+     script reads this from localStorage so a toast firing before hydration
+     lands in the corner the user chose, which means the stored copy has to be
+     kept in step with the server's whenever the query resolves. */
+  useEffect(() => {
+    const position = data?.notificationPosition;
+    if (!isNotificationPosition(position)) return;
+
+    applyNotificationPosition(position, document.documentElement);
+    try {
+      localStorage.setItem(NOTIFICATION_POSITION_STORAGE_KEY, position);
+    } catch {}
+  }, [data?.notificationPosition]);
 
   useEffect(() => {
     if (applied.current) return;
