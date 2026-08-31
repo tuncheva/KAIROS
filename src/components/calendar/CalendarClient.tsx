@@ -82,6 +82,19 @@ function CalendarSkeleton() {
   );
 }
 
+const VIEW_MODES: readonly ViewMode[] = ["month", "week", "day"];
+
+function readViewParam(): ViewMode {
+  const value = new URLSearchParams(window.location.search).get("view");
+  return VIEW_MODES.includes(value as ViewMode) ? (value as ViewMode) : "week";
+}
+
+/** `null` when absent or unparseable, so the caller falls back to today. */
+function readDateParam(): Date | null {
+  const value = new URLSearchParams(window.location.search).get("date");
+  return value ? fromYmd(value) : null;
+}
+
 function CalendarWorkspace({ today }: { today: Date }) {
   const t = useTranslations("calendar.filters");
   const locale = useLocale();
@@ -91,8 +104,16 @@ function CalendarWorkspace({ today }: { today: Date }) {
     [dateLocale],
   );
 
-  const [view, setView] = useState<ViewMode>("week");
-  const [anchor, setAnchor] = useState<Date>(today);
+  /* P1-36: which period you are looking at is in the URL.
+     
+     It used to be component state only, so the back button walked out of the
+     calendar rather than back a week, a reload always landed on this week, and
+     "look at the 14th" could not be sent to anyone. Read once from
+     `window.location.search` rather than `useSearchParams` — the value is only
+     needed to seed the state, and reading it this way keeps the page off the
+     Suspense boundary that hook would require. */
+  const [view, setView] = useState<ViewMode>(() => readViewParam());
+  const [anchor, setAnchor] = useState<Date>(() => readDateParam() ?? today);
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
 
   const [query, setQuery] = useState("");
@@ -209,6 +230,18 @@ function CalendarWorkspace({ today }: { today: Date }) {
     setRange(null);
     setView(next);
   }, []);
+
+  /* `replaceState`, not a router push. The period is a view of one page, so
+     each arrow press should not become a history entry you have to walk back
+     through — and routing would re-render the shell above for a change that is
+     entirely local to this grid. Back still leaves the calendar, which is what
+     the button appeared to promise and never did. */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("view", view);
+    params.set("date", toYmd(anchor));
+    window.history.replaceState(null, "", `?${params.toString()}`);
+  }, [view, anchor]);
 
   /* ---------------- labels ---------------- */
 
