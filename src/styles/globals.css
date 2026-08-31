@@ -3313,6 +3313,107 @@ input[type="search"]::-webkit-search-results-decoration {
   }
 }
 
+/* ─── Toast viewport ───────────────────────────────────────────────────────
+   `ToastProvider` had a working manager and no surface to render into, so
+   every `toast.success` / `toast.error` in the app was silently swallowed.
+
+   Position is driven by two custom properties rather than a conditional class
+   string, because it is about to become a user preference: the settings
+   picker only has to set `--toast-anchor-block` / `--toast-anchor-inline` on
+   the root, and both this viewport and the notification popups follow. The
+   region is a full-screen flex container that does not take pointer events;
+   only the toasts inside it do. */
+.toast-region {
+  position: fixed;
+  inset: 0;
+  z-index: 60; /* above modals (z-50) — a failure message must never be covered */
+  display: flex;
+  align-items: var(--toast-anchor-block, flex-end);
+  justify-content: var(--toast-anchor-inline, flex-start);
+  padding: 1rem;
+  /* Clears the mobile bottom nav. `AskKairosLauncher` has the same problem and
+     the same fix (bottom-24 lg:bottom-6); keep the two values in step. */
+  padding-bottom: 6rem;
+  pointer-events: none;
+}
+
+@media (min-width: 1024px) {
+  .toast-region {
+    padding-bottom: 1.5rem;
+  }
+}
+
+.toast-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(22rem, 100%);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Anchored at the top, new toasts should read downward from the edge; anchored
+   at the bottom, upward. Without this the stack grows away from its anchor. */
+:root[data-toast-block="start"] .toast-stack {
+  flex-direction: column-reverse;
+}
+
+.toast-item {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5625rem;
+  padding: 0.625rem 0.6875rem;
+  border-radius: 0.75rem;
+  background: rgb(var(--bg-elevated));
+  color: rgb(var(--fg-primary));
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  box-shadow: var(--shadow-lg), inset 2px 0 0 var(--toast-rule, rgb(var(--info))),
+    inset 0 0 0 0.5px rgb(var(--border-light) / 0.6);
+  animation: toast-in 0.22s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.toast-item[data-kind="success"] {
+  --toast-rule: rgb(var(--success));
+}
+.toast-item[data-kind="error"] {
+  --toast-rule: rgb(var(--error));
+}
+.toast-item[data-kind="info"] {
+  --toast-rule: rgb(var(--info));
+}
+
+.toast-item .toast-icon {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.0625rem;
+  border-radius: 0.375rem;
+  display: grid;
+  place-items: center;
+  color: var(--toast-rule);
+  background: color-mix(in srgb, var(--toast-rule) 15%, transparent);
+}
+
+.toast-item .toast-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--toast-enter-y, 0.5rem));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .settings-scroll {
   scroll-behavior: smooth;
 }
@@ -3625,4 +3726,17 @@ input[type="search"]::-webkit-search-results-decoration {
   opacity: 0;
   transform: translateY(-6px);
   pointer-events: none;
+}
+
+/* Anchored top, slide down into place instead of up. */
+:root[data-toast-block="start"] .toast-item {
+  --toast-enter-y: -0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-item {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }

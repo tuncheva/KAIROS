@@ -491,7 +491,8 @@
         "no": "No"
       },
       "errors": {
-        "filesTooLarge": "Some files exceed the 10MB limit."
+        "filesTooLarge": "Some files exceed the 10MB limit.",
+        "deleteFailed": "Could not delete the task. Please try again."
       }
     }
   },
@@ -1624,7 +1625,9 @@
     "menu": "Menu",
     "lightMode": "Switch to light mode",
     "darkMode": "Switch to dark mode",
-    "copyFailed": "Couldn't copy"
+    "copyFailed": "Couldn't copy",
+    "notifications": "Notifications",
+    "dismissNotification": "Dismiss notification"
   },
   "org": {
     "accessCode": "Org code",
