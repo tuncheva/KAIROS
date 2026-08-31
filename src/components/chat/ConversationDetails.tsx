@@ -26,6 +26,7 @@ import {
 
 import type { RouterOutputs } from "~/trpc/react";
 import { Avatar, displayName, formatFileSize, isImageMime, type ChatUser } from "./chatUi";
+import { projectHref } from "~/lib/routes";
 
 type Details = RouterOutputs["chat"]["getConversationDetails"];
 
@@ -155,7 +156,7 @@ export function ConversationDetails({
                   {details.sharedProjects.map((project) => (
                     <li key={project.id}>
                       <a
-                        href={`/projects/${project.id}`}
+                        href={projectHref(project.id)}
                         className="flex items-center gap-2.5 py-2 px-1 rounded-lg hover:bg-bg-secondary transition-colors"
                       >
                         <FolderKanban size={14} className="text-fg-quaternary flex-shrink-0" />

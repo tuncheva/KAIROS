@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "~/trpc/react";
-import { ChevronRight } from "~/components/ui/icons";
+import { ChevronRight, X } from "~/components/ui/icons";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useTranslations } from "next-intl";
+import { JoinWithCodeForm } from "~/components/orgs/OrgEmptyState";
 
 interface RoleSelectionModalProps {
   isOpen: boolean;
@@ -13,9 +14,10 @@ interface RoleSelectionModalProps {
 
 export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalProps) {
   const t = useTranslations("onboarding");
+  const tCommon = useTranslations("common");
   const toast = useToast();
   const utils = api.useUtils();
-  const [step, setStep] = useState<"choose" | "admin-setup">("choose");
+  const [step, setStep] = useState<"choose" | "admin-setup" | "join">("choose");
   const [organizationName, setOrganizationName] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
 
@@ -68,6 +70,17 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
     }
   };
 
+  /* P1-27: the modal had no dismissal at all — no close control and no Escape
+     handler — so a keyboard user who opened it had no way back out. */
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onComplete();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, onComplete]);
+
   if (!isOpen) return null;
 
   return (
@@ -75,6 +88,17 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
       <div className="w-full max-w-lg bg-bg-elevated shadow-2xl rounded-3xl border border-accent-primary/20 kairos-page-enter overflow-hidden">
         {/* Purple gradient header */}
         <div className="h-2 bg-gradient-to-r from-accent-primary via-accent-secondary to-accent-tertiary" />
+
+        <div className="flex justify-end px-4 pt-4 -mb-4">
+          <button
+            type="button"
+            onClick={onComplete}
+            aria-label={tCommon("close")}
+            className="p-2 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+          >
+            <X size={18} />
+          </button>
+        </div>
         
         <div className="p-8">
           {step === "choose" && (
@@ -118,9 +142,44 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
                     <ChevronRight className="text-fg-tertiary group-hover:text-accent-primary group-hover:translate-x-1 transition-all flex-shrink-0 mt-1" size={24} />
                   </div>
                 </button>
+
+                {/* The invited user's missing path. Without this, someone who
+                    already had a code could only create a redundant org or
+                    pick Personal and go hunting for the join field later. */}
+                <button
+                  onClick={() => setStep("join")}
+                  className="w-full p-6 bg-bg-surface hover:bg-bg-tertiary rounded-2xl transition-all duration-200 text-left group border-2 border-border-medium hover:border-accent-primary/40"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="text-lg font-semibold text-fg-primary block mb-1">{t("joinOrg.label")}</span>
+                      <span className="text-fg-tertiary text-sm">{t("joinOrg.description")}</span>
+                    </div>
+                    <ChevronRight className="text-fg-tertiary group-hover:text-accent-primary group-hover:translate-x-1 transition-all flex-shrink-0 mt-1" size={24} />
+                  </div>
+                </button>
               </div>
             </>
           )}
+
+        {step === "join" && (
+          <>
+            <button
+              onClick={() => setStep("choose")}
+              className="text-fg-secondary hover:text-accent-primary mb-6 flex items-center gap-2 transition-colors text-sm font-medium"
+            >
+              &larr; {t("common.backButton")}
+            </button>
+
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-fg-primary mb-2">{t("joinOrg.formTitle")}</h3>
+              <p className="text-fg-secondary text-sm">{t("joinOrg.formSubtitle")}</p>
+            </div>
+
+            {/* Same input as the `/orgs` empty state — one code field, not two. */}
+            <JoinWithCodeForm onJoined={onComplete} />
+          </>
+        )}
 
         {step === "admin-setup" && !generatedCode && (
           <>

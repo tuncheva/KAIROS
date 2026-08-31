@@ -5,6 +5,7 @@ import { Plus } from "~/components/ui/icons.server";
 
 import { AiInsightsPanel } from "~/components/dashboard/AiInsightsPanel";
 import { DashboardClient } from "~/components/dashboard/DashboardClient";
+import { OnboardingGate } from "~/components/auth/OnboardingGate";
 import { TopBar } from "~/components/layout/TopBar";
 import { auth } from "~/server/auth";
 import { api, HydrateClient } from "~/trpc/server";
@@ -47,6 +48,13 @@ export default async function DashboardPage() {
 
   return (
     <HydrateClient>
+    {/*
+      Sign-in lands here, and until now the onboarding gate was mounted only on
+      `/create` and `/notes/*` — so the users it exists for routinely never met
+      it. Wave 3 lifts this into `(app)/layout.tsx`; until then the dashboard is
+      the one page that has to carry it.
+    */}
+    <OnboardingGate>
     <div className="min-h-dvh bg-bg-primary">
       <div className="rail-offset min-h-dvh flex flex-col kairos-topbar-gap kairos-page-enter">
         <TopBar
@@ -76,6 +84,7 @@ export default async function DashboardPage() {
         </main>
       </div>
     </div>
+    </OnboardingGate>
     </HydrateClient>
   );
 }

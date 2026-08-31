@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
 import { OrgBadge } from "~/components/orgs/OrgBadge";
+import { OrgEmptyState } from "~/components/orgs/OrgEmptyState";
 import { useToast } from "~/components/providers/ToastProvider";
 import {
   useSwitchOrganization,
@@ -209,10 +210,10 @@ export function WorkspaceMenu() {
                 </div>
               ) : null}
 
+              {/* The switcher's dead end: it stated the problem and offered no
+                  way out. Same empty state as `/orgs`, in its compact form. */}
               {!orgsQuery.isLoading && (orgsQuery.data?.length ?? 0) === 0 ? (
-                <div className="px-3 py-2 text-xs text-fg-tertiary">
-                  {t("noOrgs")}
-                </div>
+                <OrgEmptyState compact />
               ) : null}
             </div>
 

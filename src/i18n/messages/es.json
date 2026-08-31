@@ -787,7 +787,17 @@
     "loadingOrgs": "Cargando organizaciones…",
     "inviteDeclined": "Invitación rechazada",
     "pendingInvitations": "Invitaciones pendientes",
-    "invitedAs": "Te han invitado como"
+    "invitedAs": "Te han invitado como",
+    "emptyTitle": "Aún no perteneces a ninguna organización",
+    "emptyBody": "Las organizaciones son la forma en que un equipo comparte proyectos, tareas y eventos. Canjea un código que te hayan enviado o crea la tuya.",
+    "joinCodePlaceholder": "Introduce el código de la organización",
+    "joinWithCodeCta": "Unirse con un código",
+    "joinedWithCode": "Te has unido a la organización.",
+    "createOrgCta": "Crear una organización",
+    "createNameLabel": "Nombre de la organización",
+    "createNamePlaceholder": "p. ej. Equipo de diseño",
+    "creating": "Creando…",
+    "createdOrg": "{name} creada."
   },
   "ai": {
     "title": "Generador de tareas con IA",

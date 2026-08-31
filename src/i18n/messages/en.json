@@ -1675,7 +1675,17 @@
     "joinDecline": "Not now",
     "joinGoToDashboard": "Go to dashboard",
     "inviteQrRevoked": "Invite code revoked",
-    "loadingOrgs": "Loading organizations…"
+    "loadingOrgs": "Loading organizations…",
+    "emptyTitle": "You're not in an organization yet",
+    "emptyBody": "Organizations are how a team shares projects, tasks and events. Redeem a code someone sent you, or start one of your own.",
+    "joinCodePlaceholder": "Enter org code",
+    "joinWithCodeCta": "Join with a code",
+    "joinedWithCode": "You've joined the organization.",
+    "createOrgCta": "Create an organization",
+    "createNameLabel": "Organization name",
+    "createNamePlaceholder": "e.g. Design Team",
+    "creating": "Creating…",
+    "createdOrg": "Created {name}."
   },
   "ai": {
     "title": "AI Task Generator",
@@ -1933,6 +1943,12 @@
       "sharePrompt": "Share this code with your team",
       "codeLabel": "Access Code",
       "copyButton": "Copy Code"
+    },
+    "joinOrg": {
+      "label": "Join an existing organization",
+      "description": "Someone sent you an org code — redeem it here.",
+      "formTitle": "Join an organization",
+      "formSubtitle": "Enter the code you were given."
     },
     "personalMode": {
       "label": "Maybe Later",

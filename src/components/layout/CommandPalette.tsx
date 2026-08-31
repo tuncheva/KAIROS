@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
+import { projectHref } from "~/lib/routes";
 
 /**
  * D-2 — ⌘K / Ctrl-K.
@@ -77,10 +78,10 @@ export function CommandPalette({
     () => [
       { id: "nav:dashboard", label: t("dashboard"), href: "/dashboard" },
       { id: "nav:projects", label: t("projects"), href: "/projects" },
-      { id: "nav:tasks", label: t("tasks"), href: "/tasks" },
+      { id: "nav:tasks", label: t("tasks"), href: "/progress" },
       { id: "nav:calendar", label: t("calendar"), href: "/calendar" },
       { id: "nav:notes", label: t("notes"), href: "/notes" },
-      { id: "nav:events", label: t("events"), href: "/events" },
+      { id: "nav:events", label: t("events"), href: "/publish" },
       { id: "nav:chat", label: t("assistant"), href: "/chat/ai" },
       { id: "nav:settings", label: t("settings"), href: "/settings" },
     ],
@@ -91,7 +92,7 @@ export function CommandPalette({
     const projectRows: Destination[] = (projects.data ?? []).map((p) => ({
       id: `project:${String(p.id)}`,
       label: p.title,
-      href: `/projects/${String(p.id)}`,
+      href: projectHref(p.id),
       hint: t("project"),
     }));
 

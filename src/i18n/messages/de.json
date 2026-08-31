@@ -787,7 +787,17 @@
     "loadingOrgs": "Organisationen werden geladen…",
     "inviteDeclined": "Einladung abgelehnt",
     "pendingInvitations": "Offene Einladungen",
-    "invitedAs": "Du wurdest eingeladen als"
+    "invitedAs": "Du wurdest eingeladen als",
+    "emptyTitle": "Sie sind noch in keiner Organisation",
+    "emptyBody": "Über Organisationen teilt ein Team Projekte, Aufgaben und Veranstaltungen. Lösen Sie einen erhaltenen Code ein oder gründen Sie eine eigene.",
+    "joinCodePlaceholder": "Organisationscode eingeben",
+    "joinWithCodeCta": "Mit Code beitreten",
+    "joinedWithCode": "Sie sind der Organisation beigetreten.",
+    "createOrgCta": "Organisation erstellen",
+    "createNameLabel": "Name der Organisation",
+    "createNamePlaceholder": "z. B. Designteam",
+    "creating": "Wird erstellt…",
+    "createdOrg": "{name} erstellt."
   },
   "ai": {
     "title": "KI-Aufgabengenerator",
