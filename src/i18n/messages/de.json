@@ -1220,5 +1220,13 @@
     "partlyUndone": "Teilweise rückgängig",
     "restored": "{count} wiederhergestellt",
     "removed": "{count} entfernt"
+  },
+  "errors": {
+    "app": {
+      "title": "Auf dieser Seite ist ein Fehler aufgetreten",
+      "body": "Der Rest der App funktioniert — Ihre Navigation ist noch da. Versuchen Sie es erneut oder kehren Sie zum Dashboard zurück.",
+      "retry": "Erneut versuchen",
+      "dashboard": "Zurück zum Dashboard"
+    }
   }
 }

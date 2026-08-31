@@ -1,4 +1,5 @@
 import { auth } from "~/server/auth";
+import { signInHref } from "~/lib/routes";
 import { notFound, redirect } from "next/navigation";
 
 import { ChatShell } from "~/components/chat/ChatShell";
@@ -15,12 +16,14 @@ export default async function ConversationPage({
 }: {
   params: Promise<{ conversationId: string }>;
 }) {
+  /* Resolved before the session check so an expired session can be sent back
+     to this exact note/conversation rather than the list. */
+  const { conversationId } = await params;
+
   const session = await auth();
   if (!session?.user) {
-    redirect("/api/auth/signin");
+    redirect(signInHref(`/chat/${conversationId}`));
   }
-
-  const { conversationId } = await params;
   const id = Number(conversationId);
   /* `/chat/ai` is a sibling static route so it never reaches this file, but any
      other non-numeric path would otherwise become a query for conversation NaN. */

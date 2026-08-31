@@ -47,15 +47,6 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
 
   const updateAppearance = api.settings.updateAppearance.useMutation();
 
-  // Apply accent color immediately on mount from data attribute to prevent flash
-  useEffect(() => {
-    const savedAccent = document.documentElement.dataset.accent;
-    if (savedAccent && savedAccent !== "purple") {
-      // Accent already set from SSR or previous visit
-      return;
-    }
-  }, []);
-
   useEffect(() => {
     applied.current = false;
     migratedAccent.current = false;
@@ -69,9 +60,13 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     // Apply immediately and persist
     document.documentElement.dataset.accent = accent;
     
-    // Store in sessionStorage for faster next load
+    /* localStorage, not sessionStorage: the accent is a durable preference, not
+       something about this tab. Stored per-tab, the pre-paint script found
+       nothing in every newly opened tab, painted the default purple, and
+       corrected once the settings query came back — a visible flash on a value
+       the user had already chosen. */
     try {
-      sessionStorage.setItem('user-accent', accent);
+      localStorage.setItem('user-accent', accent);
     } catch {}
 
     if (!enabled) return;

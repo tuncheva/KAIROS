@@ -32,6 +32,7 @@ export function SignInModal({
 }) {
   const t = useTranslations("auth.modal");
   const searchParams = useSearchParams();
+  const sessionExpired = searchParams.get("reason") === "expired";
 
   /**
    * Where to land after signing in.
@@ -743,6 +744,19 @@ export function SignInModal({
             {title}
           </h2>
           <p className="mt-3 max-w-[380px] text-base leading-[1.65] text-white/60">{sub}</p>
+
+          {/* An expired session used to end at NextAuth's own unstyled sign-in
+              page, or — from `notes` — at the marketing page with no message at
+              all. The pages now redirect here carrying `reason=expired`, and
+              this is the sentence that makes the modal make sense. */}
+          {sessionExpired ? (
+            <p
+              role="status"
+              className="mt-4 max-w-[380px] rounded-xl border border-amber-400/25 bg-amber-400/10 px-3.5 py-2.5 text-sm leading-[1.5] text-amber-200"
+            >
+              {t("sessionExpired")}
+            </p>
+          ) : null}
 
           {TABBED.has(view) && (
             <div

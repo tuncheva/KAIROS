@@ -1,4 +1,5 @@
 import { auth } from "~/server/auth";
+import { signInHref } from "~/lib/routes";
 import { redirect } from "next/navigation";
 
 import { ChatShell } from "~/components/chat/ChatShell";
@@ -6,7 +7,7 @@ import { ChatShell } from "~/components/chat/ChatShell";
 export default async function ChatPage() {
   const session = await auth();
   if (!session?.user) {
-    redirect("/api/auth/signin");
+    redirect(signInHref("/chat"));
   }
 
   return (

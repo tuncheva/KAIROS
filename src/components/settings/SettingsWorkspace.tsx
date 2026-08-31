@@ -12,7 +12,7 @@
  * normal visit.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Search } from "~/components/ui/icons";
@@ -81,6 +81,29 @@ interface Props {
 }
 
 export function SettingsWorkspace({ activeSection, user }: Props) {
+  /* Switching section used to be a real navigation (`<Link href="?section=">`),
+     so picking a tab re-ran the server component, re-rendered the whole shell
+     and reset the page — for a control that only ever swaps one panel. The
+     section lives in client state now and the URL is rewritten underneath with
+     `replaceState`, so `?section=` still deep-links and still survives a
+     reload, without a round trip per click.
+
+     `replaceState`, not `pushState`: the tabs are one screen's worth of
+     navigation, and Back should leave settings rather than walk back through
+     every tab the user glanced at. */
+  const [section, setSection] = useState<SettingsSectionId>(activeSection);
+
+  // A real navigation to /settings?section=… (the command palette, a bookmark,
+  // Back out of a deep link) still has to move the panel.
+  useEffect(() => {
+    setSection(activeSection);
+  }, [activeSection]);
+
+  const selectSection = useCallback((id: SettingsSectionId) => {
+    setSection(id);
+    window.history.replaceState(null, "", `/settings?section=${id}`);
+  }, []);
+
   const useT = useTranslations as unknown as (ns: string) => Translator;
   const t = useT("settings");
 
@@ -123,7 +146,7 @@ export function SettingsWorkspace({ activeSection, user }: Props) {
       el = el.parentElement;
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [activeSection]);
+  }, [section]);
 
   const filtering = query.trim().length > 0;
   const totalMatches = useMemo(
@@ -131,7 +154,7 @@ export function SettingsWorkspace({ activeSection, user }: Props) {
     [counts],
   );
 
-  const sections = filtering ? SETTINGS_SECTIONS : [activeSection];
+  const sections = filtering ? SETTINGS_SECTIONS : [section];
 
   return (
     <SettingsSaveProvider>
@@ -156,15 +179,21 @@ export function SettingsWorkspace({ activeSection, user }: Props) {
               className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:gap-0 lg:overflow-visible lg:px-0 lg:pb-10"
             >
               {SETTINGS_SECTIONS.map((id, index) => {
-                const active = id === activeSection && !filtering;
+                const active = id === section && !filtering;
                 const count = counts[id] ?? 0;
                 return (
                   <Link
                     key={id}
                     href={`/settings?section=${id}`}
-                    onClick={() => {
+                    onClick={(e) => {
                       setRawQuery("");
                       setQuery("");
+                      /* Still an anchor, so middle-click and ⌘-click keep
+                         opening a real tab; only the plain left click is
+                         handled in place. */
+                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                      e.preventDefault();
+                      selectSection(id);
                     }}
                     aria-current={active ? "page" : undefined}
                     className={`flex flex-none items-baseline gap-2.5 whitespace-nowrap rounded-lg px-4 py-2.5 transition-colors hover:bg-bg-tertiary/60 lg:rounded-none lg:px-6 ${
@@ -237,7 +266,7 @@ export function SettingsWorkspace({ activeSection, user }: Props) {
                     a filter is up the key is constant, so typing does not
                     re-run the entrance on each keystroke. */}
                 <div
-                  key={filtering ? "filter" : activeSection}
+                  key={filtering ? "filter" : section}
                   className="settings-section-enter flex flex-col gap-10"
                 >
                   {sections.map((id) => (

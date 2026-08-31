@@ -1607,7 +1607,8 @@
       "close": "Close",
       "backToSignIn": "Back to Sign In",
       "google": "Google",
-      "orContinueWith": "Or continue with"
+      "orContinueWith": "Or continue with",
+      "sessionExpired": "Your session expired. Sign in again and we'll take you back to where you were."
     }
   },
   "common": {
@@ -2426,5 +2427,13 @@
     "activityGoing": "Going to",
     "noFollowers": "No followers yet.",
     "loadFailed": "Could not load this profile. Try again in a moment."
+  },
+  "errors": {
+    "app": {
+      "title": "This page ran into a problem",
+      "body": "The rest of the app is fine — your navigation is still there. Try again, or head back to the dashboard.",
+      "retry": "Try again",
+      "dashboard": "Back to dashboard"
+    }
   }
 }

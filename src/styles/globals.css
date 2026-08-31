@@ -3740,3 +3740,63 @@ input[type="search"]::-webkit-search-results-decoration {
     transform: none !important;
   }
 }
+
+/* ─── Collapsed rail tooltips ───────────────────────────────────────────────
+   The rail is `overflow-hidden`, so a row's tooltip cannot be an absolutely
+   positioned child — it would be clipped at 4rem along with the labels. It is
+   `fixed`, with its `top` measured from the row in `RailLink`, which escapes
+   the clip because nothing above it establishes a containing block.
+
+   The fade-out at 70% is the handover: it lands on the 1s mark, which is when
+   a rested pointer opens the rail and the row's real label takes over. Without
+   it the tooltip would sit on top of the label it was standing in for. */
+.kairos-rail-tip {
+  position: fixed;
+  left: 4.25rem;
+  transform: translateY(-50%);
+  z-index: 50; /* above the rail (z-40), below modals */
+  padding: 0.3125rem 0.5rem;
+  border-radius: 0.5rem;
+  background: rgb(var(--bg-elevated));
+  color: rgb(var(--fg-primary));
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--shadow-lg), inset 0 0 0 0.5px rgb(var(--border-light) / 0.6);
+  animation: kairos-rail-tip 1.4s ease forwards;
+}
+
+@keyframes kairos-rail-tip {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-4px);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* Pinned, the labels are always on screen — a tooltip repeating one of them is
+   noise. */
+:root[data-rail-pinned="true"] .kairos-rail-tip {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kairos-rail-tip {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: translateY(-50%) !important;
+  }
+}

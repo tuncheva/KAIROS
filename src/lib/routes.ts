@@ -10,3 +10,19 @@
 
 /** Where a project opens. There is no `/projects/[id]` route; the list reads the query param. */
 export const projectHref = (id: number | string) => `/projects?projectId=${String(id)}`;
+
+/**
+ * Where a page sends someone whose session has gone.
+ *
+ * Every `(app)` page hand-rolled this, and they disagreed: eleven redirected to
+ * `/api/auth/signin` — NextAuth's own unstyled page, which is not this app's
+ * sign-in and forgets where the user was going — and the three `notes` routes
+ * redirected to `/` with nothing at all, so the user landed on the marketing
+ * page with no explanation and no way back to what they had open.
+ *
+ * `callbackUrl` is what `HomeClient` reads to open the sign-in box instead of
+ * the landing page; `reason` is what turns it into "your session expired"
+ * rather than an unexplained modal.
+ */
+export const signInHref = (callbackUrl: string, reason: "expired" = "expired") =>
+  `/?callbackUrl=${encodeURIComponent(callbackUrl)}&reason=${reason}`;

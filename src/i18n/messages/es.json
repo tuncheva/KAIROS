@@ -1220,5 +1220,13 @@
     "partlyUndone": "Deshecho en parte",
     "restored": "{count} restaurados",
     "removed": "{count} eliminados"
+  },
+  "errors": {
+    "app": {
+      "title": "Esta página tuvo un problema",
+      "body": "El resto de la aplicación está bien: tu navegación sigue ahí. Inténtalo de nuevo o vuelve al panel.",
+      "retry": "Inténtalo de nuevo",
+      "dashboard": "Volver al panel"
+    }
   }
 }

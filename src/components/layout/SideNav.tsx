@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -55,10 +55,39 @@ function RailLink({
   active: boolean;
   labelClass: string;
 }) {
+  const ref = useRef<HTMLAnchorElement>(null);
+
+  /* Unpinned is the default, so a new user meets eight unlabelled icons. The
+     rail's own labels do arrive — on keyboard focus immediately, on hover after
+     the deliberate 1s rest — but a pointer user who just wants to know what the
+     third icon is should not have to wait, and a touch user never hovers at all.
+     So each row carries its own tooltip that appears at once.
+
+     Position is `fixed` and measured, not `absolute`: the rail is
+     `overflow-hidden` (its labels live in the clipped overflow), so anything
+     absolutely positioned past 4rem is cut off. `fixed` escapes the clip —
+     nothing on the rail's ancestor chain sets a transform, so it resolves
+     against the viewport as intended.
+
+     It then fades itself out at the 1s mark, which is exactly when the rested
+     pointer opens the rail: the tooltip answers the question, and hands the row
+     back to the real label rather than sitting on top of it. */
+  const [tipTop, setTipTop] = useState<number | null>(null);
+
+  const showTip = () => {
+    const box = ref.current?.getBoundingClientRect();
+    if (box) setTipTop(box.top + box.height / 2);
+  };
+  const hideTip = () => setTipTop(null);
+
   return (
     <Link
+      ref={ref}
       href={href}
       aria-current={active ? "page" : undefined}
+      onMouseEnter={showTip}
+      onMouseLeave={hideTip}
+      onClick={hideTip}
       className={`${railRowClass} transition-colors duration-300 ease-[cubic-bezier(0.2,0.8,0.25,1)] ${
         active
           ? "border-accent-primary bg-accent-primary/10 font-semibold text-fg-primary"
@@ -67,6 +96,13 @@ function RailLink({
     >
       <Icon size={20} className="shrink-0" />
       <span className={labelClass}>{label}</span>
+      {tipTop === null ? null : (
+        /* aria-hidden: the label span above is already the accessible name, and
+           a screen reader announcing it twice is worse than not at all. */
+        <span aria-hidden="true" className="kairos-rail-tip" style={{ top: tipTop }}>
+          {label}
+        </span>
+      )}
     </Link>
   );
 }

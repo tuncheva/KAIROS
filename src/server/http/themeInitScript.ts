@@ -32,7 +32,12 @@ export const THEME_INIT_SCRIPT = `
     classList.add(theme);
 
     // Prevent accent color flash
-    var accent = sessionStorage.getItem('user-accent') || 'purple';
+    // localStorage: the accent is a durable preference. It lived in
+    // sessionStorage, which is per-tab, so every new tab painted the default
+    // and corrected itself once the settings query resolved.
+    var accent = localStorage.getItem('user-accent')
+      || sessionStorage.getItem('user-accent')
+      || 'purple';
     document.documentElement.dataset.accent = accent;
 
     // Landing intro: decided here so the curtain is painted with the first
@@ -57,7 +62,7 @@ export const THEME_INIT_SCRIPT = `
  * Regenerate by running the CSP test — it prints the expected value on failure.
  */
 export const THEME_INIT_SCRIPT_HASH =
-  "sha256-Q7oBpHUR9Jwrbnismgfmo6XmNRojnOWwTFYlbH6wPOc=";
+  "sha256-DaNwBtTjzGJPJoL/ARkBKD71r+IuIfEoSmzCzDf7p7w=";
 
 /**
  * The same hash as a `script-src` source expression.

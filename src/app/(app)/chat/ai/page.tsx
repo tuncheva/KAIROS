@@ -1,4 +1,5 @@
 import { auth } from "~/server/auth";
+import { signInHref } from "~/lib/routes";
 import { redirect } from "next/navigation";
 
 import { AIChatPageClient } from "~/components/chat/AIChatPageClient";
@@ -6,7 +7,7 @@ import { AIChatPageClient } from "~/components/chat/AIChatPageClient";
 export default async function KairosAIPage() {
   const session = await auth();
   if (!session?.user) {
-    redirect("/api/auth/signin");
+    redirect(signInHref("/chat/ai"));
   }
 
   return (

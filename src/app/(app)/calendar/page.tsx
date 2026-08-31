@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { signInHref } from "~/lib/routes";
 import { auth } from "~/server/auth";
 import { TopBar } from "~/components/layout/TopBar";
 import { CalendarClient } from "~/components/calendar/CalendarClient";
@@ -6,7 +7,7 @@ import { CalendarClient } from "~/components/calendar/CalendarClient";
 export default async function CalendarPage() {
   const session = await auth();
   if (!session?.user) {
-    redirect("/api/auth/signin");
+    redirect(signInHref("/calendar"));
   }
 
 

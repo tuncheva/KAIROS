@@ -1,7 +1,7 @@
 import { auth } from "~/server/auth";
+import { signInHref } from "~/lib/routes";
 import { redirect } from "next/navigation";
 
-import { OnboardingGate } from "~/components/auth/OnboardingGate";
 import { NotesWorkspace } from "~/components/notes/NotesWorkspace";
 
 /**
@@ -13,11 +13,10 @@ import { NotesWorkspace } from "~/components/notes/NotesWorkspace";
 export default async function NotesPage() {
   const session = await auth();
   if (!session?.user) {
-    redirect("/");
+    redirect(signInHref("/notes"));
   }
 
   return (
-    <OnboardingGate>
       <div className="h-[100dvh] bg-bg-primary overflow-hidden">
         <main
           id="main-content"
@@ -26,6 +25,5 @@ export default async function NotesPage() {
           <NotesWorkspace noteId={null} />
         </main>
       </div>
-    </OnboardingGate>
   );
 }

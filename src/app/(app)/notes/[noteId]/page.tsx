@@ -1,7 +1,7 @@
 import { auth } from "~/server/auth";
+import { signInHref } from "~/lib/routes";
 import { notFound, redirect } from "next/navigation";
 
-import { OnboardingGate } from "~/components/auth/OnboardingGate";
 import { NotesWorkspace } from "~/components/notes/NotesWorkspace";
 
 /**
@@ -16,19 +16,20 @@ export default async function NotePageRoute({
 }: {
   params: Promise<{ noteId: string }>;
 }) {
+  /* Resolved before the session check so an expired session can be sent back
+     to this exact note/conversation rather than the list. */
+  const { noteId } = await params;
+
   const session = await auth();
   if (!session?.user) {
-    redirect("/");
+    redirect(signInHref(`/notes/${noteId}`));
   }
-
-  const { noteId } = await params;
   const id = Number(noteId);
   /* `/notes/new` is a sibling static route so it never reaches this file, but
      any other non-numeric path would otherwise become a query for note NaN. */
   if (!Number.isInteger(id) || id <= 0) notFound();
 
   return (
-    <OnboardingGate>
       <div className="h-[100dvh] bg-bg-primary overflow-hidden">
         <main
           id="main-content"
@@ -37,6 +38,5 @@ export default async function NotePageRoute({
           <NotesWorkspace noteId={id} />
         </main>
       </div>
-    </OnboardingGate>
   );
 }

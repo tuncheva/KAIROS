@@ -1220,5 +1220,13 @@
     "partlyUndone": "Partiellement annulé",
     "restored": "{count} restaurés",
     "removed": "{count} supprimés"
+  },
+  "errors": {
+    "app": {
+      "title": "Cette page a rencontré un problème",
+      "body": "Le reste de l'application fonctionne — votre navigation est toujours là. Réessayez ou revenez au tableau de bord.",
+      "retry": "Réessayer",
+      "dashboard": "Retour au tableau de bord"
+    }
   }
 }

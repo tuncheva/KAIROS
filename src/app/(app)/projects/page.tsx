@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { signInHref } from "~/lib/routes";
 
 import { TopBar } from "~/components/layout/TopBar";
 import { NewProjectDrawer } from "~/components/projects/NewProjectDrawer";
@@ -13,7 +14,7 @@ export default async function ProjectsPage({
 }) {
   const session = await auth();
   if (!session?.user) {
-    redirect("/api/auth/signin");
+    redirect(signInHref("/projects"));
   }
 
   /* `?projectId=` deep-links straight into one project, so notifications and
