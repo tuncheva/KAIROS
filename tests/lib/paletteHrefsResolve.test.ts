@@ -76,7 +76,12 @@ describe("command palette destinations", () => {
 
 describe("shared route helpers", () => {
   it("point at pages that exist", async () => {
-    const { projectHref } = await import("~/lib/routes");
+    const { projectHref, projectTasksHref, noteHref, eventHref } = await import(
+      "~/lib/routes"
+    );
     expect(resolves(projectHref(1))).toBe(true);
+    expect(resolves(projectTasksHref(1))).toBe(true);
+    expect(resolves(noteHref(1))).toBe(true);
+    expect(resolves(eventHref(1))).toBe(true);
   });
 });

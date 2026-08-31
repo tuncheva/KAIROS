@@ -11,6 +11,16 @@
 /** Where a project opens. There is no `/projects/[id]` route; the list reads the query param. */
 export const projectHref = (id: number | string) => `/projects?projectId=${String(id)}`;
 
+/** A project's task board. The board is a tab on the projects page, not a route. */
+export const projectTasksHref = (id: number | string) =>
+  `/projects?projectId=${String(id)}&tab=tasks`;
+
+/** A note. Unlike projects, this one really is a route. */
+export const noteHref = (id: number | string) => `/notes/${String(id)}`;
+
+/** An event's public page — the one that unfurls when shared. */
+export const eventHref = (id: number | string) => `/events/${String(id)}`;
+
 /**
  * Where a page sends someone whose session has gone.
  *

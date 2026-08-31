@@ -1802,7 +1802,17 @@
       "notes": "Notes",
       "events": "Events",
       "assistant": "Assistant",
-      "settings": "Settings"
+      "settings": "Settings",
+      "inYourWorkspace": "In your workspace",
+      "searching": "Searching…",
+      "kind": {
+        "task": "Task",
+        "project": "Project",
+        "note": "Note",
+        "event": "Event",
+        "comment": "Comment"
+      },
+      "triggerLabel": "Search or ask…"
     }
   },
   "chat": {
@@ -1979,7 +1989,8 @@
       "leaveConversationConfirm": "You will stop receiving messages here and the conversation leaves your list. The other person keeps their copy.",
       "conversationLeft": "You left the conversation",
       "oneSidedNote": "Both actions affect only your copy. The other person keeps theirs.",
-      "working": "Working…"
+      "working": "Working…",
+      "send": "Send"
     }
   },
   "onboarding": {

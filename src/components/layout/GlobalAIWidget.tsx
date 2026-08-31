@@ -89,8 +89,18 @@ export function GlobalAIWidget() {
         setPaletteArmed(true);
       }
     };
+    /* The TopBar's search field is the other way in, and the only one anybody
+       discovers without being told the shortcut exists. Same arming, same
+       reason it lives here: the palette is not mounted yet, so it cannot be
+       the thing that hears the request to open it. */
+    const onOpenRequest = () => setPaletteArmed(true);
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("kairos:openPalette", onOpenRequest);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("kairos:openPalette", onOpenRequest);
+    };
   }, [paletteArmed]);
 
   /*
