@@ -177,7 +177,15 @@ Everything here already exists on the server. This wave is entirely about giving
 
 Confirmed: `ProjectChat.tsx` (14 KB) has **zero importers**, and it is the sole caller of `chat.getOrCreateProjectConversation`, `chat.listProjectConversations` and `chat.listProjectUsers`. The new `ChatShell` is 1:1 DM only — project members appear as *suggestions for a DM*, never as a group. There is no way to create any group conversation.
 
-**Do:**
+> **Corrected during implementation — read this before the steps below.** This item was written assuming project chat meant a *group* thread. The schema says otherwise: `direct_conversations` has `userOneId` and `userTwoId` — exactly two participants — plus a nullable `projectId`. So "project chat" in KAIROS is a **DM scoped to a project**, which is precisely what the deleted `ProjectChat.tsx` provided. A real group thread needs a participants table and a migration; that is a separate feature, not this fix.
+>
+> The display side already existed: `listAllConversations` selects `projectId` and `projectTitle`, and `ConversationRail` already renders a project badge and filters on `convo.projectId !== null`. **The only broken link was that nothing ever set `projectId`** — `NewChatModal` grouped people under project headings and then called `onSelect(person.id)`, dropping the scope, so the badge never appeared and the filter could never match.
+>
+> **What was actually done:** `onSelect` carries an optional `projectId`; rows under a project heading pass theirs; `ChatShell` routes those through `getOrCreateProjectConversation` (which re-checks that both people can reach the project) and everything else through the plain DM mutation. Guarded by [NewChatModal.test.tsx](../../tests/components/NewChatModal.test.tsx).
+>
+> `listProjectConversations` and `listProjectUsers` remain without UI callers, deliberately: the rail derives the same data client-side from one `listAllConversations` query instead of N per-project queries, and `getParticipantSuggestions` already supplies project members. Both are pinned by `routerCompleteness.test.ts`, so they stay as API surface rather than being deleted.
+
+**Original plan (superseded above):**
 - Add a **Projects** section to `ConversationRail`, backed by `listProjectConversations`, above or below Direct Messages with its own collapsible header.
 - Add a **group** mode to `NewChatModal`: a Direct/Project toggle, project picker, member multi-select, then `getOrCreateProjectConversation`.
 - Route `ConversationDetails`' "open project" link at the real project page once 4.4 lands.
