@@ -212,11 +212,16 @@ export function SideNav() {
     label: string;
     primary?: boolean;
   }> = [
-    { href: "/publish", icon: CalendarDays, label: t("events") },
-    { href: "/progress", icon: TrendingUp, label: t("progress") },
+    /* The five destinations people actually reach for. This used to be Events ·
+       Progress · New · Calendar · Settings, which left Dashboard, Projects,
+       Chat and Notes reachable only through the hamburger — four of the five
+       most-used surfaces behind an extra tap. The ones that moved out are all
+       still in the drawer, which is where secondary destinations belong. */
+    { href: "/dashboard", icon: LayoutDashboard, label: t("dashboard") },
+    { href: "/projects", icon: Briefcase, label: t("projects") },
     { href: "/projects?new=1", icon: Plus, label: t("newProject"), primary: true },
-    { href: "/calendar", icon: CalendarCheck, label: t("calendar") },
-    { href: settingsItem.href, icon: Settings, label: settingsItem.label },
+    { href: "/chat", icon: MessageCircle, label: t("chat") },
+    { href: "/notes", icon: BookText, label: t("notes") },
   ];
 
   const isItemActive = (href: string): boolean => {
@@ -227,7 +232,10 @@ export function SideNav() {
       return pathname === "/progress";
     }
     if (href === "/chat") {
-      return pathname === "/chat";
+      /* A conversation is its own route (`/chat/[conversationId]`, `/chat/ai`),
+         and the nav has to stay lit while you are reading one — same reasoning
+         as notes below. */
+      return pathname === "/chat" || pathname.startsWith("/chat/");
     }
     if (href === "/publish") {
       return pathname === "/publish";
@@ -366,25 +374,41 @@ export function SideNav() {
         </>
       )}
 
-      <nav className={`kairos-mobile-bottomnav fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-bg-primary/95 pt-2 backdrop-blur-md lg:hidden dark:border-white/[0.06] ${isMobileMenuOpen ? "hidden" : ""}`} aria-label="Primary">
+      {/* z-50, above `AskKairosLauncher`. Both sat at z-40 and the launcher
+          renders later in the tree, so it won every time — covering the last
+          item on every phone. The launcher also lifts to `bottom-24` to clear
+          this bar; the toast viewport uses the same clearance. */}
+      <nav className={`kairos-mobile-bottomnav fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-bg-primary/95 pt-2 backdrop-blur-md lg:hidden dark:border-white/[0.06] ${isMobileMenuOpen ? "hidden" : ""}`} aria-label="Primary">
         <div className="flex items-center justify-around gap-1">
           {mobileBottomItems.map((item) => {
             const isActive = isItemActive(item.href);
             return (
+              /* Labelled, not icon-only. The old bar carried `title`, which a
+                 touch device never shows, so the whole bar was five unnamed
+                 glyphs. The visible text is also the accessible name now, so
+                 there is no `aria-label` to drift out of step with it. */
               <Link
                 key={item.href}
                 href={item.href}
-                aria-label={item.label}
-                className={`flex h-11 min-w-11 items-center justify-center rounded-xl transition-colors ${
+                aria-current={isActive ? "page" : undefined}
+                className={`flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 transition-colors ${
                   item.primary
-                    ? "bg-accent-primary text-white shadow-md shadow-accent-primary/30"
+                    ? "text-accent-primary"
                     : isActive
-                      ? "bg-accent-primary/12 text-accent-primary"
-                      : "text-fg-secondary hover:bg-bg-secondary hover:text-fg-primary"
+                      ? "text-accent-primary"
+                      : "text-fg-tertiary hover:text-fg-primary"
                 }`}
-                title={item.label}
               >
-                <item.icon size={20} />
+                <span
+                  className={
+                    item.primary
+                      ? "grid h-7 w-9 place-items-center rounded-lg bg-accent-primary text-white"
+                      : "grid h-7 w-9 place-items-center"
+                  }
+                >
+                  <item.icon size={item.primary ? 22 : 20} />
+                </span>
+                <span className="text-[10px] font-semibold leading-none">{item.label}</span>
               </Link>
             );
           })}

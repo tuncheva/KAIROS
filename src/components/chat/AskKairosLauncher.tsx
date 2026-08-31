@@ -15,8 +15,12 @@ type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 const CORNER_STORAGE_KEY = "kairos:launcher-corner";
 
 const CORNER_CLASSES: Record<Corner, string> = {
-  "bottom-right": "right-4 bottom-4 flex-col items-end lg:right-6 lg:bottom-6",
-  "bottom-left": "left-4 bottom-4 flex-col items-start lg:left-6 lg:bottom-6",
+  /* `bottom-24` on small screens, not `bottom-4`: the mobile bottom nav is
+     fixed at `bottom-0`, and at the old offset the pill sat on top of it and
+     covered whichever item was in that corner. The nav also now outranks this
+     at z-50, so a regression here is visible rather than silently winning. */
+  "bottom-right": "right-4 bottom-24 flex-col items-end lg:right-6 lg:bottom-6",
+  "bottom-left": "left-4 bottom-24 flex-col items-start lg:left-6 lg:bottom-6",
   "top-right": "top-4 right-4 flex-col-reverse items-end lg:top-6 lg:right-6",
   "top-left": "top-4 left-4 flex-col-reverse items-start lg:top-6 lg:left-6",
 };

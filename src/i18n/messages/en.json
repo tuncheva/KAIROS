@@ -521,8 +521,7 @@
         "no": "No"
       },
       "errors": {
-        "filesTooLarge": "Some files exceed the 10MB limit.",
-        "deleteFailed": "Could not delete the task. Please try again."
+        "filesTooLarge": "Some files exceed the 10MB limit."
       }
     }
   },

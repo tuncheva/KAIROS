@@ -150,9 +150,15 @@ describe("phone shell – SideNav wears the utilities", () => {
     expect(sideNav).toMatch(/window\.scrollTo\(0, scrollY\)/);
   });
 
-  /** Every bottom-nav target is at least 44px, the smallest reliable tap. */
+  /**
+   * Every bottom-nav target is at least 44px, the smallest reliable tap.
+   *
+   * `min-h-11` rather than `h-11`: the items carry a visible text label under
+   * the icon now, and a fixed 44px height would clip it. The floor is the point
+   * of the assertion, not the exact utility.
+   */
   it("keeps the bottom-nav targets at thumb size", () => {
-    expect(sideNav).toMatch(/h-11 min-w-11/);
+    expect(sideNav).toMatch(/min-h-11 min-w-11/);
   });
 });
 

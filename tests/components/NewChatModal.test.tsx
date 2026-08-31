@@ -43,11 +43,13 @@ vi.mock("~/trpc/react", () => ({
 
 const { NewChatModal } = await import("~/components/chat/NewChatModal");
 
+type OnSelect = (otherUserId: string, projectId?: number) => void;
+
 describe("NewChatModal", () => {
-  let onSelect: ReturnType<typeof vi.fn>;
+  let onSelect: ReturnType<typeof vi.fn<OnSelect>>;
 
   beforeEach(() => {
-    onSelect = vi.fn();
+    onSelect = vi.fn<OnSelect>();
   });
 
   const open = () =>
