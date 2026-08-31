@@ -41,10 +41,14 @@ export const THEME_INIT_SCRIPT = `
     document.documentElement.dataset.accent = accent;
 
     // Landing intro: decided here so the curtain is painted with the first
-    // frame instead of flashing in after hydration. It plays on every load;
-    // the only opt-out is a reduced-motion preference.
+    // frame instead of flashing in after hydration. Once per browser, not once
+    // per load — it used to replay on every visit to '/', which includes the
+    // landing you are dropped on immediately after signing out. A three-second
+    // wordmark is a welcome; on the fourth viewing it is a wait.
     var motionOk = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    document.documentElement.dataset.kairosIntro = motionOk ? 'play' : 'seen';
+    var introSeen = localStorage.getItem('kairos:introSeen') === 'true';
+    document.documentElement.dataset.kairosIntro =
+      motionOk && !introSeen ? 'play' : 'seen';
 
     // Nav rail: the pin feeds --rail-w, and every page's .rail-offset takes its
     // margin from that. Read after hydration instead, the rail opened and the
@@ -100,7 +104,7 @@ export const THEME_INIT_SCRIPT = `
  * Regenerate by running the CSP test — it prints the expected value on failure.
  */
 export const THEME_INIT_SCRIPT_HASH =
-  "sha256-H7shTO5KpT+6ZMcT+63Ioe5PemPyaJM+d71J/XZehtA=";
+  "sha256-FN/ks45esil8S0zaGHI2xW14cBUa+QAMqX09mzQE0OQ=";
 
 /**
  * The same hash as a `script-src` source expression.

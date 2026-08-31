@@ -54,6 +54,12 @@ export function SignInModal({
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  /* Set when the refusal was "confirm your email". The message alone is not
+     enough — the only place the app offered to resend the confirmation was the
+     `verifyEmailSent` view, reachable for a few seconds after signing up, so a
+     user who signed up, missed the email and came back the next day had no
+     path at all. */
+  const [needsVerification, setNeedsVerification] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -144,6 +150,7 @@ export function SignInModal({
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    setNeedsVerification(false);
     setLoadingMessage(t("signIn.verifyingCredentials"));
 
     try {
@@ -154,7 +161,25 @@ export function SignInModal({
       });
 
       if (result?.error) {
-        setError(t("signIn.invalidCredentials"));
+        /* Three outcomes, not one. `code` is only set for the refusals the
+           user can act on; everything else — wrong password, no such account,
+           throttled — stays deliberately indistinguishable. See
+           `SIGN_IN_UNVERIFIED` in `~/server/auth/config`. */
+        const [code, detail] = (result.code ?? "").split(":");
+
+        if (code === "EMAIL_UNVERIFIED") {
+          setNeedsVerification(true);
+          setError(t("signIn.emailUnverified"));
+        } else if (code === "ACCOUNT_LOCKED") {
+          const minutes = Number(detail);
+          setError(
+            t("signIn.accountLocked", {
+              minutes: Number.isFinite(minutes) && minutes > 0 ? minutes : 15,
+            }),
+          );
+        } else {
+          setError(t("signIn.invalidCredentials"));
+        }
       } else {
         onClose();
         router.push(callbackUrl);
@@ -793,6 +818,23 @@ export function SignInModal({
                   {error}
                 </p>
               )}
+              {needsVerification &&
+                (resendVerificationMutation.isSuccess ? (
+                  <p className="rounded-xl border border-accent-primary/25 bg-accent-primary/10 px-4 py-3 text-sm text-accent-primary">
+                    {t("verifyEmail.resent")}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={resendVerificationMutation.isPending}
+                    onClick={() => resendVerificationMutation.mutate({ email })}
+                    className="self-start rounded-xl border border-accent-primary/25 px-4 py-2 text-sm font-semibold text-accent-primary transition-colors hover:bg-accent-primary/10 disabled:opacity-50"
+                  >
+                    {resendVerificationMutation.isPending
+                      ? t("verifyEmail.resending")
+                      : t("verifyEmail.resend")}
+                  </button>
+                ))}
               {loadingMessage && (
                 <p className="flex items-center gap-2 rounded-xl border border-accent-primary/25 bg-accent-primary/10 px-4 py-3 text-sm text-accent-primary">
                   <Loader2 className="animate-spin" size={16} />

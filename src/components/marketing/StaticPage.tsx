@@ -17,7 +17,13 @@ export async function StaticPage({
     const t = await getTranslations("staticPages");
 
     return (
-        <main id="main-content" className="dark min-h-dvh bg-bg-primary px-6 py-24 text-fg-primary lg:px-12">
+        /* No `dark` class here any more. These pages are reachable from
+           inside the app — the footer links to them, and so does the consent
+           line under the sign-up button — so a light-mode user clicking
+           Privacy was handed a dark page for no reason. Signed out the root
+           theme is dark regardless, so a visitor arriving from the landing
+           page sees no change. */
+        <main id="main-content" className="min-h-dvh bg-bg-primary px-6 py-24 text-fg-primary lg:px-12">
             <div className="mx-auto w-full max-w-[720px]">
                 <Link
                     href="/"

@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { useTheme } from "next-themes";
 import { SignInModal } from "~/components/auth/SignInModal";
 import { LandingIntro } from "~/components/homepage/LandingIntro";
 import { SiteHeader } from "~/components/homepage/SiteHeader";
@@ -21,11 +20,19 @@ import { useSmoothAnchors } from "~/components/homepage/useSmoothAnchors";
 
 /**
  * Pre-auth landing page. Composition only — each section owns its own markup
- * and motion; this holds the sign-in modal, the forced-dark theme and the
- * page-wide scroll reveals.
+ * and motion; this holds the sign-in modal, the page-wide scroll reveals and
+ * the dark scope.
+ *
+ * The design is dark-only, and that used to be arranged with `setTheme("dark")`
+ * in an effect. `next-themes` writes `setTheme` straight to localStorage, so
+ * every visit to `/` — including the landing you get *after signing out*, and
+ * every visit by someone who never signs in — overwrote the saved preference.
+ * A light-mode user then signed back in to a dark first paint that flipped to
+ * light once the server preference resolved, and had to set it again. The
+ * `dark` class on this element below is the whole of the fix: it scopes the
+ * palette to the page instead of storing it.
  */
 export function HomeClient() {
-    const { setTheme } = useTheme();
     const searchParams = useSearchParams();
     // Arriving here with a `callbackUrl` means the proxy bounced someone off a
     // page they were trying to reach — most sharply, a scanned invite QR. Show
@@ -39,11 +46,6 @@ export function HomeClient() {
     );
     const [introCleared, setIntroCleared] = useState(false);
     const rootRef = useRef<HTMLElement>(null);
-
-    // The design is dark-only.
-    useEffect(() => {
-        setTheme("dark");
-    }, [setTheme]);
 
     useLandingReveals(rootRef);
     useSmoothAnchors(rootRef);

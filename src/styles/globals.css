@@ -279,8 +279,18 @@
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.7);
 }
 
-/* Accent (theme) variants - Dark Mode */
-.dark[data-accent="purple"] {
+/* Accent (theme) variants - Dark Mode
+   ────────────────────────────────────
+   Two selectors per accent, not one. `data-accent` lives on `<html>`, but the
+   dark class is no longer always there: the landing and legal pages are
+   dark-only by design and now carry `.dark` on their own root rather than
+   writing `dark` into the user's saved theme (which is what a `setTheme` call
+   in an effect was doing on every visit to `/`, including the one right after
+   sign-out). With a nested scope, `.dark[data-accent]` cannot match — the two
+   attributes are on different elements — so the companion `[data-accent] .dark`
+   selector carries the same values one level down. */
+.dark[data-accent="purple"],
+[data-accent="purple"] .dark {
   --accent-primary: var(--brand-purple);
   --accent-secondary: 192 132 252;
   --accent-tertiary: 216 180 254;
@@ -289,7 +299,8 @@
   --event-active: var(--brand-purple);
 }
 
-.dark[data-accent="pink"] {
+.dark[data-accent="pink"],
+[data-accent="pink"] .dark {
   --accent-primary: var(--brand-pink);
   --accent-secondary: 228 171 171;
   --accent-tertiary: 243 213 213;
@@ -298,7 +309,8 @@
   --event-active: var(--brand-pink);
 }
 
-.dark[data-accent="caramel"] {
+.dark[data-accent="caramel"],
+[data-accent="caramel"] .dark {
   --accent-primary: var(--brand-caramel);
   --accent-secondary: 242 191 141;
   --accent-tertiary: 251 229 199;
@@ -307,7 +319,8 @@
   --event-active: var(--brand-caramel);
 }
 
-.dark[data-accent="mint"] {
+.dark[data-accent="mint"],
+[data-accent="mint"] .dark {
   --accent-primary: var(--brand-mint);
   --accent-secondary: 130 201 183;
   --accent-tertiary: 186 231 220;
@@ -316,7 +329,8 @@
   --event-active: var(--brand-mint);
 }
 
-.dark[data-accent="sky"] {
+.dark[data-accent="sky"],
+[data-accent="sky"] .dark {
   --accent-primary: var(--brand-sky);
   --accent-secondary: 92 158 221;
   --accent-tertiary: 171 208 242;
@@ -325,7 +339,8 @@
   --event-active: var(--brand-sky);
 }
 
-.dark[data-accent="strawberry"] {
+.dark[data-accent="strawberry"],
+[data-accent="strawberry"] .dark {
   --accent-primary: var(--brand-strawberry);
   --accent-secondary: 248 110 122;
   --accent-tertiary: 252 193 198;

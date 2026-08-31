@@ -1564,7 +1564,9 @@
         "noAccount": "Don't have an account?",
         "createAccount": "Create account",
         "invalidCredentials": "Invalid email or password",
-        "error": "An error occurred during sign in"
+        "error": "An error occurred during sign in",
+        "emailUnverified": "Confirm your email before signing in. We sent a link when you signed up.",
+        "accountLocked": "Too many sign-in attempts. Try again in {minutes} minutes."
       },
       "signUp": {
         "title": "Create your account",

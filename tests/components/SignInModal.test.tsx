@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { signIn } from "next-auth/react";
 import { SignInModal } from "~/components/auth/SignInModal";
 
 describe("SignInModal", () => {
@@ -161,6 +162,50 @@ describe("SignInModal", () => {
       fireEvent.click(xButton);
       expect(onClose).toHaveBeenCalled();
     }
+  });
+
+  /**
+   * Sign-in is refused for four different reasons and used to report one.
+   * An unverified account was the worst of them: the password was right, the
+   * message said it was wrong, and the only "resend confirmation" button in
+   * the app lived on a view reachable for a few seconds after signing up.
+   */
+  describe("refusals it can tell apart", () => {
+    const submit = async (result: Record<string, unknown>) => {
+      vi.mocked(signIn).mockResolvedValue(result as never);
+      const user = userEvent.setup();
+      const { container } = render(<SignInModal {...defaultProps} />);
+      await user.type(screen.getByPlaceholderText("name@company.com"), "a@b.co");
+      await user.type(
+        container.querySelector<HTMLInputElement>('input[type="password"]')!,
+        "hunter2hunter2",
+      );
+      await user.click(container.querySelector<HTMLButtonElement>('button[type="submit"]')!);
+    };
+
+    it("offers to resend the confirmation when the email is unverified", async () => {
+      await submit({ error: "CredentialsSignin", code: "EMAIL_UNVERIFIED" });
+
+      expect(await screen.findByText(/confirm your email/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /resend the email/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("says how long a lockout has left", async () => {
+      await submit({ error: "CredentialsSignin", code: "ACCOUNT_LOCKED:7" });
+
+      expect(await screen.findByText(/7 minutes/)).toBeInTheDocument();
+    });
+
+    it("keeps a wrong password indistinguishable from an unknown address", async () => {
+      await submit({ error: "CredentialsSignin", code: undefined });
+
+      expect(await screen.findByText(/invalid|incorrect/i)).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /resend the email/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("uses subtle backdrop-blur-sm (not aggressive xl)", () => {

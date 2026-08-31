@@ -2,6 +2,7 @@ import "server-only";
 
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { type DefaultSession, type NextAuthConfig } from "next-auth";
+import { CredentialsSignin } from "next-auth";
 import Google from "next-auth/providers/google";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import Credentials from "next-auth/providers/credentials";
@@ -48,6 +49,29 @@ import {
  * while this is the backstop for attempts spread out over hours or across deploys.
  * Set too low, a forgetful user locks themselves out of their own account.
  */
+/**
+ * The two refusals a user can actually do something about.
+ *
+ * Every other failure stays a bare `null`, which Auth.js reports as the
+ * generic `CredentialsSignin` — a wrong password and an address with no
+ * account must remain indistinguishable. These two do not: one asks the user
+ * to confirm their email (and offers to send it again), the other says how
+ * long the lockout has left. Without them `SignInModal` collapsed all four
+ * outcomes to "invalid credentials", which for an unverified account is a dead
+ * end with no way out of it.
+ *
+ * `code` reaches the browser, so neither string carries anything the caller
+ * has not already proven they know.
+ */
+export const SIGN_IN_UNVERIFIED = "EMAIL_UNVERIFIED";
+export const SIGN_IN_LOCKED = "ACCOUNT_LOCKED";
+
+class SignInRefused extends CredentialsSignin {
+  constructor(public code: string) {
+    super(code);
+  }
+}
+
 const MAX_LOGIN_FAILURES = 10;
 const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
 
@@ -248,11 +272,20 @@ export const authConfig = {
         // Durable lockout, on top of the in-memory window above. Without this a
         // restart or a second instance resets the attacker's budget; the columns
         // do not. Mirrors the reset-PIN lockout in `note.resetPasswordWithPin`.
+        //
+        // Noted here, acted on *after* the password check. Refusing early is
+        // cheaper, but it means a passer-by can learn an address has an account
+        // by making five bad guesses and watching the message change. Telling
+        // someone who already supplied the right password that they are locked
+        // out reveals nothing they did not know, and it is the only way out of
+        // the dead end where a legitimate user is told, forever, that their
+        // correct password is wrong. The in-memory window limiter above still
+        // caps how often this path can be reached at all.
         const now = new Date();
-        if (user.loginLockedUntil && now < user.loginLockedUntil) {
-          log.warn("sign-in locked out", { email });
-          return null;
-        }
+        const lockedUntil =
+          user.loginLockedUntil && now < user.loginLockedUntil
+            ? user.loginLockedUntil
+            : null;
 
         const isPasswordValid = await argon2.verify(
           user.password,
@@ -282,6 +315,16 @@ export const authConfig = {
           return null;
         }
 
+        if (lockedUntil) {
+          log.warn("sign-in locked out", { email });
+          throw new SignInRefused(
+            `${SIGN_IN_LOCKED}:${Math.max(
+              1,
+              Math.ceil((lockedUntil.getTime() - now.getTime()) / 60_000),
+            )}`,
+          );
+        }
+
         // The password is right, but an unconfirmed address is not yet proven to
         // belong to this person. Refusing here is what stops someone registering
         // an address they do not control and sitting on the account.
@@ -291,7 +334,7 @@ export const authConfig = {
         // itself out while the user hunts for the email.
         if (!user.emailVerified) {
           log.warn("sign-in refused, email not confirmed", { email });
-          return null;
+          throw new SignInRefused(SIGN_IN_UNVERIFIED);
         }
 
         await Promise.all([
