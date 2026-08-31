@@ -320,6 +320,30 @@
       "notebookTitle": "This notebook is empty",
       "noSelection": "Nothing open",
       "noSelectionDesc": "Pick a note from the list, or start a new one."
+    },
+    "recover": {
+      "title": "Reset note password",
+      "subtitle": "Create a new password for your encrypted note.",
+      "invalidTitle": "Invalid reset link",
+      "invalidBody": "This password reset link is invalid or has expired.",
+      "goToNotes": "Go to notes",
+      "successTitle": "Password reset",
+      "successBody": "Your note password has been updated. You can open the note with the new password.",
+      "redirecting": "Taking you back to the note…",
+      "newPasswordPlaceholder": "Enter new password",
+      "confirmPasswordPlaceholder": "Confirm new password",
+      "pinPlaceholder": "Enter your secret reset PIN",
+      "pinHelp": "This is the PIN you set in Security settings to reset locked note passwords.",
+      "tipLabel": "Tip:",
+      "tipBody": "Choose a strong password you will remember — you need it every time you open this note.",
+      "submit": "Reset password",
+      "submitting": "Resetting…",
+      "show": "Show password",
+      "hide": "Hide password",
+      "invalidLink": "Invalid reset link. Please request a new one.",
+      "passwordEmpty": "Password cannot be empty.",
+      "passwordsMismatch": "Passwords do not match.",
+      "pinTooShort": "The reset PIN must be at least 4 digits."
     }
   },
   "progress": {

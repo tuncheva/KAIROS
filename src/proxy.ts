@@ -31,10 +31,15 @@ const SECURE_SESSION_COOKIE = "__Secure-authjs.session-token";
 // `/verify-email` must be reachable without a session: the token in the link *is*
 // the credential, and credentials sign-in is refused until it is redeemed, so
 // requiring a session here would make confirmation impossible.
+// `/reset-password` is deliberately NOT here. It resets the password on an
+// encrypted *note*, and every procedure it calls is a `protectedProcedure` — so
+// an unauthenticated visitor who reached it got a raw `UNAUTHORIZED` from tRPC
+// instead of a sign-in box. Gating it means they are asked to sign in and sent
+// back to the recovery form with `callbackUrl`, which is what the page needs
+// anyway: the PIN it checks belongs to a user.
 const PUBLIC_PATHS = new Set([
   "/",
   "/api/auth",
-  "/reset-password",
   "/verify-email",
   // The footer and the consent line under the sign-up button link here. A visitor
   // has to be able to read what they are agreeing to *before* they have a session,

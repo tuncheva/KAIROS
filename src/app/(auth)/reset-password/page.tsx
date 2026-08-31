@@ -2,11 +2,13 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle } from "~/components/ui/icons";
 import Link from "next/link";
 
 function ResetPasswordForm() {
+  const t = useTranslations("notes.recover");
   const searchParams = useSearchParams();
   const router = useRouter();
   const noteId = searchParams?.get("noteId") ?? "";
@@ -23,7 +25,7 @@ function ResetPasswordForm() {
     onSuccess: () => {
       setSuccess(true);
       setTimeout(() => {
-        router.push("/notes");
+        router.push(`/notes/${noteId}`);
       }, 3000);
     },
     onError: (error) => {
@@ -36,22 +38,22 @@ function ResetPasswordForm() {
     setError("");
 
     if (!noteId) {
-      setError("Invalid reset link. Please request a new one.");
+      setError(t("invalidLink"));
       return;
     }
 
     if (!newPassword || newPassword.length < 1) {
-      setError("Password cannot be empty.");
+      setError(t("passwordEmpty"));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t("passwordsMismatch"));
       return;
     }
 
     if (!resetPin || resetPin.length < 4 || !/^\d+$/.test(resetPin)) {
-      setError("Reset PIN must be at least 4 digits.");
+      setError(t("pinTooShort"));
       return;
     }
 
@@ -69,15 +71,15 @@ function ResetPasswordForm() {
           <div className="w-16 h-16 bg-error/15 rounded-full flex items-center justify-center mx-auto mb-4 border border-error/25">
             <AlertCircle className="text-error" size={32} />
           </div>
-          <h1 className="text-2xl font-bold text-fg-primary mb-2">Invalid Reset Link</h1>
+          <h1 className="text-2xl font-bold text-fg-primary mb-2">{t("invalidTitle")}</h1>
           <p className="text-fg-secondary mb-6">
-            This password reset link is invalid or has expired.
+            {t("invalidBody")}
           </p>
           <Link
             href="/notes"
             className="inline-block px-6 py-3 bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-accent transition-all"
           >
-            Go to Notes
+            {t("goToNotes")}
           </Link>
         </div>
       </div>
@@ -91,12 +93,12 @@ function ResetPasswordForm() {
           <div className="w-16 h-16 bg-success/15 rounded-full flex items-center justify-center mx-auto mb-4 border border-success/25">
             <CheckCircle className="text-success" size={32} />
           </div>
-          <h1 className="text-2xl font-bold text-fg-primary mb-2">Password Reset Successful!</h1>
+          <h1 className="text-2xl font-bold text-fg-primary mb-2">{t("successTitle")}</h1>
           <p className="text-fg-secondary mb-6">
-            Your note password has been updated. You can now access your note with the new password.
+            {t("successBody")}
           </p>
           <p className="text-sm text-fg-tertiary">
-            Redirecting you to your notes...
+            {t("redirecting")}
           </p>
         </div>
       </div>
@@ -111,8 +113,8 @@ function ResetPasswordForm() {
             <Lock className="text-white" size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-fg-primary">Reset Note Password</h1>
-            <p className="text-sm text-fg-secondary">Create a new password for your encrypted note</p>
+            <h1 className="text-2xl font-bold text-fg-primary">{t("title")}</h1>
+            <p className="text-sm text-fg-secondary">{t("subtitle")}</p>
           </div>
         </div>
 
@@ -136,7 +138,7 @@ function ResetPasswordForm() {
                 type={showPassword ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password"
+                placeholder={t("newPasswordPlaceholder")}
                 className="w-full p-3 pr-12 bg-bg-surface/60 border border-border-light/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary/50 text-fg-primary placeholder:text-fg-tertiary"
                 disabled={resetPassword.isPending}
               />
@@ -144,7 +146,7 @@ function ResetPasswordForm() {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-tertiary hover:text-fg-primary"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? t("hide") : t("show")}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -161,7 +163,7 @@ function ResetPasswordForm() {
                 type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
+                placeholder={t("confirmPasswordPlaceholder")}
                 className="w-full p-3 pr-12 bg-bg-surface/60 border border-border-light/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary/50 text-fg-primary placeholder:text-fg-tertiary"
                 disabled={resetPassword.isPending}
               />
@@ -169,7 +171,7 @@ function ResetPasswordForm() {
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-tertiary hover:text-fg-primary"
-                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                aria-label={showConfirmPassword ? t("hide") : t("show")}
               >
                 {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -187,19 +189,18 @@ function ResetPasswordForm() {
               pattern="[0-9]*"
               value={resetPin}
               onChange={(e) => setResetPin(e.target.value)}
-              placeholder="Enter your secret reset PIN"
+              placeholder={t("pinPlaceholder")}
               className="w-full p-3 bg-bg-surface/60 border border-border-light/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary/50 text-fg-primary placeholder:text-fg-tertiary"
               disabled={resetPassword.isPending}
             />
             <p className="mt-1 text-xs text-fg-tertiary">
-              This is the PIN you configured in Security Settings to reset locked note passwords.
+              {t("pinHelp")}
             </p>
           </div>
 
           <div className="bg-accent-primary/5 border border-accent-primary/20 rounded-lg p-4">
             <p className="text-sm text-fg-secondary">
-              💡 <strong className="text-fg-primary">Tip:</strong> Choose a strong password that you will remember.
-              You will need this password to access your encrypted note.
+              💡 <strong className="text-fg-primary">{t("tipLabel")}</strong> {t("tipBody")}
             </p>
           </div>
 
@@ -209,7 +210,7 @@ function ResetPasswordForm() {
             className="w-full px-6 py-3 bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-semibold rounded-lg hover:shadow-xl hover:shadow-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Lock size={18} />
-            {resetPassword.isPending ? "Resetting Password..." : "Reset Password"}
+            {resetPassword.isPending ? t("submitting") : t("submit")}
           </button>
         </form>
 
@@ -227,10 +228,12 @@ function ResetPasswordForm() {
 }
 
 export default function ResetPasswordPage() {
+  const tCommon = useTranslations("common");
+
   return (
     <Suspense fallback={
       <div className="min-h-dvh bg-bg-primary flex items-center justify-center">
-        <div className="text-fg-secondary">Loading...</div>
+        <div className="text-fg-secondary">{tCommon("loading")}</div>
       </div>
     }>
       <ResetPasswordForm />
