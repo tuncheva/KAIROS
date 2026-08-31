@@ -343,7 +343,11 @@
       "invalidLink": "Invalid reset link. Please request a new one.",
       "passwordEmpty": "Password cannot be empty.",
       "passwordsMismatch": "Passwords do not match.",
-      "pinTooShort": "The reset PIN must be at least 4 digits."
+      "pinTooShort": "The reset PIN must be at least 4 digits.",
+      "newPasswordLabel": "New password",
+      "confirmPasswordLabel": "Confirm new password",
+      "pinLabel": "Reset PIN",
+      "backToNotes": "← Back to notes"
     }
   },
   "progress": {

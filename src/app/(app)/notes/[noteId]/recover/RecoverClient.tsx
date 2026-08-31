@@ -1,17 +1,31 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+/**
+ * Recovering a note whose password is gone.
+ *
+ * This lived at `/reset-password`, which promises to reset the password on
+ * your *account* — that lives inside `SignInModal` — so people arrived here
+ * with the wrong expectation and left without doing either. It is now a child
+ * of the note it recovers, which is also what makes `noteId` a route param
+ * rather than a query string that could simply be absent.
+ *
+ * The PIN is the credential. An emailed token was drafted for this page and
+ * `email.ts` still built a URL carrying one, but nothing ever called the
+ * sender and no token was ever issued or stored — see the note on
+ * `sendPasswordResetEmail`. Honouring a token requires first minting one, and
+ * that is a feature rather than a fix.
+ */
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle } from "~/components/ui/icons";
 import Link from "next/link";
 
-function ResetPasswordForm() {
+export function RecoverClient({ noteId }: { noteId: string }) {
   const t = useTranslations("notes.recover");
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const noteId = searchParams?.get("noteId") ?? "";
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -66,7 +80,7 @@ function ResetPasswordForm() {
 
   if (!noteId) {
     return (
-      <div className="min-h-dvh bg-bg-primary flex items-center justify-center p-4">
+      <div className="flex min-h-full items-center justify-center p-4">
         <div className="surface-card p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-error/15 rounded-full flex items-center justify-center mx-auto mb-4 border border-error/25">
             <AlertCircle className="text-error" size={32} />
@@ -88,7 +102,7 @@ function ResetPasswordForm() {
 
   if (success) {
     return (
-      <div className="min-h-dvh bg-bg-primary flex items-center justify-center p-4">
+      <div className="flex min-h-full items-center justify-center p-4">
         <div className="surface-card p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-success/15 rounded-full flex items-center justify-center mx-auto mb-4 border border-success/25">
             <CheckCircle className="text-success" size={32} />
@@ -106,7 +120,7 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-dvh bg-bg-primary flex items-center justify-center p-4">
+    <div className="flex min-h-full items-center justify-center p-4">
       <div className="surface-card p-8 max-w-md w-full">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-xl flex items-center justify-center shadow-sm">
@@ -130,7 +144,7 @@ function ResetPasswordForm() {
 
           <div>
             <label htmlFor="new-password" className="block text-sm font-semibold text-fg-primary mb-2">
-              New Password
+              {t("newPasswordLabel")}
             </label>
             <div className="relative">
               <input
@@ -155,7 +169,7 @@ function ResetPasswordForm() {
 
           <div>
             <label htmlFor="confirm-password" className="block text-sm font-semibold text-fg-primary mb-2">
-              Confirm New Password
+              {t("confirmPasswordLabel")}
             </label>
             <div className="relative">
               <input
@@ -180,7 +194,7 @@ function ResetPasswordForm() {
 
           <div>
             <label htmlFor="reset-pin" className="block text-sm font-semibold text-fg-primary mb-2">
-              Reset PIN
+              {t("pinLabel")}
             </label>
             <input
               id="reset-pin"
@@ -219,24 +233,10 @@ function ResetPasswordForm() {
             href="/notes"
             className="text-sm text-accent-primary hover:text-accent-hover font-medium transition-colors"
           >
-            ← Back to Notes
+            {t("backToNotes")}
           </Link>
         </div>
       </div>
     </div>
-  );
-}
-
-export default function ResetPasswordPage() {
-  const tCommon = useTranslations("common");
-
-  return (
-    <Suspense fallback={
-      <div className="min-h-dvh bg-bg-primary flex items-center justify-center">
-        <div className="text-fg-secondary">{tCommon("loading")}</div>
-      </div>
-    }>
-      <ResetPasswordForm />
-    </Suspense>
   );
 }

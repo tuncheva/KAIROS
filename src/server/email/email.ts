@@ -5,13 +5,6 @@ import { createLogger } from "~/server/logger";
 
 const log = createLogger("email");
 
-export interface PasswordResetEmailParams {
-  email: string;
-  userName: string;
-  noteId: number;
-  resetToken: string;
-}
-
 export interface WelcomeEmailParams {
   email: string;
   userName: string;
@@ -43,11 +36,6 @@ export interface BriefEmailParams {
   /** The agent's prose, already written in the user's language. */
   body: string;
 }
-
-type PasswordResetTemplateInput = {
-  userName: string;
-  resetUrl: string;
-};
 
 type EmailVerificationTemplateInput = {
   userName: string;
@@ -378,40 +366,21 @@ ${SIGN_OFF}`,
 } as const;
 
 // ---------------------------------------------------------------------------
-// Note password reset (link-based)
-// ---------------------------------------------------------------------------
-
-const PasswordResetEmailTemplate = {
-  subject: `Reset your note password — ${BRAND_NAME}`,
-  renderHtml: ({ userName, resetUrl }: PasswordResetTemplateInput) =>
-    emailWrapper(`
-${logoBlock("Reset your note password")}
-${card(`${greeting(userName)}
-${paragraph("Someone asked to reset the password on one of your encrypted notes. This affects that note only, not your account:")}
-${button(resetUrl, "Reset note password")}
-${notice(
-  "If this wasn't you",
-  "Ignore this email and the note stays locked as it is. The link expires in <strong>1 hour</strong>.",
-)}
-              <p style="margin:24px 0 0;color:${BRAND.inkMuted};font-size:14px;line-height:1.6;">If the button doesn't work, paste this into your browser:</p>
-              <p style="margin:8px 0 0;color:${BRAND.accent};font-size:13px;word-break:break-all;">${escapeUrl(resetUrl)}</p>`)}`),
-  renderText: ({ userName, resetUrl }: PasswordResetTemplateInput) =>
-    `Hi ${userName},
-
-Someone asked to reset the password on one of your encrypted notes. This affects that note only, not your account.
-
-Reset it here:
-${resetUrl}
-
-This link expires in 1 hour. If it wasn't you, ignore this email and the note stays locked as it is.
-
-${SIGN_OFF}`,
-} as const;
-
-// ---------------------------------------------------------------------------
 // Email Service
 // ---------------------------------------------------------------------------
 
+/**
+ * There used to be a "reset your note password" template and sender here,
+ * building `/reset-password?noteId=…&token=…`.
+ *
+ * It had no callers — not one, anywhere — so no token was ever minted, stored
+ * or checked, and the URL it composed pointed at a page that read `noteId` and
+ * ignored `token`. The recovery flow that does exist is PIN-based and lives at
+ * `/notes/[noteId]/recover`. Reviving the emailed link means designing the
+ * token first (a table, an expiry, a single-use check), which is a feature
+ * rather than a fix, so the unreachable half was removed instead of left
+ * looking like it worked.
+ */
 type EmailServiceOptions = {
   appUrl: string;
   fromEmail: string;
@@ -423,34 +392,7 @@ export class EmailService {
     private readonly options: EmailServiceOptions
   ) {}
 
-  async sendPasswordResetEmail({
-    email,
-    userName,
-    noteId,
-    resetToken,
-  }: PasswordResetEmailParams): Promise<{ id: string } | null> {
-    const resetUrl = `${this.options.appUrl}/reset-password?noteId=${noteId}&token=${resetToken}`;
 
-    try {
-      const { data, error } = await this.resend.emails.send({
-        from: this.options.fromEmail,
-        to: [email],
-        subject: PasswordResetEmailTemplate.subject,
-        html: PasswordResetEmailTemplate.renderHtml({ userName, resetUrl }),
-        text: PasswordResetEmailTemplate.renderText({ userName, resetUrl }),
-      });
-
-      if (error) {
-        log.error('note password reset send failed', { err: error });
-        throw new Error(`Failed to send email: ${error.message}`);
-      }
-
-      return data;
-    } catch (error) {
-      log.error('note password reset send threw', { err: error });
-      throw error;
-    }
-  }
 
   async sendWelcomeEmail({
     email,
@@ -704,12 +646,6 @@ export function getEmailService(): EmailService {
     fromEmail,
   });
   return cachedEmailService;
-}
-
-export async function sendPasswordResetEmail(
-  params: PasswordResetEmailParams
-): Promise<{ id: string } | null> {
-  return getEmailService().sendPasswordResetEmail(params);
 }
 
 export async function sendWelcomeEmail(

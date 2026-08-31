@@ -31,12 +31,11 @@ const SECURE_SESSION_COOKIE = "__Secure-authjs.session-token";
 // `/verify-email` must be reachable without a session: the token in the link *is*
 // the credential, and credentials sign-in is refused until it is redeemed, so
 // requiring a session here would make confirmation impossible.
-// `/reset-password` is deliberately NOT here. It resets the password on an
-// encrypted *note*, and every procedure it calls is a `protectedProcedure` — so
-// an unauthenticated visitor who reached it got a raw `UNAUTHORIZED` from tRPC
-// instead of a sign-in box. Gating it means they are asked to sign in and sent
-// back to the recovery form with `callbackUrl`, which is what the page needs
-// anyway: the PIN it checks belongs to a user.
+// Note recovery is deliberately not here either. It now lives at
+// `/notes/[noteId]/recover` under `(app)`, so the shell's own session check
+// sends an unauthenticated visitor to sign in with a `callbackUrl` back to the
+// form — which is what the page needs anyway, since the PIN it checks belongs
+// to a user and every procedure it calls is a `protectedProcedure`.
 const PUBLIC_PATHS = new Set([
   "/",
   "/api/auth",

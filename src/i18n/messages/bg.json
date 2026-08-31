@@ -343,7 +343,11 @@
       "invalidLink": "Невалиден линк. Моля, поискайте нов.",
       "passwordEmpty": "Паролата не може да е празна.",
       "passwordsMismatch": "Паролите не съвпадат.",
-      "pinTooShort": "PIN кодът трябва да е поне 4 цифри."
+      "pinTooShort": "PIN кодът трябва да е поне 4 цифри.",
+      "newPasswordLabel": "Нова парола",
+      "confirmPasswordLabel": "Потвърдете новата парола",
+      "pinLabel": "ПИН за възстановяване",
+      "backToNotes": "← Обратно към бележките"
     }
   },
   "progress": {
