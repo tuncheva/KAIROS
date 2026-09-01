@@ -1,0 +1,3235 @@
+<!doctype html>
+<html lang="en" data-accent="purple">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Interactive redesign proposal for the KAIROS notes page and all eleven popups opened from it — editorial-tier visual language, one dialog chrome, and a full motion spec. Self-contained: every popup really opens, every animation really plays.">
+<title>Notes Redesign — UI Proposal — KAIROS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Nunito+Sans:wght@200;300;400;600;700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   KAIROS TOKENS — ported verbatim from src/styles/globals.css
+   Values are space-separated RGB triples so rgb(var(--x) / alpha) works,
+   exactly as the real app does it.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root {
+  color-scheme: light;
+
+  --bg-primary: 252 253 255;
+  --bg-secondary: 248 250 252;
+  --bg-tertiary: 241 245 249;
+  --bg-elevated: 253 254 255;
+  --bg-surface: 250 251 253;
+  --bg-overlay: 253 254 255;
+
+  --fg-primary: 15 23 42;
+  --fg-secondary: 71 85 105;
+  --fg-tertiary: 100 116 139;
+  --fg-quaternary: 148 163 184;
+
+  --border-light: 200 200 200;
+  --border-medium: 203 213 225;
+  --border-strong: 148 163 184;
+
+  --success: 34 197 94;
+  --warning: 251 146 60;
+  --error: 239 68 68;
+  --info: 59 130 246;
+  --dash-day: 8 145 178;
+
+  --brand-purple: 168 85 247;
+  --brand-pink: 213 145 145;
+  --brand-caramel: 233 168 108;
+  --brand-mint: 95 180 156;
+  --brand-sky: 39 111 191;
+  --brand-strawberry: 240 58 71;
+
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / .05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / .1), 0 1px 2px -1px rgb(0 0 0 / .1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / .1), 0 2px 4px -2px rgb(0 0 0 / .1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / .1), 0 4px 6px -4px rgb(0 0 0 / .1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / .1), 0 8px 10px -6px rgb(0 0 0 / .1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / .25);
+
+  /* The four house easings, from globals.css */
+  --e-enter: cubic-bezier(.22, 1, .36, 1);
+  --e-rise:  cubic-bezier(.2, .8, .25, 1);
+  --e-over:  cubic-bezier(.34, 1.56, .64, 1);
+  --e-ctrl:  cubic-bezier(.4, 0, .2, 1);
+
+  --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Instrument Serif", "Nunito Sans", ui-serif, Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Dark tokens — .dark block from globals.css */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg-primary: 8 8 12;
+    --bg-secondary: 14 14 18;
+    --bg-tertiary: 20 20 26;
+    --bg-elevated: 18 18 22;
+    --bg-surface: 12 12 16;
+    --bg-overlay: 16 16 20;
+    --fg-primary: 255 255 255;
+    --fg-secondary: 220 220 228;
+    --fg-tertiary: 170 170 180;
+    --fg-quaternary: 120 120 132;
+    --border-light: 60 60 60;
+    --border-medium: 60 60 68;
+    --border-strong: 80 80 88;
+    --success: 74 222 128;
+    --warning: 251 191 36;
+    --error: 248 113 113;
+    --info: 96 165 250;
+    --dash-day: 34 211 238;
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / .3);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / .4), 0 1px 2px -1px rgb(0 0 0 / .4);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / .4), 0 2px 4px -2px rgb(0 0 0 / .4);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / .5), 0 4px 6px -4px rgb(0 0 0 / .5);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / .6), 0 8px 10px -6px rgb(0 0 0 / .6);
+    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / .7);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-primary: 8 8 12;
+  --bg-secondary: 14 14 18;
+  --bg-tertiary: 20 20 26;
+  --bg-elevated: 18 18 22;
+  --bg-surface: 12 12 16;
+  --bg-overlay: 16 16 20;
+  --fg-primary: 255 255 255;
+  --fg-secondary: 220 220 228;
+  --fg-tertiary: 170 170 180;
+  --fg-quaternary: 120 120 132;
+  --border-light: 60 60 60;
+  --border-medium: 60 60 68;
+  --border-strong: 80 80 88;
+  --success: 74 222 128;
+  --warning: 251 191 36;
+  --error: 248 113 113;
+  --info: 96 165 250;
+  --dash-day: 34 211 238;
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / .3);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / .4), 0 1px 2px -1px rgb(0 0 0 / .4);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / .4), 0 2px 4px -2px rgb(0 0 0 / .4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / .5), 0 4px 6px -4px rgb(0 0 0 / .5);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / .6), 0 8px 10px -6px rgb(0 0 0 / .6);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / .7);
+}
+
+/* ─── Accent palettes — all six data-accent values from globals.css ───── */
+:root[data-accent="purple"]     { --accent-primary: 168 85 247;  --accent-secondary: 192 132 252; --accent-tertiary: 216 180 254; --accent-hover: 147 51 234; }
+:root[data-accent="pink"]       { --accent-primary: 213 145 145; --accent-secondary: 228 171 171; --accent-tertiary: 243 213 213; --accent-hover: 194 120 120; }
+:root[data-accent="caramel"]    { --accent-primary: 233 168 108; --accent-secondary: 242 191 141; --accent-tertiary: 251 229 199; --accent-hover: 209 147 88; }
+:root[data-accent="mint"]       { --accent-primary: 95 180 156;  --accent-secondary: 130 201 183; --accent-tertiary: 186 231 220; --accent-hover: 73 148 128; }
+:root[data-accent="sky"]        { --accent-primary: 39 111 191;  --accent-secondary: 92 158 221;  --accent-tertiary: 171 208 242; --accent-hover: 30 92 160; }
+:root[data-accent="strawberry"] { --accent-primary: 240 58 71;   --accent-secondary: 248 110 122; --accent-tertiary: 252 193 198; --accent-hover: 205 41 56; }
+
+/* Dark hover goes LIGHTER (the real app does this too) */
+:root[data-theme="dark"][data-accent="purple"]     { --accent-hover: 216 180 254; }
+:root[data-theme="dark"][data-accent="pink"]       { --accent-hover: 243 213 213; }
+:root[data-theme="dark"][data-accent="caramel"]    { --accent-hover: 251 229 199; }
+:root[data-theme="dark"][data-accent="mint"]       { --accent-hover: 186 231 220; }
+:root[data-theme="dark"][data-accent="sky"]        { --accent-hover: 171 208 242; }
+:root[data-theme="dark"][data-accent="strawberry"] { --accent-hover: 252 193 198; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-accent="purple"]     { --accent-hover: 216 180 254; }
+  :root:not([data-theme="light"])[data-accent="pink"]       { --accent-hover: 243 213 213; }
+  :root:not([data-theme="light"])[data-accent="caramel"]    { --accent-hover: 251 229 199; }
+  :root:not([data-theme="light"])[data-accent="mint"]       { --accent-hover: 186 231 220; }
+  :root:not([data-theme="light"])[data-accent="sky"]        { --accent-hover: 171 208 242; }
+  :root:not([data-theme="light"])[data-accent="strawberry"] { --accent-hover: 252 193 198; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MOTION — every keyframe used anywhere in this document.
+   Reused from globals.css where one already exists; new ones are marked.
+   ══════════════════════════════════════════════════════════════════════════ */
+@keyframes kairos-page-enter        { 0%{opacity:0;transform:translateY(8px)} 100%{opacity:1;transform:none} }
+@keyframes kairos-stagger-child     { to { opacity:1; transform:none } }
+@keyframes kairos-scale-in          { from{opacity:0;transform:scale(.95) translateY(-8px)} to{opacity:1;transform:none} }
+@keyframes kairos-scale-out         { from{opacity:1;transform:none} to{opacity:0;transform:scale(.96) translateY(-4px)} }   /* new — the missing exit */
+@keyframes kairos-modal-enter       { from{opacity:0;transform:translateY(16px) scale(.97)} to{opacity:1;transform:none} }
+@keyframes kairos-modal-exit        { from{opacity:1;transform:none} to{opacity:0;transform:translateY(8px) scale(.98)} }    /* new — the missing exit */
+@keyframes cp-backdrop-in          { from{opacity:0} to{opacity:1} }
+@keyframes cp-backdrop-out         { from{opacity:1} to{opacity:0} }
+@keyframes dash-rise               { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+@keyframes dash-fade               { from{opacity:0} to{opacity:1} }
+@keyframes dash-grow               { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+@keyframes dash-row-out            { to{opacity:0;transform:translateX(-12px);max-height:0;padding-top:0;padding-bottom:0;border-width:0} }
+@keyframes calendar-pop            { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+@keyframes calendar-field-in       { from{opacity:0;transform:translateX(22px)} to{opacity:1;transform:none} }
+@keyframes projects-drawer-in      { from{transform:translateX(-100%)} to{transform:none} }
+@keyframes projects-drawer-out     { from{transform:none} to{transform:translateX(-100%)} }
+@keyframes toast-in                { from{opacity:0;transform:translateY(10px) scale(.98)} to{opacity:1;transform:none} }
+@keyframes sel-bar-in              { from{transform:scaleY(0)} to{transform:scaleY(1)} }                                     /* new */
+@keyframes push-in-right           { from{opacity:0;transform:translateX(26px)} to{opacity:1;transform:none} }               /* new */
+@keyframes push-out-left           { from{opacity:1;transform:none} to{opacity:0;transform:translateX(-26px)} }              /* new */
+@keyframes strip-in                { from{opacity:0;max-height:0;transform:translateY(-6px)} to{opacity:1;max-height:80px;transform:none} } /* new */
+@keyframes shimmer                 { from{background-position:-160% 0} to{background-position:260% 0} }                      /* new */
+@keyframes shake                   { 0%,100%{transform:none} 15%{transform:translateX(-4px)} 35%{transform:translateX(4px)} 55%{transform:translateX(-3px)} 75%{transform:translateX(2px)} } /* new */
+@keyframes badge-morph             { 0%{transform:scale(1)} 45%{transform:scale(.86)} 100%{transform:scale(1)} }             /* new */
+@keyframes draw-check              { from{stroke-dashoffset:24} to{stroke-dashoffset:0} }                                    /* new */
+@keyframes spin                    { to{transform:rotate(360deg)} }
+@keyframes ring-pulse              { 0%{box-shadow:0 0 0 0 rgb(var(--accent-primary)/.35)} 100%{box-shadow:0 0 0 12px rgb(var(--accent-primary)/0)} }
+
+/* ─── Reduced motion. The media query is the real guarantee; the in-page
+       toggle (data-motion="reduce") forces the same state so a reviewer can
+       verify the degradation without touching OS settings. ─────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+html[data-motion="reduce"] *, html[data-motion="reduce"] *::before, html[data-motion="reduce"] *::after {
+  animation-duration: .001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .001ms !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DOCUMENT CHROME
+   ══════════════════════════════════════════════════════════════════════════ */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+body {
+  margin: 0;
+  background: rgb(var(--bg-primary));
+  color: rgb(var(--fg-primary));
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; }
+a { color: rgb(var(--accent-primary)); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid rgb(var(--accent-primary)); outline-offset: 2px; }
+::selection { background: rgb(var(--accent-primary) / .28); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(var(--border-medium)); border-radius: 9999px; }
+
+.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+.icon.s11 { width: 11px; height: 11px; stroke-width: 2.4; }
+.icon.s12 { width: 12px; height: 12px; stroke-width: 2.3; }
+.icon.s13 { width: 13px; height: 13px; stroke-width: 2.2; }
+.icon.s14 { width: 14px; height: 14px; }
+.icon.s15 { width: 15px; height: 15px; }
+.icon.s18 { width: 18px; height: 18px; stroke-width: 1.8; }
+.icon.s22 { width: 22px; height: 22px; stroke-width: 1.6; }
+.icon.s24 { width: 24px; height: 24px; stroke-width: 1.6; }
+.icon.s32 { width: 32px; height: 32px; stroke-width: 1.5; }
+.spin { animation: spin 1s linear infinite; }
+
+/* ─── Sticky control bar ─────────────────────────────────────────────────── */
+.bar {
+  position: sticky; top: 0; z-index: 200;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 12px 24px;
+  background: rgb(var(--bg-overlay) / .88);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border-bottom: 1px solid rgb(var(--border-light) / .55);
+}
+.bar-mark { display: flex; align-items: baseline; gap: 10px; margin-right: auto; }
+.bar-mark b { font-family: var(--font-display); font-size: 17px; font-weight: 400; letter-spacing: .16em; text-transform: uppercase; }
+.bar-mark span { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .14em; color: rgb(var(--fg-quaternary)); }
+.ctrl { display: flex; align-items: center; gap: 8px; }
+.ctrl > label { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .14em; color: rgb(var(--fg-quaternary)); }
+.seg { display: flex; border: 1px solid rgb(var(--border-medium)); border-radius: 10px; overflow: hidden; }
+.seg button {
+  display: grid; place-items: center;
+  height: 28px; padding: 0 9px;
+  color: rgb(var(--fg-tertiary));
+  transition: background-color 180ms var(--e-ctrl), color 180ms var(--e-ctrl);
+}
+.seg button + button { border-left: 1px solid rgb(var(--border-medium)); }
+.seg button:hover { background: rgb(var(--bg-secondary)); color: rgb(var(--fg-primary)); }
+.seg button[aria-pressed="true"] { background: rgb(var(--accent-primary) / .12); color: rgb(var(--accent-primary)); }
+.swatches { display: flex; gap: 6px; }
+.sw { width: 20px; height: 20px; border-radius: 9999px; border: 1.5px solid rgb(var(--border-medium)); transition: transform 180ms var(--e-over), box-shadow 180ms var(--e-ctrl); }
+.sw:hover { transform: scale(1.15); }
+.sw[aria-pressed="true"] { border-color: rgb(var(--fg-primary)); box-shadow: 0 0 0 2px rgb(var(--bg-primary)), 0 0 0 3.5px rgb(var(--fg-primary) / .35); }
+
+/* ─── Page rhythm ────────────────────────────────────────────────────────── */
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px 140px; }
+.prose { max-width: 74ch; }
+.hero { padding: 72px 0 44px; animation: dash-rise .75s var(--e-rise) both; }
+.kicker { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .16em; color: rgb(var(--fg-quaternary)); }
+h1 { margin: 14px 0 0; font-size: clamp(34px, 5.2vw, 54px); line-height: 1.06; letter-spacing: -.03em; font-weight: 700; }
+h1 em { font-family: var(--font-display); font-style: italic; font-weight: 400; letter-spacing: -.01em; }
+.lede { margin: 18px 0 0; font-size: 18px; line-height: 1.6; color: rgb(var(--fg-tertiary)); max-width: 68ch; }
+.lede strong { color: rgb(var(--fg-secondary)); font-weight: 600; }
+
+section { padding-top: 30px; }
+.sec-h { border-top: 1px solid rgb(var(--border-light) / .6); padding-top: 26px; margin-bottom: 26px; }
+.sec-h .num { font-family: var(--font-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: rgb(var(--accent-primary)); }
+h2 { margin: 10px 0 0; font-size: 27px; line-height: 1.16; letter-spacing: -.022em; font-weight: 700; }
+h3 { margin: 34px 0 12px; font-size: 17px; letter-spacing: -.012em; font-weight: 700; }
+h4 { margin: 0 0 8px; font-size: 14px; letter-spacing: -.005em; font-weight: 700; }
+.sec-h p { margin: 12px 0 0; color: rgb(var(--fg-tertiary)); font-size: 15px; max-width: 74ch; }
+p { margin: 0 0 14px; }
+
+/* ─── Demo frame ─────────────────────────────────────────────────────────── */
+.demo { border: 1px solid rgb(var(--border-light) / .6); border-radius: 14px; overflow: hidden; background: rgb(var(--bg-elevated)); }
+.demo-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 9px 14px;
+  border-bottom: 1px solid rgb(var(--border-light) / .55);
+  background: rgb(var(--bg-secondary));
+}
+.demo-bar .t { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .14em; color: rgb(var(--fg-tertiary)); margin-right: auto; }
+.mini {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 26px; padding: 0 11px;
+  border: 1px solid rgb(var(--border-medium)); border-radius: 8px;
+  font-size: 11.5px; font-weight: 600; color: rgb(var(--fg-secondary));
+  transition: all 200ms var(--e-ctrl);
+}
+.mini:hover { background: rgb(var(--bg-tertiary)); color: rgb(var(--fg-primary)); transform: translateY(-1px); }
+.mini.accent { border-color: rgb(var(--accent-primary) / .35); background: rgb(var(--accent-primary) / .1); color: rgb(var(--accent-primary)); }
+.mini.accent:hover { background: rgb(var(--accent-primary) / .2); }
+.demo-body { padding: 22px; background: rgb(var(--bg-primary)); }
+.demo-body.flush { padding: 0; overflow-x: auto; }
+.demo-body.stage { position: relative; min-height: 470px; display: grid; place-items: center; padding: 34px 22px; overflow: hidden; }
+
+/* ─── Annotation ─────────────────────────────────────────────────────────── */
+.cols { display: grid; gap: 26px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1000px) { .cols.split { grid-template-columns: minmax(0, 1fr) 330px; align-items: start; } }
+.why { border-left: 2px solid rgb(var(--accent-primary) / .3); padding-left: 16px; }
+.why .h { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .14em; color: rgb(var(--fg-quaternary)); margin-bottom: 10px; }
+.why ul { margin: 0; padding: 0; list-style: none; }
+.why li { position: relative; padding: 0 0 12px 15px; font-size: 13.5px; line-height: 1.55; color: rgb(var(--fg-tertiary)); }
+.why li::before { content: ""; position: absolute; left: 0; top: 8px; width: 5px; height: 5px; border-radius: 9999px; background: rgb(var(--accent-primary) / .55); }
+.why li b { color: rgb(var(--fg-secondary)); font-weight: 600; }
+code, .mono { font-family: var(--font-mono); font-size: .86em; }
+code { background: rgb(var(--bg-tertiary)); padding: 1.5px 5px; border-radius: 4px; color: rgb(var(--fg-secondary)); overflow-wrap: anywhere; }
+p, li, td, .lede, .sec-h p { overflow-wrap: break-word; }
+
+.ba { display: grid; gap: 1px; background: rgb(var(--border-light) / .6); border: 1px solid rgb(var(--border-light) / .6); border-radius: 10px; overflow: hidden; }
+@media (min-width: 720px) { .ba { grid-template-columns: 1fr 1fr; } }
+.ba > div { background: rgb(var(--bg-elevated)); padding: 15px 17px; }
+.ba .lbl { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .14em; margin-bottom: 8px; }
+.ba .was .lbl { color: rgb(var(--error)); }
+.ba .now .lbl { color: rgb(var(--success)); }
+.ba p { margin: 0; font-size: 13px; line-height: 1.55; color: rgb(var(--fg-tertiary)); }
+
+table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.tbl th { text-align: left; font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .14em; color: rgb(var(--fg-quaternary)); font-weight: 500; padding: 0 12px 9px 0; border-bottom: 1px solid rgb(var(--border-light) / .6); }
+table.tbl td { padding: 11px 12px 11px 0; border-bottom: 1px solid rgb(var(--border-light) / .4); color: rgb(var(--fg-tertiary)); vertical-align: top; }
+table.tbl td:first-child { color: rgb(var(--fg-secondary)); font-weight: 600; }
+table.tbl .tag { display: inline-block; font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em; border: 1px solid; border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+.tag.reused { border-color: rgb(var(--success) / .45); color: rgb(var(--success)); }
+.tag.new { border-color: rgb(var(--accent-primary) / .45); color: rgb(var(--accent-primary)); }
+.tag.kept { border-color: rgb(var(--border-medium)); color: rgb(var(--fg-tertiary)); }
+
+.toc { display: grid; gap: 1px; background: rgb(var(--border-light) / .6); border: 1px solid rgb(var(--border-light) / .6); border-radius: 10px; overflow: hidden; margin: 34px 0 0; }
+@media (min-width: 640px) { .toc { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1000px) { .toc { grid-template-columns: repeat(4, 1fr); } }
+.toc a { display: block; background: rgb(var(--bg-elevated)); padding: 13px 15px; color: inherit; text-decoration: none; transition: background-color 300ms var(--e-ctrl); }
+.toc a:hover { background: rgb(var(--accent-primary) / .07); text-decoration: none; }
+.toc a .n { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .14em; color: rgb(var(--fg-quaternary)); display: block; }
+.toc a .l { font-size: 13.5px; font-weight: 600; letter-spacing: -.008em; }
+
+/* Narrow viewports: the document itself must never scroll sideways.
+   Wide content (the three-pane frames, the tables) scrolls inside its own box. */
+@media (max-width: 560px) {
+  .wrap { padding: 0 16px 96px; }
+  .dlg, .dlg.wide, .dlg.narrow { max-width: 100%; }
+  .scrim { padding: 12px; }
+  .demo-body { padding: 16px; }
+  .demo-body.stage { padding: 20px 14px; }
+  .page-body { padding: 20px 18px 14px; }
+  .type-row { flex-direction: column; gap: 4px; }
+  .type-row .spec { width: auto; }
+  .swatch { width: calc(50% - 5px); }
+  .phone { height: 560px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE NOTES APP — proposed editorial-tier chrome.
+   Everything below is scoped to .app so it cannot leak into the document.
+   Class names map 1:1 to real Tailwind strings in §16.
+   ══════════════════════════════════════════════════════════════════════════ */
+.app {
+  --rail-w: 236px;
+  --list-w: 318px;
+  position: relative;
+  display: flex;
+  height: 640px;
+  background: rgb(var(--bg-primary));
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: hidden;
+  isolation: isolate;
+}
+.app.short { height: 470px; }
+.app.three { min-width: 880px; }
+.app *, .app *::before, .app *::after { box-sizing: border-box; }
+
+/* Micro-label — the single house convention replacing five ad-hoc sizes */
+.micro { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .14em; color: rgb(var(--fg-quaternary)); font-weight: 400; }
+.micro.tight { letter-spacing: .12em; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ─── Topbar strip (context only — the real TopBar is out of scope) ─────── */
+.app-top {
+  position: absolute; inset: 0 0 auto 0; height: 40px; z-index: 6;
+  display: flex; align-items: center; gap: 10px; padding: 0 14px;
+  background: rgb(var(--bg-overlay));
+  border-bottom: 1px solid rgb(var(--border-light) / .5);
+}
+.app-top .dot { width: 9px; height: 9px; border-radius: 9999px; background: rgb(var(--border-medium)); }
+.app-top .crumb { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .14em; color: rgb(var(--fg-quaternary)); }
+.app-panes { display: flex; width: 100%; padding-top: 40px; }
+
+/* ══ RAIL ═════════════════════════════════════════════════════════════════ */
+.rail {
+  width: var(--rail-w); flex: none;
+  display: flex; flex-direction: column;
+  background: rgb(var(--bg-primary));
+  border-right: 1px solid rgb(var(--border-light) / .6);
+  overflow: hidden;
+}
+.rail-head { flex: none; padding: 16px 16px 12px; }
+.rail-head .row2 { display: flex; align-items: center; gap: 8px; }
+.rail-head h1 { margin: 0; flex: 1; font-size: 15px; font-weight: 700; letter-spacing: -.012em; }
+.rail-head .count { font-family: var(--font-mono); font-size: 10px; letter-spacing: .14em; color: rgb(var(--fg-quaternary)); font-variant-numeric: tabular-nums; }
+
+/* Primary action — flat accent, per DashboardClient CTA. No gradient. */
+.btn-accent {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  height: 32px; padding: 0 13px;
+  border-radius: 10px;
+  background: rgb(var(--accent-primary));
+  color: #fff; font-size: 13px; font-weight: 700; letter-spacing: -.005em;
+  transition: background-color 350ms var(--e-ctrl), transform 350ms var(--e-ctrl), box-shadow 350ms var(--e-ctrl);
+}
+.btn-accent:hover { background: rgb(var(--accent-hover)); transform: translateY(-1.5px); box-shadow: 0 6px 18px -8px rgb(var(--accent-primary) / .8); }
+.btn-accent:active { transform: translateY(0) scale(.98); }
+.btn-accent.sq { width: 32px; padding: 0; }
+.btn-accent.lg { height: 42px; padding: 0 22px; font-size: 14.5px; }
+.btn-accent[disabled] { opacity: .5; pointer-events: none; }
+
+/* Ghost / cancel */
+.btn-ghost {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  height: 32px; padding: 0 14px;
+  border: 1px solid rgb(var(--border-medium)); border-radius: 10px;
+  font-size: 13px; font-weight: 600; color: rgb(var(--fg-secondary));
+  transition: background-color 200ms var(--e-ctrl), color 200ms var(--e-ctrl), border-color 200ms var(--e-ctrl);
+}
+.btn-ghost:hover { background: rgb(var(--bg-secondary)); color: rgb(var(--fg-primary)); }
+.btn-danger {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  height: 32px; padding: 0 14px; border-radius: 10px;
+  background: rgb(var(--error)); color: #fff; font-size: 13px; font-weight: 700;
+  transition: filter 200ms var(--e-ctrl), transform 200ms var(--e-ctrl);
+}
+.btn-danger:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+/* Icon button — CalendarClient 30px bordered square */
+.ibtn {
+  display: grid; place-items: center;
+  width: 30px; height: 30px; flex: none;
+  border: 1px solid rgb(var(--border-medium)); border-radius: 10px;
+  color: rgb(var(--fg-secondary));
+  transition: background-color 200ms var(--e-ctrl), color 200ms var(--e-ctrl), border-color 200ms var(--e-ctrl), transform 200ms var(--e-ctrl);
+}
+.ibtn:hover { background: rgb(var(--bg-secondary)); color: rgb(var(--fg-primary)); border-color: rgb(var(--border-strong) / .7); }
+.ibtn:active { transform: scale(.94); }
+.ibtn.bare { border-color: transparent; width: 28px; height: 28px; color: rgb(var(--fg-tertiary)); }
+.ibtn.bare:hover { border-color: transparent; background: rgb(var(--bg-tertiary)); }
+.ibtn.on { border-color: rgb(var(--accent-primary) / .3); background: rgb(var(--accent-primary) / .1); color: rgb(var(--accent-primary)); }
+
+/* Search — hairline field, no filled pill */
+.field {
+  display: flex; align-items: center; gap: 9px;
+  height: 34px; padding: 0 11px;
+  border: 1px solid rgb(var(--border-medium)); border-radius: 10px;
+  background: rgb(var(--bg-surface));
+  color: rgb(var(--fg-tertiary));
+  transition: border-color 200ms var(--e-ctrl), box-shadow 200ms var(--e-ctrl), background-color 200ms var(--e-ctrl);
+}
+.field:focus-within { border-color: rgb(var(--accent-primary) / .6); box-shadow: 0 0 0 3px rgb(var(--accent-primary) / .1); background: rgb(var(--bg-elevated)); }
+.field input, .field select {
+  flex: 1; min-width: 0; border: 0; background: none; outline: none;
+  font-size: 13px; color: rgb(var(--fg-primary));
+}
+.field input::placeholder { color: rgb(var(--fg-quaternary)); }
+.field.tall { height: 38px; }
+.rail-search { padding: 0 16px 14px; flex: none; }
+
+.rail-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 18px; }
+.rail-sect { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 7px; }
+
+/* Nav row — SideNav border-left language, animated */
+.nav-row {
+  position: relative;
+  display: flex; align-items: center; gap: 11px;
+  width: 100%; padding: 9px 16px 9px 14px;
+  border-left: 2px solid transparent;
+  text-align: left; font-size: 13px; color: rgb(var(--fg-secondary));
+  transition: background-color 300ms var(--e-ctrl), color 300ms var(--e-ctrl), border-color 300ms var(--e-ctrl);
+}
+.nav-row:hover { background: rgb(var(--accent-primary) / .06); color: rgb(var(--fg-primary)); }
+.nav-row .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-row .c { font-family: var(--font-mono); font-size: 10px; color: rgb(var(--fg-quaternary)); font-variant-numeric: tabular-nums; }
+.nav-row svg { color: rgb(var(--fg-tertiary)); transition: color 300ms var(--e-ctrl); }
+.nav-row[aria-current="true"] {
+  background: rgb(var(--accent-primary) / .08);
+  border-left-color: rgb(var(--accent-primary));
+  color: rgb(var(--fg-primary)); font-weight: 700;
+}
+.nav-row[aria-current="true"] svg, .nav-row[aria-current="true"] .c { color: rgb(var(--accent-primary)); }
+.nav-row .hov { opacity: 0; transition: opacity 200ms var(--e-ctrl); }
+.nav-row:hover .hov, .nav-row:focus-within .hov { opacity: 1; }
+.rail-empty { padding: 8px 16px; font-size: 12px; color: rgb(var(--fg-quaternary)); }
+
+/* Stagger — reuses .kairos-stagger from globals.css */
+.stagger > * { opacity: 0; transform: translateY(12px); animation: kairos-stagger-child .5s var(--e-enter) forwards; }
+.stagger > *:nth-child(1){animation-delay:.05s} .stagger > *:nth-child(2){animation-delay:.1s}
+.stagger > *:nth-child(3){animation-delay:.15s} .stagger > *:nth-child(4){animation-delay:.2s}
+.stagger > *:nth-child(5){animation-delay:.25s} .stagger > *:nth-child(6){animation-delay:.3s}
+.stagger > *:nth-child(7){animation-delay:.35s} .stagger > *:nth-child(8){animation-delay:.4s}
+
+/* ══ LIST ═════════════════════════════════════════════════════════════════ */
+.list {
+  width: var(--list-w); flex: none;
+  display: flex; flex-direction: column;
+  background: rgb(var(--bg-primary));
+  border-right: 1px solid rgb(var(--border-light) / .6);
+  overflow: hidden;
+}
+.list-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 16px 14px 10px; }
+.list-head h2 { margin: 0; flex: 1; min-width: 0; font-size: 15px; font-weight: 700; letter-spacing: -.012em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Chip vocabulary — CalendarClient SMALL_CHIP */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 26px; padding: 0 10px; flex: none;
+  border: 1px solid rgb(var(--border-medium)); border-radius: 6px;
+  background: none;
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .12em;
+  color: rgb(var(--fg-tertiary)); white-space: nowrap;
+  transition: background-color 250ms var(--e-ctrl), color 250ms var(--e-ctrl), border-color 250ms var(--e-ctrl);
+}
+.chip:hover { background: rgb(var(--bg-secondary)); color: rgb(var(--fg-primary)); }
+.chip[aria-selected="true"], .chip.on {
+  border-color: rgb(var(--accent-primary) / .45);
+  background: rgb(var(--accent-primary) / .1);
+  color: rgb(var(--accent-primary));
+}
+.filters { flex: none; display: flex; gap: 6px; padding: 0 14px 11px; overflow-x: auto; scrollbar-width: none; }
+.filters::-webkit-scrollbar { display: none; }
+
+.list-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.bucket { padding: 15px 14px 6px; }
+.list ul, .rail ul { margin: 0; padding: 0; list-style: none; }
+
+/* Note row — TaskRow hairline row, not a card */
+.row {
+  position: relative; display: block; width: 100%;
+  padding: 13px 14px;
+  border-left: 2px solid transparent;
+  border-bottom: 1px solid rgb(var(--border-light) / .45);
+  text-align: left;
+  transition: background-color 300ms var(--e-ctrl);
+}
+.row:hover { background: rgb(var(--accent-primary) / .05); }
+.row .r1 { display: flex; align-items: baseline; gap: 10px; }
+.row .ttl { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 700; letter-spacing: -.008em; color: rgb(var(--fg-primary)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .stamp { flex: none; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .1em; color: rgb(var(--fg-quaternary)); font-variant-numeric: tabular-nums; }
+.row .prev { display: block; margin-top: 3px; font-size: 12.5px; color: rgb(var(--fg-tertiary)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .r3 { display: flex; align-items: center; gap: 6px; margin-top: 9px; }
+.row .r3 .sp { margin-left: auto; }
+.row[aria-selected="true"] { background: rgb(var(--accent-primary) / .07); }
+/* The selection bar scales in from its own centre — the dash-grow origin
+   trick, rotated to the vertical. This is the motion the current ring lacks. */
+.row .selbar {
+  position: absolute; left: -2px; top: 0; bottom: 0; width: 2px;
+  background: rgb(var(--accent-primary));
+  transform: scaleY(0); transform-origin: center;
+  transition: transform 220ms var(--e-rise);
+}
+.row[aria-selected="true"] .selbar { transform: scaleY(1); }
+.row.leaving { overflow: hidden; animation: dash-row-out .32s var(--e-ctrl) forwards; }
+
+/* Outline-only status badges — the dashboard STATE_BADGE family */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid; border-radius: 4px; padding: 1.5px 6px;
+  font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .12em;
+  white-space: nowrap;
+}
+.badge.lock  { border-color: rgb(var(--error) / .4);          color: rgb(var(--error)); }
+.badge.share { border-color: rgb(var(--accent-primary) / .4); color: rgb(var(--accent-primary)); }
+.badge.date  { border-color: rgb(var(--info) / .4);           color: rgb(var(--info)); }
+.badge.book  { border-color: rgb(var(--border-medium) / .9);  color: rgb(var(--fg-tertiary)); }
+.badge.ok    { border-color: rgb(var(--success) / .45);       color: rgb(var(--success)); }
+.badge.warn  { border-color: rgb(var(--warning) / .45);       color: rgb(var(--warning)); }
+
+/* Avatars */
+.av { width: 20px; height: 20px; border-radius: 9999px; display: grid; place-items: center; font-size: 8.5px; font-weight: 800; color: #fff; letter-spacing: .02em; flex: none; }
+.av.lg { width: 28px; height: 28px; font-size: 11px; }
+.avs { display: flex; }
+.avs .av + .av { margin-left: -6px; }
+.avs .av { box-shadow: 0 0 0 1.5px rgb(var(--bg-primary)); }
+.g1 { background: linear-gradient(135deg, #A855F7, #276FBF); }
+.g2 { background: linear-gradient(135deg, #5FB49C, #E9A86C); }
+.g3 { background: linear-gradient(135deg, #F03A47, #D59191); }
+.g4 { background: linear-gradient(135deg, #276FBF, #5FB49C); }
+
+.list-foot { flex: none; display: flex; align-items: flex-start; gap: 8px; padding: 13px 14px; color: rgb(var(--fg-quaternary)); font-size: 11.5px; line-height: 1.45; border-top: 1px solid rgb(var(--border-light) / .45); }
+
+/* ══ EDITOR ═══════════════════════════════════════════════════════════════ */
+.page { flex: 1; min-width: 0; display: flex; flex-direction: column; background: rgb(var(--bg-primary)); overflow: hidden; }
+.page-head {
+  flex: none; display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; min-height: 48px;
+  border-bottom: 1px solid rgb(var(--border-light) / .6);
+}
+.page-head .crumb { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: rgb(var(--fg-quaternary)); overflow: hidden; white-space: nowrap; }
+.page-body { flex: 1; min-height: 0; overflow-y: auto; padding: 26px 38px 18px; }
+.page-body.center { display: grid; place-items: center; padding: 30px; text-align: center; }
+
+/* Editor title in Instrument Serif — its own voice, distinct from the chrome */
+.ed-title {
+  display: block; width: 100%; border: 0; background: none; outline: none;
+  font-family: var(--font-display); font-weight: 400;
+  font-size: 34px; line-height: 1.14; letter-spacing: -.012em;
+  color: rgb(var(--fg-primary));
+}
+.ed-title::placeholder { color: rgb(var(--fg-quaternary)); }
+.ed-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 14px; margin: 12px 0 18px; }
+.ed-meta .k { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .13em; color: rgb(var(--fg-quaternary)); }
+.ed-meta .k b { color: rgb(var(--fg-tertiary)); font-weight: 400; }
+.ed-meta .k.info { color: rgb(var(--info)); }
+.ed-rule { height: 1px; background: rgb(var(--border-light) / .5); margin: 0 0 20px; }
+.ed-body {
+  display: block; width: 100%; min-height: 190px; resize: none;
+  border: 0; background: none; outline: none;
+  font-family: var(--font-sans); font-size: 14.5px; line-height: 1.75; color: rgb(var(--fg-secondary));
+  white-space: pre-wrap;
+}
+.ed-body::placeholder { color: rgb(var(--fg-quaternary)); }
+
+.page-foot {
+  flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 9px 16px;
+  border-top: 1px solid rgb(var(--border-light) / .6);
+  background: rgb(var(--bg-surface));
+}
+.page-foot .sp { margin-left: auto; }
+
+/* Save indicator — cross-fades between states; the check draws its stroke */
+.save { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .13em; }
+.save.saving { color: rgb(var(--fg-tertiary)); }
+.save.dirty  { color: rgb(var(--fg-quaternary)); }
+.save.error  { color: rgb(var(--error)); }
+.save.saved  { color: rgb(var(--success)); }
+.save-slot > .save { animation: dash-fade .18s var(--e-ctrl) both; }
+.save .drawn { stroke-dasharray: 24; animation: draw-check .34s var(--e-rise) both; }
+
+/* Inline strips (date picker, draft password) reveal by height */
+.strip {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 0 18px; padding: 10px 12px;
+  border: 1px solid rgb(var(--border-medium)); border-radius: 10px;
+  background: rgb(var(--bg-surface));
+  overflow: hidden;
+  animation: strip-in .24s var(--e-enter) both;
+}
+.strip input[type="date"], .strip input[type="password"] {
+  flex: 1; min-width: 0; height: 30px; padding: 0 9px;
+  border: 1px solid rgb(var(--border-medium)); border-radius: 8px;
+  background: rgb(var(--bg-elevated)); outline: none;
+  font-size: 12px; font-variant-numeric: tabular-nums; color: rgb(var(--fg-primary));
+  transition: border-color 200ms var(--e-ctrl), box-shadow 200ms var(--e-ctrl);
+}
+.strip input:focus { border-color: rgb(var(--accent-primary) / .6); box-shadow: 0 0 0 3px rgb(var(--accent-primary) / .1); }
+.link-btn { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .12em; color: rgb(var(--fg-tertiary)); transition: color 200ms var(--e-ctrl); }
+.link-btn:hover { color: rgb(var(--error)); }
+
+/* Pane enter — calendar-pop, with the title leading the meta by 40ms */
+.pane-in { animation: calendar-pop .3s var(--e-rise) both; }
+.pane-in .ed-title { animation: calendar-pop .3s var(--e-rise) both; }
+.pane-in .ed-meta  { animation: calendar-pop .3s var(--e-rise) .04s both; }
+.pane-in .ed-body  { animation: calendar-pop .3s var(--e-rise) .08s both; }
+
+/* Empty state */
+.empty { max-width: 300px; margin: 0 auto; }
+.empty .disc {
+  width: 54px; height: 54px; margin: 0 auto 16px;
+  border: 1px solid rgb(var(--accent-primary) / .3); border-radius: 9999px;
+  display: grid; place-items: center; color: rgb(var(--accent-primary));
+  animation: kairos-scale-in .34s var(--e-over) both;
+}
+.empty .disc.info  { border-color: rgb(var(--info) / .3); color: rgb(var(--info)); }
+.empty .disc.err   { border-color: rgb(var(--error) / .35); color: rgb(var(--error)); }
+.empty .disc.ok    { border-color: rgb(var(--success) / .4); color: rgb(var(--success)); }
+.empty h3 { margin: 0; font-size: 15.5px; font-weight: 700; letter-spacing: -.012em; animation: calendar-pop .3s var(--e-rise) .08s both; }
+.empty p  { margin: 7px 0 0; font-size: 13px; line-height: 1.55; color: rgb(var(--fg-tertiary)); animation: calendar-pop .3s var(--e-rise) .12s both; }
+.empty .act { margin-top: 18px; animation: calendar-pop .3s var(--e-rise) .16s both; }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ONE DIALOG CHROME.
+   Today five notes dialogs hand-roll their own surface and split arbitrarily
+   between .kairos-menu-surface and .kairos-system-card-elevated. All of them
+   converge here on the CalendarClient popover surface over the
+   CommandPalette scrim — and, for the first time, they animate out.
+   ══════════════════════════════════════════════════════════════════════════ */
+.scrim {
+  position: absolute; inset: 0; z-index: 50;
+  display: grid; place-items: center; padding: 20px;
+  background: rgb(0 0 0 / .4);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: cp-backdrop-in .18s ease-out both;
+}
+.scrim.closing { animation: cp-backdrop-out .15s ease-in both; }
+.scrim[hidden] { display: none; }
+
+.dlg {
+  width: 100%; max-width: 420px;
+  border: 1px solid rgb(var(--border-medium)); border-radius: 14px;
+  background: rgb(var(--bg-elevated));
+  box-shadow: var(--shadow-2xl);
+  animation: kairos-modal-enter .3s var(--e-enter) both;
+  overflow: hidden;
+}
+.dlg.wide { max-width: 480px; }
+.dlg.narrow { max-width: 360px; }
+.scrim.closing .dlg { animation: kairos-modal-exit .15s var(--e-ctrl) both; }
+
+.dlg-head { display: flex; align-items: flex-start; gap: 12px; padding: 18px 18px 0; }
+.dlg-icon {
+  width: 32px; height: 32px; flex: none;
+  display: grid; place-items: center;
+  border: 1px solid rgb(var(--accent-primary) / .3); border-radius: 9px;
+  color: rgb(var(--accent-primary));
+}
+.dlg-icon.err { border-color: rgb(var(--error) / .35); color: rgb(var(--error)); }
+.dlg-icon.warn { border-color: rgb(var(--warning) / .4); color: rgb(var(--warning)); }
+.dlg-head .tx { flex: 1; min-width: 0; }
+.dlg-head h3 { margin: 0; font-size: 15.5px; font-weight: 700; letter-spacing: -.014em; }
+.dlg-head p { margin: 3px 0 0; font-size: 12.5px; color: rgb(var(--fg-tertiary)); line-height: 1.5; }
+.dlg-body { padding: 18px; }
+.dlg-body > p { font-size: 13px; line-height: 1.6; color: rgb(var(--fg-tertiary)); }
+.dlg-foot {
+  display: flex; align-items: center; justify-content: flex-end; gap: 9px;
+  padding: 13px 18px;
+  border-top: 1px solid rgb(var(--border-light) / .5);
+  background: rgb(var(--bg-surface));
+}
+.dlg-foot .sp { margin-right: auto; }
+
+.f { margin-bottom: 14px; }
+.f:last-child { margin-bottom: 0; }
+.f > label { display: block; font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .13em; color: rgb(var(--fg-quaternary)); margin-bottom: 6px; }
+.f .hint { margin: 6px 0 0; font-size: 11.5px; color: rgb(var(--fg-quaternary)); font-style: italic; }
+.f-in {
+  position: relative; display: flex; align-items: center; gap: 8px;
+  height: 38px; padding: 0 11px;
+  border: 1px solid rgb(var(--border-medium)); border-radius: 10px;
+  background: rgb(var(--bg-surface));
+  transition: border-color 200ms var(--e-ctrl), box-shadow 200ms var(--e-ctrl), background-color 200ms var(--e-ctrl);
+}
+.f-in:focus-within { border-color: rgb(var(--accent-primary) / .6); box-shadow: 0 0 0 3px rgb(var(--accent-primary) / .1); background: rgb(var(--bg-elevated)); }
+.f-in input, .f-in textarea, .f-in select {
+  flex: 1; min-width: 0; border: 0; background: none; outline: none;
+  font-size: 13.5px; color: rgb(var(--fg-primary)); font-family: inherit;
+}
+.f-in input::placeholder, .f-in textarea::placeholder { color: rgb(var(--fg-quaternary)); }
+.f-in.area { height: auto; padding: 9px 11px; align-items: flex-start; }
+.f-in.area textarea { resize: none; line-height: 1.55; }
+.f-in.err { border-color: rgb(var(--error) / .55); }
+.f-in.shake { animation: shake .4s var(--e-ctrl) both; }
+.f-err { display: flex; align-items: center; gap: 6px; margin: 7px 0 0; font-size: 12px; color: rgb(var(--error)); animation: calendar-pop .22s var(--e-rise) both; }
+
+/* Warning / info block */
+.note-block {
+  border: 1px solid rgb(var(--warning) / .3); border-radius: 10px;
+  background: rgb(var(--warning) / .06);
+  padding: 13px 14px; margin-top: 16px;
+  animation: strip-in .28s var(--e-enter) both;
+}
+.note-block h4 { margin: 0 0 5px; font-size: 12.5px; font-weight: 700; color: rgb(var(--warning)); letter-spacing: -.005em; }
+.note-block p { margin: 0; font-size: 12px; line-height: 1.55; color: rgb(var(--fg-tertiary)); }
+.note-block .f { margin-top: 13px; }
+.note-block.danger { border-color: rgb(var(--error) / .3); background: rgb(var(--error) / .06); }
+.note-block.danger h4 { color: rgb(var(--error)); }
+.note-block.calm { border-color: rgb(var(--border-light) / .7); background: rgb(var(--bg-secondary)); }
+.note-block.calm h4 { color: rgb(var(--fg-secondary)); }
+
+/* ══ MENUS ════════════════════════════════════════════════════════════════
+   kairos-scale-in with the transform-origin set from the anchor corner, so a
+   menu grows out of the button that opened it instead of appearing whole. */
+.menu {
+  position: absolute; z-index: 40;
+  min-width: 186px; max-width: 250px; max-height: 290px; overflow-y: auto;
+  padding: 5px;
+  border: 1px solid rgb(var(--border-medium)); border-radius: 12px;
+  background: rgb(var(--bg-elevated));
+  box-shadow: var(--shadow-xl);
+  animation: kairos-scale-in .16s var(--e-enter) both;
+}
+.menu[hidden] { display: none; }
+.menu.closing { animation: kairos-scale-out .12s var(--e-ctrl) both; }
+.menu-item {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 12.5px; text-align: left; color: rgb(var(--fg-secondary));
+  transition: background-color 160ms var(--e-ctrl), color 160ms var(--e-ctrl);
+}
+.menu-item .sp { margin-left: auto; }
+.menu-item:hover { background: rgb(var(--bg-secondary)); color: rgb(var(--fg-primary)); }
+.menu-item.danger:hover { background: rgb(var(--error) / .1); color: rgb(var(--error)); }
+.menu-item .gap { width: 13px; flex: none; }
+.menu-item .ck { color: rgb(var(--accent-primary)); }
+.menu-sep { height: 1px; margin: 5px 4px; background: rgb(var(--border-light) / .55); }
+.menu-lbl { padding: 7px 9px 4px; font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .14em; color: rgb(var(--fg-quaternary)); }
+
+/* ══ SKELETONS — a shimmer sweep instead of animate-pulse ═════════════════ */
+.sk {
+  border-radius: 5px;
+  background:
+    linear-gradient(90deg, transparent 0%, rgb(var(--fg-primary) / .055) 45%, transparent 90%),
+    rgb(var(--bg-tertiary));
+  background-size: 220% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  animation: shimmer 1.4s var(--e-ctrl) infinite;
+}
+.sk + .sk { margin-top: 8px; }
+
+/* ══ TOAST ════════════════════════════════════════════════════════════════ */
+.toasts { position: absolute; left: 0; right: 0; bottom: 12px; z-index: 60; display: flex; flex-direction: column; align-items: center; gap: 7px; pointer-events: none; }
+.toast {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 13px;
+  border-radius: 11px;
+  background: rgb(var(--bg-elevated));
+  font-size: 13px;
+  box-shadow: var(--shadow-lg), inset 2px 0 0 var(--rule, rgb(var(--info))), inset 0 0 0 .5px rgb(var(--border-light) / .6);
+  animation: toast-in .22s var(--e-rise) both;
+}
+.toast .ti { width: 17px; height: 17px; border-radius: 5px; display: grid; place-items: center; background: color-mix(in srgb, var(--rule) 16%, transparent); color: var(--rule); }
+.toast.ok  { --rule: rgb(var(--success)); }
+.toast.err { --rule: rgb(var(--error)); }
+
+/* ══ MOBILE FRAME ═════════════════════════════════════════════════════════ */
+.phone {
+  width: 390px; max-width: 100%; height: 620px;
+  border: 1px solid rgb(var(--border-medium)); border-radius: 24px;
+  background: rgb(var(--bg-primary));
+  overflow: hidden; position: relative;
+  box-shadow: var(--shadow-xl);
+}
+.phone .app { height: 100%; }
+.phone .rail, .phone .list, .phone .page { width: 100%; border-right: 0; }
+.phone-notch { height: 26px; display: grid; place-items: center; border-bottom: 1px solid rgb(var(--border-light) / .5); }
+.phone-notch i { display: block; width: 74px; height: 4px; border-radius: 9999px; background: rgb(var(--border-medium)); }
+
+/* Mobile rail sheet — projects-drawer-in / -out */
+.sheet-wrap { position: absolute; inset: 0; z-index: 45; }
+.sheet-wrap[hidden] { display: none; }
+.sheet-scrim { position: absolute; inset: 0; background: rgb(0 0 0 / .45); animation: cp-backdrop-in .35s ease-out both; }
+.sheet-wrap.closing .sheet-scrim { animation: cp-backdrop-out .3s ease-in both; }
+.sheet {
+  position: absolute; inset: 0 auto 0 0; width: 284px; max-width: 85%;
+  background: rgb(var(--bg-primary));
+  border-right: 1px solid rgb(var(--border-light) / .6);
+  box-shadow: var(--shadow-2xl);
+  animation: projects-drawer-in .45s var(--e-rise) both;
+  display: flex; flex-direction: column;
+}
+.sheet-wrap.closing .sheet { animation: projects-drawer-out .45s var(--e-rise) both; }
+
+/* Mobile pane push */
+.push-in  { animation: push-in-right .3s var(--e-rise) both; }
+.push-out { animation: push-out-left .3s var(--e-rise) both; }
+
+/* Dialogs become bottom sheets under 640px of frame width */
+.phone .scrim { align-items: end; padding: 0; }
+.phone .dlg { max-width: none; border-radius: 18px 18px 0 0; border-bottom: 0; animation: projects-drawer-in .3s var(--e-rise) both; }
+@keyframes sheet-up { from { transform: translateY(100%) } to { transform: none } }
+.phone .dlg { animation: sheet-up .32s var(--e-rise) both; }
+.phone .scrim.closing .dlg { animation: sheet-up .24s var(--e-ctrl) reverse both; }
+
+/* ══ TOKEN / TYPE SPECIMENS (section 0) ═══════════════════════════════════ */
+.grid-px { display: grid; gap: 1px; background: rgb(var(--border-light) / .6); border: 1px solid rgb(var(--border-light) / .6); border-radius: 10px; overflow: hidden; }
+.grid-px > * { background: rgb(var(--bg-elevated)); }
+.cells4 { grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 700px) { .cells4 { grid-template-columns: repeat(4, 1fr); } }
+.cells3 { grid-template-columns: repeat(1, 1fr); }
+@media (min-width: 700px) { .cells3 { grid-template-columns: repeat(3, 1fr); } }
+.cell { padding: 15px 16px; transition: background-color 350ms var(--e-ctrl); }
+.cell:hover { background: rgb(var(--bg-tertiary)); }
+.cell .v { margin-top: 7px; font-size: 25px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.022em; }
+.cell .sub { margin-top: 3px; font-family: var(--font-mono); font-size: 10px; color: rgb(var(--fg-quaternary)); }
+
+.swatch-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.swatch { width: 112px; }
+.swatch i { display: block; height: 46px; border-radius: 8px; border: 1px solid rgb(var(--border-light) / .6); }
+.swatch b { display: block; margin-top: 6px; font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em; color: rgb(var(--fg-secondary)); font-weight: 500; }
+.swatch span { display: block; font-family: var(--font-mono); font-size: 9.5px; color: rgb(var(--fg-quaternary)); }
+
+.type-row { display: flex; align-items: baseline; gap: 18px; padding: 13px 0; border-bottom: 1px solid rgb(var(--border-light) / .4); }
+.type-row .spec { flex: none; width: 190px; font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em; color: rgb(var(--fg-quaternary)); }
+
+.pal { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* Focus-return proof pill used by the dialog demos */
+.proof {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-top: 12px; padding: 5px 10px;
+  border: 1px dashed rgb(var(--success) / .5); border-radius: 8px;
+  font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .12em;
+  color: rgb(var(--success));
+  animation: calendar-pop .24s var(--e-rise) both;
+}
+.proof[hidden] { display: none; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.legend span {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid rgb(var(--border-medium)); border-radius: 6px; padding: 3px 9px;
+  font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em;
+  color: rgb(var(--fg-tertiary));
+}
+.legend i { width: 7px; height: 7px; border-radius: 9999px; }
+
+/* ══ RECOVER PAGE ═════════════════════════════════════════════════════════ */
+.recover { max-width: 420px; margin: 0 auto; padding: 8px 0; }
+.recover-head { text-align: left; }
+.recover h2 { margin: 14px 0 0; font-family: var(--font-display); font-size: 30px; font-weight: 400; letter-spacing: -.012em; line-height: 1.12; }
+.recover .sub { margin: 8px 0 24px; font-size: 13.5px; color: rgb(var(--fg-tertiary)); }
+.recover-card { border: 1px solid rgb(var(--border-light) / .6); border-radius: 14px; background: rgb(var(--bg-elevated)); padding: 22px; }
+
+</style>
+</head>
+<body>
+
+<!-- ═══ ICON SPRITE — traced from the Phosphor shims in src/components/ui/icons.tsx ═══ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></symbol>
+<symbol id="i-cal-x" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="m10 15 4 4M14 15l-4 4"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="M6 14 3.6 9.6A1 1 0 0 1 4.5 8H20a1 1 0 0 1 .96 1.28L18.7 20a1 1 0 0 1-.96.72H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v.5"/></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-sort" viewBox="0 0 24 24"><path d="m3 16 4 4 4-4M7 20V4"/><path d="M11 4h10M11 9h7M11 14h4"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+<symbol id="i-unlock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24"><circle cx="15.5" cy="8.5" r="5.5"/><path d="M11.6 12.4 3 21v-3h3v-3h3z"/></symbol>
+<symbol id="i-shield-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5 5.5V11c0 5 3.5 7.5 7 8.9 1.6-.6 3.1-1.5 4.3-2.7"/><path d="M9.4 3.5 11.3 2.7a2 2 0 0 1 1.4 0l7 2.9a1 1 0 0 1 .6.9V11c0 1-.1 2-.4 2.9"/></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6M14 11v6"/></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/><path d="m15 5 4 4"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-eye-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M6.7 6.8C3.9 8.5 2 12 2 12s3.6 7 10 7c2 0 3.7-.5 5.2-1.3"/><path d="M9.9 5.2A9.9 9.9 0 0 1 12 5c6.4 0 10 7 10 7a19 19 0 0 1-2.9 3.8"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+<symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></symbol>
+<symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5.8 5.9A6 6 0 0 0 7 18h10a4 4 0 0 0 1.5-7.7"/><path d="M9.6 4.6A6 6 0 0 1 18 9.8"/></symbol>
+<symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></symbol>
+<symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+<symbol id="i-open" viewBox="0 0 24 24"><path d="M21 3h-6M21 3v6M21 3l-8 8"/><path d="M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
+<symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 4v16M16 4v16"/></symbol>
+<symbol id="i-replay" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+</defs></svg>
+
+<!-- ═══ CONTROL BAR ═══ -->
+<div class="bar">
+  <span class="bar-mark"><b>Kairos</b><span>Notes · UI proposal</span></span>
+
+  <div class="ctrl">
+    <label id="lbl-theme">Theme</label>
+    <div class="seg" role="group" aria-labelledby="lbl-theme">
+      <button data-theme-set="light"  aria-pressed="false" title="Light" aria-label="Light theme"><svg class="icon s14"><use href="#i-sun"/></svg></button>
+      <button data-theme-set="system" aria-pressed="true"  title="System" aria-label="Follow system theme"><svg class="icon s14"><use href="#i-monitor"/></svg></button>
+      <button data-theme-set="dark"   aria-pressed="false" title="Dark" aria-label="Dark theme"><svg class="icon s14"><use href="#i-moon"/></svg></button>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <label id="lbl-accent">Accent</label>
+    <div class="swatches" role="group" aria-labelledby="lbl-accent">
+      <button class="sw" data-accent-set="purple"     aria-pressed="true"  style="background:#A855F7" title="Purple"     aria-label="Purple accent"></button>
+      <button class="sw" data-accent-set="pink"       aria-pressed="false" style="background:#D59191" title="Pink"       aria-label="Pink accent"></button>
+      <button class="sw" data-accent-set="caramel"    aria-pressed="false" style="background:#E9A86C" title="Caramel"    aria-label="Caramel accent"></button>
+      <button class="sw" data-accent-set="mint"       aria-pressed="false" style="background:#5FB49C" title="Mint"       aria-label="Mint accent"></button>
+      <button class="sw" data-accent-set="sky"        aria-pressed="false" style="background:#276FBF" title="Sky"        aria-label="Sky accent"></button>
+      <button class="sw" data-accent-set="strawberry" aria-pressed="false" style="background:#F03A47" title="Strawberry" aria-label="Strawberry accent"></button>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <label id="lbl-motion">Motion</label>
+    <div class="seg" role="group" aria-labelledby="lbl-motion">
+      <button data-motion-set="full"   aria-pressed="true"  title="Full motion"><svg class="icon s14"><use href="#i-zap"/></svg></button>
+      <button data-motion-set="reduce" aria-pressed="false" title="Reduced motion"><svg class="icon s14"><use href="#i-pause"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ═══ HERO ═══ -->
+<header class="hero">
+  <div class="kicker">Proposal · 2026-09-01 · docs/ui</div>
+  <h1>The notes page, brought onto<br>the <em>editorial</em> tier</h1>
+  <p class="lede">
+    Notes is a well-built surface speaking the wrong dialect. It leans on <code>rounded-2xl</code> cards,
+    a gradient pill button, three stacked background tints and five different micro-type sizes between
+    9.5px and 13px — while the dashboard and calendar have moved to hairline rules, <code>gap-px</code> grids,
+    mono micro-labels and outline-only badges. It also has, in practical terms,
+    <strong>no motion at all</strong>: eleven popups mount and unmount raw, the mobile sheet appears
+    without sliding, and the pane swap is a bare <code>hidden</code>/<code>block</code> toggle.
+  </p>
+  <p class="lede">
+    Everything below is <strong>live</strong>. Right-click a note row. Open a dialog and watch it leave.
+    Flip the theme, cycle all six accents, and use the Motion switch to confirm every animation
+    degrades to nothing under <code>prefers-reduced-motion</code>.
+  </p>
+
+  <nav class="toc" aria-label="Contents">
+    <a href="#s0"><span class="n">00</span><span class="l">The system</span></a>
+    <a href="#s1"><span class="n">01</span><span class="l">The page, live</span></a>
+    <a href="#s2"><span class="n">02</span><span class="l">Menus &amp; context menu</span></a>
+    <a href="#s3"><span class="n">03</span><span class="l">The lock gate</span></a>
+    <a href="#s4"><span class="n">04</span><span class="l">Password dialogs</span></a>
+    <a href="#s5"><span class="n">05</span><span class="l">Notebook &amp; share</span></a>
+    <a href="#s6"><span class="n">06</span><span class="l">Confirmations</span></a>
+    <a href="#s7"><span class="n">07</span><span class="l">Loading &amp; empty</span></a>
+    <a href="#s8"><span class="n">08</span><span class="l">Mobile</span></a>
+    <a href="#s9"><span class="n">09</span><span class="l">/recover</span></a>
+    <a href="#s10"><span class="n">10</span><span class="l">Motion spec</span></a>
+    <a href="#s11"><span class="n">11</span><span class="l">Implementation</span></a>
+  </nav>
+</header>
+
+<!-- ═══════════════════ §0 THE SYSTEM ═══════════════════ -->
+<section id="s0">
+  <div class="sec-h">
+    <div class="num">Section 00</div>
+    <h2>The system notes should have been using</h2>
+    <p>Nothing here is invented. Every token, easing and pattern below already exists in
+       <code>src/styles/globals.css</code> or in <code>DashboardClient.tsx</code> /
+       <code>CalendarClient.tsx</code>. The proposal is that notes stop maintaining a parallel dialect.</p>
+  </div>
+
+  <h3>Surfaces</h3>
+  <div class="swatch-row">
+    <div class="swatch"><i style="background:rgb(var(--bg-primary))"></i><b>bg-primary</b><span id="tk-1">252 253 255</span></div>
+    <div class="swatch"><i style="background:rgb(var(--bg-secondary))"></i><b>bg-secondary</b><span id="tk-2">248 250 252</span></div>
+    <div class="swatch"><i style="background:rgb(var(--bg-tertiary))"></i><b>bg-tertiary</b><span id="tk-3">241 245 249</span></div>
+    <div class="swatch"><i style="background:rgb(var(--bg-elevated))"></i><b>bg-elevated</b><span id="tk-4">253 254 255</span></div>
+    <div class="swatch"><i style="background:rgb(var(--bg-surface))"></i><b>bg-surface</b><span id="tk-5">250 251 253</span></div>
+    <div class="swatch"><i style="background:rgb(var(--accent-primary))"></i><b>accent-primary</b><span id="tk-6">168 85 247</span></div>
+    <div class="swatch"><i style="background:rgb(var(--error))"></i><b>error</b><span id="tk-7">239 68 68</span></div>
+    <div class="swatch"><i style="background:rgb(var(--info))"></i><b>info</b><span id="tk-8">59 130 246</span></div>
+    <div class="swatch"><i style="background:rgb(var(--success))"></i><b>success</b><span id="tk-9">34 197 94</span></div>
+  </div>
+  <p style="margin-top:14px;font-size:13px;color:rgb(var(--fg-quaternary))">
+    Values update live with the theme toggle — they are read from the computed custom properties, not hard-coded.
+  </p>
+
+  <h3>Type scale — five ad-hoc micro sizes collapse into one convention</h3>
+  <div class="ba">
+    <div class="was">
+      <div class="lbl">Today, in notes</div>
+      <p><code>text-[9.5px]</code> group headers · <code>text-[10px]</code> save indicator, word count,
+         stamps · <code>text-[11px]</code> breadcrumb, filter chips, footer note · <code>text-xs</code>
+         menu items, previews · <code>text-[13px]</code> row titles. Five sizes doing one job,
+         with tracking set independently at each.</p>
+    </div>
+    <div class="now">
+      <div class="lbl">Proposed</div>
+      <p>One micro-label: <code>font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary</code>
+         — the exact string the dashboard already uses. Body copy sits at 12.5/13.5/14.5px.
+         Headings take negative tracking. Figures are always <code>tabular-nums</code>.</p>
+    </div>
+  </div>
+
+  <div style="margin-top:20px">
+    <div class="type-row"><span class="spec">micro-label · mono 10 / .14em</span><span class="micro">Earlier this week · 12 notes</span></div>
+    <div class="type-row"><span class="spec">stamp · mono 9.5 / .1em / tabular</span><span class="micro num" style="letter-spacing:.1em">Edited 14:22</span></div>
+    <div class="type-row"><span class="spec">row title · 13.5 / 700 / -.008em</span><span style="font-size:13.5px;font-weight:700;letter-spacing:-.008em">Q3 retro — what we actually shipped</span></div>
+    <div class="type-row"><span class="spec">section head · 15 / 700 / -.012em</span><span style="font-size:15px;font-weight:700;letter-spacing:-.012em">Shared with me</span></div>
+    <div class="type-row"><span class="spec">editor title · display 34 / -.012em</span><span style="font-family:var(--font-display);font-size:34px;letter-spacing:-.012em;line-height:1.1">Q3 retro notes</span></div>
+    <div class="type-row"><span class="spec">figure · 25 / 700 / -.022em / tabular</span><span class="num" style="font-size:25px;font-weight:700;letter-spacing:-.022em">1,284</span></div>
+  </div>
+
+  <h3>Status badges — filled tints become outlines</h3>
+  <div class="ba">
+    <div class="was">
+      <div class="lbl">Today — MetaChip, four filled tones</div>
+      <p style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px">
+        <span style="display:inline-flex;gap:4px;align-items:center;padding:2px 6px;border-radius:3px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:rgb(var(--error)/.12);color:rgb(var(--error))">Locked</span>
+        <span style="display:inline-flex;gap:4px;align-items:center;padding:2px 6px;border-radius:3px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:rgb(var(--accent-primary)/.12);color:rgb(var(--accent-primary))">Shared</span>
+        <span style="display:inline-flex;gap:4px;align-items:center;padding:2px 6px;border-radius:3px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:rgb(var(--info)/.12);color:rgb(var(--info))">Sep 12</span>
+        <span style="display:inline-flex;gap:4px;align-items:center;padding:2px 6px;border-radius:3px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:rgb(var(--bg-tertiary));color:rgb(var(--fg-tertiary))">Retros</span>
+      </p>
+      <p>Four filled swatches compete with the accent-tinted selected row behind them, and read as
+         four unrelated things.</p>
+    </div>
+    <div class="now">
+      <div class="lbl">Proposed — the dashboard STATE_BADGE family</div>
+      <p style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px">
+        <span class="badge lock"><svg class="icon s11"><use href="#i-lock"/></svg>Locked</span>
+        <span class="badge share"><svg class="icon s11"><use href="#i-share"/></svg>Shared</span>
+        <span class="badge date"><svg class="icon s11"><use href="#i-cal"/></svg>Sep 12</span>
+        <span class="badge book">Retros</span>
+      </p>
+      <p>One shape, one weight, colour carried by a 40%-alpha border and the label. They read as one
+         family and stop fighting the row background.</p>
+    </div>
+  </div>
+
+  <h3>Controls</h3>
+  <div class="demo">
+    <div class="demo-bar"><span class="t">Button &amp; chip vocabulary — hover and press each one</span></div>
+    <div class="demo-body">
+      <div class="pal">
+        <button class="btn-accent"><svg class="icon s14"><use href="#i-plus"/></svg>New note</button>
+        <button class="btn-accent lg">Create</button>
+        <button class="btn-ghost">Cancel</button>
+        <button class="btn-danger"><svg class="icon s13"><use href="#i-trash"/></svg>Delete</button>
+        <button class="ibtn"><svg class="icon s14"><use href="#i-share"/></svg></button>
+        <button class="ibtn on"><svg class="icon s14"><use href="#i-share"/></svg></button>
+        <button class="ibtn"><svg class="icon s14"><use href="#i-dots"/></svg></button>
+        <button class="chip on">All</button>
+        <button class="chip">Locked</button>
+        <button class="chip">Shared</button>
+        <button class="chip"><svg class="icon s12"><use href="#i-sort"/></svg>Edited</button>
+      </div>
+      <div style="margin-top:16px;max-width:320px">
+        <div class="field"><svg class="icon s14"><use href="#i-search"/></svg><input placeholder="Search notes..." aria-label="Search notes"></div>
+      </div>
+      <div class="ba" style="margin-top:20px">
+        <div class="was"><div class="lbl">Removed</div><p><code>bg-gradient-to-br from-accent-primary to-accent-secondary … shadow-lg hover:brightness-110</code> — the rail create button, and the two <code>bg-gradient-to-r</code> CTAs on <code>/recover</code>. Gradients appear nowhere else in the recent tier.</p></div>
+        <div class="now"><div class="lbl">Adopted</div><p>Flat <code>bg-accent-primary</code> with <code>hover:-translate-y-0.5</code> at 350ms — the exact CTA <code>DashboardClient.tsx</code> uses for its first-run action. Icon buttons take the calendar's 30px bordered square.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Motion legend</h3>
+  <div class="legend">
+    <span><i style="background:rgb(var(--success))"></i>Reused from globals.css</span>
+    <span><i style="background:rgb(var(--accent-primary))"></i>New keyframe</span>
+    <span><i style="background:rgb(var(--border-strong))"></i>Kept as-is</span>
+  </div>
+  <p style="margin-top:14px;font-size:13.5px;color:rgb(var(--fg-tertiary));max-width:74ch">
+    Fourteen of the animations below already exist in the codebase and are simply not applied to notes.
+    Nine are new — and every new one is a variation on an existing curve, not a new curve. The four house
+    easings are used throughout: <code>cubic-bezier(.22,1,.36,1)</code> for enters,
+    <code>cubic-bezier(.2,.8,.25,1)</code> for rises and drawers,
+    <code>cubic-bezier(.34,1.56,.64,1)</code> for overshoot pops, and
+    <code>cubic-bezier(.4,0,.2,1)</code> for the 180–350ms control transitions.
+    The full table is in <a href="#s10">§10</a>.
+  </p>
+</section>
+
+
+<!-- ═══════════════════ §1 THE PAGE, LIVE ═══════════════════ -->
+<section id="s1">
+  <div class="sec-h">
+    <div class="num">Section 01</div>
+    <h2>The notes page, live</h2>
+    <p>Real widths — rail <code>236px</code>, list <code>318px</code>, topbar <code>4rem</code>. Click rows to
+       select (watch the accent bar scale in from its centre and the editor pane pop). Change the sort or
+       the filter and the list re-staggers. Right-click any row for the context menu. Everything in this
+       frame is one <code>&lt;div class="app"&gt;</code> — the dialogs in later sections are the same code,
+       mounted into the same frame.</p>
+  </div>
+
+  <div class="cols split">
+    <div>
+      <div class="demo">
+        <div class="demo-bar">
+          <span class="t">/notes — desktop</span>
+          <button class="mini" data-app-act="replay"><svg class="icon s13"><use href="#i-replay"/></svg>Replay entrance</button>
+          <button class="mini" data-app-act="save-cycle"><svg class="icon s13"><use href="#i-clock"/></svg>Save cycle</button>
+          <button class="mini accent" data-app-act="delete"><svg class="icon s13"><use href="#i-trash"/></svg>Delete selected</button>
+        </div>
+        <div class="demo-body flush">
+          <div class="app three" id="APP" data-stage>
+            <div class="app-top">
+              <span class="dot"></span>
+              <span class="crumb">Kairos · Notes</span>
+            </div>
+
+            <div class="app-panes" id="APP_PANES">
+              <!-- ── RAIL ─────────────────────────────────────────────── -->
+              <aside class="rail" id="RAIL">
+                <div class="rail-head">
+                  <div class="row2">
+                    <h1>Notes</h1>
+                    <span class="count num" id="RAIL_COUNT">8</span>
+                    <button class="btn-accent sq" title="New note" aria-label="New note" data-app-act="new"><svg class="icon s14"><use href="#i-plus"/></svg></button>
+                  </div>
+                </div>
+                <div class="rail-search">
+                  <div class="field">
+                    <svg class="icon s14"><use href="#i-search"/></svg>
+                    <input id="Q" placeholder="Search notes..." aria-label="Search notes">
+                    <button class="ibtn bare" id="Q_CLEAR" hidden title="Clear search" aria-label="Clear search" style="width:20px;height:20px"><svg class="icon s12"><use href="#i-x"/></svg></button>
+                  </div>
+                </div>
+
+                <div class="rail-scroll">
+                  <ul class="stagger" id="VIEWS">
+                    <li><button class="nav-row" data-view="all" aria-current="true"><svg class="icon s15"><use href="#i-file"/></svg><span class="lbl">All Notes</span><span class="c">8</span></button></li>
+                    <li><button class="nav-row" data-view="shared"><svg class="icon s15"><use href="#i-users"/></svg><span class="lbl">Shared with me</span><span class="c">2</span></button></li>
+                    <li><button class="nav-row" data-view="calendar"><svg class="icon s15"><use href="#i-cal"/></svg><span class="lbl">On the calendar</span><span class="c">3</span></button></li>
+                  </ul>
+
+                  <div class="rail-sect">
+                    <span class="micro">Notebooks</span>
+                    <button class="ibtn bare" title="New notebook" aria-label="New notebook" data-dlg-open="dlg-notebook-new" style="width:22px;height:22px;color:rgb(var(--accent-primary))"><svg class="icon s13"><use href="#i-plus"/></svg></button>
+                  </div>
+
+                  <ul class="stagger" id="BOOKS">
+                    <li><button class="nav-row" data-book="Retros"><svg class="icon s15"><use href="#i-book"/></svg><span class="lbl">Retros</span><span class="c">2</span><span class="hov" data-menu-open="m-book" style="display:inline-flex"><svg class="icon s14"><use href="#i-dots"/></svg></span></button></li>
+                    <li><button class="nav-row" data-book="Marketing"><svg class="icon s15"><use href="#i-book"/></svg><span class="lbl">Marketing</span><span class="c">1</span><span class="hov" data-menu-open="m-book" style="display:inline-flex"><svg class="icon s14"><use href="#i-dots"/></svg></span></button></li>
+                    <li><button class="nav-row" data-book="Engineering"><svg class="icon s15"><use href="#i-book"/></svg><span class="lbl">Engineering</span><span class="c">1</span><span class="hov" data-menu-open="m-book" style="display:inline-flex"><svg class="icon s14"><use href="#i-dots"/></svg></span></button></li>
+                  </ul>
+                </div>
+              </aside>
+
+              <!-- ── LIST ─────────────────────────────────────────────── -->
+              <div class="list" id="LIST">
+                <div class="list-head">
+                  <h2 id="LIST_TITLE">All Notes</h2>
+                  <div style="position:relative">
+                    <button class="chip" id="SORT_BTN" data-menu-open="m-sort" aria-haspopup="menu" aria-expanded="false">
+                      <svg class="icon s12"><use href="#i-sort"/></svg><span id="SORT_LBL">Edited</span>
+                    </button>
+                    <div class="menu" id="m-sort" role="menu" hidden style="right:0;top:calc(100% + 6px)">
+                      <div class="menu-lbl">Sort</div>
+                      <button class="menu-item" role="menuitem" data-sort="edited"><svg class="icon s13 ck"><use href="#i-check"/></svg>Edited</button>
+                      <button class="menu-item" role="menuitem" data-sort="created"><span class="gap"></span>Created</button>
+                      <button class="menu-item" role="menuitem" data-sort="title"><span class="gap"></span>Title</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="filters" role="tablist" aria-label="Filter notes">
+                  <button class="chip" role="tab" aria-selected="true"  data-filter="all">All</button>
+                  <button class="chip" role="tab" aria-selected="false" data-filter="locked">Locked</button>
+                  <button class="chip" role="tab" aria-selected="false" data-filter="shared">Shared</button>
+                  <button class="chip" role="tab" aria-selected="false" data-filter="unfiled">Unfiled</button>
+                </div>
+
+                <div class="list-scroll" id="LIST_SCROLL"></div>
+                <div class="list-foot" id="LIST_FOOT" hidden>
+                  <svg class="icon s12" style="margin-top:2px"><use href="#i-lock"/></svg>
+                  <span id="LIST_FOOT_TX"></span>
+                </div>
+              </div>
+
+              <!-- ── EDITOR ───────────────────────────────────────────── -->
+              <div class="page" id="PAGE"></div>
+            </div>
+
+            <!-- Menus that hang off the editor header and the rail rows -->
+            <div class="menu" id="m-book" role="menu" hidden>
+              <button class="menu-item" role="menuitem" data-dlg-open="dlg-notebook-rename"><svg class="icon s13"><use href="#i-pencil"/></svg>Rename</button>
+              <div class="menu-sep"></div>
+              <button class="menu-item danger" role="menuitem" data-dlg-open="dlg-confirm-book"><svg class="icon s13"><use href="#i-trash"/></svg>Delete</button>
+            </div>
+
+            <div class="menu" id="m-over" role="menu" hidden>
+              <div class="menu-lbl">Notebook</div>
+              <button class="menu-item" role="menuitem"><span class="gap"></span>None</button>
+              <button class="menu-item" role="menuitem"><svg class="icon s13 ck"><use href="#i-check"/></svg>Retros</button>
+              <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-folder"/></svg>Marketing</button>
+              <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-folder"/></svg>Engineering</button>
+              <div class="menu-sep"></div>
+              <button class="menu-item" role="menuitem" data-app-act="date-strip"><svg class="icon s13"><use href="#i-cal"/></svg>Add to calendar</button>
+              <button class="menu-item" role="menuitem" data-dlg-open="dlg-lock"><svg class="icon s13"><use href="#i-lock"/></svg>Protect with a password</button>
+              <div class="menu-sep"></div>
+              <button class="menu-item danger" role="menuitem" data-dlg-open="dlg-confirm-note"><svg class="icon s13"><use href="#i-trash"/></svg>Delete</button>
+            </div>
+
+            <div class="menu" id="m-ctx" role="menu" aria-label="Note actions" hidden>
+              <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-open"/></svg>Open</button>
+              <button class="menu-item" role="menuitem" data-dlg-open="dlg-lock"><svg class="icon s13"><use href="#i-lock"/></svg>Protect with a password</button>
+              <button class="menu-item" role="menuitem" data-dlg-open="dlg-unlock"><svg class="icon s13"><use href="#i-shield-off"/></svg>Remove password</button>
+              <button class="menu-item" role="menuitem" data-dlg-open="dlg-pin"><svg class="icon s13"><use href="#i-key"/></svg>Reset Password</button>
+              <div class="menu-sep"></div>
+              <button class="menu-item" role="menuitem" data-dlg-open="dlg-share"><svg class="icon s13"><use href="#i-share"/></svg>Manage Sharing</button>
+              <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-cal-x"/></svg>Remove from the calendar</button>
+              <div class="menu-sep"></div>
+              <div class="menu-lbl">Notebook</div>
+              <button class="menu-item" role="menuitem"><span class="gap"></span>None</button>
+              <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-folder"/></svg>Retros</button>
+              <div class="menu-sep"></div>
+              <button class="menu-item danger" role="menuitem" data-dlg-open="dlg-confirm-note"><svg class="icon s13"><use href="#i-trash"/></svg>Delete</button>
+            </div>
+
+            <div class="toasts" id="TOASTS"></div>
+            <div id="DLG_HOST"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="why">
+      <div class="h">What changed, and why</div>
+      <ul>
+        <li><b>One ground, three rules.</b> The panes were <code>bg-bg-surface</code> /
+            <code>bg-bg-secondary</code> / <code>bg-bg-primary</code> — three tints doing the job a
+            <code>border-light/60</code> hairline does better. All three panes now sit on
+            <code>bg-bg-primary</code>, separated by rules, exactly like the dashboard's
+            <code>xl:border-r</code> column split.</li>
+        <li><b>Rows, not cards.</b> A note row was a <code>rounded-xl</code> card that grew a ring,
+            a backdrop blur and a floating accent bar when selected. It is now a
+            <code>border-b border-border-light/45</code> row — the <code>TaskRow</code> shape — and
+            selection is a left border that <em>scales in from its centre</em> plus a 7% accent wash.</li>
+        <li><b>Group headers earn their mono.</b> "Today", "Earlier this week" and the sort pill now share
+            one micro-label spec instead of three near-identical ad-hoc ones.</li>
+        <li><b>The title changes voice.</b> Instrument Serif at 34px separates the thing you are writing
+            from the chrome around it — the same move <code>CalendarClient</code> makes with its
+            <code>font-display</code> month heading.</li>
+        <li><b>The list now moves.</b> Rows rise on load and on every filter or sort change,
+            staggered 30ms and capped at twelve so a long list never feels like it is loading twice.
+            Deleting a row collapses it with <code>dash-row-out</code> instead of it vanishing.</li>
+        <li><b>The save indicator reads as one control.</b> Four states cross-fade in place at 180ms
+            rather than swapping icon and colour instantly; the <em>Saved</em> check draws its stroke once.
+            Hit <span class="mono">Save cycle</span> above to watch dirty → saving → saved.</li>
+        <li><b>Nothing became a component.</b> There is still no <code>Button</code> or
+            <code>Card</code> in <code>src/components/ui/</code>, and this proposal does not add one —
+            it consolidates class strings, which is the pattern the codebase already follows.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>The inline strips</h3>
+  <p style="font-size:13.5px;color:rgb(var(--fg-tertiary));max-width:74ch">
+    Two things appear inside the editor rather than as dialogs: the calendar-date picker (opened from the
+    overflow menu) and the draft password field. Today both simply exist or do not, with no transition.
+    They now reveal by height in 240ms and collapse the same way — the
+    <code>kairos-ai-widget-in</code> treatment. Open the editor's <svg class="icon s13" style="display:inline;vertical-align:-2px"><use href="#i-dots"/></svg>
+    menu in the frame above and pick <em>Add to calendar</em>.
+  </p>
+</section>
+
+
+<!-- ═══════════════════ §2 MENUS ═══════════════════ -->
+<section id="s2">
+  <div class="sec-h">
+    <div class="num">Section 02</div>
+    <h2>The four menus</h2>
+    <p>Sort, notebook actions, note overflow, and the row context menu. Today all four appear and disappear
+       instantly — <code>kairos-scale-in</code> exists in <code>globals.css</code> and is never applied here.
+       Each now grows out of the corner nearest its anchor and shrinks back into it. Click the buttons;
+       right-click the shaded strip.</p>
+  </div>
+
+  <div class="cols split">
+    <div>
+      <div class="demo">
+        <div class="demo-bar"><span class="t">Menu surfaces — click to open, Escape or click-away to close</span></div>
+        <div class="demo-body" data-stage style="position:relative;min-height:360px;padding:26px">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
+            <div style="position:relative">
+              <button class="chip" data-menu-open="m2-sort" aria-haspopup="menu"><svg class="icon s12"><use href="#i-sort"/></svg>Edited</button>
+              <div class="menu" id="m2-sort" role="menu" hidden style="left:0;top:calc(100% + 6px)">
+                <div class="menu-lbl">Sort</div>
+                <button class="menu-item" role="menuitem"><svg class="icon s13 ck"><use href="#i-check"/></svg>Edited</button>
+                <button class="menu-item" role="menuitem"><span class="gap"></span>Created</button>
+                <button class="menu-item" role="menuitem"><span class="gap"></span>Title</button>
+              </div>
+            </div>
+
+            <div style="position:relative">
+              <button class="ibtn" data-menu-open="m2-book" aria-haspopup="menu" title="Notebook actions"><svg class="icon s14"><use href="#i-dots"/></svg></button>
+              <div class="menu" id="m2-book" role="menu" hidden style="left:0;top:calc(100% + 6px)">
+                <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-pencil"/></svg>Rename</button>
+                <div class="menu-sep"></div>
+                <button class="menu-item danger" role="menuitem"><svg class="icon s13"><use href="#i-trash"/></svg>Delete</button>
+              </div>
+            </div>
+
+            <div style="position:relative">
+              <button class="ibtn" data-menu-open="m2-over" aria-haspopup="menu" title="Note actions"><svg class="icon s14"><use href="#i-dots"/></svg></button>
+              <div class="menu" id="m2-over" role="menu" hidden style="left:0;top:calc(100% + 6px)">
+                <div class="menu-lbl">Notebook</div>
+                <button class="menu-item" role="menuitem"><span class="gap"></span>None</button>
+                <button class="menu-item" role="menuitem"><svg class="icon s13 ck"><use href="#i-check"/></svg>Retros</button>
+                <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-folder"/></svg>Marketing</button>
+                <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-folder"/></svg>Engineering</button>
+                <div class="menu-sep"></div>
+                <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-cal"/></svg>Change the date</button>
+                <div class="menu-sep"></div>
+                <button class="menu-item danger" role="menuitem"><svg class="icon s13"><use href="#i-trash"/></svg>Delete</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="CTX_ZONE" style="margin-top:22px;border:1px dashed rgb(var(--border-medium));border-radius:12px;padding:26px 18px;text-align:center;color:rgb(var(--fg-quaternary));font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.14em">
+            Right-click anywhere in here
+          </div>
+
+          <div class="menu" id="m2-ctx" role="menu" aria-label="Note actions" hidden>
+            <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-open"/></svg>Open</button>
+            <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-lock"/></svg>Lock again</button>
+            <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-shield-off"/></svg>Remove password</button>
+            <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-key"/></svg>Reset Password</button>
+            <div class="menu-sep"></div>
+            <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-share"/></svg>Manage Sharing</button>
+            <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-cal-x"/></svg>Remove from the calendar</button>
+            <div class="menu-sep"></div>
+            <div class="menu-lbl">Notebook</div>
+            <button class="menu-item" role="menuitem"><span class="gap"></span>None</button>
+            <button class="menu-item" role="menuitem"><svg class="icon s13"><use href="#i-folder"/></svg>Retros</button>
+            <div class="menu-sep"></div>
+            <button class="menu-item danger" role="menuitem"><svg class="icon s13"><use href="#i-trash"/></svg>Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="why">
+      <div class="h">What changed, and why</div>
+      <ul>
+        <li><b>They animate.</b> <code>kairos-scale-in</code> at 160ms in, a new
+            <code>kairos-scale-out</code> at 120ms out. The <code>transform-origin</code> is set from
+            the anchor's corner in JS, so a right-aligned menu grows from its top-right, not its centre.</li>
+        <li><b>One surface.</b> <code>Menu</code> and <code>ContextMenu</code> both used
+            <code>rounded-xl bg-bg-elevated kairos-menu-surface</code>; they now use the same
+            <code>rounded-xl border border-border-medium bg-bg-elevated shadow-xl</code> as every dialog
+            and the calendar popover. One elevation language across the whole surface.</li>
+        <li><b>Labels align with the list.</b> <code>MenuLabel</code> was
+            <code>text-[9.5px] tracking-widest</code>; it is now the same micro-label as the list's group
+            headers, so "Notebook" in a menu and "Today" in the list are visibly the same kind of thing.</li>
+        <li><b>Positioning logic is kept.</b> <code>ContextMenu</code>'s existing clamp — <code>MARGIN = 8</code>,
+            <code>ESTIMATED = {200, 280}</code>, re-measured in <code>useLayoutEffect</code> — is good and
+            stays. Only the origin of the animation is added.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ §3 THE LOCK GATE ═══════════════════ -->
+<section id="s3">
+  <div class="sec-h">
+    <div class="num">Section 03</div>
+    <h2>The lock gate</h2>
+    <p>Not a dialog — <code>LockGate</code> replaces the editor body when a locked note is opened. It is the
+       most-seen security surface in the app and currently gives no feedback on a wrong password beyond a
+       line of red text. Type anything and submit to see the shake; type <code>correct</code> to see the
+       badge morph from error to success.</p>
+  </div>
+
+  <div class="cols split">
+    <div>
+      <div class="demo">
+        <div class="demo-bar">
+          <span class="t">Editor pane · locked note (own)</span>
+          <button class="mini" data-gate-act="reset"><svg class="icon s13"><use href="#i-replay"/></svg>Reset</button>
+        </div>
+        <div class="demo-body flush">
+          <div class="app short" data-stage>
+            <div class="app-panes" style="padding-top:0">
+              <div class="page">
+                <div class="page-head">
+                  <span class="crumb"><svg class="icon s12"><use href="#i-book"/></svg>Retros</span>
+                  <span class="badge lock"><svg class="icon s11"><use href="#i-lock"/></svg>Locked</span>
+                  <button class="ibtn bare" title="Note actions"><svg class="icon s14"><use href="#i-dots"/></svg></button>
+                </div>
+                <div class="page-body center">
+                  <form class="empty" id="GATE" style="max-width:308px;text-align:center">
+                    <div class="disc err" id="GATE_DISC"><svg class="icon s22"><use href="#i-lock"/></svg></div>
+                    <h3 id="GATE_H">This note is encrypted</h3>
+                    <p id="GATE_P">Last edited 29 Aug at 14:22. The text is decrypted on the server only after
+                       your password checks out.</p>
+                    <div class="act" style="text-align:left">
+                      <div class="f">
+                        <div class="f-in" id="GATE_FIELD">
+                          <input type="password" id="GATE_IN" placeholder="Enter password" autocomplete="current-password" aria-label="Password">
+                          <button type="button" class="ibtn bare" data-reveal title="Show password" aria-label="Show password" style="width:22px;height:22px"><svg class="icon s14"><use href="#i-eye"/></svg></button>
+                        </div>
+                        <p class="f-err" id="GATE_ERR" hidden><svg class="icon s12"><use href="#i-alert"/></svg><span>Incorrect password</span></p>
+                      </div>
+                      <button class="btn-accent" id="GATE_GO" type="submit" style="width:100%;height:38px">Unlock</button>
+                      <p style="margin:12px 0 0;font-size:12px;color:rgb(var(--fg-quaternary));text-align:center">
+                        Forgot it? <button type="button" class="link-btn" data-dlg-open="pin" style="letter-spacing:.08em;color:rgb(var(--accent-primary))">Reset with your PIN</button>
+                      </p>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+            <div class="toasts"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="why">
+      <div class="h">What changed, and why</div>
+      <ul>
+        <li><b>A wrong password is felt, not just read.</b> A 400ms <code>translateX</code> shake on the
+            field, three cycles, plus the error line popping in at 220ms. Nothing about the current
+            build tells you your keystroke was rejected until you read.</li>
+        <li><b>Success is a state change, not a screen swap.</b> The badge scales down and back
+            (<code>badge-morph</code>, 300ms) while its border goes <code>error/35</code> →
+            <code>success/40</code>, then the editor content pops in. Today the gate is simply replaced.</li>
+        <li><b>The badge lost its fill.</b> <code>w-[52px] h-[52px] rounded-2xl bg-error/10</code> becomes a
+            54px outlined disc, matching every empty-state icon in §7. One shape for "a thing is in a state".</li>
+        <li><b>Copy is unchanged</b> — <code>notes.password.gateTitle</code> and
+            <code>gateSubtitle</code> are already good, and the "the server verifies the password for its
+            owner alone" framing is worth keeping verbatim.</li>
+        <li><b>Reset-with-PIN stays a text button</b>, but at micro-label scale so it reads as an escape
+            hatch rather than a second primary action.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════ §4 PASSWORD DIALOGS ═══════════════════ -->
+<section id="s4">
+  <div class="sec-h">
+    <div class="num">Section 04</div>
+    <h2>The three password dialogs</h2>
+    <p>These are the surfaces the codebase duplicates most: <code>LockNoteDialog</code>,
+       <code>RemoveLockDialog</code> and <code>PinResetDialog</code> each hand-roll their own overlay,
+       focus trap and card, and they disagree about which surface class to use — two take
+       <code>kairos-menu-surface</code>, one takes <code>kairos-system-card-elevated</code>.
+       All three are shown here on the single proposed chrome. Each opens on load; close it and the trigger
+       is underneath.</p>
+  </div>
+
+  <div class="cols split">
+    <div>
+      <div class="demo">
+        <div class="demo-bar">
+          <span class="t">Protect with a password — the account has a recovery PIN</span>
+          <button class="mini" data-dlg-open="lock"><svg class="icon s13"><use href="#i-replay"/></svg>Reopen</button>
+        </div>
+        <div class="demo-body stage" data-stage data-autoopen="lock">
+          <button class="btn-accent" data-dlg-open="lock"><svg class="icon s14"><use href="#i-lock"/></svg>Protect with a password</button>
+        </div>
+      </div>
+
+      <div class="demo" style="margin-top:22px">
+        <div class="demo-bar">
+          <span class="t">Same dialog — the account has NO recovery PIN yet (the branch that grows two fields)</span>
+          <button class="mini" data-dlg-open="lock-nopin"><svg class="icon s13"><use href="#i-replay"/></svg>Reopen</button>
+        </div>
+        <div class="demo-body stage" data-stage data-autoopen="lock-nopin" style="min-height:470px">
+          <button class="btn-accent" data-dlg-open="lock-nopin"><svg class="icon s14"><use href="#i-lock"/></svg>Protect with a password</button>
+        </div>
+      </div>
+
+      <div class="demo" style="margin-top:22px">
+        <div class="demo-bar">
+          <span class="t">Remove password</span>
+          <button class="mini" data-dlg-open="unlock"><svg class="icon s13"><use href="#i-replay"/></svg>Reopen</button>
+        </div>
+        <div class="demo-body stage" data-stage data-autoopen="unlock">
+          <button class="btn-ghost" data-dlg-open="unlock"><svg class="icon s13"><use href="#i-shield-off"/></svg>Remove password</button>
+        </div>
+      </div>
+
+      <div class="demo" style="margin-top:22px">
+        <div class="demo-bar">
+          <span class="t">Reset Password — via the recovery PIN</span>
+          <button class="mini" data-dlg-open="pin"><svg class="icon s13"><use href="#i-replay"/></svg>Reopen</button>
+        </div>
+        <div class="demo-body stage" data-stage data-autoopen="pin" style="min-height:475px">
+          <button class="btn-ghost" data-dlg-open="pin"><svg class="icon s13"><use href="#i-key"/></svg>Reset Password</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="why">
+      <div class="h">What changed, and why</div>
+      <ul>
+        <li><b>One chrome, and it leaves.</b> <code>rounded-xl border border-border-medium
+            bg-bg-elevated shadow-2xl</code> on a <code>bg-black/40 backdrop-blur-sm</code> scrim —
+            the <code>CommandPalette</code> treatment. Enter is <code>kairos-modal-enter</code> at 300ms;
+            exit is a new <code>kairos-modal-exit</code> at 150ms. <em>No notes dialog has an exit
+            animation today</em>; they unmount mid-frame.</li>
+        <li><b>Header, body, footer.</b> Actions move to a <code>bg-bg-surface</code> footer with a
+            hairline above it, so the primary action sits in the same place in all six dialogs.
+            Today buttons are <code>flex gap-3 mt-5</code> inline at the end of the form, at three
+            different distances from the last field.</li>
+        <li><b>Labels became micro-labels.</b> <code>text-xs font-semibold text-fg-secondary</code>
+            field labels are now mono uppercase at <code>tracking-[0.13em]</code> — quieter than the
+            values they label, which is the point.</li>
+        <li><b>The no-PIN branch is a real escalation.</b> It keeps the warning-tinted block, but the
+            block now reveals by height in 280ms rather than the dialog jumping ~120px taller between
+            two renders.</li>
+        <li><b>Every word is kept.</b> "The password is never stored, so without a PIN this note cannot be
+            recovered by anyone — including us — if you forget it." is the best copy in the feature and is
+            reproduced verbatim.</li>
+        <li><b>Five focus traps become one.</b> Not a visual change, but the reason to do this work at all:
+            these dialogs should mount through the existing <code>ui/Modal</code> +
+            <code>useModalBehavior</code>, which already handles the trap, Escape, scroll lock and
+            focus restore. See <a href="#s11">§11</a>.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ §5 NOTEBOOK & SHARE ═══════════════════ -->
+<section id="s5">
+  <div class="sec-h">
+    <div class="num">Section 05</div>
+    <h2>Notebook and sharing</h2>
+    <p><code>NotebookDialog</code> is the simplest dialog in the feature and <code>ShareDialog</code> is the
+       most complex — four stacked popover states under one field, plus a member list. Both are shown on the
+       same chrome. In the share dialog, type into the email field: under three characters shows the
+       org-member suggestions, an <code>@</code> triggers the lookup spinner,
+       <code>ada@kairos.app</code> resolves, anything else does not.</p>
+  </div>
+
+  <div class="cols split">
+    <div>
+      <div class="demo">
+        <div class="demo-bar">
+          <span class="t">New notebook / Rename</span>
+          <button class="mini" data-dlg-open="notebook-new"><svg class="icon s13"><use href="#i-plus"/></svg>New</button>
+          <button class="mini" data-dlg-open="notebook-rename"><svg class="icon s13"><use href="#i-pencil"/></svg>Rename</button>
+        </div>
+        <div class="demo-body stage" data-stage data-autoopen="notebook-new">
+          <button class="btn-accent" data-dlg-open="notebook-new"><svg class="icon s14"><use href="#i-plus"/></svg>New notebook</button>
+        </div>
+      </div>
+
+      <div class="demo" style="margin-top:22px">
+        <div class="demo-bar">
+          <span class="t">Manage sharing — type in the email field to cycle the four popover states</span>
+          <button class="mini" data-dlg-open="share"><svg class="icon s13"><use href="#i-replay"/></svg>Reopen</button>
+        </div>
+        <div class="demo-body stage" data-stage data-autoopen="share" style="min-height:520px">
+          <button class="btn-accent" data-dlg-open="share"><svg class="icon s14"><use href="#i-share"/></svg>Manage sharing</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="why">
+      <div class="h">What changed, and why</div>
+      <ul>
+        <li><b>The suggestion popover stops being a second card.</b> It was
+            <code>rounded-lg bg-bg-elevated kairos-system-card-elevated</code> floating over the dialog —
+            a card inside a card. It now attaches to the field as one continuous surface, entering with
+            <code>calendar-pop</code> at 220ms.</li>
+        <li><b>Four states, one slot.</b> Suggestions, looking-up, found, not-found all render into the
+            same anchored container and cross-fade between each other, so the dialog height stops
+            snapping as you type.</li>
+        <li><b>Permission is a badge, not prose.</b> "Can Edit" / "View Only" were plain
+            <code>text-xs</code> next to the name; they are now the outline badge family, so a glance
+            down the list reads the permissions column.</li>
+        <li><b>Rows lose their fill.</b> <code>py-2 px-3 rounded-lg bg-bg-secondary</code> per row becomes
+            hairline-separated rows — same move as the note list.</li>
+        <li><b>The share list staggers in</b> at 40ms per row when it resolves, instead of a
+            <code>h-10 animate-pulse</code> block being replaced wholesale.</li>
+        <li><b>Notebook description keeps its <code>rows={2}</code> textarea</b> and the
+            <code>maxLength={256}</code> on the name. No behaviour is being proposed away here — only
+            the shell.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ §6 CONFIRMATIONS ═══════════════════ -->
+<section id="s6">
+  <div class="sec-h">
+    <div class="num">Section 06</div>
+    <h2>The three confirmations</h2>
+    <p>All three come from <code>ui/ConfirmDialog</code>, which notes wraps. Two are destructive; the third
+       is the one that fires after two wrong passwords and is <em>not</em> destructive, but currently looks
+       almost identical to the two that are.</p>
+  </div>
+
+  <div class="cols split">
+    <div>
+      <div class="demo">
+        <div class="demo-bar">
+          <span class="t">Delete Note — destructive</span>
+          <button class="mini" data-dlg-open="confirm-note"><svg class="icon s13"><use href="#i-replay"/></svg>Reopen</button>
+        </div>
+        <div class="demo-body stage" data-stage data-autoopen="confirm-note" style="min-height:290px">
+          <button class="btn-danger" data-dlg-open="confirm-note"><svg class="icon s13"><use href="#i-trash"/></svg>Delete note</button>
+        </div>
+      </div>
+
+      <div class="demo" style="margin-top:22px">
+        <div class="demo-bar">
+          <span class="t">Delete notebook — destructive, but the notes survive</span>
+          <button class="mini" data-dlg-open="confirm-book"><svg class="icon s13"><use href="#i-replay"/></svg>Reopen</button>
+        </div>
+        <div class="demo-body stage" data-stage data-autoopen="confirm-book" style="min-height:330px">
+          <button class="btn-danger" data-dlg-open="confirm-book"><svg class="icon s13"><use href="#i-trash"/></svg>Delete notebook</button>
+        </div>
+      </div>
+
+      <div class="demo" style="margin-top:22px">
+        <div class="demo-bar">
+          <span class="t">Incorrect password → offer the PIN reset (after RESET_PROMPT_AFTER = 2 failures)</span>
+          <button class="mini" data-dlg-open="confirm-reset"><svg class="icon s13"><use href="#i-replay"/></svg>Reopen</button>
+        </div>
+        <div class="demo-body stage" data-stage data-autoopen="confirm-reset" style="min-height:290px">
+          <button class="btn-ghost" data-dlg-open="confirm-reset"><svg class="icon s13"><use href="#i-alert"/></svg>Fail twice</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="why">
+      <div class="h">What changed, and why</div>
+      <ul>
+        <li><b>Destructive and non-destructive stop looking alike.</b> The two deletes get an
+            <code>error/35</code> outlined icon and a filled <code>bg-error</code> confirm. The
+            wrong-password prompt gets the neutral accent treatment and keeps
+            <em>"Try again"</em> as its cancel — it is an offer, not a warning.</li>
+        <li><b>The consequence is spelled out where it differs.</b> "Notes won't be deleted." moves from
+            being buried in the message string to a calm block under it, because it is the single fact
+            that changes the decision.</li>
+        <li><b>They animate out.</b> <code>ui/Modal</code> already portals to <code>document.body</code>
+            and locks scroll; it just never had an exit. Same 150ms
+            <code>kairos-modal-exit</code> as every other dialog.</li>
+        <li><b>Deleting is now visibly connected to the list.</b> Confirm, and the row it referred to
+            collapses with <code>dash-row-out</code> and a toast rises. Try
+            <span class="mono">Delete selected</span> in <a href="#s1">§1</a>.</li>
+        <li><b><code>requireText</code> stays unused.</b> The primitive supports a type-the-name gate;
+            notes has no operation destructive enough to warrant it, and this proposal does not add one.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════ §7 LOADING & EMPTY ═══════════════════ -->
+<section id="s7">
+  <div class="sec-h">
+    <div class="num">Section 07</div>
+    <h2>Loading and empty</h2>
+    <p>The route skeleton, the list's own loading branch, and six empty states. There is also a real bug
+       here: <code>loading.tsx</code> matches the three column widths but omits
+       <code>kairos-bottomnav-gap</code> and paints no topbar row, so the layout jumps the moment the real
+       page mounts.</p>
+  </div>
+
+  <div class="demo">
+    <div class="demo-bar">
+      <span class="t">Route skeleton — shimmer sweep, correct offsets</span>
+      <button class="mini" data-sk-act="replay"><svg class="icon s13"><use href="#i-replay"/></svg>Replay</button>
+    </div>
+    <div class="demo-body flush">
+      <div class="app short three" id="SKEL" aria-hidden="true">
+        <div class="app-top"><span class="dot"></span><span class="crumb">Kairos · Notes</span></div>
+        <div class="app-panes">
+          <aside class="rail" style="padding:16px">
+            <div class="sk" style="height:16px;width:64px"></div>
+            <div class="sk" style="height:34px;width:100%;margin-top:14px;border-radius:10px"></div>
+            <div class="sk" style="height:30px;margin-top:18px;border-radius:8px"></div>
+            <div class="sk" style="height:30px;border-radius:8px"></div>
+            <div class="sk" style="height:30px;border-radius:8px"></div>
+            <div class="sk" style="height:10px;width:56px;margin-top:22px"></div>
+            <div class="sk" style="height:30px;margin-top:12px;border-radius:8px"></div>
+            <div class="sk" style="height:30px;border-radius:8px"></div>
+          </aside>
+          <div class="list" style="padding:16px 14px">
+            <div class="sk" style="height:16px;width:78px"></div>
+            <div style="display:flex;gap:6px;margin-top:14px">
+              <div class="sk" style="height:26px;width:44px;border-radius:6px;margin:0"></div>
+              <div class="sk" style="height:26px;width:60px;border-radius:6px;margin:0"></div>
+              <div class="sk" style="height:26px;width:60px;border-radius:6px;margin:0"></div>
+            </div>
+            <div style="margin-top:18px">
+              <div class="sk" style="height:11px;width:52%"></div><div class="sk" style="height:9px;width:80%"></div><div class="sk" style="height:8px;width:28%"></div>
+              <div class="sk" style="height:11px;width:64%;margin-top:20px"></div><div class="sk" style="height:9px;width:72%"></div><div class="sk" style="height:8px;width:24%"></div>
+              <div class="sk" style="height:11px;width:44%;margin-top:20px"></div><div class="sk" style="height:9px;width:86%"></div><div class="sk" style="height:8px;width:30%"></div>
+            </div>
+          </div>
+          <div class="page" style="padding:30px 38px">
+            <div class="sk" style="height:30px;width:58%"></div>
+            <div class="sk" style="height:10px;width:34%;margin-top:16px"></div>
+            <div style="margin-top:26px">
+              <div class="sk" style="height:9px;width:90%"></div><div class="sk" style="height:9px;width:78%"></div>
+              <div class="sk" style="height:9px;width:86%"></div><div class="sk" style="height:9px;width:66%"></div>
+              <div class="sk" style="height:9px;width:88%"></div><div class="sk" style="height:9px;width:74%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ba" style="margin-top:20px">
+    <div class="was">
+      <div class="lbl">Today</div>
+      <p><code>animate-pulse</code> on <code>bg-bg-tertiary</code> bars — the whole column breathes in
+         unison, which reads as one big blinking block. And <code>loading.tsx</code> is missing
+         <code>kairos-bottomnav-gap</code>, so content shifts on mount.</p>
+    </div>
+    <div class="now">
+      <div class="lbl">Proposed</div>
+      <p>A 1.4s shimmer sweeping left-to-right across each bar, so the placeholder reads as
+         <em>arriving</em> rather than <em>flashing</em>. Skeleton offsets are corrected to match the live
+         shell exactly — same topbar row, same bottom-nav gap, no jump.</p>
+    </div>
+  </div>
+
+  <h3>Six empty states</h3>
+  <div class="demo">
+    <div class="demo-bar">
+      <span class="t">Every empty branch — icon pops on the overshoot curve, copy follows at +80ms</span>
+      <button class="mini" data-empty-act="cycle"><svg class="icon s13"><use href="#i-replay"/></svg>Cycle all six</button>
+    </div>
+    <div class="demo-body flush">
+      <div class="app short">
+        <div class="app-panes" style="padding-top:0">
+          <div class="list" style="width:100%;border-right:0">
+            <div class="list-head"><h2 id="EMPTY_TITLE">All Notes</h2></div>
+            <div class="filters">
+              <button class="chip on" data-empty="default">First run</button>
+              <button class="chip" data-empty="notebook">Empty notebook</button>
+              <button class="chip" data-empty="search">Search miss</button>
+              <button class="chip" data-empty="locked">Filter: locked</button>
+              <button class="chip" data-empty="shared">View: shared</button>
+              <button class="chip" data-empty="calendar">View: calendar</button>
+            </div>
+            <div class="list-scroll" style="display:grid;place-items:center;padding:20px" id="EMPTY_SLOT"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="why" style="margin-top:20px;max-width:74ch">
+    <div class="h">What changed, and why</div>
+    <ul>
+      <li><b>The discs lose their fill.</b> <code>bg-accent-primary/10 rounded-full</code> becomes a
+          <code>1px accent/30</code> outlined disc — the same family as the badges and the dialog icon tiles.</li>
+      <li><b>Three of the six had no icon at all.</b> The search miss and the three filter misses were a
+          bare <code>text-fg-secondary text-sm</code> line, so a filter that matched nothing looked like a
+          rendering failure. Each now gets the disc treatment and a second line telling you what to do.</li>
+      <li><b>The first-run state earns a real CTA.</b> <code>bg-accent-primary/10 text-accent-primary</code>
+          becomes the flat accent button — this is the one place in the feature where a primary action
+          should look like one.</li>
+      <li><b>The locked-search footnote stays.</b> "{n} encrypted notes were not searched — their text only
+          exists on the server." is doing real work; it moves into the list footer as a persistent hairline
+          strip rather than floating at the end of the scroll.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════════════ §8 MOBILE ═══════════════════ -->
+<section id="s8">
+  <div class="sec-h">
+    <div class="num">Section 08</div>
+    <h2>Mobile</h2>
+    <p>Three things are missing on small screens today: the rail sheet has no slide-in, the list↔editor swap
+       is a bare <code>hidden</code>/<code>block</code> toggle, and dialogs render as centred cards on a
+       390px viewport. All three are fixed below — tap through the frame.</p>
+  </div>
+
+  <div class="cols" style="grid-template-columns:minmax(0,1fr)">
+    <div style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start">
+      <div class="phone" data-stage id="PHONE">
+        <div class="phone-notch"><i></i></div>
+        <div class="app" style="height:calc(100% - 26px)">
+          <div class="app-panes" style="padding-top:0;position:relative">
+
+            <!-- mobile list -->
+            <div class="list" id="MLIST" style="width:100%;border-right:0">
+              <div class="list-head">
+                <button class="ibtn bare" id="M_HAM" title="Open library" aria-label="Open library"><svg class="icon s18"><use href="#i-menu"/></svg></button>
+                <h2>All Notes</h2>
+                <button class="ibtn bare" title="New note" aria-label="New note" style="color:rgb(var(--accent-primary))"><svg class="icon s18"><use href="#i-plus"/></svg></button>
+              </div>
+              <div class="filters">
+                <button class="chip on">All</button><button class="chip">Locked</button>
+                <button class="chip">Shared</button><button class="chip">Unfiled</button>
+              </div>
+              <div class="list-scroll">
+                <div class="micro bucket">Today</div>
+                <ul>
+                  <li><button class="row" data-mrow><span class="selbar"></span><span class="r1"><span class="ttl">Q3 retro — what we actually shipped</span><span class="stamp">14:22</span></span><span class="prev">We agreed the rollout waits for the migration runbook…</span><span class="r3"><span class="badge book">Retros</span><span class="badge share"><svg class="icon s11"><use href="#i-share"/></svg>Shared</span></span></button></li>
+                  <li><button class="row" data-mrow><span class="selbar"></span><span class="r1"><span class="ttl">Pricing page copy, v4</span><span class="stamp">11:08</span></span><span class="prev">Cut the second paragraph entirely. The table does the work.</span><span class="r3"><span class="badge book">Marketing</span></span></button></li>
+                  <li><button class="row" data-mrow><span class="selbar"></span><span class="r1"><span class="ttl">Board update — September</span><span class="stamp">09:41</span></span><span class="prev">Locked · unlock to read</span><span class="r3"><span class="badge lock"><svg class="icon s11"><use href="#i-lock"/></svg>Locked</span><span class="badge date"><svg class="icon s11"><use href="#i-cal"/></svg>Sep 12</span></span></button></li>
+                </ul>
+                <div class="micro bucket">Yesterday</div>
+                <ul>
+                  <li><button class="row" data-mrow><span class="selbar"></span><span class="r1"><span class="ttl">Interview notes: platform eng</span><span class="stamp">17:30</span></span><span class="prev">Strong on failure modes. Ask about the on-call rotation next time.</span><span class="r3"><span class="badge share"><svg class="icon s11"><use href="#i-share"/></svg>Shared</span></span></button></li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- mobile editor -->
+            <div class="page" id="MPAGE" style="width:100%;display:none">
+              <div class="page-head">
+                <button class="ibtn bare" id="M_BACK" title="Back" aria-label="Back"><svg class="icon s18"><use href="#i-left"/></svg></button>
+                <span class="crumb"><svg class="icon s12"><use href="#i-book"/></svg>Retros</span>
+                <span class="save saved"><svg class="icon s11"><use href="#i-check"/></svg>Saved 14:22</span>
+                <button class="ibtn bare" data-dlg-open="share" title="Share"><svg class="icon s14"><use href="#i-share"/></svg></button>
+                <button class="ibtn bare" title="Note actions"><svg class="icon s14"><use href="#i-dots"/></svg></button>
+              </div>
+              <div class="page-body" style="padding:22px 20px 14px">
+                <div class="ed-title" style="font-size:27px">Q3 retro — what we actually shipped</div>
+                <div class="ed-meta">
+                  <span class="k">Created <b>28 Aug</b></span>
+                  <span class="k">Edited <b>today 14:22</b></span>
+                </div>
+                <div class="ed-rule"></div>
+                <div class="ed-body">We agreed the rollout waits for the migration runbook to be signed off, and that the pricing change ships behind the same flag so we can roll both back together.
+
+Three things nobody wants to own yet: the data backfill, the customer comms, and whatever the calendar integration is doing on Thursdays.</div>
+              </div>
+              <div class="page-foot">
+                <span class="badge book">Retros</span>
+                <span class="badge lock"><svg class="icon s11"><use href="#i-unlock"/></svg>Unlocked</span>
+                <span class="sp"></span>
+                <span class="micro num">58 words</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- rail sheet -->
+          <div class="sheet-wrap" id="M_SHEET" hidden>
+            <div class="sheet-scrim" data-sheet-close></div>
+            <div class="sheet">
+              <div class="rail-head">
+                <div class="row2">
+                  <h1>Notes</h1>
+                  <button class="ibtn bare" data-sheet-close title="Close" aria-label="Close"><svg class="icon s18"><use href="#i-x"/></svg></button>
+                  <button class="btn-accent sq" title="New note" aria-label="New note"><svg class="icon s14"><use href="#i-plus"/></svg></button>
+                </div>
+              </div>
+              <div class="rail-search">
+                <div class="field"><svg class="icon s14"><use href="#i-search"/></svg><input placeholder="Search notes..." aria-label="Search notes"></div>
+              </div>
+              <div class="rail-scroll">
+                <ul class="stagger">
+                  <li><button class="nav-row" aria-current="true"><svg class="icon s15"><use href="#i-file"/></svg><span class="lbl">All Notes</span><span class="c">8</span></button></li>
+                  <li><button class="nav-row"><svg class="icon s15"><use href="#i-users"/></svg><span class="lbl">Shared with me</span><span class="c">2</span></button></li>
+                  <li><button class="nav-row"><svg class="icon s15"><use href="#i-cal"/></svg><span class="lbl">On the calendar</span><span class="c">3</span></button></li>
+                </ul>
+                <div class="rail-sect"><span class="micro">Notebooks</span><button class="ibtn bare" style="width:22px;height:22px;color:rgb(var(--accent-primary))" aria-label="New notebook"><svg class="icon s13"><use href="#i-plus"/></svg></button></div>
+                <ul class="stagger">
+                  <li><button class="nav-row"><svg class="icon s15"><use href="#i-book"/></svg><span class="lbl">Retros</span><span class="c">2</span></button></li>
+                  <li><button class="nav-row"><svg class="icon s15"><use href="#i-book"/></svg><span class="lbl">Marketing</span><span class="c">1</span></button></li>
+                  <li><button class="nav-row"><svg class="icon s15"><use href="#i-book"/></svg><span class="lbl">Engineering</span><span class="c">1</span></button></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="toasts"></div>
+        </div>
+      </div>
+
+      <div class="why" style="max-width:38ch;padding-top:6px">
+        <div class="h">Try, in order</div>
+        <ul>
+          <li>Tap the <b>hamburger</b> — the sheet slides from the left over 450ms
+              (<code>projects-drawer-in</code>) and slides back out on close. Today it appears whole.</li>
+          <li>Tap a <b>note row</b> — the list pushes out left and the editor pushes in from the right at
+              300ms. Tap <b>back</b> to reverse it. Today this is a <code>hidden</code>/<code>block</code>
+              swap with no relationship between the two panes.</li>
+          <li>Tap <b>share</b> in the editor header — the dialog arrives as a
+              <b>bottom sheet</b>, rounded at the top only, rather than a centred card with 20px of
+              margin on a 390px screen.</li>
+          <li>Everything else is the desktop layout at a different width — same rows, same badges,
+              same micro-labels, so nothing needs a mobile-only style.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ §9 RECOVER ═══════════════════ -->
+<section id="s9">
+  <div class="sec-h">
+    <div class="num">Section 09</div>
+    <h2><code>/notes/[noteId]/recover</code></h2>
+    <p>The one page in the feature that never got the same care. It uses <code>.surface-card</code> with its
+       hover-lift, two <code>bg-gradient-to-r</code> buttons, <code>p-3</code> inputs that match nothing
+       else, a duplicated <code>hover:shadow-lg hover:shadow-lg</code>, and a literal 💡 emoji. It is
+       reached from the lock gate, so it is the first thing a locked-out user sees.</p>
+  </div>
+
+  <div class="demo">
+    <div class="demo-bar">
+      <span class="t">Three states</span>
+      <button class="mini" data-rec="form" aria-pressed="true">Form</button>
+      <button class="mini" data-rec="ok">Success</button>
+      <button class="mini" data-rec="bad">Invalid link</button>
+    </div>
+    <div class="demo-body" id="REC_SLOT" style="min-height:520px;padding:34px 22px"></div>
+  </div>
+
+  <div class="ba" style="margin-top:20px">
+    <div class="was">
+      <div class="lbl">Today</div>
+      <p>Centred <code>surface-card p-8</code> with a gradient icon tile, a 2xl bold <code>h1</code>,
+         three <code>p-3</code> inputs with a different focus ring from every other input in notes, a
+         tip box carrying an emoji, and a full-width gradient submit. It reads like a different product.</p>
+    </div>
+    <div class="now">
+      <div class="lbl">Proposed</div>
+      <p>Left-aligned display heading, the same hairline card and 38px fields as the dialogs, the tip
+         demoted to a calm block with the mono label the rest of the system uses, and the flat accent
+         submit. Success and invalid states get the outlined disc, and the redirect countdown is visible
+         rather than a silent 3000ms <code>setTimeout</code>.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════ §10 MOTION SPEC ═══════════════════ -->
+<section id="s10">
+  <div class="sec-h">
+    <div class="num">Section 10</div>
+    <h2>The motion spec</h2>
+    <p>Twenty-three animations. Fourteen already exist in <code>globals.css</code> and simply are not
+       applied to notes; nine are new, and every new one is a variation on an existing curve rather than a
+       new curve. Flip the Motion switch in the header and re-open anything in this document to confirm the
+       degradation.</p>
+  </div>
+
+  <div style="overflow-x:auto">
+  <table class="tbl">
+    <thead><tr><th style="min-width:190px">Surface</th><th style="min-width:300px">Animation</th><th style="min-width:130px">Duration / easing</th><th>Origin</th></tr></thead>
+    <tbody>
+      <tr><td>Page shell</td><td><code>kairos-page-enter</code> — unchanged</td><td>0.28s · enter</td><td><span class="tag kept">kept</span></td></tr>
+      <tr><td>Rail nav + notebooks</td><td><code>kairos-stagger-child</code>, 0.05s step through <code>:nth-child(8)</code></td><td>0.5s · enter</td><td><span class="tag reused">reused</span></td></tr>
+      <tr><td>List rows</td><td><code>dash-rise</code>, shortened for a list, 0.03s stagger, capped at 12 rows. Re-fires on filter and sort change.</td><td>0.4s · rise</td><td><span class="tag reused">reused</span></td></tr>
+      <tr><td>Row delete</td><td><code>dash-row-out</code> — collapses max-height, padding and border, then unmounts</td><td>0.32s · ctrl</td><td><span class="tag reused">reused</span></td></tr>
+      <tr><td>Row selection</td><td>Accent left-border scales from <code>scaleY(0)</code> about its centre; background cross-fades to <code>accent/7</code></td><td>0.22s · rise</td><td><span class="tag new">new</span></td></tr>
+      <tr><td>Editor pane, note switch</td><td><code>calendar-pop</code>; title leads, meta at +0.04s, body at +0.08s</td><td>0.3s · rise</td><td><span class="tag reused">reused</span></td></tr>
+      <tr><td>All six dialogs — in</td><td>scrim <code>command-palette-backdrop-in</code>; card <code>kairos-modal-enter</code></td><td>0.18s / 0.3s · enter</td><td><span class="tag reused">reused</span></td></tr>
+      <tr><td>All six dialogs — out</td><td><code>kairos-modal-exit</code> + scrim fade. <b>No notes dialog has an exit today.</b></td><td>0.15s · ctrl</td><td><span class="tag new">new</span></td></tr>
+      <tr><td>All four menus — in</td><td><code>kairos-scale-in</code>, <code>transform-origin</code> computed from the anchor corner</td><td>0.16s · enter</td><td><span class="tag reused">reused</span></td></tr>
+      <tr><td>All four menus — out</td><td><code>kairos-scale-out</code></td><td>0.12s · ctrl</td><td><span class="tag new">new</span></td></tr>
+      <tr><td>Mobile rail sheet</td><td><code>projects-drawer-in</code> / <code>-out</code>, scrim at 0.35s / 0.3s</td><td>0.45s · rise</td><td><span class="tag reused">reused</span></td></tr>
+      <tr><td>Mobile pane swap</td><td><code>push-out-left</code> / <code>push-in-right</code>, 26px of travel — mirrors <code>calendar-drawer-in</code></td><td>0.3s · rise</td><td><span class="tag new">new</span></td></tr>
+      <tr><td>Mobile dialogs</td><td><code>sheet-up</code> — bottom sheet, reversed on close</td><td>0.32s / 0.24s · rise</td><td><span class="tag new">new</span></td></tr>
+      <tr><td>Inline date / password strip</td><td><code>strip-in</code> — height + opacity, reversed on collapse</td><td>0.24s · enter</td><td><span class="tag new">new</span></td></tr>
+      <tr><td>Save indicator</td><td>States cross-fade in place via <code>dash-fade</code>; the <em>Saved</em> check draws its stroke once (<code>draw-check</code>)</td><td>0.18s / 0.34s</td><td><span class="tag new">new</span></td></tr>
+      <tr><td>Wrong password</td><td><code>shake</code> — <code>translateX</code> ±4px, 3 cycles, on the field not the dialog</td><td>0.4s · ctrl</td><td><span class="tag new">new</span></td></tr>
+      <tr><td>Lock / unlock success</td><td><code>badge-morph</code> — scale dip while the border crosses <code>error</code> → <code>success</code></td><td>0.3s · over</td><td><span class="tag new">new</span></td></tr>
+      <tr><td>Skeletons</td><td><code>shimmer</code> — a sweep replacing <code>animate-pulse</code> everywhere in notes</td><td>1.4s loop · ctrl</td><td><span class="tag new">new</span></td></tr>
+      <tr><td>Empty states</td><td>Disc <code>kairos-scale-in</code> on the overshoot curve; heading +0.08s, copy +0.12s, CTA +0.16s</td><td>0.34s · over</td><td><span class="tag reused">reused</span></td></tr>
+      <tr><td>Share list resolve</td><td><code>calendar-pop</code> staggered 0.04s per row, replacing the pulse block</td><td>0.24s · rise</td><td><span class="tag reused">reused</span></td></tr>
+      <tr><td>Error lines</td><td><code>calendar-pop</code> so a validation message arrives rather than appears</td><td>0.22s · rise</td><td><span class="tag reused">reused</span></td></tr>
+      <tr><td>Warning blocks</td><td><code>strip-in</code> so the no-PIN branch grows instead of the dialog jumping</td><td>0.28s · enter</td><td><span class="tag reused">reused</span></td></tr>
+      <tr><td>Toasts</td><td><code>toast-in</code> — unchanged</td><td>0.22s · rise</td><td><span class="tag kept">kept</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Reduced motion</h3>
+  <p style="font-size:13.5px;color:rgb(var(--fg-tertiary));max-width:74ch">
+    <code>globals.css</code> already zeroes durations wholesale under
+    <code>prefers-reduced-motion: reduce</code> and adds targeted
+    <code>animation: none !important</code> blocks per feature. Every animation above lives in a class, so
+    it is covered by the existing wholesale block — no new reduced-motion rules are required, and the two
+    that use <code>max-height</code> (<code>strip-in</code>, <code>dash-row-out</code>) resolve instantly
+    to their end state rather than getting stuck mid-collapse.
+  </p>
+</section>
+
+<!-- ═══════════════════ §11 IMPLEMENTATION ═══════════════════ -->
+<section id="s11">
+  <div class="sec-h">
+    <div class="num">Section 11</div>
+    <h2>Implementation notes</h2>
+    <p>This document is a proposal — no <code>.tsx</code> and no <code>globals.css</code> was touched to
+       produce it. The table below maps each class in this mockup to the real Tailwind string or
+       <code>globals.css</code> rule it stands for, so the follow-up PR is mechanical rather than
+       interpretive.</p>
+  </div>
+
+  <h3>Class mapping</h3>
+  <div style="overflow-x:auto">
+  <table class="tbl">
+    <thead><tr><th style="min-width:120px">Mockup</th><th style="min-width:320px">Real Tailwind / CSS</th><th>Replaces</th></tr></thead>
+    <tbody>
+      <tr><td><code>.micro</code></td><td><code>font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary</code></td><td>five ad-hoc sizes 9.5–11px</td></tr>
+      <tr><td><code>.row</code></td><td><code>relative w-full border-b border-border-light/45 border-l-2 border-l-transparent px-3.5 py-3 text-left transition-colors duration-[300ms] hover:bg-accent-primary/[0.05]</code></td><td><code>rounded-xl … kairos-system-card ring-1 ring-accent-primary/20</code></td></tr>
+      <tr><td><code>.row[aria-selected]</code></td><td><code>bg-accent-primary/[0.07] border-l-accent-primary</code> + the <code>scaleY</code> bar span</td><td>the <code>w-0.5</code> absolute bar</td></tr>
+      <tr><td><code>.badge.*</code></td><td><code>rounded border px-1.5 py-[1.5px] font-mono text-[9.5px] uppercase tracking-[0.12em]</code> + <code>border-{error,accent-primary,info,border-medium}/40</code></td><td><code>MetaChip</code>'s four filled tones</td></tr>
+      <tr><td><code>.btn-accent</code></td><td><code>rounded-[10px] bg-accent-primary px-[13px] text-[13px] font-bold text-white transition-all duration-[350ms] hover:-translate-y-[1.5px] hover:bg-accent-hover</code></td><td><code>bg-gradient-to-br from-accent-primary to-accent-secondary shadow-lg</code></td></tr>
+      <tr><td><code>.ibtn</code></td><td><code>grid h-[30px] w-[30px] place-items-center rounded-[10px] border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary</code></td><td><code>p-2 rounded-lg text-fg-tertiary hover:bg-bg-secondary</code></td></tr>
+      <tr><td><code>.chip</code></td><td>CalendarClient's <code>SMALL_CHIP</code> verbatim, plus <code>font-mono uppercase tracking-[0.12em]</code></td><td>filter chips + the sort pill</td></tr>
+      <tr><td><code>.field</code> / <code>.f-in</code></td><td><code>flex h-[38px] items-center gap-2 rounded-[10px] border border-border-medium bg-bg-surface px-[11px] focus-within:border-accent-primary/60 focus-within:ring-[3px] focus-within:ring-accent-primary/10</code></td><td><code>bg-bg-secondary rounded-lg focus:ring-2 focus:ring-accent-primary/35</code></td></tr>
+      <tr><td><code>.dlg</code></td><td><code>w-full max-w-[420px] overflow-hidden rounded-xl border border-border-medium bg-bg-elevated shadow-2xl</code></td><td><code>rounded-2xl bg-bg-elevated kairos-menu-surface</code> <em>and</em> <code>kairos-system-card-elevated</code></td></tr>
+      <tr><td><code>.scrim</code></td><td><code>fixed inset-0 z-[100] grid place-items-center bg-black/40 p-5 backdrop-blur-sm</code></td><td><code>bg-black/50</code> (notes) / <code>bg-black/60</code> (ui/Modal)</td></tr>
+      <tr><td><code>.menu</code></td><td><code>absolute z-40 min-w-[186px] rounded-xl border border-border-medium bg-bg-elevated p-1.5 shadow-xl</code></td><td><code>rounded-xl bg-bg-elevated kairos-menu-surface</code></td></tr>
+      <tr><td><code>.ed-title</code></td><td><code>w-full bg-transparent font-display text-[34px] font-normal leading-[1.14] tracking-[-0.012em] outline-none</code></td><td><code>text-2xl md:text-[28px] font-bold</code></td></tr>
+      <tr><td><code>.sk</code></td><td>new <code>.kairos-shimmer</code> rule in <code>globals.css</code> — a two-layer background with <code>background-size: 220% 100%</code></td><td><code>animate-pulse</code></td></tr>
+      <tr><td>new keyframes</td><td><code>kairos-modal-exit</code>, <code>kairos-scale-out</code>, <code>sel-bar-in</code>, <code>push-in-right</code>, <code>push-out-left</code>, <code>strip-in</code>, <code>shimmer</code>, <code>shake</code>, <code>badge-morph</code>, <code>draw-check</code>, <code>sheet-up</code> — appended to the existing keyframe block</td><td>—</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Non-visual work this unblocks</h3>
+  <div class="why" style="max-width:74ch">
+    <div class="h">Defects worth fixing in the same PR</div>
+    <ul>
+      <li><b>Five duplicated focus traps.</b> <code>LockNoteDialog</code>, <code>RemoveLockDialog</code>,
+          <code>PinResetDialog</code>, <code>NotebookDialog</code> and <code>ShareDialog</code> each
+          re-implement the same Tab-cycle + Escape + <code>restoreTo</code> effect. <code>ui/Modal</code>'s
+          <code>useModalBehavior</code> already does all of it, correctly, and adds body-scroll lock.
+          Exit animations are the reason to consolidate now: an exit needs a mount/unmount delay, and
+          writing that five times is how the five drift further apart.</li>
+      <li><b>Notes dialogs are not portalled.</b> They render in place, inside a
+          <code>&lt;main&gt;</code> that carries <code>.kairos-page-enter</code> — and that animation sets
+          <code>transform</code>, which makes the main element a containing block for any
+          <code>position: fixed</code> descendant. <code>ui/Overlay</code> exists (a 25-line
+          <code>createPortal</code>) and is used by nothing in notes. This is a latent bug, not a
+          stylistic preference.</li>
+      <li><b>Two overlay z-stacks.</b> Mobile rail 50, ContextMenu 50, Share/Notebook 65, Lock/RemoveLock/PinReset 70,
+          <code>ui/Modal</code> 100, <code>Menu</code> 30. Once everything portals through
+          <code>ui/Modal</code> there is one ladder, matching the app-wide one
+          (rail 40 · bars 50 · toasts 60 · modals 100).</li>
+      <li><b><code>loading.tsx</code> omits <code>kairos-bottomnav-gap</code></b> and paints no topbar row,
+          so the layout shifts on mount. One-line fix, visible on every cold load of the route.</li>
+      <li><b><code>CreateNoteForm.tsx</code> is dead.</b> Zero importers; it is the pre-rebuild inline
+          creator, complete with a <code>btn-primary</code> gradient and a hand-rolled toggle switch.
+          It should be deleted, not redesigned.</li>
+      <li><b>Copy already lives in <code>en.json</code></b> under <code>notes.*</code>, and every string in
+          this document is quoted from it. No new keys are needed except for the two second lines added to
+          the filter-miss empty states in <a href="#s7">§7</a>.</li>
+    </ul>
+  </div>
+
+  <h3>Suggested sequence</h3>
+  <div class="grid-px cells3" style="margin-top:14px">
+    <div class="cell"><div class="micro">Step 01 · plumbing</div><div style="margin-top:8px;font-size:13.5px;line-height:1.55;color:rgb(var(--fg-tertiary))">Move all five dialogs onto <code>ui/Modal</code>. Add the exit keyframes and the mount/unmount delay. No visual change ships yet — but every dialog gains a portal, one focus trap and an exit.</div></div>
+    <div class="cell"><div class="micro">Step 02 · vocabulary</div><div style="margin-top:8px;font-size:13.5px;line-height:1.55;color:rgb(var(--fg-tertiary))">Add the micro-label, badge, button, chip and field classes. Apply them across <code>notesUi.tsx</code>, <code>NoteList</code>, <code>NotesRail</code>, <code>NotePage</code> and the dialogs. This is the bulk of the diff and it is mechanical.</div></div>
+    <div class="cell"><div class="micro">Step 03 · motion</div><div style="margin-top:8px;font-size:13.5px;line-height:1.55;color:rgb(var(--fg-tertiary))">Apply the stagger, rise, pop, drawer and shimmer classes; fix <code>loading.tsx</code>; delete <code>CreateNoteForm.tsx</code>. Verify the whole surface with the Motion switch equivalent — OS reduced-motion on.</div></div>
+  </div>
+
+  <p style="margin-top:34px;font-size:13px;color:rgb(var(--fg-quaternary))">
+    Sources: <code>src/components/notes/*</code> · <code>src/app/(app)/notes/**</code> ·
+    <code>src/styles/globals.css</code> · <code>src/components/ui/{Modal,ConfirmDialog,Overlay}.tsx</code> ·
+    <code>src/components/dashboard/DashboardClient.tsx</code> ·
+    <code>src/components/calendar/CalendarClient.tsx</code> ·
+    <code>src/components/layout/{TopBar,SideNav,CommandPalette}.tsx</code> ·
+    <code>src/i18n/messages/en.json</code> → <code>notes.*</code>.
+    Companion plan: <code>docs/ui/notes-redesign-plan-2026-09-01.md</code>.
+  </p>
+</section>
+
+</div><!-- /.wrap -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     DIALOG TEMPLATES — cloned into the nearest [data-stage] on open.
+     Copy is quoted from src/i18n/messages/en.json → notes.*
+     ═══════════════════════════════════════════════════════════════════════ -->
+
+<template data-dlg="lock">
+<div class="scrim">
+  <form class="dlg" role="dialog" aria-modal="true" aria-labelledby="t-lock">
+    <div class="dlg-head">
+      <span class="dlg-icon"><svg class="icon"><use href="#i-lock"/></svg></span>
+      <span class="tx"><h3 id="t-lock">Protect with a password</h3><p>Encrypt this note behind a password</p></span>
+      <button type="button" class="ibtn bare" data-dlg-close title="Close" aria-label="Close"><svg class="icon s14"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="dlg-body">
+      <div class="f">
+        <label for="lk-p1">New password</label>
+        <div class="f-in">
+          <input id="lk-p1" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+          <button type="button" class="ibtn bare" data-reveal title="Show password" aria-label="Show password" style="width:22px;height:22px"><svg class="icon s14"><use href="#i-eye"/></svg></button>
+        </div>
+      </div>
+      <div class="f">
+        <label for="lk-p2">Confirm password</label>
+        <div class="f-in"><input id="lk-p2" type="password" autocomplete="new-password" placeholder="Type it again"></div>
+      </div>
+      <div class="note-block calm">
+        <h4>The password is not stored anywhere</h4>
+        <p>If you forget it, only your recovery PIN can get the note back.</p>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <span class="sp"><span class="badge ok"><svg class="icon s11"><use href="#i-key"/></svg>Recovery PIN set</span></span>
+      <button type="button" class="btn-ghost" data-dlg-close>Cancel</button>
+      <button type="submit" class="btn-accent" data-toast="Note locked"><svg class="icon s13"><use href="#i-lock"/></svg>Lock</button>
+    </div>
+  </form>
+</div>
+</template>
+
+<template data-dlg="lock-nopin">
+<div class="scrim">
+  <form class="dlg" role="dialog" aria-modal="true" aria-labelledby="t-lockn">
+    <div class="dlg-head">
+      <span class="dlg-icon"><svg class="icon"><use href="#i-lock"/></svg></span>
+      <span class="tx"><h3 id="t-lockn">Protect with a password</h3><p>Encrypt this note behind a password</p></span>
+      <button type="button" class="ibtn bare" data-dlg-close title="Close" aria-label="Close"><svg class="icon s14"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="dlg-body">
+      <div class="f">
+        <label for="lkn-p1">New password</label>
+        <div class="f-in">
+          <input id="lkn-p1" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+          <button type="button" class="ibtn bare" data-reveal title="Show password" aria-label="Show password" style="width:22px;height:22px"><svg class="icon s14"><use href="#i-eye"/></svg></button>
+        </div>
+      </div>
+      <div class="f">
+        <label for="lkn-p2">Confirm password</label>
+        <div class="f-in"><input id="lkn-p2" type="password" autocomplete="new-password" placeholder="Type it again"></div>
+      </div>
+      <div class="note-block">
+        <h4>Set a recovery PIN first</h4>
+        <p>You don't have one yet. The password is never stored, so without a PIN this note cannot be
+           recovered by anyone — including us — if you forget it.</p>
+        <div class="f">
+          <label for="lkn-pin1">Recovery PIN (4+ digits)</label>
+          <div class="f-in"><input id="lkn-pin1" type="password" inputmode="numeric" placeholder="••••"></div>
+        </div>
+        <div class="f">
+          <label for="lkn-pin2">Confirm PIN</label>
+          <div class="f-in"><input id="lkn-pin2" type="password" inputmode="numeric" placeholder="••••"></div>
+        </div>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <span class="sp"><span class="badge warn"><svg class="icon s11"><use href="#i-alert"/></svg>No PIN yet</span></span>
+      <button type="button" class="btn-ghost" data-dlg-close>Cancel</button>
+      <button type="submit" class="btn-accent" data-toast="Note locked"><svg class="icon s13"><use href="#i-lock"/></svg>Lock</button>
+    </div>
+  </form>
+</div>
+</template>
+
+<template data-dlg="unlock">
+<div class="scrim">
+  <form class="dlg" role="dialog" aria-modal="true" aria-labelledby="t-unlock">
+    <div class="dlg-head">
+      <span class="dlg-icon err"><svg class="icon"><use href="#i-unlock"/></svg></span>
+      <span class="tx"><h3 id="t-unlock">Remove password</h3><p>Turn this back into an ordinary note</p></span>
+      <button type="button" class="ibtn bare" data-dlg-close title="Close" aria-label="Close"><svg class="icon s14"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="dlg-body">
+      <div class="f">
+        <label for="ul-p">Enter password</label>
+        <div class="f-in">
+          <input id="ul-p" type="password" autocomplete="current-password" placeholder="Your note password">
+          <button type="button" class="ibtn bare" data-reveal title="Show password" aria-label="Show password" style="width:22px;height:22px"><svg class="icon s14"><use href="#i-eye"/></svg></button>
+        </div>
+      </div>
+      <div class="note-block danger">
+        <h4>This cannot be undone quietly</h4>
+        <p>The note will be stored unencrypted and readable without a password. Anyone you share it with
+           will be able to read it.</p>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn-ghost" data-dlg-close>Cancel</button>
+      <button type="submit" class="btn-danger" data-toast="Password removed"><svg class="icon s13"><use href="#i-shield-off"/></svg>Remove password</button>
+    </div>
+  </form>
+</div>
+</template>
+
+<template data-dlg="pin">
+<div class="scrim">
+  <form class="dlg" role="dialog" aria-modal="true" aria-labelledby="t-pin">
+    <div class="dlg-head">
+      <span class="dlg-icon"><svg class="icon"><use href="#i-key"/></svg></span>
+      <span class="tx"><h3 id="t-pin">Reset Password</h3><p>Enter your secret PIN</p></span>
+      <button type="button" class="ibtn bare" data-dlg-close title="Close" aria-label="Close"><svg class="icon s14"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="dlg-body">
+      <div class="f">
+        <label for="pn-pin">Reset PIN</label>
+        <div class="f-in"><input id="pn-pin" type="password" inputmode="numeric" placeholder="Enter your PIN"></div>
+        <p class="hint">Hint: the year we started</p>
+      </div>
+      <div class="f">
+        <label for="pn-p1">New password</label>
+        <div class="f-in">
+          <input id="pn-p1" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+          <button type="button" class="ibtn bare" data-reveal title="Show password" aria-label="Show password" style="width:22px;height:22px"><svg class="icon s14"><use href="#i-eye"/></svg></button>
+        </div>
+      </div>
+      <div class="f">
+        <label for="pn-p2">Confirm password</label>
+        <div class="f-in"><input id="pn-p2" type="password" autocomplete="new-password" placeholder="Type it again"></div>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn-ghost" data-dlg-close>Cancel</button>
+      <button type="submit" class="btn-accent" data-toast="Password reset successfully"><svg class="icon s13"><use href="#i-key"/></svg>Reset Password</button>
+    </div>
+  </form>
+</div>
+</template>
+
+<template data-dlg="notebook-new">
+<div class="scrim">
+  <form class="dlg narrow" role="dialog" aria-modal="true" aria-labelledby="t-nbn">
+    <div class="dlg-head">
+      <span class="dlg-icon"><svg class="icon"><use href="#i-book"/></svg></span>
+      <span class="tx"><h3 id="t-nbn">New notebook</h3><p>Group notes that belong together</p></span>
+      <button type="button" class="ibtn bare" data-dlg-close title="Close" aria-label="Close"><svg class="icon s14"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="dlg-body">
+      <div class="f">
+        <label for="nb-n">Name</label>
+        <div class="f-in"><input id="nb-n" placeholder="Notebook name" maxlength="256"></div>
+      </div>
+      <div class="f">
+        <label for="nb-d">Description</label>
+        <div class="f-in area"><textarea id="nb-d" rows="2" placeholder="Optional"></textarea></div>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn-ghost" data-dlg-close>Cancel</button>
+      <button type="submit" class="btn-accent" data-toast="Notebook created">Create</button>
+    </div>
+  </form>
+</div>
+</template>
+
+<template data-dlg="notebook-rename">
+<div class="scrim">
+  <form class="dlg narrow" role="dialog" aria-modal="true" aria-labelledby="t-nbr">
+    <div class="dlg-head">
+      <span class="dlg-icon"><svg class="icon"><use href="#i-book"/></svg></span>
+      <span class="tx"><h3 id="t-nbr">Rename</h3><p>Retros · 2 notes</p></span>
+      <button type="button" class="ibtn bare" data-dlg-close title="Close" aria-label="Close"><svg class="icon s14"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="dlg-body">
+      <div class="f">
+        <label for="nbr-n">Name</label>
+        <div class="f-in"><input id="nbr-n" value="Retros" maxlength="256"></div>
+      </div>
+      <div class="f">
+        <label for="nbr-d">Description</label>
+        <div class="f-in area"><textarea id="nbr-d" rows="2" placeholder="Optional">Quarterly retros and the follow-ups nobody owns</textarea></div>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn-ghost" data-dlg-close>Cancel</button>
+      <button type="submit" class="btn-accent" data-toast="Notebook updated">Save</button>
+    </div>
+  </form>
+</div>
+</template>
+
+<template data-dlg="share">
+<div class="scrim">
+  <form class="dlg wide" role="dialog" aria-modal="true" aria-labelledby="t-share">
+    <div class="dlg-head">
+      <span class="dlg-icon"><svg class="icon"><use href="#i-share"/></svg></span>
+      <span class="tx"><h3 id="t-share">Manage sharing</h3><p>Q3 retro — what we actually shipped</p></span>
+      <button type="button" class="ibtn bare" data-dlg-close title="Close" aria-label="Close"><svg class="icon s14"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="dlg-body">
+      <div style="position:relative">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div class="f-in" style="min-width:180px;flex:1"><input id="sh-mail" type="email" placeholder="Email address" autocomplete="off"></div>
+          <div class="f-in" style="width:96px;flex:none">
+            <select id="sh-perm" aria-label="Permission"><option>View</option><option>Edit</option></select>
+          </div>
+          <button type="submit" class="btn-accent" style="height:38px" data-toast="Note shared">Share</button>
+        </div>
+        <div id="sh-pop" style="position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:5"></div>
+      </div>
+
+      <div style="margin-top:22px">
+        <div class="micro" style="margin-bottom:2px">Shared with</div>
+        <div id="sh-list">
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1px solid rgb(var(--border-light)/.45)">
+            <span class="av lg g1">MB</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:13.5px;font-weight:600">Mira Bardhi</span>
+              <span style="display:block;font-family:var(--font-mono);font-size:9.5px;color:rgb(var(--fg-quaternary))">mira@kairos.app</span>
+            </span>
+            <span class="badge ok">Can edit</span>
+            <button type="button" class="ibtn bare" title="Remove access for Mira Bardhi" aria-label="Remove access for Mira Bardhi" style="width:24px;height:24px"><svg class="icon s13"><use href="#i-x"/></svg></button>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1px solid rgb(var(--border-light)/.45)">
+            <span class="av lg g2">TN</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:13.5px;font-weight:600">Teodor Nikolov</span>
+              <span style="display:block;font-family:var(--font-mono);font-size:9.5px;color:rgb(var(--fg-quaternary))">teo@kairos.app</span>
+            </span>
+            <span class="badge book">View only</span>
+            <button type="button" class="ibtn bare" title="Remove access for Teodor Nikolov" aria-label="Remove access for Teodor Nikolov" style="width:24px;height:24px"><svg class="icon s13"><use href="#i-x"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <span class="sp micro">Owner keeps full control</span>
+      <button type="button" class="btn-ghost" data-dlg-close>Done</button>
+    </div>
+  </form>
+</div>
+</template>
+
+<template data-dlg="confirm-note">
+<div class="scrim">
+  <div class="dlg narrow" role="dialog" aria-modal="true" aria-labelledby="t-cn">
+    <div class="dlg-head">
+      <span class="dlg-icon err"><svg class="icon"><use href="#i-trash"/></svg></span>
+      <span class="tx"><h3 id="t-cn">Delete Note</h3></span>
+    </div>
+    <div class="dlg-body"><p>Are you sure you want to delete this note? This action cannot be undone.</p></div>
+    <div class="dlg-foot">
+      <button type="button" class="btn-ghost" data-dlg-close>Cancel</button>
+      <button type="button" class="btn-danger" data-dlg-close data-toast="Note deleted" data-toast-kind="err">Delete</button>
+    </div>
+  </div>
+</div>
+</template>
+
+<template data-dlg="confirm-book">
+<div class="scrim">
+  <div class="dlg narrow" role="dialog" aria-modal="true" aria-labelledby="t-cb">
+    <div class="dlg-head">
+      <span class="dlg-icon err"><svg class="icon"><use href="#i-trash"/></svg></span>
+      <span class="tx"><h3 id="t-cb">Delete notebook</h3></span>
+    </div>
+    <div class="dlg-body">
+      <p>Delete notebook "Retros"?</p>
+      <div class="note-block calm" style="margin-top:4px">
+        <h4>Notes won't be deleted</h4>
+        <p>The two notes inside it move to Unfiled and stay exactly as they are.</p>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn-ghost" data-dlg-close>Cancel</button>
+      <button type="button" class="btn-danger" data-dlg-close data-toast="Notebook deleted" data-toast-kind="err">Delete</button>
+    </div>
+  </div>
+</div>
+</template>
+
+<template data-dlg="confirm-reset">
+<div class="scrim">
+  <div class="dlg narrow" role="dialog" aria-modal="true" aria-labelledby="t-cr">
+    <div class="dlg-head">
+      <span class="dlg-icon"><svg class="icon"><use href="#i-key"/></svg></span>
+      <span class="tx"><h3 id="t-cr">Incorrect password</h3><p>Two attempts have failed</p></span>
+    </div>
+    <div class="dlg-body"><p>Do you want to reset this note's password?</p></div>
+    <div class="dlg-foot">
+      <button type="button" class="btn-ghost" data-dlg-close>Try again</button>
+      <button type="button" class="btn-accent" data-dlg-close data-dlg-then="pin"><svg class="icon s13"><use href="#i-key"/></svg>Reset Password</button>
+    </div>
+  </div>
+</div>
+</template>
+
+
+<script>
+(function () {
+  "use strict";
+  var $  = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var root = document.documentElement;
+
+  /* ═══ 1. THEME / ACCENT / MOTION ══════════════════════════════════════ */
+  function press(list, val, attr) {
+    list.forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset[attr] === val)); });
+  }
+  var themeBtns  = $$("[data-theme-set]");
+  var accentBtns = $$("[data-accent-set]");
+  var motionBtns = $$("[data-motion-set]");
+
+  themeBtns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      var v = b.dataset.themeSet;
+      if (v === "system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", v);
+      press(themeBtns, v, "themeSet");
+      showTokens();
+    });
+  });
+  accentBtns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      root.setAttribute("data-accent", b.dataset.accentSet);
+      press(accentBtns, b.dataset.accentSet, "accentSet");
+      showTokens();
+    });
+  });
+  motionBtns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      var v = b.dataset.motionSet;
+      if (v === "full") root.removeAttribute("data-motion"); else root.setAttribute("data-motion", "reduce");
+      press(motionBtns, v, "motionSet");
+    });
+  });
+
+  /* Live token readout in §0, so the swatch labels never lie about the theme */
+  var TOKENS = ["--bg-primary", "--bg-secondary", "--bg-tertiary", "--bg-elevated",
+                "--bg-surface", "--accent-primary", "--error", "--info", "--success"];
+  function showTokens() {
+    var cs = getComputedStyle(root);
+    TOKENS.forEach(function (t, i) {
+      var el = document.getElementById("tk-" + (i + 1));
+      if (el) el.textContent = cs.getPropertyValue(t).trim();
+    });
+  }
+  showTokens();
+
+  /* ═══ 2. MENUS ════════════════════════════════════════════════════════ */
+  var MARGIN = 8;
+  var openMenus = [];
+
+  function closeMenu(menu) {
+    if (!menu || menu.hidden) return;
+    menu.classList.add("closing");
+    var t = setTimeout(function () {
+      menu.hidden = true; menu.classList.remove("closing");
+    }, 130);
+    menu._t = t;
+    openMenus = openMenus.filter(function (m) { return m !== menu; });
+    var opener = menu._opener;
+    if (opener && opener.setAttribute) opener.setAttribute("aria-expanded", "false");
+  }
+  function closeAllMenus() { openMenus.slice().forEach(closeMenu); }
+
+  function placeMenu(menu, box, prefer) {
+    var host = menu.offsetParent || menu.parentElement;
+    var hr = host.getBoundingClientRect();
+    menu.hidden = false;
+    menu.style.left = "0px"; menu.style.top = "0px";
+    var mw = menu.offsetWidth, mh = menu.offsetHeight;
+    var left, top, ox = "left", oy = "top";
+
+    if (prefer === "cursor") {
+      left = box.x - hr.left; top = box.y - hr.top;
+    } else {
+      left = box.right - hr.left - mw;             // right-aligned under the anchor
+      top  = box.bottom - hr.top + 6;
+      ox = "right";
+    }
+    if (left + mw > hr.width - MARGIN) { left = hr.width - mw - MARGIN; ox = "right"; }
+    if (left < MARGIN) { left = MARGIN; ox = "left"; }
+    if (top + mh > hr.height - MARGIN) {
+      var above = (prefer === "cursor" ? box.y : box.top) - hr.top - mh - 6;
+      if (above > MARGIN) { top = above; oy = "bottom"; }
+      else { top = Math.max(MARGIN, hr.height - mh - MARGIN); }
+    }
+    menu.style.left = Math.round(left) + "px";
+    menu.style.top = Math.round(top) + "px";
+    menu.style.transformOrigin = oy + " " + ox;
+  }
+
+  document.addEventListener("click", function (e) {
+    var trigger = e.target.closest ? e.target.closest("[data-menu-open]") : null;
+    if (trigger) {
+      e.preventDefault(); e.stopPropagation();
+      var menu = document.getElementById(trigger.dataset.menuOpen);
+      if (!menu) return;
+      var wasOpen = !menu.hidden && !menu.classList.contains("closing");
+      closeAllMenus();
+      if (wasOpen) return;
+      clearTimeout(menu._t);
+      menu.classList.remove("closing");
+      menu._opener = trigger;
+      if (trigger.getAttribute("aria-haspopup")) trigger.setAttribute("aria-expanded", "true");
+      if (menu.style.top && menu.style.top.indexOf("calc") === 0) { menu.hidden = false; }
+      else { placeMenu(menu, trigger.getBoundingClientRect(), "anchor"); }
+      openMenus.push(menu);
+      var first = menu.querySelector(".menu-item");
+      if (first) first.focus({ preventScroll: true });
+      return;
+    }
+    if (e.target.closest && e.target.closest(".menu")) {
+      var item = e.target.closest(".menu-item");
+      if (item && !item.dataset.dlgOpen) closeAllMenus();
+      return;
+    }
+    closeAllMenus();
+  });
+
+  function ctxOpen(menuId, e) {
+    e.preventDefault();
+    var menu = document.getElementById(menuId);
+    if (!menu) return;
+    closeAllMenus();
+    clearTimeout(menu._t); menu.classList.remove("closing");
+    placeMenu(menu, { x: e.clientX, y: e.clientY, top: e.clientY }, "cursor");
+    openMenus.push(menu);
+    var first = menu.querySelector(".menu-item");
+    if (first) first.focus({ preventScroll: true });
+  }
+  var ctxZone = $("#CTX_ZONE");
+  if (ctxZone) ctxZone.addEventListener("contextmenu", function (e) { ctxOpen("m2-ctx", e); });
+
+  /* ═══ 3. DIALOGS ══════════════════════════════════════════════════════ */
+  function stageOf(el) { return el.closest("[data-stage]") || document.body; }
+
+  function openDialog(name, stage, opener) {
+    var tpl = $('template[data-dlg="' + name + '"]');
+    if (!tpl || !stage) return;
+    var old = stage.querySelector(":scope > .scrim");
+    if (old) old.remove();
+    var frag = tpl.content.cloneNode(true);
+    var scrim = frag.querySelector(".scrim");
+    scrim.dataset.name = name;
+    scrim._opener = opener || null;
+    stage.appendChild(frag);
+    wireShare(scrim);
+    var focusable = scrim.querySelector("input, textarea, select, .btn-accent, .btn-danger, .btn-ghost");
+    if (focusable) focusable.focus({ preventScroll: true });
+    trapFocus(scrim);
+    return scrim;
+  }
+
+  function closeDialog(scrim, then) {
+    if (!scrim || scrim.classList.contains("closing")) return;
+    scrim.classList.add("closing");
+    var opener = scrim._opener;
+    setTimeout(function () {
+      var stage = scrim.parentElement;
+      scrim.remove();
+      if (then) openDialog(then, stage, opener);
+      else if (opener && document.contains(opener)) opener.focus({ preventScroll: true });
+    }, 170);
+  }
+
+  /* A stand-in for useModalBehavior's trap — the real fix is ui/Modal (§11) */
+  function trapFocus(scrim) {
+    scrim.addEventListener("keydown", function (e) {
+      if (e.key !== "Tab") return;
+      var f = $$('button, input, textarea, select, [href], [tabindex]:not([tabindex="-1"])', scrim)
+        .filter(function (n) { return !n.disabled && n.offsetParent !== null; });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest ? e.target.closest("[data-dlg-open]") : null;
+    if (t) {
+      e.preventDefault();
+      closeAllMenus();
+      openDialog(t.dataset.dlgOpen, stageOf(t), t);
+      return;
+    }
+    var c = e.target.closest ? e.target.closest("[data-dlg-close]") : null;
+    if (c) {
+      e.preventDefault();
+      var toast = c.dataset.toast;
+      if (toast) fireToast(c, toast, c.dataset.toastKind || "ok");
+      closeDialog(c.closest(".scrim"), c.dataset.dlgThen);
+      return;
+    }
+    if (e.target.classList && e.target.classList.contains("scrim")) closeDialog(e.target);
+  }, true);
+
+  /* Submit buttons inside the demo dialogs: toast, then close */
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!form.classList.contains("dlg")) return;
+    e.preventDefault();
+    var btn = form.querySelector("[data-toast]");
+    if (btn) fireToast(form, btn.dataset.toast, btn.dataset.toastKind || "ok");
+    closeDialog(form.closest(".scrim"));
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    if (openMenus.length) { closeAllMenus(); return; }
+    var sheet = $("#M_SHEET");
+    if (sheet && !sheet.hidden) { closeSheet(); return; }
+    var scrim = $(".scrim:not(.closing)");
+    if (scrim) closeDialog(scrim);
+  });
+
+  /* Password reveal — one handler for every field in the document */
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest("[data-reveal]") : null;
+    if (!b) return;
+    e.preventDefault();
+    var input = b.parentElement.querySelector("input");
+    if (!input) return;
+    var show = input.type === "password";
+    input.type = show ? "text" : "password";
+    b.querySelector("use").setAttribute("href", show ? "#i-eye-off" : "#i-eye");
+    b.title = show ? "Hide password" : "Show password";
+    b.setAttribute("aria-label", b.title);
+  });
+
+  /* Auto-open every gallery stage so the document reads as a gallery */
+  $$("[data-autoopen]").forEach(function (stage) {
+    openDialog(stage.dataset.autoopen, stage, stage.querySelector("[data-dlg-open]"));
+  });
+
+  /* ═══ 4. TOASTS ═══════════════════════════════════════════════════════ */
+  function fireToast(from, text, kind) {
+    var host = (from.closest("[data-stage]") || document).querySelector(".toasts") || $("#TOASTS");
+    if (!host) return;
+    var el = document.createElement("div");
+    el.className = "toast " + (kind === "err" ? "err" : "ok");
+    el.setAttribute("role", "status");
+    el.innerHTML = '<span class="ti"><svg class="icon s12"><use href="#i-' +
+      (kind === "err" ? "alert" : "check") + '"/></svg></span><span></span>';
+    el.lastChild.textContent = text;
+    host.appendChild(el);
+    setTimeout(function () {
+      el.style.transition = "opacity 200ms, transform 200ms";
+      el.style.opacity = "0"; el.style.transform = "translateY(6px)";
+      setTimeout(function () { el.remove(); }, 220);
+    }, 2200);
+  }
+
+  /* ═══ 5. THE LIVE NOTES APP ═══════════════════════════════════════════ */
+  var NOTES = [
+    { id: 1, t: "Q3 retro — what we actually shipped", book: "Retros", ed: "14:22", b: "Today", cr: "28 Aug", shared: 2, locked: false, date: null, words: 58,
+      p: "We agreed the rollout waits for the migration runbook to be signed off…",
+      body: "We agreed the rollout waits for the migration runbook to be signed off, and that the pricing change ships behind the same flag so we can roll both back together.\n\nThree things nobody wants to own yet: the data backfill, the customer comms, and whatever the calendar integration is doing on Thursdays.\n\nNext retro: bring the actual numbers, not the vibe." },
+    { id: 2, t: "Pricing page copy, v4", book: "Marketing", ed: "11:08", b: "Today", cr: "30 Aug", shared: 0, locked: false, date: null, words: 41,
+      p: "Cut the second paragraph entirely. The table does the work.",
+      body: "Cut the second paragraph entirely. The table does the work.\n\nThe headline is still trying to say three things. Pick the one a stranger needs and let the rest live further down the page." },
+    { id: 3, t: "Board update — September", book: null, ed: "09:41", b: "Today", cr: "31 Aug", shared: 0, locked: true, date: "Sep 12", words: 0,
+      p: "Locked · unlock to read", body: "" },
+    { id: 4, t: "Interview notes: platform eng", book: null, ed: "17:30", b: "Yesterday", cr: "31 Aug", shared: 1, locked: false, date: null, words: 64,
+      p: "Strong on failure modes. Ask about the on-call rotation next time.",
+      body: "Strong on failure modes — walked through a cascading retry storm unprompted and named the fix before I asked.\n\nWeaker on the product side. Ask about the on-call rotation next time, and whether they have ever had to say no to a launch." },
+    { id: 5, t: "Migration runbook", book: "Engineering", ed: "08:12", b: "Yesterday", cr: "26 Aug", shared: 0, locked: false, date: "Sep 04", words: 88,
+      p: "Step 4 is the one that cannot be rolled back. Everything before it can.",
+      body: "Step 4 is the one that cannot be rolled back. Everything before it can, and everything after it is idempotent.\n\nPre-flight: snapshot, verify the snapshot restores, then take the write lock. If the verify takes longer than ten minutes, stop and reschedule — do not proceed on a hunch." },
+    { id: 6, t: "Things to stop doing", book: null, ed: "Wed", b: "Earlier this week", cr: "20 Aug", shared: 0, locked: false, date: null, words: 22,
+      p: "Standing meetings that produce a document nobody reads.",
+      body: "Standing meetings that produce a document nobody reads.\n\nEstimating in hours.\n\nSaying yes in the room and no in Slack afterwards." },
+    { id: 7, t: "Offsite agenda", book: "Retros", ed: "Tue", b: "Earlier this week", cr: "19 Aug", shared: 1, locked: false, date: "Sep 19", words: 35,
+      p: "Two hours on the roadmap, then get out of the room.",
+      body: "Two hours on the roadmap, then get out of the room.\n\nNo slides. One page each, read in silence for ten minutes, then argue." },
+    { id: 8, t: "Old scratch pad", book: null, ed: "12 Jul", b: "Older", cr: "02 Jul", shared: 0, locked: true, date: null, words: 0,
+      p: "Locked · unlock to read", body: "" }
+  ];
+  var BUCKETS = ["Today", "Yesterday", "Earlier this week", "Earlier this month", "Older"];
+
+  var app = $("#APP");
+  if (app) {
+    var state = { view: "all", book: null, filter: "all", sort: "edited", q: "", sel: 1, saveState: "saved", dateStrip: false };
+    var listScroll = $("#LIST_SCROLL"), pageEl = $("#PAGE");
+
+    function visible() {
+      return NOTES.filter(function (n) {
+        if (state.view === "shared" && !n.shared) return false;
+        if (state.view === "calendar" && !n.date) return false;
+        if (state.book && n.book !== state.book) return false;
+        if (state.filter === "locked" && !n.locked) return false;
+        if (state.filter === "shared" && !n.shared) return false;
+        if (state.filter === "unfiled" && n.book) return false;
+        if (state.q) {
+          var q = state.q.toLowerCase();
+          if (n.locked) return false;
+          if (n.t.toLowerCase().indexOf(q) < 0 && n.p.toLowerCase().indexOf(q) < 0) return false;
+        }
+        return true;
+      }).sort(function (a, b) {
+        if (state.sort === "title") return a.t.localeCompare(b.t);
+        if (state.sort === "created") return NOTES.indexOf(b) - NOTES.indexOf(a);
+        return 0;
+      });
+    }
+
+    function badgesFor(n) {
+      var out = "";
+      if (n.locked) out += '<span class="badge lock"><svg class="icon s11"><use href="#i-lock"/></svg>Locked</span>';
+      if (n.shared) out += '<span class="badge share"><svg class="icon s11"><use href="#i-share"/></svg>Shared</span>';
+      if (n.date)   out += '<span class="badge date"><svg class="icon s11"><use href="#i-cal"/></svg>' + n.date + "</span>";
+      if (n.book)   out += '<span class="badge book">' + n.book + "</span>";
+      return out;
+    }
+    function avatarsFor(n) {
+      if (!n.shared) return "";
+      var g = ["g1", "g2", "g3"], ini = ["MB", "TN", "AL"], out = '<span class="avs">';
+      for (var i = 0; i < Math.min(n.shared, 3); i++) out += '<span class="av ' + g[i] + '">' + ini[i] + "</span>";
+      return out + "</span>";
+    }
+
+    function rowHTML(n, i) {
+      return '<li><button class="row" data-note="' + n.id + '" data-note-row aria-selected="' +
+        (state.sel === n.id) + '" style="animation:dash-rise .4s var(--e-rise) both;animation-delay:' +
+        (Math.min(i, 12) * 0.03).toFixed(2) + 's">' +
+        '<span class="selbar"></span>' +
+        '<span class="r1"><span class="ttl">' + n.t + '</span><span class="stamp">' + n.ed + "</span></span>" +
+        '<span class="prev">' + n.p + "</span>" +
+        '<span class="r3">' + badgesFor(n) + '<span class="sp"></span>' + avatarsFor(n) + "</span>" +
+        "</button></li>";
+    }
+
+    function emptyHTML() {
+      if (state.q) return card("err", "i-search", "Nothing matches “" + state.q + "”.", "Try a shorter word, or clear the search to see everything again.");
+      if (state.filter === "locked")  return card("err",  "i-lock",  "No encrypted notes here.", "Notes you protect with a password will collect in this filter.");
+      if (state.filter === "shared")  return card("",     "i-users", "Nothing here is shared.", "Share a note and it will appear under this filter and in Shared with me.");
+      if (state.filter === "unfiled") return card("",     "i-book",  "Every note here is in a notebook.", "Nothing is loose — which is either tidy or suspicious.");
+      if (state.view === "shared")    return card("",     "i-users", "No shared notes yet", "Notes shared with you will appear here");
+      if (state.view === "calendar")  return card("info", "i-cal",   "Nothing on the calendar", "Notes with a date appear here and in the calendar.");
+      if (state.book)                 return card("",     "i-book",  "This notebook is empty", "Create a note here and it will show up in this list.");
+      return card("", "i-file", "No notes yet", "Create your first note and it will show up here.", true);
+    }
+    function card(tone, icon, h, p, cta) {
+      return '<div style="display:grid;place-items:center;height:100%;padding:26px"><div class="empty">' +
+        '<div class="disc ' + tone + '"><svg class="icon s24"><use href="#' + icon + '"/></svg></div>' +
+        "<h3>" + h + "</h3><p>" + p + "</p>" +
+        (cta ? '<div class="act"><button class="btn-accent" data-app-act="new"><svg class="icon s14"><use href="#i-plus"/></svg>Create</button></div>' : "") +
+        "</div></div>";
+    }
+
+    function renderList() {
+      var rows = visible(), html = "", i = 0;
+      if (!rows.length) { listScroll.innerHTML = emptyHTML(); }
+      else if (state.sort === "title") {
+        html = "<ul>" + rows.map(function (n) { return rowHTML(n, i++); }).join("") + "</ul>";
+        listScroll.innerHTML = html;
+      } else {
+        BUCKETS.forEach(function (b) {
+          var inB = rows.filter(function (n) { return n.b === b; });
+          if (!inB.length) return;
+          html += '<div class="micro bucket">' + b + "</div><ul>" +
+            inB.map(function (n) { return rowHTML(n, i++); }).join("") + "</ul>";
+        });
+        listScroll.innerHTML = html;
+      }
+      var hiddenLocked = state.q ? NOTES.filter(function (n) { return n.locked; }).length : 0;
+      var foot = $("#LIST_FOOT");
+      foot.hidden = !hiddenLocked;
+      if (hiddenLocked) $("#LIST_FOOT_TX").textContent = hiddenLocked +
+        " encrypted notes were not searched — their text only exists on the server.";
+      $("#RAIL_COUNT").textContent = NOTES.length;
+      $("#LIST_TITLE").textContent = state.book ||
+        (state.view === "shared" ? "Shared with me" : state.view === "calendar" ? "On the calendar" : "All Notes");
+    }
+
+    function saveHTML() {
+      var s = state.saveState;
+      if (s === "saving") return '<span class="save saving"><svg class="icon s11 spin"><use href="#i-loader"/></svg>Saving…</span>';
+      if (s === "dirty")  return '<span class="save dirty"><svg class="icon s11"><use href="#i-alert"/></svg>Unsaved</span>';
+      if (s === "error")  return '<span class="save error" role="alert"><svg class="icon s11"><use href="#i-cloud-off"/></svg>Save failed</span>';
+      return '<span class="save saved"><svg class="icon s11"><use class="drawn" href="#i-check"/></svg>Saved 14:22</span>';
+    }
+
+    function renderPage() {
+      var n = NOTES.filter(function (x) { return x.id === state.sel; })[0];
+      if (!n) {
+        pageEl.innerHTML = '<div class="page-body center"><div class="empty">' +
+          '<div class="disc"><svg class="icon s24"><use href="#i-file"/></svg></div>' +
+          "<h3>Nothing open</h3><p>Pick a note from the list, or start a new one.</p>" +
+          '<div class="act"><button class="btn-accent" data-app-act="new"><svg class="icon s14"><use href="#i-plus"/></svg>Create</button></div>' +
+          "</div></div>";
+        return;
+      }
+      if (n.locked) {
+        pageEl.innerHTML =
+          '<div class="page-head"><span class="crumb">' + (n.book ? '<svg class="icon s12"><use href="#i-book"/></svg>' + n.book : "No notebook") + "</span>" +
+          '<span class="badge lock"><svg class="icon s11"><use href="#i-lock"/></svg>Locked</span>' +
+          '<button class="ibtn bare" data-menu-open="m-over" title="Note actions" aria-haspopup="menu"><svg class="icon s14"><use href="#i-dots"/></svg></button></div>' +
+          '<div class="page-body center pane-in"><div class="empty">' +
+          '<div class="disc err"><svg class="icon s22"><use href="#i-lock"/></svg></div>' +
+          "<h3>This note is encrypted</h3><p>Last edited today at " + n.ed +
+          ". The text is decrypted on the server only after your password checks out.</p>" +
+          '<div class="act"><button class="btn-accent" data-dlg-open="pin" style="width:100%">Unlock</button></div>' +
+          "</div></div>";
+        return;
+      }
+      pageEl.innerHTML =
+        '<div class="page-head">' +
+          '<span class="crumb">' + (n.book ? '<svg class="icon s12"><use href="#i-book"/></svg>' + n.book : "No notebook") + "</span>" +
+          '<span class="save-slot">' + saveHTML() + "</span>" +
+          '<button class="ibtn bare' + (n.shared ? " on" : "") + '" data-dlg-open="share" title="Manage sharing"><svg class="icon s14"><use href="#i-share"/></svg></button>' +
+          '<button class="ibtn bare" data-menu-open="m-over" title="Note actions" aria-haspopup="menu"><svg class="icon s14"><use href="#i-dots"/></svg></button>' +
+        "</div>" +
+        '<div class="page-body pane-in">' +
+          '<div class="ed-title" contenteditable="true" role="textbox" aria-label="Title" spellcheck="false">' + n.t + "</div>" +
+          '<div class="ed-meta">' +
+            '<span class="k">Created <b>' + n.cr + "</b></span>" +
+            '<span class="k">Edited <b>today ' + n.ed + "</b></span>" +
+            (n.shared ? '<span class="k">Shared with <b>' + n.shared + "</b></span>" : "") +
+            (n.date ? '<span class="k info">On calendar · <b>' + n.date + "</b></span>" : "") +
+          "</div>" +
+          (state.dateStrip ?
+            '<div class="strip"><svg class="icon s14" style="color:rgb(var(--info))"><use href="#i-cal"/></svg>' +
+            '<input type="date" value="2026-09-12" aria-label="Calendar date">' +
+            '<button class="link-btn" data-app-act="date-remove">Remove</button>' +
+            '<button class="ibtn bare" data-app-act="date-strip" title="Close" aria-label="Close" style="width:22px;height:22px"><svg class="icon s13"><use href="#i-x"/></svg></button></div>' : "") +
+          '<div class="ed-rule"></div>' +
+          '<div class="ed-body" contenteditable="true" role="textbox" aria-label="Note body" spellcheck="false">' + n.body + "</div>" +
+        "</div>" +
+        '<div class="page-foot">' +
+          (n.book ? '<span class="badge book">' + n.book + "</span>" : '<span class="badge book">Unfiled</span>') +
+          (n.date ? '<span class="badge date"><svg class="icon s11"><use href="#i-cal"/></svg>' + n.date + "</span>" : "") +
+          '<span class="badge ok"><svg class="icon s11"><use href="#i-unlock"/></svg>Unlocked</span>' +
+          '<span class="sp"></span>' + avatarsFor(n) +
+          '<span class="micro num">' + n.words + " words</span>" +
+        "</div>";
+    }
+
+    function render() { renderList(); renderPage(); }
+    render();
+
+    /* list interactions */
+    listScroll.addEventListener("click", function (e) {
+      var r = e.target.closest("[data-note]");
+      if (!r) return;
+      state.sel = Number(r.dataset.note);
+      state.dateStrip = false;
+      $$("[data-note]", listScroll).forEach(function (x) {
+        x.setAttribute("aria-selected", String(Number(x.dataset.note) === state.sel));
+      });
+      renderPage();
+    });
+    listScroll.addEventListener("contextmenu", function (e) {
+      var r = e.target.closest("[data-note]");
+      if (!r) return;
+      state.sel = Number(r.dataset.note);
+      $$("[data-note]", listScroll).forEach(function (x) {
+        x.setAttribute("aria-selected", String(Number(x.dataset.note) === state.sel));
+      });
+      renderPage();
+      ctxOpen("m-ctx", e);
+    });
+    listScroll.addEventListener("keydown", function (e) {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      var rows = $$("[data-note-row]", listScroll);
+      var i = rows.indexOf(document.activeElement);
+      if (i < 0) return;
+      e.preventDefault();
+      var next = rows[i + (e.key === "ArrowDown" ? 1 : -1)];
+      if (next) next.focus();
+    });
+
+    $$("[data-filter]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        state.filter = b.dataset.filter;
+        $$("[data-filter]").forEach(function (x) { x.setAttribute("aria-selected", String(x === b)); });
+        renderList();
+      });
+    });
+    $$("[data-sort]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        state.sort = b.dataset.sort;
+        $("#SORT_LBL").textContent = b.textContent.trim();
+        $$("[data-sort]").forEach(function (x) {
+          var has = x === b;
+          x.innerHTML = (has ? '<svg class="icon s13 ck"><use href="#i-check"/></svg>' : '<span class="gap"></span>') + x.textContent.trim();
+        });
+        renderList();
+      });
+    });
+    $$("#VIEWS [data-view]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        state.view = b.dataset.view; state.book = null;
+        $$("#VIEWS [data-view]").forEach(function (x) { x.setAttribute("aria-current", String(x === b)); });
+        $$("#BOOKS [data-book]").forEach(function (x) { x.removeAttribute("aria-current"); });
+        renderList();
+      });
+    });
+    $$("#BOOKS [data-book]").forEach(function (b) {
+      b.addEventListener("click", function (e) {
+        if (e.target.closest("[data-menu-open]")) return;
+        state.book = b.dataset.book; state.view = "all";
+        $$("#BOOKS [data-book]").forEach(function (x) { x.setAttribute("aria-current", String(x === b)); });
+        $$("#VIEWS [data-view]").forEach(function (x) { x.removeAttribute("aria-current"); });
+        renderList();
+      });
+    });
+
+    var q = $("#Q");
+    q.addEventListener("input", function () {
+      state.q = q.value.trim();
+      $("#Q_CLEAR").hidden = !state.q;
+      renderList();
+    });
+    $("#Q_CLEAR").addEventListener("click", function () {
+      q.value = ""; state.q = ""; $("#Q_CLEAR").hidden = true; renderList(); q.focus();
+    });
+
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest ? e.target.closest("[data-app-act]") : null;
+      if (!a) return;
+      var act = a.dataset.appAct;
+      if (act === "replay") {
+        var panes = $("#APP_PANES");
+        panes.style.animation = "none"; void panes.offsetWidth;
+        panes.style.animation = "kairos-page-enter .28s var(--e-enter) both";
+        $$(".stagger", app).forEach(function (s) {
+          var c = s.cloneNode(true); s.parentNode.replaceChild(c, s);
+        });
+        renderList(); renderPage();
+      }
+      if (act === "new") { state.sel = null; renderPage(); fireToast(app, "Draft started", "ok"); }
+      if (act === "delete") {
+        var row = listScroll.querySelector('[data-note="' + state.sel + '"]');
+        if (!row) return;
+        var id = state.sel;
+        row.classList.add("leaving");
+        setTimeout(function () {
+          var i = NOTES.findIndex(function (n) { return n.id === id; });
+          if (i >= 0) NOTES.splice(i, 1);
+          state.sel = NOTES.length ? NOTES[0].id : null;
+          render(); fireToast(app, "Note deleted", "err");
+        }, 330);
+      }
+      if (act === "date-strip")  { state.dateStrip = !state.dateStrip; renderPage(); }
+      if (act === "date-remove") { state.dateStrip = false; renderPage(); fireToast(app, "Removed from the calendar", "ok"); }
+      if (act === "save-cycle") {
+        (state.saveTimers || []).forEach(clearTimeout);
+        state.saveState = "dirty"; renderPage();
+        state.saveTimers = [
+          setTimeout(function () { state.saveState = "saving"; renderPage(); }, 700),
+          setTimeout(function () { state.saveState = "saved"; renderPage(); }, 2000)
+        ];
+      }
+    });
+  }
+
+  /* ═══ 6. §3 LOCK GATE ═════════════════════════════════════════════════ */
+  var gate = $("#GATE");
+  if (gate) {
+    function gateReset() {
+      $("#GATE_IN").value = ""; $("#GATE_IN").type = "password";
+      $("#GATE_ERR").hidden = true;
+      $("#GATE_DISC").className = "disc err";
+      $("#GATE_DISC").innerHTML = '<svg class="icon s22"><use href="#i-lock"/></svg>';
+      $("#GATE_H").textContent = "This note is encrypted";
+      $("#GATE_P").textContent = "Last edited 29 Aug at 14:22. The text is decrypted on the server only after your password checks out.";
+      $("#GATE_GO").textContent = "Unlock";
+      $("#GATE_GO").disabled = false;
+    }
+    gate.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var val = $("#GATE_IN").value;
+      var field = $("#GATE_FIELD"), disc = $("#GATE_DISC"), btn = $("#GATE_GO");
+      if (val.toLowerCase() !== "correct") {
+        $("#GATE_ERR").hidden = false;
+        field.classList.remove("shake", "err"); void field.offsetWidth;
+        field.classList.add("shake", "err");
+        return;
+      }
+      $("#GATE_ERR").hidden = true;
+      field.classList.remove("err");
+      btn.disabled = true;
+      btn.innerHTML = '<svg class="icon s13 spin"><use href="#i-loader"/></svg>Unlocking…';
+      setTimeout(function () {
+        disc.style.animation = "badge-morph .3s var(--e-over) both";
+        disc.className = "disc ok";
+        disc.innerHTML = '<svg class="icon s22"><use href="#i-unlock"/></svg>';
+        $("#GATE_H").textContent = "Unlocked";
+        $("#GATE_P").textContent = "The note is decrypted for this session only. Lock it again from the menu when you are done.";
+        btn.textContent = "Open the note";
+        btn.disabled = false;
+        fireToast(gate, "Note unlocked", "ok");
+      }, 650);
+    });
+    $$("[data-gate-act]").forEach(function (b) { b.addEventListener("click", gateReset); });
+  }
+
+  /* ═══ 7. §5 SHARE DIALOG — four popover states ════════════════════════ */
+  function wireShare(scrim) {
+    var mail = scrim.querySelector("#sh-mail");
+    if (!mail) return;
+    var pop = scrim.querySelector("#sh-pop"), timer = null;
+    var CARD = 'border:1px solid rgb(var(--border-medium));border-radius:10px;background:rgb(var(--bg-elevated));box-shadow:var(--shadow-lg);padding:6px;animation:calendar-pop .22s var(--e-rise) both';
+    var MEMBERS = [
+      ["MB", "g1", "Mira Bardhi", "mira@kairos.app"],
+      ["AL", "g4", "Ada Lovelace", "ada@kairos.app"],
+      ["TN", "g2", "Teodor Nikolov", "teo@kairos.app"]
+    ];
+    function row(m) {
+      return '<div style="display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:7px">' +
+        '<span class="av ' + m[1] + '">' + m[0] + "</span>" +
+        '<span style="flex:1;min-width:0"><span style="display:block;font-size:13px;font-weight:600">' + m[2] +
+        '</span><span style="display:block;font-family:var(--font-mono);font-size:9.5px;color:rgb(var(--fg-quaternary))">' + m[3] + "</span></span></div>";
+    }
+    function paint() {
+      var v = mail.value.trim();
+      clearTimeout(timer);
+      if (!v) { pop.innerHTML = ""; return; }
+      if (v.indexOf("@") < 0) {
+        pop.innerHTML = '<div style="' + CARD + '">' + MEMBERS.map(row).join("") + "</div>";
+        return;
+      }
+      pop.innerHTML = '<div style="' + CARD + '"><div style="display:flex;align-items:center;gap:9px;padding:9px 8px;' +
+        'font-size:12.5px;color:rgb(var(--fg-tertiary))"><svg class="icon s14 spin"><use href="#i-loader"/></svg>Looking up email…</div></div>';
+      timer = setTimeout(function () {
+        var hit = MEMBERS.filter(function (m) { return m[3] === v.toLowerCase(); })[0];
+        if (hit) {
+          pop.innerHTML = '<div style="' + CARD + ';border-color:rgb(var(--accent-primary)/.4)">' + row(hit) + "</div>";
+        } else {
+          pop.innerHTML = '<div style="' + CARD + ';border-color:rgb(var(--error)/.4)">' +
+            '<div style="display:flex;align-items:center;gap:9px;padding:9px 8px;font-size:12.5px;color:rgb(var(--error))">' +
+            '<svg class="icon s14"><use href="#i-alert"/></svg>No account found with this email</div></div>';
+        }
+      }, 700);
+    }
+    mail.addEventListener("input", paint);
+    mail.addEventListener("focus", paint);
+  }
+
+  /* ═══ 8. §7 SKELETON + EMPTY STATES ═══════════════════════════════════ */
+  $$("[data-sk-act]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      $$("#SKEL .sk").forEach(function (s) {
+        s.style.animation = "none"; void s.offsetWidth;
+        s.style.animation = "shimmer 1.4s var(--e-ctrl) infinite";
+      });
+    });
+  });
+
+  var emptySlot = $("#EMPTY_SLOT");
+  if (emptySlot) {
+    var EMPTIES = {
+      "default":  ["", "i-file", "No notes yet", "Create your first note and it will show up here.", true, "All Notes"],
+      "notebook": ["", "i-book", "This notebook is empty", "Create a note here and it will show up in this list.", true, "Retros"],
+      "search":   ["err", "i-search", "Nothing matches “backfill”.", "Try a shorter word, or clear the search to see everything again.", false, "All Notes"],
+      "locked":   ["err", "i-lock", "No encrypted notes here.", "Notes you protect with a password will collect in this filter.", false, "All Notes"],
+      "shared":   ["", "i-users", "No shared notes yet", "Notes shared with you will appear here", false, "Shared with me"],
+      "calendar": ["info", "i-cal", "Nothing on the calendar", "Notes with a date appear here and in the calendar.", false, "On the calendar"]
+    };
+    function paintEmpty(key) {
+      var e = EMPTIES[key];
+      $("#EMPTY_TITLE").textContent = e[5];
+      emptySlot.innerHTML = '<div class="empty">' +
+        '<div class="disc ' + e[0] + '"><svg class="icon s24"><use href="#' + e[1] + '"/></svg></div>' +
+        "<h3>" + e[2] + "</h3><p>" + e[3] + "</p>" +
+        (e[4] ? '<div class="act"><button class="btn-accent"><svg class="icon s14"><use href="#i-plus"/></svg>Create</button></div>' : "") +
+        "</div>";
+    }
+    paintEmpty("default");
+    $$("[data-empty]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        $$("[data-empty]").forEach(function (x) { x.classList.toggle("on", x === b); });
+        paintEmpty(b.dataset.empty);
+      });
+    });
+    var cycling = null;
+    $$("[data-empty-act]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var keys = Object.keys(EMPTIES), i = 0;
+        clearInterval(cycling);
+        (function step() {
+          var btn = $('[data-empty="' + keys[i % keys.length] + '"]');
+          if (btn) btn.click();
+          i++;
+          if (i <= keys.length) cycling = setTimeout(step, 1100);
+        })();
+      });
+    });
+  }
+
+  /* ═══ 9. §8 MOBILE ════════════════════════════════════════════════════ */
+  var sheet = $("#M_SHEET");
+  function closeSheet() {
+    if (!sheet || sheet.hidden) return;
+    sheet.classList.add("closing");
+    setTimeout(function () { sheet.hidden = true; sheet.classList.remove("closing"); }, 470);
+  }
+  if (sheet) {
+    $("#M_HAM").addEventListener("click", function () {
+      sheet.hidden = false; sheet.classList.remove("closing");
+      $$(".stagger", sheet).forEach(function (s) { var c = s.cloneNode(true); s.parentNode.replaceChild(c, s); });
+    });
+    $$("[data-sheet-close]").forEach(function (b) { b.addEventListener("click", closeSheet); });
+  }
+  var mlist = $("#MLIST"), mpage = $("#MPAGE");
+  if (mlist && mpage) {
+    $$("[data-mrow]", mlist).forEach(function (r) {
+      r.addEventListener("click", function () {
+        $$("[data-mrow]", mlist).forEach(function (x) { x.setAttribute("aria-selected", String(x === r)); });
+        mlist.classList.add("push-out");
+        setTimeout(function () {
+          mlist.style.display = "none"; mlist.classList.remove("push-out");
+          mpage.style.display = "flex"; mpage.classList.add("push-in");
+          setTimeout(function () { mpage.classList.remove("push-in"); }, 320);
+        }, 290);
+      });
+    });
+    $("#M_BACK").addEventListener("click", function () {
+      mpage.classList.add("push-out");
+      setTimeout(function () {
+        mpage.style.display = "none"; mpage.classList.remove("push-out");
+        mlist.style.display = "flex"; mlist.classList.add("push-in");
+        setTimeout(function () { mlist.classList.remove("push-in"); }, 320);
+      }, 290);
+    });
+  }
+
+  /* ═══ 10. §9 RECOVER ══════════════════════════════════════════════════ */
+  var recSlot = $("#REC_SLOT");
+  if (recSlot) {
+    var REC = {
+      form: '<div class="recover pane-in"><div class="recover-head">' +
+        '<span class="badge share"><svg class="icon s11"><use href="#i-key"/></svg>Recovery</span>' +
+        "<h2>Reset note password</h2>" +
+        '<p class="sub">Create a new password for your encrypted note.</p></div>' +
+        '<div class="recover-card">' +
+          '<div class="f"><label for="rc1">New password</label><div class="f-in"><input id="rc1" type="password" placeholder="Enter new password">' +
+            '<button type="button" class="ibtn bare" data-reveal title="Show password" aria-label="Show password" style="width:22px;height:22px"><svg class="icon s14"><use href="#i-eye"/></svg></button></div></div>' +
+          '<div class="f"><label for="rc2">Confirm new password</label><div class="f-in"><input id="rc2" type="password" placeholder="Confirm new password"></div></div>' +
+          '<div class="f"><label for="rc3">Reset PIN</label><div class="f-in"><input id="rc3" type="password" inputmode="numeric" placeholder="Enter your secret reset PIN"></div>' +
+            '<p class="hint">This is the PIN you set in Security settings to reset locked note passwords.</p></div>' +
+          '<div class="note-block calm"><h4>Tip</h4><p>Choose a strong password you will remember — you need it every time you open this note.</p></div>' +
+          '<div style="display:flex;gap:9px;margin-top:18px"><button class="btn-accent" style="flex:1;height:38px">Reset password</button></div>' +
+        "</div>" +
+        '<p style="margin:16px 0 0;text-align:center"><a href="#s9" class="link-btn" style="color:rgb(var(--fg-tertiary))">← Back to notes</a></p></div>',
+      ok: '<div class="recover pane-in"><div class="recover-card" style="text-align:center;padding:34px 22px">' +
+        '<div class="empty"><div class="disc ok"><svg class="icon s24"><use href="#i-check-circle"/></svg></div>' +
+        "<h3>Password reset</h3><p>Your note password has been updated. You can open the note with the new password.</p>" +
+        '<div class="act"><span class="micro num" id="REC_TICK">Taking you back to the note in 3s</span></div></div></div></div>',
+      bad: '<div class="recover pane-in"><div class="recover-card" style="text-align:center;padding:34px 22px">' +
+        '<div class="empty"><div class="disc err"><svg class="icon s24"><use href="#i-alert"/></svg></div>' +
+        "<h3>Invalid reset link</h3><p>This password reset link is invalid or has expired.</p>" +
+        '<div class="act"><button class="btn-accent">Go to notes</button></div></div></div></div>'
+    };
+    var tick = null;
+    function paintRec(k) {
+      clearInterval(tick);
+      recSlot.innerHTML = REC[k];
+      $$("[data-rec]").forEach(function (x) { x.setAttribute("aria-pressed", String(x.dataset.rec === k)); });
+      if (k === "ok") {
+        var n = 3, el = $("#REC_TICK");
+        tick = setInterval(function () {
+          n--;
+          if (!el || !document.contains(el)) { clearInterval(tick); return; }
+          el.textContent = n > 0 ? "Taking you back to the note in " + n + "s" : "Taking you back to the note…";
+          if (n <= 0) clearInterval(tick);
+        }, 1000);
+      }
+    }
+    paintRec("form");
+    $$("[data-rec]").forEach(function (b) { b.addEventListener("click", function () { paintRec(b.dataset.rec); }); });
+  }
+})();
+</script>
+
+</body>
+</html>

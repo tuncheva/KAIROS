@@ -33,10 +33,29 @@ export const env = createEnv({
     // LLM Agent System (any OpenAI-compatible /chat/completions endpoint).
     //
     // Optional so the app still boots with the AI disabled, but every agent
-    // call fails without LLM_API_KEY — the model client logs a warning at
-    // startup rather than letting that surface as a vague chat error.
+    // call fails without a key — the model client logs a warning at startup
+    // rather than letting that surface as a vague chat error.
+    /**
+     * Named provider preset from `src/server/llm/core/providers.ts`, supplying
+     * the base URL, model chain and which key variable to read. Lets one `.env`
+     * hold every machine's provider at once and switch with a single line.
+     * Unset = configure LLM_BASE_URL / LLM_MODEL directly.
+     *
+     * Not an enum here on purpose: the preset table is the single source of
+     * truth for the valid names, and duplicating it would let the two drift.
+     */
+    LLM_PROVIDER: z.string().optional(),
+    /** Overrides the preset's base URL when set. */
     LLM_BASE_URL: z.string().url().optional(),
+    /** Shared key, used when the selected provider has no key of its own. */
     LLM_API_KEY: z.string().optional(),
+    // Per-provider keys, read as LLM_API_KEY_<PROVIDER> in preference to the
+    // shared one. Declared so both machines' keys can sit in one .env without
+    // either being the "current" value that a switch has to overwrite.
+    LLM_API_KEY_NVIDIA: z.string().optional(),
+    LLM_API_KEY_VELOCITY: z.string().optional(),
+    LLM_API_KEY_DEEPSEEK: z.string().optional(),
+    /** Overrides the preset's primary model — and, with it, its fallback. */
     LLM_MODEL: z.string().optional(),
     /** Only tried when the primary model fails retriably. Empty = no fallback. */
     LLM_FALLBACK_MODEL: z.string().optional(),
@@ -100,8 +119,12 @@ export const env = createEnv({
     AUTH_MICROSOFT_SECRET: process.env.AUTH_MICROSOFT_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
 
+    LLM_PROVIDER: process.env.LLM_PROVIDER,
     LLM_BASE_URL: process.env.LLM_BASE_URL,
     LLM_API_KEY: process.env.LLM_API_KEY,
+    LLM_API_KEY_NVIDIA: process.env.LLM_API_KEY_NVIDIA,
+    LLM_API_KEY_VELOCITY: process.env.LLM_API_KEY_VELOCITY,
+    LLM_API_KEY_DEEPSEEK: process.env.LLM_API_KEY_DEEPSEEK,
     LLM_MODEL: process.env.LLM_MODEL,
     LLM_FALLBACK_MODEL: process.env.LLM_FALLBACK_MODEL,
     LLM_MODEL_FAST: process.env.LLM_MODEL_FAST,

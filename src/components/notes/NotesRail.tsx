@@ -7,6 +7,13 @@
  * entirely below `md`, taking the notebook list and the create button with it.
  * Here the notebooks are always present next to the views they filter, and the
  * whole rail slides in as a sheet on small screens rather than disappearing.
+ *
+ * Visually it has stopped being its own tinted panel. It sat on `bg-bg-surface`
+ * while the list sat on `bg-bg-secondary` and the editor on `bg-bg-primary` —
+ * three tints doing the job one `border-light/60` hairline does better, which is
+ * how `DashboardClient` splits its columns. Active rows take `SideNav`'s
+ * left-border language instead of a ring, and the create button is the flat
+ * dashboard CTA rather than a gradient pill.
  */
 
 import { useTranslations } from "next-intl";
@@ -25,6 +32,14 @@ import {
 
 import { Menu, MenuItem, MenuSeparator } from "./Menu";
 import { notebookIdOfView, type NoteView } from "./notesData";
+import {
+  BTN_ACCENT_SQUARE,
+  FIELD,
+  FIELD_INPUT,
+  ICON_BTN_BARE,
+  MICRO,
+  STAMP,
+} from "./notesUi";
 
 export interface RailNotebook {
   id: number;
@@ -32,6 +47,18 @@ export interface RailNotebook {
   description: string | null;
   count: number;
 }
+
+/**
+ * One row in the rail.
+ *
+ * `border-l-2` in the flow rather than a `ring-1`, so the marker lines up with
+ * the pane edge and there is a single property to animate. The count is mono and
+ * tabular, like every other figure on the surface.
+ */
+const ROW_BASE =
+  "flex w-full items-center gap-2.5 border-l-2 py-2 pr-3 pl-3.5 text-left text-[13px] transition-colors duration-[300ms]";
+const ROW_IDLE = "border-l-transparent text-fg-secondary hover:bg-accent-primary/[0.06] hover:text-fg-primary";
+const ROW_ON = "border-l-accent-primary bg-accent-primary/[0.08] font-bold text-fg-primary";
 
 export function NotesRail({
   view,
@@ -71,17 +98,20 @@ export function NotesRail({
   ];
 
   return (
-    <div className="flex flex-col h-full bg-bg-surface border-r border-border-light/40">
-      <div className="flex items-center gap-2 px-4 pt-4 pb-3 flex-none">
-        <h1 className="flex-1 text-xl font-bold text-fg-primary">{t("title")}</h1>
+    <div className="flex h-full flex-col border-r border-border-light/60 bg-bg-primary">
+      <div className="flex flex-none items-center gap-2 px-4 pt-4 pb-3">
+        <h1 className="flex-1 text-[15px] font-bold tracking-[-0.012em] text-fg-primary">
+          {t("title")}
+        </h1>
+        <span className={`${STAMP} tabular-nums`}>{counts.all}</span>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
             aria-label={t("common.close")}
-            className="p-2 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-secondary transition-colors md:hidden"
+            className={`${ICON_BTN_BARE} md:hidden`}
           >
-            <X size={17} />
+            <X size={16} />
           </button>
         )}
         <button
@@ -89,18 +119,15 @@ export function NotesRail({
           onClick={onNewNote}
           aria-label={t("actions.create")}
           title={t("actions.create")}
-          className="p-2.5 rounded-xl bg-gradient-to-br from-accent-primary to-accent-secondary text-white shadow-lg hover:brightness-110 transition-all"
+          className={BTN_ACCENT_SQUARE}
         >
-          <Plus size={17} />
+          <Plus size={15} />
         </button>
       </div>
 
-      <div className="px-4 pb-3 flex-none">
-        <div className="relative">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-tertiary pointer-events-none"
-            size={15}
-          />
+      <div className="flex-none px-4 pb-3.5">
+        <div className={FIELD}>
+          <Search className="flex-none text-fg-tertiary" size={14} />
           <input
             ref={searchRef}
             type="search"
@@ -108,64 +135,66 @@ export function NotesRail({
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder={t("search")}
             aria-label={t("search")}
-            className="w-full pl-9 pr-9 py-2.5 text-sm bg-bg-secondary rounded-xl text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/35"
+            className={`${FIELD_INPUT} [&::-webkit-search-cancel-button]:hidden`}
           />
           {query && (
             <button
               type="button"
               onClick={() => onQueryChange("")}
               aria-label={t("common.clearSearch")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-fg-tertiary hover:text-fg-primary transition-colors"
+              className="kairos-tap grid h-5 w-5 flex-none place-items-center rounded text-fg-tertiary transition-colors hover:text-fg-primary"
             >
-              <X size={14} />
+              <X size={12} />
             </button>
           )}
         </div>
       </div>
 
-      <nav className="flex-1 min-h-0 overflow-y-auto px-2 pb-4" aria-label={t("title")}>
-        <ul className="flex flex-col gap-0.5">
+      <nav className="min-h-0 flex-1 overflow-y-auto pb-5" aria-label={t("title")}>
+        {/* `kairos-stagger` has been in globals.css since the design system
+            landed; the rail is exactly what it is for. */}
+        <ul className="kairos-stagger flex flex-col">
           {views.map((entry) => (
             <li key={entry.key}>
               <button
                 type="button"
                 onClick={() => onViewChange(entry.key)}
                 aria-current={view === entry.key ? "true" : undefined}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm text-left transition-colors ${
-                  view === entry.key
-                    ? "bg-accent-primary/10 text-accent-primary font-semibold ring-1 ring-accent-primary/25"
-                    : "text-fg-secondary hover:bg-bg-secondary"
-                }`}
+                className={`${ROW_BASE} ${view === entry.key ? ROW_ON : ROW_IDLE}`}
               >
                 <span className={view === entry.key ? "text-accent-primary" : "text-fg-tertiary"}>
                   {entry.icon}
                 </span>
                 <span className="flex-1 truncate">{entry.label}</span>
-                <span className="text-[10px] tabular-nums text-fg-quaternary">{entry.count}</span>
+                <span
+                  className={`font-mono text-[10px] tabular-nums ${
+                    view === entry.key ? "text-accent-primary" : "text-fg-quaternary"
+                  }`}
+                >
+                  {entry.count}
+                </span>
               </button>
             </li>
           ))}
         </ul>
 
-        <div className="flex items-center justify-between px-2.5 pt-5 pb-1.5">
-          <span className="text-[9.5px] font-semibold uppercase tracking-widest text-fg-quaternary">
-            {t("tabs.notebooks")}
-          </span>
+        <div className="flex items-center justify-between px-4 pt-5 pb-1.5">
+          <span className={MICRO}>{t("tabs.notebooks")}</span>
           <button
             type="button"
             onClick={onCreateNotebook}
             aria-label={t("notebooks.create")}
             title={t("notebooks.create")}
-            className="kairos-tap p-1 rounded-md text-accent-primary hover:bg-accent-primary/10 transition-colors"
+            className="kairos-tap grid h-[22px] w-[22px] place-items-center rounded-md text-accent-primary transition-colors hover:bg-accent-primary/10"
           >
             <Plus size={13} />
           </button>
         </div>
 
         {notebooks.length === 0 ? (
-          <p className="px-2.5 py-2 text-xs text-fg-quaternary">{t("notebooks.emptyRail")}</p>
+          <p className="px-4 py-2 text-[12px] text-fg-quaternary">{t("notebooks.emptyRail")}</p>
         ) : (
-          <ul className="flex flex-col gap-0.5">
+          <ul className="kairos-stagger flex flex-col">
             {notebooks.map((notebook) => {
               const selected = activeNotebookId === notebook.id;
               return (
@@ -175,22 +204,24 @@ export function NotesRail({
                     onClick={() => onViewChange(`notebook:${notebook.id}`)}
                     aria-current={selected ? "true" : undefined}
                     title={notebook.description ?? notebook.name}
-                    className={`flex-1 min-w-0 flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm text-left transition-colors ${
-                      selected
-                        ? "bg-accent-primary/10 text-accent-primary font-semibold ring-1 ring-accent-primary/25"
-                        : "text-fg-secondary hover:bg-bg-secondary"
-                    }`}
+                    className={`${ROW_BASE} min-w-0 flex-1 ${selected ? ROW_ON : ROW_IDLE}`}
                   >
                     <BookOpen size={15} className={selected ? "text-accent-primary" : "text-fg-tertiary"} />
                     <span className="flex-1 truncate">{notebook.name}</span>
-                    <span className="text-[10px] tabular-nums text-fg-quaternary">{notebook.count}</span>
+                    <span
+                      className={`font-mono text-[10px] tabular-nums ${
+                        selected ? "text-accent-primary" : "text-fg-quaternary"
+                      }`}
+                    >
+                      {notebook.count}
+                    </span>
                   </button>
 
-                  <span className="absolute right-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                  <span className="absolute right-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                     <Menu
                       label={t("notebooks.actions", { name: notebook.name })}
                       icon={<MoreHorizontal size={14} />}
-                      triggerClassName="p-1 rounded-md bg-bg-elevated text-fg-tertiary hover:text-fg-primary transition-colors"
+                      triggerClassName="kairos-tap grid h-6 w-6 place-items-center rounded-md border border-border-medium bg-bg-elevated text-fg-tertiary transition-colors hover:text-fg-primary"
                     >
                       {(close) => (
                         <>

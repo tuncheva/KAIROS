@@ -127,6 +127,16 @@ export function Modal({
   /** `alertdialog` for a destructive confirmation, `dialog` otherwise. */
   role?: "dialog" | "alertdialog";
   className?: string;
+  /**
+   * Replaces the backdrop's look — its colour, blur and any entrance
+   * animation. Layout (`fixed inset-0`, the centring grid, the scroll
+   * container) is not negotiable and stays here.
+   *
+   * A replacement rather than an addition: Tailwind resolves two competing
+   * utilities by their order in the generated stylesheet, not by their order in
+   * the class attribute, so appending `bg-black/40` to a hard-coded
+   * `bg-black/60` would win or lose unpredictably.
+   */
   overlayClassName?: string;
   children: ReactNode;
 }) {
@@ -147,7 +157,7 @@ export function Modal({
        backdrop covers part of the page and the card lands wherever the caller
        is. */
     <div
-      className={`fixed inset-0 z-[100] grid place-items-center overflow-y-auto overscroll-contain bg-black/60 p-4 ${overlayClassName}`}
+      className={`fixed inset-0 z-[100] grid place-items-center overflow-y-auto overscroll-contain p-4 ${overlayClassName || "bg-black/60"}`}
       onClick={(e) => {
         if (e.target === e.currentTarget) onDismiss();
       }}

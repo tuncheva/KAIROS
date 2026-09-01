@@ -44,6 +44,13 @@ interface Destination {
   hint?: string;
 }
 
+/**
+ * How long the closing animation runs. Kept in step with
+ * `.command-palette-panel--out` in `globals.css`: the palette stays mounted for
+ * exactly this long after it is dismissed so the exit can be seen.
+ */
+const CLOSE_MS = 150;
+
 /** Case- and accent-insensitive contains, so "проект" matches sensibly too. */
 function matches(haystack: string, needle: string): boolean {
   const norm = (s: string) =>
@@ -72,6 +79,9 @@ export function CommandPalette({
   const router = useRouter();
 
   const [open, setOpen] = useState(initialOpen);
+  /* Dismissed, but still on screen playing its exit. `open` stays true for
+     these few frames — unmounting on the click would skip the animation. */
+  const [closing, setClosing] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -172,11 +182,25 @@ export function CommandPalette({
   const hasQuery = query.trim().length > 0;
   const rowCount = rows.length + (hasQuery ? 1 : 0);
 
-  const close = useCallback(() => {
-    setOpen(false);
-    setQuery("");
-    setActiveIndex(0);
+  const close = useCallback(() => setClosing(true), []);
+
+  /* Re-opening mid-exit has to cancel the pending teardown, or the palette
+     would open and then wipe its own query a moment later. */
+  const openPalette = useCallback(() => {
+    setClosing(false);
+    setOpen(true);
   }, []);
+
+  useEffect(() => {
+    if (!closing) return;
+    const timer = window.setTimeout(() => {
+      setClosing(false);
+      setOpen(false);
+      setQuery("");
+      setActiveIndex(0);
+    }, CLOSE_MS);
+    return () => window.clearTimeout(timer);
+  }, [closing]);
 
   const go = useCallback(
     (index: number) => {
@@ -200,7 +224,8 @@ export function CommandPalette({
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen((prev) => !prev);
+        if (open && !closing) close();
+        else openPalette();
         return;
       }
       if (e.key === "Escape") close();
@@ -208,7 +233,7 @@ export function CommandPalette({
 
     /* Once armed this component stays mounted, so it — not the host — has to
        answer the TopBar's search field from the second click onwards. */
-    const onOpenRequest = () => setOpen(true);
+    const onOpenRequest = () => openPalette();
 
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("kairos:openPalette", onOpenRequest);
@@ -216,11 +241,11 @@ export function CommandPalette({
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("kairos:openPalette", onOpenRequest);
     };
-  }, [close]);
+  }, [close, closing, open, openPalette]);
 
   useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
+    if (open && !closing) inputRef.current?.focus();
+  }, [closing, open]);
 
   // Keep the highlight inside the list as it shrinks under typing.
   useEffect(() => {
@@ -234,11 +259,15 @@ export function CommandPalette({
       role="dialog"
       aria-modal="true"
       aria-label={t("title")}
-      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/40 p-4 pt-[12dvh] backdrop-blur-sm"
+      className={`command-palette-backdrop fixed inset-0 z-[100] flex items-start justify-center bg-black/40 p-4 pt-[12dvh] backdrop-blur-sm ${
+        closing ? "command-palette-backdrop--out" : ""
+      }`}
       onClick={close}
     >
       <div
-        className="w-full max-w-xl overflow-hidden rounded-xl border border-border-medium bg-bg-elevated shadow-2xl"
+        className={`command-palette-panel w-full max-w-xl overflow-hidden rounded-xl border border-border-medium bg-bg-elevated shadow-2xl ${
+          closing ? "command-palette-panel--out" : ""
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <input

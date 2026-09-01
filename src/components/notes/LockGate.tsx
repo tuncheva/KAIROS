@@ -11,11 +11,20 @@
  *
  * Everything shown above the field is metadata `getAll` already returns for a
  * protected note. Nothing here is decrypted.
+ *
+ * A rejected password used to be reported only in text, so nothing told you the
+ * keystroke had been refused until you read the line — which, for the most
+ * repeated interaction on this surface, is the wrong way round. The field
+ * shakes now, replayed per attempt rather than per message: two identical wrong
+ * guesses produce the same error string, and a CSS animation keyed on the
+ * string alone would fire once and then sit still.
  */
 
 import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { AlertCircle, Eye, EyeOff, Loader2, Lock } from "~/components/ui/icons";
+
+import { BTN_ACCENT, FIELD, FIELD_INPUT } from "./notesUi";
 
 export function LockGate({
   password,
@@ -23,6 +32,7 @@ export function LockGate({
   reveal,
   onToggleReveal,
   error,
+  attempt,
   isPending,
   canReset,
   onUnlock,
@@ -34,6 +44,8 @@ export function LockGate({
   reveal: boolean;
   onToggleReveal: () => void;
   error: string | null;
+  /** Counts refusals for this note. Drives the shake; see the note above. */
+  attempt: number;
   isPending: boolean;
   /** Only the owner can reset — a write share does not grant that. */
   canReset: boolean;
@@ -43,28 +55,47 @@ export function LockGate({
 }) {
   const t = useTranslations("notes");
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const fieldRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
+  /* Removing the class, forcing a reflow and adding it back is what restarts a
+     CSS animation that is already on the element. The alternative — remounting
+     the field with a changing `key` — would restart it too, but would also take
+     focus out of the input the user is about to retype into. */
+  useEffect(() => {
+    if (attempt === 0 || !error) return;
+    const el = fieldRef.current;
+    if (!el) return;
+    el.classList.remove("notes-shake");
+    void el.offsetWidth;
+    el.classList.add("notes-shake");
+  }, [attempt, error]);
+
   return (
-    <div className="flex-1 min-h-0 grid place-items-center p-6">
+    <div className="grid min-h-0 flex-1 place-items-center p-6">
       <form
-        className="w-full max-w-[300px] text-center"
+        className="notes-pane-in w-full max-w-[308px] text-center"
         onSubmit={(event) => {
           event.preventDefault();
           if (password && !isPending) onUnlock();
         }}
       >
-        <div className="w-[52px] h-[52px] rounded-2xl bg-error/10 text-error grid place-items-center mx-auto mb-3.5">
+        {/* An outlined disc, the same shape every empty state and dialog icon
+            tile on this surface now uses — rather than a filled `rounded-2xl`
+            tile that appeared nowhere else. */}
+        <div className="mx-auto mb-4 grid h-[54px] w-[54px] place-items-center rounded-full border border-error/35 text-error">
           <Lock size={22} />
         </div>
 
-        <h2 className="text-lg font-bold text-fg-primary">{t("password.gateTitle")}</h2>
-        <p className="mt-1 mb-4 text-xs text-fg-tertiary leading-relaxed">{subtitle}</p>
+        <h2 className="text-[15.5px] font-bold tracking-[-0.012em] text-fg-primary">
+          {t("password.gateTitle")}
+        </h2>
+        <p className="mt-2 mb-5 text-[13px] leading-relaxed text-fg-tertiary">{subtitle}</p>
 
-        <div className="relative">
+        <div ref={fieldRef} className={`${FIELD} ${error ? "border-error/55" : ""}`}>
           <input
             ref={inputRef}
             type={reveal ? "text" : "password"}
@@ -75,15 +106,15 @@ export function LockGate({
             aria-invalid={error ? "true" : undefined}
             aria-describedby={error ? "notes-unlock-error" : undefined}
             autoComplete="off"
-            className="w-full text-left pl-3.5 pr-10 py-2.5 text-sm bg-bg-secondary rounded-xl text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/35"
+            className={`${FIELD_INPUT} text-left`}
           />
           <button
             type="button"
             onClick={onToggleReveal}
             aria-label={reveal ? t("password.hide") : t("password.show")}
-            className="kairos-tap absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-fg-tertiary hover:text-fg-primary transition-colors"
+            className="kairos-tap grid h-6 w-6 flex-none place-items-center rounded-md text-fg-tertiary transition-colors hover:text-fg-primary"
           >
-            {reveal ? <EyeOff size={15} /> : <Eye size={15} />}
+            {reveal ? <EyeOff size={14} /> : <Eye size={14} />}
           </button>
         </div>
 
@@ -91,28 +122,24 @@ export function LockGate({
           <p
             id="notes-unlock-error"
             role="alert"
-            className="flex items-center justify-center gap-1.5 mt-2 text-xs text-error"
+            className="calendar-pop mt-2 flex items-center justify-center gap-1.5 text-[12px] text-error"
           >
             <AlertCircle size={12} /> {error}
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={!password || isPending}
-          className="w-full mt-2.5 py-2.5 rounded-xl bg-accent-primary text-white text-sm font-semibold shadow-lg hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {isPending && <Loader2 size={14} className="animate-spin" />}
+        <button type="submit" disabled={!password || isPending} className={`${BTN_ACCENT} mt-3 h-[38px] w-full`}>
+          {isPending && <Loader2 size={13} className="animate-spin" />}
           {isPending ? t("actions.unlocking") : t("actions.unlock")}
         </button>
 
         {canReset && (
-          <p className="mt-3 text-[11px] text-fg-quaternary">
+          <p className="mt-3.5 text-[11.5px] text-fg-quaternary">
             {t("password.forgot")}{" "}
             <button
               type="button"
               onClick={onResetPassword}
-              className="text-accent-primary font-semibold hover:underline"
+              className="font-mono text-[9.5px] tracking-[0.12em] uppercase text-accent-primary transition-colors hover:text-accent-hover"
             >
               {t("password.resetWithPin")}
             </button>

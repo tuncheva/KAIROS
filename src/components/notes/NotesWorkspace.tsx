@@ -17,7 +17,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
@@ -33,6 +33,7 @@ import { NotesRail, type RailNotebook } from "./NotesRail";
 import { PinResetDialog } from "./PinResetDialog";
 import { RemoveLockDialog } from "./RemoveLockDialog";
 import { ShareDialog } from "./ShareDialog";
+import { exitMs, PANE_SWAP_MS, SHEET_EXIT_MS } from "./notesMotion";
 import {
   countLockedExcluded,
   notebookIdOfView,
@@ -47,24 +48,62 @@ const SORT_STORAGE_KEY = "kairos.notes.sort";
 /** Wrong-password attempts before the PIN reset is offered. */
 const RESET_PROMPT_AFTER = 2;
 
+/**
+ * Which note the URL is asking for.
+ *
+ * Read from the pathname rather than handed down from the page, because the
+ * page is the segment that changes and this component now lives above it in
+ * `(workspace)/layout.tsx` — see that file. It also means one code path serves
+ * a cold load, a deep link, the back button and an in-app selection.
+ */
+function selectionOf(pathname: string): { noteId: number | null; isDraft: boolean } {
+  const rest = pathname.replace(/^\/notes\/?/, "");
+  if (rest === "new") return { noteId: null, isDraft: true };
+  const id = Number(rest);
+  return Number.isInteger(id) && id > 0
+    ? { noteId: id, isDraft: false }
+    : { noteId: null, isDraft: false };
+}
+
+/**
+ * Move to a note without asking the server for a page.
+ *
+ * `router.push` re-renders the `[noteId]` segment on the server, which for a
+ * list you click through is a round trip per row — and every one of them had to
+ * wait on `auth()` before anything could paint. The routes still exist and
+ * still work when entered directly; this is the in-surface case, where the
+ * workspace is already mounted and holding all the data, and the only thing
+ * that has to change is which note is selected and what the address bar says.
+ *
+ * `history.pushState` is supported by the App Router for exactly this: it
+ * updates the URL and `usePathname()` without a navigation, so nothing
+ * unmounts, no payload is fetched and `.kairos-page-enter` does not replay. The
+ * back button still works because these are real history entries — `popstate`
+ * updates `usePathname()`, which is the only thing the selection is derived
+ * from.
+ */
+function pushPath(next: string) {
+  if (window.location.pathname === next) return;
+  window.history.pushState(null, "", next);
+}
+
 interface UnlockedNote {
   content: string;
   /** Kept so a later save can re-encrypt; the server refuses a plaintext write. */
   password: string;
 }
 
-export function NotesWorkspace({
-  noteId,
-  isDraft = false,
-}: {
-  noteId: number | null;
-  isDraft?: boolean;
-}) {
+export function NotesWorkspace() {
   const t = useTranslations("notes");
   const locale = useLocale();
   const dateLocale = locale === "bg" ? "bg-BG" : "en-US";
-  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  /* The single source of truth for what is open. `usePathname()` updates on a
+     real navigation, on `history.pushState`, and on the back button, so all
+     three land here and nowhere else. */
+  const { noteId, isDraft } = useMemo(() => selectionOf(pathname), [pathname]);
   const toast = useToast();
   const utils = api.useUtils();
   const { formatDate } = useDateFormat();
@@ -74,12 +113,41 @@ export function NotesWorkspace({
   const [sort, setSort] = useState<NoteSort>("edited");
   const [query, setQuery] = useState("");
   const [railOpen, setRailOpen] = useState(false);
+  /* The sheet used to appear whole: `{railOpen && <div .../>}` with no
+     transition either way, on the one surface where a drawer sliding in is the
+     whole affordance. `railClosing` buys the exit, the same way every other
+     drawer in the app does — see `notesMotion.ts`. */
+  const [railClosing, setRailClosing] = useState(false);
+  const railTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const closeRail = useCallback(() => {
+    setRailClosing((already) => {
+      if (already) return already;
+      railTimer.current = setTimeout(() => {
+        setRailOpen(false);
+        setRailClosing(false);
+      }, exitMs(SHEET_EXIT_MS));
+      return true;
+    });
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (railTimer.current) clearTimeout(railTimer.current);
+    },
+    [],
+  );
 
   const [unlocked, setUnlocked] = useState<Record<number, UnlockedNote>>({});
   const [lockPassword, setLockPassword] = useState("");
   const [revealPassword, setRevealPassword] = useState(false);
   const [lockError, setLockError] = useState<string | null>(null);
   const attemptsRef = useRef<Record<number, number>>({});
+  /* The same count as `attemptsRef`, but in state, because the gate needs to
+     re-render to replay its shake. A ref alone cannot do that, and the error
+     string alone is not enough — two identical wrong guesses produce the same
+     message, so an animation keyed on it would fire once and then sit still. */
+  const [lockAttempt, setLockAttempt] = useState(0);
 
   const [shareNoteId, setShareNoteId] = useState<number | null>(null);
   const [notebookDialog, setNotebookDialog] = useState<null | { notebook: RailNotebook | null }>(null);
@@ -203,8 +271,10 @@ export function NotesWorkspace({
     const parsed = Number(legacyId);
     /* Notifications still link to `/notes?noteId=12&tab=shared`, which used to
        be resolved by a 300ms `setTimeout` racing the query. It is a route now. */
-    if (Number.isInteger(parsed) && parsed > 0) router.replace(`/notes/${parsed}`);
-  }, [searchParams, router]);
+    if (Number.isInteger(parsed) && parsed > 0) {
+      window.history.replaceState(null, "", `/notes/${parsed}`);
+    }
+  }, [searchParams]);
 
   // ── keyboard ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -216,12 +286,12 @@ export function NotesWorkspace({
         searchRef.current?.select();
         return;
       }
-      if (event.key === "Escape" && railOpen) setRailOpen(false);
+      if (event.key === "Escape" && railOpen) closeRail();
     };
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [railOpen]);
+  }, [railOpen, closeRail]);
 
   // ── mutations ───────────────────────────────────────────────────────
   const createNote = api.note.create.useMutation();
@@ -230,7 +300,7 @@ export function NotesWorkspace({
     onSuccess: () => {
       toast.success(t("messages.deleted"));
       void utils.note.getAll.invalidate();
-      router.push("/notes");
+      pushPath("/notes");
     },
     onError: (error) => toast.error(error.message),
   });
@@ -262,6 +332,7 @@ export function NotesWorkspace({
         setLockPassword("");
         setLockError(null);
         attemptsRef.current[variables.noteId] = 0;
+        setLockAttempt(0);
         return;
       }
       registerFailedAttempt(variables.noteId, t("messages.incorrectPassword"));
@@ -273,6 +344,7 @@ export function NotesWorkspace({
     const next = (attemptsRef.current[id] ?? 0) + 1;
     attemptsRef.current[id] = next;
     setLockError(message);
+    setLockAttempt(next);
     if (next >= RESET_PROMPT_AFTER) setResetPromptFor(id);
   };
 
@@ -368,7 +440,7 @@ export function NotesWorkspace({
         /* Only follow the new note if the draft is still what is on screen.
            Clicking another note mid-draft hands the text off to be created in
            the background — landing on it instead would undo that click. */
-        if (isDraft) router.replace(`/notes/${created.id}`);
+        if (isDraft) window.history.replaceState(null, "", `/notes/${created.id}`);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : t("messages.saveFailed"));
         throw error;
@@ -376,7 +448,7 @@ export function NotesWorkspace({
         creatingRef.current = false;
       }
     },
-    [createNote, isDraft, router, toast, t, utils],
+    [createNote, isDraft, toast, t, utils],
   );
 
   /* Takes the note rather than reading "the open one": the list's context menu
@@ -455,20 +527,56 @@ export function NotesWorkspace({
   const unlockedContent = noteId === null ? undefined : unlocked[noteId]?.content;
   const isListLoading = view === "shared" ? sharedQuery.isLoading : ownQuery.isLoading;
 
-  const openNote = useCallback(
-    (id: number) => {
-      setRailOpen(false);
-      router.push(`/notes/${id}`);
-    },
-    [router],
-  );
+  /* `src/app/(app)/notes/loading.tsx` used to hold the skeleton for this route,
+     and it had to go.
+
+     A `loading.tsx` beside `page.tsx` wraps the whole `notes` segment — including
+     `[noteId]` — in one Suspense boundary. Selection here is a route, so every
+     tap on a row is a soft navigation across that boundary, and Next.js shows
+     the fallback while it fetches the new payload: all three panes were replaced
+     by a full-page skeleton and then rebuilt, on every single note. That is the
+     flash. It cannot be scoped away by adding a closer `loading.tsx`, because a
+     closer boundary is still a boundary.
+
+     Without it, Next keeps the current UI on screen until the new payload
+     arrives, so the rail and the list hold still and only the pane that changed
+     changes. The loading state moves to the components that own the data:
+     `NoteList` already shimmered its own rows, and `NotePage` now does the same
+     when the route names a note the queries have not answered for yet. */
+  const isNoteLoading =
+    noteId !== null && activeNote === null && (ownQuery.isLoading || sharedQuery.isLoading);
+
+  const openNote = useCallback((id: number) => {
+    setRailOpen(false);
+    pushPath(`/notes/${id}`);
+  }, []);
 
   const newNote = useCallback(() => {
     setRailOpen(false);
-    router.push("/notes/new");
-  }, [router]);
+    pushPath("/notes/new");
+  }, []);
 
   const showPageOnMobile = noteId !== null || isDraft;
+
+  /* The mobile pane swap, animated without remounting either pane.
+     Keying the wrappers on `showPageOnMobile` also produced the slide, but it
+     tore down and rebuilt whichever pane was arriving — which on desktop, where
+     both panes are visible and nothing is sliding, made picking a row look like
+     the editor reloading. Toggling a class instead leaves the DOM alone: the
+     text, the caret and the scroll position all survive. */
+  const [swapping, setSwapping] = useState(false);
+  const lastPane = useRef(showPageOnMobile);
+  useEffect(() => {
+    if (lastPane.current === showPageOnMobile) return;
+    lastPane.current = showPageOnMobile;
+    setSwapping(true);
+    const done = setTimeout(() => setSwapping(false), exitMs(PANE_SWAP_MS));
+    return () => clearTimeout(done);
+  }, [showPageOnMobile]);
+
+  /* Only the pane arriving animates, and only below `md`. */
+  const listSwap = swapping && !showPageOnMobile ? "notes-push-in md:animate-none" : "";
+  const pageSwap = swapping && showPageOnMobile ? "notes-push-in md:animate-none" : "";
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -499,17 +607,23 @@ export function NotesWorkspace({
       {railOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setRailOpen(false)}
+            className={`absolute inset-0 bg-black/45 ${
+              railClosing ? "notes-sheet-scrim--out" : "notes-sheet-scrim"
+            }`}
+            onClick={closeRail}
             aria-hidden="true"
           />
-          <div className="absolute inset-y-0 left-0 w-[280px] max-w-[85vw] shadow-2xl">
+          <div
+            className={`absolute inset-y-0 left-0 w-[280px] max-w-[85vw] shadow-2xl ${
+              railClosing ? "notes-sheet--out" : "notes-sheet"
+            }`}
+          >
             <NotesRail
               view={view}
               onViewChange={(next) => {
                 setView(next);
                 setFilter("all");
-                setRailOpen(false);
+                closeRail();
               }}
               counts={{
                 all: ownNotes.length,
@@ -522,26 +636,31 @@ export function NotesWorkspace({
               searchRef={searchRef}
               onNewNote={newNote}
               onCreateNotebook={() => {
-                setRailOpen(false);
+                closeRail();
                 setNotebookDialog({ notebook: null });
               }}
               onRenameNotebook={(notebook) => {
-                setRailOpen(false);
+                closeRail();
                 setNotebookDialog({ notebook });
               }}
               onDeleteNotebook={(notebook) => {
-                setRailOpen(false);
+                closeRail();
                 setConfirmDeleteNotebook(notebook);
               }}
-              onClose={() => setRailOpen(false)}
+              onClose={closeRail}
             />
           </div>
         </div>
       )}
 
-      {/* One pane at a time on mobile: the list, or the note. */}
+      {/* One pane at a time on mobile: the list, or the note. The swap used to
+          be a bare `hidden`/`block` toggle, so the two panes had no visible
+          relationship — the list was simply replaced by a note. Keying on which
+          pane is showing replays the entrance, so the note now arrives from the
+          right and going back reverses it. Desktop shows both and the key is
+          inert there. */}
       <div
-        className={`${showPageOnMobile ? "hidden md:block" : "block"} w-full md:w-[318px] flex-none h-full`}
+        className={`${showPageOnMobile ? "hidden md:block" : "block"} ${listSwap} w-full md:w-[318px] flex-none h-full`}
       >
         <NoteList
           notes={visibleNotes}
@@ -586,10 +705,13 @@ export function NotesWorkspace({
         />
       </div>
 
-      <div className={`${showPageOnMobile ? "block" : "hidden md:block"} flex-1 min-w-0 h-full`}>
+      <div
+        className={`${showPageOnMobile ? "block" : "hidden md:block"} ${pageSwap} flex-1 min-w-0 h-full`}
+      >
         <NotePage
           note={activeNote}
           isDraft={isDraft}
+          isLoading={isNoteLoading}
           notebooks={notebooks}
           unlockedContent={unlockedContent}
           locale={dateLocale}
@@ -598,6 +720,7 @@ export function NotesWorkspace({
             password: lockPassword,
             reveal: revealPassword,
             error: lockError,
+            attempt: lockAttempt,
             isPending: verifyPassword.isPending,
           }}
           onLockPasswordChange={(next) => {
@@ -618,7 +741,7 @@ export function NotesWorkspace({
             if (noteId !== null) moveToNotebook.mutate({ noteId, notebookId });
           }}
           onSetCalendarDate={(date) => void setCalendarDateFor(activeNote, date)}
-          onBack={() => router.push("/notes")}
+          onBack={() => pushPath("/notes")}
           onNewNote={newNote}
         />
       </div>
@@ -732,6 +855,7 @@ export function NotesWorkspace({
               return next;
             });
             attemptsRef.current[resetPinFor] = 0;
+            setLockAttempt(0);
             setResetPinFor(null);
             setLockPassword("");
             setLockError(null);

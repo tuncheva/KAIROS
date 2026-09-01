@@ -14,14 +14,34 @@
  * sender and no token was ever issued or stored — see the note on
  * `sendPasswordResetEmail`. Honouring a token requires first minting one, and
  * that is a feature rather than a fix.
+ *
+ * It was also the one page in the feature that never got the same care as the
+ * rest, and it is the first thing a locked-out user sees: `.surface-card` with
+ * its hover-lift, two `bg-gradient-to-r` buttons, `p-3` inputs with a focus
+ * ring matching nothing else in notes, a duplicated `hover:shadow-lg`, and a
+ * literal 💡 in the tip box. It now uses the same fields, buttons, discs and
+ * blocks as the dialogs it is reached from — and the three-second redirect,
+ * which used to be a silent `setTimeout`, counts down where you can see it.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
-import { Lock, Eye, EyeOff, CheckCircle, AlertCircle } from "~/components/ui/icons";
+import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, KeyRound, Loader2 } from "~/components/ui/icons";
 import Link from "next/link";
+
+import {
+  Badge,
+  BTN_ACCENT,
+  FIELD,
+  FIELD_INPUT,
+  FIELD_LABEL,
+  MICRO,
+} from "~/components/notes/notesUi";
+
+/** Matches the redirect below, and is what the countdown counts. */
+const REDIRECT_SECONDS = 3;
 
 export function RecoverClient({ noteId }: { noteId: string }) {
   const t = useTranslations("notes.recover");
@@ -34,18 +54,25 @@ export function RecoverClient({ noteId }: { noteId: string }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [remaining, setRemaining] = useState(REDIRECT_SECONDS);
 
   const resetPassword = api.note.resetPasswordWithPin.useMutation({
-    onSuccess: () => {
-      setSuccess(true);
-      setTimeout(() => {
-        router.push(`/notes/${noteId}`);
-      }, 3000);
-    },
-    onError: (error) => {
-      setError(error.message);
-    },
+    onSuccess: () => setSuccess(true),
+    onError: (mutationError) => setError(mutationError.message),
   });
+
+  /* The redirect and the countdown are the same clock, so what the page says is
+     what it does. Previously the navigation was a bare `setTimeout` inside
+     `onSuccess` and the copy claiming it was happening was static. */
+  useEffect(() => {
+    if (!success) return;
+    const tick = setInterval(() => setRemaining((n) => Math.max(0, n - 1)), 1000);
+    const go = setTimeout(() => router.push(`/notes/${noteId}`), REDIRECT_SECONDS * 1000);
+    return () => {
+      clearInterval(tick);
+      clearTimeout(go);
+    };
+  }, [success, noteId, router]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,162 +107,203 @@ export function RecoverClient({ noteId }: { noteId: string }) {
 
   if (!noteId) {
     return (
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="surface-card p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-error/15 rounded-full flex items-center justify-center mx-auto mb-4 border border-error/25">
-            <AlertCircle className="text-error" size={32} />
-          </div>
-          <h1 className="text-2xl font-bold text-fg-primary mb-2">{t("invalidTitle")}</h1>
-          <p className="text-fg-secondary mb-6">
-            {t("invalidBody")}
-          </p>
-          <Link
-            href="/notes"
-            className="inline-block px-6 py-3 bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-lg transition-all"
-          >
-            {t("goToNotes")}
-          </Link>
-        </div>
-      </div>
+      <Outcome
+        tone="error"
+        icon={<AlertCircle size={22} />}
+        title={t("invalidTitle")}
+        body={t("invalidBody")}
+      >
+        <Link href="/notes" className={BTN_ACCENT}>
+          {t("goToNotes")}
+        </Link>
+      </Outcome>
     );
   }
 
   if (success) {
     return (
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="surface-card p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-success/15 rounded-full flex items-center justify-center mx-auto mb-4 border border-success/25">
-            <CheckCircle className="text-success" size={32} />
-          </div>
-          <h1 className="text-2xl font-bold text-fg-primary mb-2">{t("successTitle")}</h1>
-          <p className="text-fg-secondary mb-6">
-            {t("successBody")}
-          </p>
-          <p className="text-sm text-fg-tertiary">
-            {t("redirecting")}
-          </p>
-        </div>
-      </div>
+      <Outcome
+        tone="success"
+        icon={<CheckCircle size={22} />}
+        title={t("successTitle")}
+        body={t("successBody")}
+      >
+        <span className={`${MICRO} tabular-nums`}>
+          {remaining > 0 ? `${t("redirecting")} ${remaining}s` : t("redirecting")}
+        </span>
+      </Outcome>
     );
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center p-4">
-      <div className="surface-card p-8 max-w-md w-full">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-xl flex items-center justify-center shadow-sm">
-            <Lock className="text-white" size={24} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-fg-primary">{t("title")}</h1>
-            <p className="text-sm text-fg-secondary">{t("subtitle")}</p>
-          </div>
-        </div>
+    <div className="flex min-h-full items-start justify-center p-4 py-10 sm:py-16">
+      <div className="notes-pane-in w-full max-w-[420px]">
+        <Badge tone="share" icon={<KeyRound size={9} />}>
+          {t("pinLabel")}
+        </Badge>
+        <h1 className="mt-3.5 font-display text-[30px] leading-[1.12] font-normal tracking-[-0.012em] text-fg-primary">
+          {t("title")}
+        </h1>
+        <p className="mt-2 mb-6 text-[13.5px] leading-relaxed text-fg-tertiary">{t("subtitle")}</p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-error/10 border border-error/25 rounded-lg p-4">
-              <div className="flex items-start gap-2">
-                <AlertCircle size={18} className="text-error mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-fg-primary">{error}</p>
+        <div className="rounded-xl border border-border-light/60 bg-bg-elevated p-5">
+          <form onSubmit={handleSubmit}>
+            {error && (
+              <div
+                role="alert"
+                className="calendar-pop mb-4 flex items-start gap-2 rounded-[10px] border border-error/30 bg-error/[0.06] p-3.5"
+              >
+                <AlertCircle size={14} className="mt-0.5 flex-shrink-0 text-error" />
+                <p className="text-[12.5px] leading-relaxed text-fg-secondary">{error}</p>
+              </div>
+            )}
+
+            <div className="mb-3.5">
+              <label htmlFor="new-password" className={FIELD_LABEL}>
+                {t("newPasswordLabel")}
+              </label>
+              <div className={FIELD}>
+                <input
+                  id="new-password"
+                  type={showPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder={t("newPasswordPlaceholder")}
+                  autoComplete="new-password"
+                  className={FIELD_INPUT}
+                  disabled={resetPassword.isPending}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="kairos-tap grid h-6 w-6 flex-none place-items-center rounded-md text-fg-tertiary transition-colors hover:text-fg-primary"
+                  aria-label={showPassword ? t("hide") : t("show")}
+                >
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
               </div>
             </div>
-          )}
 
-          <div>
-            <label htmlFor="new-password" className="block text-sm font-semibold text-fg-primary mb-2">
-              {t("newPasswordLabel")}
-            </label>
-            <div className="relative">
-              <input
-                id="new-password"
-                type={showPassword ? "text" : "password"}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder={t("newPasswordPlaceholder")}
-                className="w-full p-3 pr-12 bg-bg-surface/60 border border-border-light/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary/50 text-fg-primary placeholder:text-fg-tertiary"
-                disabled={resetPassword.isPending}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-tertiary hover:text-fg-primary"
-                aria-label={showPassword ? t("hide") : t("show")}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+            <div className="mb-3.5">
+              <label htmlFor="confirm-password" className={FIELD_LABEL}>
+                {t("confirmPasswordLabel")}
+              </label>
+              <div className={FIELD}>
+                <input
+                  id="confirm-password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder={t("confirmPasswordPlaceholder")}
+                  autoComplete="new-password"
+                  className={FIELD_INPUT}
+                  disabled={resetPassword.isPending}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="kairos-tap grid h-6 w-6 flex-none place-items-center rounded-md text-fg-tertiary transition-colors hover:text-fg-primary"
+                  aria-label={showConfirmPassword ? t("hide") : t("show")}
+                >
+                  {showConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label htmlFor="confirm-password" className="block text-sm font-semibold text-fg-primary mb-2">
-              {t("confirmPasswordLabel")}
-            </label>
-            <div className="relative">
-              <input
-                id="confirm-password"
-                type={showConfirmPassword ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder={t("confirmPasswordPlaceholder")}
-                className="w-full p-3 pr-12 bg-bg-surface/60 border border-border-light/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary/50 text-fg-primary placeholder:text-fg-tertiary"
-                disabled={resetPassword.isPending}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-tertiary hover:text-fg-primary"
-                aria-label={showConfirmPassword ? t("hide") : t("show")}
-              >
-                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+            <div className="mb-3.5">
+              <label htmlFor="reset-pin" className={FIELD_LABEL}>
+                {t("pinLabel")}
+              </label>
+              <div className={FIELD}>
+                <input
+                  id="reset-pin"
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={resetPin}
+                  onChange={(e) => setResetPin(e.target.value)}
+                  placeholder={t("pinPlaceholder")}
+                  autoComplete="off"
+                  className={FIELD_INPUT}
+                  disabled={resetPassword.isPending}
+                />
+              </div>
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-fg-quaternary">{t("pinHelp")}</p>
             </div>
-          </div>
 
-          <div>
-            <label htmlFor="reset-pin" className="block text-sm font-semibold text-fg-primary mb-2">
-              {t("pinLabel")}
-            </label>
-            <input
-              id="reset-pin"
-              type="password"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={resetPin}
-              onChange={(e) => setResetPin(e.target.value)}
-              placeholder={t("pinPlaceholder")}
-              className="w-full p-3 bg-bg-surface/60 border border-border-light/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary/50 text-fg-primary placeholder:text-fg-tertiary"
-              disabled={resetPassword.isPending}
-            />
-            <p className="mt-1 text-xs text-fg-tertiary">
-              {t("pinHelp")}
-            </p>
-          </div>
+            {/* The tip, without the emoji, on the same calm block the dialogs
+                use for a fact worth reading before the button. */}
+            <div className="mt-4 rounded-[10px] border border-border-light/70 bg-bg-secondary p-3.5">
+              <p className="text-[12.5px] font-bold tracking-[-0.005em] text-fg-secondary">
+                {t("tipLabel")}
+              </p>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-fg-tertiary">{t("tipBody")}</p>
+            </div>
 
-          <div className="bg-accent-primary/5 border border-accent-primary/20 rounded-lg p-4">
-            <p className="text-sm text-fg-secondary">
-              💡 <strong className="text-fg-primary">{t("tipLabel")}</strong> {t("tipBody")}
-            </p>
-          </div>
+            <button
+              type="submit"
+              disabled={resetPassword.isPending || !newPassword || !confirmPassword || !resetPin}
+              className={`${BTN_ACCENT} mt-5 h-[38px] w-full`}
+            >
+              {resetPassword.isPending ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Lock size={14} />
+              )}
+              {resetPassword.isPending ? t("submitting") : t("submit")}
+            </button>
+          </form>
+        </div>
 
-          <button
-            type="submit"
-            disabled={resetPassword.isPending || !newPassword || !confirmPassword || !resetPin}
-            className="w-full px-6 py-3 bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-semibold rounded-lg hover:shadow-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <Lock size={18} />
-            {resetPassword.isPending ? t("submitting") : t("submit")}
-          </button>
-        </form>
-
-        <div className="mt-6 pt-6 border-t border-border-light/40 text-center">
+        <p className="mt-5 text-center">
           <Link
             href="/notes"
-            className="text-sm text-accent-primary hover:text-accent-hover font-medium transition-colors"
+            className="font-mono text-[9.5px] tracking-[0.12em] uppercase text-fg-tertiary transition-colors hover:text-fg-primary"
           >
             {t("backToNotes")}
           </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The two terminal states.
+ *
+ * Same outlined disc as every empty state and the lock gate, rather than the
+ * two filled `w-16 h-16` circles this page used to carry — which were the only
+ * two of that size anywhere in the feature.
+ */
+function Outcome({
+  tone,
+  icon,
+  title,
+  body,
+  children,
+}: {
+  tone: "error" | "success";
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  children: React.ReactNode;
+}) {
+  const tones = {
+    error: "border-error/35 text-error",
+    success: "border-success/40 text-success",
+  } as const;
+
+  return (
+    <div className="flex min-h-full items-center justify-center p-4">
+      <div className="notes-pane-in w-full max-w-[380px] rounded-xl border border-border-light/60 bg-bg-elevated p-8 text-center">
+        <div
+          className={`notes-disc-in mx-auto mb-4 grid h-[54px] w-[54px] place-items-center rounded-full border ${tones[tone]}`}
+        >
+          {icon}
         </div>
+        <h1 className="text-[17px] font-bold tracking-[-0.014em] text-fg-primary">{title}</h1>
+        <p className="mt-2 mb-6 text-[13px] leading-relaxed text-fg-tertiary">{body}</p>
+        {children}
       </div>
     </div>
   );

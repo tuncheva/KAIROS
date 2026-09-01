@@ -743,31 +743,12 @@ summary,
   color: #0a0a0c;
 }
 
-.kairos-glass-button::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(
-    700px circle at 20% 10%,
-    rgba(255, 255, 255, 0.15),
-    transparent 55%
-  );
-  opacity: 0;
-  transition: opacity 220ms cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
-}
-
-.kairos-glass-button:hover::before {
-  opacity: 1;
-}
-
+/* Hover is a lift and a slightly deeper drop shadow. No white halo: the
+   button is already white, so a white glow only smears its edge. */
 .kairos-glass-button:hover {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 1);
-  box-shadow:
-    0 18px 40px -22px rgb(0 0 0 / 0.45),
-    0 0 0 1px rgba(255, 255, 255, 0.3) inset;
+  box-shadow: 0 18px 40px -22px rgb(0 0 0 / 0.45);
 }
 
 .kairos-glass-button:active {
@@ -1888,23 +1869,7 @@ summary,
   transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.kairos-btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    rgba(255, 255, 255, 0.15),
-    rgba(255, 255, 255, 0)
-  );
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
-}
-
-.kairos-btn:hover::after {
-  opacity: 1;
-}
-
+/* No hover sheen — the press is the only feedback the button gives. */
 .kairos-btn:active {
   transform: scale(0.97);
 }
@@ -3716,8 +3681,8 @@ input[type="search"]::-webkit-search-results-decoration {
    class is safe to apply mechanically.
 
    It is opt-in rather than a blanket rule on `button` for two reasons: a
-   handful of buttons in the sheet already own their `::after` (`.kairos-btn`,
-   `.k-nav`), and `position: relative` on an arbitrary button would re-anchor
+   handful of buttons in the sheet already own their `::after` (`.k-nav`), and
+   `position: relative` on an arbitrary button would re-anchor
    any absolutely positioned child it happens to contain.
 
    The `:not()` pair matters: this rule is unlayered, so a bare
@@ -3859,5 +3824,335 @@ input[type="search"]::-webkit-search-results-decoration {
     animation: none !important;
     opacity: 1 !important;
     transform: translateY(-50%) !important;
+  }
+}
+
+/* The command palette's entrance and exit.
+
+   It arrives over whatever you were reading, so it should look like it came
+   from the search field rather than being cut in: the backdrop fades, and the
+   panel drops the last few pixels while it settles to full size. The exit is
+   the same gesture, shorter and eased out — a dismissal should feel finished
+   before you have finished reading it.
+
+   Duration of the exit is mirrored by CLOSE_MS in CommandPalette.tsx, which is
+   what keeps the palette mounted long enough for it to play. */
+@keyframes command-palette-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes command-palette-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.command-palette-backdrop {
+  animation: command-palette-backdrop-in 0.18s ease-out backwards;
+}
+
+.command-palette-panel {
+  animation: command-palette-panel-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  transform-origin: top center;
+}
+
+.command-palette-backdrop--out {
+  animation: command-palette-backdrop-in 0.15s ease-in reverse forwards;
+  /* Nothing behind it is clickable yet, and nothing in it should be clicked
+     again on the way out. */
+  pointer-events: none;
+}
+
+.command-palette-panel--out {
+  animation: command-palette-panel-in 0.15s cubic-bezier(0.4, 0, 1, 1) reverse forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The exit still has to occupy CLOSE_MS — React unmounts on a timer, not on
+     animationend — so it holds the panel still and fades it instead. */
+  .command-palette-backdrop,
+  .command-palette-panel {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .command-palette-backdrop--out,
+  .command-palette-panel--out {
+    animation: none !important;
+    opacity: 0 !important;
+    transform: none !important;
+    transition: opacity 0.15s linear;
+  }
+}
+
+/* ===========================================================================
+   Notes: the motion the surface never had
+   ---------------------------------------------------------------------------
+   Notes shipped with `transition-colors`, `animate-pulse`, `animate-spin` and
+   one `.kairos-page-enter` on `<main>`. Eleven popups mounted and unmounted
+   mid-frame, the mobile sheet appeared without sliding, and the pane swap was
+   a bare `hidden`/`block` toggle.
+
+   Almost everything below leans on a keyframe that already existed further up
+   this file — `kairos-modal-enter`, `kairos-scale-in`, `calendar-pop`,
+   `dash-rise`, `projects-drawer-in`, `dash-row-out`. What is genuinely new is
+   the *exits*: an enter without a matching exit is why every dialog on this
+   surface disappeared rather than left.
+
+   The exits are held by a timer rather than `animationend` (see
+   `notesMotion.ts`), for the reason `drawerExit.ts` gives: under
+   `animation: none` no such event fires and the panel would be stranded on
+   screen forever. That is also why each `--out` rule gets an explicit
+   reduced-motion counterpart — the hold still has to elapse, so it holds the
+   element still and fades it instead.
+   ========================================================================== */
+
+@keyframes kairos-modal-exit {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes notes-shake {
+  0%, 100% { transform: none; }
+  15% { transform: translateX(-4px); }
+  35% { transform: translateX(4px); }
+  55% { transform: translateX(-3px); }
+  75% { transform: translateX(2px); }
+}
+
+@keyframes notes-badge-morph {
+  0% { transform: scale(1); }
+  45% { transform: scale(0.86); }
+  100% { transform: scale(1); }
+}
+
+@keyframes notes-strip-in {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    max-height: 96px;
+    transform: none;
+  }
+}
+
+@keyframes notes-push-in {
+  from {
+    opacity: 0;
+    transform: translateX(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes kairos-shimmer {
+  from { background-position: -160% 0; }
+  to { background-position: 260% 0; }
+}
+
+/* ── Dialogs ─────────────────────────────────────────────────────────────
+   One chrome for all six. The scrim is the CommandPalette treatment; the card
+   is the CalendarClient popover surface. */
+.notes-scrim {
+  animation: command-palette-backdrop-in 0.18s ease-out backwards;
+}
+
+.notes-scrim--out {
+  animation: command-palette-backdrop-in 0.15s ease-in reverse forwards;
+}
+
+.notes-dialog {
+  animation: kairos-modal-enter 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.notes-dialog--out {
+  animation: kairos-modal-exit 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notes-scrim,
+  .notes-dialog {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .notes-scrim--out,
+  .notes-dialog--out {
+    animation: none !important;
+    opacity: 0 !important;
+    transform: none !important;
+    transition: opacity 0.15s linear;
+  }
+}
+
+/* ── Menus ───────────────────────────────────────────────────────────────
+   `kairos-scale-in` was already in this file and was never applied to a notes
+   menu. `transform-origin` is set inline from the anchor corner, so a
+   right-aligned menu grows out of the button rather than out of its own
+   middle. */
+.notes-menu {
+  animation: kairos-scale-in 0.16s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.notes-menu--out {
+  animation: kairos-scale-in 0.12s cubic-bezier(0.4, 0, 0.2, 1) reverse forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notes-menu {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .notes-menu--out {
+    animation: none !important;
+    opacity: 0 !important;
+    transform: none !important;
+    transition: opacity 0.12s linear;
+  }
+}
+
+/* ── The mobile rail sheet ───────────────────────────────────────────────
+   Shares `projects-drawer-in`/`-out` with every other drawer in the app, and
+   therefore shares `DRAWER_EXIT_MS` with them too. */
+.notes-sheet {
+  animation: projects-drawer-in 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.notes-sheet--out {
+  animation: projects-drawer-out 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.notes-sheet-scrim {
+  animation: projects-scrim-in 0.35s ease-out both;
+}
+
+.notes-sheet-scrim--out {
+  animation: projects-scrim-out 0.3s ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notes-sheet,
+  .notes-sheet-scrim {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .notes-sheet--out,
+  .notes-sheet-scrim--out {
+    animation: none !important;
+    opacity: 0 !important;
+    transform: none !important;
+  }
+}
+
+/* ── The list ────────────────────────────────────────────────────────────
+   Rows rise on load and on every filter or sort change. The delay is set
+   inline per row and capped by the caller, so a long list never reads as
+   though it is loading twice. */
+.notes-row-in {
+  animation: dash-rise 0.4s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+/* An empty state's disc, on the overshoot curve. `kairos-scale-in` exists
+   above but only ever inside other selectors — there is no bare class for it. */
+.notes-disc-in {
+  animation: kairos-scale-in 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── Whole-pane state changes ────────────────────────────────────────────
+   For a pane that has genuinely become something else — the lock gate, the
+   "only the owner can unlock this" explainer, the recovery page. Deliberately
+   NOT used on the editor when you switch notes: fading the writing surface in
+   and out on every selection reads as the pane reloading, and remounting it to
+   replay the animation loses the caret. The motion on this surface belongs to
+   the list, the rail, the menus and the dialogs — not to the text you are
+   trying to read. */
+.notes-pane-in {
+  animation: calendar-pop 0.3s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+/* The inline calendar-date and draft-password strips reveal by height rather
+   than blinking into existence. */
+.notes-strip {
+  overflow: hidden;
+  animation: notes-strip-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* One pane at a time on mobile: the list leaves to the left, the note arrives
+   from the right, so the two read as the same stack rather than two unrelated
+   screens. */
+.notes-push-in {
+  animation: notes-push-in 0.3s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+/* ── Feedback ────────────────────────────────────────────────────────────
+   A rejected password was previously reported only in text: nothing told you
+   the keystroke had been refused until you read the line. */
+.notes-shake {
+  animation: notes-shake 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Unlocking is a state change, not a screen swap — the badge dips and comes
+   back while its border crosses from error to success. */
+.notes-badge-morph {
+  animation: notes-badge-morph 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── Skeletons ───────────────────────────────────────────────────────────
+   A sweep rather than `animate-pulse`, so a placeholder reads as arriving
+   instead of a column of boxes blinking in unison. Two backgrounds: the
+   moving highlight over the resting fill. */
+.kairos-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--fg-primary) / 0.055) 45%,
+    transparent 90%
+  );
+  background-color: rgb(var(--bg-tertiary));
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: kairos-shimmer 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.dark .kairos-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--fg-primary) / 0.075) 45%,
+    transparent 90%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kairos-shimmer {
+    animation: none !important;
+    background-image: none !important;
   }
 }

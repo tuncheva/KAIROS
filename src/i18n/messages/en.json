@@ -305,6 +305,11 @@
         "locked": "No encrypted notes here.",
         "shared": "Nothing here is shared.",
         "unfiled": "Every note here is in a notebook."
+      },
+      "emptyHint": {
+        "locked": "Notes you protect with a password will collect here.",
+        "shared": "Share a note and it will appear under this filter.",
+        "unfiled": "Nothing is loose — everything here has a notebook."
       }
     },
     "buckets": {
@@ -348,7 +353,8 @@
       "confirmPasswordLabel": "Confirm new password",
       "pinLabel": "Reset PIN",
       "backToNotes": "← Back to notes"
-    }
+    },
+    "searchEmptyHint": "Try a shorter word, or clear the search to see everything again."
   },
   "progress": {
     "title": "Progress",
