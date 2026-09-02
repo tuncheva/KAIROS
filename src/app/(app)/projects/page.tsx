@@ -3,7 +3,8 @@ import { signInHref } from "~/lib/routes";
 
 import { TopBar } from "~/components/layout/TopBar";
 import { NewProjectDrawer } from "~/components/projects/NewProjectDrawer";
-import { ProjectsWorkspace, isDetailTab } from "~/components/projects/ProjectsWorkspace";
+import { ProjectsWorkspace } from "~/components/projects/ProjectsWorkspace";
+import { isDetailTab } from "~/components/projects/projectsData";
 import { auth } from "~/server/auth";
 import { api, HydrateClient } from "~/trpc/server";
 

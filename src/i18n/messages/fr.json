@@ -836,14 +836,6 @@
       "high": "Haute",
       "urgent": "Urgente"
     },
-    "insights": {
-      "title": "Demande votre attention",
-      "loading": "Analyse de vos projets…",
-      "allClear": "Rien ne demande votre attention pour le moment.",
-      "count": "{count} en cours",
-      "dismiss": "Écarter",
-      "openProject": "Ouvrir le projet"
-    },
     "palette": {
       "title": "Palette de commandes",
       "placeholder": "Cherchez, ou demandez ce que vous voulez à l'assistant…",
@@ -1037,19 +1029,13 @@
       "dueToday": "Dues aujourd'hui",
       "overdue": "En retard",
       "openThisWeek": "Ouvertes cette semaine",
-      "completed": "Terminées"
-    },
-    "today": {
-      "title": "Dues aujourd'hui",
-      "action": "Toutes les tâches",
-      "empty": "Rien de prévu aujourd'hui.",
-      "complete": "Marquer comme terminée",
-      "reopen": "Réouvrir la tâche"
-    },
-    "week": {
-      "title": "Reste de la semaine",
-      "action": "Ouvrir le calendrier",
-      "today": "AUJOURD'HUI"
+      "completed": "Terminées",
+      "notes": {
+        "doneToday": "{count} faites",
+        "oldest": "la plus ancienne {days}j",
+        "across": "sur {count}",
+        "allTime": "au total"
+      }
     },
     "activity": {
       "title": "Activité récente",
@@ -1068,15 +1054,11 @@
       "done": "{count} terminées",
       "active": "{count} en cours",
       "todo": "{count} à faire",
-      "ofTasks": "{done} sur {total} tâches",
-      "dayGone": "{percent}% de la journée écoulée"
+      "dayGone": "{percent}% de la journée écoulée",
+      "ofTasksDone": "des tâches faites"
     },
     "projects": {
-      "title": "Projets",
-      "action": "Tout voir",
       "untitled": "Projet sans titre",
-      "noTasks": "Aucune tâche",
-      "open": "{count} ouvertes",
       "empty": "Créez votre premier projet",
       "health": {
         "onTrack": "Dans les temps",
@@ -1084,20 +1066,6 @@
         "atRisk": "À risque",
         "empty": "Aucune tâche"
       }
-    },
-    "notes": {
-      "title": "Notes",
-      "action": "Nouvelle note",
-      "private": "Privée",
-      "shared": "Partagée",
-      "untitled": "Note sans titre",
-      "empty": "Écrivez votre première note"
-    },
-    "status": {
-      "done": "Terminée",
-      "overdue": "En retard",
-      "inProgress": "En cours",
-      "todo": "À faire"
     },
     "firstRun": {
       "tag": "Premier lancement",
@@ -1113,6 +1081,50 @@
       "step2": "Invitez des personnes avec un seul code d'accès.",
       "step3": "Tâches, notes et progression arrivent sur ce tableau de bord.",
       "aside": "L'arc intérieur suit la journée elle-même : un tableau de bord vide indique encore le temps restant."
+    },
+    "radar": {
+      "title": "Ce que le radar a trouvé",
+      "count": "{count, plural, =0 {rien à signaler} one {# constat} other {# constats}}",
+      "loading": "vérification…",
+      "checked": "Vérifié il y a {ago}",
+      "allClear": "Rien ne demande votre attention pour l'instant.",
+      "dismiss": "Ignorer",
+      "openProject": "Ouvrir le projet",
+      "workspaceWide": "Dans tout l'espace",
+      "severity": {
+        "critical": "Critique",
+        "warning": "Alerte",
+        "info": "Info"
+      }
+    },
+    "projectStatus": {
+      "title": "État des projets",
+      "count": "{count, plural, =0 {aucun actif} one {# actif} other {# actifs}}",
+      "action": "Tous les projets",
+      "ends": "Fin le {date}",
+      "noDate": "Sans date",
+      "columns": {
+        "project": "Projet",
+        "team": "Équipe",
+        "open": "Ouvertes",
+        "overdue": "En retard",
+        "completion": "Avancement",
+        "health": "État"
+      }
+    },
+    "momentum": {
+      "title": "Votre rythme",
+      "streak": "{count, plural, one {1 jour d'affilée} other {# jours d'affilée}}",
+      "noStreak": "Pas encore de série",
+      "line": "{total, plural, =0 {Rien de terminé ces deux dernières semaines.} one {Vous avez terminé une tâche ces deux dernières semaines.} other {Vous avez terminé # tâches ces deux dernières semaines}}{today, plural, =0 {} other {, dont {today} aujourd'hui}}."
+    },
+    "teamToday": {
+      "title": "L'équipe aujourd'hui",
+      "open": "{count} ouvertes",
+      "active": "Actif il y a {ago}",
+      "neverActive": "Aucune activité encore",
+      "you": "{name} (vous)",
+      "empty": "Personne d'autre sur ces projets pour l'instant."
     }
   },
   "agents": {

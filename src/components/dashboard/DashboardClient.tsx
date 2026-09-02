@@ -3,27 +3,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, ChevronRight, Plus } from "~/components/ui/icons";
+import { Plus, Zap } from "~/components/ui/icons";
 
+import { ProfileLink } from "~/components/profile/ProfileLink";
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
+import { RadarFindings } from "./RadarFindings";
 import {
   RING_DAY,
-  RING_PROJECT,
   RING_TASKS,
   dashOffset,
   dayFraction,
   headlineStats,
-  projectSummaries,
+  momentum,
+  projectStatusRows,
+  relativeShort,
   startOfDay,
-  taskState,
-  todayTasks,
-  weekStrip,
   type CalendarTask,
-  type ProjectSummary,
-  type TaskState,
-  type WeekDay,
+  type Momentum,
+  type ProjectOwner,
+  type ProjectStatusRow,
 } from "./dashboardData";
 
 /** Project detail lives behind the create flow — see `ProjectsWorkspace`. */
@@ -78,7 +78,7 @@ function useEntrance(active: boolean): number {
 
 /**
  * Tweens a number toward its latest target. The entrance handles first paint,
- * so this starts settled and only animates the *changes* — ticking a task off
+ * so this starts settled and only animates the *changes* — finishing a task
  * sweeps the ring and counts the percent across instead of snapping.
  */
 function useTween(target: number, duration = 700): number {
@@ -118,63 +118,21 @@ function useTween(target: number, duration = 700): number {
   return value;
 }
 
-/**
- * Completing a task usually drops it out of the list. React has no exit phase,
- * so rows that vanish are held at their old index for the length of the
- * collapse animation and then let go.
- */
-function useExitList<T extends { id: number }>(
-  items: T[],
-  hold = 420,
-): Array<{ item: T; leaving: boolean }> {
-  const [leaving, setLeaving] = useState<Array<{ item: T; index: number }>>([]);
-  const previous = useRef<T[]>(items);
-
-  useEffect(() => {
-    const live = new Set(items.map((item) => item.id));
-    const gone = previous.current
-      .map((item, index) => ({ item, index }))
-      .filter((entry) => !live.has(entry.item.id));
-    previous.current = items;
-    if (gone.length === 0) return;
-
-    setLeaving((rows) => [
-      ...rows.filter((row) => !gone.some((entry) => entry.item.id === row.item.id)),
-      ...gone,
-    ]);
-    const timer = setTimeout(() => {
-      setLeaving((rows) =>
-        rows.filter((row) => !gone.some((entry) => entry.item.id === row.item.id)),
-      );
-    }, hold);
-
-    return () => clearTimeout(timer);
-  }, [items, hold]);
-
-  const live = new Set(items.map((item) => item.id));
-  const rows = items.map((item) => ({ item, leaving: false }));
-  for (const entry of leaving) {
-    if (live.has(entry.item.id)) continue;
-    rows.splice(Math.min(entry.index, rows.length), 0, { item: entry.item, leaving: true });
-  }
-  return rows;
-}
-
 /** Blocks stage in on a shared curve; the delay is what separates them. */
 const rise = (delay: number) => ({ animationDelay: `${delay}s` });
 
 export function DashboardClient({ userName }: { userName: string | null }) {
   const t = useTranslations("dashboard");
   const locale = useLocale();
-  const toast = useToast();
-  const utils = api.useUtils();
 
   const projectsQuery = api.project.getMyProjects.useQuery();
-  const notesQuery = api.note.getAll.useQuery();
   const activityQuery = api.task.getOrgActivity.useQuery({ limit: 6, scope: "all" });
+  const pulseQuery = api.progress.getPulse.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
 
-  // A fortnight is wide enough for the five-column strip even when it starts on
-  // a Friday and has to jump the weekend.
+  // Wide enough to date the overdue pile — the stat line says how old the
+  // oldest one is, and a fortnight of slack keeps that honest.
   const range = useMemo(() => {
     const from = startOfDay(new Date());
     from.setDate(from.getDate() - 60);
@@ -185,17 +143,6 @@ export function DashboardClient({ userName }: { userName: string | null }) {
 
   const calendarQuery = api.task.getForCalendar.useQuery(range);
 
-  const updateStatus = api.task.updateStatus.useMutation({
-    onSuccess: async () => {
-      await Promise.all([
-        utils.task.getForCalendar.invalidate(),
-        utils.project.getMyProjects.invalidate(),
-        utils.task.getOrgActivity.invalidate(),
-      ]);
-    },
-    onError: (error) => toast.error(error.message),
-  });
-
   const now = useMemo(() => new Date(), []);
   const projects = useMemo(() => projectsQuery.data ?? [], [projectsQuery.data]);
   const calendarTasks = useMemo<CalendarTask[]>(
@@ -204,15 +151,44 @@ export function DashboardClient({ userName }: { userName: string | null }) {
   );
 
   const stats = useMemo(() => headlineStats(projects, now), [projects, now]);
-  const summaries = useMemo(() => projectSummaries(projects, now), [projects, now]);
-  const today = useMemo(() => todayTasks(calendarTasks, now), [calendarTasks, now]);
-  const todayRows = useExitList(today);
-  const [pendingDone, setPendingDone] = useState<Map<number, boolean>>(new Map());
-  const week = useMemo(() => weekStrip(calendarTasks, now), [calendarTasks, now]);
+  const rows = useMemo(() => projectStatusRows(projects, now), [projects, now]);
   const dayGone = useMemo(() => dayFraction(now), [now]);
+  const pace = useMemo(
+    () => momentum(pulseQuery.data?.completions ?? [], now),
+    [pulseQuery.data, now],
+  );
+  const team = pulseQuery.data?.team ?? [];
 
-  const notes = (notesQuery.data ?? []).slice(0, 2);
-  const activity = ((activityQuery.data?.rows ?? []) as ActivityRow[]).slice(0, 3);
+  /* The two stat footnotes that are facts rather than restatements: how old the
+     oldest overdue task is, and how much of today is already ticked off. */
+  const oldestOverdueDays = useMemo(() => {
+    const today = startOfDay(now).getTime();
+    let oldest = 0;
+    for (const task of calendarTasks) {
+      if (task.status === "completed" || !task.dueDate) continue;
+      const due = startOfDay(new Date(task.dueDate)).getTime();
+      if (due >= today) continue;
+      oldest = Math.max(oldest, Math.round((today - due) / 86_400_000));
+    }
+    return oldest;
+  }, [calendarTasks, now]);
+
+  const doneToday = useMemo(() => {
+    const today = startOfDay(now).getTime();
+    return calendarTasks.filter(
+      (task) =>
+        task.status === "completed" &&
+        !!task.dueDate &&
+        startOfDay(new Date(task.dueDate)).getTime() === today,
+    ).length;
+  }, [calendarTasks, now]);
+
+  const projectTitles = useMemo(
+    () => new Map(projects.map((project) => [project.id, project.title] as const)),
+    [projects],
+  );
+
+  const activity = ((activityQuery.data?.rows ?? []) as ActivityRow[]).slice(0, 5);
 
   const isLoading = projectsQuery.isLoading || calendarQuery.isLoading;
 
@@ -232,121 +208,97 @@ export function DashboardClient({ userName }: { userName: string | null }) {
   const greeting = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
   const firstName = (userName ?? "").trim().split(" ")[0] ?? "";
 
-  const toggleTask = (task: CalendarTask) => {
-    const done = task.status !== "completed";
-    // The tick fills straight away; the row only leaves once the refetch drops
-    // it from the list, which is what the collapse animation covers.
-    setPendingDone((map) => new Map(map).set(task.id, done));
-    updateStatus.mutate(
-      { taskId: task.id, status: done ? "completed" : "pending" },
-      {
-        onSettled: () =>
-          setPendingDone((map) => {
-            const next = new Map(map);
-            next.delete(task.id);
-            return next;
-          }),
-      },
-    );
-  };
-
   if (isFirstRun) {
     return <FirstRun dayGone={dayGone} now={now} locale={locale} />;
   }
 
   return (
-    <div className="grid grid-cols-1 items-start xl:grid-cols-[minmax(0,1fr)_392px]">
-      <div className="flex flex-col gap-9 px-4 pt-9 pb-14 sm:px-10 xl:border-r xl:border-border-light/60">
-        <header className="dash-rise" style={rise(0.05)}>
-          <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-fg-quaternary">
-            {dateLine}
-          </div>
-          <h1 className="mt-3 text-3xl font-semibold leading-[1.1] tracking-[-0.025em] text-fg-primary sm:text-[40px]">
-            {firstName
-              ? t(`greeting.${greeting}`, { name: firstName })
-              : t(`greetingPlain.${greeting}`)}
-          </h1>
-          <p className="mt-2.5 max-w-2xl text-base leading-[1.55] text-fg-tertiary">
-            {stats.totalTasks === 0
-              ? t("summaryEmpty")
-              : t("summary", {
-                  due: stats.dueToday,
-                  overdue: stats.overdue,
-                  projects: stats.projectCount,
-                })}
-          </p>
-        </header>
+    <div className="grid grid-cols-1 items-start xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="flex flex-col gap-8 px-4 pt-8 pb-11 sm:px-[34px] xl:border-r xl:border-border-light/60">
+        <div className="dash-rise flex flex-col gap-5" style={rise(0.05)}>
+          <header className="flex flex-col gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-quaternary">
+              {dateLine}
+            </span>
+            <h1 className="text-[28px] font-semibold leading-none tracking-[-0.028em] text-fg-primary sm:text-[34px]">
+              {firstName
+                ? t(`greeting.${greeting}`, { name: firstName })
+                : t(`greetingPlain.${greeting}`)}
+            </h1>
+            <p className="max-w-3xl text-[15px] leading-[1.5] text-fg-tertiary">
+              {stats.totalTasks === 0
+                ? t("summaryEmpty")
+                : t("summary", {
+                    due: stats.dueToday,
+                    overdue: stats.overdue,
+                    projects: stats.projectCount,
+                  })}
+            </p>
+          </header>
 
-        <StatGrid
-          progress={p}
-          items={[
-            { label: t("stats.dueToday"), value: stats.dueToday },
-            { label: t("stats.overdue"), value: stats.overdue, tone: "danger" },
-            { label: t("stats.openThisWeek"), value: stats.openThisWeek },
-            { label: t("stats.completed"), value: stats.completed, tone: "success" },
-          ]}
+          <StatGrid
+            progress={p}
+            items={[
+              {
+                label: t("stats.dueToday"),
+                value: stats.dueToday,
+                note: doneToday > 0 ? t("stats.notes.doneToday", { count: doneToday }) : "",
+              },
+              {
+                label: t("stats.overdue"),
+                value: stats.overdue,
+                tone: "danger",
+                note:
+                  oldestOverdueDays > 0
+                    ? t("stats.notes.oldest", { days: oldestOverdueDays })
+                    : "",
+              },
+              {
+                label: t("stats.openThisWeek"),
+                value: stats.openThisWeek,
+                note: t("stats.notes.across", { count: stats.projectCount }),
+              },
+              {
+                label: t("stats.completed"),
+                value: stats.completed,
+                tone: "success",
+                note: t("stats.notes.allTime"),
+              },
+            ]}
+          />
+        </div>
+
+        {/*
+          B-2/B-3. The radar sits directly under the headline, where the design
+          puts it: a finding that arrives with its fix already drafted is worth
+          reading before the work itself, which is the whole argument for
+          letting the assistant speak unprompted.
+        */}
+        <RadarFindings
+          className="dash-rise"
+          style={rise(0.12)}
+          now={now}
+          projectTitles={projectTitles}
         />
 
-        <section className="dash-rise" style={rise(0.19)}>
+        <section className="dash-rise flex flex-col gap-3" style={rise(0.19)}>
           <SectionHead
-            title={t("today.title")}
-            count={
-              today.filter(
-                (task) =>
-                  task.status !== "completed" && pendingDone.get(task.id) !== true,
-              ).length
-            }
-            actionLabel={t("today.action")}
-            actionHref="/progress"
+            title={t("projectStatus.title")}
+            note={t("projectStatus.count", { count: rows.length })}
+            actionLabel={t("projectStatus.action")}
+            actionHref="/projects"
           />
-          <div className="border-t border-border-light/60">
-            {isLoading ? (
-              <SkeletonRows rows={3} />
-            ) : today.length === 0 ? (
-              <EmptyRow message={t("today.empty")} />
-            ) : (
-              todayRows.map(({ item: task, leaving }) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  state={
-                    pendingDone.get(task.id) === true
-                      ? "done"
-                      : taskState(task, now)
-                  }
-                  disabled={updateStatus.isPending}
-                  leaving={leaving}
-                  onToggle={() => toggleTask(task)}
-                />
-              ))
-            )}
-          </div>
-        </section>
-
-        <section className="dash-rise" style={rise(0.26)}>
-          <SectionHead title={t("week.title")} actionLabel={t("week.action")} actionHref="/calendar" />
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-border-light/60 bg-border-light/60 sm:grid-cols-5">
-            {week.map((day, index) => (
-              <WeekCell
-                key={day.date.toISOString()}
-                day={day}
-                index={index}
-                max={Math.max(1, ...week.map((d) => d.count))}
-                locale={locale}
-                todayLabel={t("week.today")}
-              />
-            ))}
-          </div>
+          <ProjectStatusTable rows={rows} loading={isLoading} progress={p} locale={locale} />
         </section>
 
         {activity.length > 0 && (
-          <section className="dash-rise" style={rise(0.33)}>
+          <section className="dash-rise flex flex-col gap-3" style={rise(0.26)}>
             <SectionHead
               title={t("activity.title")}
               actionLabel={t("activity.action")}
               actionHref="/progress"
             />
-            <div className="border-t border-border-light/60">
+            <div className="flex flex-col">
               {activity.map((row) => (
                 <ActivityItem key={row.id} row={row} now={now} />
               ))}
@@ -355,7 +307,7 @@ export function DashboardClient({ userName }: { userName: string | null }) {
         )}
       </div>
 
-      <aside className="flex flex-col gap-[30px] px-4 pt-9 pb-14 sm:px-8">
+      <aside className="dash-fade flex flex-col gap-[30px] px-4 pt-8 pb-11 sm:px-[26px]" style={rise(0.1)}>
         <WorkspaceRing
           progress={p}
           percent={stats.percent}
@@ -366,61 +318,9 @@ export function DashboardClient({ userName }: { userName: string | null }) {
           dayGone={dayGone}
         />
 
-        <section className="dash-rise" style={rise(0.2)}>
-          <SectionHead
-            small
-            title={t("projects.title")}
-            count={summaries.length}
-            actionLabel={t("projects.action")}
-            actionHref="/projects"
-          />
-          {summaries.length === 0 ? (
-            <Link
-              href="/projects?new=1"
-              className="flex items-center gap-2 rounded-[10px] border border-dashed border-border-light/70 px-4 py-5 text-sm text-fg-tertiary transition-colors hover:border-accent-primary/50 hover:text-fg-primary"
-            >
-              <Plus size={16} />
-              {t("projects.empty")}
-            </Link>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              {summaries.slice(0, 4).map((project) => (
-                <ProjectCard key={project.id} project={project} progress={p} />
-              ))}
-            </div>
-          )}
-        </section>
+        <MomentumCard momentum={pace} />
 
-        <section className="dash-rise" style={rise(0.28)}>
-          <SectionHead small title={t("notes.title")} actionLabel={t("notes.action")} actionHref="/notes" />
-          {notes.length === 0 ? (
-            <Link
-              href="/notes"
-              className="flex items-center gap-2 rounded-[10px] border border-dashed border-border-light/70 px-4 py-5 text-sm text-fg-tertiary transition-colors hover:border-accent-primary/50 hover:text-fg-primary"
-            >
-              <Plus size={16} />
-              {t("notes.empty")}
-            </Link>
-          ) : (
-            <div className="flex flex-col gap-px overflow-hidden rounded-[10px] border border-border-light/60 bg-border-light/60">
-              {notes.map((note) => (
-                <Link
-                  key={note.id}
-                  href="/notes"
-                  className="bg-bg-elevated px-[18px] py-4 transition-colors duration-[350ms] hover:bg-accent-primary/[0.06]"
-                >
-                  <div className="truncate text-sm font-semibold text-fg-primary">
-                    {(note.title?.trim() ?? "") || t("notes.untitled")}
-                  </div>
-                  <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-fg-quaternary">
-                    {note.shareStatus === "private" ? t("notes.private") : t("notes.shared")} ·{" "}
-                    {relativeTime(note.updatedAt ?? note.createdAt, now)}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
+        <TeamToday members={team} loading={pulseQuery.isLoading} now={now} />
       </aside>
     </div>
   );
@@ -454,37 +354,34 @@ function WorkspaceRing({
   const shown = useTween(percent);
 
   return (
-    <div
-      className="dash-rise flex flex-col items-center gap-[18px] rounded-xl border border-border-light/60 bg-bg-elevated p-6"
-      style={rise(0.1)}
-    >
-      <div className="flex w-full items-baseline justify-between">
+    <section className="flex flex-col gap-4">
+      <div className="flex items-baseline justify-between">
         <span className="text-[13px] font-semibold text-fg-secondary">{t("workspace.title")}</span>
         <span className="font-mono text-[11px] text-fg-quaternary">
           {completed} / {total}
         </span>
       </div>
 
-      <div className="relative h-[200px] w-[200px]">
-        <svg viewBox="0 0 200 200" className="dash-fade block h-[200px] w-[200px]" style={rise(0.15)}>
+      <div className="relative h-[196px] w-[196px] self-center">
+        <svg viewBox="0 0 196 196" className="block h-[196px] w-[196px]">
           <circle
-            cx="100"
-            cy="100"
+            cx="98"
+            cy="98"
             r="82"
             fill="none"
             strokeWidth="12"
             className="stroke-border-light/70"
           />
           <circle
-            cx="100"
-            cy="100"
+            cx="98"
+            cy="98"
             r="82"
             fill="none"
             strokeWidth="12"
             strokeLinecap="round"
             strokeDasharray={RING_TASKS}
             strokeDashoffset={dashOffset(RING_TASKS, shown / 100, progress)}
-            transform="rotate(-90 100 100)"
+            transform="rotate(-90 98 98)"
             className="stroke-accent-primary"
           />
           {/* The day ring is only legible next to the task ring. With no tasks
@@ -495,50 +392,187 @@ function WorkspaceRing({
           {total > 0 && (
             <>
               <circle
-                cx="100"
-                cy="100"
+                cx="98"
+                cy="98"
                 r="62"
                 fill="none"
                 strokeWidth="4"
                 className="stroke-border-light/50"
               />
               <circle
-                cx="100"
-                cy="100"
+                cx="98"
+                cy="98"
                 r="62"
                 fill="none"
                 strokeWidth="4"
                 strokeLinecap="round"
                 strokeDasharray={RING_DAY}
                 strokeDashoffset={dashOffset(RING_DAY, dayGone, progress)}
-                transform="rotate(-90 100 100)"
+                transform="rotate(-90 98 98)"
                 className="stroke-dash-day"
               />
             </>
           )}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
-          <span className="text-[44px] font-semibold tabular-nums tracking-[-0.03em] text-fg-primary">
+          <span className="text-[42px] font-semibold tabular-nums tracking-[-0.03em] text-fg-primary">
             {Math.round(shown * progress)}%
           </span>
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary">
-            {t("workspace.ofTasks", { done: completed, total })}
+            {t("workspace.ofTasksDone")}
           </span>
         </div>
       </div>
 
-      <div className="flex w-full flex-col gap-2">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.1em] text-fg-tertiary">
+      <div className="flex flex-wrap gap-3.5 font-mono text-[10px] uppercase tracking-[0.1em] text-fg-quaternary">
+        <span className="flex items-center gap-[7px] text-fg-tertiary">
           <span className="h-2 w-2 rounded-full bg-dash-day" aria-hidden />
-          <span>{t("workspace.dayGone", { percent: Math.round(dayGone * 100) })}</span>
-        </div>
-        <div className="flex flex-wrap gap-3.5 font-mono text-[10px] uppercase tracking-[0.1em] text-fg-quaternary">
-          <span className="text-success">{t("workspace.done", { count: completed })}</span>
-          <span className="text-warning">{t("workspace.active", { count: inProgress })}</span>
-          <span>{t("workspace.todo", { count: todo })}</span>
-        </div>
+          {t("workspace.dayGone", { percent: Math.round(dayGone * 100) })}
+        </span>
+        <span className="text-success">{t("workspace.done", { count: completed })}</span>
+        <span className="text-warning">{t("workspace.active", { count: inProgress })}</span>
+        <span>{t("workspace.todo", { count: todo })}</span>
       </div>
-    </div>
+    </section>
+  );
+}
+
+/**
+ * Your momentum: a fortnight of finished work as bars, the streak that runs
+ * through it, and the week-on-week pace.
+ *
+ * It answers a question the rest of the page cannot: the rings and the tables
+ * are all about what is left, and none of them ever say that you are getting
+ * through it.
+ */
+function MomentumCard({ momentum: data }: { momentum: Momentum }) {
+  const t = useTranslations("dashboard");
+  const max = Math.max(1, ...data.bars.map((day) => day.count));
+  const last = data.bars.length - 1;
+
+  return (
+    <section className="flex flex-col gap-3">
+      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-quaternary">
+        {t("momentum.title")}
+      </span>
+      <div className="flex flex-col gap-3.5 rounded-xl border border-border-light/60 bg-bg-elevated p-[18px]">
+        <div className="flex items-center gap-2.5">
+          <Zap size={16} className="text-warning" aria-hidden />
+          <span className="text-sm font-semibold text-fg-primary">
+            {data.streak > 0 ? t("momentum.streak", { count: data.streak }) : t("momentum.noStreak")}
+          </span>
+          {data.pace !== null && (
+            <span
+              className={`ml-auto font-mono text-[11px] ${
+                data.pace < 0 ? "text-fg-quaternary" : "text-success"
+              }`}
+            >
+              {data.pace > 0 ? "+" : ""}
+              {data.pace}%
+            </span>
+          )}
+        </div>
+
+        <div className="flex h-11 items-end gap-1.5" aria-hidden>
+          {data.bars.map((day, index) => (
+            <span
+              key={day.date.toISOString()}
+              className={`flex-1 rounded-sm ${
+                day.count === 0
+                  ? "bg-border-light/60"
+                  : index >= last - 1
+                    ? "bg-accent-primary"
+                    : "bg-accent-primary/35"
+              }`}
+              style={{ height: `${Math.max(4, Math.round((day.count / max) * 40))}px` }}
+            />
+          ))}
+        </div>
+
+        <span className="text-xs leading-[1.5] text-fg-tertiary">
+          {t("momentum.line", { total: data.total, today: data.today })}
+        </span>
+      </div>
+    </section>
+  );
+}
+
+type TeamMember = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  isSelf: boolean;
+  open: number;
+  overdue: number;
+  lastActiveAt: Date | string | null;
+};
+
+/** Who is carrying what, right now. Heaviest load first. */
+function TeamToday({
+  members,
+  loading,
+  now,
+}: {
+  members: TeamMember[];
+  loading: boolean;
+  now: Date;
+}) {
+  const t = useTranslations("dashboard");
+  const shown = members.slice(0, 5);
+
+  return (
+    <section className="flex flex-col gap-3">
+      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-quaternary">
+        {t("teamToday.title")}
+      </span>
+      {loading ? (
+        <SkeletonRows rows={3} />
+      ) : shown.length === 0 ? (
+        <p className="text-[13px] text-fg-tertiary">{t("teamToday.empty")}</p>
+      ) : (
+        <div className="flex flex-col">
+          {shown.map((member) => {
+            const who = member.name ?? member.email ?? t("activity.someone");
+            const ago = relativeShort(member.lastActiveAt, now);
+
+            return (
+              <div
+                key={member.id}
+                className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3 border-b border-border-light/50 px-0.5 py-[11px]"
+              >
+                <ProfileLink userId={member.id} name={member.name}>
+                  <span
+                    style={avatarGradientStyle(member.id)}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+                  >
+                    {who.trim().charAt(0).toUpperCase() || "?"}
+                  </span>
+                </ProfileLink>
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-[13px] font-medium text-fg-primary">
+                    {member.isSelf ? t("teamToday.you", { name: who }) : who}
+                  </span>
+                  <span className="font-mono text-[10px] text-fg-quaternary">
+                    {ago ? t("teamToday.active", { ago }) : t("teamToday.neverActive")}
+                  </span>
+                </span>
+                <span
+                  className={`font-mono text-[11px] ${
+                    member.overdue > 0
+                      ? "text-error"
+                      : member.open === 0
+                        ? "text-fg-quaternary"
+                        : "text-fg-secondary"
+                  }`}
+                >
+                  {t("teamToday.open", { count: member.open })}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -692,14 +726,11 @@ function StatGrid({
   items,
   progress,
 }: {
-  items: { label: string; value: number; tone?: "danger" | "success" }[];
+  items: { label: string; value: number; note: string; tone?: "danger" | "success" }[];
   progress: number;
 }) {
   return (
-    <div
-      className="dash-rise grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-border-light/60 bg-border-light/60 sm:grid-cols-4"
-      style={rise(0.12)}
-    >
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[11px] border border-border-light/60 bg-border-light/60 sm:grid-cols-4">
       {items.map((item) => (
         <StatCell key={item.label} item={item} progress={progress} />
       ))}
@@ -711,28 +742,33 @@ function StatCell({
   item,
   progress,
 }: {
-  item: { label: string; value: number; tone?: "danger" | "success" };
+  item: { label: string; value: number; note: string; tone?: "danger" | "success" };
   progress: number;
 }) {
   const shown = useTween(item.value);
 
   return (
-    <div className="bg-bg-elevated px-5 py-[18px] transition-colors duration-[350ms] hover:bg-bg-tertiary">
-      <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary">
+    <div className="flex flex-col gap-2 bg-bg-elevated px-[18px] py-4 transition-colors duration-[350ms] hover:bg-bg-tertiary">
+      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary">
         {item.label}
-      </div>
-      <div
-        className={`mt-2 text-[28px] font-semibold tabular-nums tracking-[-0.02em] ${
-          item.value === 0
-            ? "text-fg-primary"
-            : item.tone === "danger"
-              ? "text-error"
-              : item.tone === "success"
-                ? "text-success"
-                : "text-fg-primary"
-        }`}
-      >
-        {Math.round(shown * progress)}
+      </span>
+      <div className="flex items-baseline gap-[9px]">
+        <span
+          className={`text-[27px] font-semibold tabular-nums tracking-[-0.02em] ${
+            item.value === 0
+              ? "text-fg-primary"
+              : item.tone === "danger"
+                ? "text-error"
+                : item.tone === "success"
+                  ? "text-success"
+                  : "text-fg-primary"
+          }`}
+        >
+          {Math.round(shown * progress)}
+        </span>
+        {item.note && (
+          <span className="truncate font-mono text-[11px] text-fg-quaternary">{item.note}</span>
+        )}
       </div>
     </div>
   );
@@ -740,34 +776,23 @@ function StatCell({
 
 function SectionHead({
   title,
-  count,
+  note,
   actionLabel,
   actionHref,
-  small = false,
 }: {
   title: string;
-  count?: number;
+  note?: string;
   actionLabel: string;
   actionHref: string;
-  small?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between pb-3">
-      <h2
-        className={`m-0 font-semibold tracking-[-0.01em] text-fg-primary ${
-          small ? "text-[15px]" : "text-[17px]"
-        }`}
-      >
-        {title}
-        {typeof count === "number" && (
-          <span className="ml-2 font-normal text-fg-quaternary">{count}</span>
-        )}
-      </h2>
+    <div className="flex items-baseline gap-3">
+      <h2 className="m-0 text-base font-semibold tracking-[-0.012em] text-fg-primary">{title}</h2>
+      {note && <span className="font-mono text-[11px] text-fg-quaternary">{note}</span>}
+      <span className="flex-1" />
       <Link
         href={actionHref}
-        className={`font-medium text-fg-tertiary transition-colors hover:text-fg-primary ${
-          small ? "text-xs" : "text-[13px]"
-        }`}
+        className="text-[13px] text-fg-tertiary transition-colors hover:text-fg-primary"
       >
         {actionLabel}
       </Link>
@@ -775,208 +800,183 @@ function SectionHead({
   );
 }
 
-/** Status reads as a tinted outline only — no fill, so the rows stay quiet. */
-const STATE_BADGE: Record<TaskState, string> = {
-  done: "border-success/40 text-success",
-  overdue: "border-error/40 text-error",
-  inProgress: "border-warning/40 text-warning",
-  todo: "border-border-medium/60 text-fg-tertiary",
-};
-
-function TaskRow({
-  task,
-  state,
-  disabled,
-  leaving,
-  onToggle,
-}: {
-  task: CalendarTask;
-  state: TaskState;
-  disabled: boolean;
-  leaving: boolean;
-  onToggle: () => void;
-}) {
-  const t = useTranslations("dashboard");
-  const isDone = state === "done";
-
-  return (
-    <div
-      className={`grid grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-[18px] border-b border-border-light/50 px-1 py-[17px] transition-all duration-[350ms] hover:bg-accent-primary/[0.07] sm:grid-cols-[24px_minmax(0,1fr)_160px_112px_20px] ${
-        isDone ? "opacity-50" : ""
-      } ${leaving ? "dash-row-out" : ""}`}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        disabled={disabled}
-        aria-label={isDone ? t("today.reopen") : t("today.complete")}
-        aria-pressed={isDone}
-        className={`flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.5px] transition-colors duration-[350ms] disabled:opacity-50 ${
-          isDone
-            ? "border-accent-primary bg-accent-primary"
-            : "border-border-strong/70 hover:border-accent-primary"
-        }`}
-      >
-        <Check
-          size={12}
-          strokeWidth={3}
-          className={`text-white transition-opacity duration-300 ${isDone ? "opacity-100" : "opacity-0"}`}
-          aria-hidden
-        />
-      </button>
-      <Link
-        href={projectHref(task.projectId)}
-        className={`truncate text-base font-medium text-fg-primary hover:text-accent-primary ${
-          isDone ? "line-through" : ""
-        }`}
-      >
-        {task.title}
-      </Link>
-      <span className="hidden truncate text-[13px] text-fg-tertiary sm:block">
-        {task.projectTitle}
-      </span>
-      <span
-        className={`justify-self-start rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] ${STATE_BADGE[state]}`}
-      >
-        {t(`status.${state}`)}
-      </span>
-      <Link
-        href={projectHref(task.projectId)}
-        aria-label={task.title}
-        className="hidden text-fg-quaternary transition-colors hover:text-fg-primary sm:block"
-      >
-        <ChevronRight size={16} aria-hidden />
-      </Link>
-    </div>
-  );
-}
-
-/**
- * Weekday column. The rule under each count is the load: purple for today, cyan
- * fading with volume for the days ahead, flat when a day is clear.
- */
-function WeekCell({
-  day,
-  index,
-  max,
-  locale,
-  todayLabel,
-}: {
-  day: WeekDay;
-  index: number;
-  max: number;
-  locale: string;
-  todayLabel: string;
-}) {
-  const label = new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric" })
-    .format(day.date)
-    .toUpperCase();
-
-  const share = day.count / max;
-  const bar = day.isToday
-    ? "bg-accent-primary"
-    : day.count === 0
-      ? "bg-border-light/70"
-      : share >= 0.6
-        ? "bg-dash-day/50"
-        : "bg-dash-day/[0.32]";
-
-  return (
-    <div className="flex flex-col gap-3 bg-bg-elevated px-4 py-[18px] transition-colors duration-[350ms] hover:bg-bg-tertiary">
-      <span
-        className={`font-mono text-[10px] tracking-[0.12em] ${
-          day.isToday ? "text-accent-secondary" : "text-fg-quaternary"
-        }`}
-      >
-        {label}
-        {day.isToday ? ` · ${todayLabel}` : ""}
-      </span>
-      <span
-        className={`text-[26px] font-semibold tabular-nums tracking-[-0.02em] ${
-          day.count === 0 ? "text-fg-quaternary" : "text-fg-primary"
-        }`}
-      >
-        {day.count}
-      </span>
-      <span
-        className={`h-[3px] rounded-sm ${bar} ${day.count === 0 ? "" : "dash-grow"}`}
-        style={day.count === 0 ? undefined : { animationDelay: `${0.3 + index * 0.07}s` }}
-        aria-hidden
-      />
-    </div>
-  );
-}
-
-/**
- * A card's own chrome — its outline and completion ring — is always the accent,
- * so the projects rail belongs to whatever theme the user picked. Health is a
- * separate reading and lives only in the status line beneath the title; letting
- * it repaint the whole card made a project with one overdue task look like an
- * error state rather than a project.
- */
-const PROJECT_BORDER = "border-accent-primary/35 hover:border-accent-primary/70";
-const PROJECT_RING = "stroke-accent-primary";
-
-const PROJECT_HEALTH_TEXT = {
-  onTrack: "text-accent-secondary",
+/** Health is a text reading only — no fill, so a late project is not an alarm. */
+const HEALTH_TEXT = {
+  onTrack: "text-success",
   inProgress: "text-warning",
   atRisk: "text-error",
+  empty: "text-fg-quaternary",
 } as const;
 
-function ProjectCard({ project, progress }: { project: ProjectSummary; progress: number }) {
-  const t = useTranslations("dashboard");
-  const title = (project.title?.trim() ?? "") || t("projects.untitled");
-  const percent = project.percent ?? 0;
-  const shown = useTween(percent);
+/** The completion bar takes the same reading, because it is the same fact. */
+const HEALTH_BAR = {
+  onTrack: "bg-accent-primary",
+  inProgress: "bg-warning",
+  atRisk: "bg-error",
+  empty: "bg-border-light",
+} as const;
 
-  if (project.health === "empty") {
+/**
+ * Project status: six readings of every project in one row.
+ *
+ * The rail of cards this replaces could only show two of them, so "which
+ * project is late, and who is on it" meant opening each one in turn.
+ */
+const TABLE_COLUMNS =
+  "grid-cols-[minmax(0,1fr)_78px_56px] sm:grid-cols-[minmax(0,1fr)_96px_78px_78px] lg:grid-cols-[minmax(0,1fr)_96px_78px_78px_190px_56px]";
+
+function ProjectStatusTable({
+  rows,
+  loading,
+  progress,
+  locale,
+}: {
+  rows: ProjectStatusRow[];
+  loading: boolean;
+  progress: number;
+  locale: string;
+}) {
+  const t = useTranslations("dashboard");
+
+  if (loading) return <SkeletonRows rows={4} />;
+
+  if (rows.length === 0) {
     return (
       <Link
-        href={projectHref(project.id)}
-        className="flex items-center justify-between gap-3 rounded-[10px] border border-border-light/60 bg-bg-elevated px-[18px] py-4 transition-all duration-[400ms] hover:-translate-y-0.5 hover:border-border-strong/60"
+        href="/projects?new=1"
+        className="flex items-center gap-2 rounded-[10px] border border-dashed border-border-light/70 px-4 py-5 text-sm text-fg-tertiary transition-colors hover:border-accent-primary/50 hover:text-fg-primary"
       >
-        <span className="truncate text-[15px] font-semibold text-fg-tertiary">{title}</span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-fg-quaternary">
-          {t("projects.noTasks")}
-        </span>
+        <Plus size={16} />
+        {t("projects.empty")}
       </Link>
     );
   }
 
   return (
-    <Link
-      href={projectHref(project.id)}
-      className={`flex items-center gap-4 rounded-[10px] border bg-bg-elevated px-[18px] py-4 transition-all duration-[400ms] hover:-translate-y-0.5 ${PROJECT_BORDER}`}
+    <div className="flex flex-col">
+      <div
+        className={`grid ${TABLE_COLUMNS} items-center gap-4 border-b border-border-light/60 px-1 pb-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary`}
+      >
+        <span>{t("projectStatus.columns.project")}</span>
+        <span className="hidden sm:block">{t("projectStatus.columns.team")}</span>
+        <span className="text-right">{t("projectStatus.columns.open")}</span>
+        <span className="hidden text-right sm:block">{t("projectStatus.columns.overdue")}</span>
+        <span className="hidden lg:block">{t("projectStatus.columns.completion")}</span>
+        <span className="text-right">{t("projectStatus.columns.health")}</span>
+      </div>
+
+      {rows.map((row) => (
+        <ProjectStatusRowView key={row.id} row={row} progress={progress} locale={locale} />
+      ))}
+    </div>
+  );
+}
+
+function ProjectStatusRowView({
+  row,
+  progress,
+  locale,
+}: {
+  row: ProjectStatusRow;
+  progress: number;
+  locale: string;
+}) {
+  const t = useTranslations("dashboard");
+  const shown = useTween(row.percent);
+  const percent = Math.round(shown * progress);
+
+  return (
+    /* The row is a plain grid with the title carrying the link, stretched over
+       the whole row by its own overlay. Wrapping the row in the anchor instead
+       would have put the avatars' profile buttons inside it, which is invalid
+       HTML — and the avatars have their own job to do on a click. */
+    <div
+      className={`group relative grid ${TABLE_COLUMNS} items-center gap-4 border-b border-border-light/40 px-1 py-3.5 transition-colors duration-[350ms] hover:bg-accent-primary/[0.06]`}
     >
-      <span className="relative h-[46px] w-[46px] flex-none">
-        <svg viewBox="0 0 46 46" className="block h-[46px] w-[46px]">
-          <circle cx="23" cy="23" r="19" fill="none" strokeWidth="5" className="stroke-border-light/70" />
-          <circle
-            cx="23"
-            cy="23"
-            r="19"
-            fill="none"
-            strokeWidth="5"
-            strokeLinecap="round"
-            strokeDasharray={RING_PROJECT}
-            strokeDashoffset={dashOffset(RING_PROJECT, shown / 100, progress)}
-            transform="rotate(-90 23 23)"
-            className={PROJECT_RING}
-          />
-        </svg>
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px] font-semibold text-fg-primary">{title}</span>
-        <span
-          className={`mt-1 block font-mono text-[10px] uppercase tracking-[0.1em] ${PROJECT_HEALTH_TEXT[project.health]}`}
+      <span className="flex min-w-0 flex-col gap-1">
+        <Link
+          href={projectHref(row.id)}
+          className="truncate text-sm font-semibold text-fg-primary after:absolute after:inset-0 after:content-['']"
         >
-          {t(`projects.health.${project.health}`)} · {t("projects.open", { count: project.openCount })}
+          {(row.title?.trim() ?? "") || t("projects.untitled")}
+        </Link>
+        <span className="font-mono text-[10px] text-fg-quaternary">
+          {row.endsAt
+            ? t("projectStatus.ends", {
+                date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(
+                  row.endsAt,
+                ),
+              })
+            : t("projectStatus.noDate")}
         </span>
       </span>
-      <span className="font-mono text-[13px] tabular-nums text-fg-primary">
-        {Math.round(shown * progress)}%
+
+      {/* Above the row overlay, so a face opens the person and not the project. */}
+      <span className="relative z-10 hidden items-center sm:flex">
+        <OwnerStack owners={row.owners} />
       </span>
-    </Link>
+
+      <span className="text-right font-mono text-[13px] tabular-nums text-fg-secondary">
+        {row.open}
+      </span>
+
+      <span
+        className={`hidden text-right font-mono text-[13px] tabular-nums sm:block ${
+          row.overdue > 0 ? "text-error" : "text-fg-quaternary"
+        }`}
+      >
+        {row.overdue}
+      </span>
+
+      <span className="hidden items-center gap-[11px] lg:flex">
+        <span className="h-1.5 flex-1 overflow-hidden rounded-sm bg-border-light/70">
+          <span
+            className={`block h-full rounded-sm ${HEALTH_BAR[row.health]}`}
+            style={{ width: `${percent}%` }}
+          />
+        </span>
+        <span className="w-8 text-right font-mono text-[11px] tabular-nums text-fg-tertiary">
+          {percent}%
+        </span>
+      </span>
+
+      <span
+        className={`text-right font-mono text-[10px] uppercase tracking-[0.1em] ${HEALTH_TEXT[row.health]}`}
+      >
+        {t(`projects.health.${row.health}`)}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Up to three overlapping avatars, then a count for the rest.
+ *
+ * Each face opens that person's profile in the app-wide drawer rather than
+ * following the row's link to the project — `ProfileLink` stops the click from
+ * doing both.
+ */
+function OwnerStack({ owners }: { owners: ProjectOwner[] }) {
+  const shown = owners.slice(0, 3);
+  const rest = owners.length - shown.length;
+
+  return (
+    <>
+      {shown.map((owner) => (
+        <ProfileLink key={owner.id} userId={owner.id} name={owner.name} className="-mr-[7px]">
+          <span
+            style={avatarGradientStyle(owner.id)}
+            title={owner.name ?? undefined}
+            className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-bg-primary text-[10px] font-semibold text-white"
+          >
+            {(owner.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+          </span>
+        </ProfileLink>
+      ))}
+      {rest > 0 && (
+        <span className="ml-3 font-mono text-[10px] text-fg-quaternary">+{rest}</span>
+      )}
+    </>
   );
 }
 
@@ -1000,30 +1000,36 @@ function ActivityItem({ row, now }: { row: ActivityRow; now: Date }) {
     project: row.projectTitle ?? t("projects.untitled"),
   });
 
-  const body = (
-    <>
-      <span
-        style={avatarGradientStyle(row.user?.id ?? row.user?.email ?? who)}
-        className="flex h-[26px] w-[26px] items-center justify-center rounded-full text-[11px] font-semibold text-white"
-      >
-        {initial}
+  return (
+    /* Same shape as a project row: the sentence is the link, stretched across
+       the row, and the avatar sits above it so tapping a face opens the person
+       rather than the project they touched. */
+    <div className="relative grid grid-cols-[26px_minmax(0,1fr)_52px] items-center gap-3.5 border-b border-border-light/40 px-1 py-3 transition-colors duration-[350ms] hover:bg-dash-day/[0.06] sm:grid-cols-[26px_minmax(0,1fr)_130px_52px]">
+      <ProfileLink userId={row.user?.id} name={who} className="relative z-10">
+        <span
+          style={avatarGradientStyle(row.user?.id ?? row.user?.email ?? who)}
+          className="flex h-[26px] w-[26px] items-center justify-center rounded-full text-[11px] font-semibold text-white"
+        >
+          {initial}
+        </span>
+      </ProfileLink>
+      {row.projectId ? (
+        <Link
+          href={projectHref(row.projectId)}
+          className="truncate text-sm text-fg-secondary after:absolute after:inset-0 after:content-['']"
+        >
+          {message}
+        </Link>
+      ) : (
+        <span className="truncate text-sm text-fg-secondary">{message}</span>
+      )}
+      <span className="hidden truncate text-xs text-fg-quaternary sm:block">
+        {row.projectTitle}
       </span>
-      <span className="truncate text-[15px] text-fg-secondary">{message}</span>
-      <span className="justify-self-end font-mono text-[10px] text-fg-quaternary">
-        {relativeTime(row.createdAt, now)}
+      <span className="justify-self-end font-mono text-[11px] text-fg-quaternary">
+        {relativeShort(row.createdAt, now).toUpperCase()}
       </span>
-    </>
-  );
-
-  const className =
-    "grid grid-cols-[28px_minmax(0,1fr)_64px] items-center gap-4 border-b border-border-light/50 px-1 py-[15px] transition-colors duration-[350ms] hover:bg-dash-day/[0.06]";
-
-  return row.projectId ? (
-    <Link href={projectHref(row.projectId)} className={className}>
-      {body}
-    </Link>
-  ) : (
-    <div className={className}>{body}</div>
+    </div>
   );
 }
 
@@ -1031,27 +1037,10 @@ function SkeletonRows({ rows }: { rows: number }) {
   return (
     <div className="flex flex-col">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="border-b border-border-light/50 px-1 py-4">
+        <div key={i} className="border-b border-border-light/40 px-1 py-4">
           <div className="h-4 w-2/3 animate-pulse rounded bg-bg-tertiary" />
         </div>
       ))}
     </div>
   );
-}
-
-function EmptyRow({ message }: { message: string }) {
-  return <div className="px-1 py-6 text-sm text-fg-tertiary">{message}</div>;
-}
-
-/** Compact age stamp — `20M`, `3H`, `1D` — matching the mono accents. */
-function relativeTime(value: Date | string | null, now: Date): string {
-  if (!value) return "";
-  const then = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(then.getTime())) return "";
-  const minutes = Math.max(0, Math.round((now.getTime() - then.getTime()) / 60000));
-  if (minutes < 1) return "NOW";
-  if (minutes < 60) return `${minutes}M`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}H`;
-  return `${Math.round(hours / 24)}D`;
 }

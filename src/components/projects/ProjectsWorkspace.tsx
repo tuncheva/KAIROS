@@ -25,6 +25,8 @@ import { ProfileLink } from "~/components/profile/ProfileLink";
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { ProjectTasksPanel, ProjectTeamPanel } from "./ProjectTasksPanel";
 import {
+  DETAIL_TABS,
+  isDetailTab,
   isRecent,
   isSameDay,
   matchesFilter,
@@ -35,6 +37,7 @@ import {
   visibleRows,
   workspaceTotals,
   type ActivityRow,
+  type DetailTab,
   type EventKind,
   type FilterKey,
   type Health,
@@ -60,15 +63,6 @@ const TIMELINE_FILTERS: TimelineFilter[] = [
   "note",
   "due",
 ];
-
-/** The three readings of one project: what to do, who is on it, what happened. */
-const DETAIL_TABS = ["tasks", "team", "timeline"] as const;
-
-/** Narrows a `?tab=` value; anything unrecognised falls back to the board. */
-export function isDetailTab(value: string | null | undefined): value is DetailTab {
-  return value !== null && value !== undefined && DETAIL_TABS.includes(value as DetailTab);
-}
-type DetailTab = (typeof DETAIL_TABS)[number];
 
 /**
  * Health only ever paints text and a rule, never a fill. A project one task

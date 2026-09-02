@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Plus } from "~/components/ui/icons.server";
 
-import { AiInsightsPanel } from "~/components/dashboard/AiInsightsPanel";
 import { DashboardClient } from "~/components/dashboard/DashboardClient";
 import { TopBar } from "~/components/layout/TopBar";
 import { auth } from "~/server/auth";
@@ -42,8 +41,8 @@ export default async function DashboardPage() {
    */
   await Promise.all([
     api.project.getMyProjects.prefetch(),
-    api.note.getAll.prefetch(),
     api.task.getOrgActivity.prefetch({ limit: 6, scope: "all" }),
+    api.progress.getPulse.prefetch(),
   ]);
 
   return (
@@ -63,17 +62,12 @@ export default async function DashboardPage() {
         />
 
         <main id="main-content" className="flex-1 w-full overflow-auto kairos-bottomnav-gap">
-          <DashboardClient userName={session.user.name ?? null} />
-
           {/*
-            B-2/B-3. Below the dashboard rather than above it: what the radar
-            found is worth seeing, but it is not more important than the work the
-            user came here to look at, and an alarm panel above the fold is how a
-            dashboard starts feeling like a complaint.
+            The radar now lives inside the dashboard's own column rather than in
+            a panel appended underneath it — see `RadarFindings` for why it sits
+            directly under the headline.
           */}
-          <div className="px-4 pb-8 sm:px-6 lg:px-8">
-            <AiInsightsPanel />
-          </div>
+          <DashboardClient userName={session.user.name ?? null} />
         </main>
       </div>
     </div>

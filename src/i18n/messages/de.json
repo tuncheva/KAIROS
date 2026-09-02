@@ -836,14 +836,6 @@
       "high": "Hoch",
       "urgent": "Dringend"
     },
-    "insights": {
-      "title": "Braucht Aufmerksamkeit",
-      "loading": "Projekte werden geprüft…",
-      "allClear": "Im Moment braucht nichts Ihre Aufmerksamkeit.",
-      "count": "{count} offen",
-      "dismiss": "Verwerfen",
-      "openProject": "Projekt öffnen"
-    },
     "palette": {
       "title": "Befehlspalette",
       "placeholder": "Suchen — oder den Assistenten alles fragen…",
@@ -1037,19 +1029,13 @@
       "dueToday": "Heute fällig",
       "overdue": "Überfällig",
       "openThisWeek": "Diese Woche offen",
-      "completed": "Abgeschlossen"
-    },
-    "today": {
-      "title": "Heute fällig",
-      "action": "Alle Aufgaben",
-      "empty": "Heute ist nichts fällig.",
-      "complete": "Als erledigt markieren",
-      "reopen": "Aufgabe wieder öffnen"
-    },
-    "week": {
-      "title": "Rest der Woche",
-      "action": "Kalender öffnen",
-      "today": "HEUTE"
+      "completed": "Abgeschlossen",
+      "notes": {
+        "doneToday": "{count} fertig",
+        "oldest": "älteste {days}T",
+        "across": "in {count}",
+        "allTime": "insgesamt"
+      }
     },
     "activity": {
       "title": "Letzte Aktivität",
@@ -1068,15 +1054,11 @@
       "done": "{count} erledigt",
       "active": "{count} aktiv",
       "todo": "{count} offen",
-      "ofTasks": "{done} von {total} Aufgaben",
-      "dayGone": "{percent}% des Tages vorbei"
+      "dayGone": "{percent}% des Tages vorbei",
+      "ofTasksDone": "der Aufgaben erledigt"
     },
     "projects": {
-      "title": "Projekte",
-      "action": "Alle ansehen",
       "untitled": "Unbenanntes Projekt",
-      "noTasks": "Keine Aufgaben",
-      "open": "{count} offen",
       "empty": "Erstelle dein erstes Projekt",
       "health": {
         "onTrack": "Im Plan",
@@ -1084,20 +1066,6 @@
         "atRisk": "Gefährdet",
         "empty": "Keine Aufgaben"
       }
-    },
-    "notes": {
-      "title": "Notizen",
-      "action": "Neue Notiz",
-      "private": "Privat",
-      "shared": "Geteilt",
-      "untitled": "Unbenannte Notiz",
-      "empty": "Schreibe deine erste Notiz"
-    },
-    "status": {
-      "done": "Erledigt",
-      "overdue": "Überfällig",
-      "inProgress": "In Arbeit",
-      "todo": "Zu erledigen"
     },
     "firstRun": {
       "tag": "Erster Start",
@@ -1113,6 +1081,50 @@
       "step2": "Lade Leute mit einem einzigen Zugangscode ein.",
       "step3": "Aufgaben, Notizen und Fortschritt landen auf diesem Dashboard.",
       "aside": "Der innere Bogen verfolgt den Tag selbst — ein leeres Dashboard zeigt also trotzdem, wie viel Zeit bleibt."
+    },
+    "radar": {
+      "title": "Was das Radar gefunden hat",
+      "count": "{count, plural, =0 {nichts gemeldet} one {# Befund} other {# Befunde}}",
+      "loading": "prüfe…",
+      "checked": "Vor {ago} geprüft",
+      "allClear": "Im Moment braucht nichts deine Aufmerksamkeit.",
+      "dismiss": "Verwerfen",
+      "openProject": "Projekt öffnen",
+      "workspaceWide": "Im ganzen Arbeitsbereich",
+      "severity": {
+        "critical": "Kritisch",
+        "warning": "Warnung",
+        "info": "Info"
+      }
+    },
+    "projectStatus": {
+      "title": "Projektstatus",
+      "count": "{count, plural, =0 {keines aktiv} other {# aktiv}}",
+      "action": "Alle Projekte",
+      "ends": "Endet am {date}",
+      "noDate": "Kein Datum",
+      "columns": {
+        "project": "Projekt",
+        "team": "Team",
+        "open": "Offen",
+        "overdue": "Überfällig",
+        "completion": "Fortschritt",
+        "health": "Zustand"
+      }
+    },
+    "momentum": {
+      "title": "Dein Tempo",
+      "streak": "{count, plural, one {1 Tag in Folge} other {# Tage in Folge}}",
+      "noStreak": "Noch keine Serie",
+      "line": "{total, plural, =0 {In den letzten zwei Wochen nichts erledigt.} one {Du hast in den letzten zwei Wochen eine Aufgabe erledigt.} other {Du hast in den letzten zwei Wochen # Aufgaben erledigt}}{today, plural, =0 {} other {, {today} davon heute}}."
+    },
+    "teamToday": {
+      "title": "Team heute",
+      "open": "{count} offen",
+      "active": "Aktiv vor {ago}",
+      "neverActive": "Noch keine Aktivität",
+      "you": "{name} (du)",
+      "empty": "Noch ist niemand sonst in diesen Projekten."
     }
   },
   "agents": {

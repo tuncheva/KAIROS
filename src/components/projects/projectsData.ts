@@ -23,6 +23,16 @@ export type SortKey = "updated" | "progress" | "name";
 
 export type ViewMode = "list" | "grid";
 
+/** The three readings of one project: what to do, who is on it, what happened. */
+export const DETAIL_TABS = ["tasks", "team", "timeline"] as const;
+
+export type DetailTab = (typeof DETAIL_TABS)[number];
+
+/** Narrows a `?tab=` value; anything unrecognised falls back to the board. */
+export function isDetailTab(value: string | null | undefined): value is DetailTab {
+  return value !== null && value !== undefined && DETAIL_TABS.includes(value as DetailTab);
+}
+
 export interface Person {
   id: string;
   name: string | null;

@@ -836,14 +836,6 @@
       "high": "Alta",
       "urgent": "Urgente"
     },
-    "insights": {
-      "title": "Requiere atención",
-      "loading": "Revisando tus proyectos…",
-      "allClear": "Ahora mismo no hay nada que requiera tu atención.",
-      "count": "{count} abiertos",
-      "dismiss": "Descartar",
-      "openProject": "Abrir proyecto"
-    },
     "palette": {
       "title": "Paleta de comandos",
       "placeholder": "Busca o pregunta lo que quieras al asistente…",
@@ -1037,19 +1029,13 @@
       "dueToday": "Para hoy",
       "overdue": "Atrasadas",
       "openThisWeek": "Abiertas esta semana",
-      "completed": "Completadas"
-    },
-    "today": {
-      "title": "Para hoy",
-      "action": "Todas las tareas",
-      "empty": "No hay tareas para hoy.",
-      "complete": "Marcar como completada",
-      "reopen": "Reabrir tarea"
-    },
-    "week": {
-      "title": "Resto de la semana",
-      "action": "Abrir calendario",
-      "today": "HOY"
+      "completed": "Completadas",
+      "notes": {
+        "doneToday": "{count} hechas",
+        "oldest": "más antigua {days}d",
+        "across": "en {count}",
+        "allTime": "en total"
+      }
     },
     "activity": {
       "title": "Actividad reciente",
@@ -1068,15 +1054,11 @@
       "done": "{count} hechas",
       "active": "{count} activas",
       "todo": "{count} pendientes",
-      "ofTasks": "{done} de {total} tareas",
-      "dayGone": "{percent}% del día transcurrido"
+      "dayGone": "{percent}% del día transcurrido",
+      "ofTasksDone": "de las tareas hechas"
     },
     "projects": {
-      "title": "Proyectos",
-      "action": "Ver todos",
       "untitled": "Proyecto sin título",
-      "noTasks": "Sin tareas",
-      "open": "{count} abiertas",
       "empty": "Crea tu primer proyecto",
       "health": {
         "onTrack": "En marcha",
@@ -1084,20 +1066,6 @@
         "atRisk": "En riesgo",
         "empty": "Sin tareas"
       }
-    },
-    "notes": {
-      "title": "Notas",
-      "action": "Nueva nota",
-      "private": "Privada",
-      "shared": "Compartida",
-      "untitled": "Nota sin título",
-      "empty": "Escribe tu primera nota"
-    },
-    "status": {
-      "done": "Hecha",
-      "overdue": "Atrasada",
-      "inProgress": "En curso",
-      "todo": "Pendiente"
     },
     "firstRun": {
       "tag": "Primer inicio",
@@ -1113,6 +1081,50 @@
       "step2": "Invita a personas con un único código de acceso.",
       "step3": "Las tareas, notas y el progreso llegan a este panel.",
       "aside": "El arco interior sigue el propio día, así que un panel vacío aún te dice cuánto tiempo queda."
+    },
+    "radar": {
+      "title": "Lo que encontró el radar",
+      "count": "{count, plural, =0 {nada señalado} one {# hallazgo} other {# hallazgos}}",
+      "loading": "comprobando…",
+      "checked": "Comprobado hace {ago}",
+      "allClear": "Ahora mismo nada necesita tu atención.",
+      "dismiss": "Descartar",
+      "openProject": "Abrir proyecto",
+      "workspaceWide": "En todo el espacio",
+      "severity": {
+        "critical": "Crítico",
+        "warning": "Aviso",
+        "info": "Info"
+      }
+    },
+    "projectStatus": {
+      "title": "Estado de los proyectos",
+      "count": "{count, plural, =0 {ninguno activo} other {# activos}}",
+      "action": "Todos los proyectos",
+      "ends": "Termina el {date}",
+      "noDate": "Sin fecha",
+      "columns": {
+        "project": "Proyecto",
+        "team": "Equipo",
+        "open": "Abiertas",
+        "overdue": "Atrasadas",
+        "completion": "Avance",
+        "health": "Estado"
+      }
+    },
+    "momentum": {
+      "title": "Tu ritmo",
+      "streak": "{count, plural, one {1 día seguido} other {# días seguidos}}",
+      "noStreak": "Aún sin racha",
+      "line": "{total, plural, =0 {Nada terminado en las últimas dos semanas.} one {Has terminado una tarea en las últimas dos semanas.} other {Has terminado # tareas en las últimas dos semanas}}{today, plural, =0 {} other {, {today} de ellas hoy}}."
+    },
+    "teamToday": {
+      "title": "El equipo hoy",
+      "open": "{count} abiertas",
+      "active": "Activo hace {ago}",
+      "neverActive": "Sin actividad aún",
+      "you": "{name} (tú)",
+      "empty": "Aún no hay nadie más en estos proyectos."
     }
   },
   "agents": {

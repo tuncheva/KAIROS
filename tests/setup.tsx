@@ -65,19 +65,102 @@ vi.mock("next-intl", async () => {
     return typeof current === "string" ? current : undefined;
   };
 
+  /**
+   * ICU plural and select blocks, chosen the way next-intl would.
+   *
+   * Substituting `{name}` alone was not enough: a message written
+   * `{count, plural, one {# finding} other {# findings}}` came through with its
+   * ICU source intact, so a test could only assert on that source — which meant
+   * the copy a user reads was never actually checked. Braces nest, so the
+   * argument is scanned rather than matched with a regex.
+   */
+  const selectBranch = (
+    body: string,
+    values: Record<string, unknown>,
+    name: string,
+    kind: string,
+  ): string | undefined => {
+    const branches = new Map<string, string>();
+    let cursor = 0;
+    while (cursor < body.length) {
+      const open = body.indexOf("{", cursor);
+      if (open === -1) break;
+      const label = body.slice(cursor, open).trim();
+      let depth = 0;
+      let close = open;
+      for (; close < body.length; close += 1) {
+        if (body[close] === "{") depth += 1;
+        else if (body[close] === "}") {
+          depth -= 1;
+          if (depth === 0) break;
+        }
+      }
+      branches.set(label, body.slice(open + 1, close));
+      cursor = close + 1;
+    }
+
+    const value = values[name];
+    if (kind === "select") {
+      return branches.get(String(value)) ?? branches.get("other");
+    }
+
+    const count = Number(value);
+    const category = Number.isFinite(count)
+      ? new Intl.PluralRules("en").select(count)
+      : "other";
+    const chosen =
+      branches.get(`=${count}`) ?? branches.get(category) ?? branches.get("other");
+    return chosen?.replaceAll("#", String(value));
+  };
+
+  const format = (message: string, values: Record<string, unknown>): string => {
+    let out = "";
+    let cursor = 0;
+
+    while (cursor < message.length) {
+      const open = message.indexOf("{", cursor);
+      if (open === -1) {
+        out += message.slice(cursor);
+        break;
+      }
+      out += message.slice(cursor, open);
+
+      let depth = 0;
+      let close = open;
+      for (; close < message.length; close += 1) {
+        if (message[close] === "{") depth += 1;
+        else if (message[close] === "}") {
+          depth -= 1;
+          if (depth === 0) break;
+        }
+      }
+
+      const inner = message.slice(open + 1, close);
+      const [name, kind, ...rest] = inner.split(",");
+      const argument = (name ?? "").trim();
+
+      if (kind && (kind.trim() === "plural" || kind.trim() === "select")) {
+        const branch = selectBranch(rest.join(","), values, argument, kind.trim());
+        out += branch === undefined ? `{${inner}}` : format(branch, values);
+      } else if (argument in values) {
+        out += String(values[argument]);
+      } else {
+        out += `{${inner}}`;
+      }
+
+      cursor = close + 1;
+    }
+
+    return out;
+  };
+
   const useTranslations = (namespace?: string) => {
     const t = (key: string, values?: Record<string, unknown>) => {
       const namespaced = namespace ? `${namespace}.${key}` : key;
       // Fall back to the bare key, then to the literal string, so a missing
       // translation degrades to the old behaviour instead of throwing.
-      let message = resolve(namespaced) ?? resolve(key) ?? namespaced;
-
-      if (values) {
-        for (const [name, value] of Object.entries(values)) {
-          message = message.replaceAll(`{${name}}`, String(value));
-        }
-      }
-      return message;
+      const message = resolve(namespaced) ?? resolve(key) ?? namespaced;
+      return format(message, values ?? {});
     };
     return t;
   };

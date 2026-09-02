@@ -1793,14 +1793,6 @@
       "high": "High",
       "urgent": "Urgent"
     },
-    "insights": {
-      "title": "Needs attention",
-      "loading": "Checking your projects…",
-      "allClear": "Nothing needs your attention right now.",
-      "count": "{count} open",
-      "dismiss": "Dismiss",
-      "openProject": "Open project"
-    },
     "palette": {
       "title": "Command palette",
       "placeholder": "Search, or ask the assistant anything…",
@@ -2078,19 +2070,13 @@
       "dueToday": "Due today",
       "overdue": "Overdue",
       "openThisWeek": "Open this week",
-      "completed": "Completed"
-    },
-    "today": {
-      "title": "Due today",
-      "action": "All tasks",
-      "empty": "Nothing due today.",
-      "complete": "Mark complete",
-      "reopen": "Reopen task"
-    },
-    "week": {
-      "title": "Rest of the week",
-      "action": "Open calendar",
-      "today": "TODAY"
+      "completed": "Completed",
+      "notes": {
+        "doneToday": "{count} done",
+        "oldest": "oldest {days}d",
+        "across": "across {count}",
+        "allTime": "all time"
+      }
     },
     "activity": {
       "title": "Recent activity",
@@ -2109,15 +2095,11 @@
       "done": "{count} done",
       "active": "{count} active",
       "todo": "{count} to do",
-      "ofTasks": "{done} of {total} tasks",
-      "dayGone": "{percent}% of today gone"
+      "dayGone": "{percent}% of today gone",
+      "ofTasksDone": "of tasks done"
     },
     "projects": {
-      "title": "Projects",
-      "action": "View all",
       "untitled": "Untitled project",
-      "noTasks": "No tasks",
-      "open": "{count} open",
       "empty": "Create your first project",
       "health": {
         "onTrack": "On track",
@@ -2125,20 +2107,6 @@
         "atRisk": "At risk",
         "empty": "No tasks"
       }
-    },
-    "notes": {
-      "title": "Notes",
-      "action": "New note",
-      "private": "Private",
-      "shared": "Shared",
-      "untitled": "Untitled note",
-      "empty": "Write your first note"
-    },
-    "status": {
-      "done": "Done",
-      "overdue": "Overdue",
-      "inProgress": "In progress",
-      "todo": "To do"
     },
     "firstRun": {
       "tag": "First run",
@@ -2154,6 +2122,50 @@
       "step2": "Invite people with one access code.",
       "step3": "Tasks, notes and progress land on this dashboard.",
       "aside": "The inner arc tracks the day itself, so an empty dashboard still tells you how much time is left."
+    },
+    "radar": {
+      "title": "What the radar found",
+      "count": "{count, plural, =0 {nothing flagged} one {# finding} other {# findings}}",
+      "loading": "checking…",
+      "checked": "Checked {ago} ago",
+      "allClear": "Nothing needs your attention right now.",
+      "dismiss": "Dismiss",
+      "openProject": "Open project",
+      "workspaceWide": "Across the workspace",
+      "severity": {
+        "critical": "Critical",
+        "warning": "Warning",
+        "info": "Info"
+      }
+    },
+    "projectStatus": {
+      "title": "Project status",
+      "count": "{count, plural, =0 {none active} other {# active}}",
+      "action": "All projects",
+      "ends": "Ends {date}",
+      "noDate": "No date",
+      "columns": {
+        "project": "Project",
+        "team": "Team",
+        "open": "Open",
+        "overdue": "Overdue",
+        "completion": "Completion",
+        "health": "Health"
+      }
+    },
+    "momentum": {
+      "title": "Your momentum",
+      "streak": "{count, plural, one {1-day streak} other {#-day streak}}",
+      "noStreak": "No streak yet",
+      "line": "{total, plural, =0 {Nothing finished in the last fortnight.} one {You finished one task in the last fortnight.} other {You finished # tasks in the last fortnight}}{today, plural, =0 {} other {, {today} of them today}}."
+    },
+    "teamToday": {
+      "title": "Team today",
+      "open": "{count} open",
+      "active": "Active {ago} ago",
+      "neverActive": "No activity yet",
+      "you": "{name} (you)",
+      "empty": "Nobody else is on these projects yet."
     }
   },
   "agents": {
