@@ -7,7 +7,7 @@
 /* ─── Tailwind v4 Theme Registration ───
    Registers custom design-token colors, fonts and shadows so that utility
    classes like `text-accent-primary`, `bg-fg-secondary/50`, `font-display`,
-   `shadow-accent` etc. are generated.  Values reference the CSS custom
+   `shadow-lg` etc. are generated.  Values reference the CSS custom
    properties defined further down in :root / .dark so they stay dynamic. */
 @theme inline {
   /* Background palette */
@@ -63,8 +63,6 @@
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif, "KairosEmoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-display: var(--font-display), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 
-  /* Box shadows */
-  --shadow-accent: 0 10px 25px -5px rgb(var(--accent-primary) / 0.3);
 }
 
 :root {
@@ -150,7 +148,6 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-  --shadow-accent: 0 10px 25px -5px rgb(var(--accent-primary) / 0.3);
 }
 
 /* Accent (theme) variants */
@@ -280,11 +277,20 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.5);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.7);
-  --shadow-accent: 0 10px 25px -5px rgb(var(--accent-primary) / 0.4);
 }
 
-/* Accent (theme) variants - Dark Mode */
-.dark[data-accent="purple"] {
+/* Accent (theme) variants - Dark Mode
+   ────────────────────────────────────
+   Two selectors per accent, not one. `data-accent` lives on `<html>`, but the
+   dark class is no longer always there: the landing and legal pages are
+   dark-only by design and now carry `.dark` on their own root rather than
+   writing `dark` into the user's saved theme (which is what a `setTheme` call
+   in an effect was doing on every visit to `/`, including the one right after
+   sign-out). With a nested scope, `.dark[data-accent]` cannot match — the two
+   attributes are on different elements — so the companion `[data-accent] .dark`
+   selector carries the same values one level down. */
+.dark[data-accent="purple"],
+[data-accent="purple"] .dark {
   --accent-primary: var(--brand-purple);
   --accent-secondary: 192 132 252;
   --accent-tertiary: 216 180 254;
@@ -293,7 +299,8 @@
   --event-active: var(--brand-purple);
 }
 
-.dark[data-accent="pink"] {
+.dark[data-accent="pink"],
+[data-accent="pink"] .dark {
   --accent-primary: var(--brand-pink);
   --accent-secondary: 228 171 171;
   --accent-tertiary: 243 213 213;
@@ -302,7 +309,8 @@
   --event-active: var(--brand-pink);
 }
 
-.dark[data-accent="caramel"] {
+.dark[data-accent="caramel"],
+[data-accent="caramel"] .dark {
   --accent-primary: var(--brand-caramel);
   --accent-secondary: 242 191 141;
   --accent-tertiary: 251 229 199;
@@ -311,7 +319,8 @@
   --event-active: var(--brand-caramel);
 }
 
-.dark[data-accent="mint"] {
+.dark[data-accent="mint"],
+[data-accent="mint"] .dark {
   --accent-primary: var(--brand-mint);
   --accent-secondary: 130 201 183;
   --accent-tertiary: 186 231 220;
@@ -320,7 +329,8 @@
   --event-active: var(--brand-mint);
 }
 
-.dark[data-accent="sky"] {
+.dark[data-accent="sky"],
+[data-accent="sky"] .dark {
   --accent-primary: var(--brand-sky);
   --accent-secondary: 92 158 221;
   --accent-tertiary: 171 208 242;
@@ -329,7 +339,8 @@
   --event-active: var(--brand-sky);
 }
 
-.dark[data-accent="strawberry"] {
+.dark[data-accent="strawberry"],
+[data-accent="strawberry"] .dark {
   --accent-primary: var(--brand-strawberry);
   --accent-secondary: 248 110 122;
   --accent-tertiary: 252 193 198;
@@ -548,7 +559,7 @@ summary,
   font-weight: 600;
   border-radius: 0.75rem;
   border: none;
-  box-shadow: var(--shadow-md), var(--shadow-accent);
+  box-shadow: var(--shadow-md);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -570,7 +581,7 @@ summary,
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-xl), var(--shadow-accent);
+  box-shadow: var(--shadow-xl);
 }
 
 .btn-primary:active {
@@ -664,14 +675,6 @@ summary,
 }
 
 /* Events page utilities */
-.purple-glow {
-  box-shadow: 0 0 20px rgb(var(--accent-primary) / 0.15);
-}
-
-.purple-glow-soft {
-  box-shadow: 0 4px 20px rgb(var(--accent-primary) / 0.08);
-}
-
 .card-shadow {
   box-shadow: 0 2px 15px rgb(0 0 0 / 0.04);
 }
@@ -680,9 +683,6 @@ summary,
   background: radial-gradient(circle at top right, rgb(var(--accent-primary) / 0.08), transparent);
 }
 
-.progress-bar-glow {
-  box-shadow: 0 0 8px rgb(var(--accent-primary) / 0.4);
-}
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
@@ -743,31 +743,12 @@ summary,
   color: #0a0a0c;
 }
 
-.kairos-glass-button::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(
-    700px circle at 20% 10%,
-    rgba(255, 255, 255, 0.15),
-    transparent 55%
-  );
-  opacity: 0;
-  transition: opacity 220ms cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
-}
-
-.kairos-glass-button:hover::before {
-  opacity: 1;
-}
-
+/* Hover is a lift and a slightly deeper drop shadow. No white halo: the
+   button is already white, so a white glow only smears its edge. */
 .kairos-glass-button:hover {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 1);
-  box-shadow:
-    0 18px 40px -22px rgb(0 0 0 / 0.45),
-    0 0 0 1px rgba(255, 255, 255, 0.3) inset;
+  box-shadow: 0 18px 40px -22px rgb(0 0 0 / 0.45);
 }
 
 .kairos-glass-button:active {
@@ -1888,23 +1869,7 @@ summary,
   transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.kairos-btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    rgba(255, 255, 255, 0.15),
-    rgba(255, 255, 255, 0)
-  );
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
-}
-
-.kairos-btn:hover::after {
-  opacity: 1;
-}
-
+/* No hover sheen — the press is the only feedback the button gives. */
 .kairos-btn:active {
   transform: scale(0.97);
 }
@@ -3313,6 +3278,168 @@ input[type="search"]::-webkit-search-results-decoration {
   }
 }
 
+/* ─── Toast viewport ───────────────────────────────────────────────────────
+   `ToastProvider` had a working manager and no surface to render into, so
+   every `toast.success` / `toast.error` in the app was silently swallowed.
+
+   Position is driven by two custom properties rather than a conditional class
+   string, because it is about to become a user preference: the settings
+   picker only has to set `--toast-anchor-block` / `--toast-anchor-inline` on
+   the root, and both this viewport and the notification popups follow. The
+   region is a full-screen flex container that does not take pointer events;
+   only the toasts inside it do. */
+.toast-region {
+  position: fixed;
+  inset: 0;
+  z-index: 60; /* above modals (z-50) — a failure message must never be covered */
+  display: flex;
+  align-items: var(--toast-anchor-block, flex-end);
+  justify-content: var(--toast-anchor-inline, flex-start);
+  padding: 1rem;
+  /* Clears the mobile bottom nav. `AskKairosLauncher` has the same problem and
+     the same fix (bottom-24 lg:bottom-6); keep the two values in step. */
+  padding-bottom: 6rem;
+  pointer-events: none;
+}
+
+@media (min-width: 1024px) {
+  .toast-region {
+    padding-bottom: 1.5rem;
+  }
+}
+
+/* Anchored top, the region has to clear the TopBar rather than sit under it. */
+:root[data-toast-block="start"] .toast-region {
+  padding-top: 4.5rem;
+}
+
+/* ─── Notification popup region ────────────────────────────────────────────
+   The floating popups `NotificationSystem` pushes when a notification arrives
+   over the socket. Same shape as the toast region and the same tokens, one
+   axis apart: the user picks this corner in settings and the toast region
+   takes the diagonally opposite one. See `~/lib/notificationPosition` for why
+   there is one preference rather than two. */
+.notif-region {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: var(--notif-anchor-block, flex-start);
+  justify-content: var(--notif-anchor-inline, flex-end);
+  padding: 1rem;
+  padding-bottom: 6rem;
+  pointer-events: none;
+}
+
+:root[data-notif-block="start"] .notif-region {
+  padding-top: 4.5rem;
+}
+
+@media (min-width: 1024px) {
+  .notif-region {
+    padding-bottom: 1.5rem;
+  }
+}
+
+.notif-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(22rem, 100%);
+}
+
+:root[data-notif-block="start"] .notif-stack {
+  flex-direction: column-reverse;
+}
+
+/* ─── Both regions on a phone ──────────────────────────────────────────────
+   Corners are meaningless at 375px: there is one column and it is the width
+   of the screen. Below `lg` the horizontal half of the preference is dropped
+   and both surfaces go full-width on their chosen edge — the settings panel
+   says so rather than letting the choice silently not apply. */
+@media (max-width: 1023px) {
+  .toast-region,
+  .notif-region {
+    justify-content: stretch;
+  }
+
+  .toast-stack,
+  .notif-stack {
+    width: 100%;
+  }
+}
+
+.toast-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(22rem, 100%);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Anchored at the top, new toasts should read downward from the edge; anchored
+   at the bottom, upward. Without this the stack grows away from its anchor. */
+:root[data-toast-block="start"] .toast-stack {
+  flex-direction: column-reverse;
+}
+
+.toast-item {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5625rem;
+  padding: 0.625rem 0.6875rem;
+  border-radius: 0.75rem;
+  background: rgb(var(--bg-elevated));
+  color: rgb(var(--fg-primary));
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  box-shadow: var(--shadow-lg), inset 2px 0 0 var(--toast-rule, rgb(var(--info))),
+    inset 0 0 0 0.5px rgb(var(--border-light) / 0.6);
+  animation: toast-in 0.22s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.toast-item[data-kind="success"] {
+  --toast-rule: rgb(var(--success));
+}
+.toast-item[data-kind="error"] {
+  --toast-rule: rgb(var(--error));
+}
+.toast-item[data-kind="info"] {
+  --toast-rule: rgb(var(--info));
+}
+
+.toast-item .toast-icon {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.0625rem;
+  border-radius: 0.375rem;
+  display: grid;
+  place-items: center;
+  color: var(--toast-rule);
+  background: color-mix(in srgb, var(--toast-rule) 15%, transparent);
+}
+
+.toast-item .toast-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--toast-enter-y, 0.5rem));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .settings-scroll {
   scroll-behavior: smooth;
 }
@@ -3554,8 +3681,8 @@ input[type="search"]::-webkit-search-results-decoration {
    class is safe to apply mechanically.
 
    It is opt-in rather than a blanket rule on `button` for two reasons: a
-   handful of buttons in the sheet already own their `::after` (`.kairos-btn`,
-   `.k-nav`), and `position: relative` on an arbitrary button would re-anchor
+   handful of buttons in the sheet already own their `::after` (`.k-nav`), and
+   `position: relative` on an arbitrary button would re-anchor
    any absolutely positioned child it happens to contain.
 
    The `:not()` pair matters: this rule is unlayered, so a bare
@@ -3625,4 +3752,458 @@ input[type="search"]::-webkit-search-results-decoration {
   opacity: 0;
   transform: translateY(-6px);
   pointer-events: none;
+}
+
+/* Anchored top, slide down into place instead of up. */
+:root[data-toast-block="start"] .toast-item {
+  --toast-enter-y: -0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-item {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ─── Collapsed rail tooltips ───────────────────────────────────────────────
+   The rail is `overflow-hidden`, so a row's tooltip cannot be an absolutely
+   positioned child — it would be clipped at 4rem along with the labels. It is
+   `fixed`, with its `top` measured from the row in `RailLink`, which escapes
+   the clip because nothing above it establishes a containing block.
+
+   The fade-out at 70% is the handover: it lands on the 1s mark, which is when
+   a rested pointer opens the rail and the row's real label takes over. Without
+   it the tooltip would sit on top of the label it was standing in for. */
+.kairos-rail-tip {
+  position: fixed;
+  left: 4.25rem;
+  transform: translateY(-50%);
+  z-index: 50; /* above the rail (z-40), below modals */
+  padding: 0.3125rem 0.5rem;
+  border-radius: 0.5rem;
+  background: rgb(var(--bg-elevated));
+  color: rgb(var(--fg-primary));
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--shadow-lg), inset 0 0 0 0.5px rgb(var(--border-light) / 0.6);
+  animation: kairos-rail-tip 1.4s ease forwards;
+}
+
+@keyframes kairos-rail-tip {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-4px);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* Pinned, the labels are always on screen — a tooltip repeating one of them is
+   noise. */
+:root[data-rail-pinned="true"] .kairos-rail-tip {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kairos-rail-tip {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: translateY(-50%) !important;
+  }
+}
+
+/* The command palette's entrance and exit.
+
+   It arrives over whatever you were reading, so it should look like it came
+   from the search field rather than being cut in: the backdrop fades, and the
+   panel drops the last few pixels while it settles to full size. The exit is
+   the same gesture, shorter and eased out — a dismissal should feel finished
+   before you have finished reading it.
+
+   Duration of the exit is mirrored by CLOSE_MS in CommandPalette.tsx, which is
+   what keeps the palette mounted long enough for it to play. */
+@keyframes command-palette-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes command-palette-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.command-palette-backdrop {
+  animation: command-palette-backdrop-in 0.18s ease-out backwards;
+}
+
+.command-palette-panel {
+  animation: command-palette-panel-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  transform-origin: top center;
+}
+
+.command-palette-backdrop--out {
+  animation: command-palette-backdrop-in 0.15s ease-in reverse forwards;
+  /* Nothing behind it is clickable yet, and nothing in it should be clicked
+     again on the way out. */
+  pointer-events: none;
+}
+
+.command-palette-panel--out {
+  animation: command-palette-panel-in 0.15s cubic-bezier(0.4, 0, 1, 1) reverse forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The exit still has to occupy CLOSE_MS — React unmounts on a timer, not on
+     animationend — so it holds the panel still and fades it instead. */
+  .command-palette-backdrop,
+  .command-palette-panel {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .command-palette-backdrop--out,
+  .command-palette-panel--out {
+    animation: none !important;
+    opacity: 0 !important;
+    transform: none !important;
+    transition: opacity 0.15s linear;
+  }
+}
+
+/* ── Onboarding sheet ───────────────────────────────────────────────────
+   The full-screen Getting-started sheet. Entrance and exit reuse the dialog
+   keyframes (`kairos-modal-enter` / `kairos-modal-exit`) the notes and palette
+   surfaces already ship; the scrim is a simple fade. The exit is held by a
+   timer (see `modalExit.ts`), so it has to occupy `MODAL_EXIT_MS` even under
+   reduced motion — hence the explicit `--out` fade. */
+.onboarding-sheet-scrim {
+  animation: fadeIn 0.18s ease-out backwards;
+}
+
+.onboarding-sheet-dialog {
+  animation: kairos-modal-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.onboarding-sheet-scrim--out {
+  animation: fadeIn 0.15s ease-in reverse forwards;
+  pointer-events: none;
+}
+
+.onboarding-sheet-dialog--out {
+  animation: onboarding-sheet-exit 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes onboarding-sheet-exit {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-sheet-scrim,
+  .onboarding-sheet-dialog {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .onboarding-sheet-scrim--out,
+  .onboarding-sheet-dialog--out {
+    animation: none !important;
+    opacity: 0 !important;
+    transform: none !important;
+    transition: opacity 0.15s linear;
+  }
+}
+
+/* ===========================================================================
+   Notes: the motion the surface never had
+   ---------------------------------------------------------------------------
+   Notes shipped with `transition-colors`, `animate-pulse`, `animate-spin` and
+   one `.kairos-page-enter` on `<main>`. Eleven popups mounted and unmounted
+   mid-frame, the mobile sheet appeared without sliding, and the pane swap was
+   a bare `hidden`/`block` toggle.
+
+   Almost everything below leans on a keyframe that already existed further up
+   this file — `kairos-modal-enter`, `kairos-scale-in`, `calendar-pop`,
+   `dash-rise`, `projects-drawer-in`, `dash-row-out`. What is genuinely new is
+   the *exits*: an enter without a matching exit is why every dialog on this
+   surface disappeared rather than left.
+
+   The exits are held by a timer rather than `animationend` (see
+   `notesMotion.ts`), for the reason `drawerExit.ts` gives: under
+   `animation: none` no such event fires and the panel would be stranded on
+   screen forever. That is also why each `--out` rule gets an explicit
+   reduced-motion counterpart — the hold still has to elapse, so it holds the
+   element still and fades it instead.
+   ========================================================================== */
+
+@keyframes kairos-modal-exit {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes notes-shake {
+  0%, 100% { transform: none; }
+  15% { transform: translateX(-4px); }
+  35% { transform: translateX(4px); }
+  55% { transform: translateX(-3px); }
+  75% { transform: translateX(2px); }
+}
+
+@keyframes notes-badge-morph {
+  0% { transform: scale(1); }
+  45% { transform: scale(0.86); }
+  100% { transform: scale(1); }
+}
+
+@keyframes notes-strip-in {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    max-height: 96px;
+    transform: none;
+  }
+}
+
+@keyframes notes-push-in {
+  from {
+    opacity: 0;
+    transform: translateX(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes kairos-shimmer {
+  from { background-position: -160% 0; }
+  to { background-position: 260% 0; }
+}
+
+/* ── Dialogs ─────────────────────────────────────────────────────────────
+   One chrome for all six. The scrim is the CommandPalette treatment; the card
+   is the CalendarClient popover surface. */
+.notes-scrim {
+  animation: command-palette-backdrop-in 0.18s ease-out backwards;
+}
+
+.notes-scrim--out {
+  animation: command-palette-backdrop-in 0.15s ease-in reverse forwards;
+}
+
+.notes-dialog {
+  animation: kairos-modal-enter 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.notes-dialog--out {
+  animation: kairos-modal-exit 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notes-scrim,
+  .notes-dialog {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .notes-scrim--out,
+  .notes-dialog--out {
+    animation: none !important;
+    opacity: 0 !important;
+    transform: none !important;
+    transition: opacity 0.15s linear;
+  }
+}
+
+/* ── Menus ───────────────────────────────────────────────────────────────
+   `kairos-scale-in` was already in this file and was never applied to a notes
+   menu. `transform-origin` is set inline from the anchor corner, so a
+   right-aligned menu grows out of the button rather than out of its own
+   middle. */
+.notes-menu {
+  animation: kairos-scale-in 0.16s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.notes-menu--out {
+  animation: kairos-scale-in 0.12s cubic-bezier(0.4, 0, 0.2, 1) reverse forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notes-menu {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .notes-menu--out {
+    animation: none !important;
+    opacity: 0 !important;
+    transform: none !important;
+    transition: opacity 0.12s linear;
+  }
+}
+
+/* ── The mobile rail sheet ───────────────────────────────────────────────
+   Shares `projects-drawer-in`/`-out` with every other drawer in the app, and
+   therefore shares `DRAWER_EXIT_MS` with them too. */
+.notes-sheet {
+  animation: projects-drawer-in 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.notes-sheet--out {
+  animation: projects-drawer-out 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.notes-sheet-scrim {
+  animation: projects-scrim-in 0.35s ease-out both;
+}
+
+.notes-sheet-scrim--out {
+  animation: projects-scrim-out 0.3s ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notes-sheet,
+  .notes-sheet-scrim {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .notes-sheet--out,
+  .notes-sheet-scrim--out {
+    animation: none !important;
+    opacity: 0 !important;
+    transform: none !important;
+  }
+}
+
+/* ── The list ────────────────────────────────────────────────────────────
+   Rows rise on load and on every filter or sort change. The delay is set
+   inline per row and capped by the caller, so a long list never reads as
+   though it is loading twice. */
+.notes-row-in {
+  animation: dash-rise 0.4s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+/* An empty state's disc, on the overshoot curve. `kairos-scale-in` exists
+   above but only ever inside other selectors — there is no bare class for it. */
+.notes-disc-in {
+  animation: kairos-scale-in 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── Whole-pane state changes ────────────────────────────────────────────
+   For a pane that has genuinely become something else — the lock gate, the
+   "only the owner can unlock this" explainer, the recovery page. Deliberately
+   NOT used on the editor when you switch notes: fading the writing surface in
+   and out on every selection reads as the pane reloading, and remounting it to
+   replay the animation loses the caret. The motion on this surface belongs to
+   the list, the rail, the menus and the dialogs — not to the text you are
+   trying to read. */
+.notes-pane-in {
+  animation: calendar-pop 0.3s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+/* The inline calendar-date and draft-password strips reveal by height rather
+   than blinking into existence. */
+.notes-strip {
+  overflow: hidden;
+  animation: notes-strip-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* One pane at a time on mobile: the list leaves to the left, the note arrives
+   from the right, so the two read as the same stack rather than two unrelated
+   screens. */
+.notes-push-in {
+  animation: notes-push-in 0.3s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+/* ── Feedback ────────────────────────────────────────────────────────────
+   A rejected password was previously reported only in text: nothing told you
+   the keystroke had been refused until you read the line. */
+.notes-shake {
+  animation: notes-shake 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Unlocking is a state change, not a screen swap — the badge dips and comes
+   back while its border crosses from error to success. */
+.notes-badge-morph {
+  animation: notes-badge-morph 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── Skeletons ───────────────────────────────────────────────────────────
+   A sweep rather than `animate-pulse`, so a placeholder reads as arriving
+   instead of a column of boxes blinking in unison. Two backgrounds: the
+   moving highlight over the resting fill. */
+.kairos-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--fg-primary) / 0.055) 45%,
+    transparent 90%
+  );
+  background-color: rgb(var(--bg-tertiary));
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: kairos-shimmer 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.dark .kairos-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--fg-primary) / 0.075) 45%,
+    transparent 90%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kairos-shimmer {
+    animation: none !important;
+    background-image: none !important;
+  }
 }

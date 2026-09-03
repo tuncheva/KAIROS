@@ -2,14 +2,26 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-const push = vi.fn();
+/* Which note is open is read from the pathname, not passed in as a prop: the
+   workspace is mounted by `(workspace)/layout.tsx`, above the segment that
+   changes, so there is no page left to hand it down. `renderAt` is therefore
+   how these tests choose what is on screen.
 
-// The shared mock hands back a fresh router each call, so a click assertion
-// would never see the spy it was set up with.
+   Selection navigates with `history.pushState` rather than `router.push`, so
+   that clicking a row does not re-render a route on the server — the
+   assertions below read `window.location` for the same reason. */
+let pathname = "/notes";
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push, replace: vi.fn(), refresh: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+    back: vi.fn(),
+    prefetch: vi.fn(),
+  }),
   useSearchParams: () => new URLSearchParams(),
-  usePathname: () => "/notes",
+  usePathname: () => pathname,
   redirect: vi.fn(),
 }));
 
@@ -121,13 +133,20 @@ vi.mock("~/trpc/react", () => {
 const { NotesWorkspace } = await import("~/components/notes/NotesWorkspace");
 
 describe("NotesWorkspace", () => {
+  const renderAt = (path: string) => {
+    pathname = path;
+    window.history.replaceState(null, "", path);
+    return render(<NotesWorkspace />);
+  };
+
   beforeEach(() => {
-    push.mockClear();
+    pathname = "/notes";
+    window.history.replaceState(null, "", "/notes");
     window.localStorage.clear();
   });
 
   it("lists your notes with a real preview line", () => {
-    render(<NotesWorkspace noteId={null} />);
+    renderAt("/notes");
 
     expect(screen.getAllByText("Q3 planning").length).toBeGreaterThan(0);
     expect(
@@ -138,7 +157,7 @@ describe("NotesWorkspace", () => {
   it("shows that a note is locked *and* shared, not one or the other", () => {
     /* The old card chose between the two with a ternary that tested sharing
        first, so an encrypted note that was shared never showed a lock. */
-    render(<NotesWorkspace noteId={null} />);
+    renderAt("/notes");
 
     const row = screen.getByRole("button", { name: /Salary review/ });
     expect(within(row).getByText("Locked")).toBeInTheDocument();
@@ -146,7 +165,7 @@ describe("NotesWorkspace", () => {
   });
 
   it("offers the rail views and notebooks with their counts", () => {
-    render(<NotesWorkspace noteId={null} />);
+    renderAt("/notes");
 
     const nav = screen.getAllByRole("navigation")[0]!;
     expect(within(nav).getByText("Shared with me")).toBeInTheDocument();
@@ -159,16 +178,16 @@ describe("NotesWorkspace", () => {
 
   it("opens a note as a route, so the back button and deep links work", async () => {
     const user = userEvent.setup();
-    render(<NotesWorkspace noteId={null} />);
+    renderAt("/notes");
 
     await user.click(screen.getByRole("button", { name: /Vendor call/ }));
 
-    expect(push).toHaveBeenCalledWith("/notes/3");
+    expect(window.location.pathname).toBe("/notes/3");
   });
 
   it("narrows the list with the locked filter", async () => {
     const user = userEvent.setup();
-    render(<NotesWorkspace noteId={null} />);
+    renderAt("/notes");
 
     await user.click(screen.getByRole("tab", { name: "Locked" }));
 
@@ -178,7 +197,7 @@ describe("NotesWorkspace", () => {
 
   it("switches to the notes shared with you", async () => {
     const user = userEvent.setup();
-    render(<NotesWorkspace noteId={null} />);
+    renderAt("/notes");
 
     const nav = screen.getAllByRole("navigation")[0]!;
     await user.click(within(nav).getByRole("button", { name: /Shared with me/ }));
@@ -189,7 +208,7 @@ describe("NotesWorkspace", () => {
 
   it("says when a search could not look inside encrypted notes", async () => {
     const user = userEvent.setup();
-    render(<NotesWorkspace noteId={null} />);
+    renderAt("/notes");
 
     await user.type(screen.getAllByRole("searchbox")[0]!, "roadmap");
 
@@ -197,7 +216,7 @@ describe("NotesWorkspace", () => {
   });
 
   it("asks for the password in the page, not in a modal over everything", () => {
-    render(<NotesWorkspace noteId={2} />);
+    renderAt("/notes/2");
 
     expect(screen.getByText("This note is encrypted")).toBeInTheDocument();
     expect(screen.getByLabelText("Enter password")).toBeInTheDocument();
@@ -207,7 +226,7 @@ describe("NotesWorkspace", () => {
   });
 
   it("opens an unlocked note straight into an editable page, with no Save button", () => {
-    render(<NotesWorkspace noteId={1} />);
+    renderAt("/notes/1");
 
     const body = screen.getByLabelText("Write your note...");
     expect(body).toHaveValue("Three things still unresolved before we commit the roadmap.");
@@ -215,7 +234,7 @@ describe("NotesWorkspace", () => {
   });
 
   it("shows a note shared with you read-only when that is all you were given", () => {
-    render(<NotesWorkspace noteId={9} />);
+    renderAt("/notes/9");
 
     expect(screen.getByText("Agenda draft")).toBeInTheDocument();
     expect(screen.getAllByText("From Maria").length).toBeGreaterThan(0);
@@ -223,16 +242,16 @@ describe("NotesWorkspace", () => {
 
   it("starts a new note as its own route rather than a create dialog", async () => {
     const user = userEvent.setup();
-    render(<NotesWorkspace noteId={null} />);
+    renderAt("/notes");
 
     await user.click(screen.getAllByRole("button", { name: "Create" })[0]!);
 
-    expect(push).toHaveBeenCalledWith("/notes/new");
+    expect(window.location.pathname).toBe("/notes/new");
   });
 
   it("re-orders the list from the sort menu", async () => {
     const user = userEvent.setup();
-    render(<NotesWorkspace noteId={null} />);
+    renderAt("/notes");
 
     const titles = () =>
       screen
@@ -252,7 +271,7 @@ describe("NotesWorkspace", () => {
 
   it("renames a notebook — the router procedure that never had a caller", async () => {
     const user = userEvent.setup();
-    render(<NotesWorkspace noteId={null} />);
+    renderAt("/notes");
 
     await user.click(screen.getAllByRole("button", { name: "Actions for Product" })[0]!);
     await user.click(screen.getByRole("menuitem", { name: "Rename" }));
@@ -264,7 +283,7 @@ describe("NotesWorkspace", () => {
 
   it("confirms a notebook deletion in a dialog rather than a browser prompt", async () => {
     const user = userEvent.setup();
-    render(<NotesWorkspace noteId={null} />);
+    renderAt("/notes");
 
     await user.click(screen.getAllByRole("button", { name: "Actions for Product" })[0]!);
     await user.click(screen.getByRole("menuitem", { name: "Delete" }));
@@ -276,7 +295,7 @@ describe("NotesWorkspace", () => {
 
   it("confirms a note deletion from the note's own menu", async () => {
     const user = userEvent.setup();
-    render(<NotesWorkspace noteId={1} />);
+    renderAt("/notes/1");
 
     await user.click(screen.getByRole("button", { name: "Note actions" }));
     await user.click(screen.getByRole("menuitem", { name: "Delete" }));
@@ -286,7 +305,7 @@ describe("NotesWorkspace", () => {
 
   it("moves a note between notebooks from the same menu", async () => {
     const user = userEvent.setup();
-    render(<NotesWorkspace noteId={3} />);
+    renderAt("/notes/3");
 
     await user.click(screen.getByRole("button", { name: "Note actions" }));
 
@@ -296,7 +315,7 @@ describe("NotesWorkspace", () => {
 
   it("opens the share dialog for a note you own", async () => {
     const user = userEvent.setup();
-    render(<NotesWorkspace noteId={1} />);
+    renderAt("/notes/1");
 
     await user.click(screen.getByRole("button", { name: "Share" }));
 
@@ -307,7 +326,7 @@ describe("NotesWorkspace", () => {
 
   it("puts the calendar date behind the menu, editable after the note exists", async () => {
     const user = userEvent.setup();
-    render(<NotesWorkspace noteId={3} />);
+    renderAt("/notes/3");
 
     await user.click(screen.getByRole("button", { name: "Note actions" }));
     await user.click(screen.getByRole("menuitem", { name: "Change the date" }));

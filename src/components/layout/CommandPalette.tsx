@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
+import {
+  eventHref,
+  noteHref,
+  projectHref,
+  projectTasksHref,
+} from "~/lib/routes";
 
 /**
  * D-2 — ⌘K / Ctrl-K.
@@ -21,6 +27,12 @@ import { api } from "~/trpc/react";
  * - **Asking is always explicit.** The AI row is something you select, never
  *   something that fires because nothing else matched. A palette that silently
  *   spends a request from a daily quota is a palette people stop trusting.
+ *
+ * Below the destinations sit the workspace's own contents — tasks, projects,
+ * notes, events, comments — from `search.workspace`. Navigation is still local
+ * and instant; the search is debounced and only runs once there is something
+ * worth searching for. It is the third tier, between "somewhere to go" and
+ * "ask the assistant".
  */
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
@@ -31,6 +43,13 @@ interface Destination {
   href: string;
   hint?: string;
 }
+
+/**
+ * How long the closing animation runs. Kept in step with
+ * `.command-palette-panel--out` in `globals.css`: the palette stays mounted for
+ * exactly this long after it is dismissed so the exit can be seen.
+ */
+const CLOSE_MS = 150;
 
 /** Case- and accent-insensitive contains, so "проект" matches sensibly too. */
 function matches(haystack: string, needle: string): boolean {
@@ -60,6 +79,9 @@ export function CommandPalette({
   const router = useRouter();
 
   const [open, setOpen] = useState(initialOpen);
+  /* Dismissed, but still on screen playing its exit. `open` stays true for
+     these few frames — unmounting on the click would skip the animation. */
+  const [closing, setClosing] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,14 +95,35 @@ export function CommandPalette({
     refetchOnWindowFocus: false,
   });
 
+  /* Debounced, because this one is a real query across five tables and the
+     input fires on every keystroke. The destinations above stay instant —
+     they are matched in memory and never wait for this. */
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(query.trim()), 220);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const search = api.search.workspace.useQuery(
+    { query: debounced, limit: 12 },
+    {
+      // Two characters is `searchWorkspace`'s own floor; below it the query
+      // would be refused anyway.
+      enabled: open && debounced.length >= 2,
+      retry: false,
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+    },
+  );
+
   const staticDestinations = useMemo<Destination[]>(
     () => [
       { id: "nav:dashboard", label: t("dashboard"), href: "/dashboard" },
       { id: "nav:projects", label: t("projects"), href: "/projects" },
-      { id: "nav:tasks", label: t("tasks"), href: "/tasks" },
+      { id: "nav:tasks", label: t("tasks"), href: "/progress" },
       { id: "nav:calendar", label: t("calendar"), href: "/calendar" },
       { id: "nav:notes", label: t("notes"), href: "/notes" },
-      { id: "nav:events", label: t("events"), href: "/events" },
+      { id: "nav:events", label: t("events"), href: "/publish" },
       { id: "nav:chat", label: t("assistant"), href: "/chat/ai" },
       { id: "nav:settings", label: t("settings"), href: "/settings" },
     ],
@@ -91,7 +134,7 @@ export function CommandPalette({
     const projectRows: Destination[] = (projects.data ?? []).map((p) => ({
       id: `project:${String(p.id)}`,
       label: p.title,
-      href: `/projects/${String(p.id)}`,
+      href: projectHref(p.id),
       hint: t("project"),
     }));
 
@@ -101,16 +144,63 @@ export function CommandPalette({
     return all.filter((d) => matches(d.label, query.trim())).slice(0, 8);
   }, [projects.data, query, staticDestinations, t]);
 
-  /** The assistant row sits at the end, and is the only row when nothing matches. */
-  const askIndex = results.length;
-  const hasQuery = query.trim().length > 0;
-  const rowCount = results.length + (hasQuery ? 1 : 0);
+  /* Search hits become the same shape as a destination, so one keyboard model
+     covers all three tiers rather than three overlapping ones. */
+  const hits = useMemo<Destination[]>(() => {
+    if (!search.data) return [];
 
-  const close = useCallback(() => {
-    setOpen(false);
-    setQuery("");
-    setActiveIndex(0);
+    return search.data.map((hit) => {
+      const href =
+        hit.kind === "note"
+          ? noteHref(hit.id)
+          : hit.kind === "event"
+            ? eventHref(hit.id)
+            : hit.kind === "project"
+              ? projectHref(hit.id)
+              : /* task and comment both live on a project's board */
+                projectTasksHref(hit.projectId ?? 0);
+
+      return {
+        id: `hit:${hit.kind}:${String(hit.id)}`,
+        label: hit.title,
+        href,
+        hint: t(`kind.${hit.kind}`),
+      };
+    });
+  }, [search.data, t]);
+
+  /* The destinations already surface projects by name, so a project matched by
+     its title would otherwise appear twice. */
+  const dedupedHits = useMemo(
+    () => hits.filter((hit) => !results.some((r) => r.href === hit.href)),
+    [hits, results],
+  );
+
+  /** The assistant row sits at the end, and is the only row when nothing matches. */
+  const rows = useMemo(() => [...results, ...dedupedHits], [results, dedupedHits]);
+  const askIndex = rows.length;
+  const hasQuery = query.trim().length > 0;
+  const rowCount = rows.length + (hasQuery ? 1 : 0);
+
+  const close = useCallback(() => setClosing(true), []);
+
+  /* Re-opening mid-exit has to cancel the pending teardown, or the palette
+     would open and then wipe its own query a moment later. */
+  const openPalette = useCallback(() => {
+    setClosing(false);
+    setOpen(true);
   }, []);
+
+  useEffect(() => {
+    if (!closing) return;
+    const timer = window.setTimeout(() => {
+      setClosing(false);
+      setOpen(false);
+      setQuery("");
+      setActiveIndex(0);
+    }, CLOSE_MS);
+    return () => window.clearTimeout(timer);
+  }, [closing]);
 
   const go = useCallback(
     (index: number) => {
@@ -121,12 +211,12 @@ export function CommandPalette({
         close();
         return;
       }
-      const destination = results[index];
+      const destination = rows[index];
       if (!destination) return;
       router.push(destination.href);
       close();
     },
-    [askIndex, close, hasQuery, query, results, router],
+    [askIndex, close, hasQuery, query, rows, router],
   );
 
   // ⌘K / Ctrl-K to open, Escape to close.
@@ -134,19 +224,28 @@ export function CommandPalette({
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen((prev) => !prev);
+        if (open && !closing) close();
+        else openPalette();
         return;
       }
       if (e.key === "Escape") close();
     };
 
+    /* Once armed this component stays mounted, so it — not the host — has to
+       answer the TopBar's search field from the second click onwards. */
+    const onOpenRequest = () => openPalette();
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [close]);
+    window.addEventListener("kairos:openPalette", onOpenRequest);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("kairos:openPalette", onOpenRequest);
+    };
+  }, [close, closing, open, openPalette]);
 
   useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
+    if (open && !closing) inputRef.current?.focus();
+  }, [closing, open]);
 
   // Keep the highlight inside the list as it shrinks under typing.
   useEffect(() => {
@@ -160,11 +259,15 @@ export function CommandPalette({
       role="dialog"
       aria-modal="true"
       aria-label={t("title")}
-      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/40 p-4 pt-[12dvh] backdrop-blur-sm"
+      className={`command-palette-backdrop fixed inset-0 z-[100] flex items-start justify-center bg-black/40 p-4 pt-[12dvh] backdrop-blur-sm ${
+        closing ? "command-palette-backdrop--out" : ""
+      }`}
       onClick={close}
     >
       <div
-        className="w-full max-w-xl overflow-hidden rounded-xl border border-border-medium bg-bg-elevated shadow-2xl"
+        className={`command-palette-panel w-full max-w-xl overflow-hidden rounded-xl border border-border-medium bg-bg-elevated shadow-2xl ${
+          closing ? "command-palette-panel--out" : ""
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <input
@@ -189,8 +292,13 @@ export function CommandPalette({
         />
 
         <ul className="max-h-80 overflow-y-auto py-1">
-          {results.map((destination, index) => (
+          {rows.map((destination, index) => (
             <li key={destination.id}>
+              {index === results.length ? (
+                <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-quaternary">
+                  {t("inYourWorkspace")}
+                </p>
+              ) : null}
               <button
                 type="button"
                 onMouseEnter={() => setActiveIndex(index)}
@@ -230,6 +338,15 @@ export function CommandPalette({
                   {t("enter")}
                 </span>
               </button>
+            </li>
+          ) : null}
+
+          {search.isFetching && debounced.length >= 2 ? (
+            <li
+              aria-live="polite"
+              className="px-4 py-2 text-center text-xs text-fg-quaternary"
+            >
+              {t("searching")}
             </li>
           ) : null}
 

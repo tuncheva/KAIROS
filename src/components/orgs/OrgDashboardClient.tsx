@@ -8,6 +8,7 @@ import { api } from "~/trpc/react";
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
 import { MemberAvatarStack } from "~/components/orgs/MemberAvatarStack";
 import { OrgBadge } from "~/components/orgs/OrgBadge";
+import { OrgEmptyState } from "~/components/orgs/OrgEmptyState";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useSwitchOrganization } from "~/hooks/useSwitchOrganization";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
@@ -85,53 +86,63 @@ export function OrgDashboardClient() {
     );
   }
 
+  /* The invitation has to sit above the empty state, not inside the list.
+     It was rendered below an `if (!items.length)` early return, so the one
+     person who most needs it — someone whose only membership is the pending
+     invite — was shown 'you are not part of any organization' and nothing
+     else, while the invite was fetched and polled every 30s behind it. */
+  const pendingInvitations = (invitesQuery.data?.length ?? 0) > 0 && (
+      <div className="surface-card p-6">
+        <h2 className="text-lg font-bold text-fg-primary mb-3">{tOrg("pendingInvitations")}</h2>
+        <div className="space-y-3">
+          {invitesQuery.data?.map((invite) => (
+            <div
+              key={invite.id}
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-accent-primary/5 border border-accent-primary/20"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold text-fg-primary">{invite.orgName}</p>
+                <p className="text-sm text-fg-secondary">
+                  {tOrg("invitedAs")} <span className="font-medium">{invite.displayRole ?? invite.role}</span>
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => acceptInvite.mutate({ inviteId: invite.id })}
+                  disabled={acceptInvite.isPending}
+                  className="px-4 py-2 rounded-xl bg-accent-primary text-white text-sm font-semibold hover:bg-accent-primary/90 transition disabled:opacity-50"
+                >
+                  {acceptInvite.isPending ? tOrg("joining") : tCommon("accept")}
+                </button>
+                <button
+                  onClick={() => declineInvite.mutate({ inviteId: invite.id })}
+                  disabled={declineInvite.isPending}
+                  className="px-4 py-2 rounded-xl bg-bg-surface shadow-sm text-sm text-fg-secondary hover:bg-bg-elevated transition disabled:opacity-50"
+                >
+                  {tCommon("decline")}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+  );
+
   if (!items.length) {
     return (
-      <div className="surface-card p-6">
-        <div className="text-sm text-fg-secondary">{tOrg("noOrgs")}</div>
+      <div className="space-y-4">
+        {pendingInvitations}
+        <div className="surface-card p-6">
+          <OrgEmptyState />
+        </div>
       </div>
     );
   }
 
+
   return (
     <div className="space-y-4">
-      {/* Pending Invitations */}
-      {(invitesQuery.data?.length ?? 0) > 0 && (
-        <div className="surface-card p-6">
-          <h2 className="text-lg font-bold text-fg-primary mb-3">{tOrg("pendingInvitations")}</h2>
-          <div className="space-y-3">
-            {invitesQuery.data?.map((invite) => (
-              <div
-                key={invite.id}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-accent-primary/5 border border-accent-primary/20"
-              >
-                <div className="min-w-0">
-                  <p className="font-semibold text-fg-primary">{invite.orgName}</p>
-                  <p className="text-sm text-fg-secondary">
-                    {tOrg("invitedAs")} <span className="font-medium">{invite.displayRole ?? invite.role}</span>
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => acceptInvite.mutate({ inviteId: invite.id })}
-                    disabled={acceptInvite.isPending}
-                    className="px-4 py-2 rounded-xl bg-accent-primary text-white text-sm font-semibold hover:bg-accent-primary/90 transition disabled:opacity-50"
-                  >
-                    {acceptInvite.isPending ? tOrg("joining") : tCommon("accept")}
-                  </button>
-                  <button
-                    onClick={() => declineInvite.mutate({ inviteId: invite.id })}
-                    disabled={declineInvite.isPending}
-                    className="px-4 py-2 rounded-xl bg-bg-surface shadow-sm text-sm text-fg-secondary hover:bg-bg-elevated transition disabled:opacity-50"
-                  >
-                    {tCommon("decline")}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {pendingInvitations}
 
       <div className="surface-card p-6">
         <h1 className="text-2xl font-bold text-fg-primary">{tOrg("yourOrgs")}</h1>

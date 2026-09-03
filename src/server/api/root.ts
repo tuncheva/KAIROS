@@ -13,6 +13,7 @@ import { settingsRouter } from "~/server/api/routers/settings";
 import { authRouter } from "~/server/api/routers/auth";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { chatRouter } from "~/server/api/routers/chat";
+import { searchRouter } from "~/server/api/routers/search";
 import { agentRouter } from "~/server/api/routers/agent";
 import { billingRouter } from "~/server/api/routers/billing";
 import { integrationRouter } from "~/server/api/routers/integration";
@@ -30,6 +31,7 @@ export const appRouter = createTRPCRouter({
   profile: profileRouter,
   auth: authRouter,
   notification: notificationRouter,
+  search: searchRouter,
   chat: chatRouter,
   agent: agentRouter,
   billing: billingRouter,

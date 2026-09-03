@@ -10,11 +10,14 @@ const UNMOUNT_MS = 3200;
 
 /**
  * Wordmark curtain. It sits *above* an already-rendered, already interactive
- * page — nothing is deferred behind it. It plays on every landing (the decision
- * is made pre-paint by the theme init script in `layout.tsx`, which is also
- * what skips it under reduced motion), and any input during playback jumps to
- * the end.
+ * page — nothing is deferred behind it. It plays once per browser (the
+ * decision is made pre-paint by the theme init script in `layout.tsx`, which
+ * is also what skips it under reduced motion), and any input during playback
+ * jumps to the end.
  */
+
+/** Read by the pre-paint script, written here once the curtain has played. */
+const SEEN_KEY = "kairos:introSeen";
 export function LandingIntro({ onClear }: { onClear: () => void }) {
     const [mounted, setMounted] = useState(true);
     const curtainRef = useRef<HTMLDivElement>(null);
@@ -37,6 +40,11 @@ export function LandingIntro({ onClear }: { onClear: () => void }) {
         const clear = () => {
             if (clearedRef.current) return;
             clearedRef.current = true;
+            /* Stamped on the way out rather than on the way in: a visitor who
+               closes the tab mid-curtain has not really seen it. */
+            try {
+                localStorage.setItem(SEEN_KEY, "true");
+            } catch {}
             onClear();
         };
 

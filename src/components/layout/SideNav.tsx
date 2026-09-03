@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { KairosMark } from "~/components/layout/KairosMark";
+import { openOnboarding } from "~/components/onboarding/OnboardingSheet";
 import {
   Briefcase,
   LayoutDashboard,
@@ -55,10 +56,39 @@ function RailLink({
   active: boolean;
   labelClass: string;
 }) {
+  const ref = useRef<HTMLAnchorElement>(null);
+
+  /* Unpinned is the default, so a new user meets eight unlabelled icons. The
+     rail's own labels do arrive — on keyboard focus immediately, on hover after
+     the deliberate 1s rest — but a pointer user who just wants to know what the
+     third icon is should not have to wait, and a touch user never hovers at all.
+     So each row carries its own tooltip that appears at once.
+
+     Position is `fixed` and measured, not `absolute`: the rail is
+     `overflow-hidden` (its labels live in the clipped overflow), so anything
+     absolutely positioned past 4rem is cut off. `fixed` escapes the clip —
+     nothing on the rail's ancestor chain sets a transform, so it resolves
+     against the viewport as intended.
+
+     It then fades itself out at the 1s mark, which is exactly when the rested
+     pointer opens the rail: the tooltip answers the question, and hands the row
+     back to the real label rather than sitting on top of it. */
+  const [tipTop, setTipTop] = useState<number | null>(null);
+
+  const showTip = () => {
+    const box = ref.current?.getBoundingClientRect();
+    if (box) setTipTop(box.top + box.height / 2);
+  };
+  const hideTip = () => setTipTop(null);
+
   return (
     <Link
+      ref={ref}
       href={href}
       aria-current={active ? "page" : undefined}
+      onMouseEnter={showTip}
+      onMouseLeave={hideTip}
+      onClick={hideTip}
       className={`${railRowClass} transition-colors duration-300 ease-[cubic-bezier(0.2,0.8,0.25,1)] ${
         active
           ? "border-accent-primary bg-accent-primary/10 font-semibold text-fg-primary"
@@ -67,6 +97,13 @@ function RailLink({
     >
       <Icon size={20} className="shrink-0" />
       <span className={labelClass}>{label}</span>
+      {tipTop === null ? null : (
+        /* aria-hidden: the label span above is already the accessible name, and
+           a screen reader announcing it twice is worse than not at all. */
+        <span aria-hidden="true" className="kairos-rail-tip" style={{ top: tipTop }}>
+          {label}
+        </span>
+      )}
     </Link>
   );
 }
@@ -176,11 +213,16 @@ export function SideNav() {
     label: string;
     primary?: boolean;
   }> = [
-    { href: "/publish", icon: CalendarDays, label: t("events") },
-    { href: "/progress", icon: TrendingUp, label: t("progress") },
+    /* The five destinations people actually reach for. This used to be Events ·
+       Progress · New · Calendar · Settings, which left Dashboard, Projects,
+       Chat and Notes reachable only through the hamburger — four of the five
+       most-used surfaces behind an extra tap. The ones that moved out are all
+       still in the drawer, which is where secondary destinations belong. */
+    { href: "/dashboard", icon: LayoutDashboard, label: t("dashboard") },
+    { href: "/projects", icon: Briefcase, label: t("projects") },
     { href: "/projects?new=1", icon: Plus, label: t("newProject"), primary: true },
-    { href: "/calendar", icon: CalendarCheck, label: t("calendar") },
-    { href: settingsItem.href, icon: Settings, label: settingsItem.label },
+    { href: "/chat", icon: MessageCircle, label: t("chat") },
+    { href: "/notes", icon: BookText, label: t("notes") },
   ];
 
   const isItemActive = (href: string): boolean => {
@@ -191,7 +233,10 @@ export function SideNav() {
       return pathname === "/progress";
     }
     if (href === "/chat") {
-      return pathname === "/chat";
+      /* A conversation is its own route (`/chat/[conversationId]`, `/chat/ai`),
+         and the nav has to stay lit while you are reading one — same reasoning
+         as notes below. */
+      return pathname === "/chat" || pathname.startsWith("/chat/");
     }
     if (href === "/publish") {
       return pathname === "/publish";
@@ -217,8 +262,15 @@ export function SideNav() {
     <>
       <div className="kairos-mobile-topbar lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-bg-primary/95 pb-3 shadow-sm backdrop-blur-md">
         <div className="flex items-center gap-2.5">
-          <KairosMark size={28} />
-          <h1 className="text-lg font-semibold text-fg-primary font-display tracking-[-0.02em]">KAIROS</h1>
+          <button
+            type="button"
+            onClick={openOnboarding}
+            title={t("gettingStarted")}
+            className="flex items-center gap-2.5 rounded-lg transition-opacity hover:opacity-70"
+          >
+            <KairosMark size={28} />
+            <h1 className="text-lg font-semibold text-fg-primary font-display tracking-[-0.02em]">KAIROS</h1>
+          </button>
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -330,25 +382,41 @@ export function SideNav() {
         </>
       )}
 
-      <nav className={`kairos-mobile-bottomnav fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-bg-primary/95 pt-2 backdrop-blur-md lg:hidden dark:border-white/[0.06] ${isMobileMenuOpen ? "hidden" : ""}`} aria-label="Primary">
+      {/* z-50, above `AskKairosLauncher`. Both sat at z-40 and the launcher
+          renders later in the tree, so it won every time — covering the last
+          item on every phone. The launcher also lifts to `bottom-24` to clear
+          this bar; the toast viewport uses the same clearance. */}
+      <nav className={`kairos-mobile-bottomnav fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-bg-primary/95 pt-2 backdrop-blur-md lg:hidden dark:border-white/[0.06] ${isMobileMenuOpen ? "hidden" : ""}`} aria-label="Primary">
         <div className="flex items-center justify-around gap-1">
           {mobileBottomItems.map((item) => {
             const isActive = isItemActive(item.href);
             return (
+              /* Labelled, not icon-only. The old bar carried `title`, which a
+                 touch device never shows, so the whole bar was five unnamed
+                 glyphs. The visible text is also the accessible name now, so
+                 there is no `aria-label` to drift out of step with it. */
               <Link
                 key={item.href}
                 href={item.href}
-                aria-label={item.label}
-                className={`flex h-11 min-w-11 items-center justify-center rounded-xl transition-colors ${
+                aria-current={isActive ? "page" : undefined}
+                className={`flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 transition-colors ${
                   item.primary
-                    ? "bg-accent-primary text-white shadow-md shadow-accent-primary/30"
+                    ? "text-accent-primary"
                     : isActive
-                      ? "bg-accent-primary/12 text-accent-primary"
-                      : "text-fg-secondary hover:bg-bg-secondary hover:text-fg-primary"
+                      ? "text-accent-primary"
+                      : "text-fg-tertiary hover:text-fg-primary"
                 }`}
-                title={item.label}
               >
-                <item.icon size={20} />
+                <span
+                  className={
+                    item.primary
+                      ? "grid h-7 w-9 place-items-center rounded-lg bg-accent-primary text-white"
+                      : "grid h-7 w-9 place-items-center"
+                  }
+                >
+                  <item.icon size={item.primary ? 22 : 20} />
+                </span>
+                <span className="text-[10px] font-semibold leading-none">{item.label}</span>
               </Link>
             );
           })}
@@ -368,10 +436,18 @@ export function SideNav() {
       >
         <div className="flex items-center justify-between gap-3 whitespace-nowrap px-[18px] pb-[22px]">
           <span className="flex items-center gap-3.5">
-            <KairosMark size={26} />
-            <span className={`font-display text-[15px] font-semibold tracking-[0.18em] text-fg-primary ${labelClass}`}>
-              KAIROS
-            </span>
+            <button
+              type="button"
+              onClick={openOnboarding}
+              aria-label={t("gettingStarted")}
+              title={t("gettingStarted")}
+              className="flex items-center gap-3.5 rounded-lg transition-opacity hover:opacity-70"
+            >
+              <KairosMark size={26} />
+              <span className={`font-display text-[15px] font-semibold tracking-[0.18em] text-fg-primary ${labelClass}`}>
+                KAIROS
+              </span>
+            </button>
           </span>
           <button
             type="button"

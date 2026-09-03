@@ -8,6 +8,8 @@ import { api } from "~/trpc/react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 
+import { useModalBehavior } from "~/components/ui/Modal";
+
 /* ─── Types ─── */
 type ModalView =
   | "signIn"
@@ -32,6 +34,7 @@ export function SignInModal({
 }) {
   const t = useTranslations("auth.modal");
   const searchParams = useSearchParams();
+  const sessionExpired = searchParams.get("reason") === "expired";
 
   /**
    * Where to land after signing in.
@@ -53,6 +56,12 @@ export function SignInModal({
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  /* Set when the refusal was "confirm your email". The message alone is not
+     enough — the only place the app offered to resend the confirmation was the
+     `verifyEmailSent` view, reachable for a few seconds after signing up, so a
+     user who signed up, missed the email and came back the next day had no
+     path at all. */
+  const [needsVerification, setNeedsVerification] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -70,6 +79,7 @@ export function SignInModal({
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const codeInputsRef = useRef<(HTMLInputElement | null)[]>([]);
+  const shellRef = useRef<HTMLDivElement>(null);
 
   const router = useRouter();
   const signupMutation = api.auth.signup.useMutation();
@@ -136,6 +146,12 @@ export function SignInModal({
     }
   }, [isOpen, initialEmail]);
 
+  /* The front door had no dialog semantics at all: no `role`, no `aria-modal`,
+     no Escape, no focus trap and no focus restore — on the one surface every
+     new user has to get through. `useModalBehavior` is the same implementation
+     the newer surfaces already had; see `~/components/ui/Modal`. */
+  useModalBehavior({ containerRef: shellRef, onDismiss: onClose, enabled: isOpen });
+
   /* ─── Early return AFTER all hooks ─── */
   if (!isOpen) return null;
 
@@ -143,6 +159,7 @@ export function SignInModal({
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    setNeedsVerification(false);
     setLoadingMessage(t("signIn.verifyingCredentials"));
 
     try {
@@ -153,7 +170,25 @@ export function SignInModal({
       });
 
       if (result?.error) {
-        setError(t("signIn.invalidCredentials"));
+        /* Three outcomes, not one. `code` is only set for the refusals the
+           user can act on; everything else — wrong password, no such account,
+           throttled — stays deliberately indistinguishable. See
+           `SIGN_IN_UNVERIFIED` in `~/server/auth/config`. */
+        const [code, detail] = (result.code ?? "").split(":");
+
+        if (code === "EMAIL_UNVERIFIED") {
+          setNeedsVerification(true);
+          setError(t("signIn.emailUnverified"));
+        } else if (code === "ACCOUNT_LOCKED") {
+          const minutes = Number(detail);
+          setError(
+            t("signIn.accountLocked", {
+              minutes: Number.isFinite(minutes) && minutes > 0 ? minutes : 15,
+            }),
+          );
+        } else {
+          setError(t("signIn.invalidCredentials"));
+        }
       } else {
         onClose();
         router.push(callbackUrl);
@@ -675,7 +710,13 @@ export function SignInModal({
     <div className="dark fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl overflow-hidden rounded-[18px] border border-white/10 bg-[#08080c] lg:grid-cols-2">
+      <div
+        ref={shellRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="kairos-auth-title"
+        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl overflow-hidden rounded-[18px] border border-white/10 bg-[#08080c] lg:grid-cols-2"
+      >
         {/* ─── Left: brand panel (hidden on narrow screens) ─── */}
         <div className="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.08] bg-[#0a0a10] p-11 lg:flex">
           <div
@@ -739,10 +780,26 @@ export function SignInModal({
           </button>
 
           <div className={eyebrowClass}>{step}</div>
-          <h2 className="mt-4 font-display text-[38px] font-normal leading-[1.06] tracking-[-0.01em] text-white sm:text-[46px]">
+          <h2
+            id="kairos-auth-title"
+            className="mt-4 font-display text-[38px] font-normal leading-[1.06] tracking-[-0.01em] text-white sm:text-[46px]"
+          >
             {title}
           </h2>
           <p className="mt-3 max-w-[380px] text-base leading-[1.65] text-white/60">{sub}</p>
+
+          {/* An expired session used to end at NextAuth's own unstyled sign-in
+              page, or — from `notes` — at the marketing page with no message at
+              all. The pages now redirect here carrying `reason=expired`, and
+              this is the sentence that makes the modal make sense. */}
+          {sessionExpired ? (
+            <p
+              role="status"
+              className="mt-4 max-w-[380px] rounded-xl border border-amber-400/25 bg-amber-400/10 px-3.5 py-2.5 text-sm leading-[1.5] text-amber-200"
+            >
+              {t("sessionExpired")}
+            </p>
+          ) : null}
 
           {TABBED.has(view) && (
             <div
@@ -779,6 +836,23 @@ export function SignInModal({
                   {error}
                 </p>
               )}
+              {needsVerification &&
+                (resendVerificationMutation.isSuccess ? (
+                  <p className="rounded-xl border border-accent-primary/25 bg-accent-primary/10 px-4 py-3 text-sm text-accent-primary">
+                    {t("verifyEmail.resent")}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={resendVerificationMutation.isPending}
+                    onClick={() => resendVerificationMutation.mutate({ email })}
+                    className="self-start rounded-xl border border-accent-primary/25 px-4 py-2 text-sm font-semibold text-accent-primary transition-colors hover:bg-accent-primary/10 disabled:opacity-50"
+                  >
+                    {resendVerificationMutation.isPending
+                      ? t("verifyEmail.resending")
+                      : t("verifyEmail.resend")}
+                  </button>
+                ))}
               {loadingMessage && (
                 <p className="flex items-center gap-2 rounded-xl border border-accent-primary/25 bg-accent-primary/10 px-4 py-3 text-sm text-accent-primary">
                   <Loader2 className="animate-spin" size={16} />

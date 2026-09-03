@@ -1,4 +1,5 @@
 import { auth } from "~/server/auth";
+import { signInHref } from "~/lib/routes";
 import { redirect } from "next/navigation";
 
 import { TopBar } from "~/components/layout/TopBar";
@@ -7,7 +8,7 @@ import { ProgressClient } from "~/components/progress/ProgressClient";
 export default async function ProgressPage() {
   const session = await auth();
   if (!session?.user) {
-    redirect("/api/auth/signin");
+    redirect(signInHref("/progress"));
   }
 
 

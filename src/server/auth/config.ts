@@ -2,6 +2,7 @@ import "server-only";
 
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { type DefaultSession, type NextAuthConfig } from "next-auth";
+import { CredentialsSignin } from "next-auth";
 import Google from "next-auth/providers/google";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import Credentials from "next-auth/providers/credentials";
@@ -36,6 +37,7 @@ import {
   accounts,
   sessions,
   users,
+  verificationCodes,
   verificationTokens,
 } from "~/server/db/schema";
 
@@ -47,6 +49,29 @@ import {
  * while this is the backstop for attempts spread out over hours or across deploys.
  * Set too low, a forgetful user locks themselves out of their own account.
  */
+/**
+ * The two refusals a user can actually do something about.
+ *
+ * Every other failure stays a bare `null`, which Auth.js reports as the
+ * generic `CredentialsSignin` — a wrong password and an address with no
+ * account must remain indistinguishable. These two do not: one asks the user
+ * to confirm their email (and offers to send it again), the other says how
+ * long the lockout has left. Without them `SignInModal` collapsed all four
+ * outcomes to "invalid credentials", which for an unverified account is a dead
+ * end with no way out of it.
+ *
+ * `code` reaches the browser, so neither string carries anything the caller
+ * has not already proven they know.
+ */
+export const SIGN_IN_UNVERIFIED = "EMAIL_UNVERIFIED";
+export const SIGN_IN_LOCKED = "ACCOUNT_LOCKED";
+
+class SignInRefused extends CredentialsSignin {
+  constructor(public code: string) {
+    super(code);
+  }
+}
+
 const MAX_LOGIN_FAILURES = 10;
 const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
 
@@ -247,11 +272,20 @@ export const authConfig = {
         // Durable lockout, on top of the in-memory window above. Without this a
         // restart or a second instance resets the attacker's budget; the columns
         // do not. Mirrors the reset-PIN lockout in `note.resetPasswordWithPin`.
+        //
+        // Noted here, acted on *after* the password check. Refusing early is
+        // cheaper, but it means a passer-by can learn an address has an account
+        // by making five bad guesses and watching the message change. Telling
+        // someone who already supplied the right password that they are locked
+        // out reveals nothing they did not know, and it is the only way out of
+        // the dead end where a legitimate user is told, forever, that their
+        // correct password is wrong. The in-memory window limiter above still
+        // caps how often this path can be reached at all.
         const now = new Date();
-        if (user.loginLockedUntil && now < user.loginLockedUntil) {
-          log.warn("sign-in locked out", { email });
-          return null;
-        }
+        const lockedUntil =
+          user.loginLockedUntil && now < user.loginLockedUntil
+            ? user.loginLockedUntil
+            : null;
 
         const isPasswordValid = await argon2.verify(
           user.password,
@@ -281,6 +315,16 @@ export const authConfig = {
           return null;
         }
 
+        if (lockedUntil) {
+          log.warn("sign-in locked out", { email });
+          throw new SignInRefused(
+            `${SIGN_IN_LOCKED}:${Math.max(
+              1,
+              Math.ceil((lockedUntil.getTime() - now.getTime()) / 60_000),
+            )}`,
+          );
+        }
+
         // The password is right, but an unconfirmed address is not yet proven to
         // belong to this person. Refusing here is what stops someone registering
         // an address they do not control and sitting on the account.
@@ -290,7 +334,7 @@ export const authConfig = {
         // itself out while the user hunts for the email.
         if (!user.emailVerified) {
           log.warn("sign-in refused, email not confirmed", { email });
-          return null;
+          throw new SignInRefused(SIGN_IN_UNVERIFIED);
         }
 
         await Promise.all([
@@ -383,8 +427,67 @@ export const authConfig = {
         });
 
         if (!linkedAlready && existingByEmail && !existingByEmail.emailVerified) {
-          log.warn("refused OAuth link into unverified account", { email });
-          return false;
+          // The row exists but was never confirmed. Refusing outright was a dead
+          // end for the ordinary case that produces it: someone signs up with a
+          // password, never opens the confirmation email, then comes back and
+          // clicks "continue with Google". They own the address, and the only
+          // feedback they got was a bare "Access Denied".
+          //
+          // When the provider itself asserts the address is verified, that is the
+          // proof the unopened email would have supplied, so the row is claimed
+          // rather than refused. The takeover attack this branch exists to stop
+          // lives entirely in the *password* on the unconfirmed row, so claiming
+          // the row discards it — along with any half-finished recovery state and
+          // any outstanding confirmation code. Whoever created that password is
+          // left with nothing; the person the provider vouched for gets in, and
+          // can set a new password through the normal reset flow.
+          if (!providerVerifiesEmail) {
+            // Provider says nothing about the address (e.g. Entra on the `common`
+            // tenant), so there is no proof to substitute and the refusal stands.
+            log.warn("refused OAuth link into unverified account", {
+              email,
+              provider: account?.provider,
+            });
+            return false;
+          }
+
+          const claimedAt = new Date();
+          await db
+            .update(users)
+            .set({
+              emailVerified: claimedAt,
+              updatedAt: claimedAt,
+              // The unproven credential and everything that could be used to
+              // recover it.
+              password: null,
+              resetPinHash: null,
+              resetPinHint: null,
+              resetPinFailedAttempts: 0,
+              resetPinLockedUntil: null,
+              resetPinLastFailedAt: null,
+              loginFailedAttempts: 0,
+              loginLockedUntil: null,
+              loginLastFailedAt: null,
+            })
+            .where(eq(users.id, existingByEmail.id));
+
+          // Consume any live confirmation code for the address: it was minted for
+          // the signup that is now superseded, and the address is already proven.
+          await db
+            .update(verificationCodes)
+            .set({ consumedAt: claimedAt })
+            .where(
+              and(
+                eq(verificationCodes.email, email.toLowerCase()),
+                eq(verificationCodes.purpose, "email_verify"),
+                isNull(verificationCodes.consumedAt),
+              ),
+            );
+
+          log.warn("claimed unverified account via verified OAuth identity", {
+            email,
+            provider: account?.provider,
+          });
         }
 
         // The provider vouching for the address is proof, so record it. This also
@@ -518,5 +621,12 @@ export const authConfig = {
 
   pages: {
     signIn: "/",
+    /**
+     * NextAuth's built-in error page renders the bare error code — "Access
+     * Denied", with no hint of which of the several causes applied or what to do
+     * next. Everything a signed-out person can hit lands here, so it gets a real
+     * page.
+     */
+    error: "/auth-error",
   },
 } satisfies NextAuthConfig;

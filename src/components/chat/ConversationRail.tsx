@@ -109,7 +109,7 @@ export function ConversationRail({
           onClick={onNewChat}
           aria-label={t("newChat")}
           title={t("newChat")}
-          className="p-2.5 rounded-xl bg-gradient-to-br from-accent-primary to-accent-secondary text-white shadow-accent hover:brightness-110 transition-all"
+          className="p-2.5 rounded-xl bg-gradient-to-br from-accent-primary to-accent-secondary text-white shadow-lg hover:brightness-110 transition-all"
         >
           <Plus size={17} />
         </button>

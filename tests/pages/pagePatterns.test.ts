@@ -15,6 +15,20 @@ function readPage(pagePath: string): string {
   return fs.readFileSync(path.resolve(appDir, pagePath), "utf-8");
 }
 
+/**
+ * The file with its comments removed.
+ *
+ * The "no page renders SideNav" check below is a substring search, so a page
+ * that merely *mentions* the rail while explaining something else failed it.
+ * A comment is documentation, not a render, and a guard that punishes writing
+ * one teaches people to stop writing them.
+ */
+function readCode(pagePath: string): string {
+  return readPage(pagePath)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+}
+
 describe("Root Layout", () => {
   const layout = readPage("layout.tsx");
 
@@ -63,7 +77,7 @@ describe("App shell layout", () => {
     expect(pages.length).toBeGreaterThan(0);
 
     const offenders = pages.filter((f) =>
-      readPage(path.join("(app)", f)).includes("SideNav"),
+      readCode(path.join("(app)", f)).includes("SideNav"),
     );
 
     expect(offenders).toEqual([]);

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { signInHref } from "~/lib/routes";
 import { auth } from "~/server/auth";
 import { OrgDashboardClient } from "~/components/orgs/OrgDashboardClient";
 import { TopBar } from "~/components/layout/TopBar";
@@ -6,7 +7,7 @@ import { TopBar } from "~/components/layout/TopBar";
 export default async function OrgsPage() {
   const session = await auth();
   if (!session?.user) {
-    redirect("/api/auth/signin");
+    redirect(signInHref("/orgs"));
   }
 
 

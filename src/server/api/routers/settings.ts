@@ -6,6 +6,7 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { users, accounts, sessions } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import * as argon2 from "argon2";
+import { randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import {
   consumeVerificationCode,
@@ -47,6 +48,7 @@ export const settingsRouter = createTRPCRouter({
           workspaceNotifications: true,
           emailNotifications: true,
           marketingEmailsNotifications: true,
+          notificationPosition: true,
         
           language: true,
           timezone: true,
@@ -65,6 +67,7 @@ export const settingsRouter = createTRPCRouter({
         
 
           notesKeepUnlockedUntilClose: true,
+          calendarFeedToken: true,
 
           // Expose reset PIN hint and lockout metadata (but never the PIN itself)
           resetPinHint: true,
@@ -115,6 +118,39 @@ export const settingsRouter = createTRPCRouter({
    * happen to be. The empty-input case is rejected rather than issuing an UPDATE
    * that sets only `updatedAt`.
    */
+  /**
+   * Mint the subscribable calendar URL, or replace the one that exists.
+   *
+   * One procedure for both, because they are the same operation from the
+   * user's side ("give me a URL" / "give me a different URL") and splitting
+   * them would mean the settings screen deciding which to call based on state
+   * it already has to render anyway.
+   *
+   * The token *is* the credential — see the feed route — so it comes from
+   * `randomBytes`, not from anything derived from the user, and it is 32 bytes
+   * rendered as 64 hex characters.
+   */
+  rotateCalendarFeedToken: protectedProcedure.mutation(async ({ ctx }) => {
+    const token = randomBytes(32).toString("hex");
+
+    await ctx.db
+      .update(users)
+      .set({ calendarFeedToken: token, updatedAt: new Date() })
+      .where(eq(users.id, ctx.session.user.id));
+
+    return { token };
+  }),
+
+  /** Turn the feed off. The URL stops resolving immediately. */
+  revokeCalendarFeedToken: protectedProcedure.mutation(async ({ ctx }) => {
+    await ctx.db
+      .update(users)
+      .set({ calendarFeedToken: null, updatedAt: new Date() })
+      .where(eq(users.id, ctx.session.user.id));
+
+    return { success: true };
+  }),
+
   updateNotifications: protectedProcedure
     .input(z.object({
       inAppNotifications: z.boolean().optional(),
@@ -130,6 +166,25 @@ export const settingsRouter = createTRPCRouter({
       workspaceNotifications: z.boolean().optional(),
       emailNotifications: z.boolean().optional(),
       marketingEmailsNotifications: z.boolean().optional(),
+      /**
+       * Where the notification popups appear. The one *where* control among a
+       * panel of *what* switches, folded in here because the mutation already
+       * spreads its input into the update.
+       *
+       * `bottom-right` is accepted so a stored legacy value round-trips, but
+       * the picker never offers it — that corner belongs to Ask Kairos. See
+       * `~/lib/notificationPosition`.
+       */
+      notificationPosition: z
+        .enum([
+          "top-left",
+          "top-center",
+          "top-right",
+          "bottom-left",
+          "bottom-center",
+          "bottom-right",
+        ])
+        .optional(),
     }).refine((v) => Object.keys(v).length > 0, {
       message: "No notification preferences supplied",
     }))

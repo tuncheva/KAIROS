@@ -1,10 +1,12 @@
 /**
  * LLM model client — one OpenAI-compatible `/chat/completions` endpoint.
  *
- * Configured by `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`, with an optional
- * `LLM_FALLBACK_MODEL` tried only when the primary fails retriably. Config comes
- * from `~/env` rather than raw `process.env` so a typo is a validation error at
- * boot instead of an `undefined` at request time.
+ * Configured by `LLM_PROVIDER` — a named preset in `providers.ts` carrying the
+ * base URL, model chain and key variable for one gateway — or directly by
+ * `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`, which override the preset when
+ * set. `LLM_FALLBACK_MODEL` is tried only when the primary fails retriably.
+ * Config comes from `~/env` rather than raw `process.env` so a typo is a
+ * validation error at boot instead of an `undefined` at request time.
  *
  * What this layer owns:
  *
@@ -28,6 +30,7 @@ import "server-only";
 
 import { env } from "~/env";
 import { createLogger } from "~/server/logger";
+import { resolveLlmConfig } from "./providers";
 
 const log = createLogger("llm");
 
@@ -218,19 +221,28 @@ function chatTemplateKwargsFor(
   };
 }
 
+/**
+ * The effective config, recomputed per call.
+ *
+ * Cheap (a handful of string reads) and deliberately not memoised: the tests
+ * swap provider variables between cases, and a cached first answer would have
+ * every later case silently assert against the first one's endpoint.
+ */
+function config() {
+  return resolveLlmConfig(env);
+}
+
 function getBaseUrl(): string {
-  return (env.LLM_BASE_URL ?? "").replace(/\/+$/, "");
+  return config().baseUrl;
 }
 
 function getApiKey(): string {
-  return env.LLM_API_KEY ?? "";
+  return config().apiKey;
 }
 
 /** Primary model, then the optional fallback. Empty strings are dropped. */
 function getModelChain(): string[] {
-  return [env.LLM_MODEL, env.LLM_FALLBACK_MODEL].filter(
-    (m): m is string => typeof m === "string" && m.length > 0,
-  );
+  return config().models;
 }
 
 /**
@@ -242,11 +254,8 @@ function getModelChain(): string[] {
  * unset, so tiering is an optimisation and never a hard dependency.
  */
 function getFastModelChain(): string[] {
-  const fast = env.LLM_MODEL_FAST;
-  if (typeof fast === "string" && fast.length > 0) {
-    return [fast, ...getModelChain()];
-  }
-  return getModelChain();
+  const { fastModel, models } = config();
+  return fastModel ? [fastModel, ...models] : models;
 }
 
 /** Resolve the model chain for one request: explicit pin, then tier, then default. */
@@ -694,17 +703,28 @@ function withTimeout(
 }
 
 function assertConfigured(): void {
-  if (!getApiKey()) {
-    log.error("LLM_API_KEY is not set — every AI feature will fail");
+  const { provider, baseUrl, apiKey, models } = config();
+  // Naming the provider-specific variable matters: with a preset selected, the
+  // key the app read is LLM_API_KEY_<PROVIDER>, and a message pointing at plain
+  // LLM_API_KEY sends you to edit a line that is already correct.
+  const keyVar = provider
+    ? `LLM_API_KEY_${provider.toUpperCase()} (or LLM_API_KEY)`
+    : "LLM_API_KEY";
+  if (!apiKey) {
+    log.error(`${keyVar} is not set — every AI feature will fail`);
     throw new Error(
-      "LLM_API_KEY is not set. Add your provider key to .env (see .env.example).",
+      `${keyVar} is not set. Add your provider key to .env (see .env.example).`,
     );
   }
-  if (!getBaseUrl()) {
-    throw new Error("LLM_BASE_URL is not set. Add it to .env (see .env.example).");
+  if (!baseUrl) {
+    throw new Error(
+      "LLM_BASE_URL is not set, and no LLM_PROVIDER preset supplied one. Add either to .env (see .env.example).",
+    );
   }
-  if (getModelChain().length === 0) {
-    throw new Error("LLM_MODEL is not set. Add it to .env (see .env.example).");
+  if (models.length === 0) {
+    throw new Error(
+      "LLM_MODEL is not set, and no LLM_PROVIDER preset supplied one. Add either to .env (see .env.example).",
+    );
   }
 }
 

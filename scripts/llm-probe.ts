@@ -10,13 +10,18 @@
  * Usage:
  *   pnpm llm:probe
  *
- * Reads LLM_BASE_URL / LLM_API_KEY / LLM_MODEL from the environment. Costs a
- * handful of tiny completions.
+ * Resolves the endpoint exactly as the app does - the `LLM_PROVIDER` preset plus
+ * any explicit overrides, through the shared resolver - so a green probe is a
+ * statement about the configuration the agents will actually send, not about a
+ * second reading of the same variables. Costs a handful of tiny completions.
  */
 
-const BASE_URL = (process.env.LLM_BASE_URL ?? "").replace(/\/+$/, "");
-const API_KEY = process.env.LLM_API_KEY ?? "";
-const MODEL = process.env.LLM_MODEL ?? "";
+import { resolveLlmConfig } from "../src/server/llm/core/providers";
+
+const CONFIG = resolveLlmConfig(process.env);
+const BASE_URL = CONFIG.baseUrl;
+const API_KEY = CONFIG.apiKey;
+const MODEL = CONFIG.models[0] ?? "";
 
 const PASS = "✓";
 const FAIL = "✗";
@@ -491,14 +496,16 @@ async function probeStreaming() {
 async function main() {
   if (!BASE_URL || !API_KEY || !MODEL) {
     console.error(
-      "LLM_BASE_URL, LLM_API_KEY and LLM_MODEL must all be set.\n" +
-        "Run it through dotenv:  pnpm llm:probe",
+      "No endpoint resolved. Set LLM_PROVIDER to a known preset (with its\n" +
+        "LLM_API_KEY_<PROVIDER>), or set LLM_BASE_URL / LLM_API_KEY / LLM_MODEL\n" +
+        "directly. Run it through dotenv:  pnpm llm:probe",
     );
     process.exit(1);
   }
 
   console.log(`\nProbing ${BASE_URL}`);
-  console.log(`Model:   ${MODEL}\n`);
+  console.log(`Provider: ${CONFIG.provider ?? "(none - explicit env vars)"}`);
+  console.log(`Model:    ${MODEL}\n`);
 
   await probeModels();
   await probeBasic();

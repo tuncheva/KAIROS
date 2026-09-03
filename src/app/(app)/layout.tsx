@@ -1,5 +1,6 @@
 import { SideNav } from "~/components/layout/SideNav";
 import { ProfilePeekProvider } from "~/components/profile/ProfilePeekProvider";
+import { OnboardingGate } from "~/components/auth/OnboardingGate";
 
 /**
  * The shell every signed-in page sits inside.
@@ -47,7 +48,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ProfilePeekProvider>
       <SideNav />
-      {children}
+      {/* One mount, covering every signed-in route. It was mounted on `/create`
+          and `/notes/*` only — never on `/dashboard`, which is where sign-in
+          actually lands — so the users it exists for routinely never met it.
+          Wrapping `children` rather than the whole shell keeps the rail on
+          screen behind it. */}
+      <OnboardingGate>{children}</OnboardingGate>
     </ProfilePeekProvider>
   );
 }

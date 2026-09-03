@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 
 import {
+  dayFraction,
   headlineStats,
-  projectSummaries,
-  taskState,
-  todayTasks,
-  weekStrip,
-  type CalendarTask,
+  momentum,
+  projectStatusRows,
+  relativeShort,
   type DashboardProject,
+  type ProjectWithPeople,
 } from "~/components/dashboard/dashboardData";
 
 /** Thursday 20 August 2026, 09:00 local — the day the design is drawn against. */
@@ -71,87 +71,67 @@ describe("headlineStats", () => {
   });
 });
 
-describe("taskState", () => {
-  it("labels completed work done even when the due date has passed", () => {
-    expect(taskState({ status: "completed", dueDate: day(1) }, NOW)).toBe("done");
-  });
+describe("projectStatusRows", () => {
+  const withPeople: ProjectWithPeople[] = [
+    {
+      ...projects[0]!,
+      createdByUser: { id: "u1", name: "Ivan", image: null },
+      collaborators: [
+        { id: "u2", name: "Mira", image: null },
+        // The creator collaborating on their own project must not appear twice.
+        { id: "u1", name: "Ivan", image: null },
+      ],
+    },
+    { ...projects[1]!, createdByUser: { id: "u2", name: "Mira", image: null } },
+    { ...projects[2]!, createdByUser: null, collaborators: [] },
+  ];
 
-  it("labels open work with a past due date overdue", () => {
-    expect(taskState({ status: "in_progress", dueDate: day(19) }, NOW)).toBe("overdue");
-  });
-
-  it("treats a due date earlier today as still due, not overdue", () => {
-    expect(taskState({ status: "pending", dueDate: day(20, 1) }, NOW)).toBe("todo");
-  });
-
-  it("distinguishes active work from untouched work", () => {
-    expect(taskState({ status: "in_progress", dueDate: null }, NOW)).toBe("inProgress");
-    expect(taskState({ status: "pending", dueDate: null }, NOW)).toBe("todo");
-  });
-});
-
-const calendarTasks: CalendarTask[] = [
-  { id: 1, title: "Overdue one", status: "pending", dueDate: day(19), projectId: 2, projectTitle: "Project two" },
-  { id: 2, title: "Today open", status: "in_progress", dueDate: day(20), projectId: 1, projectTitle: "Project one" },
-  { id: 3, title: "Today done", status: "completed", dueDate: day(20), projectId: 1, projectTitle: "Project one" },
-  { id: 4, title: "Tomorrow", status: "pending", dueDate: day(21), projectId: 1, projectTitle: "Project one" },
-  { id: 5, title: "Old and done", status: "completed", dueDate: day(10), projectId: 1, projectTitle: "Project one" },
-];
-
-describe("todayTasks", () => {
-  const rows = todayTasks(calendarTasks, NOW);
-
-  it("lists overdue work first, then today's, with completed last", () => {
-    expect(rows.map((r) => r.id)).toEqual([1, 2, 3]);
-  });
-
-  it("leaves out later days and already-closed past work", () => {
-    expect(rows.map((r) => r.title)).not.toContain("Tomorrow");
-    expect(rows.map((r) => r.title)).not.toContain("Old and done");
-  });
-});
-
-describe("weekStrip", () => {
-  const strip = weekStrip(calendarTasks, NOW);
-
-  it("starts today and skips the weekend", () => {
-    expect(strip.map((d) => d.date.getDate())).toEqual([20, 21, 24, 25, 26]);
-    expect(strip[0]?.isToday).toBe(true);
-  });
-
-  it("counts only open tasks per day", () => {
-    expect(strip[0]?.count).toBe(1); // "Today done" excluded
-    expect(strip[1]?.count).toBe(1);
-    expect(strip[2]?.count).toBe(0);
-  });
-});
-
-describe("projectSummaries", () => {
-  const summaries = projectSummaries(projects, NOW);
+  const rows = projectStatusRows(withPeople, NOW);
 
   it("puts at-risk projects first and empty ones last", () => {
-    expect(summaries.map((s) => s.health)).toEqual(["atRisk", "inProgress", "empty"]);
-    expect(summaries[0]?.id).toBe(2);
-    expect(summaries.at(-1)?.id).toBe(3);
+    expect(rows.map((r) => r.health)).toEqual(["atRisk", "inProgress", "empty"]);
+    expect(rows[0]?.id).toBe(2);
+    expect(rows.at(-1)?.id).toBe(3);
   });
 
-  it("reports completion and open counts per project", () => {
-    const one = summaries.find((s) => s.id === 1);
-    expect(one?.percent).toBe(50);
-    expect(one?.openCount).toBe(2);
+  it("counts open and overdue work per project", () => {
+    const one = rows.find((r) => r.id === 1);
+    expect(one?.open).toBe(2);
+    expect(one?.overdue).toBe(0);
+
+    const two = rows.find((r) => r.id === 2);
+    expect(two?.open).toBe(4);
+    expect(two?.overdue).toBe(1);
   });
 
-  it("leaves a project with no tasks without a percentage", () => {
-    const empty = summaries.find((s) => s.id === 3);
-    expect(empty?.percent).toBeNull();
-    expect(empty?.openCount).toBe(0);
+  it("reports completion as a percentage, zero for an empty project", () => {
+    expect(rows.find((r) => r.id === 1)?.percent).toBe(50);
+    expect(rows.find((r) => r.id === 3)?.percent).toBe(0);
+  });
+
+  it("dates a project by the last of its open tasks", () => {
+    expect(rows.find((r) => r.id === 1)?.endsAt).toEqual(day(21));
+    expect(rows.find((r) => r.id === 2)?.endsAt).toEqual(day(30));
+  });
+
+  it("leaves a project with no dated open work undated", () => {
+    const [row] = projectStatusRows(
+      [{ id: 9, title: "Undated", tasks: [{ id: 1, status: "pending", dueDate: null }] }],
+      NOW,
+    );
+    expect(row?.endsAt).toBeNull();
+  });
+
+  it("lists the creator first, then collaborators, each once", () => {
+    const one = rows.find((r) => r.id === 1);
+    expect(one?.owners.map((o) => o.id)).toEqual(["u1", "u2"]);
   });
 
   it("flags a project on track once most of its work is closed", () => {
-    const [summary] = projectSummaries(
+    const [row] = projectStatusRows(
       [
         {
-          id: 9,
+          id: 10,
           title: "Nearly done",
           tasks: [
             { id: 1, status: "completed", dueDate: day(18) },
@@ -163,7 +143,77 @@ describe("projectSummaries", () => {
       ],
       NOW,
     );
-    expect(summary?.health).toBe("onTrack");
-    expect(summary?.percent).toBe(75);
+    expect(row?.health).toBe("onTrack");
+    expect(row?.percent).toBe(75);
+  });
+});
+
+describe("momentum", () => {
+  /* Completions on the 20th (today, twice), the 19th and the 14th. */
+  const completions = [day(20, 8), day(20, 9), day(19, 17), day(14, 11)];
+  const data = momentum(completions, NOW);
+
+  it("returns one bar per day, oldest first, ending today", () => {
+    expect(data.bars).toHaveLength(14);
+    expect(data.bars.at(-1)?.date.getDate()).toBe(20);
+    expect(data.bars[0]?.date.getDate()).toBe(7);
+  });
+
+  it("buckets completions into local days", () => {
+    expect(data.bars.at(-1)?.count).toBe(2);
+    expect(data.bars.at(-2)?.count).toBe(1);
+    expect(data.today).toBe(2);
+    expect(data.total).toBe(4);
+  });
+
+  it("counts the streak back from today", () => {
+    expect(data.streak).toBe(2);
+  });
+
+  it("does not break a streak on a day that is not over yet", () => {
+    // Nothing done today, but yesterday and the day before were both worked.
+    const quiet = momentum([day(19, 12), day(18, 12)], NOW);
+    expect(quiet.today).toBe(0);
+    expect(quiet.streak).toBe(2);
+  });
+
+  it("reads pace as this week against the one before", () => {
+    // Four last week, two the week before.
+    const paced = momentum(
+      [day(20), day(19), day(18), day(17), day(12), day(11)],
+      NOW,
+    );
+    expect(paced.pace).toBe(100);
+  });
+
+  it("has no pace to report when the earlier week was empty", () => {
+    expect(momentum([day(20)], NOW).pace).toBeNull();
+  });
+
+  it("survives an empty history", () => {
+    const none = momentum([], NOW);
+    expect(none.total).toBe(0);
+    expect(none.streak).toBe(0);
+    expect(none.bars.every((bar) => bar.count === 0)).toBe(true);
+  });
+});
+
+describe("relativeShort", () => {
+  it("prints minutes, hours and days", () => {
+    expect(relativeShort(new Date(NOW.getTime() - 20 * 60_000), NOW)).toBe("20m");
+    expect(relativeShort(new Date(NOW.getTime() - 3 * 3_600_000), NOW)).toBe("3h");
+    expect(relativeShort(new Date(NOW.getTime() - 2 * 86_400_000), NOW)).toBe("2d");
+  });
+
+  it("says now for anything inside the minute, and nothing for no date", () => {
+    expect(relativeShort(NOW, NOW)).toBe("now");
+    expect(relativeShort(null, NOW)).toBe("");
+  });
+});
+
+describe("dayFraction", () => {
+  it("reads the local clock, clamped to the day", () => {
+    expect(dayFraction(new Date(2026, 7, 20, 12, 0, 0))).toBeCloseTo(0.5, 3);
+    expect(dayFraction(new Date(2026, 7, 20, 0, 0, 0))).toBe(0);
   });
 });

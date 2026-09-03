@@ -15,7 +15,8 @@
     "calendar": "Calendar",
     "organizations": "Organizations",
     "pinNavigation": "Pin navigation",
-    "unpinNavigation": "Unpin navigation"
+    "unpinNavigation": "Unpin navigation",
+    "gettingStarted": "Getting started, FAQ and contact"
   },
   "calendar": {
     "filters": {
@@ -259,7 +260,13 @@
       "removed": "Password removed",
       "pinRequired": "Enter your reset PIN",
       "incorrectPin": "Incorrect reset PIN",
-      "pinLocked": "Too many wrong PINs. Try again in a few minutes."
+      "pinLocked": "Too many wrong PINs. Try again in a few minutes.",
+      "noPinTitle": "Set a recovery PIN first",
+      "noPinBody": "You don't have one yet. The password is never stored, so without a PIN this note cannot be recovered by anyone — including us — if you forget it.",
+      "pinLabel": "Recovery PIN (4+ digits)",
+      "pinConfirmLabel": "Confirm PIN",
+      "pinTooShort": "The PIN must be at least 4 digits.",
+      "pinsMismatch": "The PINs don't match."
     },
     "saveChanges": "Save changes",
     "meta": {
@@ -299,6 +306,11 @@
         "locked": "No encrypted notes here.",
         "shared": "Nothing here is shared.",
         "unfiled": "Every note here is in a notebook."
+      },
+      "emptyHint": {
+        "locked": "Notes you protect with a password will collect here.",
+        "shared": "Share a note and it will appear under this filter.",
+        "unfiled": "Nothing is loose — everything here has a notebook."
       }
     },
     "buckets": {
@@ -314,7 +326,36 @@
       "notebookTitle": "This notebook is empty",
       "noSelection": "Nothing open",
       "noSelectionDesc": "Pick a note from the list, or start a new one."
-    }
+    },
+    "recover": {
+      "title": "Reset note password",
+      "subtitle": "Create a new password for your encrypted note.",
+      "invalidTitle": "Invalid reset link",
+      "invalidBody": "This password reset link is invalid or has expired.",
+      "goToNotes": "Go to notes",
+      "successTitle": "Password reset",
+      "successBody": "Your note password has been updated. You can open the note with the new password.",
+      "redirecting": "Taking you back to the note…",
+      "newPasswordPlaceholder": "Enter new password",
+      "confirmPasswordPlaceholder": "Confirm new password",
+      "pinPlaceholder": "Enter your secret reset PIN",
+      "pinHelp": "This is the PIN you set in Security settings to reset locked note passwords.",
+      "tipLabel": "Tip:",
+      "tipBody": "Choose a strong password you will remember — you need it every time you open this note.",
+      "submit": "Reset password",
+      "submitting": "Resetting…",
+      "show": "Show password",
+      "hide": "Hide password",
+      "invalidLink": "Invalid reset link. Please request a new one.",
+      "passwordEmpty": "Password cannot be empty.",
+      "passwordsMismatch": "Passwords do not match.",
+      "pinTooShort": "The reset PIN must be at least 4 digits.",
+      "newPasswordLabel": "New password",
+      "confirmPasswordLabel": "Confirm new password",
+      "pinLabel": "Reset PIN",
+      "backToNotes": "← Back to notes"
+    },
+    "searchEmptyHint": "Try a shorter word, or clear the search to see everything again."
   },
   "progress": {
     "title": "Progress",
@@ -567,7 +608,8 @@
     "footerCareers": "Careers",
     "footerPrivacy": "Privacy",
     "footerTerms": "Terms",
-    "footerSecurity": "Security"
+    "footerSecurity": "Security",
+    "aboutKairos": "About Kairos — getting started, FAQ and contact"
   },
   "settings": {
     "title": "Settings",
@@ -637,7 +679,22 @@
       "eventUpdatesDesc": "When an event you subscribed to is moved or cancelled",
       "eventRsvps": "Replies to my events",
       "eventRsvpsDesc": "When someone subscribes to an event you organise",
-      "securityAlwaysOn": "Account and security notices are always delivered and cannot be switched off."
+      "securityAlwaysOn": "Account and security notices are always delivered and cannot be switched off.",
+      "groupPositionTitle": "On screen",
+      "groupPositionDesc": "Where notifications appear. Pick a corner — toasts (saved, deleted, failed) take the opposite one, so the two never overlap.",
+      "positionLabel": "Notification position",
+      "posTopLeft": "Top left",
+      "posTopCenter": "Top",
+      "posTopRight": "Top right",
+      "posBottomLeft": "Bottom left",
+      "posBottomCenter": "Bottom",
+      "posBottomRight": "Bottom right",
+      "positionToasts": "Toasts",
+      "positionReserved": "Reserved",
+      "positionSummary": "Notifications — {notifications}. Toasts — {toasts}, automatically. Bottom right is reserved for Ask Kairos.",
+      "positionPreview": "Preview",
+      "positionPreviewToast": "This is where your notifications will appear.",
+      "positionMobileNote": "On a phone there are no corners: both go full width, top or bottom."
     },
     "security": {
       "title": "Security Settings",
@@ -701,7 +758,14 @@
       "enterCode": "Confirmation code",
       "codePlaceholder": "12345678",
       "confirmEmail": "Confirm",
-      "verifying": "Confirming..."
+      "verifying": "Confirming...",
+      "calendarFeed": "Calendar subscription",
+      "calendarFeedDesc": "A live calendar URL for Google, Apple or Outlook. It updates on its own, unlike the one-off .ics download below.",
+      "calendarFeedSecret": "Anyone with this link can read your calendar. Rotate it if you share it by mistake.",
+      "calendarFeedCreate": "Create link",
+      "calendarFeedCopy": "Copy link",
+      "calendarFeedRotate": "Rotate",
+      "calendarFeedRevoke": "Turn off"
     },
     "language": {
       "title": "Language & Region",
@@ -811,7 +875,9 @@
         "expiresOn": "Expires on {date}",
         "noExpiry": "No expiry",
         "remove": "Remove member",
-        "removeConfirm": "Remove {name} from the organization?"
+        "removeConfirm": "Remove {name} from the organization?",
+        "removeTitle": "Remove {name}?",
+        "removeBody": "They lose access to this organization's projects, events and conversations. You can invite them back later."
       },
       "roles": {
         "admin": "Admin",
@@ -825,7 +891,9 @@
         "createRole": "Create Role",
         "template": "Template",
         "custom": "Custom",
-        "deleteConfirm": "Delete the role \"{name}\"?"
+        "deleteConfirm": "Delete the role \"{name}\"?",
+        "delete": "Delete role",
+        "deleteBody": "Members holding this role keep their membership, but lose the permissions it granted."
       },
       "permissions": {
         "createProjects": "Create projects",
@@ -1490,7 +1558,8 @@
       "tide": "Tide"
     },
     "edited": "Edited",
-    "editedOn": "Edited {date}"
+    "editedOn": "Edited {date}",
+    "rsvps": "RSVPs"
   },
   "auth": {
     "signIn": "Sign In",
@@ -1515,7 +1584,9 @@
         "noAccount": "Don't have an account?",
         "createAccount": "Create account",
         "invalidCredentials": "Invalid email or password",
-        "error": "An error occurred during sign in"
+        "error": "An error occurred during sign in",
+        "emailUnverified": "Confirm your email before signing in. We sent a link when you signed up.",
+        "accountLocked": "Too many sign-in attempts. Try again in {minutes} minutes."
       },
       "signUp": {
         "title": "Create your account",
@@ -1606,7 +1677,8 @@
       "close": "Close",
       "backToSignIn": "Back to Sign In",
       "google": "Google",
-      "orContinueWith": "Or continue with"
+      "orContinueWith": "Or continue with",
+      "sessionExpired": "Your session expired. Sign in again and we'll take you back to where you were."
     }
   },
   "common": {
@@ -1624,7 +1696,9 @@
     "menu": "Menu",
     "lightMode": "Switch to light mode",
     "darkMode": "Switch to dark mode",
-    "copyFailed": "Couldn't copy"
+    "copyFailed": "Couldn't copy",
+    "notifications": "Notifications",
+    "dismissNotification": "Dismiss notification"
   },
   "org": {
     "accessCode": "Org code",
@@ -1672,7 +1746,18 @@
     "joinDecline": "Not now",
     "joinGoToDashboard": "Go to dashboard",
     "inviteQrRevoked": "Invite code revoked",
-    "loadingOrgs": "Loading organizations…"
+    "loadingOrgs": "Loading organizations…",
+    "emptyTitle": "You're not in an organization yet",
+    "emptyBody": "Organizations are how a team shares projects, tasks and events. Redeem a code someone sent you, or start one of your own.",
+    "joinCodePlaceholder": "Enter org code",
+    "joinWithCodeCta": "Join with a code",
+    "joinedWithCode": "You've joined the organization.",
+    "createOrgCta": "Create an organization",
+    "createNameLabel": "Organization name",
+    "createNamePlaceholder": "e.g. Design Team",
+    "creating": "Creating…",
+    "createdOrg": "Created {name}.",
+    "namePlaceholder": "Organization name…"
   },
   "ai": {
     "title": "AI Task Generator",
@@ -1710,14 +1795,6 @@
       "high": "High",
       "urgent": "Urgent"
     },
-    "insights": {
-      "title": "Needs attention",
-      "loading": "Checking your projects…",
-      "allClear": "Nothing needs your attention right now.",
-      "count": "{count} open",
-      "dismiss": "Dismiss",
-      "openProject": "Open project"
-    },
     "palette": {
       "title": "Command palette",
       "placeholder": "Search, or ask the assistant anything…",
@@ -1732,7 +1809,17 @@
       "notes": "Notes",
       "events": "Events",
       "assistant": "Assistant",
-      "settings": "Settings"
+      "settings": "Settings",
+      "inYourWorkspace": "In your workspace",
+      "searching": "Searching…",
+      "kind": {
+        "task": "Task",
+        "project": "Project",
+        "note": "Note",
+        "event": "Event",
+        "comment": "Comment"
+      },
+      "triggerLabel": "Search or ask…"
     }
   },
   "chat": {
@@ -1909,7 +1996,8 @@
       "leaveConversationConfirm": "You will stop receiving messages here and the conversation leaves your list. The other person keeps their copy.",
       "conversationLeft": "You left the conversation",
       "oneSidedNote": "Both actions affect only your copy. The other person keeps theirs.",
-      "working": "Working…"
+      "working": "Working…",
+      "send": "Send"
     }
   },
   "onboarding": {
@@ -1930,6 +2018,12 @@
       "sharePrompt": "Share this code with your team",
       "codeLabel": "Access Code",
       "copyButton": "Copy Code"
+    },
+    "joinOrg": {
+      "label": "Join an existing organization",
+      "description": "Someone sent you an org code — redeem it here.",
+      "formTitle": "Join an organization",
+      "formSubtitle": "Enter the code you were given."
     },
     "personalMode": {
       "label": "Maybe Later",
@@ -1978,19 +2072,13 @@
       "dueToday": "Due today",
       "overdue": "Overdue",
       "openThisWeek": "Open this week",
-      "completed": "Completed"
-    },
-    "today": {
-      "title": "Due today",
-      "action": "All tasks",
-      "empty": "Nothing due today.",
-      "complete": "Mark complete",
-      "reopen": "Reopen task"
-    },
-    "week": {
-      "title": "Rest of the week",
-      "action": "Open calendar",
-      "today": "TODAY"
+      "completed": "Completed",
+      "notes": {
+        "doneToday": "{count} done",
+        "oldest": "oldest {days}d",
+        "across": "across {count}",
+        "allTime": "all time"
+      }
     },
     "activity": {
       "title": "Recent activity",
@@ -2009,15 +2097,11 @@
       "done": "{count} done",
       "active": "{count} active",
       "todo": "{count} to do",
-      "ofTasks": "{done} of {total} tasks",
-      "dayGone": "{percent}% of today gone"
+      "dayGone": "{percent}% of today gone",
+      "ofTasksDone": "of tasks done"
     },
     "projects": {
-      "title": "Projects",
-      "action": "View all",
       "untitled": "Untitled project",
-      "noTasks": "No tasks",
-      "open": "{count} open",
       "empty": "Create your first project",
       "health": {
         "onTrack": "On track",
@@ -2025,20 +2109,6 @@
         "atRisk": "At risk",
         "empty": "No tasks"
       }
-    },
-    "notes": {
-      "title": "Notes",
-      "action": "New note",
-      "private": "Private",
-      "shared": "Shared",
-      "untitled": "Untitled note",
-      "empty": "Write your first note"
-    },
-    "status": {
-      "done": "Done",
-      "overdue": "Overdue",
-      "inProgress": "In progress",
-      "todo": "To do"
     },
     "firstRun": {
       "tag": "First run",
@@ -2054,6 +2124,50 @@
       "step2": "Invite people with one access code.",
       "step3": "Tasks, notes and progress land on this dashboard.",
       "aside": "The inner arc tracks the day itself, so an empty dashboard still tells you how much time is left."
+    },
+    "radar": {
+      "title": "What the radar found",
+      "count": "{count, plural, =0 {nothing flagged} one {# finding} other {# findings}}",
+      "loading": "checking…",
+      "checked": "Checked {ago} ago",
+      "allClear": "Nothing needs your attention right now.",
+      "dismiss": "Dismiss",
+      "openProject": "Open project",
+      "workspaceWide": "Across the workspace",
+      "severity": {
+        "critical": "Critical",
+        "warning": "Warning",
+        "info": "Info"
+      }
+    },
+    "projectStatus": {
+      "title": "Project status",
+      "count": "{count, plural, =0 {none active} other {# active}}",
+      "action": "All projects",
+      "ends": "Ends {date}",
+      "noDate": "No date",
+      "columns": {
+        "project": "Project",
+        "team": "Team",
+        "open": "Open",
+        "overdue": "Overdue",
+        "completion": "Completion",
+        "health": "Health"
+      }
+    },
+    "momentum": {
+      "title": "Your momentum",
+      "streak": "{count, plural, one {1-day streak} other {#-day streak}}",
+      "noStreak": "No streak yet",
+      "line": "{total, plural, =0 {Nothing finished in the last fortnight.} one {You finished one task in the last fortnight.} other {You finished # tasks in the last fortnight}}{today, plural, =0 {} other {, {today} of them today}}."
+    },
+    "teamToday": {
+      "title": "Team today",
+      "open": "{count} open",
+      "active": "Active {ago} ago",
+      "neverActive": "No activity yet",
+      "you": "{name} (you)",
+      "empty": "Nobody else is on these projects yet."
     }
   },
   "agents": {
@@ -2082,7 +2196,17 @@
     "saving": "Saving…",
     "cancel": "Cancel",
     "forget": "Forget",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "eventTitlePlaceholder": "Event title…",
+    "eventDescriptionPlaceholder": "Event description…",
+    "noteContentPlaceholder": "Edit note content…",
+    "previewNewEvent": "New event",
+    "previewUpdateEvent": "Update event",
+    "previewDeleteEvent": "Delete event",
+    "previewClickToEdit": "(click to edit)",
+    "previewNewNote": "New note",
+    "previewUpdateNote": "Update note",
+    "previewDeleteNote": "Delete note"
   },
   "aiConsole": {
     "conversations": "Conversations",
@@ -2407,5 +2531,105 @@
     "activityGoing": "Going to",
     "noFollowers": "No followers yet.",
     "loadFailed": "Could not load this profile. Try again in a moment."
+  },
+  "errors": {
+    "app": {
+      "title": "This page ran into a problem",
+      "body": "The rest of the app is fine — your navigation is still there. Try again, or head back to the dashboard.",
+      "retry": "Try again",
+      "dashboard": "Back to dashboard"
+    },
+    "root": {
+      "title": "Something went wrong",
+      "body": "An unexpected error occurred. Try again, or go back to the home page.",
+      "retry": "Try again",
+      "home": "Go home"
+    },
+    "notFound": {
+      "title": "Page not found",
+      "body": "Sorry, the page you are looking for does not exist.",
+      "home": "Go home"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "unreadBadge": "{count} new",
+    "markAllRead": "Mark all read",
+    "filterAll": "All",
+    "filterUnread": "Unread",
+    "filterMentions": "Mentions",
+    "emptyTitle": "Nothing waiting",
+    "emptyBody": "New activity lands here first.",
+    "caughtUpTitle": "All caught up",
+    "caughtUpBody": "Nothing unread right now.",
+    "noMentionsTitle": "No mentions",
+    "noMentionsBody": "Nobody has written to you lately.",
+    "seeAll": "See all ({count} more)",
+    "showLess": "Show less",
+    "settingsLink": "Notification settings",
+    "open": "Notifications",
+    "openUnread": "Notifications, {count} unread",
+    "markRead": "Mark as read",
+    "deleteOne": "Delete notification",
+    "dismiss": "Dismiss",
+    "now": "now",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "yesterdayShort": "Yest"
+  },
+  "onboardingSheet": {
+    "eyebrow": "Kairos · Help",
+    "title": "Getting started",
+    "subtitle": "Everything you need to find your way around Kairos — what the surfaces do, the questions people ask, and how to reach us.",
+    "close": "Close",
+    "tabs": {
+      "gettingStarted": "Getting started",
+      "faq": "FAQ",
+      "contact": "Contact"
+    },
+    "steps": {
+      "dashboard": "The dashboard greets you each day with what is due, what is moving and what needs your attention.",
+      "projects": "Projects hold the plan — tasks, owners and deadlines — so the work and its progress live in one place.",
+      "notes": "Notes capture the thinking. Draft, share and lock the notes that matter, and recover anything you delete.",
+      "calendar": "The calendar brings tasks, events and notes onto one timeline you can filter and subscribe to.",
+      "orgs": "Organizations and shared projects keep a team moving without everyone living in the same task list.",
+      "ai": "Kairos AI reads your workspace and answers, drafts and nudges — ask it anything from the sparkle icon."
+    },
+    "faqItems": [
+      {
+        "q": "What is Kairos for?",
+        "a": "Kairos is one workspace for coordinating teams, running projects and publishing the events that come out of them."
+      },
+      {
+        "q": "Is my data private?",
+        "a": "Yes. Notes can be locked with a PIN, and your workspace is yours unless you choose to share it with an organization."
+      },
+      {
+        "q": "Can I use Kairos alone?",
+        "a": "Absolutely. Pick personal mode and you get the full workspace — teams and organizations are optional."
+      },
+      {
+        "q": "How do I recover a deleted note?",
+        "a": "Deleted notes go to recovery. Open the note's menu and choose Recover to bring one back."
+      },
+      {
+        "q": "What can Kairos AI do?",
+        "a": "It reads your workspace and can answer questions, draft content, plan tasks and keep you ahead of deadlines."
+      }
+    ],
+    "contact": {
+      "email": {
+        "label": "Email",
+        "body": "madebykairos@gmail.com — for anything, we read every message."
+      },
+      "chat": {
+        "label": "In-app chat",
+        "body": "Use the sparkle icon to ask Kairos, or open a conversation with your team."
+      },
+      "org": {
+        "label": "Team support",
+        "body": "Organization admins can invite people and manage access from the Organizations screen."
+      }
+    }
   }
 }

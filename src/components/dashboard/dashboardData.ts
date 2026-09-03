@@ -28,23 +28,59 @@ export type CalendarTask = {
   projectTitle: string | null;
 };
 
-/** Task state as the dashboard labels it — the four badges in the design. */
-export type TaskState = "done" | "overdue" | "inProgress" | "todo";
+/** Where a project sits, read off its completion and its overdue work. */
+export type ProjectHealth = "onTrack" | "inProgress" | "atRisk" | "empty";
 
-export type WeekDay = {
-  /** Local midnight of the day. */
-  date: Date;
-  count: number;
-  isToday: boolean;
-};
-
-export type ProjectSummary = {
+/** One row of the project status table. */
+export type ProjectStatusRow = {
   id: number;
   title: string | null;
-  /** Percentage of tasks completed, 0-100. Null when the project has no tasks. */
-  percent: number | null;
-  openCount: number;
-  health: "onTrack" | "inProgress" | "atRisk" | "empty";
+  /**
+   * The latest due date among the project's open tasks — the design's
+   * "Ends 5 Sep". Projects have no deadline column of their own, so the work
+   * still outstanding is what dates them; null reads as "no date".
+   */
+  endsAt: Date | null;
+  /** Everyone on the project: its creator first, then its collaborators. */
+  owners: ProjectOwner[];
+  open: number;
+  overdue: number;
+  /** Percentage of tasks completed, 0-100. */
+  percent: number;
+  health: ProjectHealth;
+};
+
+export type ProjectOwner = {
+  id: string;
+  name: string | null;
+  image: string | null;
+};
+
+/** What `project.getMyProjects` returns, as the status table needs it. */
+export type ProjectWithPeople = DashboardProject & {
+  createdByUser?: ProjectOwner | null;
+  collaborators?: ProjectOwner[];
+};
+
+/** One day of the momentum strip. */
+export type MomentumDay = {
+  date: Date;
+  count: number;
+};
+
+export type Momentum = {
+  /** Oldest day first, ending today. */
+  bars: MomentumDay[];
+  /** Consecutive days with at least one completion, counting back from today. */
+  streak: number;
+  /**
+   * Change in output, last week against the week before, as a percentage.
+   * Null when the earlier week is empty — there is no "+∞%".
+   */
+  pace: number | null;
+  /** Completions inside the whole window. */
+  total: number;
+  today: number;
 };
 
 export const startOfDay = (d: Date): Date =>
@@ -60,14 +96,6 @@ const isSameDay = (a: Date, b: Date): boolean =>
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&
   a.getDate() === b.getDate();
-
-export function taskState(task: { status: string; dueDate: Date | string | null }, now: Date): TaskState {
-  if (task.status === "completed") return "done";
-  const due = asDate(task.dueDate);
-  if (due && due < startOfDay(now)) return "overdue";
-  if (task.status === "in_progress") return "inProgress";
-  return "todo";
-}
 
 export type HeadlineStats = {
   dueToday: number;
@@ -129,90 +157,6 @@ export function headlineStats(projects: DashboardProject[], now: Date): Headline
 }
 
 /**
- * Tasks the header list shows: everything overdue, then everything due today.
- * Overdue work is the more urgent of the two, so it leads.
- */
-export function todayTasks(tasks: CalendarTask[], now: Date): CalendarTask[] {
-  const today = startOfDay(now);
-  const relevant = tasks.filter((t) => {
-    const due = asDate(t.dueDate);
-    if (!due) return false;
-    if (isSameDay(due, today)) return true;
-    return due < today && t.status !== "completed";
-  });
-
-  return relevant.sort((a, b) => {
-    const aOverdue = taskState(a, now) === "overdue" ? 0 : 1;
-    const bOverdue = taskState(b, now) === "overdue" ? 0 : 1;
-    if (aOverdue !== bOverdue) return aOverdue - bOverdue;
-    const aDone = a.status === "completed" ? 1 : 0;
-    const bDone = b.status === "completed" ? 1 : 0;
-    if (aDone !== bDone) return aDone - bDone;
-    return (asDate(a.dueDate)?.getTime() ?? 0) - (asDate(b.dueDate)?.getTime() ?? 0);
-  });
-}
-
-/**
- * Five weekday columns starting today, weekends skipped — the strip in the
- * design runs THU, FRI, MON, TUE, WED rather than showing empty Sat/Sun.
- */
-export function weekStrip(tasks: CalendarTask[], now: Date, columns = 5): WeekDay[] {
-  const today = startOfDay(now);
-  const days: WeekDay[] = [];
-  const cursor = new Date(today);
-
-  while (days.length < columns) {
-    const weekday = cursor.getDay();
-    if (weekday !== 0 && weekday !== 6) {
-      const date = new Date(cursor);
-      days.push({
-        date,
-        isToday: isSameDay(date, today),
-        count: tasks.filter((t) => {
-          if (t.status === "completed") return false;
-          const due = asDate(t.dueDate);
-          return !!due && isSameDay(due, date);
-        }).length,
-      });
-    }
-    cursor.setDate(cursor.getDate() + 1);
-  }
-
-  return days;
-}
-
-export function projectSummaries(projects: DashboardProject[], now: Date): ProjectSummary[] {
-  const today = startOfDay(now);
-
-  const summaries = projects.map((project): ProjectSummary => {
-    const total = project.tasks.length;
-    const completed = project.tasks.filter((t) => t.status === "completed").length;
-    const open = total - completed;
-    const hasOverdue = project.tasks.some((t) => {
-      if (t.status === "completed") return false;
-      const due = asDate(t.dueDate);
-      return !!due && due < today;
-    });
-
-    if (total === 0) {
-      return { id: project.id, title: project.title, percent: null, openCount: 0, health: "empty" };
-    }
-
-    const percent = Math.round((completed / total) * 100);
-    const health = hasOverdue ? "atRisk" : percent >= 70 ? "onTrack" : "inProgress";
-
-    return { id: project.id, title: project.title, percent, openCount: open, health };
-  });
-
-  // Projects with work in them lead; empty ones sink to the bottom of the rail.
-  const rank = { atRisk: 0, inProgress: 1, onTrack: 2, empty: 3 } as const;
-  return summaries.sort((a, b) => {
-    if (rank[a.health] !== rank[b.health]) return rank[a.health] - rank[b.health];
-    return b.openCount - a.openCount;
-  });
-}
-
-/**
  * How much of the local day has elapsed, 0-1.
  *
  * The workspace ring carries two readings: the outer arc is task completion,
@@ -224,10 +168,130 @@ export function dayFraction(now: Date): number {
   return Math.min(1, Math.max(0, minutes / 1440));
 }
 
-/** `2πr` for the three ring radii the design uses. */
+/**
+ * The project status table, one row per project.
+ *
+ * The list in the design carries six readings of a project — who is on it,
+ * what is open, what is late, how far along it is, and whether that adds up to
+ * healthy — so every one of them is derived here from the same task rows.
+ */
+export function projectStatusRows(
+  projects: ProjectWithPeople[],
+  now: Date,
+): ProjectStatusRow[] {
+  const today = startOfDay(now);
+
+  const rows = projects.map((project): ProjectStatusRow => {
+    const total = project.tasks.length;
+    let completed = 0;
+    let overdue = 0;
+    let endsAt: Date | null = null;
+
+    for (const task of project.tasks) {
+      if (task.status === "completed") {
+        completed += 1;
+        continue;
+      }
+      const due = asDate(task.dueDate);
+      if (!due) continue;
+      if (due < today) overdue += 1;
+      if (!endsAt || due > endsAt) endsAt = due;
+    }
+
+    const owners: ProjectOwner[] = [];
+    const seen = new Set<string>();
+    for (const person of [project.createdByUser, ...(project.collaborators ?? [])]) {
+      if (!person || seen.has(person.id)) continue;
+      seen.add(person.id);
+      owners.push({ id: person.id, name: person.name, image: person.image });
+    }
+
+    const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+    const health =
+      total === 0
+        ? "empty"
+        : overdue > 0
+          ? "atRisk"
+          : percent >= 70
+            ? "onTrack"
+            : "inProgress";
+
+    return {
+      id: project.id,
+      title: project.title,
+      endsAt,
+      owners,
+      open: total - completed,
+      overdue,
+      percent,
+      health,
+    };
+  });
+
+  // Same order as the projects rail it replaces: whatever needs attention
+  // leads, empty projects sink.
+  const rank = { atRisk: 0, inProgress: 1, onTrack: 2, empty: 3 } as const;
+  return rows.sort((a, b) => {
+    if (rank[a.health] !== rank[b.health]) return rank[a.health] - rank[b.health];
+    return b.open - a.open;
+  });
+}
+
+/**
+ * Your momentum: the bar strip, the streak and the week-on-week pace.
+ *
+ * Completion timestamps arrive raw from `progress.getPulse` and are bucketed
+ * into *local* days here — the reader's midnight is the only one that matters
+ * for "did I finish something today".
+ */
+export function momentum(
+  completions: (Date | string)[],
+  now: Date,
+  span = 14,
+): Momentum {
+  const today = startOfDay(now);
+  const perDay = new Map<number, number>();
+
+  for (const value of completions) {
+    const when = asDate(value);
+    if (!when) continue;
+    const key = startOfDay(when).getTime();
+    perDay.set(key, (perDay.get(key) ?? 0) + 1);
+  }
+
+  const bars: MomentumDay[] = [];
+  for (let back = span - 1; back >= 0; back -= 1) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - back);
+    bars.push({ date, count: perDay.get(date.getTime()) ?? 0 });
+  }
+
+  // A streak counts finished days, and today is not finished yet: a day with
+  // nothing done *so far* must not read as a broken streak until it is over.
+  let streak = 0;
+  for (let back = perDay.get(today.getTime()) ? 0 : 1; ; back += 1) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - back);
+    if (!perDay.get(date.getTime())) break;
+    streak += 1;
+  }
+
+  const half = Math.floor(span / 2);
+  const recent = bars.slice(span - half).reduce((n, day) => n + day.count, 0);
+  const earlier = bars.slice(span - half * 2, span - half).reduce((n, day) => n + day.count, 0);
+
+  return {
+    bars,
+    streak,
+    pace: earlier === 0 ? null : Math.round(((recent - earlier) / earlier) * 100),
+    total: bars.reduce((n, day) => n + day.count, 0),
+    today: perDay.get(today.getTime()) ?? 0,
+  };
+}
+
+/** `2πr` for the two ring radii the design uses. */
 export const RING_TASKS = 2 * Math.PI * 82;
 export const RING_DAY = 2 * Math.PI * 62;
-export const RING_PROJECT = 2 * Math.PI * 19;
 
 /**
  * `stroke-dashoffset` for an arc filled to `fraction`, scaled by `progress` so
@@ -236,4 +300,20 @@ export const RING_PROJECT = 2 * Math.PI * 19;
 export function dashOffset(circumference: number, fraction: number, progress = 1): number {
   const filled = Math.min(1, Math.max(0, fraction)) * Math.min(1, Math.max(0, progress));
   return circumference * (1 - filled);
+}
+
+/**
+ * Compact age stamp — `now`, `20m`, `3h`, `1d` — for the mono accents the
+ * design uses wherever it prints a time: the radar's last check, a teammate's
+ * last sign of life, an activity row.
+ */
+export function relativeShort(value: Date | string | null, now: Date): string {
+  const then = asDate(value);
+  if (!then) return "";
+  const minutes = Math.max(0, Math.round((now.getTime() - then.getTime()) / 60000));
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.round(hours / 24)}d`;
 }

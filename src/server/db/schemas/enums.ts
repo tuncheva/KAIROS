@@ -40,6 +40,24 @@ export const profileAudienceEnum = pgEnum("profile_audience", [
   /** Only people you share a project, event or conversation with. */
   "shared",
 ] as const);
+/**
+ * Where on-screen notifications appear.
+ *
+ * Six values rather than four edges: "top" and "bottom" alone leave the
+ * horizontal anchor undefined, and corners are what people actually point at.
+ * `bottom-right` is stored but never offered — `AskKairosLauncher` owns that
+ * corner — and is kept in the enum only so a value written before that rule
+ * existed still parses. See `~/lib/notificationPosition`.
+ */
+export const notificationPositionEnum = pgEnum("notification_position", [
+  "top-left",
+  "top-center",
+  "top-right",
+  "bottom-left",
+  "bottom-center",
+  "bottom-right",
+] as const);
+
 export const dateFormatEnum
 
  = pgEnum("date_format", ["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"]);

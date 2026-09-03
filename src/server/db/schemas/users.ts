@@ -15,6 +15,7 @@ import {
   usageModeEnum,
   languageEnum,
   dateFormatEnum,
+  notificationPositionEnum,
   themeEnum,
   profileAudienceEnum,
   verificationCodePurposeEnum,
@@ -126,6 +127,16 @@ export const users = createTable("user", (d) => ({
      */
     marketingEmailsNotifications: boolean("marketing_emails_notifications").default(false).notNull(),
 
+    /**
+     * Which corner the notification popups occupy. The toast stack takes the
+     * diagonally opposite one, so the two surfaces can never collide — one
+     * decision, not two. Defaults to today's behaviour so no existing user
+     * sees a change until they ask for one.
+     */
+    notificationPosition: notificationPositionEnum("notification_position")
+      .default("top-right")
+      .notNull(),
+
     language: languageEnum("language").default("en").notNull(),
     timezone: varchar("timezone", { length: 100 }).default("UTC").notNull(),
     dateFormat: dateFormatEnum("date_format").default("MM/DD/YYYY").notNull(),
@@ -158,6 +169,21 @@ export const users = createTable("user", (d) => ({
     activityTracking: boolean("activity_tracking").default(false).notNull(),
     dataCollection: boolean("data_collection").default(false).notNull(),
 
+    /**
+     * Bearer token for the subscribable calendar feed.
+     *
+     * `/api/export/ics` produces a one-shot file: the moment it is imported it
+     * begins going stale, and a calendar that is wrong is worse than no
+     * calendar. A subscription URL is the shape the rest of the world uses,
+     * and it cannot carry a session cookie — Google and Apple fetch it from
+     * their own servers — so the URL itself has to be the credential.
+     *
+     * Null until asked for, so an account that never subscribes never has a
+     * standing URL. Rotatable, because a URL that leaks is a read of your
+     * whole calendar and revoking it must not mean deleting the account.
+     */
+    calendarFeedToken: varchar("calendar_feed_token", { length: 64 }).unique(),
+
     twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
     twoFactorSecret: varchar("two_factor_secret", { length: 255 }),
 
@@ -187,6 +213,14 @@ export type UserSettings = {
   workspaceNotifications: boolean;
   emailNotifications: boolean;
   marketingEmailsNotifications: boolean;
+
+  notificationPosition:
+    | "top-left"
+    | "top-center"
+    | "top-right"
+    | "bottom-left"
+    | "bottom-center"
+    | "bottom-right";
 
   language: "en" | "bg" | "es" | "fr" | "de";
   timezone: string;

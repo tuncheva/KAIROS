@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -19,12 +19,14 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
-import { Overlay } from "~/components/ui/Overlay";
+import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { NewProjectDrawer } from "./NewProjectDrawer";
 import { ProfileLink } from "~/components/profile/ProfileLink";
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { ProjectTasksPanel, ProjectTeamPanel } from "./ProjectTasksPanel";
 import {
+  DETAIL_TABS,
+  isDetailTab,
   isRecent,
   isSameDay,
   matchesFilter,
@@ -35,6 +37,7 @@ import {
   visibleRows,
   workspaceTotals,
   type ActivityRow,
+  type DetailTab,
   type EventKind,
   type FilterKey,
   type Health,
@@ -60,10 +63,6 @@ const TIMELINE_FILTERS: TimelineFilter[] = [
   "note",
   "due",
 ];
-
-/** The three readings of one project: what to do, who is on it, what happened. */
-const DETAIL_TABS = ["tasks", "team", "timeline"] as const;
-type DetailTab = (typeof DETAIL_TABS)[number];
 
 /**
  * Health only ever paints text and a rule, never a fill. A project one task
@@ -116,10 +115,13 @@ const EVENT_TINT: Record<EventKind, string> = {
 export function ProjectsWorkspace({
   userId,
   initialProjectId = null,
+  initialTab = "tasks",
 }: {
   userId: string;
   /** `/projects?projectId=` opens straight into one project. */
   initialProjectId?: number | null;
+  /** `&tab=` opens that project on its board, team or timeline. */
+  initialTab?: DetailTab;
 }) {
   const t = useTranslations("projects");
   const toast = useToast();
@@ -131,7 +133,61 @@ export function ProjectsWorkspace({
   const [sort, setSort] = useState<SortKey>("updated");
   const [view, setView] = useState<ViewMode>("list");
   const [openId, setOpenId] = useState<number | null>(initialProjectId);
+  const [tab, setTab] = useState<DetailTab>(initialTab);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  /* A project opened in place used to leave the URL on `/projects`, so the one
+     thing people do with a project they are looking at — send it to someone —
+     was impossible, and Back skipped past the whole detail view to whatever
+     came before the page.
+
+     History API rather than `router.push`: the detail is already rendered on
+     the client from a list this page has in cache, so a real navigation would
+     re-run the server component to arrive at the state we are already in.
+     Opening pushes (Back should close the project); switching tabs replaces
+     (a tab is a refinement, not a step of its own). */
+  const projectUrl = useCallback(
+    (id: number | null, detailTab: DetailTab) =>
+      id === null ? "/projects" : `/projects?projectId=${id}&tab=${detailTab}`,
+    [],
+  );
+
+  const openProject = useCallback(
+    (id: number) => {
+      setOpenId(id);
+      setTab("tasks");
+      window.history.pushState(null, "", projectUrl(id, "tasks"));
+    },
+    [projectUrl],
+  );
+
+  const selectTab = useCallback(
+    (next: DetailTab) => {
+      setTab(next);
+      if (openId !== null) window.history.replaceState(null, "", projectUrl(openId, next));
+    },
+    [openId, projectUrl],
+  );
+
+  /* Back and Forward move between the list and the open project, so the state
+     has to follow the URL rather than the other way round. */
+  useEffect(() => {
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get("projectId");
+      const id = raw === null ? null : Number(raw);
+      setOpenId(id !== null && Number.isInteger(id) && id > 0 ? id : null);
+      const nextTab = params.get("tab");
+      setTab(isDetailTab(nextTab) ? nextTab : "tasks");
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  const closeProject = useCallback(() => {
+    setOpenId(null);
+    window.history.pushState(null, "", projectUrl(null, "tasks"));
+  }, [projectUrl]);
 
   const projectsQuery = api.project.getMyProjects.useQuery(undefined, {
     staleTime: 1000 * 60 * 5,
@@ -157,8 +213,8 @@ export function ProjectsWorkspace({
   );
 
   const shown = useMemo(
-    () => visibleRows(rows, { query, filter, sort }),
-    [rows, query, filter, sort],
+    () => visibleRows(rows, { query, filter, sort, locale }),
+    [rows, query, filter, sort, locale],
   );
   const totals = useMemo(() => workspaceTotals(rows), [rows]);
   const opened = useMemo(
@@ -187,10 +243,12 @@ export function ProjectsWorkspace({
       {opened ? (
         <ProjectDetail
           project={opened}
+          tab={tab}
+          onTabChange={selectTab}
           userId={userId}
           locale={locale}
           now={now}
-          onBack={() => setOpenId(null)}
+          onBack={closeProject}
           onDelete={() => setConfirmDeleteId(opened.id)}
         />
       ) : (
@@ -299,9 +357,9 @@ export function ProjectsWorkspace({
                 : t("noneInFilter")}
             </div>
           ) : view === "list" ? (
-            <ProjectTable rows={shown} locale={locale} onOpen={setOpenId} />
+            <ProjectTable rows={shown} locale={locale} onOpen={openProject} />
           ) : (
-            <ProjectGrid rows={shown} locale={locale} onOpen={setOpenId} />
+            <ProjectGrid rows={shown} locale={locale} onOpen={openProject} />
           )}
 
           <StatStrip
@@ -687,6 +745,8 @@ function ProjectDetail({
   userId,
   locale,
   now,
+  tab,
+  onTabChange,
   onBack,
   onDelete,
 }: {
@@ -694,11 +754,14 @@ function ProjectDetail({
   userId: string;
   locale: string;
   now: Date;
+  /* Lifted to the workspace, because the tab is part of the URL now. */
+  tab: DetailTab;
+  onTabChange: (tab: DetailTab) => void;
   onBack: () => void;
   onDelete: () => void;
 }) {
   const t = useTranslations("projects");
-  const [tab, setTab] = useState<DetailTab>("tasks");
+
   const [kind, setKind] = useState<TimelineFilter>("all");
   const [showEarlier, setShowEarlier] = useState(false);
 
@@ -809,7 +872,7 @@ function ProjectDetail({
           <button
             key={key}
             type="button"
-            onClick={() => setTab(key)}
+            onClick={() => onTabChange(key)}
             aria-pressed={tab === key}
             className={`h-[34px] px-4 text-[13px] font-medium transition-colors duration-300 ${
               tab === key
@@ -1129,43 +1192,20 @@ function DeleteDialog({
 }) {
   const t = useTranslations("projects");
 
+  /* This used to be a hand-rolled overlay with `role="dialog"` and nothing
+     else: no focus trap, no Escape, no focus restore, and a full-bleed
+     invisible button for the backdrop. Deleting a project is one of the five
+     destructive actions the app asked about five different ways. */
   return (
-    <Overlay>
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-        <button
-          type="button"
-          aria-label={t("delete.cancel")}
-          onClick={onCancel}
-          className="absolute inset-0"
-        />
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="border-border-light/60 bg-bg-secondary relative w-full max-w-sm rounded-2xl border p-6 shadow-2xl"
-        >
-          <h2 className="text-fg-primary m-0 text-lg font-semibold">
-            {t("delete.title")}
-          </h2>
-          <p className="text-fg-tertiary mt-2 text-sm">{t("delete.body")}</p>
-          <div className="mt-6 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="text-fg-secondary hover:bg-bg-tertiary hover:text-fg-primary rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-            >
-              {t("delete.cancel")}
-            </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={pending}
-              className="bg-error rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            >
-              {t("delete.confirm")}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Overlay>
+    <ConfirmDialog
+      destructive
+      title={t("delete.title")}
+      message={t("delete.body")}
+      confirmLabel={t("delete.confirm")}
+      cancelLabel={t("delete.cancel")}
+      isPending={pending}
+      onCancel={onCancel}
+      onConfirm={() => onConfirm()}
+    />
   );
 }

@@ -13,22 +13,6 @@ function readComponent(...segments: string[]): string {
   return fs.readFileSync(path.join(componentsDir, ...segments), "utf-8");
 }
 
-describe("Accessibility — Toggle Component", () => {
-  const src = readComponent("layout", "Toggle.tsx");
-
-  it("uses role='switch'", () => {
-    expect(src).toContain('role="switch"');
-  });
-
-  it("uses aria-checked", () => {
-    expect(src).toContain("aria-checked");
-  });
-
-  it("supports aria-label", () => {
-    expect(src).toContain("aria-label");
-  });
-});
-
 describe("Accessibility — SignInModal", () => {
   const src = readComponent("auth", "SignInModal.tsx");
 

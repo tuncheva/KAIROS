@@ -31,11 +31,19 @@ const SECURE_SESSION_COOKIE = "__Secure-authjs.session-token";
 // `/verify-email` must be reachable without a session: the token in the link *is*
 // the credential, and credentials sign-in is refused until it is redeemed, so
 // requiring a session here would make confirmation impossible.
+// Note recovery is deliberately not here either. It now lives at
+// `/notes/[noteId]/recover` under `(app)`, so the shell's own session check
+// sends an unauthenticated visitor to sign in with a `callbackUrl` back to the
+// form — which is what the page needs anyway, since the PIN it checks belongs
+// to a user and every procedure it calls is a `protectedProcedure`.
 const PUBLIC_PATHS = new Set([
   "/",
   "/api/auth",
-  "/reset-password",
   "/verify-email",
+  // A failed sign-in has, by definition, no session cookie. Gating the page that
+  // explains the failure sent it back to `/` with the error code buried in a
+  // query string nothing reads — the dead end this page exists to end.
+  "/auth-error",
   // The footer and the consent line under the sign-up button link here. A visitor
   // has to be able to read what they are agreeing to *before* they have a session,
   // so these cannot sit behind the cookie gate.
@@ -85,6 +93,11 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/trpc")) return true;
   if (pathname.startsWith("/api/account-switch")) return true;
   if (pathname.startsWith("/api/uploadthing")) return true;
+  /* The subscribable calendar feed. Google, Apple and Outlook fetch it from
+     their own servers on their own schedule, so there is no cookie to gate on
+     — the 64-character token in the path is the credential, and the route
+     checks it before it reads anything. */
+  if (pathname.startsWith("/api/calendar/feed/")) return true;
   // Machine-to-machine routes. These carry no session cookie by design — they
   // authenticate with the shared ws credential, compared in constant time inside
   // the route handler, and a missing credential closes them rather than opening

@@ -14,10 +14,27 @@ import path from "path";
 
 const root = path.resolve(__dirname, "../..");
 const localesDir = path.join(root, "src/i18n/messages");
-const locales = ["en", "bg", "de", "es", "fr"] as const;
+/**
+ * The offered locales only.
+ *
+ * `de`, `es` and `fr` have message files but are not on the switcher — see
+ * `~/i18n/locales`. Holding a scan of the whole app to them would fail on
+ * hundreds of keys that were never translated, which is a fact
+ * `translations.test.ts` already reports on rather than something this file
+ * can usefully assert.
+ */
+const locales = ["en", "bg"] as const;
 
-/** Directories whose components are covered. */
-const SCANNED = ["src/components/orgs", "src/app/(app)/join"];
+/**
+ * Directories whose components are covered.
+ *
+ * Widened from two directories to everything that renders. `chat.direct.send`
+ * shipped missing — the composer's send button called it, no list mentioned
+ * it, and the first anyone knew was a MISSING_MESSAGE overlay in the browser.
+ * That is exactly the failure this file exists to prevent; it simply was not
+ * looking anywhere near the chat.
+ */
+const SCANNED = ["src/components", "src/app"];
 
 function walk(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
@@ -36,16 +53,38 @@ function walk(dir: string): string[] {
  * checked statically, and guessing at one would produce false failures.
  */
 function usedKeys(source: string): { namespace: string; key: string }[] {
-  const bindings = new Map<string, string>();
   const bindingRe =
     /const\s+(\w+)\s*=\s*(?:await\s+)?(?:use|get)Translations\(\s*"([^"]+)"\s*\)/g;
-  for (const m of source.matchAll(bindingRe)) bindings.set(m[1]!, m[2]!);
+
+  /* Scoped by position, not by name. One file routinely holds several
+     components that each call their local translator `t` against a different
+     namespace — `ProjectTasksPanel` has `projects.tasks` and `projects.team`,
+     `ProjectIntelligenceChat` has three. A name-keyed map keeps only the last
+     of them and then reports every key of the others as missing. Each binding
+     therefore owns the source from where it appears until the next binding of
+     the same name: close enough to lexical scope for a regex, and it errs
+     toward the right namespace rather than an arbitrary one. */
+  const bindings = [...source.matchAll(bindingRe)].map((m) => ({
+    name: m[1]!,
+    namespace: m[2]!,
+    at: m.index,
+  }));
 
   const found: { namespace: string; key: string }[] = [];
-  for (const [binding, namespace] of bindings) {
-    const callRe = new RegExp(`\\b${binding}\\(\\s*"([^"]+)"`, "g");
-    for (const m of source.matchAll(callRe)) {
-      found.push({ namespace, key: m[1]! });
+  for (const [i, binding] of bindings.entries()) {
+    const next = bindings.slice(i + 1).find((b) => b.name === binding.name);
+    const region = source.slice(binding.at, next?.at ?? source.length);
+
+    /* The closing `)` is part of the match on purpose. `t("sources." + x)` is
+       a computed key with a literal prefix, and treating that prefix as the
+       whole key reports `publish.sources.` as missing forever. Only a call
+       whose argument ends right after the string is checkable. */
+    const callRe = new RegExp(
+      `\\b${binding.name}\\(\\s*"([^"]+)"\\s*[,)]`,
+      "g",
+    );
+    for (const m of region.matchAll(callRe)) {
+      found.push({ namespace: binding.namespace, key: m[1]! });
     }
   }
   return found;

@@ -1,4 +1,5 @@
 import { auth } from "~/server/auth";
+import { signInHref } from "~/lib/routes";
 import { redirect } from "next/navigation";
 import { TopBar } from "~/components/layout/TopBar";
 import { SettingsWorkspace } from "~/components/settings/SettingsWorkspace";
@@ -14,7 +15,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   const session = await auth();
 
   if (!session?.user) {
-    redirect("/api/auth/signin");
+    redirect(signInHref("/settings"));
   }
 
   const resolvedParams = await searchParams;
@@ -29,7 +30,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       <div className="rail-offset flex min-h-dvh flex-col kairos-topbar-gap">
         <TopBar scrim />
 
-        <main className="settings-scroll flex flex-1 flex-col overflow-y-auto bg-bg-primary">
+        <main id="main-content" className="settings-scroll flex flex-1 flex-col overflow-y-auto bg-bg-primary">
           <SettingsWorkspace activeSection={activeSection} user={session.user} />
         </main>
       </div>

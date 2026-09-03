@@ -29,7 +29,6 @@ const eventRoute = read("src/app/events/[id]/page.tsx");
 const proxy = read("src/proxy.ts");
 const composer = read("src/components/publish/EventComposer.tsx");
 const createForm = read("src/components/events/CreateEventForm.tsx");
-const regionPicker = read("src/components/events/RegionMapPicker.tsx");
 
 const panes = { workspace, card, rail, aside, composer, progress, pager, eventPage, discussion, detailFields };
 
@@ -586,16 +585,3 @@ describe("CreateEventForm – design tokens", () => {
   });
 });
 
-describe("RegionMapPicker – design tokens", () => {
-  it("does not use legacy card classes", () => {
-    expect(regionPicker).not.toContain("ios-card");
-  });
-
-  it("uses bg-bg-secondary for card background", () => {
-    expect(regionPicker).toContain("bg-bg-secondary");
-  });
-
-  it("uses border-white/[0.06] for borders", () => {
-    expect(regionPicker).toContain("border-white/[0.06]");
-  });
-});

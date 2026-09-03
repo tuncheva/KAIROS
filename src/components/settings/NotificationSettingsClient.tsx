@@ -4,6 +4,12 @@ import { useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
+import {
+  DEFAULT_NOTIFICATION_POSITION,
+  isNotificationPosition,
+  type NotificationPosition,
+} from "~/lib/notificationPosition";
+import { NotificationPositionPicker } from "./NotificationPositionPicker";
 
 import {
   LedgerGroup,
@@ -179,6 +185,18 @@ export function NotificationSettingsClient() {
     void save.run(() => updateNotifications.mutateAsync({ [key]: checked }));
   };
 
+  /* The one *where* control on a panel of *what* switches. It shares the
+     mutation because the row it writes is the same row. */
+  const position: NotificationPosition = isNotificationPosition(
+    data?.notificationPosition,
+  )
+    ? data.notificationPosition
+    : DEFAULT_NOTIFICATION_POSITION;
+
+  const onPositionChange = (next: NotificationPosition) => {
+    void save.run(() => updateNotifications.mutateAsync({ notificationPosition: next }));
+  };
+
   return (
     <LedgerSection
       sectionId="notifications"
@@ -186,6 +204,18 @@ export function NotificationSettingsClient() {
       title={t("title")}
       subtitle={t("subtitle")}
     >
+      <LedgerGroup
+        label={t("groupPositionTitle")}
+        hint={t("groupPositionDesc")}
+        block={
+          <NotificationPositionPicker
+            value={position}
+            disabled={isLoading}
+            onChange={onPositionChange}
+          />
+        }
+      />
+
       {GROUPS.map((group) => {
         const muted = group.dependsOnInApp && !values.inAppNotifications;
 

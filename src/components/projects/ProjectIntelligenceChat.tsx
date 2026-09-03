@@ -303,9 +303,15 @@ function EventPreviewCard({
   onFieldChange?: (field: "title" | "description", value: string) => void;
 }) {
   const { formatDate: formatDatePref } = useDateFormat();
+  const t = useTranslations("agents");
   const icon = item.kind === "create" ? Calendar : item.kind === "update" ? Pencil : Trash2;
   const Icon = icon;
-  const label = item.kind === "create" ? "New Event" : item.kind === "update" ? "Update Event" : "Delete Event";
+  const label =
+    item.kind === "create"
+      ? t("previewNewEvent")
+      : item.kind === "update"
+        ? t("previewUpdateEvent")
+        : t("previewDeleteEvent");
   const accent =
     item.kind === "create"
       ? "rgb(var(--accent-primary))"
@@ -333,7 +339,7 @@ function EventPreviewCard({
           {label}
         </span>
         {isEditable && (
-          <span className="text-[10px] text-fg-quaternary ml-auto">(click to edit)</span>
+          <span className="text-[10px] text-fg-quaternary ml-auto">{t("previewClickToEdit")}</span>
         )}
       </div>
       {item.title && (
@@ -343,7 +349,7 @@ function EventPreviewCard({
             className="w-full text-sm font-semibold text-fg-primary bg-bg-secondary/50 border border-border-medium rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-accent-primary"
             defaultValue={item.title}
             onChange={(e) => onFieldChange("title", e.target.value)}
-            placeholder="Event title..."
+            placeholder={t("eventTitlePlaceholder")}
           />
         ) : (
           <p className="text-sm font-semibold text-fg-primary leading-snug">{item.title}</p>
@@ -355,7 +361,7 @@ function EventPreviewCard({
             className="w-full text-xs text-fg-secondary bg-bg-secondary/50 border border-border-medium rounded-md p-2 mt-1 resize-none focus:outline-none focus:ring-1 focus:ring-accent-primary min-h-[40px]"
             defaultValue={item.description}
             onChange={(e) => onFieldChange("description", e.target.value)}
-            placeholder="Event description..."
+            placeholder={t("eventDescriptionPlaceholder")}
           />
         ) : (
           <p className="text-xs text-fg-secondary mt-0.5 line-clamp-2">{item.description}</p>
@@ -393,9 +399,15 @@ function NotePreviewCard({
   index: number;
   onContentChange?: (newContent: string) => void;
 }) {
+  const t = useTranslations("agents");
   const icon = item.kind === "create" ? FileText : item.kind === "update" ? Pencil : Trash2;
   const Icon = icon;
-  const label = item.kind === "create" ? "New Note" : item.kind === "update" ? "Update Note" : "Delete Note";
+  const label =
+    item.kind === "create"
+      ? t("previewNewNote")
+      : item.kind === "update"
+        ? t("previewUpdateNote")
+        : t("previewDeleteNote");
   const accent =
     item.kind === "create"
       ? "rgb(var(--accent-primary))"
@@ -419,7 +431,7 @@ function NotePreviewCard({
           <span className="text-[10px] text-fg-quaternary">#{item.noteId}</span>
         )}
         {isEditable && (
-          <span className="text-[10px] text-fg-quaternary ml-auto">(click to edit)</span>
+          <span className="text-[10px] text-fg-quaternary ml-auto">{t("previewClickToEdit")}</span>
         )}
       </div>
       {item.content && (
@@ -428,7 +440,7 @@ function NotePreviewCard({
             className="w-full text-xs text-fg-secondary bg-bg-secondary/50 border border-border-medium rounded-md p-2 resize-none focus:outline-none focus:ring-1 focus:ring-accent-primary min-h-[60px]"
             defaultValue={item.content}
             onChange={(e) => onContentChange(e.target.value)}
-            placeholder="Edit note content..."
+            placeholder={t("noteContentPlaceholder")}
           />
         ) : (
           <p className="text-xs text-fg-secondary line-clamp-3 whitespace-pre-wrap">{item.content.slice(0, 200)}{item.content.length > 200 ? "…" : ""}</p>

@@ -4,6 +4,11 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { api } from "~/trpc/react";
+import {
+  applyNotificationPosition,
+  isNotificationPosition,
+  NOTIFICATION_POSITION_STORAGE_KEY,
+} from "~/lib/notificationPosition";
 
 const DEFAULT_ACCENT = "purple";
 
@@ -47,15 +52,6 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
 
   const updateAppearance = api.settings.updateAppearance.useMutation();
 
-  // Apply accent color immediately on mount from data attribute to prevent flash
-  useEffect(() => {
-    const savedAccent = document.documentElement.dataset.accent;
-    if (savedAccent && savedAccent !== "purple") {
-      // Accent already set from SSR or previous visit
-      return;
-    }
-  }, []);
-
   useEffect(() => {
     applied.current = false;
     migratedAccent.current = false;
@@ -69,9 +65,13 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     // Apply immediately and persist
     document.documentElement.dataset.accent = accent;
     
-    // Store in sessionStorage for faster next load
+    /* localStorage, not sessionStorage: the accent is a durable preference, not
+       something about this tab. Stored per-tab, the pre-paint script found
+       nothing in every newly opened tab, painted the default purple, and
+       corrected once the settings query came back — a visible flash on a value
+       the user had already chosen. */
     try {
-      sessionStorage.setItem('user-accent', accent);
+      localStorage.setItem('user-accent', accent);
     } catch {}
 
     if (!enabled) return;
@@ -81,6 +81,20 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       updateAppearance.mutate({ accentColor: accent });
     }
   }, [data?.accentColor, enabled, updateAppearance]);
+
+  /* Same shape as the accent above, and for the same reason: the pre-paint
+     script reads this from localStorage so a toast firing before hydration
+     lands in the corner the user chose, which means the stored copy has to be
+     kept in step with the server's whenever the query resolves. */
+  useEffect(() => {
+    const position = data?.notificationPosition;
+    if (!isNotificationPosition(position)) return;
+
+    applyNotificationPosition(position, document.documentElement);
+    try {
+      localStorage.setItem(NOTIFICATION_POSITION_STORAGE_KEY, position);
+    } catch {}
+  }, [data?.notificationPosition]);
 
   useEffect(() => {
     if (applied.current) return;

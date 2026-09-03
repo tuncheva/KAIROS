@@ -150,7 +150,7 @@ export function OrgSwitcher() {
                     value={newOrgName}
                     onChange={(e) => setNewOrgName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleCreateOrg()}
-                    placeholder="Organization name..."
+                    placeholder={tOrg("namePlaceholder")}
                     className="w-full px-3 py-2 text-sm bg-bg-surface rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary/30 text-fg-primary placeholder:text-fg-tertiary"
                     autoFocus
                   />

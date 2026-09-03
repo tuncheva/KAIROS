@@ -6,11 +6,17 @@
  * The suggestion sources behind this — org members, recent contacts, project
  * teammates — already worked well and are unchanged; this restyles the modal and
  * gives it the focus handling it was missing.
+ *
+ * Picking someone under a project heading starts a conversation *scoped to that
+ * project* rather than a plain DM. The distinction was being dropped here: every
+ * row called `onSelect(person.id)`, so a project teammate produced an untagged
+ * conversation, `direct_conversations.project_id` was never written by anything
+ * in the UI, and the rail's "Projects" filter could never match a row.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2, MessageCircle, Search, Users, X } from "~/components/ui/icons";
+import { Briefcase, Loader2, MessageCircle, Search, Users, X } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { Avatar, displayName, type ChatUser } from "./chatUi";
@@ -22,7 +28,8 @@ export function NewChatModal({
   currentUserId,
 }: {
   onClose: () => void;
-  onSelect: (otherUserId: string) => void;
+  /** `projectId` is present only for rows chosen under a project heading. */
+  onSelect: (otherUserId: string, projectId?: number) => void;
   isCreating: boolean;
   currentUserId: string;
 }) {
@@ -208,12 +215,17 @@ export function NewChatModal({
               )}
 
               {projectGroups.map((project) => (
-                <Group key={project.projectId} label={project.projectTitle}>
+                <Group
+                  key={project.projectId}
+                  label={project.projectTitle}
+                  icon={<Briefcase size={13} />}
+                >
                   {project.members.map((person) => (
                     <PersonRow
                       key={`p-${project.projectId}-${person.id}`}
                       person={person}
                       onSelect={onSelect}
+                      projectId={project.projectId}
                       disabled={isCreating}
                       fallbackLabel={t("userFallback")}
                     />
@@ -257,18 +269,21 @@ function Group({
 function PersonRow({
   person,
   onSelect,
+  projectId,
   disabled,
   fallbackLabel,
 }: {
   person: ChatUser;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, projectId?: number) => void;
+  /** Set when this row sits under a project heading; tags the conversation. */
+  projectId?: number;
   disabled: boolean;
   fallbackLabel: string;
 }) {
   return (
     <button
       type="button"
-      onClick={() => onSelect(person.id)}
+      onClick={() => onSelect(person.id, projectId)}
       disabled={disabled}
       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >

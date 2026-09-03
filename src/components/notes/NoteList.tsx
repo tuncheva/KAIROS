@@ -8,6 +8,12 @@
  * preview, the notebook, who it is shared with, and whether it is locked — in
  * less vertical space, so more of the corpus is on screen at once. Sort and
  * filter are controls here rather than assumptions baked into the query.
+ *
+ * A row used to be a `rounded-xl` card that grew a ring, a backdrop blur and a
+ * floating accent bar when selected. It is a hairline row now — the `TaskRow`
+ * shape from `DashboardClient` — and selection is a left border that scales in
+ * from its own centre over a 7% accent wash. Rows rise on load and on every
+ * filter or sort change, capped so a long list never reads as loading twice.
  */
 
 import { useRef, useState } from "react";
@@ -24,6 +30,7 @@ import {
   LockOpen,
   Menu as MenuIcon,
   Plus,
+  Search,
   SquareArrowOutUpRight,
   Share2,
   ShieldOff,
@@ -33,7 +40,17 @@ import {
 
 import { ContextMenu, type ContextMenuAnchor } from "./ContextMenu";
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from "./Menu";
-import { MetaChip, SharedAvatars } from "./notesUi";
+import {
+  Badge,
+  BTN_ACCENT,
+  CHIP,
+  CHIP_IDLE,
+  CHIP_ON,
+  ICON_BTN_BARE,
+  MICRO,
+  SharedAvatars,
+  STAMP,
+} from "./notesUi";
 import {
   formatListTimestamp,
   groupNotes,
@@ -44,6 +61,16 @@ import {
   type NoteSort,
   type NoteView,
 } from "./notesData";
+
+/**
+ * How many rows get a staggered entrance.
+ *
+ * Past this they all arrive together. A 60-note list staggered at 30ms would
+ * take nearly two seconds to finish assembling, which stops reading as an
+ * entrance and starts reading as a second page load.
+ */
+const STAGGER_CAP = 12;
+const STAGGER_STEP = 0.03;
 
 export function NoteList({
   notes,
@@ -146,19 +173,23 @@ export function NoteList({
 
   const grouped = groupNotes(notes, sort);
 
+  /* One counter across the groups, so the stagger runs down the visible list
+     rather than restarting at every date bucket. */
+  let rowIndex = 0;
+
   return (
-    <div className="bg-bg-secondary md:border-border-light/40 flex h-full flex-col md:border-r">
-      <div className="flex flex-none items-center gap-2 px-4 pt-4 pb-2.5">
+    <div className="flex h-full flex-col bg-bg-primary md:border-r md:border-border-light/60">
+      <div className="flex flex-none items-center gap-2 px-3.5 pt-4 pb-2.5">
         <button
           type="button"
           onClick={onOpenRail}
           aria-label={t("common.openLibrary")}
-          className="text-fg-tertiary hover:text-fg-primary hover:bg-bg-tertiary -ml-1 rounded-lg p-2 transition-colors md:hidden"
+          className={`${ICON_BTN_BARE} -ml-1 md:hidden`}
         >
           <MenuIcon size={18} />
         </button>
 
-        <h2 className="text-fg-primary min-w-0 flex-1 truncate text-sm font-bold">
+        <h2 className="min-w-0 flex-1 truncate text-[15px] font-bold tracking-[-0.012em] text-fg-primary">
           {heading}
         </h2>
 
@@ -166,13 +197,11 @@ export function NoteList({
           label={t("sort.label")}
           icon={
             <span className="flex items-center gap-1.5">
-              <ArrowDownWideNarrow size={13} />
-              <span className="text-[10px] font-semibold tracking-wide uppercase">
-                {sortLabels[sort]}
-              </span>
+              <ArrowDownWideNarrow size={12} />
+              {sortLabels[sort]}
             </span>
           }
-          triggerClassName="px-2 py-1.5 rounded-lg bg-bg-tertiary text-fg-tertiary hover:text-fg-primary transition-colors"
+          triggerClassName={`${CHIP} ${CHIP_IDLE}`}
         >
           {(close) => (
             <>
@@ -203,14 +232,14 @@ export function NoteList({
           type="button"
           onClick={onNewNote}
           aria-label={t("actions.create")}
-          className="text-accent-primary hover:bg-accent-primary/10 rounded-lg p-2 transition-colors md:hidden"
+          className={`${ICON_BTN_BARE} text-accent-primary md:hidden`}
         >
           <Plus size={18} />
         </button>
       </div>
 
       <div
-        className="flex flex-none gap-1.5 overflow-x-auto px-4 pb-2.5"
+        className="flex flex-none gap-1.5 overflow-x-auto px-3.5 pb-3"
         role="tablist"
         aria-label={t("filters.label")}
       >
@@ -221,25 +250,21 @@ export function NoteList({
             role="tab"
             aria-selected={filter === entry.key}
             onClick={() => onFilterChange(entry.key)}
-            className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold tracking-wide whitespace-nowrap uppercase transition-colors ${
-              filter === entry.key
-                ? "bg-accent-primary/12 text-accent-primary ring-accent-primary/30 ring-1"
-                : "bg-bg-tertiary text-fg-tertiary hover:text-fg-secondary"
-            }`}
+            className={`${CHIP} ${filter === entry.key ? CHIP_ON : CHIP_IDLE}`}
           >
             {entry.label}
           </button>
         ))}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {isLoading ? (
-          <ul className="flex flex-col gap-1 p-2" aria-hidden="true">
+          <ul className="flex flex-col" aria-hidden="true">
             {[0, 1, 2, 3, 4, 5].map((i) => (
-              <li key={i} className="space-y-2 p-2.5">
-                <div className="bg-bg-tertiary h-3 w-1/2 animate-pulse rounded" />
-                <div className="bg-bg-tertiary h-2.5 w-4/5 animate-pulse rounded" />
-                <div className="bg-bg-tertiary h-2 w-1/4 animate-pulse rounded" />
+              <li key={i} className="space-y-2 border-b border-border-light/45 px-3.5 py-3.5">
+                <div className="kairos-shimmer h-3 w-1/2 rounded" />
+                <div className="kairos-shimmer h-2.5 w-4/5 rounded" />
+                <div className="kairos-shimmer h-2 w-1/4 rounded" />
               </li>
             ))}
           </ul>
@@ -253,49 +278,54 @@ export function NoteList({
         ) : (
           <ul
             ref={listRef}
-            className="flex flex-col gap-0.5"
+            className="flex flex-col"
             aria-label={heading}
             onKeyDown={onListKeyDown}
           >
             {grouped.map((group) => (
               <li key={group.key}>
                 {group.label && (
-                  <p className="text-fg-quaternary px-2.5 pt-3 pb-1.5 text-[9.5px] font-semibold tracking-widest uppercase">
-                    {t(`buckets.${group.label}`)}
-                  </p>
+                  <p className={`${MICRO} px-3.5 pt-4 pb-1.5`}>{t(`buckets.${group.label}`)}</p>
                 )}
-                <ul className="flex flex-col gap-0.5">
-                  {group.notes.map((note) => (
-                    <li key={`${note.kind}-${note.id}`}>
-                      <NoteRow
-                        note={note}
-                        selected={note.id === selectedId}
-                        unlockedContent={unlocked[note.id]}
-                        notebookName={notebookNameOf(note.notebookId)}
-                        locale={locale}
-                        sort={sort}
-                        onSelect={() => onSelect(note.id)}
-                        onContextMenu={(anchor) =>
-                          setContextMenu({ note, anchor })
-                        }
-                      />
-                    </li>
-                  ))}
+                <ul className="flex flex-col">
+                  {group.notes.map((note) => {
+                    const delay = Math.min(rowIndex++, STAGGER_CAP) * STAGGER_STEP;
+                    return (
+                      <li key={`${note.kind}-${note.id}`}>
+                        <NoteRow
+                          note={note}
+                          selected={note.id === selectedId}
+                          unlockedContent={unlocked[note.id]}
+                          notebookName={notebookNameOf(note.notebookId)}
+                          locale={locale}
+                          sort={sort}
+                          enterDelay={delay}
+                          onSelect={() => onSelect(note.id)}
+                          onContextMenu={(anchor) =>
+                            setContextMenu({ note, anchor })
+                          }
+                        />
+                      </li>
+                    );
+                  })}
                 </ul>
               </li>
             ))}
           </ul>
         )}
-
-        {/* Encrypted notes never leave the server decrypted, so search cannot
-            look inside them. Silence would read as "no match". */}
-        {query.trim() !== "" && lockedExcluded > 0 && (
-          <p className="text-fg-quaternary flex items-start gap-2 px-3 pt-4 text-[11px]">
-            <Lock size={12} className="mt-0.5 flex-shrink-0" />
-            {t("searchLockedExcluded", { count: lockedExcluded })}
-          </p>
-        )}
       </div>
+
+      {/* Encrypted notes never leave the server decrypted, so search cannot
+          look inside them. Silence would read as "no match". A hairline strip
+          pinned to the bottom of the pane rather than a paragraph at the end of
+          the scroll, which is where it could not be seen without reaching the
+          end of the results it is explaining. */}
+      {query.trim() !== "" && lockedExcluded > 0 && (
+        <p className="flex flex-none items-start gap-2 border-t border-border-light/45 px-3.5 py-3 text-[11.5px] leading-relaxed text-fg-quaternary">
+          <Lock size={12} className="mt-0.5 flex-shrink-0" />
+          {t("searchLockedExcluded", { count: lockedExcluded })}
+        </p>
+      )}
 
       {contextMenu && (
         <NoteContextMenu
@@ -504,6 +534,7 @@ function NoteRow({
   notebookName,
   locale,
   sort,
+  enterDelay,
   onSelect,
   onContextMenu,
 }: {
@@ -513,6 +544,7 @@ function NoteRow({
   notebookName: string | null;
   locale: string;
   sort: NoteSort;
+  enterDelay: number;
   onSelect: () => void;
   onContextMenu: (anchor: ContextMenuAnchor) => void;
 }) {
@@ -541,7 +573,7 @@ function NoteRow({
     note.kind === "own" && note.sharedWith.length > 0 ? (
       <SharedAvatars
         users={note.sharedWith}
-        ringClass={selected ? "ring-bg-elevated" : "ring-bg-secondary"}
+        ringClass="ring-bg-primary"
         label={t("sharing.sharedWith")}
       />
     ) : null;
@@ -550,12 +582,10 @@ function NoteRow({
      A face has to be its own button so it can open the profile drawer, and a
      button cannot sit inside the row button. So the copy *inside* the row is
      inert and invisible — it exists only to reserve the exact space, which
-     keeps the meta chips from running under the real stack — and the copy
-     outside is laid over that gap. Anchoring to `right-2.5 bottom-2.5` lands
-     on the reserved gap because the row's padding is the same 2.5 and the
-     18px faces are the tallest thing on the meta line. */
+     keeps the meta badges from running under the real stack — and the copy
+     outside is laid over that gap. */
   return (
-    <div className="relative">
+    <div className="notes-row-in relative" style={{ animationDelay: `${enterDelay}s` }}>
       <button
         type="button"
         data-note-row
@@ -572,63 +602,62 @@ function NoteRow({
           );
         }}
         aria-current={selected ? "true" : undefined}
-        className={`relative w-full rounded-xl px-2.5 py-2.5 text-left transition-colors ${
-          selected
-            ? "bg-bg-elevated kairos-system-card ring-accent-primary/20 ring-1"
-            : "hover:bg-bg-tertiary"
+        className={`relative w-full border-b border-l-2 border-border-light/45 border-l-transparent px-3.5 py-3 text-left transition-colors duration-[300ms] ${
+          selected ? "bg-accent-primary/[0.07]" : "hover:bg-accent-primary/[0.05]"
         }`}
       >
-        {selected && (
-          <span
-            className="bg-accent-primary absolute top-3 bottom-3 left-0 w-0.5 rounded-full"
-            aria-hidden="true"
-          />
-        )}
+        {/* The marker scales in from its own centre — `dash-grow`'s
+            transform-origin trick turned on its side. The old ring had nothing
+            to animate, so a selection change was a colour swap and no more. */}
+        <span
+          aria-hidden="true"
+          className={`absolute inset-y-0 -left-[2px] w-[2px] origin-center bg-accent-primary transition-transform duration-[220ms] ease-[cubic-bezier(0.2,0.8,0.25,1)] ${
+            selected ? "scale-y-100" : "scale-y-0"
+          }`}
+        />
 
-        <span className="flex items-baseline gap-2">
-          <span className="text-fg-primary min-w-0 flex-1 truncate text-[13px] font-semibold">
+        <span className="flex items-baseline gap-2.5">
+          <span className="min-w-0 flex-1 truncate text-[13.5px] font-bold tracking-[-0.008em] text-fg-primary">
             {title}
           </span>
-          <span className="text-fg-quaternary flex-shrink-0 text-[10px] tabular-nums">
-            {stamp}
-          </span>
+          <span className={`${STAMP} flex-shrink-0`}>{stamp}</span>
         </span>
 
-        <span className="text-fg-tertiary mt-0.5 block truncate text-xs">
+        <span className="mt-1 block truncate text-[12.5px] text-fg-tertiary">
           {preview}
         </span>
 
-        <span className="mt-1.5 flex items-center gap-1.5">
+        <span className="mt-2 flex items-center gap-1.5">
           {/* Lock and share are independent facts. The old card put them in one
             ternary, so a shared note that was also encrypted showed neither
             lock nor key — only "Shared". */}
           {locked && (
-            <MetaChip tone="lock" icon={<Lock size={9} />}>
+            <Badge tone="lock" icon={<Lock size={9} />}>
               {t("filters.locked")}
-            </MetaChip>
+            </Badge>
           )}
           {note.kind === "shared" ? (
-            <MetaChip tone="share" icon={<Users size={9} />}>
+            <Badge tone="share" icon={<Users size={9} />}>
               {note.permission === "write"
                 ? t("sharing.canEdit")
                 : t("sharing.viewOnly")}
-            </MetaChip>
+            </Badge>
           ) : (
             shared && (
-              <MetaChip tone="share" icon={<Users size={9} />}>
+              <Badge tone="share" icon={<Users size={9} />}>
                 {String(note.sharedWith.length)}
-              </MetaChip>
+              </Badge>
             )
           )}
           {note.calendarDate && (
-            <MetaChip tone="calendar" icon={<CalendarDays size={9} />}>
+            <Badge tone="calendar" icon={<CalendarDays size={9} />}>
               {note.calendarDate.toLocaleDateString(locale, {
                 day: "numeric",
                 month: "short",
               })}
-            </MetaChip>
+            </Badge>
           )}
-          {notebookName && <MetaChip>{notebookName}</MetaChip>}
+          {notebookName && <Badge>{notebookName}</Badge>}
 
           <span className="flex-1" />
 
@@ -638,7 +667,7 @@ function NoteRow({
             </span>
           )}
           {note.kind === "shared" && (
-            <span className="text-fg-quaternary max-w-[120px] truncate text-[10px]">
+            <span className={`${STAMP} max-w-[120px] truncate normal-case`}>
               {t("sharing.fromOwner", {
                 owner: note.ownerName ?? note.ownerEmail ?? "",
               })}
@@ -648,10 +677,10 @@ function NoteRow({
       </button>
 
       {sharedFaces && (
-        <span className="absolute right-2.5 bottom-2.5 z-10 flex">
+        <span className="absolute right-3.5 bottom-3 z-10 flex">
           <SharedAvatars
             users={note.sharedWith}
-            ringClass={selected ? "ring-bg-elevated" : "ring-bg-secondary"}
+            ringClass="ring-bg-primary"
             label={t("sharing.sharedWith")}
             peek
           />
@@ -661,6 +690,14 @@ function NoteRow({
   );
 }
 
+/**
+ * Nothing to show, and why.
+ *
+ * Three of these six branches used to be a single grey line of `text-sm` — a
+ * filter that matched nothing looked indistinguishable from a rendering
+ * failure. They all get the outlined disc and a second line now, and the disc
+ * is the same shape as the lock gate's badge and every dialog's icon tile.
+ */
 function EmptyList({
   query,
   filter,
@@ -676,68 +713,122 @@ function EmptyList({
 
   if (query.trim()) {
     return (
-      <div className="px-6 py-16 text-center">
-        <p className="text-fg-secondary text-sm">
-          {t("searchEmpty", { query })}
-        </p>
-      </div>
+      <Empty
+        tone="error"
+        icon={<Search size={22} />}
+        title={t("searchEmpty", { query })}
+        body={t("searchEmptyHint")}
+      />
     );
   }
 
   if (filter !== "all") {
     return (
-      <div className="px-6 py-16 text-center">
-        <p className="text-fg-secondary text-sm">
-          {t(`filters.empty.${filter}`)}
-        </p>
-      </div>
+      <Empty
+        tone={filter === "locked" ? "error" : "accent"}
+        icon={
+          filter === "locked" ? (
+            <Lock size={22} />
+          ) : filter === "shared" ? (
+            <Users size={22} />
+          ) : (
+            <FolderOpen size={22} />
+          )
+        }
+        title={t(`filters.empty.${filter}`)}
+        body={t(`filters.emptyHint.${filter}`)}
+      />
     );
   }
 
   if (view === "shared") {
     return (
-      <div className="px-6 py-16 text-center">
-        <div className="bg-accent-primary/10 mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full">
-          <Users size={24} className="text-accent-primary" />
-        </div>
-        <p className="text-fg-primary mb-1 text-sm font-semibold">
-          {t("sharing.emptyTitle")}
-        </p>
-        <p className="text-fg-tertiary text-xs">{t("sharing.emptyDesc")}</p>
-      </div>
+      <Empty
+        icon={<Users size={22} />}
+        title={t("sharing.emptyTitle")}
+        body={t("sharing.emptyDesc")}
+      />
     );
   }
 
   if (view === "calendar") {
     return (
-      <div className="px-6 py-16 text-center">
-        <div className="bg-info/10 mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full">
-          <CalendarDays size={24} className="text-info" />
-        </div>
-        <p className="text-fg-primary mb-1 text-sm font-semibold">
-          {t("calendar.emptyTitle")}
-        </p>
-        <p className="text-fg-tertiary text-xs">{t("calendar.emptyDesc")}</p>
-      </div>
+      <Empty
+        tone="info"
+        icon={<CalendarDays size={22} />}
+        title={t("calendar.emptyTitle")}
+        body={t("calendar.emptyDesc")}
+      />
     );
   }
 
   return (
-    <div className="px-6 py-16 text-center">
-      <div className="bg-accent-primary/10 mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full">
-        <FileText size={24} className="text-accent-primary" />
+    <Empty
+      icon={<FileText size={22} />}
+      title={view === "all" ? t("empty.title") : t("empty.notebookTitle")}
+      body={t("empty.description")}
+      action={
+        <button type="button" onClick={onNewNote} className={BTN_ACCENT}>
+          <Plus size={14} />
+          {t("actions.create")}
+        </button>
+      }
+    />
+  );
+}
+
+/**
+ * The shared empty-state shape.
+ *
+ * The disc pops on the overshoot curve and the copy follows it, which is the
+ * `kairos-scale-in` / `calendar-pop` pairing the rest of the app uses for a
+ * panel arriving.
+ */
+function Empty({
+  tone = "accent",
+  icon,
+  title,
+  body,
+  action,
+}: {
+  tone?: "accent" | "error" | "info";
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  action?: React.ReactNode;
+}) {
+  const tones = {
+    accent: "border-accent-primary/30 text-accent-primary",
+    error: "border-error/35 text-error",
+    info: "border-info/30 text-info",
+  } as const;
+
+  return (
+    <div className="grid place-items-center px-6 py-14 text-center">
+      <div className="max-w-[280px]">
+        <div
+          className={`notes-disc-in mx-auto mb-4 grid h-[54px] w-[54px] place-items-center rounded-full border ${tones[tone]}`}
+        >
+          {icon}
+        </div>
+        <p
+          className="calendar-pop text-[15px] font-bold tracking-[-0.012em] text-fg-primary"
+          style={{ animationDelay: "0.08s" }}
+        >
+          {title}
+        </p>
+        <p
+          className="calendar-pop mt-2 text-[12.5px] leading-relaxed text-fg-tertiary"
+          style={{ animationDelay: "0.12s" }}
+        >
+          {body}
+        </p>
+        {action && (
+          <div className="calendar-pop mt-5" style={{ animationDelay: "0.16s" }}>
+            {action}
+          </div>
+        )}
       </div>
-      <p className="text-fg-primary mb-1 text-sm font-semibold">
-        {view === "all" ? t("empty.title") : t("empty.notebookTitle")}
-      </p>
-      <p className="text-fg-tertiary mb-4 text-xs">{t("empty.description")}</p>
-      <button
-        type="button"
-        onClick={onNewNote}
-        className="bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 rounded-lg px-4 py-2 text-sm font-semibold transition-colors"
-      >
-        {t("actions.create")}
-      </button>
     </div>
   );
 }

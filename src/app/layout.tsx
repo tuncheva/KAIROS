@@ -14,6 +14,7 @@ import { UserPreferencesProvider } from "~/components/providers/UserPreferencesP
 import { SocketProvider } from "~/components/providers/SocketProvider";
 import WebSocketInitializer from "~/components/layout/WebSocketInitializer";
 import { GlobalAIWidget } from "~/components/layout/GlobalAIWidget";
+import { OnboardingSheet } from "~/components/onboarding/OnboardingSheet";
 import { headers } from "next/headers";
 import { THEME_INIT_SCRIPT } from "~/server/http/themeInitScript";
 
@@ -125,6 +126,7 @@ export default async function RootLayout({
                     <UserPreferencesProvider>
                       {children}
                       <GlobalAIWidget />
+                      <OnboardingSheet />
                     </UserPreferencesProvider>
                   </ToastProvider>
                 </ThemeProvider>

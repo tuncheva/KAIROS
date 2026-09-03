@@ -12,6 +12,13 @@
  * a note shared with you read-only, edit a note that is still encrypted, or
  * unlock someone else's encrypted note — `verifyPassword` is owner-only, so a
  * recipient gets an explanation rather than a password field that cannot work.
+ *
+ * The title is set in the display serif at 34px. The chrome around it — the
+ * breadcrumb, the save state, the meta line, the word count — is mono
+ * micro-label. Giving the thing you are writing a different voice from the
+ * furniture is the move `CalendarClient` makes with its `font-display` month
+ * heading, and it is the only place on this surface where the display face
+ * appears.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -27,7 +34,9 @@ import {
   FolderOpen,
   Loader2,
   Lock,
+  LockOpen,
   MoreHorizontal,
+  Plus,
   Share2,
   Trash2,
   X,
@@ -36,7 +45,14 @@ import {
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from "./Menu";
 import { LockGate } from "./LockGate";
 import { useAutosave, type SaveStatus } from "./useAutosave";
-import { MetaChip, SharedAvatars } from "./notesUi";
+import {
+  Badge,
+  BTN_ACCENT,
+  ICON_BTN_BARE,
+  ICON_BTN_ON,
+  MICRO,
+  SharedAvatars,
+} from "./notesUi";
 import {
   fromDateInputValue,
   toDateInputValue,
@@ -56,12 +72,21 @@ export interface LockState {
   password: string;
   reveal: boolean;
   error: string | null;
+  /** Refusals so far for this note. Replays the gate's shake. */
+  attempt: number;
   isPending: boolean;
 }
+
+/** An inline strip: the calendar-date picker and the draft password field. */
+const STRIP =
+  "notes-strip mb-4 flex items-center gap-2.5 rounded-[10px] border border-border-medium bg-bg-surface px-3 py-2.5";
+const STRIP_INPUT =
+  "min-w-0 flex-1 rounded-lg border border-border-medium bg-bg-elevated px-2.5 py-1.5 text-[12px] tabular-nums text-fg-primary outline-none transition-colors focus:border-accent-primary/60 focus:ring-[3px] focus:ring-accent-primary/10";
 
 export function NotePage({
   note,
   isDraft,
+  isLoading = false,
   notebooks,
   unlockedContent,
   locale,
@@ -82,6 +107,15 @@ export function NotePage({
 }: {
   note: NoteItem | null;
   isDraft: boolean;
+  /**
+   * The route names a note the queries have not returned yet.
+   *
+   * Without this, a hard load of `/notes/5` renders "Nothing open" for as long
+   * as the fetch takes and then replaces it with the note — an empty state that
+   * was never true. It exists because the route-level `loading.tsx` was removed;
+   * see the note in `NotesWorkspace`.
+   */
+  isLoading?: boolean;
   notebooks: Array<{ id: number; name: string }>;
   /** Decrypted body, present only while the note is unlocked this session. */
   unlockedContent: string | undefined;
@@ -205,23 +239,58 @@ export function NotePage({
     };
   }, []);
 
+  // ── the note is named but not here yet ─────────────────────────────
+  if (!note && !isDraft && isLoading) {
+    return (
+      <div className="flex h-full flex-col bg-bg-primary" aria-busy="true">
+        <div className="min-h-[48px] flex-none border-b border-border-light/60 px-4 py-2">
+          <div className="kairos-shimmer h-3 w-24 rounded" />
+        </div>
+        <div className="min-h-0 flex-1 px-5 pt-6 md:px-10">
+          {/* 34px display serif, so the placeholder is that tall. */}
+          <div className="kairos-shimmer h-8 w-3/5 rounded" />
+          <div className="kairos-shimmer mt-4 h-2.5 w-2/5 rounded" />
+          <div className="mt-5 mb-5 h-px bg-border-light/50" />
+          <div className="space-y-3">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="kairos-shimmer h-2.5 rounded"
+                style={{ width: `${90 - (i % 4) * 12}%` }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── nothing selected ───────────────────────────────────────────────
   if (!note && !isDraft) {
     return (
-      <div className="hidden md:grid place-items-center h-full bg-bg-primary p-6 text-center">
-        <div>
-          <div className="w-14 h-14 rounded-full bg-accent-primary/10 grid place-items-center mx-auto mb-3">
-            <FileText size={24} className="text-accent-primary" />
+      <div className="hidden h-full place-items-center bg-bg-primary p-6 text-center md:grid">
+        <div className="max-w-[280px]">
+          <div className="notes-disc-in mx-auto mb-4 grid h-[54px] w-[54px] place-items-center rounded-full border border-accent-primary/30 text-accent-primary">
+            <FileText size={22} />
           </div>
-          <p className="text-sm font-semibold text-fg-primary mb-1">{t("empty.noSelection")}</p>
-          <p className="text-xs text-fg-tertiary mb-4">{t("empty.noSelectionDesc")}</p>
-          <button
-            type="button"
-            onClick={onNewNote}
-            className="px-4 py-2 rounded-lg bg-accent-primary/10 text-accent-primary text-sm font-semibold hover:bg-accent-primary/20 transition-colors"
+          <p
+            className="calendar-pop text-[15px] font-bold tracking-[-0.012em] text-fg-primary"
+            style={{ animationDelay: "0.08s" }}
           >
-            {t("actions.create")}
-          </button>
+            {t("empty.noSelection")}
+          </p>
+          <p
+            className="calendar-pop mt-2 text-[12.5px] leading-relaxed text-fg-tertiary"
+            style={{ animationDelay: "0.12s" }}
+          >
+            {t("empty.noSelectionDesc")}
+          </p>
+          <div className="calendar-pop mt-5" style={{ animationDelay: "0.16s" }}>
+            <button type="button" onClick={onNewNote} className={BTN_ACCENT}>
+              <Plus size={14} />
+              {t("actions.create")}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -233,8 +302,8 @@ export function NotePage({
   const calendarDate = isDraft ? draftCalendarDate : (note?.calendarDate ?? null);
 
   return (
-    <div className="flex flex-col h-full bg-bg-primary">
-      <header className="flex items-center gap-1.5 px-3 md:px-5 py-2.5 flex-none border-b border-border-light/40">
+    <div className="flex h-full flex-col bg-bg-primary">
+      <header className="flex min-h-[48px] flex-none items-center gap-2 border-b border-border-light/60 px-3 py-2 md:px-4">
         <button
           type="button"
           onClick={() => {
@@ -242,12 +311,12 @@ export function NotePage({
             onBack();
           }}
           aria-label={t("common.back")}
-          className="p-2 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-secondary transition-colors md:hidden"
+          className={`${ICON_BTN_BARE} -ml-1 md:hidden`}
         >
           <ArrowLeft size={18} />
         </button>
 
-        <p className="flex-1 min-w-0 flex items-center gap-1.5 text-[11px] text-fg-tertiary truncate">
+        <p className={`${MICRO} flex min-w-0 flex-1 items-center gap-1.5 truncate`}>
           {notebookName ? (
             <>
               <BookOpen size={12} className="flex-shrink-0" />
@@ -266,18 +335,14 @@ export function NotePage({
             onClick={onShare}
             aria-label={note.sharedWith.length > 0 ? t("manageSharing") : t("share")}
             title={note.sharedWith.length > 0 ? t("manageSharing") : t("share")}
-            className={`p-2 rounded-lg transition-colors ${
-              note.sharedWith.length > 0
-                ? "bg-accent-primary/12 text-accent-primary hover:bg-accent-primary/20"
-                : "text-fg-tertiary hover:text-fg-primary hover:bg-bg-secondary"
-            }`}
+            className={note.sharedWith.length > 0 ? ICON_BTN_ON : ICON_BTN_BARE}
           >
-            <Share2 size={16} />
+            <Share2 size={15} />
           </button>
         )}
 
         {(isOwn || isDraft) && (
-          <Menu label={t("common.noteActions")} icon={<MoreHorizontal size={16} />}>
+          <Menu label={t("common.noteActions")} icon={<MoreHorizontal size={15} />}>
             {(close) => (
               <>
                 <MenuLabel>{t("notebook")}</MenuLabel>
@@ -365,13 +430,15 @@ export function NotePage({
           verifies a password for the owner. Say that, rather than offering a
           field that is guaranteed to fail. */}
       {note?.kind === "shared" && note.isPasswordProtected ? (
-        <div className="flex-1 min-h-0 grid place-items-center p-6 text-center">
-          <div className="max-w-[300px]">
-            <div className="w-[52px] h-[52px] rounded-2xl bg-error/10 text-error grid place-items-center mx-auto mb-3.5">
+        <div className="grid min-h-0 flex-1 place-items-center p-6 text-center">
+          <div className="notes-pane-in max-w-[300px]">
+            <div className="notes-disc-in mx-auto mb-4 grid h-[54px] w-[54px] place-items-center rounded-full border border-error/35 text-error">
               <Lock size={22} />
             </div>
-            <h2 className="text-lg font-bold text-fg-primary">{t("password.gateTitle")}</h2>
-            <p className="mt-1 text-xs text-fg-tertiary leading-relaxed">
+            <h2 className="text-[15.5px] font-bold tracking-[-0.012em] text-fg-primary">
+              {t("password.gateTitle")}
+            </h2>
+            <p className="mt-2 text-[13px] leading-relaxed text-fg-tertiary">
               {t("password.ownerOnly", { owner: note.ownerName ?? note.ownerEmail ?? "" })}
             </p>
           </div>
@@ -383,6 +450,7 @@ export function NotePage({
           reveal={lock.reveal}
           onToggleReveal={onToggleReveal}
           error={lock.error}
+          attempt={lock.attempt}
           isPending={lock.isPending}
           canReset={isOwn}
           onUnlock={onUnlock}
@@ -392,7 +460,14 @@ export function NotePage({
           })}
         />
       ) : (
-        <div className="flex-1 min-h-0 flex flex-col overflow-y-auto px-4 md:px-10 pt-5 pb-2">
+        /* Deliberately not animated, and deliberately not keyed.
+           An earlier pass keyed this column on the note and faded it in, which
+           looked like the pane reloading every time you picked a row: the title
+           input and the textarea were torn down and rebuilt, so the text
+           blinked out and back and the caret was lost. The reading surface is
+           the one thing on this page that should hold still — the motion is in
+           the list, the rail, the menus and the dialogs around it. */
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-6 pb-3 md:px-10">
           <label htmlFor="note-title" className="sr-only">
             {t("create.titlePlaceholder")}
           </label>
@@ -411,42 +486,35 @@ export function NotePage({
             onBlur={() => void autosave.flush()}
             readOnly={readOnly}
             placeholder={t("untitled")}
-            className="w-full bg-transparent text-2xl md:text-[28px] font-bold text-fg-primary placeholder:text-fg-quaternary focus:outline-none"
+            className="w-full bg-transparent font-display text-[28px] leading-[1.14] font-normal tracking-[-0.012em] text-fg-primary placeholder:text-fg-quaternary focus:outline-none md:text-[34px]"
           />
 
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 mb-3 text-[10px] font-medium uppercase tracking-wide text-fg-quaternary">
+          <p className={`${MICRO} mt-3 mb-4 flex flex-wrap items-center gap-x-3.5 gap-y-1`}>
             {note && (
               <>
                 <span>{t("meta.createdOn", { date: formatFullDate(note.createdAt) })}</span>
-                <span aria-hidden="true">·</span>
                 <span>{t("meta.editedOn", { date: formatFullDate(note.updatedAt) })}</span>
               </>
             )}
             {note?.kind === "shared" && (
-              <>
-                <span aria-hidden="true">·</span>
-                <span>{t("sharing.fromOwner", { owner: note.ownerName ?? note.ownerEmail ?? "" })}</span>
-              </>
+              <span>{t("sharing.fromOwner", { owner: note.ownerName ?? note.ownerEmail ?? "" })}</span>
             )}
             {calendarDate && (
-              <>
-                <span aria-hidden="true">·</span>
-                <span className="text-info">
-                  {t("calendar.onDate", {
-                    date: calendarDate.toLocaleDateString(locale, {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    }),
-                  })}
-                </span>
-              </>
+              <span className="text-info">
+                {t("calendar.onDate", {
+                  date: calendarDate.toLocaleDateString(locale, {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  }),
+                })}
+              </span>
             )}
           </p>
 
           {showDatePicker && (
-            <div className="flex items-center gap-2 mb-3 p-2.5 rounded-xl bg-bg-secondary">
-              <CalendarDays size={14} className="text-info flex-shrink-0" />
+            <div className={STRIP}>
+              <CalendarDays size={14} className="flex-shrink-0 text-info" />
               <label htmlFor="note-calendar-date" className="sr-only">
                 {t("calendar.calendarDate")}
               </label>
@@ -465,7 +533,7 @@ export function NotePage({
                      older copy would be written back over it. */
                   void autosave.flush().then(() => onSetCalendarDate(next));
                 }}
-                className="flex-1 px-2.5 py-1.5 text-xs bg-bg-primary rounded-lg text-fg-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/35"
+                className={STRIP_INPUT}
               />
               {calendarDate && (
                 <button
@@ -477,7 +545,7 @@ export function NotePage({
                     }
                     void autosave.flush().then(() => onSetCalendarDate(null));
                   }}
-                  className="px-2 py-1.5 rounded-lg text-[11px] font-semibold text-fg-tertiary hover:text-error transition-colors"
+                  className="font-mono text-[9.5px] tracking-[0.12em] uppercase text-fg-tertiary transition-colors hover:text-error"
                 >
                   {t("calendar.remove")}
                 </button>
@@ -486,16 +554,16 @@ export function NotePage({
                 type="button"
                 onClick={() => setShowDatePicker(false)}
                 aria-label={t("common.close")}
-                className="p-1 rounded-lg text-fg-tertiary hover:text-fg-primary transition-colors"
+                className="kairos-tap grid h-6 w-6 flex-none place-items-center rounded-md text-fg-tertiary transition-colors hover:text-fg-primary"
               >
-                <X size={14} />
+                <X size={13} />
               </button>
             </div>
           )}
 
           {isDraft && showPasswordField && (
-            <div className="flex items-center gap-2 mb-3 p-2.5 rounded-xl bg-bg-secondary">
-              <Lock size={14} className="text-error flex-shrink-0" />
+            <div className={STRIP}>
+              <Lock size={14} className="flex-shrink-0 text-error" />
               <label htmlFor="note-password" className="sr-only">
                 {t("create.passwordPlaceholder")}
               </label>
@@ -506,7 +574,7 @@ export function NotePage({
                 onChange={(event) => setDraftPassword(event.target.value)}
                 placeholder={t("create.passwordPlaceholder")}
                 autoComplete="new-password"
-                className="flex-1 px-2.5 py-1.5 text-xs bg-bg-primary rounded-lg text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/35"
+                className={STRIP_INPUT}
               />
               <button
                 type="button"
@@ -515,15 +583,19 @@ export function NotePage({
                   setShowPasswordField(false);
                 }}
                 aria-label={t("common.close")}
-                className="p-1 rounded-lg text-fg-tertiary hover:text-fg-primary transition-colors"
+                className="kairos-tap grid h-6 w-6 flex-none place-items-center rounded-md text-fg-tertiary transition-colors hover:text-fg-primary"
               >
-                <X size={14} />
+                <X size={13} />
               </button>
             </div>
           )}
 
+          {/* A hairline between the metadata and the prose, so the writing area
+              reads as its own field rather than as more header. */}
+          <div className="mb-5 h-px flex-none bg-border-light/50" aria-hidden="true" />
+
           {readOnly ? (
-            <p className="flex-1 whitespace-pre-wrap text-sm leading-relaxed text-fg-secondary">
+            <p className="flex-1 text-[14.5px] leading-[1.75] whitespace-pre-wrap text-fg-secondary">
               {content || t("noContent")}
             </p>
           ) : (
@@ -538,27 +610,30 @@ export function NotePage({
                 onChange={(event) => setContent(event.target.value)}
                 onBlur={() => void autosave.flush()}
                 placeholder={t("create.contentPlaceholder")}
-                className="flex-1 min-h-[240px] w-full bg-transparent text-sm leading-relaxed text-fg-secondary placeholder:text-fg-quaternary focus:outline-none resize-none"
+                className="min-h-[240px] w-full flex-1 resize-none bg-transparent text-[14.5px] leading-[1.75] text-fg-secondary placeholder:text-fg-quaternary focus:outline-none"
               />
             </>
           )}
         </div>
       )}
 
-      <footer className="flex items-center gap-2 px-4 md:px-5 py-2.5 flex-none border-t border-border-light/40 bg-bg-surface">
-        {notebookName && <MetaChip>{notebookName}</MetaChip>}
+      <footer className="flex flex-none flex-wrap items-center gap-2 border-t border-border-light/60 bg-bg-surface px-4 py-2.5 md:px-5">
+        {notebookName ? <Badge>{notebookName}</Badge> : null}
         {calendarDate && (
-          <MetaChip tone="calendar" icon={<CalendarDays size={9} />}>
+          <Badge tone="calendar" icon={<CalendarDays size={9} />}>
             {calendarDate.toLocaleDateString(locale, { day: "numeric", month: "short" })}
-          </MetaChip>
+          </Badge>
         )}
         {note?.isPasswordProtected && (
-          <MetaChip tone="lock" icon={<Lock size={9} />}>
+          <Badge
+            tone={locked ? "lock" : "ok"}
+            icon={locked ? <Lock size={9} /> : <LockOpen size={9} />}
+          >
             {locked ? t("filters.locked") : t("password.unlocked")}
-          </MetaChip>
+          </Badge>
         )}
         {readOnly && note?.kind === "shared" && (
-          <MetaChip tone="share">{t("sharing.viewOnly")}</MetaChip>
+          <Badge tone="share">{t("sharing.viewOnly")}</Badge>
         )}
 
         <span className="flex-1" />
@@ -572,7 +647,7 @@ export function NotePage({
           />
         )}
         {!locked && (
-          <span className="text-[10px] font-medium uppercase tracking-wide text-fg-quaternary tabular-nums">
+          <span className={`${MICRO} tabular-nums`}>
             {t("meta.words", { count: wordCount(content) })}
           </span>
         )}
@@ -581,7 +656,21 @@ export function NotePage({
   );
 }
 
-/** The Save button's replacement: a status you can check rather than press. */
+/**
+ * The Save button's replacement: a status you can check rather than press.
+ *
+ * Four states in one slot, keyed so React swaps the node and the cross-fade
+ * actually plays — the old version returned four different elements from four
+ * early returns, so icon and colour changed in the same frame with nothing
+ * connecting them.
+ *
+ * The proposal also had the `Saved` check drawing its own stroke. That is not
+ * buildable through `ui/icons`: the Phosphor glyphs behind it are filled paths,
+ * not stroked ones, so there is no stroke for `stroke-dashoffset` to walk along.
+ * Hand-authoring one SVG for one checkmark would put a bespoke glyph in the
+ * middle of a surface that gets all of them from the shim, which is a worse
+ * trade than losing the flourish.
+ */
 function SaveIndicator({
   status,
   savedAt,
@@ -596,9 +685,11 @@ function SaveIndicator({
   const t = useTranslations("notes");
   if (readOnly) return null;
 
+  const shell = "calendar-pop flex flex-none items-center gap-1.5 font-mono text-[9.5px] uppercase tracking-[0.13em]";
+
   if (status === "saving") {
     return (
-      <span className="flex items-center gap-1.5 mr-1 text-[10px] font-semibold uppercase tracking-wide text-fg-tertiary">
+      <span key="saving" className={`${shell} text-fg-tertiary`}>
         <Loader2 size={11} className="animate-spin" />
         {t("actions.saving")}
       </span>
@@ -607,10 +698,7 @@ function SaveIndicator({
 
   if (status === "error") {
     return (
-      <span
-        role="alert"
-        className="flex items-center gap-1.5 mr-1 text-[10px] font-semibold uppercase tracking-wide text-error"
-      >
+      <span key="error" role="alert" className={`${shell} text-error`}>
         <CloudOff size={11} />
         {t("messages.saveFailed")}
       </span>
@@ -619,7 +707,7 @@ function SaveIndicator({
 
   if (status === "dirty") {
     return (
-      <span className="flex items-center gap-1.5 mr-1 text-[10px] font-semibold uppercase tracking-wide text-fg-quaternary">
+      <span key="dirty" className={`${shell} text-fg-quaternary`}>
         <AlertCircle size={11} />
         {t("messages.unsaved")}
       </span>
@@ -628,7 +716,7 @@ function SaveIndicator({
 
   if (status === "saved" && savedAt) {
     return (
-      <span className="flex items-center gap-1.5 mr-1 text-[10px] font-semibold uppercase tracking-wide text-success">
+      <span key="saved" className={`${shell} text-success`}>
         <Check size={11} />
         {t("messages.savedAt", {
           time: savedAt.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }),

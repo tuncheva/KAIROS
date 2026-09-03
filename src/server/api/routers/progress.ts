@@ -5,6 +5,7 @@ import {
   organizationMembers,
   projectCollaborators,
   projects,
+  taskActivityLog,
   tasks,
   users,
 } from "~/server/db/schema";
@@ -357,6 +358,124 @@ export const progressRouter = createTRPCRouter({
           : null,
       };
     }),
+
+  /**
+   * The dashboard's two people-shaped panels, in one round trip.
+   *
+   * "Your momentum" and "Team today" both want facts that no other endpoint
+   * returns: when the caller finished things recently, and how much open work
+   * each teammate is carrying right now. Fetching them together is what keeps
+   * the landing page at one extra query rather than two.
+   *
+   * `completions` comes back as bare timestamps and is bucketed into days by
+   * the client, for the same reason `getRecord` does it: which day a 23:40
+   * completion belongs to is a question only the reader's clock can answer.
+   */
+  getPulse: protectedProcedure
+    .input(
+      z
+        .object({
+          /** How far back the momentum bars reach. A fortnight plus slack. */
+          days: z.number().int().min(7).max(90).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const scope = await resolveScope(ctx);
+      const me = ctx.session.user.id;
+      const days = input?.days ?? 21;
+
+      const empty = {
+        scope: scope.mode,
+        days,
+        completions: [] as Date[],
+        team: [] as TeamMemberRow[],
+      };
+      if (!scope.projectIds.length) return empty;
+
+      const inScope = inArray(tasks.projectId, scope.projectIds);
+      // ISO text rather than a Date — see the note in `getRecord`.
+      const since = new Date(Date.now() - days * 86_400_000).toISOString();
+
+      const [completionRows, loadRows, activeRows, people] = await Promise.all([
+        ctx.db
+          .select({ finishedAt })
+          .from(tasks)
+          .where(
+            and(
+              inScope,
+              eq(tasks.status, "completed"),
+              sql`coalesce(${tasks.completedById}, ${tasks.lastEditedById}) = ${me}`,
+              sql`coalesce(${tasks.completedAt}, ${tasks.updatedAt}) >= ${since}`,
+            ),
+          )
+          .limit(2000),
+
+        // Open work per assignee. Unassigned tasks group under NULL and are
+        // dropped below: the panel is about people, and "nobody" is not one.
+        ctx.db
+          .select({
+            userId: tasks.assignedToId,
+            open: count(),
+            overdue:
+              sql<number>`count(*) FILTER (WHERE ${tasks.dueDate} < current_date)`.mapWith(
+                Number,
+              ),
+          })
+          .from(tasks)
+          .where(and(inScope, ne(tasks.status, "completed")))
+          .groupBy(tasks.assignedToId),
+
+        // Last touch is read off the activity log rather than off the tasks:
+        // "active 20m ago" is about the person, and a comment or a reorder is
+        // as much a sign of life as a completion.
+        ctx.db
+          .select({ userId: taskActivityLog.userId, lastActiveAt: max(taskActivityLog.createdAt) })
+          .from(taskActivityLog)
+          .innerJoin(tasks, eq(taskActivityLog.taskId, tasks.id))
+          .where(inScope)
+          .groupBy(taskActivityLog.userId),
+
+        ctx.db
+          .select({ id: users.id, name: users.name, email: users.email, image: users.image })
+          .from(users)
+          .where(inArray(users.id, scope.memberIds)),
+      ]);
+
+      const load = new Map(
+        loadRows
+          .filter((row): row is typeof row & { userId: string } => row.userId !== null)
+          .map((row) => [row.userId, { open: Number(row.open), overdue: row.overdue }] as const),
+      );
+      const lastActive = new Map(
+        activeRows
+          .filter((row): row is typeof row & { userId: string } => row.userId !== null)
+          .map((row) => [row.userId, row.lastActiveAt ?? null] as const),
+      );
+
+      const team: TeamMemberRow[] = people
+        .map((person) => ({
+          ...person,
+          isSelf: person.id === me,
+          open: load.get(person.id)?.open ?? 0,
+          overdue: load.get(person.id)?.overdue ?? 0,
+          lastActiveAt: lastActive.get(person.id) ?? null,
+        }))
+        // Heaviest load first — the panel exists to show where the work piled
+        // up. People with nothing open still appear, at the bottom.
+        .sort(
+          (a, b) =>
+            b.open - a.open ||
+            (b.lastActiveAt?.getTime() ?? 0) - (a.lastActiveAt?.getTime() ?? 0) ||
+            (a.name ?? "").localeCompare(b.name ?? ""),
+        );
+
+      return {
+        ...empty,
+        completions: completionRows.map((row) => row.finishedAt).filter((d): d is Date => !!d),
+        team,
+      };
+    }),
 });
 
 /** Tasks with no due date sort last rather than first. */
@@ -387,6 +506,18 @@ type WorkloadRow = {
   projectTitle: string;
   open: number;
   lastTouchedAt: Date | null;
+};
+
+type TeamMemberRow = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
+  isSelf: boolean;
+  /** Open tasks assigned to this person inside the visible workspace. */
+  open: number;
+  overdue: number;
+  lastActiveAt: Date | null;
 };
 
 type NextTaskRow = {

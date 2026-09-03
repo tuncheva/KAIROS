@@ -16,12 +16,12 @@ import { PublishWorkspace } from "~/components/publish/PublishWorkspace";
 export default function PublishPage() {
   return (
     <div className="min-h-dvh bg-bg-primary">
-      <div className="rail-offset kairos-page-enter kairos-topbar-gap">
+      <main id="main-content" className="rail-offset kairos-page-enter kairos-topbar-gap">
         {/* The workspace reads the view and region from the query string. */}
         <Suspense fallback={null}>
           <PublishWorkspace />
         </Suspense>
-      </div>
+      </main>
     </div>
   );
 }

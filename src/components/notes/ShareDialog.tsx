@@ -7,7 +7,13 @@
  * email field that suggests people from your organisation, a debounced lookup
  * that tells you whether the address belongs to an account *before* you press
  * share, and per-person read/write permission. What is new is that it behaves
- * like a dialog — labelled, focus-trapped, dismissible with Escape.
+ * like a dialog — labelled, focus-trapped, dismissible with Escape — and that
+ * its four lookup states now share one slot under the field.
+ *
+ * That last part is not cosmetic. Suggestions, looking-up, found and not-found
+ * used to be four separately positioned cards, each `rounded-lg
+ * kairos-system-card-elevated` — a card floating inside a card — appearing and
+ * disappearing at different heights, so the panel snapped as you typed.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -15,10 +21,22 @@ import Image from "next/image";
 
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useTranslations } from "next-intl";
-import { Loader2, Share2, X } from "~/components/ui/icons";
+import { AlertCircle, Loader2, Share2, X } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
+
+import { NotesDialog } from "./notesDialog";
+import {
+  Badge,
+  BTN_ACCENT,
+  BTN_GHOST,
+  FIELD,
+  FIELD_INPUT,
+  ICON_BTN_BARE,
+  MICRO,
+  POPOVER_SURFACE,
+} from "./notesUi";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LOOKUP_DEBOUNCE_MS = 400;
@@ -33,9 +51,7 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
   const [debouncedEmail, setDebouncedEmail] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const dialogRef = useRef<HTMLDivElement | null>(null);
   const emailRef = useRef<HTMLInputElement | null>(null);
-  const restoreTo = useRef<HTMLElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sharesQuery = api.note.getNoteShares.useQuery({ noteId });
@@ -103,41 +119,6 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
     onError: (error) => toast.error(error.message),
   });
 
-  useEffect(() => {
-    restoreTo.current = document.activeElement as HTMLElement | null;
-    emailRef.current?.focus();
-
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== "Tab") return;
-
-      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      if (!focusable || focusable.length === 0) return;
-      const first = focusable[0]!;
-      const last = focusable[focusable.length - 1]!;
-
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      restoreTo.current?.focus();
-    };
-  }, [onClose]);
-
   const submit = () => {
     const trimmed = email.trim();
     if (!trimmed) return;
@@ -146,42 +127,92 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
 
   const shares = sharesQuery.data ?? [];
 
-  return (
-    <div
-      className="fixed inset-0 z-[65] bg-black/50 grid place-items-center p-4"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="notes-share-title"
-        className="w-full max-w-md p-6 rounded-2xl bg-bg-elevated kairos-system-card-elevated"
-      >
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-9 h-9 rounded-lg bg-accent-primary/12 grid place-items-center">
-            <Share2 size={16} className="text-accent-primary" />
-          </div>
-          <h2 id="notes-share-title" className="flex-1 text-base font-bold text-fg-primary">
-            {t("sharing.title")}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t("common.close")}
-            className="kairos-tap p-1.5 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-secondary transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
+  /* One slot, four states, in the order they can actually occur. Rendering it
+     as a single expression is what stops two of them ever being on screen at
+     once — which the old four independent conditions allowed. */
+  const popover = (() => {
+    if (debouncedEmail && isLookingUp) {
+      return (
+        <Row muted>
+          <Loader2 size={14} className="animate-spin text-fg-tertiary" />
+          <span className="text-[12.5px] text-fg-tertiary">{t("sharing.lookup")}</span>
+        </Row>
+      );
+    }
+    if (debouncedEmail && lookup) {
+      return (
+        <Row>
+          <PersonAvatar name={lookup.name} email={lookup.email} image={lookup.image} />
+          <span className="min-w-0">
+            <span className="block truncate text-[13px] font-semibold text-fg-primary">
+              {lookup.name ?? t("sharing.noName")}
+            </span>
+            <span className="block truncate font-mono text-[9.5px] text-fg-quaternary">
+              {lookup.email}
+            </span>
+          </span>
+        </Row>
+      );
+    }
+    if (debouncedEmail && !lookup) {
+      return (
+        <Row muted>
+          <AlertCircle size={14} className="flex-none text-error" />
+          <span className="text-[12.5px] text-error">{t("sharing.noAccount")}</span>
+        </Row>
+      );
+    }
+    if (showSuggestions && email.trim() && suggestions.length > 0) {
+      return (
+        <ul className="max-h-44 overflow-y-auto">
+          {suggestions.map((member, index) => (
+            <li key={member.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail(member.email);
+                  setShowSuggestions(false);
+                }}
+                className="calendar-pop flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-bg-secondary"
+                style={{ animationDelay: `${index * 0.03}s` }}
+              >
+                <PersonAvatar name={member.name} email={member.email} image={member.image} />
+                <span className="min-w-0">
+                  <span className="block truncate text-[13px] font-semibold text-fg-primary">
+                    {member.name ?? t("sharing.noName")}
+                  </span>
+                  <span className="block truncate font-mono text-[9.5px] text-fg-quaternary">
+                    {member.email}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    return null;
+  })();
 
-        <div className="flex gap-2 mb-4">
-          <div className="flex-1 relative">
-            <label htmlFor="notes-share-email" className="sr-only">
-              {t("sharing.emailPlaceholder")}
-            </label>
+  return (
+    <NotesDialog
+      icon={<Share2 size={15} />}
+      size="lg"
+      title={t("sharing.title")}
+      onClose={onClose}
+      initialFocusRef={emailRef}
+      actions={({ close }) => (
+        <button type="button" onClick={close} className={BTN_GHOST}>
+          {t("common.close")}
+        </button>
+      )}
+    >
+      <div className="relative">
+        <div className="flex flex-wrap gap-2">
+          <label htmlFor="notes-share-email" className="sr-only">
+            {t("sharing.emailPlaceholder")}
+          </label>
+          <div className={`${FIELD} min-w-[180px] flex-1`}>
             <input
               id="notes-share-email"
               ref={emailRef}
@@ -199,124 +230,97 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
                 }
               }}
               placeholder={t("sharing.emailPlaceholder")}
-              className="w-full px-3 py-2 text-sm bg-bg-secondary rounded-lg text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/35"
+              autoComplete="off"
+              className={FIELD_INPUT}
             />
-
-            {showSuggestions && email.trim() && !debouncedEmail && suggestions.length > 0 && (
-              <ul className="absolute left-0 right-0 top-full mt-1 z-10 max-h-40 overflow-y-auto rounded-lg bg-bg-elevated kairos-system-card-elevated p-1">
-                {suggestions.map((member) => (
-                  <li key={member.id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmail(member.email);
-                        setShowSuggestions(false);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-bg-secondary transition-colors text-left"
-                    >
-                      <PersonAvatar name={member.name} email={member.email} image={member.image} />
-                      <span className="min-w-0">
-                        <span className="block text-xs font-medium text-fg-primary truncate">
-                          {member.name ?? t("sharing.noName")}
-                        </span>
-                        <span className="block text-[10px] text-fg-tertiary truncate">{member.email}</span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {debouncedEmail && isLookingUp && (
-              <div className="absolute left-0 right-0 top-full mt-1 z-10 flex items-center gap-2 p-2.5 rounded-lg bg-bg-elevated kairos-system-card-elevated">
-                <Loader2 size={12} className="animate-spin text-fg-tertiary" />
-                <p className="text-xs text-fg-tertiary">{t("sharing.lookup")}</p>
-              </div>
-            )}
-
-            {debouncedEmail && !isLookingUp && lookup && (
-              <div className="absolute left-0 right-0 top-full mt-1 z-10 flex items-center gap-2.5 p-2.5 rounded-lg bg-bg-elevated kairos-system-card-elevated ring-1 ring-accent-primary/20">
-                <PersonAvatar name={lookup.name} email={lookup.email} image={lookup.image} />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-fg-primary truncate">
-                    {lookup.name ?? t("sharing.noName")}
-                  </p>
-                  <p className="text-[10px] text-fg-tertiary truncate">{lookup.email}</p>
-                </div>
-              </div>
-            )}
-
-            {debouncedEmail && !isLookingUp && !lookup && (
-              <div className="absolute left-0 right-0 top-full mt-1 z-10 p-2.5 rounded-lg bg-bg-elevated kairos-system-card-elevated ring-1 ring-error/20">
-                <p className="text-xs text-error">{t("sharing.noAccount")}</p>
-              </div>
-            )}
           </div>
 
           <label htmlFor="notes-share-permission" className="sr-only">
             {t("sharing.permission")}
           </label>
-          <select
-            id="notes-share-permission"
-            value={permission}
-            onChange={(event) => setPermission(event.target.value as "read" | "write")}
-            className="px-3 py-2 text-sm bg-bg-secondary rounded-lg text-fg-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/35"
-          >
-            <option value="read">{t("sharing.view")}</option>
-            <option value="write">{t("sharing.edit")}</option>
-          </select>
+          <div className={`${FIELD} w-[104px] flex-none`}>
+            <select
+              id="notes-share-permission"
+              value={permission}
+              onChange={(event) => setPermission(event.target.value as "read" | "write")}
+              className={`${FIELD_INPUT} cursor-pointer`}
+            >
+              <option value="read">{t("sharing.view")}</option>
+              <option value="write">{t("sharing.edit")}</option>
+            </select>
+          </div>
 
           <button
             type="button"
             onClick={submit}
             disabled={!email.trim() || shareNote.isPending}
-            className="px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+            className={`${BTN_ACCENT} h-[38px]`}
           >
-            {shareNote.isPending ? <Loader2 size={14} className="animate-spin" /> : t("share")}
+            {shareNote.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
+            {t("share")}
           </button>
         </div>
 
-        <p className="text-[9.5px] font-semibold uppercase tracking-widest text-fg-quaternary mb-2">
-          {t("sharing.sharedWith")}
-        </p>
-
-        {sharesQuery.isLoading ? (
-          <div className="h-10 rounded-lg bg-bg-secondary animate-pulse" aria-hidden="true" />
-        ) : shares.length === 0 ? (
-          <p className="text-xs text-fg-tertiary py-2">{t("sharing.notSharedYet")}</p>
-        ) : (
-          <ul className="space-y-1.5 max-h-48 overflow-y-auto">
-            {shares.map((share) => (
-              <li
-                key={share.id}
-                className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg bg-bg-secondary"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <PersonAvatar name={share.userName} email={share.userEmail} image={share.userImage} />
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-fg-primary truncate">
-                      {share.userName ?? share.userEmail}
-                    </p>
-                    <p className="text-[10px] text-fg-tertiary">
-                      {share.permission === "write" ? t("sharing.canEdit") : t("sharing.viewOnly")}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => unshareNote.mutate({ noteId, userId: share.userId })}
-                  disabled={unshareNote.isPending}
-                  aria-label={t("sharing.removeAccess", { name: share.userName ?? share.userEmail ?? "" })}
-                  className="p-1 rounded text-fg-tertiary hover:text-error transition-colors disabled:opacity-50"
-                >
-                  <X size={14} />
-                </button>
-              </li>
-            ))}
-          </ul>
+        {popover && (
+          <div
+            className={`calendar-pop absolute inset-x-0 top-full z-10 mt-1.5 p-1.5 ${POPOVER_SURFACE}`}
+          >
+            {popover}
+          </div>
         )}
       </div>
-    </div>
+
+      <p className={`${MICRO} mt-6 mb-1`}>{t("sharing.sharedWith")}</p>
+
+      {sharesQuery.isLoading ? (
+        <div className="kairos-shimmer h-11 rounded-[10px]" aria-hidden="true" />
+      ) : shares.length === 0 ? (
+        <p className="py-2 text-[12.5px] text-fg-tertiary">{t("sharing.notSharedYet")}</p>
+      ) : (
+        <ul className="max-h-52 overflow-y-auto">
+          {shares.map((share, index) => (
+            <li
+              key={share.id}
+              /* Rows arrive rather than replacing a pulsing block, staggered so
+                 the list reads top-to-bottom. */
+              className="calendar-pop flex items-center gap-2.5 border-b border-border-light/45 py-2.5 last:border-b-0"
+              style={{ animationDelay: `${index * 0.04}s` }}
+            >
+              <PersonAvatar name={share.userName} email={share.userEmail} image={share.userImage} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13.5px] font-semibold text-fg-primary">
+                  {share.userName ?? share.userEmail}
+                </span>
+                <span className="block truncate font-mono text-[9.5px] text-fg-quaternary">
+                  {share.userEmail}
+                </span>
+              </span>
+              {/* A badge rather than a line of prose, so a glance down the list
+                  reads the permissions column. */}
+              <Badge tone={share.permission === "write" ? "ok" : "neutral"}>
+                {share.permission === "write" ? t("sharing.canEdit") : t("sharing.viewOnly")}
+              </Badge>
+              <button
+                type="button"
+                onClick={() => unshareNote.mutate({ noteId, userId: share.userId })}
+                disabled={unshareNote.isPending}
+                aria-label={t("sharing.removeAccess", { name: share.userName ?? share.userEmail ?? "" })}
+                className={`${ICON_BTN_BARE} hover:text-error disabled:opacity-50`}
+              >
+                <X size={13} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </NotesDialog>
+  );
+}
+
+/** One line inside the lookup slot. */
+function Row({ children, muted = false }: { children: React.ReactNode; muted?: boolean }) {
+  return (
+    <div className={`flex items-center gap-2.5 px-2 ${muted ? "py-2.5" : "py-2"}`}>{children}</div>
   );
 }
 
@@ -337,7 +341,7 @@ function PersonAvatar({
         width={28}
         height={28}
         unoptimized
-        className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+        className="h-7 w-7 flex-shrink-0 rounded-full object-cover"
       />
     );
   }
@@ -345,7 +349,7 @@ function PersonAvatar({
     <span
       aria-hidden="true"
       style={avatarGradientStyle(email ?? name)}
-      className="w-7 h-7 rounded-full grid place-items-center text-[10px] font-bold text-white flex-shrink-0"
+      className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-[10px] font-bold text-white"
     >
       {(name ?? email ?? "?").trim().charAt(0).toUpperCase()}
     </span>

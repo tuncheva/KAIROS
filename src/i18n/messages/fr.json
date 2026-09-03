@@ -14,7 +14,8 @@
     "newProject": "Nouveau projet",
     "calendar": "Calendrier",
     "pinNavigation": "Épingler la navigation",
-    "unpinNavigation": "Détacher la navigation"
+    "unpinNavigation": "Détacher la navigation",
+    "gettingStarted": "Pour commencer, FAQ et contact"
   },
   "calendar": {
     "filters": {
@@ -194,7 +195,8 @@
     "footerCareers": "Carrières",
     "footerPrivacy": "Confidentialité",
     "footerTerms": "Conditions",
-    "footerSecurity": "Sécurité"
+    "footerSecurity": "Sécurité",
+    "aboutKairos": "À propos de Kairos — pour commencer, FAQ et contact"
   },
   "settings": {
     "title": "Paramètres",
@@ -787,7 +789,18 @@
     "loadingOrgs": "Chargement des organisations…",
     "inviteDeclined": "Invitation refusée",
     "pendingInvitations": "Invitations en attente",
-    "invitedAs": "Vous avez été invité en tant que"
+    "invitedAs": "Vous avez été invité en tant que",
+    "emptyTitle": "Vous n'appartenez encore à aucune organisation",
+    "emptyBody": "Les organisations permettent à une équipe de partager projets, tâches et événements. Utilisez un code qu'on vous a envoyé ou créez la vôtre.",
+    "joinCodePlaceholder": "Saisissez le code de l'organisation",
+    "joinWithCodeCta": "Rejoindre avec un code",
+    "joinedWithCode": "Vous avez rejoint l'organisation.",
+    "createOrgCta": "Créer une organisation",
+    "createNameLabel": "Nom de l'organisation",
+    "createNamePlaceholder": "ex. Équipe design",
+    "creating": "Création…",
+    "createdOrg": "{name} créée.",
+    "namePlaceholder": "Nom de l'organisation…"
   },
   "ai": {
     "title": "Générateur de tâches IA",
@@ -824,14 +837,6 @@
       "medium": "Moyenne",
       "high": "Haute",
       "urgent": "Urgente"
-    },
-    "insights": {
-      "title": "Demande votre attention",
-      "loading": "Analyse de vos projets…",
-      "allClear": "Rien ne demande votre attention pour le moment.",
-      "count": "{count} en cours",
-      "dismiss": "Écarter",
-      "openProject": "Ouvrir le projet"
     },
     "palette": {
       "title": "Palette de commandes",
@@ -1026,19 +1031,13 @@
       "dueToday": "Dues aujourd'hui",
       "overdue": "En retard",
       "openThisWeek": "Ouvertes cette semaine",
-      "completed": "Terminées"
-    },
-    "today": {
-      "title": "Dues aujourd'hui",
-      "action": "Toutes les tâches",
-      "empty": "Rien de prévu aujourd'hui.",
-      "complete": "Marquer comme terminée",
-      "reopen": "Réouvrir la tâche"
-    },
-    "week": {
-      "title": "Reste de la semaine",
-      "action": "Ouvrir le calendrier",
-      "today": "AUJOURD'HUI"
+      "completed": "Terminées",
+      "notes": {
+        "doneToday": "{count} faites",
+        "oldest": "la plus ancienne {days}j",
+        "across": "sur {count}",
+        "allTime": "au total"
+      }
     },
     "activity": {
       "title": "Activité récente",
@@ -1057,15 +1056,11 @@
       "done": "{count} terminées",
       "active": "{count} en cours",
       "todo": "{count} à faire",
-      "ofTasks": "{done} sur {total} tâches",
-      "dayGone": "{percent}% de la journée écoulée"
+      "dayGone": "{percent}% de la journée écoulée",
+      "ofTasksDone": "des tâches faites"
     },
     "projects": {
-      "title": "Projets",
-      "action": "Tout voir",
       "untitled": "Projet sans titre",
-      "noTasks": "Aucune tâche",
-      "open": "{count} ouvertes",
       "empty": "Créez votre premier projet",
       "health": {
         "onTrack": "Dans les temps",
@@ -1073,20 +1068,6 @@
         "atRisk": "À risque",
         "empty": "Aucune tâche"
       }
-    },
-    "notes": {
-      "title": "Notes",
-      "action": "Nouvelle note",
-      "private": "Privée",
-      "shared": "Partagée",
-      "untitled": "Note sans titre",
-      "empty": "Écrivez votre première note"
-    },
-    "status": {
-      "done": "Terminée",
-      "overdue": "En retard",
-      "inProgress": "En cours",
-      "todo": "À faire"
     },
     "firstRun": {
       "tag": "Premier lancement",
@@ -1102,6 +1083,50 @@
       "step2": "Invitez des personnes avec un seul code d'accès.",
       "step3": "Tâches, notes et progression arrivent sur ce tableau de bord.",
       "aside": "L'arc intérieur suit la journée elle-même : un tableau de bord vide indique encore le temps restant."
+    },
+    "radar": {
+      "title": "Ce que le radar a trouvé",
+      "count": "{count, plural, =0 {rien à signaler} one {# constat} other {# constats}}",
+      "loading": "vérification…",
+      "checked": "Vérifié il y a {ago}",
+      "allClear": "Rien ne demande votre attention pour l'instant.",
+      "dismiss": "Ignorer",
+      "openProject": "Ouvrir le projet",
+      "workspaceWide": "Dans tout l'espace",
+      "severity": {
+        "critical": "Critique",
+        "warning": "Alerte",
+        "info": "Info"
+      }
+    },
+    "projectStatus": {
+      "title": "État des projets",
+      "count": "{count, plural, =0 {aucun actif} one {# actif} other {# actifs}}",
+      "action": "Tous les projets",
+      "ends": "Fin le {date}",
+      "noDate": "Sans date",
+      "columns": {
+        "project": "Projet",
+        "team": "Équipe",
+        "open": "Ouvertes",
+        "overdue": "En retard",
+        "completion": "Avancement",
+        "health": "État"
+      }
+    },
+    "momentum": {
+      "title": "Votre rythme",
+      "streak": "{count, plural, one {1 jour d'affilée} other {# jours d'affilée}}",
+      "noStreak": "Pas encore de série",
+      "line": "{total, plural, =0 {Rien de terminé ces deux dernières semaines.} one {Vous avez terminé une tâche ces deux dernières semaines.} other {Vous avez terminé # tâches ces deux dernières semaines}}{today, plural, =0 {} other {, dont {today} aujourd'hui}}."
+    },
+    "teamToday": {
+      "title": "L'équipe aujourd'hui",
+      "open": "{count} ouvertes",
+      "active": "Actif il y a {ago}",
+      "neverActive": "Aucune activité encore",
+      "you": "{name} (vous)",
+      "empty": "Personne d'autre sur ces projets pour l'instant."
     }
   },
   "agents": {
@@ -1210,5 +1235,68 @@
     "partlyUndone": "Partiellement annulé",
     "restored": "{count} restaurés",
     "removed": "{count} supprimés"
+  },
+  "errors": {
+    "app": {
+      "title": "Cette page a rencontré un problème",
+      "body": "Le reste de l'application fonctionne — votre navigation est toujours là. Réessayez ou revenez au tableau de bord.",
+      "retry": "Réessayer",
+      "dashboard": "Retour au tableau de bord"
+    }
+  },
+  "onboardingSheet": {
+    "eyebrow": "Kairos · Aide",
+    "title": "Pour commencer",
+    "subtitle": "Tout ce qu'il vous faut pour vous repérer dans Kairos : ce que font les surfaces, les questions que l'on pose et comment nous joindre.",
+    "close": "Fermer",
+    "tabs": {
+      "gettingStarted": "Pour commencer",
+      "faq": "FAQ",
+      "contact": "Contact"
+    },
+    "steps": {
+      "dashboard": "Le tableau de bord vous accueille chaque jour avec ce qui est dû, ce qui avance et ce qui demande votre attention.",
+      "projects": "Les projets contiennent le plan — tâches, responsables et échéances — pour que le travail et sa progression vivent au même endroit.",
+      "notes": "Les notes capturent la réflexion. Rédigez, partagez et verrouillez les notes importantes, et récupérez tout ce que vous supprimez.",
+      "calendar": "Le calendrier réunit tâches, événements et notes sur une seule frise que vous pouvez filtrer et à laquelle vous abonner.",
+      "orgs": "Les organisations et les projets partagés font avancer une équipe sans que tout le monde vive dans la même liste de tâches.",
+      "ai": "Kairos AI lit votre espace de travail et répond, rédige et rappelle : demandez-lui n'importe quoi depuis l'icône d'étincelle."
+    },
+    "faqItems": [
+      {
+        "q": "À quoi sert Kairos ?",
+        "a": "Kairos est un espace de travail pour coordonner des équipes, mener des projets et publier les événements qui en découlent."
+      },
+      {
+        "q": "Mes données sont-elles privées ?",
+        "a": "Oui. Les notes peuvent être verrouillées par un code, et votre espace vous appartient sauf si vous choisissez de le partager avec une organisation."
+      },
+      {
+        "q": "Puis-je utiliser Kairos seul ?",
+        "a": "Absolument. Choisissez le mode personnel et vous obtenez tout l'espace — équipes et organisations sont facultatives."
+      },
+      {
+        "q": "Comment récupérer une note supprimée ?",
+        "a": "Les notes supprimées vont dans la récupération. Ouvrez le menu de la note et choisissez Récupérer."
+      },
+      {
+        "q": "Que peut faire Kairos AI ?",
+        "a": "Il lit votre espace de travail et peut répondre, rédiger du contenu, planifier des tâches et vous garder en avance sur les échéances."
+      }
+    ],
+    "contact": {
+      "email": {
+        "label": "E-mail",
+        "body": "madebykairos@gmail.com — pour tout, nous lisons chaque message."
+      },
+      "chat": {
+        "label": "Chat intégré",
+        "body": "Utilisez l'icône d'étincelle pour interroger Kairos, ou ouvrez une conversation avec votre équipe."
+      },
+      "org": {
+        "label": "Assistance équipe",
+        "body": "Les administrateurs d'organisation peuvent inviter des personnes et gérer les accès depuis l'écran Organisations."
+      }
+    }
   }
 }

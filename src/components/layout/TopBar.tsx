@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { UserDisplay } from "~/components/layout/UserDisplay";
+import { SearchTrigger } from "~/components/layout/SearchTrigger";
 import { NotificationSystem } from "~/components/notifications/NotificationSystem";
 import { WorkspaceMenu } from "~/components/orgs/WorkspaceMenu";
 
@@ -37,6 +38,9 @@ export function TopBar({
       <div className="flex items-center gap-3 px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3">
         <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
           <WorkspaceMenu />
+          {/* The palette's door. It had none — ⌘K was the only way in, and
+              nothing in the interface said so. */}
+          <SearchTrigger />
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
