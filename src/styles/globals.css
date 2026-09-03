@@ -3896,6 +3896,57 @@ input[type="search"]::-webkit-search-results-decoration {
   }
 }
 
+/* ── Onboarding sheet ───────────────────────────────────────────────────
+   The full-screen Getting-started sheet. Entrance and exit reuse the dialog
+   keyframes (`kairos-modal-enter` / `kairos-modal-exit`) the notes and palette
+   surfaces already ship; the scrim is a simple fade. The exit is held by a
+   timer (see `modalExit.ts`), so it has to occupy `MODAL_EXIT_MS` even under
+   reduced motion — hence the explicit `--out` fade. */
+.onboarding-sheet-scrim {
+  animation: fadeIn 0.18s ease-out backwards;
+}
+
+.onboarding-sheet-dialog {
+  animation: kairos-modal-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.onboarding-sheet-scrim--out {
+  animation: fadeIn 0.15s ease-in reverse forwards;
+  pointer-events: none;
+}
+
+.onboarding-sheet-dialog--out {
+  animation: onboarding-sheet-exit 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes onboarding-sheet-exit {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-sheet-scrim,
+  .onboarding-sheet-dialog {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .onboarding-sheet-scrim--out,
+  .onboarding-sheet-dialog--out {
+    animation: none !important;
+    opacity: 0 !important;
+    transform: none !important;
+    transition: opacity 0.15s linear;
+  }
+}
+
 /* ===========================================================================
    Notes: the motion the surface never had
    ---------------------------------------------------------------------------

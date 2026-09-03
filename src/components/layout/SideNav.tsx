@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { KairosMark } from "~/components/layout/KairosMark";
+import { openOnboarding } from "~/components/onboarding/OnboardingSheet";
 import {
   Briefcase,
   LayoutDashboard,
@@ -261,8 +262,15 @@ export function SideNav() {
     <>
       <div className="kairos-mobile-topbar lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-bg-primary/95 pb-3 shadow-sm backdrop-blur-md">
         <div className="flex items-center gap-2.5">
-          <KairosMark size={28} />
-          <h1 className="text-lg font-semibold text-fg-primary font-display tracking-[-0.02em]">KAIROS</h1>
+          <button
+            type="button"
+            onClick={openOnboarding}
+            title={t("gettingStarted")}
+            className="flex items-center gap-2.5 rounded-lg transition-opacity hover:opacity-70"
+          >
+            <KairosMark size={28} />
+            <h1 className="text-lg font-semibold text-fg-primary font-display tracking-[-0.02em]">KAIROS</h1>
+          </button>
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -428,10 +436,18 @@ export function SideNav() {
       >
         <div className="flex items-center justify-between gap-3 whitespace-nowrap px-[18px] pb-[22px]">
           <span className="flex items-center gap-3.5">
-            <KairosMark size={26} />
-            <span className={`font-display text-[15px] font-semibold tracking-[0.18em] text-fg-primary ${labelClass}`}>
-              KAIROS
-            </span>
+            <button
+              type="button"
+              onClick={openOnboarding}
+              aria-label={t("gettingStarted")}
+              title={t("gettingStarted")}
+              className="flex items-center gap-3.5 rounded-lg transition-opacity hover:opacity-70"
+            >
+              <KairosMark size={26} />
+              <span className={`font-display text-[15px] font-semibold tracking-[0.18em] text-fg-primary ${labelClass}`}>
+                KAIROS
+              </span>
+            </button>
           </span>
           <button
             type="button"

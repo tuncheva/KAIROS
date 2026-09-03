@@ -14,7 +14,8 @@
     "newProject": "Neues Projekt",
     "calendar": "Kalender",
     "pinNavigation": "Navigation anpinnen",
-    "unpinNavigation": "Navigation lösen"
+    "unpinNavigation": "Navigation lösen",
+    "gettingStarted": "Erste Schritte, FAQ und Kontakt"
   },
   "calendar": {
     "filters": {
@@ -194,7 +195,8 @@
     "footerCareers": "Karriere",
     "footerPrivacy": "Datenschutz",
     "footerTerms": "Bedingungen",
-    "footerSecurity": "Sicherheit"
+    "footerSecurity": "Sicherheit",
+    "aboutKairos": "Über Kairos — erste Schritte, FAQ und Kontakt"
   },
   "settings": {
     "title": "Einstellungen",
@@ -1240,6 +1242,61 @@
       "body": "Der Rest der App funktioniert — Ihre Navigation ist noch da. Versuchen Sie es erneut oder kehren Sie zum Dashboard zurück.",
       "retry": "Erneut versuchen",
       "dashboard": "Zurück zum Dashboard"
+    }
+  },
+  "onboardingSheet": {
+    "eyebrow": "Kairos · Hilfe",
+    "title": "Erste Schritte",
+    "subtitle": "Alles, was Sie brauchen, um sich in Kairos zurechtzufinden – was die Oberflächen tun, welche Fragen gestellt werden und wie Sie uns erreichen.",
+    "close": "Schließen",
+    "tabs": {
+      "gettingStarted": "Erste Schritte",
+      "faq": "FAQ",
+      "contact": "Kontakt"
+    },
+    "steps": {
+      "dashboard": "Das Dashboard begrüßt Sie täglich mit dem, was fällig ist, was läuft und was Ihre Aufmerksamkeit braucht.",
+      "projects": "Projekte halten den Plan – Aufgaben, Verantwortliche und Fristen – sodass Arbeit und Fortschritt an einem Ort liegen.",
+      "notes": "Notizen halten das Denken fest. Verfassen, teilen und sperren Sie wichtige Notizen und stellen Sie alles Gelöschte wieder her.",
+      "calendar": "Der Kalender bringt Aufgaben, Ereignisse und Notizen auf eine Zeitachse, die Sie filtern und abonnieren können.",
+      "orgs": "Organisationen und geteilte Projekte halten ein Team in Bewegung, ohne dass alle in derselben Aufgabenliste leben.",
+      "ai": "Kairos AI liest Ihren Arbeitsbereich und antwortet, entwirft und erinnert – fragen Sie es über das Funken-Symbol."
+    },
+    "faqItems": [
+      {
+        "q": "Wofür ist Kairos da?",
+        "a": "Kairos ist ein Arbeitsbereich für die Koordination von Teams, das Führen von Projekten und das Veröffentlichen der daraus entstehenden Ereignisse."
+      },
+      {
+        "q": "Sind meine Daten privat?",
+        "a": "Ja. Notizen können mit einer PIN gesperrt werden, und Ihr Arbeitsbereich gehört Ihnen, es sei denn, Sie teilen ihn mit einer Organisation."
+      },
+      {
+        "q": "Kann ich Kairos allein nutzen?",
+        "a": "Absolut. Wählen Sie den persönlichen Modus und Sie erhalten den vollen Arbeitsbereich – Teams und Organisationen sind optional."
+      },
+      {
+        "q": "Wie stelle ich eine gelöschte Notiz wieder her?",
+        "a": "Gelöschte Notizen landen in der Wiederherstellung. Öffnen Sie das Menü der Notiz und wählen Sie Wiederherstellen."
+      },
+      {
+        "q": "Was kann Kairos AI?",
+        "a": "Es liest Ihren Arbeitsbereich und kann Fragen beantworten, Inhalte entwerfen, Aufgaben planen und Sie vor Fristen warnen."
+      }
+    ],
+    "contact": {
+      "email": {
+        "label": "E-Mail",
+        "body": "madebykairos@gmail.com – für alles, wir lesen jede Nachricht."
+      },
+      "chat": {
+        "label": "Chat in der App",
+        "body": "Nutzen Sie das Funken-Symbol, um Kairos zu fragen, oder starten Sie ein Gespräch mit Ihrem Team."
+      },
+      "org": {
+        "label": "Team-Support",
+        "body": "Organisationsadministratoren können Personen einladen und Zugriff über den Bildschirm Organisationen verwalten."
+      }
     }
   }
 }

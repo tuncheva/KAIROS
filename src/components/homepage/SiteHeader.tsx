@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "~/components/layout/LanguageSwitcher";
 import { ScrollProgress } from "~/components/homepage/ScrollProgress";
+import { openOnboarding } from "~/components/onboarding/OnboardingSheet";
 
 /**
  * Every entry is an in-page anchor, which is what `useSmoothAnchors` looks
@@ -23,7 +24,16 @@ export function SiteHeader({ onSignIn }: { onSignIn: () => void }) {
     return (
         <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[rgb(8_8_12_/_0.72)] backdrop-blur-[20px]">
             <div className="flex w-full items-center justify-between gap-4 px-6 py-[18px] lg:px-12">
-                <a href="#top" className="flex flex-shrink-0 items-center gap-3">
+                <a
+                  href="#top"
+                  aria-label={t("aboutKairos")}
+                  title={t("aboutKairos")}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    openOnboarding();
+                  }}
+                  className="flex flex-shrink-0 cursor-pointer items-center gap-3 transition-opacity hover:opacity-70"
+                >
                     <Image
                         src="/logo_white.png"
                         alt=""

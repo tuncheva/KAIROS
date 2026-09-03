@@ -14,7 +14,8 @@
     "newProject": "Nuevo proyecto",
     "calendar": "Calendario",
     "pinNavigation": "Fijar la navegación",
-    "unpinNavigation": "Dejar de fijar la navegación"
+    "unpinNavigation": "Dejar de fijar la navegación",
+    "gettingStarted": "Primeros pasos, preguntas frecuentes y contacto"
   },
   "calendar": {
     "filters": {
@@ -194,7 +195,8 @@
     "footerCareers": "Empleo",
     "footerPrivacy": "Privacidad",
     "footerTerms": "Términos",
-    "footerSecurity": "Seguridad"
+    "footerSecurity": "Seguridad",
+    "aboutKairos": "Acerca de Kairos: primeros pasos, preguntas frecuentes y contacto"
   },
   "settings": {
     "title": "Ajustes",
@@ -1240,6 +1242,61 @@
       "body": "El resto de la aplicación está bien: tu navegación sigue ahí. Inténtalo de nuevo o vuelve al panel.",
       "retry": "Inténtalo de nuevo",
       "dashboard": "Volver al panel"
+    }
+  },
+  "onboardingSheet": {
+    "eyebrow": "Kairos · Ayuda",
+    "title": "Primeros pasos",
+    "subtitle": "Todo lo que necesitas para orientarte en Kairos: qué hacen las superficies, las preguntas que la gente hace y cómo contactarnos.",
+    "close": "Cerrar",
+    "tabs": {
+      "gettingStarted": "Primeros pasos",
+      "faq": "Preguntas",
+      "contact": "Contacto"
+    },
+    "steps": {
+      "dashboard": "El panel te recibe cada día con lo que vence, lo que está en marcha y lo que necesita tu atención.",
+      "projects": "Los proyectos guardan el plan: tareas, responsables y plazos, para que el trabajo y su progreso vivan en un solo lugar.",
+      "notes": "Las notas capturan el pensamiento. Redacta, comparte y bloquea las notas importantes y recupera lo que borres.",
+      "calendar": "El calendario reúne tareas, eventos y notas en una sola línea de tiempo que puedes filtrar y suscribir.",
+      "orgs": "Las organizaciones y los proyectos compartidos mantienen a un equipo en movimiento sin que todos vivan en la misma lista de tareas.",
+      "ai": "Kairos AI lee tu espacio de trabajo y responde, redacta y te avisa: pregúntale lo que sea desde el icono de chispa."
+    },
+    "faqItems": [
+      {
+        "q": "¿Para qué sirve Kairos?",
+        "a": "Kairos es un espacio de trabajo para coordinar equipos, gestionar proyectos y publicar los eventos que surgen de ellos."
+      },
+      {
+        "q": "¿Mis datos son privados?",
+        "a": "Sí. Las notas se pueden bloquear con un PIN y tu espacio es tuyo a menos que elijas compartirlo con una organización."
+      },
+      {
+        "q": "¿Puedo usar Kairos solo?",
+        "a": "Por supuesto. Elige el modo personal y obtienes el espacio completo: los equipos y las organizaciones son opcionales."
+      },
+      {
+        "q": "¿Cómo recupero una nota eliminada?",
+        "a": "Las notas eliminadas van a recuperación. Abre el menú de la nota y elige Recuperar para traerla de vuelta."
+      },
+      {
+        "q": "¿Qué puede hacer Kairos AI?",
+        "a": "Lee tu espacio de trabajo y puede responder preguntas, redactar contenido, planear tareas y mantenerte al día con los plazos."
+      }
+    ],
+    "contact": {
+      "email": {
+        "label": "Correo",
+        "body": "madebykairos@gmail.com: para lo que sea, leemos cada mensaje."
+      },
+      "chat": {
+        "label": "Chat en la app",
+        "body": "Usa el icono de chispa para preguntar a Kairos o abre una conversación con tu equipo."
+      },
+      "org": {
+        "label": "Soporte de equipo",
+        "body": "Los administradores de organización pueden invitar personas y gestionar el acceso desde la pantalla de Organizaciones."
+      }
     }
   }
 }

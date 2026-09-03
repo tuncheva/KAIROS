@@ -15,7 +15,8 @@
     "calendar": "Calendar",
     "organizations": "Organizations",
     "pinNavigation": "Pin navigation",
-    "unpinNavigation": "Unpin navigation"
+    "unpinNavigation": "Unpin navigation",
+    "gettingStarted": "Getting started, FAQ and contact"
   },
   "calendar": {
     "filters": {
@@ -607,7 +608,8 @@
     "footerCareers": "Careers",
     "footerPrivacy": "Privacy",
     "footerTerms": "Terms",
-    "footerSecurity": "Security"
+    "footerSecurity": "Security",
+    "aboutKairos": "About Kairos — getting started, FAQ and contact"
   },
   "settings": {
     "title": "Settings",
@@ -2574,5 +2576,60 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "yesterdayShort": "Yest"
+  },
+  "onboardingSheet": {
+    "eyebrow": "Kairos · Help",
+    "title": "Getting started",
+    "subtitle": "Everything you need to find your way around Kairos — what the surfaces do, the questions people ask, and how to reach us.",
+    "close": "Close",
+    "tabs": {
+      "gettingStarted": "Getting started",
+      "faq": "FAQ",
+      "contact": "Contact"
+    },
+    "steps": {
+      "dashboard": "The dashboard greets you each day with what is due, what is moving and what needs your attention.",
+      "projects": "Projects hold the plan — tasks, owners and deadlines — so the work and its progress live in one place.",
+      "notes": "Notes capture the thinking. Draft, share and lock the notes that matter, and recover anything you delete.",
+      "calendar": "The calendar brings tasks, events and notes onto one timeline you can filter and subscribe to.",
+      "orgs": "Organizations and shared projects keep a team moving without everyone living in the same task list.",
+      "ai": "Kairos AI reads your workspace and answers, drafts and nudges — ask it anything from the sparkle icon."
+    },
+    "faqItems": [
+      {
+        "q": "What is Kairos for?",
+        "a": "Kairos is one workspace for coordinating teams, running projects and publishing the events that come out of them."
+      },
+      {
+        "q": "Is my data private?",
+        "a": "Yes. Notes can be locked with a PIN, and your workspace is yours unless you choose to share it with an organization."
+      },
+      {
+        "q": "Can I use Kairos alone?",
+        "a": "Absolutely. Pick personal mode and you get the full workspace — teams and organizations are optional."
+      },
+      {
+        "q": "How do I recover a deleted note?",
+        "a": "Deleted notes go to recovery. Open the note's menu and choose Recover to bring one back."
+      },
+      {
+        "q": "What can Kairos AI do?",
+        "a": "It reads your workspace and can answer questions, draft content, plan tasks and keep you ahead of deadlines."
+      }
+    ],
+    "contact": {
+      "email": {
+        "label": "Email",
+        "body": "madebykairos@gmail.com — for anything, we read every message."
+      },
+      "chat": {
+        "label": "In-app chat",
+        "body": "Use the sparkle icon to ask Kairos, or open a conversation with your team."
+      },
+      "org": {
+        "label": "Team support",
+        "body": "Organization admins can invite people and manage access from the Organizations screen."
+      }
+    }
   }
 }
