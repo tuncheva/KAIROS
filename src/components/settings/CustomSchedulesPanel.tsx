@@ -42,7 +42,12 @@ const WEEKDAY_KEYS = [
  * - **The allowance, before it is hit.** `2 of 3 used` is a fact; discovering the
  *   cap as a refusal when you press Add is a papercut.
  */
-export function CustomSchedulesPanel({ timeZone }: { timeZone: string }) {
+/*
+ * No timezone note here: the enclosing proactive card already prints one for the
+ * whole section, and two identical sentences a line apart read as a rendering
+ * bug rather than as emphasis.
+ */
+export function CustomSchedulesPanel() {
   const useT = useTranslations as unknown as (ns: string) => Translator;
   const t = useT("settings.ai");
 
@@ -248,9 +253,7 @@ export function CustomSchedulesPanel({ timeZone }: { timeZone: string }) {
         </form>
       )}
 
-      <p className="mt-2 text-xs text-fg-quaternary">
-        {t("timeZoneHint", { zone: timeZone })}
-      </p>
+
     </div>
   );
 }

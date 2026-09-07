@@ -60,7 +60,6 @@ describe("Schema — Table Definitions", () => {
     { name: "eventRsvps", source: fs.readFileSync(path.resolve(__dirname, "../../src/server/db/schemas/events.ts"), "utf-8") },
     { name: "projectCollaborators", source: fs.readFileSync(path.resolve(__dirname, "../../src/server/db/schemas/projects.ts"), "utf-8") },
     { name: "taskActivityLog", source: fs.readFileSync(path.resolve(__dirname, "../../src/server/db/schemas/tasks.ts"), "utf-8") },
-    { name: "passwordResetCodes", source: usersSchemaSource },
   ];
 
   for (const def of expectedDefinitions) {

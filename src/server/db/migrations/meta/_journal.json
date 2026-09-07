@@ -218,6 +218,13 @@
       "when": 1787961613009,
       "tag": "0039_calendar_feed_token",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1787961613010,
+      "tag": "0040_drop_password_reset_code",
+      "breakpoints": true
     }
   ]
 }

@@ -179,7 +179,7 @@ const DEFINITIONS: Record<A1ReadToolName, ToolDefinition> = {
           type: "array",
           items: {
             type: "string",
-            enum: ["task", "project", "note", "event", "comment"],
+            enum: ["task", "project", "note", "event"],
           },
           description:
             "Restrict the search to these record types. Omit to search everything.",

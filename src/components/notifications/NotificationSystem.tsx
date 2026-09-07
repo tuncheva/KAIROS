@@ -26,6 +26,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
+import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 
 /**
  * Mirrors `notificationTypeEnum`.
@@ -172,6 +173,7 @@ const MAX_FLOATING = 3;
 export function NotificationSystem() {
   const router = useRouter();
   const t = useTranslations("notifications");
+  const [confirmClear, setConfirmClear] = useState(false);
   const localeCode = useLocale();
   const dateLocale = localeCode.startsWith("bg") ? bgLocale : enUS;
   const [isOpen, setIsOpen] = useState(false);
@@ -314,6 +316,21 @@ export function NotificationSystem() {
     onSuccess: invalidateBell,
   });
 
+  /*
+   * `Clear all` is back, but not as the easy way out.
+   *
+   * It was removed once because it was the only bulk action here, which made
+   * destroying the history the quickest way to silence the badge — unread items
+   * included. `Mark all read` now owns that job and stays first; this sits
+   * behind a confirmation and only appears once there is something to clear, so
+   * emptying the list is a thing you choose rather than a thing you reach for.
+   */
+  const clearAllMutation = api.notification.deleteAll.useMutation({
+    onMutate: () => setNotifications([]),
+    onSettled: invalidateBell,
+    onSuccess: () => setConfirmClear(false),
+  });
+
   useEffect(() => {
     if (storedNotifications) {
       const formattedNotifications: Notification[] = storedNotifications.map((notif) => {
@@ -360,7 +377,7 @@ export function NotificationSystem() {
   /* Tabbing past the last row should leave the panel rather than walk the page
      underneath it while an overlay is up. */
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || confirmClear) return;
     const onFocusIn = (e: FocusEvent) => {
       const target = e.target as Node | null;
       if (!target) return;
@@ -370,7 +387,12 @@ export function NotificationSystem() {
     };
     document.addEventListener("focusin", onFocusIn);
     return () => document.removeEventListener("focusin", onFocusIn);
-  }, [isOpen]);
+    // `confirmClear` belongs here even though the handler never reads it: the
+    // confirmation renders in a portal, so its focus trap moves focus outside
+    // the panel and this listener would close the panel — unmounting the dialog
+    // under the user's cursor. Suspending the listener while it is up is what
+    // lets the confirm button survive long enough to be clicked.
+  }, [isOpen, confirmClear]);
 
   // Use server count if available, fall back to local state count
   const localUnread = notifications.filter((n) => !n.read).length;
@@ -580,7 +602,30 @@ export function NotificationSystem() {
                     {t("markAllRead")}
                   </button>
                 )}
+                {notifications.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmClear(true)}
+                    disabled={clearAllMutation.isPending}
+                    className="text-[12px] text-fg-quaternary transition-colors hover:text-error disabled:opacity-50"
+                  >
+                    {t("clearAll")}
+                  </button>
+                )}
               </div>
+
+              {confirmClear && (
+                <ConfirmDialog
+                  destructive
+                  title={t("clearAllTitle")}
+                  message={t("clearAllBody")}
+                  confirmLabel={t("clearAllConfirm")}
+                  cancelLabel={t("clearAllCancel")}
+                  isPending={clearAllMutation.isPending}
+                  onCancel={() => setConfirmClear(false)}
+                  onConfirm={() => clearAllMutation.mutate()}
+                />
+              )}
 
               {notifications.length > 0 && (
                 <div className="flex gap-1 px-3.5 pb-3">

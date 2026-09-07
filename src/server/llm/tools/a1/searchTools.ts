@@ -37,7 +37,6 @@ import {
   noteShares,
   projects,
   stickyNotes,
-  taskComments,
   tasks,
 } from "~/server/db/schema";
 
@@ -49,7 +48,6 @@ const SEARCHABLE_KINDS = [
   "project",
   "note",
   "event",
-  "comment",
 ] as const;
 
 export type SearchKind = (typeof SEARCHABLE_KINDS)[number];
@@ -210,40 +208,17 @@ export const searchWorkspaceTool: A1Tool<
       );
     }
 
-    // ---- task comments
-    if (kinds.has("comment") && projectIds.length) {
-      const rows = await ctx.db
-        .select({
-          id: taskComments.id,
-          content: taskComments.content,
-          taskId: taskComments.taskId,
-          taskTitle: tasks.title,
-          projectId: tasks.projectId,
-          createdAt: taskComments.createdAt,
-        })
-        .from(taskComments)
-        .innerJoin(tasks, eq(taskComments.taskId, tasks.id))
-        .where(
-          and(
-            inArray(tasks.projectId, projectIds),
-            matches(["task_comments.content"], q),
-          ),
-        )
-        .orderBy(desc(taskComments.createdAt))
-        .limit(perKind);
-
-      hits.push(
-        ...rows.map((r) => ({
-          kind: "comment" as const,
-          id: r.id,
-          title: `Comment on “${r.taskTitle}”`,
-          snippet: snippet(r.content, q),
-          projectId: r.projectId,
-          projectTitle: projectTitleById.get(r.projectId),
-          updatedAt: r.createdAt,
-        })),
-      );
-    }
+    /*
+     * Task comments are not searched, because nothing writes them.
+     *
+     * `task_comments` has a table, a relation and this query, but no procedure
+     * or UI ever inserts a row — so the branch could only ever return nothing.
+     * Advertising `comment` in the tool schema was worse than useless: the model
+     * would spend a search on it and read the empty result as "no comment
+     * mentions this", which is a different claim from "comments do not exist".
+     *
+     * Restore this together with a way to write one, not before.
+     */
 
     // ---- notes (own, or shared with the caller; never locked)
     if (kinds.has("note")) {

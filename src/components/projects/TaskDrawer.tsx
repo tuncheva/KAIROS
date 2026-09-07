@@ -1,8 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Sparkles, X } from "~/components/ui/icons";
+import { FileText, Sparkles, X } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
+
+import { MAX_PDF_SIZE, MAX_PDF_SIZE_MB } from "~/lib/pdf";
+import { useDateFormat } from "~/hooks/useDateFormat";
+import { toTimelineEvent, type ActivityRow } from "./projectsData";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
@@ -144,6 +148,7 @@ export function TaskDrawer({
   >([]);
 
   const titleRef = useRef<HTMLInputElement>(null);
+  const pdfRef = useRef<HTMLInputElement>(null);
   const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
@@ -239,6 +244,61 @@ export function TaskDrawer({
     },
     onError: (error) => toast.error(error.message),
   });
+
+  /*
+   * A PDF is a second source for the same drafts, not a second feature.
+   *
+   * `extractTasksFromPdf` returns the very shape `generateTaskDrafts` does, so
+   * it lands in the same `drafts` state and is reviewed, edited and accepted
+   * through the list below — there is no second confirm path to keep in step.
+   */
+  const extractFromPdf = api.agent.extractTasksFromPdf.useMutation({
+    onSuccess: (data) => {
+      setDrafts(data.tasks as typeof drafts);
+      if (data.tasks.length === 0) toast.info(t("ai.none"));
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const drafting = generateDrafts.isPending || extractFromPdf.isPending;
+
+  /**
+   * Hand one chosen PDF to the extractor.
+   *
+   * Size is checked here as well as on the server: the ceiling is 10 MB and
+   * base64 inflates a file by a third, so an oversized pick would otherwise
+   * spend a 13 MB upload to be told no. Both ends read the same constant.
+   */
+  const readPdf = async (file: File) => {
+    if (file.size > MAX_PDF_SIZE) {
+      toast.error(t("ai.pdfTooLarge", { limit: MAX_PDF_SIZE_MB }));
+      return;
+    }
+
+    const base64 = await new Promise<string | null>((resolve) => {
+      const reader = new FileReader();
+      // `readAsDataURL` yields "data:application/pdf;base64,<payload>" and the
+      // procedure wants the payload alone.
+      reader.onload = () => {
+        const result = typeof reader.result === "string" ? reader.result : "";
+        resolve(result.split(",")[1] ?? null);
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+
+    if (!base64) {
+      toast.error(t("ai.pdfUnreadable"));
+      return;
+    }
+
+    extractFromPdf.mutate({
+      projectId,
+      pdfBase64: base64,
+      fileName: file.name,
+      message: description.trim() || title.trim() || undefined,
+    });
+  };
 
   const pending = createTask.isPending || updateTask.isPending || updateStatus.isPending;
   const canSubmit = title.trim().length > 0 && !pending;
@@ -458,7 +518,7 @@ export function TaskDrawer({
                   <span className={STAMP}>{t("ai.label")}</span>
                   <button
                     type="button"
-                    disabled={generateDrafts.isPending}
+                    disabled={drafting}
                     onClick={() =>
                       generateDrafts.mutate({
                         projectId,
@@ -470,6 +530,31 @@ export function TaskDrawer({
                     <Sparkles size={15} aria-hidden />
                     {generateDrafts.isPending ? t("ai.working") : t("ai.suggest")}
                   </button>
+
+                  <button
+                    type="button"
+                    disabled={drafting}
+                    onClick={() => pdfRef.current?.click()}
+                    className="flex h-11 items-center justify-center gap-2 rounded-[9px] border border-border-light/60 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:border-accent-primary/40 hover:text-fg-primary disabled:opacity-50"
+                  >
+                    <FileText size={15} aria-hidden />
+                    {extractFromPdf.isPending
+                      ? t("ai.pdfReading")
+                      : t("ai.fromPdf")}
+                  </button>
+
+                  <input
+                    ref={pdfRef}
+                    type="file"
+                    accept="application/pdf"
+                    hidden
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void readPdf(file);
+                      // Cleared so picking the same file twice still fires.
+                      event.target.value = "";
+                    }}
+                  />
 
                   {drafts.length > 0 && (
                     <div className="flex flex-col">
@@ -519,6 +604,7 @@ export function TaskDrawer({
                   )}
                 </div>
               )}
+              {editing && task && <TaskHistory taskId={task.id} />}
             </div>
 
             <div className="flex gap-2.5 border-t border-border-light/50 bg-bg-primary px-[26px] py-5">
@@ -541,5 +627,74 @@ export function TaskDrawer({
         </aside>
       </div>
     </Overlay>
+  );
+}
+
+/**
+ * One task's own history.
+ *
+ * `task.getActivityLog` existed with no caller — the project timeline was the
+ * only place activity surfaced, which meant answering "who moved this task, and
+ * when" required scanning every other task's events alongside it.
+ *
+ * Rows go through the same `toTimelineEvent` the project timeline uses, so a
+ * task cannot describe an event here differently from the way the workspace
+ * describes the very same row.
+ */
+function TaskHistory({ taskId }: { taskId: number }) {
+  const t = useTranslations("projects");
+  const td = useTranslations("projects.taskDrawer");
+  const { formatDate } = useDateFormat();
+
+  const activity = api.task.getActivityLog.useQuery(
+    { taskId },
+    { staleTime: 1000 * 30 },
+  );
+
+  const someone = t("timeline.someone");
+  const events = (activity.data ?? [])
+    .map((row) => toTimelineEvent(row as ActivityRow, someone))
+    .filter((event) => event !== null);
+
+  // A task always has at least its own creation logged, so an empty list means
+  // the query has not answered yet rather than that nothing ever happened.
+  if (activity.isLoading || events.length === 0) return null;
+
+  return (
+    <div
+      className="projects-slide-in flex flex-col gap-2.5 border-t border-border-light/50 pt-5"
+      style={{ animationDelay: "0.34s" }}
+    >
+      <span className={STAMP}>{td("history.label")}</span>
+
+      <ul className="m-0 flex list-none flex-col p-0">
+        {events.map((event) => (
+          <li
+            key={event.key}
+            className="flex items-start gap-2.5 border-b border-border-light/50 py-2.5 last:border-b-0"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] leading-[1.45] text-fg-secondary">
+                <span className="font-medium text-fg-primary">
+                  {event.actor}
+                </span>{" "}
+                {t(`timeline.verbs.${event.verb}`)}
+              </span>
+              {event.detail && (
+                <span className="mt-0.5 block truncate text-[12px] text-fg-quaternary">
+                  {event.detail}
+                </span>
+              )}
+            </span>
+            <time
+              dateTime={event.at.toISOString()}
+              className="flex-none text-[11px] text-fg-quaternary"
+            >
+              {formatDate(event.at, "short")}
+            </time>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

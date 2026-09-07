@@ -920,7 +920,8 @@
         "roleCreateFailed": "Failed to create role",
         "accessCodeCopied": "Access code copied",
         "joinLinkCopied": "Join link copied",
-        "copyFailed": "Failed to copy"
+        "copyFailed": "Failed to copy",
+        "permissionsUpdated": "Member permissions updated."
       },
       "common": {
         "create": "Create",
@@ -1998,7 +1999,18 @@
       "oneSidedNote": "Both actions affect only your copy. The other person keeps theirs.",
       "working": "Working…",
       "send": "Send"
-    }
+    },
+    "noOrgChanges": "No organization changes needed.",
+    "orgReviewThenConfirm": "Review the changes below, then confirm. Organization changes cannot be undone.",
+    "orgRoleOps": "{count} role change(s)",
+    "orgPermissionOps": "{count} permission change(s)",
+    "orgRemovalOps": "{count} member removal(s)",
+    "orgInviteOps": "{count} invite(s)",
+    "orgConfirmed": "Organization changes confirmed. {summary}",
+    "orgDone": "Organization changes applied.",
+    "orgRefused": "{count} operation(s) were refused by the server:",
+    "confirmOrgChanges": "Confirm Org Changes",
+    "applyOrgChanges": "Apply Org Changes"
   },
   "onboarding": {
     "welcome": {
@@ -2206,7 +2218,11 @@
     "previewClickToEdit": "(click to edit)",
     "previewNewNote": "New note",
     "previewUpdateNote": "Update note",
-    "previewDeleteNote": "Delete note"
+    "previewDeleteNote": "Delete note",
+    "previewOrgRole": "Role change",
+    "previewOrgPermission": "Permission change",
+    "previewOrgRemoval": "Remove member",
+    "previewOrgInvite": "Invite member"
   },
   "aiConsole": {
     "conversations": "Conversations",
@@ -2461,8 +2477,25 @@
         "working": "Thinking…",
         "none": "No suggestions came back.",
         "addAll": "Add all {count} tasks",
-        "addedAll": "Added {count} tasks."
+        "addedAll": "Added {count} tasks.",
+        "fromPdf": "Extract from PDF",
+        "pdfReading": "Reading the PDF…",
+        "pdfTooLarge": "That PDF is larger than {limit} MB.",
+        "pdfUnreadable": "That file could not be read."
+      },
+      "history": {
+        "label": "History"
       }
+    },
+    "archive": {
+      "title": "Archive project",
+      "body": "The project moves out of the active list for everyone. You can reopen it at any time.",
+      "confirm": "Archive",
+      "cancel": "Cancel",
+      "archived": "Project archived.",
+      "reopened": "Project reopened.",
+      "reopen": "Reopen",
+      "sectionTitle": "Archived"
     }
   },
   "documents": {
@@ -2575,7 +2608,12 @@
     "now": "now",
     "today": "Today",
     "yesterday": "Yesterday",
-    "yesterdayShort": "Yest"
+    "yesterdayShort": "Yest",
+    "clearAll": "Clear all",
+    "clearAllTitle": "Clear all notifications",
+    "clearAllBody": "Every notification is deleted, including any you have not read. This cannot be undone.",
+    "clearAllConfirm": "Clear all",
+    "clearAllCancel": "Cancel"
   },
   "onboardingSheet": {
     "eyebrow": "Kairos · Help",

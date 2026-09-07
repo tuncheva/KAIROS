@@ -252,6 +252,49 @@ function denyMissingFlag(flag: PermissionFlag): never {
  * @throws TRPCError NOT_FOUND when the project does not exist.
  * @throws TRPCError FORBIDDEN when the caller lacks access or the capability.
  */
+/**
+ * Whether an already-resolved access would satisfy a flag — the same decision
+ * `assertProjectPermission` makes, as a question rather than a demand.
+ *
+ * Split out so the UI can ask before it paints. A client that guesses the rule
+ * gets it subtly wrong and shows a button that always fails; a client that
+ * cannot ask at all shows the button to everyone, which is what the task list
+ * did — every write collaborator saw a delete control that the server refused.
+ */
+export function accessAllowsFlag(
+  access: ProjectAccess,
+  flag: PermissionFlag,
+): boolean {
+  const hasBaseAccess =
+    access.isOwner ||
+    access.isOrgMember ||
+    access.collaboratorPermission === "write";
+
+  if (!hasBaseAccess) return false;
+
+  // Personal project: no organization, so no flags to consult.
+  if (access.project.organizationId === null) return true;
+
+  // An outside collaborator granted write access is not governed by the
+  // organization's role flags — the grant itself is the authorization.
+  if (!access.isOrgMember && access.collaboratorPermission === "write") {
+    return true;
+  }
+
+  return membershipHasFlag(access.membership, flag);
+}
+
+/**
+ * Ask the same question against a project id, loading the access itself.
+ */
+export async function projectPermissionAllows(
+  ctx: TRPCContext,
+  projectId: number,
+  flag: PermissionFlag,
+): Promise<boolean> {
+  return accessAllowsFlag(await getProjectAccess(ctx, projectId), flag);
+}
+
 export async function assertProjectPermission(
   ctx: TRPCContext,
   projectId: number,
@@ -264,6 +307,9 @@ export async function assertProjectPermission(
     access.isOrgMember ||
     access.collaboratorPermission === "write";
 
+  // Base access and the flag are refused differently on purpose: "you cannot
+  // write here at all" and "you can write but not delete" are different facts,
+  // and collapsing them into one message made the second unactionable.
   if (!hasBaseAccess) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -271,16 +317,7 @@ export async function assertProjectPermission(
     });
   }
 
-  // Personal project: no organization, so no flags to consult.
-  if (access.project.organizationId === null) return access.project;
-
-  // An outside collaborator granted write access is not governed by the
-  // organization's role flags — the grant itself is the authorization.
-  if (!access.isOrgMember && access.collaboratorPermission === "write") {
-    return access.project;
-  }
-
-  if (!membershipHasFlag(access.membership, flag)) {
+  if (!accessAllowsFlag(access, flag)) {
     denyMissingFlag(flag);
   }
 

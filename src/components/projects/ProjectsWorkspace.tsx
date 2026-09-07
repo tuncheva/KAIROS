@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
+  Archive,
+  ArchiveRestore,
   ArrowLeft,
   CalendarClock,
   Check,
@@ -135,6 +137,8 @@ export function ProjectsWorkspace({
   const [openId, setOpenId] = useState<number | null>(initialProjectId);
   const [tab, setTab] = useState<DetailTab>(initialTab);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [confirmArchiveId, setConfirmArchiveId] = useState<number | null>(null);
+  const [showArchive, setShowArchive] = useState(false);
 
   /* A project opened in place used to leave the URL on `/projects`, so the one
      thing people do with a project they are looking at — send it to someone —
@@ -193,12 +197,47 @@ export function ProjectsWorkspace({
     staleTime: 1000 * 60 * 5,
   });
 
+  /*
+   * Fetched even while the archive is closed, because its count is what decides
+   * whether the entry point exists at all — including on the empty state, where
+   * a user who archived their only project would otherwise be shown "create
+   * your first project" with no route back to the one they still have.
+   */
+  const archivedQuery = api.project.getArchivedProjects.useQuery(undefined, {
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const refreshLists = async () => {
+    await Promise.all([
+      utils.project.getMyProjects.invalidate(),
+      utils.project.getArchivedProjects.invalidate(),
+    ]);
+  };
+
+  const archiveProject = api.project.archiveProject.useMutation({
+    onSuccess: async () => {
+      setConfirmArchiveId(null);
+      setOpenId(null);
+      toast.success(t("archive.archived"));
+      await refreshLists();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const reopenProject = api.project.reopenProject.useMutation({
+    onSuccess: async () => {
+      toast.success(t("archive.reopened"));
+      await refreshLists();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   const deleteProject = api.project.delete.useMutation({
     onSuccess: async () => {
       setConfirmDeleteId(null);
       setOpenId(null);
       toast.success(t("deleted"));
-      await utils.project.getMyProjects.invalidate();
+      await refreshLists();
     },
     onError: (error) => toast.error(error.message),
   });
@@ -226,7 +265,11 @@ export function ProjectsWorkspace({
     return <LoadingState />;
   }
 
-  if (rows.length === 0) {
+  const archivedRows = (archivedQuery.data ?? []) as RawProject[];
+
+  // Only genuinely-empty workspaces get the first-run pitch. One with an
+  // archive has projects; they are just not in flight.
+  if (rows.length === 0 && archivedRows.length === 0) {
     return <FirstRun />;
   }
 
@@ -240,6 +283,16 @@ export function ProjectsWorkspace({
         />
       )}
 
+      {confirmArchiveId !== null && (
+        <ArchiveDialog
+          pending={archiveProject.isPending}
+          onCancel={() => setConfirmArchiveId(null)}
+          onConfirm={() =>
+            archiveProject.mutate({ projectId: confirmArchiveId })
+          }
+        />
+      )}
+
       {opened ? (
         <ProjectDetail
           project={opened}
@@ -250,6 +303,7 @@ export function ProjectsWorkspace({
           now={now}
           onBack={closeProject}
           onDelete={() => setConfirmDeleteId(opened.id)}
+          onArchive={() => setConfirmArchiveId(opened.id)}
         />
       ) : (
         <>
@@ -360,6 +414,16 @@ export function ProjectsWorkspace({
             <ProjectTable rows={shown} locale={locale} onOpen={openProject} />
           ) : (
             <ProjectGrid rows={shown} locale={locale} onOpen={openProject} />
+          )}
+
+          {archivedRows.length > 0 && (
+            <ArchivePanel
+              rows={archivedRows}
+              open={showArchive}
+              onToggle={() => setShowArchive((was) => !was)}
+              onReopen={(projectId) => reopenProject.mutate({ projectId })}
+              pending={reopenProject.isPending}
+            />
           )}
 
           <StatStrip
@@ -749,6 +813,7 @@ function ProjectDetail({
   onTabChange,
   onBack,
   onDelete,
+  onArchive,
 }: {
   project: ProjectRow;
   userId: string;
@@ -759,6 +824,7 @@ function ProjectDetail({
   onTabChange: (tab: DetailTab) => void;
   onBack: () => void;
   onDelete: () => void;
+  onArchive: () => void;
 }) {
   const t = useTranslations("projects");
 
@@ -810,6 +876,23 @@ function ProjectDetail({
         </button>
 
         <div className="flex items-center gap-2">
+          {/*
+            Owner-only, because `archiveProject` is: the server refuses anyone
+            else, and a button that always fails is worse than no button.
+            Archive sits before delete so the recoverable action is the one
+            under the cursor first.
+          */}
+          {project.createdById === userId && (
+            <button
+              type="button"
+              onClick={onArchive}
+              aria-label={t("archive.title")}
+              title={t("archive.title")}
+              className="border-border-light/60 text-fg-quaternary hover:border-accent-primary/40 hover:text-fg-primary flex h-[34px] w-[34px] items-center justify-center rounded-lg border transition-colors duration-300"
+            >
+              <Archive size={16} strokeWidth={1.5} aria-hidden />
+            </button>
+          )}
           {project.createdById === userId && (
             <button
               type="button"
@@ -1178,6 +1261,114 @@ function FirstRun() {
         <NewProjectDrawer />
       </div>
     </div>
+  );
+}
+
+/**
+ * The archive: closed projects, and the way back out of them.
+ *
+ * Collapsed by default and rendered below the live list, because an archive is
+ * a place you go looking for something rather than something you read every
+ * day. It deliberately skips the health buckets, progress bars and sorting the
+ * live workspace has — those describe work in flight, and none of them mean
+ * anything about a project nobody is working on.
+ */
+function ArchivePanel({
+  rows,
+  open,
+  onToggle,
+  onReopen,
+  pending,
+}: {
+  rows: RawProject[];
+  open: boolean;
+  onToggle: () => void;
+  onReopen: (projectId: number) => void;
+  pending: boolean;
+}) {
+  const t = useTranslations("projects");
+
+  return (
+    <section className="border-border-light/60 rounded-xl border">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="text-fg-secondary hover:text-fg-primary flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] font-medium transition-colors"
+      >
+        <Archive size={15} className="text-fg-quaternary" aria-hidden />
+        {t("archive.sectionTitle")}
+        <span className="text-fg-quaternary font-mono text-[11px]">
+          {rows.length}
+        </span>
+        <span className="flex-1" />
+        <ChevronDown
+          size={15}
+          aria-hidden
+          className={`text-fg-quaternary transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open && (
+        <ul className="border-border-light/60 m-0 list-none border-t p-0">
+          {rows.map((row) => (
+            <li
+              key={row.id}
+              className="border-border-light/50 flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="text-fg-secondary block truncate text-sm">
+                  {row.title || t("untitled")}
+                </span>
+                {row.description && (
+                  <span className="text-fg-quaternary mt-0.5 block truncate text-[12px]">
+                    {row.description}
+                  </span>
+                )}
+              </span>
+
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onReopen(row.id)}
+                className="border-border-light/60 text-fg-secondary hover:border-accent-primary/40 hover:text-fg-primary flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-medium transition-colors duration-300 disabled:opacity-50"
+              >
+                <ArchiveRestore size={14} strokeWidth={1.5} aria-hidden />
+                {t("archive.reopen")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Archiving is reversible, so this is not a destructive dialog — but it is
+ * still a confirmation, because the project leaves everyone else's list too.
+ */
+function ArchiveDialog({
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const t = useTranslations("projects");
+
+  return (
+    <ConfirmDialog
+      title={t("archive.title")}
+      message={t("archive.body")}
+      confirmLabel={t("archive.confirm")}
+      cancelLabel={t("archive.cancel")}
+      isPending={pending}
+      onCancel={onCancel}
+      onConfirm={() => onConfirm()}
+    />
   );
 }
 

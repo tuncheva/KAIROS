@@ -415,7 +415,7 @@ export const a5OrgAdmin = {
       if (!callerCache.has(orgId)) {
         callerCache.set(
           orgId,
-          await callerMembership(db as never, orgId, userId),
+          await callerMembership(input.ctx, orgId, userId),
         );
       }
       return callerCache.get(orgId) ?? null;
@@ -455,7 +455,7 @@ export const a5OrgAdmin = {
           .limit(1);
 
         if (target && flagsForRole(target.role).canManageRoles) {
-          const admins = await adminCount(db as never, op.organizationId);
+          const admins = await adminCount(input.ctx, op.organizationId);
           if (admins <= 1) {
             results.refused.push(
               `${op.targetName}: they are the only administrator left, so this would lock the organization out of its own settings.`,
@@ -499,7 +499,7 @@ export const a5OrgAdmin = {
 
       // Revoking the last `canManageRoles` is the same lockout as a demotion.
       if (op.revoke.includes("canManageRoles")) {
-        const admins = await adminCount(db as never, op.organizationId);
+        const admins = await adminCount(input.ctx, op.organizationId);
         if (admins <= 1) {
           results.refused.push(
             `${op.targetName}: that would remove the last administrator's ability to manage roles.`,
@@ -565,7 +565,7 @@ export const a5OrgAdmin = {
       }
 
       if (flagsForRole(target.role).canManageRoles) {
-        const admins = await adminCount(db as never, op.organizationId);
+        const admins = await adminCount(input.ctx, op.organizationId);
         if (admins <= 1) {
           results.refused.push(
             `${op.targetName}: they are the only administrator left.`,

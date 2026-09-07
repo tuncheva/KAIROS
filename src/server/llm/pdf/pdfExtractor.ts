@@ -14,6 +14,8 @@
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { MAX_PDF_SIZE } from "~/lib/pdf";
+
 // ---------------------------------------------------------------------------
 // Minimal types for the pdfjs-dist subset we use (avoids deep imports the
 // bundler might try to follow).
@@ -51,8 +53,8 @@ interface PdfJsLib {
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Maximum PDF file size in bytes (10 MB). */
-export const MAX_PDF_SIZE = 10 * 1024 * 1024;
+/** Re-exported so existing server-side importers keep working. See `~/lib/pdf`. */
+export { MAX_PDF_SIZE };
 
 /** Maximum extracted text length sent to the LLM (≈ 30 000 chars ≈ 8 k tokens). */
 const MAX_TEXT_LENGTH = 30_000;

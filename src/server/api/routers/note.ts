@@ -422,65 +422,6 @@ export const noteRouter = createTRPCRouter({
       return { success: true };
     }),
     
-  getOne: protectedProcedure 
-    .input(z.object({
-      id: z.number(),
-      attemptedPassword: z.string().optional(), 
-    }))
-    .query(async ({ ctx, input }) => {
-      const note = await ctx.db.query.stickyNotes.findFirst({
-        where: eq(stickyNotes.id, input.id),
-      });
-
-      if (!note) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Note not found." });
-      }
-
-      if (note.createdById !== ctx.session.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "You don't own this note." });
-      }
-
-      if (note.passwordHash) {
-        if (!input.attemptedPassword) {
-          return {
-            id: note.id,
-            content: null, 
-            isPasswordProtected: true, 
-          };
-        }
-
-        await throttleNotePasswordAttempt(ctx, input.id);
-
-        const isMatch = await argon2.verify(
-          note.passwordHash,
-          input.attemptedPassword
-        );
-
-        if (!isMatch) {
-          throw new TRPCError({ code: "UNAUTHORIZED", message: "Incorrect password." });
-        }
-      }
-
-      // Decrypt content if it was encrypted (password-protected note after successful auth)
-      let content = note.content;
-      if (note.passwordHash && note.passwordSalt && input.attemptedPassword) {
-        try {
-          content = decryptContent(note.content, input.attemptedPassword, note.passwordSalt);
-        } catch {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to decrypt note content. The note may need to be re-saved.",
-          });
-        }
-      }
-
-      return {
-        id: note.id,
-        content,
-        isPasswordProtected: false, 
-      };
-    }),
-
   update: protectedProcedure
     .input(z.object({
       id: z.number(),

@@ -920,7 +920,8 @@
         "roleCreateFailed": "Неуспешно създаване на роля",
         "accessCodeCopied": "Кодът за достъп е копиран",
         "joinLinkCopied": "Линкът за присъединяване е копиран",
-        "copyFailed": "Неуспешно копиране"
+        "copyFailed": "Неуспешно копиране",
+        "permissionsUpdated": "Правата на члена са обновени."
       },
       "common": {
         "create": "Създай",
@@ -1998,7 +1999,18 @@
       "oneSidedNote": "И двете действия засягат само вашето копие. Другият човек запазва своето.",
       "working": "Обработва се…",
       "send": "Изпращане"
-    }
+    },
+    "noOrgChanges": "Няма нужда от промени в организацията.",
+    "orgReviewThenConfirm": "Прегледайте промените по-долу и потвърдете. Промените в организацията не могат да бъдат отменени.",
+    "orgRoleOps": "{count} промяна(и) на роля",
+    "orgPermissionOps": "{count} промяна(и) на права",
+    "orgRemovalOps": "{count} премахнат(и) член(ове)",
+    "orgInviteOps": "{count} покана(и)",
+    "orgConfirmed": "Промените в организацията са потвърдени. {summary}",
+    "orgDone": "Промените в организацията са приложени.",
+    "orgRefused": "{count} операция(и) бяха отказани от сървъра:",
+    "confirmOrgChanges": "Потвърди промените",
+    "applyOrgChanges": "Приложи промените"
   },
   "onboarding": {
     "welcome": {
@@ -2206,7 +2218,11 @@
     "previewClickToEdit": "(натиснете, за да редактирате)",
     "previewNewNote": "Нова бележка",
     "previewUpdateNote": "Промяна на бележка",
-    "previewDeleteNote": "Изтриване на бележка"
+    "previewDeleteNote": "Изтриване на бележка",
+    "previewOrgRole": "Промяна на роля",
+    "previewOrgPermission": "Промяна на права",
+    "previewOrgRemoval": "Премахване на член",
+    "previewOrgInvite": "Покана за член"
   },
   "aiConsole": {
     "conversations": "Разговори",
@@ -2461,8 +2477,25 @@
         "working": "Мисли…",
         "none": "Няма предложения.",
         "addAll": "Добави всички {count} задачи",
-        "addedAll": "Добавени са {count} задачи."
+        "addedAll": "Добавени са {count} задачи.",
+        "fromPdf": "Извличане от PDF",
+        "pdfReading": "Четене на PDF…",
+        "pdfTooLarge": "Този PDF е по-голям от {limit} MB.",
+        "pdfUnreadable": "Файлът не можа да бъде прочетен."
+      },
+      "history": {
+        "label": "История"
       }
+    },
+    "archive": {
+      "title": "Архивиране на проект",
+      "body": "Проектът излиза от активния списък за всички. Можете да го отворите отново по всяко време.",
+      "confirm": "Архивирай",
+      "cancel": "Отказ",
+      "archived": "Проектът е архивиран.",
+      "reopened": "Проектът е отворен отново.",
+      "reopen": "Отвори отново",
+      "sectionTitle": "Архивирани"
     }
   },
   "documents": {
@@ -2575,7 +2608,12 @@
     "now": "сега",
     "today": "Днес",
     "yesterday": "Вчера",
-    "yesterdayShort": "Вчера"
+    "yesterdayShort": "Вчера",
+    "clearAll": "Изчисти всички",
+    "clearAllTitle": "Изчистване на всички известия",
+    "clearAllBody": "Всички известия ще бъдат изтрити, включително непрочетените. Действието е необратимо.",
+    "clearAllConfirm": "Изчисти всички",
+    "clearAllCancel": "Отказ"
   },
   "onboardingSheet": {
     "eyebrow": "Kairos · Помощ",

@@ -757,7 +757,7 @@ export const webhooks = createTable(
  */
 export const webhookDeliveries = createTable(
   "webhook_deliveries",
-  (d) => ({
+  (_d) => ({
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     webhookId: integer("webhook_id")
       .notNull()
