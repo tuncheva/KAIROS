@@ -509,6 +509,60 @@ export const noteRouter = createTRPCRouter({
       return { success: true, message: "Note updated successfully" };
     }),
 
+  /**
+   * Move a note on the calendar, without touching its body.
+   *
+   * `update` cannot do this job. It requires `content`, and for a
+   * password-protected note it requires the password as well — because writing
+   * content back to an encrypted row without re-encrypting it would brick the
+   * note. But a locked note is still *visible* on the calendar, and dragging it
+   * to next Tuesday is not a reason to demand its password: the date is not
+   * secret, and `getAll` deliberately never ships the content that `update`
+   * would need us to send back.
+   *
+   * So this writes exactly one column and reads none of the protected ones.
+   */
+  setCalendarDate: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      calendarDate: z.date().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const note = await ctx.db.query.stickyNotes.findFirst({
+        where: eq(stickyNotes.id, input.id),
+        columns: { id: true, createdById: true },
+      });
+
+      if (!note) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Note not found." });
+      }
+
+      // Same authorization as `update`: the owner, or a write share.
+      if (note.createdById !== ctx.session.user.id) {
+        const [share] = await ctx.db
+          .select()
+          .from(noteShares)
+          .where(and(
+            eq(noteShares.noteId, input.id),
+            eq(noteShares.sharedWithId, ctx.session.user.id),
+            eq(noteShares.permission, "write"),
+          ))
+          .limit(1);
+        if (!share) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You don't have write access to this note.",
+          });
+        }
+      }
+
+      await ctx.db.update(stickyNotes)
+        .set({ calendarDate: input.calendarDate, updatedAt: new Date() })
+        .where(eq(stickyNotes.id, input.id));
+
+      return { success: true };
+    }),
+
   delete: protectedProcedure
     .input(z.object({
       id: z.number(),
