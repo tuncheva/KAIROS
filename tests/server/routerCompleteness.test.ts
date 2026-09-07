@@ -44,7 +44,7 @@ describe("Note Router — Procedure Completeness", () => {
   for (const proc of [
     "create", "getAll", "getSharedWithMe", "shareNote", "unshareNote",
     "getNoteShares", "getNotebooks", "createNotebook", "updateNotebook",
-    "deleteNotebook", "moveToNotebook", "getOne", "update", "delete",
+    "deleteNotebook", "moveToNotebook", "update", "delete",
     "verifyPassword", "resetPasswordWithPin",
   ]) {
     it(`exports "${proc}" procedure`, () => {
@@ -71,7 +71,7 @@ describe("Organization Router — Procedure Completeness", () => {
   const src = readRouter("organization.ts");
 
   for (const proc of [
-    "listMine", "getActive", "setActive", "create", "join", "getMy",
+    "listMine", "getActive", "setActive", "create", "join",
     "getMembers", "leave", "updateMemberPermissions", "updateMemberRole",
     "removeMember", "getRoles", "createRole", "deleteRole",
     "inviteMember", "getInvites", "cancelInvite",
@@ -87,7 +87,7 @@ describe("Notification Router — Procedure Completeness", () => {
 
   for (const proc of [
     "getAll", "getUnreadCount", "markAsRead", "markAllAsRead",
-    "delete", "deleteAll", "create",
+    "delete", "deleteAll",
   ]) {
     it(`exports "${proc}" procedure`, () => {
       expect(src).toContain(`${proc}:`);
@@ -122,7 +122,7 @@ describe("Event Router — Procedure Completeness", () => {
     // are `where` clauses now rather than a filter running in the browser.
     "createEvent", "getFeed", "getFacets", "getById", "getComments",
     "getAttendees", "addComment", "toggleLike", "toggleSave",
-    "updateRsvp", "deleteEvent", "sendEventReminders", "getHostStats",
+    "updateRsvp", "deleteEvent", "getHostStats",
   ]) {
     it(`exports "${proc}" procedure`, () => {
       expect(src).toContain(`${proc}:`);

@@ -187,7 +187,6 @@ const feedInputSchema = z
   })
   .optional();
 
-const sendRemindersSchema = z.void();
 
 /**
  * One page of a comment thread.
@@ -1590,19 +1589,4 @@ export const eventRouter = createTRPCRouter({
 
     return { events: rows, totals };
   }),
-
-  /**
-   * Retained as a no-op so the client that polls it keeps working during rollout.
-   *
-   * It never sent a reminder. It logged a line in development and returned
-   * success, while a browser `setInterval` called it every five minutes for every
-   * user with the publish page open — a per-viewer poll standing in for a clock.
-   * Reminders now come from `sendDueEventReminders`, driven by the server-side
-   * scheduler tick, which runs whether or not anyone has a tab open.
-   */
-  sendEventReminders: protectedProcedure
-    .input(sendRemindersSchema)
-    .mutation(async () => {
-      return { success: true, message: "Reminders are delivered by the server scheduler." };
-    }),
 });

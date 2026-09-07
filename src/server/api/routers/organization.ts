@@ -312,7 +312,7 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!membership || membership.role !== "admin") {
+      if (membership?.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only an admin can change the workspace logo.",
@@ -553,58 +553,6 @@ export const organizationRouter = createTRPCRouter({
     }),
 
 
-  getMy: protectedProcedure.query(async ({ ctx }) => {
-    let activeOrganizationId: number | null = null;
-
-    try {
-      const user = await ctx.db
-        .select({ activeOrganizationId: users.activeOrganizationId })
-        .from(users)
-        .where(eq(users.id, ctx.session.user.id))
-        .limit(1);
-
-      activeOrganizationId = user[0]?.activeOrganizationId ?? null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (!message.includes("active_organization_id")) {
-        throw err;
-      }
-      activeOrganizationId = null;
-    }
-
-    const [membership] = await ctx.db
-      .select({
-        organization: organizations,
-        role: organizationMembers.role,
-      })
-      .from(organizationMembers)
-      .innerJoin(
-        organizations,
-        eq(organizationMembers.organizationId, organizations.id),
-      )
-      .where(
-        activeOrganizationId
-          ? and(
-              eq(organizationMembers.userId, ctx.session.user.id),
-              eq(organizationMembers.organizationId, activeOrganizationId),
-            )
-          : eq(organizationMembers.userId, ctx.session.user.id),
-      )
-      .limit(1);
-
-    if (!membership) return null;
-
-    return {
-      id: membership.organization.id,
-      name: membership.organization.name,
-      accessCode: membership.organization.accessCode,
-      role: membership.role,
-      createdAt: membership.organization.createdAt,
-    };
-  }),
-
-  
-
   getMembers: protectedProcedure
     .input(z.object({ organizationId: z.number() }))
     .query(async ({ ctx, input }) => {
@@ -635,6 +583,11 @@ export const organizationRouter = createTRPCRouter({
           image: users.image,
           role: organizationMembers.role,
           joinedAt: organizationMembers.joinedAt,
+          // The two flags `updateMemberPermissions` can change. Returned so the
+          // roster can show their current state rather than a toggle that
+          // starts from a guess.
+          canAddMembers: organizationMembers.canAddMembers,
+          canAssignTasks: organizationMembers.canAssignTasks,
         })
         .from(organizationMembers)
         .innerJoin(users, eq(organizationMembers.userId, users.id))

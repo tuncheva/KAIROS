@@ -3,7 +3,6 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { notifications } from "~/server/db/schema";
 import { eq, and, desc, count } from "drizzle-orm";
-import { notify } from "~/server/notifications/dispatch";
 
 /**
  * Cap on `getAll`. The notification bell shows a short list, so there is no
@@ -134,45 +133,4 @@ export const notificationRouter = createTRPCRouter({
 
     return { success: true, message: "All notifications deleted" };
   }),
-
-  /**
-   * Create a notification for yourself.
-   *
-   * Routed through the dispatcher like every other producer, which is what stops
-   * it being a hole in the preference system: it used to insert and emit
-   * directly, so a client could write itself notifications a user had switched
-   * off. `requested` means it obeys the master in-app switch and no category
-   * toggle — the caller asked for this specific one.
-   *
-   * Length caps are new. The columns are `varchar(256)` and `text`; an
-   * over-length title reached Postgres as a constraint violation surfaced to the
-   * user as a 500.
-   */
-  create: protectedProcedure
-    .input(
-      z.object({
-        type: z.enum([
-          "event", "task", "project", "system",
-          "like", "comment", "reply", "message", "event_reminder",
-        ]),
-        title: z.string().min(1).max(256),
-        message: z.string().min(1).max(2000),
-        link: z.string().max(512).optional(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const result = await notify({
-        db: ctx.db,
-        userId: ctx.session.user.id,
-        category: "requested",
-        type: input.type,
-        title: input.title,
-        message: input.message,
-        link: input.link,
-      });
-
-      return result.delivered
-        ? { id: result.id, delivered: true as const }
-        : { id: null, delivered: false as const, reason: result.reason };
-    }),
 });

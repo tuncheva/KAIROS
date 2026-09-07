@@ -9,7 +9,7 @@ import { searchWorkspaceTool, type SearchHit } from "~/server/llm/tools/a1/searc
  * The README has promised this since the beginning and there was no procedure
  * behind it — while the identical capability already existed, reachable only
  * by the AI agent, as the `searchWorkspace` A1 tool. It matches by lexeme and
- * by substring across tasks, projects, notes, events and comments, and scopes
+ * by substring across tasks, projects, notes and events, and scopes
  * every arm through `loadVisibleScope`, which is the same visibility rule
  * `assertProjectAccess` enforces for reads.
  *
@@ -27,7 +27,7 @@ export const searchRouter = createTRPCRouter({
       z.object({
         query: z.string().min(2).max(200),
         kinds: z
-          .array(z.enum(["task", "project", "note", "event", "comment"]))
+          .array(z.enum(["task", "project", "note", "event"]))
           .min(1)
           .max(5)
           .optional(),

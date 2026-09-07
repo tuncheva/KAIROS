@@ -97,8 +97,17 @@ describe("Calendar Page", () => {
   });
 });
 
+/*
+ * The notes surface guards in its layout, not its page.
+ *
+ * `(workspace)/page.tsx` is a `return null` that exists only to define the URL
+ * — the library is rendered by `(workspace)/layout.tsx`, which is what keeps it
+ * mounted while you move between notes, and which runs `auth()` once for the
+ * whole segment rather than once per note. So the guard assertion has to follow
+ * the guard.
+ */
 describe("Notes Page", () => {
-  const page = readPage("(app)/notes/page.tsx");
+  const page = readPage("(app)/notes/(workspace)/layout.tsx");
 
   it("has authentication guard", () => {
     expect(page).toMatch(/auth|session|redirect/i);
@@ -177,7 +186,8 @@ describe("Not Found Page", () => {
 describe("All Protected Pages — Auth Guard Consistency", () => {
   const protectedPages = [
     "(app)/calendar/page.tsx",
-    "(app)/notes/page.tsx",
+    // Guarded by its layout — see the "Notes Page" block above.
+    "(app)/notes/(workspace)/layout.tsx",
     "(app)/projects/page.tsx",
     "(app)/progress/page.tsx",
     "(app)/orgs/page.tsx",

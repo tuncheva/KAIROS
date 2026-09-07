@@ -455,6 +455,24 @@ export function WorkspaceSettingsClient() {
     },
   });
 
+  /*
+   * Who the caller is, so their own row can omit the permission toggles.
+   *
+   * `updateMemberPermissions` refuses a self-edit outright — an admin cannot
+   * revoke their own rights by accident — so showing the controls there would
+   * only offer a guaranteed error.
+   */
+  const currentUser = api.user.getCurrentUser.useQuery();
+
+  const updateMemberPermissions =
+    api.organization.updateMemberPermissions.useMutation({
+      onSuccess: () => {
+        toast.success(t("messages.permissionsUpdated"));
+        void utils.organization.getMembers.invalidate();
+      },
+      onError: (e) => toast.error(e.message),
+    });
+
   const updateMemberRole = api.organization.updateMemberRole.useMutation({
     onSuccess: () => {
       toast.success(t("messages.roleUpdated"));
@@ -854,6 +872,54 @@ export function WorkspaceSettingsClient() {
           ) : (
             <LedgerValue>{translateRoleLabel(member.role)}</LedgerValue>
           )}
+          {isAdmin && activeOrgId && member.id !== currentUser.data?.id
+            ? /*
+               * Only the two flags the procedure accepts.
+               *
+               * `updateMemberPermissions` takes `canAddMembers` and
+               * `canAssignTasks` and nothing else, so the roster offers exactly
+               * those. The other six in `PERMISSION_KEYS` are role-derived and
+               * shown read-only in the roles group above; putting toggles here
+               * for flags the server ignores would be a lie.
+               */
+              (
+                [
+                  ["canAddMembers", member.canAddMembers] as const,
+                  ["canAssignTasks", member.canAssignTasks] as const,
+                ].map(([flag, value]) => (
+                  <label
+                    key={flag}
+                    className="flex items-center gap-1.5 text-[12px] text-fg-tertiary"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={value ?? false}
+                      disabled={updateMemberPermissions.isPending}
+                      onChange={(event) =>
+                        void save.run(() =>
+                          updateMemberPermissions.mutateAsync({
+                            organizationId: activeOrgId,
+                            userId: member.id,
+                            // Both flags travel together: the input requires
+                            // each one, so the untouched flag must carry its
+                            // current value or the write would clear it.
+                            canAddMembers:
+                              flag === "canAddMembers"
+                                ? event.target.checked
+                                : (member.canAddMembers ?? false),
+                            canAssignTasks:
+                              flag === "canAssignTasks"
+                                ? event.target.checked
+                                : (member.canAssignTasks ?? false),
+                          }),
+                        )
+                      }
+                    />
+                    {t(`permissions.${PERMISSION_LABEL_KEYS[flag]}`)}
+                  </label>
+                ))
+              )
+            : null}
           {isAdmin && activeOrgId ? (
             // A bare icon, matching the invite list below: a bordered danger
             // button next to every member turns the roster into a row of red.

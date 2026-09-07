@@ -16,7 +16,7 @@ import { api } from "~/trpc/react";
 
 import { PlanDiffCard } from "./PlanDiffCard";
 import { UndoApplyButton } from "./UndoApplyButton";
-import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil, ArrowUp, ArrowUpRight } from "~/components/ui/icons";
+import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2, Pencil, ArrowUp, ArrowUpRight, Shield, ShieldCheck, UserMinus, UserPlus, AlertCircle } from "~/components/ui/icons";
 import { useDateFormat } from "~/hooks/useDateFormat";
 import { humanizeToolName, type TrailEvent } from "~/components/chat/trail";
 
@@ -44,6 +44,28 @@ interface NotePreviewItem {
   content?: string;
   noteId?: number;
   reason?: string;
+}
+
+/**
+ * One A5 org-admin operation, flattened for review.
+ *
+ * The four operation arrays are collapsed into a single list because the user
+ * is deciding about one thing — "these changes to my organization" — not about
+ * four separate categories, and the confirm is all-or-nothing anyway.
+ */
+interface OrgChangeItem {
+  kind: "role" | "permission" | "removal" | "invite";
+  /** The person affected: a display name, or an email for an invite. */
+  targetName: string;
+  /**
+   * Why this change. A5 requires a rationale on every operation precisely so
+   * the confirm card can show one, so this is not optional.
+   */
+  rationale: string;
+  /** A role transition ("member -> admin") or the invited role. */
+  detail?: string;
+  grant?: string[];
+  revoke?: string[];
 }
 
 type ChatMsg =
@@ -76,10 +98,24 @@ type ChatMsg =
         | { type: "task_undo"; draftId: string }
         | { type: "task_apply"; draftId: string; confirmationToken: string }
         | { type: "task_direct_apply"; draftId: string } // Combined confirm+apply
+        /*
+         * Org changes stay two-step, deliberately.
+         *
+         * Notes and events collapse confirm+apply into one click because a
+         * wrong note is deleted in a click. A wrong role change hands somebody
+         * the power to make more role changes, and a removal drops a person's
+         * access to every project in the org. So the user sees the server's
+         * own count of what it is about to do, and any refusals, before the
+         * write happens.
+         */
+        | { type: "org_confirm"; draftId: string }
+        | { type: "org_apply"; draftId: string; confirmationToken: string }
       >;
       inlineTasks?: InlineTask[];
       eventPreviews?: EventPreviewItem[];
       notePreviews?: NotePreviewItem[];
+      orgPreviews?: OrgChangeItem[];
+      orgWarnings?: string[];
     };
 
 interface NotesDraftResponse {
@@ -141,6 +177,56 @@ interface TaskPlannerApplyResponse {
     updatedTaskIds?: number[];
     statusChangedTaskIds?: number[];
     deletedTaskIds?: number[];
+  };
+}
+
+/**
+ * A5's plan shape. Unlike the other three agents this carries `warnings` —
+ * A5 can tell you a demotion drops your last admin — and those have to reach
+ * the screen, so they are modelled rather than cast away.
+ */
+interface OrgAdminDraftResponse {
+  draftId?: string;
+  plan?: {
+    summary?: string;
+    roleChanges?: Array<{
+      targetName: string;
+      currentRole?: string;
+      newRole: string;
+      rationale: string;
+    }>;
+    permissionChanges?: Array<{
+      targetName: string;
+      grant?: string[];
+      revoke?: string[];
+      rationale: string;
+    }>;
+    removals?: Array<{ targetName: string; rationale: string }>;
+    invites?: Array<{ email: string; role?: string; rationale: string }>;
+    warnings?: string[];
+    questions?: string[];
+  };
+}
+
+interface OrgAdminConfirmResponse {
+  confirmationToken: string;
+  summary?: {
+    roleChanges: number;
+    permissionChanges: number;
+    removals: number;
+    invites: number;
+  };
+}
+
+interface OrgAdminApplyResponse {
+  applied?: boolean;
+  results?: {
+    rolesChanged?: number;
+    permissionsChanged?: number;
+    membersRemoved?: number;
+    invitesSent?: number;
+    /** Operations the server refused, and why. Never silently dropped. */
+    refused?: string[];
   };
 }
 
@@ -449,6 +535,81 @@ function NotePreviewCard({
       {item.reason && (
         <p className="text-[10px] text-fg-quaternary mt-1 italic">{item.reason}</p>
       )}
+    </div>
+  );
+}
+
+/**
+ * One org-admin operation, rendered for review.
+ *
+ * Leads with the person affected and always shows the rationale, rather than
+ * tucking it away the way the note and event cards do: there is no such thing
+ * as a low-stakes org write, so there is no row here worth skimming past.
+ */
+function OrgChangePreviewCard({
+  item,
+  index,
+}: {
+  item: OrgChangeItem;
+  index: number;
+}) {
+  const t = useTranslations("agents");
+  const { Icon, label, accent } =
+    item.kind === "role"
+      ? {
+          Icon: Shield,
+          label: t("previewOrgRole"),
+          accent: "rgb(234 179 8)",
+        }
+      : item.kind === "permission"
+        ? {
+            Icon: ShieldCheck,
+            label: t("previewOrgPermission"),
+            accent: "rgb(234 179 8)",
+          }
+        : item.kind === "removal"
+          ? {
+              Icon: UserMinus,
+              label: t("previewOrgRemoval"),
+              accent: "rgb(239 68 68)",
+            }
+          : {
+              Icon: UserPlus,
+              label: t("previewOrgInvite"),
+              accent: "rgb(var(--accent-primary))",
+            };
+
+  return (
+    <div
+      className="kairos-preview-card"
+      style={{ animationDelay: `${index * 60}ms`, borderLeftColor: accent }}
+    >
+      <div className="flex items-center gap-2 mb-1.5">
+        <Icon size={12} style={{ color: accent }} />
+        <span
+          className="text-[10px] font-bold uppercase tracking-wide"
+          style={{ color: accent }}
+        >
+          {label}
+        </span>
+      </div>
+      <p className="text-xs text-fg-primary font-medium">{item.targetName}</p>
+      {item.detail && (
+        <p className="text-xs text-fg-secondary mt-0.5">{item.detail}</p>
+      )}
+      {(item.grant?.length ?? 0) > 0 && (
+        <p className="text-[10px] text-fg-secondary mt-0.5">
+          + {item.grant!.join(", ")}
+        </p>
+      )}
+      {(item.revoke?.length ?? 0) > 0 && (
+        <p className="text-[10px] text-fg-secondary mt-0.5">
+          &minus; {item.revoke!.join(", ")}
+        </p>
+      )}
+      <p className="text-[10px] text-fg-quaternary mt-1 italic">
+        {item.rationale}
+      </p>
     </div>
   );
 }
@@ -824,6 +985,110 @@ export function ProjectIntelligenceChat(props: {
         };
       }
 
+      if (plan.kind === "org") {
+        const op = plan.plan as OrgAdminDraftResponse["plan"];
+
+        // A5 asks before it acts, and an unanswered question means the plan is
+        // not yet a plan — so it renders without a confirm button, the same
+        // short-circuit the task and event branches use.
+        const orgQuestions = Array.isArray(op?.questions) ? op.questions : [];
+        if (orgQuestions.length > 0) {
+          return {
+            text: `${t("needMoreInfo")}\n${orgQuestions.map((q) => asBullet(q)).join("\n")}`,
+            createdAt: new Date(),
+            msgId,
+          };
+        }
+
+        const roleChanges = op?.roleChanges ?? [];
+        const permissionChanges = op?.permissionChanges ?? [];
+        const removals = op?.removals ?? [];
+        const invites = op?.invites ?? [];
+        const orgWarnings = op?.warnings ?? [];
+        const orgTotal =
+          roleChanges.length +
+          permissionChanges.length +
+          removals.length +
+          invites.length;
+
+        if (orgTotal === 0) {
+          return {
+            text: op?.summary ?? summary ?? t("noOrgChanges"),
+            createdAt: new Date(),
+            msgId,
+          };
+        }
+
+        const orgPreviews: OrgChangeItem[] = [
+          ...roleChanges.map((c) => ({
+            kind: "role" as const,
+            targetName: c.targetName,
+            rationale: c.rationale,
+            // Without the current role a demotion and a promotion look alike.
+            detail: c.currentRole
+              ? `${c.currentRole} → ${c.newRole}`
+              : c.newRole,
+          })),
+          ...permissionChanges.map((c) => ({
+            kind: "permission" as const,
+            targetName: c.targetName,
+            rationale: c.rationale,
+            grant: c.grant,
+            revoke: c.revoke,
+          })),
+          ...removals.map((c) => ({
+            kind: "removal" as const,
+            targetName: c.targetName,
+            rationale: c.rationale,
+          })),
+          ...invites.map((c) => ({
+            kind: "invite" as const,
+            targetName: c.email,
+            rationale: c.rationale,
+            detail: c.role,
+          })),
+        ];
+
+        const orgOps = [
+          roleChanges.length > 0
+            ? t("orgRoleOps", { count: roleChanges.length })
+            : null,
+          permissionChanges.length > 0
+            ? t("orgPermissionOps", { count: permissionChanges.length })
+            : null,
+          removals.length > 0
+            ? t("orgRemovalOps", { count: removals.length })
+            : null,
+          invites.length > 0
+            ? t("orgInviteOps", { count: invites.length })
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+        return {
+          text: [op?.summary ?? summary ?? "", orgOps, t("orgReviewThenConfirm")]
+            .filter(Boolean)
+            .join("\n"),
+          createdAt: new Date(),
+          msgId,
+          actions: [{ type: "org_confirm" as const, draftId: plan.draftId }],
+          orgPreviews,
+          orgWarnings: orgWarnings.length > 0 ? orgWarnings : undefined,
+        };
+      }
+
+      // Everything above returned, so `plan.kind` is "events" here. The guard
+      // is what makes the cast below honest: this used to be a bare fall-through
+      // that read an org plan through the event plan's field names.
+      if (plan.kind !== "events") {
+        return {
+          text: summary ?? t("noResponse"),
+          createdAt: new Date(),
+          msgId,
+        };
+      }
+
       const p = plan.plan as EventsDraftResponse["plan"];
       const questions = Array.isArray(p?.questionsForUser)
         ? p.questionsForUser
@@ -997,6 +1262,9 @@ export function ProjectIntelligenceChat(props: {
 
   const eventsConfirmMutation = api.agent.eventsPublisherConfirm.useMutation();
   const eventsApplyMutation = api.agent.eventsPublisherApply.useMutation();
+
+  const orgConfirmMutation = api.agent.orgAdminConfirm.useMutation();
+  const orgApplyMutation = api.agent.orgAdminApply.useMutation();
 
   /* ---------- Task Planner mutations ---------- */
 
@@ -1598,6 +1866,14 @@ export function ProjectIntelligenceChat(props: {
                 m.role === "agent" &&
                 Array.isArray((m as { notePreviews?: NotePreviewItem[] }).notePreviews) &&
                 ((m as { notePreviews?: NotePreviewItem[] }).notePreviews?.length ?? 0) > 0;
+              const hasOrgPreviews =
+                m.role === "agent" &&
+                Array.isArray((m as { orgPreviews?: OrgChangeItem[] }).orgPreviews) &&
+                ((m as { orgPreviews?: OrgChangeItem[] }).orgPreviews?.length ?? 0) > 0;
+              const hasOrgWarnings =
+                m.role === "agent" &&
+                Array.isArray((m as { orgWarnings?: string[] }).orgWarnings) &&
+                ((m as { orgWarnings?: string[] }).orgWarnings?.length ?? 0) > 0;
 
               return (
                 <div
@@ -1808,6 +2084,58 @@ export function ProjectIntelligenceChat(props: {
                             />
                           );
                         })}
+                      </div>
+                    )}
+
+                    {/*
+                      Warnings come before the change list, not after it.
+
+                      A5 emits these for exactly the cases a count cannot show —
+                      a demotion that removes the last admin, a removal that
+                      orphans assigned tasks — so they have to be read before
+                      the eye reaches the confirm button, not below it.
+                    */}
+                    {hasOrgWarnings && (
+                      <div className="kairos-preview-list" data-testid="org-warnings">
+                        {((m as { orgWarnings?: string[] }).orgWarnings ?? []).map(
+                          (w, wIdx) => (
+                            <div
+                              key={`org-warn-${wIdx}`}
+                              className="flex items-start gap-2 rounded-md p-2"
+                              style={{ backgroundColor: "rgb(239 68 68 / 0.1)" }}
+                            >
+                              <AlertCircle
+                                size={12}
+                                style={{
+                                  color: "rgb(239 68 68)",
+                                  flexShrink: 0,
+                                  marginTop: 2,
+                                }}
+                              />
+                              <p
+                                className="text-[11px]"
+                                style={{ color: "rgb(239 68 68)" }}
+                              >
+                                {w}
+                              </p>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    )}
+
+                    {/* Org changes (shown before the user confirms) */}
+                    {hasOrgPreviews && (
+                      <div className="kairos-preview-list" data-testid="org-previews">
+                        {((m as { orgPreviews?: OrgChangeItem[] }).orgPreviews ?? []).map(
+                          (item, oIdx) => (
+                            <OrgChangePreviewCard
+                              key={`org-${oIdx}`}
+                              item={item}
+                              index={oIdx}
+                            />
+                          ),
+                        )}
                       </div>
                     )}
 
@@ -2265,6 +2593,166 @@ export function ProjectIntelligenceChat(props: {
                                 {eventsApplyMutation.isPending
                                   ? t("applying")
                                   : t("applyEvents")}
+                              </button>
+                            );
+                          }
+
+                          /* ---- Org Admin Confirm (step 1 of 2) ---- */
+                          if (a.type === "org_confirm") {
+                            return (
+                              <button
+                                key={`${a.type}-${a.draftId}-${aIdx}`}
+                                type="button"
+                                className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all hover:scale-[1.03] active:scale-95"
+                                style={{
+                                  backgroundColor: "rgb(var(--accent-primary) / 0.15)",
+                                  color: "rgb(var(--accent-primary))",
+                                }}
+                                disabled={orgConfirmMutation.isPending}
+                                onClick={async () => {
+                                  try {
+                                    const res = (await orgConfirmMutation.mutateAsync({
+                                      draftId: a.draftId,
+                                    })) as OrgAdminConfirmResponse;
+                                    const c = res.summary;
+                                    // The server's own count, not the draft's --
+                                    // this is what Apply is about to execute.
+                                    const counted = c
+                                      ? [
+                                          c.roleChanges > 0
+                                            ? t("orgRoleOps", { count: c.roleChanges })
+                                            : null,
+                                          c.permissionChanges > 0
+                                            ? t("orgPermissionOps", {
+                                                count: c.permissionChanges,
+                                              })
+                                            : null,
+                                          c.removals > 0
+                                            ? t("orgRemovalOps", { count: c.removals })
+                                            : null,
+                                          c.invites > 0
+                                            ? t("orgInviteOps", { count: c.invites })
+                                            : null,
+                                        ]
+                                          .filter(Boolean)
+                                          .join(" · ")
+                                      : "";
+
+                                    setMessages((prev) => [
+                                      ...prev,
+                                      {
+                                        role: "agent",
+                                        text: t("orgConfirmed", {
+                                          summary: counted || t("readyToApply"),
+                                        }),
+                                        createdAt: new Date(),
+                                        actions: [
+                                          {
+                                            type: "org_apply",
+                                            draftId: a.draftId,
+                                            confirmationToken: res.confirmationToken,
+                                          },
+                                        ],
+                                      },
+                                    ]);
+                                  } catch (err) {
+                                    const msg =
+                                      err instanceof Error ? err.message : "Confirm failed";
+                                    setMessages((prev) => [
+                                      ...prev,
+                                      {
+                                        role: "agent",
+                                        text: msg.includes("status=confirmed")
+                                          ? t("alreadyConfirmed")
+                                          : t("confirmFailed", { error: msg }),
+                                        createdAt: new Date(),
+                                      },
+                                    ]);
+                                  }
+                                }}
+                              >
+                                {orgConfirmMutation.isPending
+                                  ? t("confirming")
+                                  : t("confirmOrgChanges")}
+                              </button>
+                            );
+                          }
+
+                          /* ---- Org Admin Apply (step 2 of 2) ---- */
+                          if (a.type === "org_apply") {
+                            return (
+                              <button
+                                key={`${a.type}-${a.draftId}-${aIdx}`}
+                                type="button"
+                                className="text-xs px-3 py-1.5 rounded-lg text-white transition-all hover:scale-[1.03] active:scale-95"
+                                style={{
+                                  backgroundColor: "rgb(var(--accent-primary))",
+                                }}
+                                disabled={orgApplyMutation.isPending}
+                                onClick={async () => {
+                                  try {
+                                    const res = (await orgApplyMutation.mutateAsync({
+                                      draftId: a.draftId,
+                                      confirmationToken: a.confirmationToken,
+                                    })) as OrgAdminApplyResponse;
+                                    const r = res.results;
+                                    const applied = [
+                                      (r?.rolesChanged ?? 0) > 0
+                                        ? t("orgRoleOps", { count: r!.rolesChanged! })
+                                        : null,
+                                      (r?.permissionsChanged ?? 0) > 0
+                                        ? t("orgPermissionOps", {
+                                            count: r!.permissionsChanged!,
+                                          })
+                                        : null,
+                                      (r?.membersRemoved ?? 0) > 0
+                                        ? t("orgRemovalOps", { count: r!.membersRemoved! })
+                                        : null,
+                                      (r?.invitesSent ?? 0) > 0
+                                        ? t("orgInviteOps", { count: r!.invitesSent! })
+                                        : null,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · ");
+                                    // A refusal is the server declining a write the
+                                    // user just approved. Never swallow it.
+                                    const refused = r?.refused ?? [];
+
+                                    setMessages((prev) => [
+                                      ...prev,
+                                      {
+                                        role: "agent",
+                                        text: [
+                                          t("orgDone"),
+                                          applied,
+                                          refused.length > 0
+                                            ? t("orgRefused", { count: refused.length })
+                                            : null,
+                                          ...refused.map((x) => asBullet(x)),
+                                        ]
+                                          .filter(Boolean)
+                                          .join("\n"),
+                                        createdAt: new Date(),
+                                      },
+                                    ]);
+                                    void utils.organization.invalidate();
+                                  } catch (err) {
+                                    const msg =
+                                      err instanceof Error ? err.message : "Apply failed";
+                                    setMessages((prev) => [
+                                      ...prev,
+                                      {
+                                        role: "agent",
+                                        text: t("applyFailed", { error: msg }),
+                                        createdAt: new Date(),
+                                      },
+                                    ]);
+                                  }
+                                }}
+                              >
+                                {orgApplyMutation.isPending
+                                  ? t("applying")
+                                  : t("applyOrgChanges")}
                               </button>
                             );
                           }

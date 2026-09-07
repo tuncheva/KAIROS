@@ -8,7 +8,20 @@
 
 export type CalendarKind = "task" | "event" | "note";
 
-export type ViewMode = "month" | "week" | "day";
+/**
+ * The period on screen.
+ *
+ * `range` is the old pair of date inputs, folded in as a view. It used to be a
+ * second, parallel mechanism that narrowed *within* whichever period was
+ * loaded — so a range outside that period emptied the grid with no
+ * explanation, and any navigation silently discarded it. As a view it is one
+ * model of time instead of two: the range *is* the period.
+ */
+export type ViewMode = "month" | "week" | "day" | "range";
+
+/** Whether the period is drawn as a grid or listed as an agenda. Independent
+ *  of `ViewMode` — an agenda of a week and a grid of a week show the same days. */
+export type Layout = "grid" | "agenda";
 
 export type CalendarTask = {
   id: number;
@@ -24,6 +37,8 @@ export type CalendarEvent = {
   id: number;
   title: string;
   eventDate: Date | string;
+  /** `events.ends_at`. Nullable in the schema, so duration is often unknown. */
+  endsAt: Date | string | null;
   description: string;
 };
 
@@ -53,9 +68,21 @@ export type CalendarItem =
       allDay: boolean;
       status: string;
       priority: string;
+      /** Needed to link out to the parent project from the detail panel. */
+      projectId: number;
       projectTitle: string | null;
     }
-  | { kind: "event"; id: number; title: string; date: Date; allDay: boolean; description: string }
+  | {
+      kind: "event";
+      id: number;
+      title: string;
+      date: Date;
+      allDay: boolean;
+      /** `null` when the row has no end recorded — the duration is unknown,
+       *  which the time grid shows rather than inventing a length. */
+      endsAt: Date | null;
+      description: string;
+    }
   | { kind: "note"; id: number; title: string; date: Date; allDay: boolean; locked: boolean };
 
 /* ------------------------------------------------------------------ */
@@ -140,14 +167,35 @@ export function monthGridDays(anchor: Date) {
   return Array.from({ length: 42 }, (_, i) => addDays(start, i));
 }
 
-/** The days a view shows: 42 for month, 7 for week, 1 for day. */
-export function visibleDays(view: ViewMode, anchor: Date) {
+/** A range view is capped so a mistyped year cannot ask for 40,000 cells. */
+export const MAX_RANGE_DAYS = 92;
+
+/** The days a view shows: 42 for month, 7 for week, 1 for day, and for a
+ *  range every day it covers, inclusive. */
+export function visibleDays(view: ViewMode, anchor: Date, range?: RangeBounds | null) {
   if (view === "month") return monthGridDays(anchor);
   if (view === "week") {
     const start = startOfWeekMonday(anchor);
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   }
+  if (view === "range" && range) {
+    const start = startOfDayLocal(range.from);
+    const span = Math.floor((startOfDayLocal(range.to).getTime() - start.getTime()) / 86_400_000);
+    const length = Math.min(Math.max(span, 0) + 1, MAX_RANGE_DAYS);
+    return Array.from({ length }, (_, i) => addDays(start, i));
+  }
   return [startOfDayLocal(anchor)];
+}
+
+export type RangeBounds = { from: Date; to: Date };
+
+/** Parse the two range inputs into ordered bounds, or `null` if unusable.
+ *  Inverted input is read as the range the user meant, not an error. */
+export function rangeBounds(from: string, to: string): RangeBounds | null {
+  const a = fromYmd(from);
+  const b = fromYmd(to, true);
+  if (!a || !b) return null;
+  return a <= b ? { from: a, to: b } : { from: startOfDayLocal(b), to: endOfDayLocal(a) };
 }
 
 export function dayKey(d: Date) {
@@ -181,17 +229,22 @@ export function toCalendarItems(
       allDay: isAllDay(date),
       status: task.status,
       priority: task.priority,
+      projectId: task.projectId,
       projectTitle: task.projectTitle,
     });
   }
   for (const event of data?.events ?? []) {
     const date = new Date(event.eventDate);
+    const end = event.endsAt ? new Date(event.endsAt) : null;
     items.push({
       kind: "event",
       id: event.id,
       title: event.title,
       date,
       allDay: isAllDay(date),
+      // Guard against a stored end that precedes its start: treat it as
+      // unknown rather than laying out a negative-height block.
+      endsAt: end && !Number.isNaN(end.getTime()) && end > date ? end : null,
       description: event.description,
     });
   }
@@ -361,6 +414,22 @@ export const KIND_LABEL_KEYS: Record<CalendarKind, string> = {
   note: "noteType",
 };
 
+/**
+ * A second, non-colour channel for item kind.
+ *
+ * Tint alone carried this, which fails as soon as colour does: greyscale, low
+ * vision, or an accent the user picked that happens to land on the same hue as
+ * a priority. These are glyphs rather than icon components on purpose — they
+ * have to render inside a 3px-padded chip in a 45px month cell, where an SVG
+ * at a legible size does not fit. They are `aria-hidden`; the accessible name
+ * always spells the kind out in words.
+ */
+export const KIND_GLYPH: Record<CalendarKind, string> = {
+  task: "✓",
+  event: "●",
+  note: "▪",
+};
+
 export const TASK_STATUSES = ["pending", "in_progress", "blocked", "completed"] as const;
 export const TASK_PRIORITIES = ["urgent", "high", "medium", "low"] as const;
 export const ITEM_KINDS: CalendarKind[] = ["task", "event", "note"];
@@ -374,6 +443,36 @@ export const ROW_HEIGHT = 56;
 const DEFAULT_HOUR_START = 8;
 const DEFAULT_HOUR_END = 20;
 
+/** Smallest span an event may draw at, so a 10-minute slot stays readable. */
+const MIN_EVENT_MINUTES = 30;
+/** What an event with no recorded end draws at — paired with a dashed lower
+ *  edge in the grid, so an assumed length never passes for a known one. */
+const ASSUMED_EVENT_MINUTES = 60;
+/** Tasks and notes are moments, not spans: they get a marker, not a block. */
+const MARKER_MINUTES = 24;
+
+/**
+ * How many minutes an item occupies on the time grid, and whether that came
+ * from the data or from us.
+ *
+ * Only events can have a duration — `events.ends_at`. A task's due date and a
+ * note's calendar date are instants, and drawing them as hour-long blocks (as
+ * this grid used to, for everything) is the one claim a time grid should never
+ * make: it puts a 15-minute stand-up and a full-day workshop in identical
+ * boxes.
+ */
+export function itemSpan(item: CalendarItem): { minutes: number; known: boolean } {
+  if (item.kind !== "event") return { minutes: MARKER_MINUTES, known: true };
+  if (!item.endsAt) return { minutes: ASSUMED_EVENT_MINUTES, known: false };
+  const minutes = (item.endsAt.getTime() - item.date.getTime()) / 60_000;
+  return { minutes: Math.max(minutes, MIN_EVENT_MINUTES), known: true };
+}
+
+/** End of an item's visual span, in decimal hours from midnight. */
+function spanEndHours(item: CalendarItem) {
+  return decimalHours(item.date) + itemSpan(item).minutes / 60;
+}
+
 /** The hour range the time grid must cover to show every timed item. */
 export function hourWindow(items: CalendarItem[]) {
   let start = DEFAULT_HOUR_START;
@@ -381,8 +480,8 @@ export function hourWindow(items: CalendarItem[]) {
   for (const item of items) {
     if (item.allDay) continue;
     start = Math.min(start, Math.floor(decimalHours(item.date)));
-    // Blocks are an hour long, so the window has to reach one hour past.
-    end = Math.max(end, Math.ceil(decimalHours(item.date)) + 1);
+    // Reach past the item's real end, not a blanket hour.
+    end = Math.max(end, Math.ceil(spanEndHours(item)));
   }
   return { start: Math.max(0, start), end: Math.min(24, Math.max(end, start + 1)) };
 }
@@ -394,45 +493,90 @@ export type PositionedItem = {
   /** Column index and total columns inside a cluster of overlapping items. */
   lane: number;
   lanes: number;
+  /** False when the height is an assumption, not a recorded end. */
+  endKnown: boolean;
 };
 
-/** Nothing in the schema records a duration, so a timed item occupies an hour. */
-const BLOCK_HOURS = 1;
-
 /**
- * Stack overlapping items side by side. The mock had no colliding items;
- * real data does, and fully overlapping blocks would hide each other.
+ * Stack overlapping items side by side.
+ *
+ * Two passes over each cluster of mutually overlapping items: lanes are handed
+ * out greedily to the first one that has come free, and only once the cluster
+ * closes is the column count known — so every block in a cluster is the same
+ * width and none of them hide each other.
  */
 export function layoutTimedItems(items: CalendarItem[], hourStart: number): PositionedItem[] {
   const sorted = [...items].sort((a, b) => a.date.getTime() - b.date.getTime());
   const out: PositionedItem[] = [];
 
+  /** Entries in the cluster being built, and when each lane frees up. */
   let cluster: PositionedItem[] = [];
+  let laneEnds: number[] = [];
   let clusterEnd = -Infinity;
 
-  const flush = () => {
-    for (const entry of cluster) entry.lanes = cluster.length;
+  const closeCluster = () => {
+    for (const entry of cluster) entry.lanes = laneEnds.length;
     cluster = [];
+    laneEnds = [];
   };
 
   for (const item of sorted) {
     const startHours = decimalHours(item.date);
-    const endHours = startHours + BLOCK_HOURS;
+    const span = itemSpan(item);
+    const endHours = startHours + span.minutes / 60;
 
-    if (startHours >= clusterEnd) flush();
+    // A gap with nothing spanning it ends the cluster: what follows cannot
+    // overlap anything before it, so it should get the full column width.
+    if (startHours >= clusterEnd) closeCluster();
+
+    let lane = laneEnds.findIndex((freeAt) => freeAt <= startHours);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(endHours);
+    } else {
+      laneEnds[lane] = endHours;
+    }
 
     const entry: PositionedItem = {
       item,
       top: Math.round((startHours - hourStart) * ROW_HEIGHT),
-      height: Math.max(44, Math.round(BLOCK_HOURS * ROW_HEIGHT) - 4),
-      lane: cluster.length,
+      height: Math.max(20, Math.round((span.minutes / 60) * ROW_HEIGHT) - 2),
+      lane,
       lanes: 1,
+      endKnown: span.known,
     };
     cluster.push(entry);
     out.push(entry);
     clusterEnd = Math.max(clusterEnd, endHours);
   }
-  flush();
+  closeCluster();
 
   return out;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Agenda                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Items bucketed into the days they fall on, in chronological order.
+ *
+ * The agenda view lists only the days that hold something, which is the whole
+ * point of it on a phone — an empty Tuesday costs a row in a grid and nothing
+ * in a list.
+ */
+export function groupByDay(items: CalendarItem[]): { day: Date; items: CalendarItem[] }[] {
+  const buckets = new Map<string, { day: Date; items: CalendarItem[] }>();
+  for (const item of items) {
+    const key = dayKey(item.date);
+    const bucket = buckets.get(key);
+    if (bucket) bucket.items.push(item);
+    else buckets.set(key, { day: startOfDayLocal(item.date), items: [item] });
+  }
+  return [...buckets.values()]
+    .sort((a, b) => a.day.getTime() - b.day.getTime())
+    .map((bucket) => ({
+      day: bucket.day,
+      items: bucket.items.sort((a, b) => a.date.getTime() - b.date.getTime()),
+    }));
 }

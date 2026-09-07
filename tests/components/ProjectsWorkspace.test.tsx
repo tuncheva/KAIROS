@@ -127,6 +127,10 @@ const DETAIL = {
   ],
 };
 
+const archiveMutate = vi.fn();
+const reopenMutate = vi.fn();
+/** Empty by default: most tests are about the live list, not the archive. */
+const ARCHIVED: unknown[] = [];
 const deleteMutate = vi.fn();
 const createTaskMutate = vi.fn().mockResolvedValue({ id: 99 });
 const statusMutate = vi.fn();
@@ -146,7 +150,10 @@ vi.mock("~/trpc/react", () => {
       useUtils: () => new Proxy({}, { get: () => invalidate() }),
       project: {
         getMyProjects: query(PROJECTS),
+        getArchivedProjects: query(ARCHIVED),
         getById: query(DETAIL),
+        archiveProject: { useMutation: () => ({ mutate: archiveMutate, isPending: false }) },
+        reopenProject: { useMutation: () => ({ mutate: reopenMutate, isPending: false }) },
         delete: { useMutation: () => ({ mutate: deleteMutate, isPending: false }) },
         addCollaborator: { useMutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }) },
         removeCollaborator: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
@@ -166,10 +173,13 @@ vi.mock("~/trpc/react", () => {
           useMutation: () => ({ mutate: statusMutate, mutateAsync: statusMutate, isPending: false }),
         },
         adminDiscard: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+        delete: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+        getActivityLog: query([]),
         setCompletionNote: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       },
       agent: {
         generateTaskDrafts: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+        extractTasksFromPdf: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       },
     },
   };

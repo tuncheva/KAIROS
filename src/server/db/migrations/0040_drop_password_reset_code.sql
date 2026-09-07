@@ -1,0 +1,17 @@
+-- Drop `password_reset_code`, superseded by `verification_code`.
+--
+-- The table stored its eight-digit codes in plaintext, so a read of the database
+-- yielded a live credential for every outstanding reset. `verification_code`
+-- replaced it and keeps only a SHA-256, and nothing in the codebase has read or
+-- written this table since — password reset runs entirely through
+-- `~/server/email/verificationCodes`.
+--
+-- Hand-written rather than generated: the newest drizzle snapshot in `meta/` is
+-- 0020 while the journal runs to 0039, so `drizzle-kit generate` compares the
+-- schema against a 19-migration-stale snapshot and proposes re-creating
+-- everything added since. See the note in `scripts/fix-migration-journal.ts` for
+-- the related journal-ordering trap.
+--
+-- `IF EXISTS` so re-running is harmless, matching the idempotent style of every
+-- migration from 0021 on.
+DROP TABLE IF EXISTS "password_reset_code";

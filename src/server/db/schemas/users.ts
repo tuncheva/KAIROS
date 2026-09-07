@@ -289,23 +289,6 @@ export const verificationTokens = createTable(
   (t) => [primaryKey({ columns: [t.identifier, t.token] })],
 );
 
-export const passwordResetCodes = createTable("password_reset_code", (d) => ({
-  id: d
-    .integer()
-    .primaryKey()
-    .generatedAlwaysAsIdentity(),
-  email: d.varchar({ length: 255 }).notNull(),
-  code: d.varchar({ length: 8 }).notNull(),
-  expiresAt: d
-    .timestamp("expires_at", { mode: "date", withTimezone: true })
-    .notNull(),
-  used: d.boolean().default(false).notNull(),
-  createdAt: d
-    .timestamp("created_at", { mode: "date", withTimezone: true })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-}));
-
 /**
  * Short numeric codes emailed to prove control of an address.
  *

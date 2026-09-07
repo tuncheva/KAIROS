@@ -51,6 +51,10 @@ export const calendarRouter = createTRPCRouter({
           id: events.id,
           title: events.title,
           eventDate: events.eventDate,
+          // The time grid draws a block from start to end. Without this the
+          // grid had no duration to draw and gave every item the same
+          // invented hour.
+          endsAt: events.endsAt,
           description: events.description,
         })
         .from(events)

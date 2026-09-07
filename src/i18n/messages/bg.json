@@ -20,6 +20,68 @@
   },
   "calendar": {
     "filters": {
+      "pageTitle": "Календар",
+      "toolbarLabel": "Контроли на календара",
+      "periodGroup": "Период",
+      "viewGroup": "Изглед",
+      "lensGroup": "Филтриране и добавяне",
+      "clearSearch": "Изчисти търсенето",
+      "showLabel": "Показвай",
+      "done": "Готово",
+      "toggleAgenda": "Превключи между таблица и списък",
+      "agendaLabel": "Списък",
+      "gridLabel": "Календар, {period}",
+      "addAtHour": "Добави в {time} на {day}",
+      "nowLine": "Сега, {time}",
+      "activeFilters": "Активни филтри",
+      "removeFilter": "Премахни филтъра",
+      "clearAll": "Изчисти всички",
+      "hidingKind": "{kind} — скрити",
+      "hidingStatus": "{status} — скрити",
+      "hidingPriority": "{priority} — скрити",
+      "matchingQuery": "Съвпада с „{query}“",
+      "loadFailed": "Календарът не можа да се зареди",
+      "loadFailedBody": "Нещо се обърка при извличането на задачите, събитията и бележките.",
+      "tryAgain": "Опитай отново",
+      "noMatchTitle": "Няма съвпадения",
+      "noMatchBody": "Филтрите скриват всичко в този период.",
+      "nothingTitle": "Няма нищо планирано",
+      "nothingBody": "Този период е празен.",
+      "addSomething": "Добави нещо",
+      "rangeCapped": "Периодът показва най-много {days} дни. Стесни датите, за да видиш останалото.",
+      "addHere": "Добави тук",
+      "openDayView": "Отвори деня",
+      "shortcutsTitle": "Клавишни комбинации",
+      "shortcutsFooter": "Всяка комбинация има и бутон, и никоя не се задейства, докато пишеш в поле.",
+      "shortcutArrows": "Движение между дните",
+      "shortcutEnter": "Отваря избрания ден или елемент",
+      "shortcutEscape": "Затваря панела и връща фокуса",
+      "shortcutNew": "Нов елемент за избрания ден",
+      "shortcutToday": "Към днес",
+      "shortcutSearch": "Фокус върху търсенето",
+      "shortcutFilters": "Отваря филтрите",
+      "shortcutViews": "Ден, седмица, месец, период",
+      "shortcutHomeEnd": "Първи и последен ден от седмицата",
+      "shortcutPaging": "Предишен и следващ период",
+      "shortcutHelp": "Показва този списък",
+      "saved": "Запазено",
+      "deleted": "Изтрито",
+      "saveChanges": "Запази промените",
+      "markComplete": "Завърши",
+      "markIncomplete": "Отвори отново",
+      "edit": "Редактирай",
+      "reschedule": "Премести",
+      "moreActions": "Още действия",
+      "delete": "Изтрий",
+      "deleteConfirm": "Да изтрия ли това окончателно?",
+      "deleteYes": "Изтрий",
+      "openProject": "Отвори проекта",
+      "openNote": "Отвори бележката",
+      "startsAtUnknownEnd": "{time}, без край",
+      "endsAtLabel": "Край",
+      "endsAtHint": "Остави празно, ако краят не е известен.",
+      "endBeforeStart": "Краят трябва да е след началото",
+      "itemKind": "Вид елемент",
       "searchPlaceholder": "Търсене",
       "filters": "Филтри",
       "tasks": "Задачи",
@@ -920,7 +982,8 @@
         "roleCreateFailed": "Неуспешно създаване на роля",
         "accessCodeCopied": "Кодът за достъп е копиран",
         "joinLinkCopied": "Линкът за присъединяване е копиран",
-        "copyFailed": "Неуспешно копиране"
+        "copyFailed": "Неуспешно копиране",
+        "permissionsUpdated": "Правата на члена са обновени."
       },
       "common": {
         "create": "Създай",
@@ -1998,7 +2061,18 @@
       "oneSidedNote": "И двете действия засягат само вашето копие. Другият човек запазва своето.",
       "working": "Обработва се…",
       "send": "Изпращане"
-    }
+    },
+    "noOrgChanges": "Няма нужда от промени в организацията.",
+    "orgReviewThenConfirm": "Прегледайте промените по-долу и потвърдете. Промените в организацията не могат да бъдат отменени.",
+    "orgRoleOps": "{count} промяна(и) на роля",
+    "orgPermissionOps": "{count} промяна(и) на права",
+    "orgRemovalOps": "{count} премахнат(и) член(ове)",
+    "orgInviteOps": "{count} покана(и)",
+    "orgConfirmed": "Промените в организацията са потвърдени. {summary}",
+    "orgDone": "Промените в организацията са приложени.",
+    "orgRefused": "{count} операция(и) бяха отказани от сървъра:",
+    "confirmOrgChanges": "Потвърди промените",
+    "applyOrgChanges": "Приложи промените"
   },
   "onboarding": {
     "welcome": {
@@ -2206,7 +2280,11 @@
     "previewClickToEdit": "(натиснете, за да редактирате)",
     "previewNewNote": "Нова бележка",
     "previewUpdateNote": "Промяна на бележка",
-    "previewDeleteNote": "Изтриване на бележка"
+    "previewDeleteNote": "Изтриване на бележка",
+    "previewOrgRole": "Промяна на роля",
+    "previewOrgPermission": "Промяна на права",
+    "previewOrgRemoval": "Премахване на член",
+    "previewOrgInvite": "Покана за член"
   },
   "aiConsole": {
     "conversations": "Разговори",
@@ -2461,8 +2539,25 @@
         "working": "Мисли…",
         "none": "Няма предложения.",
         "addAll": "Добави всички {count} задачи",
-        "addedAll": "Добавени са {count} задачи."
+        "addedAll": "Добавени са {count} задачи.",
+        "fromPdf": "Извличане от PDF",
+        "pdfReading": "Четене на PDF…",
+        "pdfTooLarge": "Този PDF е по-голям от {limit} MB.",
+        "pdfUnreadable": "Файлът не можа да бъде прочетен."
+      },
+      "history": {
+        "label": "История"
       }
+    },
+    "archive": {
+      "title": "Архивиране на проект",
+      "body": "Проектът излиза от активния списък за всички. Можете да го отворите отново по всяко време.",
+      "confirm": "Архивирай",
+      "cancel": "Отказ",
+      "archived": "Проектът е архивиран.",
+      "reopened": "Проектът е отворен отново.",
+      "reopen": "Отвори отново",
+      "sectionTitle": "Архивирани"
     }
   },
   "documents": {
@@ -2575,7 +2670,12 @@
     "now": "сега",
     "today": "Днес",
     "yesterday": "Вчера",
-    "yesterdayShort": "Вчера"
+    "yesterdayShort": "Вчера",
+    "clearAll": "Изчисти всички",
+    "clearAllTitle": "Изчистване на всички известия",
+    "clearAllBody": "Всички известия ще бъдат изтрити, включително непрочетените. Действието е необратимо.",
+    "clearAllConfirm": "Изчисти всички",
+    "clearAllCancel": "Отказ"
   },
   "onboardingSheet": {
     "eyebrow": "Kairos · Помощ",

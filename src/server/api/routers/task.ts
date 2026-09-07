@@ -533,11 +533,38 @@ export const taskRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this task" });
       }
 
+      /*
+       * The same row shape as `getProjectActivity`, deliberately.
+       *
+       * This used to return bare `taskActivityLog` rows, whose only trace of a
+       * person is a `userId` string — nothing a reader could render. Matching
+       * the project-scoped query means the client maps both through the one
+       * `toTimelineEvent`, so a task's own history cannot describe an event
+       * differently from the project timeline that also lists it.
+       *
+       * Newest first, for the same reason: history is read from the top.
+       */
       const activities = await ctx.db
-        .select()
+        .select({
+          id: taskActivityLog.id,
+          taskId: taskActivityLog.taskId,
+          action: taskActivityLog.action,
+          oldValue: taskActivityLog.oldValue,
+          newValue: taskActivityLog.newValue,
+          createdAt: taskActivityLog.createdAt,
+          taskTitle: tasks.title,
+          user: {
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            image: users.image,
+          },
+        })
         .from(taskActivityLog)
+        .innerJoin(tasks, eq(taskActivityLog.taskId, tasks.id))
+        .leftJoin(users, eq(taskActivityLog.userId, users.id))
         .where(eq(taskActivityLog.taskId, input.taskId))
-        .orderBy(taskActivityLog.createdAt);
+        .orderBy(desc(taskActivityLog.createdAt));
 
       return activities;
     }),

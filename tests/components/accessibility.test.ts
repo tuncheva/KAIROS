@@ -49,18 +49,6 @@ describe("Accessibility — NotificationSystem", () => {
   });
 });
 
-describe("Accessibility — ThemeToggle", () => {
-  const src = readComponent("providers", "ThemeToggle.tsx");
-
-  it("has aria-label on toggle button", () => {
-    expect(src).toContain("aria-label");
-  });
-
-  it("uses button element", () => {
-    expect(src).toContain("<button");
-  });
-});
-
 describe("Accessibility — ImageUpload", () => {
   const src = readComponent("ui", "ImageUpload.tsx");
 

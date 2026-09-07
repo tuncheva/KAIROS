@@ -521,4 +521,169 @@ describe("ProjectIntelligenceChat", () => {
       expect(latestTrail(onTrail)).toHaveLength(0);
     });
   });
+  /* ---- A5 org-admin plans ---- */
+
+  /**
+   * These cover the gap that let an org plan render as an event plan.
+   *
+   * `buildPlanMessage` branched on "tasks" and "notes" and then fell through to
+   * `plan.plan as EventsDraftResponse["plan"]`, so a `kind: "org"` plan — which
+   * the router has been able to produce all along — was read through the event
+   * plan's field names. Every assertion below fails against that version.
+   */
+  function orgTurn(plan: Record<string, unknown>) {
+    return mockAgentStream([
+      ["start", { conversationId: "conv_org" }],
+      [
+        "result",
+        {
+          draftId: "draft_org",
+          conversationId: "conv_org",
+          latencyMs: 10,
+          a1: {
+            intent: { type: "handoff" },
+            handoff: { targetAgent: "org_admin", userIntent: "make Ivan an admin" },
+          },
+          plan: { kind: "org", draftId: "draft_org", plan },
+          plans: [{ kind: "org", draftId: "draft_org", plan }],
+          handoffErrors: [],
+        },
+      ],
+    ]);
+  }
+
+  async function sendOrgMessage() {
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat />);
+    const input = screen.getByPlaceholderText(/Message KAIROS AI/);
+    await user.type(input, "make Ivan an admin");
+    await user.click(screen.getByText("Send"));
+    return user;
+  }
+
+  it("renders an org plan as org changes, not as an event plan", async () => {
+    vi.stubGlobal(
+      "fetch",
+      orgTurn({
+        summary: "Promoting Ivan to admin.",
+        roleChanges: [
+          {
+            organizationId: 1,
+            targetUserId: "u_ivan",
+            targetName: "Ivan Petrov",
+            currentRole: "member",
+            newRole: "admin",
+            rationale: "He runs the theatre programme.",
+          },
+        ],
+        permissionChanges: [],
+        removals: [],
+        invites: [],
+        warnings: [],
+        questions: [],
+      }),
+    );
+
+    await sendOrgMessage();
+
+    // The person, the transition and the reason all reach the screen.
+    expect(await screen.findByText("Ivan Petrov")).toBeInTheDocument();
+    expect(screen.getByText("member → admin")).toBeInTheDocument();
+    expect(
+      screen.getByText("He runs the theatre programme."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Role change")).toBeInTheDocument();
+    expect(screen.getByText(/Promoting Ivan to admin/)).toBeInTheDocument();
+
+    // And the event plan's vocabulary does not.
+    expect(screen.queryByText("Confirm Event Plan")).not.toBeInTheDocument();
+    expect(screen.queryByText("Apply Event Plan")).not.toBeInTheDocument();
+  });
+
+  it("shows A5 warnings above the change list", async () => {
+    vi.stubGlobal(
+      "fetch",
+      orgTurn({
+        summary: "Demoting the last admin.",
+        roleChanges: [
+          {
+            organizationId: 1,
+            targetUserId: "u_t",
+            targetName: "Teodora",
+            currentRole: "admin",
+            newRole: "member",
+            rationale: "Requested.",
+          },
+        ],
+        permissionChanges: [],
+        removals: [],
+        invites: [],
+        warnings: ["This removes the last admin from the organization."],
+        questions: [],
+      }),
+    );
+
+    await sendOrgMessage();
+
+    expect(
+      await screen.findByText(
+        "This removes the last admin from the organization.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("asks A5's questions instead of offering a confirm", async () => {
+    vi.stubGlobal(
+      "fetch",
+      orgTurn({
+        summary: "Need to know which Ivan.",
+        roleChanges: [],
+        permissionChanges: [],
+        removals: [],
+        invites: [],
+        warnings: [],
+        questions: ["There are two members named Ivan — which one?"],
+      }),
+    );
+
+    await sendOrgMessage();
+
+    expect(
+      await screen.findByText(/There are two members named Ivan/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Confirm Org Changes")).not.toBeInTheDocument();
+  });
+
+  it("keeps org changes two-step: confirm first, then apply", async () => {
+    vi.stubGlobal(
+      "fetch",
+      orgTurn({
+        summary: "Removing a member.",
+        roleChanges: [],
+        permissionChanges: [],
+        removals: [
+          {
+            organizationId: 1,
+            targetUserId: "u_x",
+            targetName: "Georgi",
+            rationale: "Left the company.",
+          },
+        ],
+        invites: [],
+        warnings: [],
+        questions: [],
+      }),
+    );
+
+    const user = await sendOrgMessage();
+
+    // Step one is a confirm, never a one-click apply: an org write is not
+    // something to execute off the first button the user sees.
+    const confirm = await screen.findByText("Confirm Org Changes");
+    expect(screen.queryByText("Apply Org Changes")).not.toBeInTheDocument();
+
+    await user.click(confirm);
+
+    expect(await screen.findByText("Apply Org Changes")).toBeInTheDocument();
+  });
 });

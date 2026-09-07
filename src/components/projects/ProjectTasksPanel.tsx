@@ -91,6 +91,19 @@ export function ProjectTasksPanel({
   const isOwner = projectQuery.data?.createdById === userId;
   const canWrite = isOwner || (projectQuery.data?.userHasWriteAccess ?? false);
 
+  /*
+   * Two routes to removing a task, and the server decides which the caller has.
+   *
+   * `task.delete` is the everyday one, gated on the `canDeleteTasks` flag.
+   * `task.adminDiscard` is the project owner / org admin override, which works
+   * without the flag. Someone can hold either, both, or neither — and a
+   * contributor with write access holds neither, which is exactly the case the
+   * old code got wrong by painting the control on `canWrite` alone.
+   */
+  const canDeleteTasks = projectQuery.data?.userCanDeleteTasks ?? false;
+  const canDiscardTasks = projectQuery.data?.userCanDiscardTasks ?? false;
+  const canRemoveTasks = canDeleteTasks || canDiscardTasks;
+
   const tasks = useMemo(
     () => ((projectQuery.data?.tasks ?? []) as ProjectTask[]),
     [projectQuery.data],
@@ -175,6 +188,31 @@ export function ProjectTasksPanel({
     },
     onError: (error) => toast.error(error.message),
   });
+
+  const deleteTask = api.task.delete.useMutation({
+    onSuccess: async () => {
+      setConfirmDiscard(null);
+      toast.success(t("discarded"));
+      await invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  /*
+   * One control, not two.
+   *
+   * Both procedures delete the same row; the difference is only which
+   * authorization the caller passes. Two adjacent trash buttons would ask the
+   * user to understand our permission model in order to remove a task. The flag
+   * route is preferred so an owner who also holds it takes the ordinary path,
+   * and `adminDiscard` stays what its name says: the override.
+   */
+  const removeTask = (taskId: number) => {
+    if (canDeleteTasks) deleteTask.mutate({ taskId });
+    else discardTask.mutate({ taskId });
+  };
+
+  const removing = deleteTask.isPending || discardTask.isPending;
 
   const shown = filter === "all" ? tasks : tasks.filter((task) => task.status === filter);
 
@@ -425,25 +463,27 @@ export function ProjectTasksPanel({
                     >
                       <Pencil size={15} strokeWidth={1.6} aria-hidden />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        confirmDiscard === task.id
-                          ? discardTask.mutate({ taskId: task.id })
-                          : setConfirmDiscard(task.id)
-                      }
-                      onBlur={() => setConfirmDiscard((id) => (id === task.id ? null : id))}
-                      disabled={discardTask.isPending}
-                      aria-label={t("discard")}
-                      title={confirmDiscard === task.id ? t("discardConfirm") : t("discard")}
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 ${
-                        confirmDiscard === task.id
-                          ? "bg-error/10 text-error"
-                          : "text-fg-quaternary hover:bg-bg-tertiary hover:text-error"
-                      }`}
-                    >
-                      <Trash2 size={15} strokeWidth={1.6} aria-hidden />
-                    </button>
+                    {canRemoveTasks && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          confirmDiscard === task.id
+                            ? removeTask(task.id)
+                            : setConfirmDiscard(task.id)
+                        }
+                        onBlur={() => setConfirmDiscard((id) => (id === task.id ? null : id))}
+                        disabled={removing}
+                        aria-label={t("discard")}
+                        title={confirmDiscard === task.id ? t("discardConfirm") : t("discard")}
+                        className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 ${
+                          confirmDiscard === task.id
+                            ? "bg-error/10 text-error"
+                            : "text-fg-quaternary hover:bg-bg-tertiary hover:text-error"
+                        }`}
+                      >
+                        <Trash2 size={15} strokeWidth={1.6} aria-hidden />
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

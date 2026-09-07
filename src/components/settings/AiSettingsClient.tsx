@@ -362,7 +362,7 @@ export function AiSettingsClient() {
         // the old behaviour and wrong about the user's morning.
         note={timeZone ? t("timeZoneHint", { zone: timeZone }) : undefined}
         // Saved questions, under the built-ins they extend.
-        block={timeZone ? <CustomSchedulesPanel timeZone={timeZone} /> : undefined}
+        block={timeZone ? <CustomSchedulesPanel /> : undefined}
       />
 
       <LedgerGroup

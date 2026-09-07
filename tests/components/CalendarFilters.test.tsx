@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_RANGE_DAYS,
   ROW_HEIGHT,
+  groupByDay,
   hourWindow,
   isoWeek,
   layoutTimedItems,
   matchesFilters,
+  rangeBounds,
   startOfWeekMonday,
   toCalendarItems,
   toYmd,
@@ -27,9 +30,23 @@ function task(overrides: Partial<Extract<CalendarItem, { kind: "task" }>> = {}) 
     allDay: false,
     status: "pending",
     priority: "high",
+    projectId: 7,
     projectTitle: "Kairos",
     ...overrides,
   } satisfies Extract<CalendarItem, { kind: "task" }>;
+}
+
+function event(overrides: Partial<Extract<CalendarItem, { kind: "event" }>> = {}) {
+  return {
+    kind: "event",
+    id: 2,
+    title: "Launch",
+    date: new Date(2026, 3, 8, 10, 0),
+    allDay: false,
+    endsAt: null,
+    description: "",
+    ...overrides,
+  } satisfies Extract<CalendarItem, { kind: "event" }>;
 }
 
 function allFilters(overrides: Partial<ItemFilters> = {}): ItemFilters {
@@ -79,14 +96,7 @@ describe("calendar filtering", () => {
     const items: CalendarItem[] = [
       task({ id: 1, status: "pending", priority: "high" }),
       task({ id: 2, status: "completed", priority: "low", projectTitle: null }),
-      {
-        kind: "event",
-        id: 3,
-        title: "Launch",
-        date: new Date(2026, 3, 8, 10, 0),
-        allDay: false,
-        description: "",
-      },
+      event({ id: 3 }),
       {
         kind: "note",
         id: 4,
@@ -109,14 +119,7 @@ describe("calendar filtering", () => {
   it("searches titles plus the project on tasks and the description on events", () => {
     const items: CalendarItem[] = [
       task({ id: 1, title: "Write docs", projectTitle: "Kairos" }),
-      {
-        kind: "event",
-        id: 2,
-        title: "Demo",
-        date: new Date(2026, 3, 8, 10, 0),
-        allDay: false,
-        description: "Kairos showcase",
-      },
+      event({ id: 2, title: "Demo", description: "Kairos showcase" }),
       {
         kind: "note",
         id: 3,
@@ -161,6 +164,7 @@ describe("mapping router rows to calendar items", () => {
             id: 3,
             title: "All-day event",
             eventDate: new Date(2026, 3, 8, 0, 0),
+            endsAt: null,
             description: "d",
           },
         ],
@@ -213,12 +217,24 @@ describe("time-grid layout", () => {
     expect(positioned!.top).toBe(Math.round(2.5 * ROW_HEIGHT));
   });
 
-  it("splits overlapping blocks into side-by-side lanes", () => {
+  it("splits overlapping events into side-by-side lanes", () => {
     const positioned = layoutTimedItems(
       [
-        task({ id: 1, date: new Date(2026, 3, 8, 9, 0) }),
-        task({ id: 2, date: new Date(2026, 3, 8, 9, 30) }),
-        task({ id: 3, date: new Date(2026, 3, 8, 15, 0) }),
+        event({
+          id: 1,
+          date: new Date(2026, 3, 8, 9, 0),
+          endsAt: new Date(2026, 3, 8, 11, 0),
+        }),
+        event({
+          id: 2,
+          date: new Date(2026, 3, 8, 9, 30),
+          endsAt: new Date(2026, 3, 8, 10, 0),
+        }),
+        event({
+          id: 3,
+          date: new Date(2026, 3, 8, 15, 0),
+          endsAt: new Date(2026, 3, 8, 16, 0),
+        }),
       ],
       8,
     );
@@ -228,5 +244,121 @@ describe("time-grid layout", () => {
       [2, 1, 2],
       [3, 0, 1],
     ]);
+  });
+
+  it("reuses a lane once the event occupying it has ended", () => {
+    // 9–10 and 10–11 do not overlap, so the second belongs in lane 0 too —
+    // but 9–11 spans both, which keeps all three in one cluster.
+    const positioned = layoutTimedItems(
+      [
+        event({ id: 1, date: new Date(2026, 3, 8, 9, 0), endsAt: new Date(2026, 3, 8, 11, 0) }),
+        event({ id: 2, date: new Date(2026, 3, 8, 9, 0), endsAt: new Date(2026, 3, 8, 10, 0) }),
+        event({ id: 3, date: new Date(2026, 3, 8, 10, 0), endsAt: new Date(2026, 3, 8, 11, 0) }),
+      ],
+      8,
+    );
+
+    expect(positioned.map((p) => [p.item.id, p.lane, p.lanes])).toEqual([
+      [1, 0, 2],
+      [2, 1, 2],
+      [3, 1, 2],
+    ]);
+  });
+
+  it("takes an event's height from its real end", () => {
+    const [twoHours] = layoutTimedItems(
+      [event({ date: new Date(2026, 3, 8, 9, 0), endsAt: new Date(2026, 3, 8, 11, 0) })],
+      8,
+    );
+    const [halfHour] = layoutTimedItems(
+      [event({ date: new Date(2026, 3, 8, 9, 0), endsAt: new Date(2026, 3, 8, 9, 30) })],
+      8,
+    );
+
+    /* The whole point of the change: a two-hour event and a half-hour event
+       are no longer the same box. Every timed item used to be laid out at a
+       constant BLOCK_HOURS regardless of duration. */
+    expect(twoHours!.height).toBeGreaterThan(halfHour!.height);
+    expect(twoHours!.height).toBe(2 * ROW_HEIGHT - 2);
+    expect(twoHours!.endKnown).toBe(true);
+  });
+
+  it("floors a very short event so it stays readable", () => {
+    const [tiny] = layoutTimedItems(
+      [event({ date: new Date(2026, 3, 8, 9, 0), endsAt: new Date(2026, 3, 8, 9, 5) })],
+      8,
+    );
+    // 5 minutes would be a 5px sliver; the floor is half an hour.
+    expect(tiny!.height).toBe(Math.round(0.5 * ROW_HEIGHT) - 2);
+  });
+
+  it("marks an event with no recorded end as an assumption", () => {
+    const [unknown] = layoutTimedItems([event({ date: new Date(2026, 3, 8, 9, 0) })], 8);
+    // Drawn at an hour, but flagged so the grid can show an open lower edge
+    // rather than passing a guess off as a known end.
+    expect(unknown!.endKnown).toBe(false);
+    expect(unknown!.height).toBe(ROW_HEIGHT - 2);
+  });
+
+  it("keeps point-in-time tasks and notes as markers, not hour blocks", () => {
+    /* A task's due date and a note's calendar date are instants. Drawing them
+       as hour-long blocks made two tasks half an hour apart collide and share
+       lanes, which is a claim about duration that the data never made. */
+    const positioned = layoutTimedItems(
+      [
+        task({ id: 1, date: new Date(2026, 3, 8, 9, 0) }),
+        task({ id: 2, date: new Date(2026, 3, 8, 9, 30) }),
+      ],
+      8,
+    );
+
+    expect(positioned.map((p) => [p.item.id, p.lane, p.lanes])).toEqual([
+      [1, 0, 1],
+      [2, 0, 1],
+    ]);
+    expect(positioned[0]!.height).toBeLessThan(ROW_HEIGHT / 2);
+  });
+});
+
+describe("range view", () => {
+  it("covers every day between the bounds, inclusive", () => {
+    const bounds = rangeBounds("2026-04-06", "2026-04-10");
+    expect(bounds).not.toBeNull();
+    const days = visibleDays("range", new Date(2026, 3, 1), bounds);
+    expect(days).toHaveLength(5);
+    expect(toYmd(days[0]!)).toBe("2026-04-06");
+    expect(toYmd(days[4]!)).toBe("2026-04-10");
+  });
+
+  it("reads inverted bounds as the range the user meant", () => {
+    const bounds = rangeBounds("2026-04-10", "2026-04-06");
+    expect(toYmd(bounds!.from)).toBe("2026-04-06");
+    expect(toYmd(bounds!.to)).toBe("2026-04-10");
+  });
+
+  it("caps an absurd range rather than building tens of thousands of cells", () => {
+    const bounds = rangeBounds("2026-01-01", "2999-01-01");
+    expect(visibleDays("range", new Date(2026, 0, 1), bounds)).toHaveLength(MAX_RANGE_DAYS);
+  });
+
+  it("is null when a bound is unusable, so the caller can fall back", () => {
+    expect(rangeBounds("not-a-date", "2026-04-10")).toBeNull();
+  });
+});
+
+describe("agenda grouping", () => {
+  it("buckets items into the days that hold something, in order", () => {
+    const groups = groupByDay([
+      task({ id: 1, date: new Date(2026, 3, 9, 15, 0) }),
+      task({ id: 2, date: new Date(2026, 3, 8, 9, 0) }),
+      event({ id: 3, date: new Date(2026, 3, 8, 17, 0) }),
+    ]);
+
+    // Two days, not the three-day span between them: an empty day costs a row
+    // in a grid and nothing in a list.
+    expect(groups).toHaveLength(2);
+    expect(toYmd(groups[0]!.day)).toBe("2026-04-08");
+    expect(groups[0]!.items.map((i) => i.id)).toEqual([2, 3]);
+    expect(groups[1]!.items.map((i) => i.id)).toEqual([1]);
   });
 });

@@ -1,13 +1,195 @@
  import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { assertOrgPermission, assertProjectPermission } from "~/server/api/authz";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  type TRPCContext,
+} from "~/server/api/trpc";
+import {
+  assertOrgPermission,
+  assertProjectPermission,
+  projectPermissionAllows,
+} from "~/server/api/authz";
 import { projects, tasks, projectCollaborators, users, organizationMembers } from "~/server/db/schema";
 import { eq, and, desc, inArray, isNull, sql, ne, or } from "drizzle-orm";
 import { notify } from "~/server/notifications/dispatch";
 import { createLogger } from "~/server/logger";
 
 const log = createLogger("project");
+
+/**
+ * The project list for one caller, in one lifecycle state.
+ *
+ * Extracted so the archive is a differently-scoped read of the same work
+ * rather than a second copy of it: the branch that picks organization or
+ * personal projects, and all the batched enrichment below it, are identical
+ * for live and archived projects — only the status predicate differs.
+ */
+async function listProjects(
+  ctx: TRPCContext & { session: { user: { id: string } } },
+  status: "active" | "archived",
+) {
+  if (process.env.NODE_ENV !== "production") {
+    log.debug("listing projects", { userId: ctx.session.user.id });
+  }
+
+  let activeOrganizationId: number | null = null;
+
+  try {
+    const [user] = await ctx.db
+      .select({ activeOrganizationId: users.activeOrganizationId })
+      .from(users)
+      .where(eq(users.id, ctx.session.user.id))
+      .limit(1);
+
+    activeOrganizationId = user?.activeOrganizationId ?? null;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (!message.includes("active_organization_id")) {
+      throw err;
+    }
+    activeOrganizationId = null;
+  }
+
+  const [membership] = activeOrganizationId
+    ? await ctx.db
+        .select()
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.userId, ctx.session.user.id),
+            eq(organizationMembers.organizationId, activeOrganizationId),
+          ),
+        )
+        .limit(1)
+    : [undefined];
+
+  if (process.env.NODE_ENV !== "production") {
+    log.debug("active membership resolved", { organizationId: membership?.organizationId ?? null });
+  }
+
+  let projectsList;
+
+  if (membership) {
+    
+    projectsList = await ctx.db
+      .select()
+      .from(projects)
+      .where(and(
+        eq(projects.organizationId, membership.organizationId),
+        eq(projects.status, status),
+      ))
+      .orderBy(desc(projects.createdAt));
+
+    if (process.env.NODE_ENV !== "production") {
+      log.debug("found organization projects", { count: projectsList.length });
+    }
+  } else {
+
+    // Personal mode: owned projects + projects where user is a collaborator
+    const collabProjectIds = await ctx.db
+      .select({ projectId: projectCollaborators.projectId })
+      .from(projectCollaborators)
+      .where(eq(projectCollaborators.collaboratorId, ctx.session.user.id));
+
+    const collabIds = collabProjectIds.map((c) => c.projectId);
+
+    projectsList = await ctx.db
+      .select()
+      .from(projects)
+      .where(
+        and(
+          or(
+            and(
+              eq(projects.createdById, ctx.session.user.id),
+              isNull(projects.organizationId),
+            ),
+            ...(collabIds.length ? [inArray(projects.id, collabIds)] : []),
+          ),
+          eq(projects.status, status),
+        )
+      )
+      .orderBy(desc(projects.createdAt));
+
+    if (process.env.NODE_ENV !== "production") {
+      log.debug("found personal projects", { count: projectsList.length });
+    }
+  }
+
+  
+  const createdByIds = Array.from(new Set(projectsList.map((p) => p.createdById)));
+  const createdByUsers = createdByIds.length
+    ? await ctx.db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          image: users.image,
+        })
+        .from(users)
+        .where(inArray(users.id, createdByIds))
+    : [];
+  const createdByUserMap = new Map(createdByUsers.map((u) => [u.id, u] as const));
+
+  // Batch-fetch all tasks for visible projects (avoid N+1 queries)
+  const projectIds = projectsList.map((p) => p.id);
+  const allTasks = projectIds.length
+    ? await ctx.db
+        .select({
+          id: tasks.id,
+          status: tasks.status,
+          dueDate: tasks.dueDate,
+          projectId: tasks.projectId,
+        })
+        .from(tasks)
+        .where(inArray(tasks.projectId, projectIds))
+    : [];
+
+  const tasksByProjectId = allTasks.reduce((acc, t) => {
+    (acc[t.projectId] ??= []).push({ id: t.id, status: t.status, dueDate: t.dueDate });
+    return acc;
+  }, {} as Record<number, { id: number; status: string; dueDate: Date | null }[]>);
+
+  // Batch-fetch all collaborators for visible projects
+  const allCollaborators = projectIds.length
+    ? await ctx.db
+        .select({
+          projectId: projectCollaborators.projectId,
+          collaboratorId: projectCollaborators.collaboratorId,
+          permission: projectCollaborators.permission,
+          name: users.name,
+          image: users.image,
+        })
+        .from(projectCollaborators)
+        .innerJoin(users, eq(projectCollaborators.collaboratorId, users.id))
+        .where(inArray(projectCollaborators.projectId, projectIds))
+    : [];
+
+  const collaboratorsByProjectId = allCollaborators.reduce((acc, c) => {
+    (acc[c.projectId] ??= []).push({
+      id: c.collaboratorId,
+      name: c.name,
+      image: c.image,
+      permission: c.permission,
+    });
+    return acc;
+  }, {} as Record<number, { id: string; name: string | null; image: string | null; permission: string }[]>);
+
+  const projectsWithTasks = projectsList.map((project) => ({
+    ...project,
+    createdByUser: createdByUserMap.get(project.createdById) ?? null,
+    tasks: tasksByProjectId[project.id] ?? [],
+    collaborators: collaboratorsByProjectId[project.id] ?? [],
+  }));
+
+
+  log.debug("projects with tasks", {
+    count: projectsWithTasks.length,
+    totalTasks: projectsWithTasks.reduce((n, p) => n + p.tasks.length, 0),
+  });
+
+  return projectsWithTasks;
+}
 
 export const projectRouter = createTRPCRouter({
   
@@ -90,165 +272,20 @@ export const projectRouter = createTRPCRouter({
     }),
 
  
-  getMyProjects: protectedProcedure.query(async ({ ctx }) => {
-    if (process.env.NODE_ENV !== "production") {
-      log.debug("listing projects", { userId: ctx.session.user.id });
-    }
+  getMyProjects: protectedProcedure.query(({ ctx }) => listProjects(ctx, "active")),
 
-    let activeOrganizationId: number | null = null;
-
-    try {
-      const [user] = await ctx.db
-        .select({ activeOrganizationId: users.activeOrganizationId })
-        .from(users)
-        .where(eq(users.id, ctx.session.user.id))
-        .limit(1);
-
-      activeOrganizationId = user?.activeOrganizationId ?? null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (!message.includes("active_organization_id")) {
-        throw err;
-      }
-      activeOrganizationId = null;
-    }
-
-    const [membership] = activeOrganizationId
-      ? await ctx.db
-          .select()
-          .from(organizationMembers)
-          .where(
-            and(
-              eq(organizationMembers.userId, ctx.session.user.id),
-              eq(organizationMembers.organizationId, activeOrganizationId),
-            ),
-          )
-          .limit(1)
-      : [undefined];
-
-    if (process.env.NODE_ENV !== "production") {
-      log.debug("active membership resolved", { organizationId: membership?.organizationId ?? null });
-    }
-
-    let projectsList;
-
-    if (membership) {
-      
-      projectsList = await ctx.db
-        .select()
-        .from(projects)
-        .where(and(eq(projects.organizationId, membership.organizationId), ne(projects.status, "archived")))
-        .orderBy(desc(projects.createdAt));
-
-      if (process.env.NODE_ENV !== "production") {
-        log.debug("found organization projects", { count: projectsList.length });
-      }
-    } else {
-
-      // Personal mode: owned projects + projects where user is a collaborator
-      const collabProjectIds = await ctx.db
-        .select({ projectId: projectCollaborators.projectId })
-        .from(projectCollaborators)
-        .where(eq(projectCollaborators.collaboratorId, ctx.session.user.id));
-
-      const collabIds = collabProjectIds.map((c) => c.projectId);
-
-      projectsList = await ctx.db
-        .select()
-        .from(projects)
-        .where(
-          and(
-            or(
-              and(
-                eq(projects.createdById, ctx.session.user.id),
-                isNull(projects.organizationId),
-              ),
-              ...(collabIds.length ? [inArray(projects.id, collabIds)] : []),
-            ),
-            ne(projects.status, "archived")
-          )
-        )
-        .orderBy(desc(projects.createdAt));
-
-      if (process.env.NODE_ENV !== "production") {
-        log.debug("found personal projects", { count: projectsList.length });
-      }
-    }
-
-    
-    const createdByIds = Array.from(new Set(projectsList.map((p) => p.createdById)));
-    const createdByUsers = createdByIds.length
-      ? await ctx.db
-          .select({
-            id: users.id,
-            name: users.name,
-            email: users.email,
-            image: users.image,
-          })
-          .from(users)
-          .where(inArray(users.id, createdByIds))
-      : [];
-    const createdByUserMap = new Map(createdByUsers.map((u) => [u.id, u] as const));
-
-    // Batch-fetch all tasks for visible projects (avoid N+1 queries)
-    const projectIds = projectsList.map((p) => p.id);
-    const allTasks = projectIds.length
-      ? await ctx.db
-          .select({
-            id: tasks.id,
-            status: tasks.status,
-            dueDate: tasks.dueDate,
-            projectId: tasks.projectId,
-          })
-          .from(tasks)
-          .where(inArray(tasks.projectId, projectIds))
-      : [];
-
-    const tasksByProjectId = allTasks.reduce((acc, t) => {
-      (acc[t.projectId] ??= []).push({ id: t.id, status: t.status, dueDate: t.dueDate });
-      return acc;
-    }, {} as Record<number, { id: number; status: string; dueDate: Date | null }[]>);
-
-    // Batch-fetch all collaborators for visible projects
-    const allCollaborators = projectIds.length
-      ? await ctx.db
-          .select({
-            projectId: projectCollaborators.projectId,
-            collaboratorId: projectCollaborators.collaboratorId,
-            permission: projectCollaborators.permission,
-            name: users.name,
-            image: users.image,
-          })
-          .from(projectCollaborators)
-          .innerJoin(users, eq(projectCollaborators.collaboratorId, users.id))
-          .where(inArray(projectCollaborators.projectId, projectIds))
-      : [];
-
-    const collaboratorsByProjectId = allCollaborators.reduce((acc, c) => {
-      (acc[c.projectId] ??= []).push({
-        id: c.collaboratorId,
-        name: c.name,
-        image: c.image,
-        permission: c.permission,
-      });
-      return acc;
-    }, {} as Record<number, { id: string; name: string | null; image: string | null; permission: string }[]>);
-
-    const projectsWithTasks = projectsList.map((project) => ({
-      ...project,
-      createdByUser: createdByUserMap.get(project.createdById) ?? null,
-      tasks: tasksByProjectId[project.id] ?? [],
-      collaborators: collaboratorsByProjectId[project.id] ?? [],
-    }));
-
-
-    log.debug("projects with tasks", {
-      count: projectsWithTasks.length,
-      totalTasks: projectsWithTasks.reduce((n, p) => n + p.tasks.length, 0),
-    });
-
-    return projectsWithTasks;
-  }),
+  /**
+   * The archive, as its own query rather than a flag on `getMyProjects`.
+   *
+   * Every other caller of the list — the calendar drawer, both chat surfaces,
+   * the dashboard, the command palette — wants live projects and nothing
+   * else. An `includeArchived` boolean on the shared query is one mistaken
+   * `true` away from putting closed projects into a picker; a separately
+   * named query cannot be reached by accident.
+   */
+  getArchivedProjects: protectedProcedure.query(({ ctx }) =>
+    listProjects(ctx, "archived"),
+  ),
 
   // Get all projects across all organizations the user is a member of
   getAllProjectsAcrossOrgs: protectedProcedure.query(async ({ ctx }) => {
@@ -357,6 +394,7 @@ export const projectRouter = createTRPCRouter({
       
       let hasOrgAccess = false;
       let isOrgMember = false;
+      let isOrgAdmin = false;
       if (project.organizationId) {
         const [membership] = await ctx.db
           .select()
@@ -369,6 +407,7 @@ export const projectRouter = createTRPCRouter({
           );
         hasOrgAccess = !!membership;
         isOrgMember = !!membership;
+        isOrgAdmin = membership?.role === "admin";
         if (process.env.NODE_ENV !== "production") {
           log.debug("org access resolved", { hasOrgAccess, viaMembership: !!membership });
         }
@@ -510,12 +549,34 @@ export const projectRouter = createTRPCRouter({
       
       const hasWriteAccess = isOwner || isOrgMember || (collaboration?.permission === "write");
 
+      /*
+       * The two ways a task can be removed, answered here rather than guessed
+       * at by the client.
+       *
+       * `task.delete` is the everyday route and turns on the `canDeleteTasks`
+       * flag — which is deliberately not implied by having created the task, so
+       * it cannot be derived from ids the client already holds.
+       * `task.adminDiscard` is the override for a project owner or an org
+       * admin, and works whether or not the flag is set.
+       *
+       * Before this the panel painted its delete control on `userHasWriteAccess`
+       * and called `adminDiscard`, so every write collaborator was shown a
+       * button the server refused.
+       */
+      const canDeleteTasks = await projectPermissionAllows(
+        ctx,
+        input.id,
+        "canDeleteTasks",
+      ).catch(() => false);
+
       return {
         ...project,
         createdBy: createdBy ?? null,
         collaborators,
         tasks: formattedTasks,
         userHasWriteAccess: hasWriteAccess,
+        userCanDeleteTasks: canDeleteTasks,
+        userCanDiscardTasks: isOwner || isOrgAdmin,
       };
     }),
 
