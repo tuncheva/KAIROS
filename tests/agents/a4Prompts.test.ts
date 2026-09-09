@@ -23,6 +23,7 @@ describe("A4 System Prompt", () => {
       },
     ],
     userId: "user-123",
+    calendar: null,
   };
 
   it("returns a non-empty string", () => {

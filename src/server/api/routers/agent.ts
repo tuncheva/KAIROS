@@ -841,7 +841,11 @@ export const agentRouter = createTRPCRouter({
 
       // Read access, not write: previewing is looking. The confirm and apply
       // steps do their own `write` check, so this cannot become a way to act.
-      await assertProjectAccess(ctx, draft.projectId, "read");
+      // Cross-project plans have no single projectId — access was already checked
+      // at draft time via org membership.
+      if (draft.projectId !== null) {
+        await assertProjectAccess(ctx, draft.projectId, "read");
+      }
 
       const plan = JSON.parse(draft.planJson) as {
         creates?: Array<{ title: string }>;
@@ -882,7 +886,7 @@ export const agentRouter = createTRPCRouter({
             .where(
               and(
                 inArray(tasks.id, referenced),
-                eq(tasks.projectId, draft.projectId),
+                draft.projectId !== null ? eq(tasks.projectId, draft.projectId) : undefined,
               ),
             )
         : [];

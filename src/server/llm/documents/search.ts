@@ -21,7 +21,7 @@
 import "server-only";
 
 import { z } from "zod";
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 
 import type { TRPCContext } from "~/server/api/trpc";
 import { documentChunks, documents, projects } from "~/server/db/schema";
@@ -31,6 +31,11 @@ import {
   visibleProjectsWhere,
 } from "~/server/llm/tools/a1/scope";
 import type { A1Tool } from "~/server/llm/tools/a1/types";
+import {
+  embedText,
+  isEmbeddingConfigured,
+  serializeEmbedding,
+} from "~/server/llm/core/embeddings";
 
 /** Passages returned per query. Enough to answer, few enough to read. */
 const DEFAULT_LIMIT = 5;
@@ -81,6 +86,57 @@ export async function searchDocuments(
     .where(visibleProjectsWhere(scope));
   const projectIds = visible.map((p) => p.id);
 
+  const limit = Math.min(input.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
+
+  // --- Semantic (vector) path ---
+  const queryEmbedding = await embedText(query);
+  if (queryEmbedding !== null) {
+    const embeddingLiteral = serializeEmbedding(queryEmbedding);
+    const vectorRows = await ctx.db
+      .select({
+        documentId: documentChunks.documentId,
+        filename: documents.filename,
+        page: documentChunks.page,
+        ordinal: documentChunks.ordinal,
+        content: documentChunks.content,
+        distance: sql<number>`"document_chunks"."embedding" <=> ${embeddingLiteral}::vector`,
+      })
+      .from(documentChunks)
+      .innerJoin(documents, eq(documentChunks.documentId, documents.id))
+      .where(
+        and(
+          eq(documents.status, "ready"),
+          sql`"document_chunks"."embedding" IS NOT NULL`,
+          or(
+            eq(documents.userId, userId),
+            projectIds.length
+              ? and(
+                  inArray(documents.projectId, projectIds),
+                  sql`${documents.projectId} IS NOT NULL`,
+                )
+              : sql`false`,
+          ),
+        ),
+      )
+      .orderBy(sql`"document_chunks"."embedding" <=> ${embeddingLiteral}::vector`)
+      .limit(limit);
+
+    if (vectorRows.length > 0) {
+      return {
+        hits: vectorRows.map((r) => ({
+          documentId: r.documentId,
+          filename: r.filename,
+          page: r.page,
+          ordinal: r.ordinal,
+          snippet: r.content.slice(0, SNIPPET_CHARS),
+        })),
+        note: "Cite the filename, and the page where one is given.",
+      };
+    }
+    // Fall through to keyword search if vector search returned nothing
+  }
+
+  // --- Keyword (full-text) path ---
   const rows = await ctx.db
     .select({
       documentId: documentChunks.documentId,
@@ -121,7 +177,7 @@ export async function searchDocuments(
         sql`ts_rank_cd(to_tsvector('simple', ${documentChunks.content}), plainto_tsquery('simple', ${query}))`,
       ),
     )
-    .limit(Math.min(input.limit ?? DEFAULT_LIMIT, MAX_LIMIT));
+    .limit(limit);
 
   if (!rows.length) {
     // Distinguishing "no documents" from "no match" is what stops the model
@@ -165,7 +221,9 @@ export const searchDocumentsTool: A1Tool<
         .min(2)
         .max(200)
         .describe(
-          "Words likely to appear in the document. This is a keyword search, not a semantic one, so use the terms the document itself would use.",
+          isEmbeddingConfigured()
+            ? "Describe what you are looking for in your own words — the query is matched semantically, so natural phrasing works better than exact keywords."
+            : "Words likely to appear in the document. This is a keyword search, not a semantic one, so use the terms the document itself would use.",
         ),
       limit: z.number().int().min(1).max(MAX_LIMIT).optional(),
     })

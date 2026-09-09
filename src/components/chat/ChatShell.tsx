@@ -556,10 +556,10 @@ export function ChatShell({
     onError: (error) => toast.error(error.message),
   });
 
-  const openCreatedConversation = async (data: { conversationId: number }) => {
+  const openCreatedConversation = async (data: { conversationId: number; publicId?: string | null }) => {
     await utils.chat.listAllConversations.invalidate();
     setShowNewChat(false);
-    router.push(`/chat/${data.conversationId}`);
+    router.push(`/chat/${data.publicId ?? data.conversationId}`);
   };
 
   const createConversation = api.chat.getOrCreateDirectConversation.useMutation({

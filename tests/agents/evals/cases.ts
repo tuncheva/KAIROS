@@ -21,7 +21,8 @@ export type TargetAgent =
   | "task_planner"
   | "notes_vault"
   | "events_publisher"
-  | "org_admin";
+  | "org_admin"
+  | "project_manager";
 
 export interface EvalCase {
   id: string;

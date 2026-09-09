@@ -56,13 +56,11 @@ const RESET_PROMPT_AFTER = 2;
  * `(workspace)/layout.tsx` — see that file. It also means one code path serves
  * a cold load, a deep link, the back button and an in-app selection.
  */
-function selectionOf(pathname: string): { noteId: number | null; isDraft: boolean } {
-  const rest = pathname.replace(/^\/notes\/?/, "");
-  if (rest === "new") return { noteId: null, isDraft: true };
-  const id = Number(rest);
-  return Number.isInteger(id) && id > 0
-    ? { noteId: id, isDraft: false }
-    : { noteId: null, isDraft: false };
+function selectionOf(pathname: string): { publicId: string | null; isDraft: boolean } {
+  const rest = pathname.replace(/^\/notes\/?/, "").split("/")[0] ?? "";
+  if (rest === "new") return { publicId: null, isDraft: true };
+  if (rest.length > 0) return { publicId: rest, isDraft: false };
+  return { publicId: null, isDraft: false };
 }
 
 /**
@@ -103,7 +101,7 @@ export function NotesWorkspace() {
   /* The single source of truth for what is open. `usePathname()` updates on a
      real navigation, on `history.pushState`, and on the back button, so all
      three land here and nowhere else. */
-  const { noteId, isDraft } = useMemo(() => selectionOf(pathname), [pathname]);
+  const { publicId, isDraft } = useMemo(() => selectionOf(pathname), [pathname]);
   const toast = useToast();
   const utils = api.useUtils();
   const { formatDate } = useDateFormat();
@@ -177,6 +175,7 @@ export function NotesWorkspace() {
     () =>
       (ownQuery.data ?? []).map((note) => ({
         id: note.id,
+        publicId: note.publicId ?? null,
         title: note.title,
         content: note.content,
         createdAt: new Date(note.createdAt),
@@ -200,6 +199,7 @@ export function NotesWorkspace() {
     () =>
       (sharedQuery.data ?? []).map((note) => ({
         id: note.id,
+        publicId: note.publicId ?? null,
         title: note.title,
         content: note.content,
         createdAt: new Date(note.createdAt),
@@ -229,12 +229,12 @@ export function NotesWorkspace() {
 
   const activeNote = useMemo(
     () =>
-      noteId === null
+      publicId === null
         ? null
-        : (ownNotes.find((note) => note.id === noteId) ??
-          sharedNotes.find((note) => note.id === noteId) ??
+        : (ownNotes.find((note) => note.publicId === publicId || String(note.id) === publicId) ??
+          sharedNotes.find((note) => note.publicId === publicId || String(note.id) === publicId) ??
           null),
-    [noteId, ownNotes, sharedNotes],
+    [publicId, ownNotes, sharedNotes],
   );
 
   // ── sort preference ─────────────────────────────────────────────────
@@ -262,7 +262,7 @@ export function NotesWorkspace() {
     setLockPassword("");
     setLockError(null);
     setRevealPassword(false);
-  }, [noteId]);
+  }, [publicId]);
 
   // ── legacy deep links ───────────────────────────────────────────────
   useEffect(() => {
@@ -440,7 +440,7 @@ export function NotesWorkspace() {
         /* Only follow the new note if the draft is still what is on screen.
            Clicking another note mid-draft hands the text off to be created in
            the background — landing on it instead would undo that click. */
-        if (isDraft) window.history.replaceState(null, "", `/notes/${created.id}`);
+        if (isDraft) window.history.replaceState(null, "", `/notes/${created.publicId ?? created.id}`);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : t("messages.saveFailed"));
         throw error;
@@ -524,7 +524,8 @@ export function NotesWorkspace() {
       ? (notebooks.find((notebook) => notebook.id === notebookFilterId)?.name ?? t("notebook"))
       : (headings[view] ?? t("tabs.allNotes"));
 
-  const unlockedContent = noteId === null ? undefined : unlocked[noteId]?.content;
+  const activeNoteNumericId = activeNote?.id ?? null;
+  const unlockedContent = activeNoteNumericId === null ? undefined : unlocked[activeNoteNumericId]?.content;
   const isListLoading = view === "shared" ? sharedQuery.isLoading : ownQuery.isLoading;
 
   /* `src/app/(app)/notes/loading.tsx` used to hold the skeleton for this route,
@@ -544,19 +545,20 @@ export function NotesWorkspace() {
      `NoteList` already shimmered its own rows, and `NotePage` now does the same
      when the route names a note the queries have not answered for yet. */
   const isNoteLoading =
-    noteId !== null && activeNote === null && (ownQuery.isLoading || sharedQuery.isLoading);
+    publicId !== null && activeNote === null && (ownQuery.isLoading || sharedQuery.isLoading);
 
   const openNote = useCallback((id: number) => {
     setRailOpen(false);
-    pushPath(`/notes/${id}`);
-  }, []);
+    const note = ownNotes.find((n) => n.id === id) ?? sharedNotes.find((n) => n.id === id);
+    pushPath(`/notes/${note?.publicId ?? id}`);
+  }, [ownNotes, sharedNotes]);
 
   const newNote = useCallback(() => {
     setRailOpen(false);
     pushPath("/notes/new");
   }, []);
 
-  const showPageOnMobile = noteId !== null || isDraft;
+  const showPageOnMobile = publicId !== null || isDraft;
 
   /* The mobile pane swap, animated without remounting either pane.
      Keying the wrappers on `showPageOnMobile` also produced the slide, but it
@@ -664,7 +666,7 @@ export function NotesWorkspace() {
       >
         <NoteList
           notes={visibleNotes}
-          selectedId={noteId}
+          selectedId={activeNoteNumericId}
           heading={heading}
           view={view}
           sort={sort}
@@ -729,16 +731,16 @@ export function NotesWorkspace() {
           }}
           onToggleReveal={() => setRevealPassword((value) => !value)}
           onUnlock={() => {
-            if (noteId === null) return;
-            verifyPassword.mutate({ noteId, password: lockPassword });
+            if (activeNoteNumericId === null) return;
+            verifyPassword.mutate({ noteId: activeNoteNumericId, password: lockPassword });
           }}
-          onResetPassword={() => setResetPinFor(noteId)}
+          onResetPassword={() => setResetPinFor(activeNoteNumericId)}
           onSave={saveNote}
           onCreate={createFromDraft}
-          onDelete={() => setConfirmDeleteNote(noteId)}
-          onShare={() => setShareNoteId(noteId)}
+          onDelete={() => setConfirmDeleteNote(activeNoteNumericId)}
+          onShare={() => setShareNoteId(activeNoteNumericId)}
           onMoveToNotebook={(notebookId) => {
-            if (noteId !== null) moveToNotebook.mutate({ noteId, notebookId });
+            if (activeNoteNumericId !== null) moveToNotebook.mutate({ noteId: activeNoteNumericId, notebookId });
           }}
           onSetCalendarDate={(date) => void setCalendarDateFor(activeNote, date)}
           onBack={() => pushPath("/notes")}

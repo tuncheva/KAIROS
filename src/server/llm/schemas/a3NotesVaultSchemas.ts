@@ -35,10 +35,21 @@ export const NotesVaultOperationDeleteSchema = z
   })
   .strip();
 
+export const NotesVaultOperationGenerateSchema = z
+  .object({
+    type: z.literal("generateAndCreate"),
+    /** What the user wants written — the prompt for the content generation model call. */
+    prompt: plainString(z.string().min(1).max(2000)),
+    title: plainString(z.string().max(256)).optional(),
+    reason: plainString(z.string().max(500)).optional(),
+  })
+  .strip();
+
 export const NotesVaultOperationSchema = z.discriminatedUnion("type", [
   NotesVaultOperationCreateSchema,
   NotesVaultOperationUpdateSchema,
   NotesVaultOperationDeleteSchema,
+  NotesVaultOperationGenerateSchema,
 ]);
 
 export const NotesVaultDraftSchema = z

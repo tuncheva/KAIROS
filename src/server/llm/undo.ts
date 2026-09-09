@@ -155,7 +155,10 @@ export async function undoTaskApply(
     });
   }
 
-  await assertProjectAccess(ctx, applyRow.projectId, "write");
+  // Cross-project applies (projectId === null) were authorized per-project at apply time.
+  if (applyRow.projectId !== null) {
+    await assertProjectAccess(ctx, applyRow.projectId, "write");
+  }
 
   const results = JSON.parse(applyRow.resultJson) as TaskApplyResults;
   const created = results.createdTaskIds ?? [];
@@ -165,7 +168,7 @@ export async function undoTaskApply(
     const removed = await ctx.db
       .delete(tasks)
       .where(
-        and(inArray(tasks.id, created), eq(tasks.projectId, applyRow.projectId)),
+        and(inArray(tasks.id, created), applyRow.projectId !== null ? eq(tasks.projectId, applyRow.projectId) : undefined),
       )
       .returning({ id: tasks.id });
     tasksDeleted = removed.length;
@@ -217,7 +220,7 @@ export async function undoTaskApply(
             eq(tasks.id, snapshot.id),
             // Re-scoped, like the delete above. The apply row is a record of what
             // happened, not a licence to write to those ids later.
-            eq(tasks.projectId, applyRow.projectId),
+            applyRow.projectId !== null ? eq(tasks.projectId, applyRow.projectId) : undefined,
           ),
         )
         .returning({ id: tasks.id });

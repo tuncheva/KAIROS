@@ -21,7 +21,10 @@ import { env } from "~/env";
  * `calendar.events.readonly` would be narrower but excludes the calendar list,
  * which is needed to know which calendar an event came from.
  */
-const SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
+const SCOPE = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
+
+/** Scope required for creating/deleting events. */
+export const EVENTS_WRITE_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 
 const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
@@ -260,6 +263,97 @@ export async function listEvents(input: {
   }
 
   return { events, nextSyncToken, syncTokenExpired: false };
+}
+
+// ---------------------------------------------------------------------------
+// Writing events
+// ---------------------------------------------------------------------------
+
+export interface CalendarEventInput {
+  summary: string;
+  description?: string;
+  location?: string;
+  startDateTime: string; // ISO-8601
+  endDateTime: string;   // ISO-8601
+  timeZone?: string;
+}
+
+export interface CreatedCalendarEvent {
+  googleEventId: string;
+  htmlLink: string;
+}
+
+export async function createGoogleCalendarEvent(
+  accessToken: string,
+  event: CalendarEventInput,
+): Promise<CreatedCalendarEvent> {
+  const body = {
+    summary: event.summary,
+    ...(event.description ? { description: event.description } : {}),
+    ...(event.location ? { location: event.location } : {}),
+    start: { dateTime: event.startDateTime, timeZone: event.timeZone ?? "UTC" },
+    end: { dateTime: event.endDateTime, timeZone: event.timeZone ?? "UTC" },
+  };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  try {
+    const response = await fetch(
+      "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      },
+    );
+
+    if (!response.ok) {
+      const err = (await response.json()) as { error?: { message?: string } };
+      throw new Error(err.error?.message ?? `Google Calendar API error ${response.status}`);
+    }
+
+    const result = (await response.json()) as { id?: string; htmlLink?: string };
+    if (!result.id) throw new Error("Google Calendar did not return an event id");
+    return { googleEventId: result.id, htmlLink: result.htmlLink ?? "" };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function deleteGoogleCalendarEvent(
+  accessToken: string,
+  googleEventId: string,
+): Promise<void> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(googleEventId)}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: controller.signal,
+      },
+    );
+
+    // 204 = success, 410 = already deleted — both are fine
+    if (!response.ok && response.status !== 410) {
+      throw new Error(`Google Calendar delete failed: ${response.status}`);
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function hasWriteScope(scope: string | null | undefined): boolean {
+  if (!scope) return false;
+  return scope.includes("calendar.events") || scope.includes("auth/calendar ");
 }
 
 // ---------------------------------------------------------------------------

@@ -137,7 +137,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
   const unfollow = api.profile.unfollow.useMutation(refreshFollows);
 
   const startDirectChat = api.chat.getOrCreateDirectConversation.useMutation({
-    onSuccess: (conversation) => router.push(`/chat/${conversation.conversationId}`),
+    onSuccess: (conversation) => router.push(`/chat/${conversation.publicId ?? conversation.conversationId}`),
     onError: (error) => setInfo({ message: error.message, type: "error" }),
   });
 

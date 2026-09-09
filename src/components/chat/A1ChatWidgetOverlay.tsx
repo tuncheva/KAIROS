@@ -349,9 +349,6 @@ export function A1ChatWidgetOverlay(props: {
     setMinimised((v) => !v);
   };
 
-  /* ─── hidden when closed ─── */
-  if (!open) return null;
-
   /* ─── panel styles ─── */
   const panelStyle: React.CSSProperties = {
     left: rect.x,
@@ -359,6 +356,16 @@ export function A1ChatWidgetOverlay(props: {
     width: rect.w,
     /* Collapsed, the panel is exactly its title bar. */
     height: minimised ? 44 : rect.h,
+    /*
+     * Hidden between open/close rather than unmounted.
+     *
+     * Returning null here would tear down ProjectIntelligenceChat and lose
+     * its message list and conversation id. display:none keeps the whole
+     * subtree in the DOM so close→reopen restores exactly where the user
+     * left off, with no refetch. Pointer events are also suppressed so the
+     * invisible panel does not capture clicks.
+     */
+    ...(!open && { display: "none", pointerEvents: "none" as const }),
   };
 
   return (

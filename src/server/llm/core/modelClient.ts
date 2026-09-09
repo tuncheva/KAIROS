@@ -143,6 +143,7 @@ const REASONING_EFFORT_MODELS: ReadonlyArray<
     spec: { supported: readonly string[]; strongDefault: string },
   ]
 > = [
+  ["DeepSeek-V4-Flash", { supported: ["low", "medium", "high"], strongDefault: "medium" }],
   ["kimi-k3", { supported: ["low", "high", "max"], strongDefault: "high" }],
   // Measured on NVIDIA NIM: low 739ms / medium 1419ms / high 3099ms on the same
   // prompt, all returning the same answer. A full ladder, so the global default
@@ -1035,6 +1036,22 @@ export async function* streamCompletion(
     : new Error("All configured models failed");
 }
 
+/**
+ * The longest prefix of `tag` that appears as a suffix of `text`.
+ *
+ * Used to detect a tag boundary split across two SSE frames: if the current
+ * chunk ends with `<thi`, we cannot conclude `<think>` is absent — it may
+ * start on the boundary. Returning `n > 0` tells the caller to hold back
+ * the last `n` characters until the next frame confirms or denies the tag.
+ */
+function partialTagLength(text: string, tag: string): number {
+  const maxLen = Math.min(text.length, tag.length - 1);
+  for (let len = maxLen; len > 0; len--) {
+    if (text.endsWith(tag.slice(0, len))) return len;
+  }
+  return 0;
+}
+
 async function* readStream(
   body: ReadableStream<Uint8Array>,
   requestedModel: string,
@@ -1051,6 +1068,10 @@ async function* readStream(
   let finishReason: string | null = null;
   let servedModel = requestedModel;
   let usage: ChatUsage | undefined;
+  /** True while we are inside a <think>…</think> block in the content stream. */
+  let inThinkBlock = false;
+  /** Holds a partial tag boundary that arrived split across two frames. */
+  let thinkBuffer = "";
 
   try {
     for (;;) {
@@ -1092,8 +1113,52 @@ async function* readStream(
           yield { type: "reasoning", text: delta.reasoning_content };
         }
         if (delta.content) {
-          content += delta.content;
-          yield { type: "content", text: delta.content };
+          // Some gateways embed chain-of-thought in <think>…</think> within
+          // the content field rather than a separate reasoning_content field.
+          // Parse them out so reasoning tokens never reach the chat transcript.
+          let chunk = thinkBuffer + delta.content;
+          thinkBuffer = "";
+          const pending: Array<{ isReasoning: boolean; text: string }> = [];
+
+          while (chunk.length > 0) {
+            if (inThinkBlock) {
+              const closeIdx = chunk.indexOf("</think>");
+              if (closeIdx >= 0) {
+                if (closeIdx > 0)
+                  pending.push({ isReasoning: true, text: chunk.slice(0, closeIdx) });
+                chunk = chunk.slice(closeIdx + 8);
+                inThinkBlock = false;
+              } else {
+                const partial = partialTagLength(chunk, "</think>");
+                pending.push({ isReasoning: true, text: chunk.slice(0, chunk.length - partial) });
+                thinkBuffer = chunk.slice(chunk.length - partial);
+                break;
+              }
+            } else {
+              const openIdx = chunk.indexOf("<think>");
+              if (openIdx >= 0) {
+                if (openIdx > 0)
+                  pending.push({ isReasoning: false, text: chunk.slice(0, openIdx) });
+                chunk = chunk.slice(openIdx + 7);
+                inThinkBlock = true;
+              } else {
+                const partial = partialTagLength(chunk, "<think>");
+                pending.push({ isReasoning: false, text: chunk.slice(0, chunk.length - partial) });
+                thinkBuffer = chunk.slice(chunk.length - partial);
+                break;
+              }
+            }
+          }
+
+          for (const ev of pending) {
+            if (ev.isReasoning) {
+              reasoning += ev.text;
+              yield { type: "reasoning", text: ev.text };
+            } else {
+              content += ev.text;
+              yield { type: "content", text: ev.text };
+            }
+          }
         }
         toolCalls.push(delta.tool_calls);
       }
@@ -1101,6 +1166,9 @@ async function* readStream(
   } finally {
     reader.releaseLock();
   }
+
+  // A stream that ends inside or mid-tag: treat leftover buffer as content.
+  if (thinkBuffer) content += thinkBuffer;
 
   const calls = toolCalls.toToolCalls();
 

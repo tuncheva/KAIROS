@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, text, timestamp, varchar, integer } from "drizzle-orm/pg-core";
+import { index, text, timestamp, uniqueIndex, varchar, integer } from "drizzle-orm/pg-core";
 import { createTable, shareStatusEnum, permissionEnum } from "./enums";
 import { users } from "./users";
 
@@ -50,11 +50,14 @@ export const stickyNotes = createTable(
     passwordHash: varchar("password_hash", { length: 256 }),
     passwordSalt: varchar("password_salt", { length: 256 }),
     shareStatus: shareStatusEnum("share_status").notNull(),
+    publicId: varchar("public_id", { length: 21 }),
+    // embedding vector(1536) — managed by migration 0041, queried via raw sql in searchTools.ts
   }),
   (t) => [
     index("note_created_by_idx").on(t.createdById),
     index("note_notebook_idx").on(t.notebookId),
     index("note_calendar_date_idx").on(t.calendarDate),
+    uniqueIndex("note_public_id_idx").on(t.publicId),
   ]
 );
 

@@ -65,6 +65,8 @@ export const env = createEnv({
      * optimisation rather than a requirement.
      */
     LLM_MODEL_FAST: z.string().optional(),
+    LLM_EMBEDDING_MODEL: z.string().optional(),
+    LLM_EMBEDDING_DIMS: z.string().optional(),
     /**
      * Chain-of-thought budget for the strong tier, on models that expose one —
      * either as a `reasoning_effort` chat-template flag or as a top-level
@@ -128,6 +130,8 @@ export const env = createEnv({
     LLM_MODEL: process.env.LLM_MODEL,
     LLM_FALLBACK_MODEL: process.env.LLM_FALLBACK_MODEL,
     LLM_MODEL_FAST: process.env.LLM_MODEL_FAST,
+    LLM_EMBEDDING_MODEL: process.env.LLM_EMBEDDING_MODEL,
+    LLM_EMBEDDING_DIMS: process.env.LLM_EMBEDDING_DIMS,
     LLM_REASONING_EFFORT: process.env.LLM_REASONING_EFFORT,
     AI_RATE_LIMIT: process.env.AI_RATE_LIMIT,
     AI_SYSTEM_RATE_LIMIT: process.env.AI_SYSTEM_RATE_LIMIT,

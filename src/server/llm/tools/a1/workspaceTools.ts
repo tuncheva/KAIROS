@@ -34,6 +34,7 @@ import {
   stickyNotes,
   taskActivityLog,
   taskComments,
+  taskDependencies,
   tasks,
   users,
 } from "~/server/db/schema";
@@ -751,6 +752,73 @@ export const getProjectHealthTool: A1Tool<
       completedLast14Days,
       stalled,
       risks,
+    };
+  },
+};
+
+// ---------------------------------------------------------------------------
+// getTaskDependencies — what a task is blocked by, and what it is blocking
+// ---------------------------------------------------------------------------
+
+export interface TaskRef {
+  taskId: number;
+  taskTitle: string;
+}
+
+export interface TaskDependenciesOutput {
+  blockedBy: TaskRef[];
+  blocking: TaskRef[];
+}
+
+/** A task is readable exactly when its project is. Shared with listTaskComments. */
+async function assertTaskReadableForDeps(
+  ctx: Parameters<typeof assertProjectAccess>[0],
+  taskId: number,
+): Promise<void> {
+  const [task] = await ctx.db
+    .select({ projectId: tasks.projectId })
+    .from(tasks)
+    .where(eq(tasks.id, taskId))
+    .limit(1);
+  if (!task) throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+  await assertProjectAccess(ctx, task.projectId, "read");
+}
+
+export const getTaskDependenciesTool: A1Tool<
+  "getTaskDependencies",
+  { taskId: number },
+  TaskDependenciesOutput
+> = {
+  name: "getTaskDependencies",
+  inputSchema: z.object({ taskId: z.number().int().positive() }).strict(),
+  outputSchema: z.custom<TaskDependenciesOutput>(),
+
+  async execute(ctx, input) {
+    await assertTaskReadableForDeps(ctx, input.taskId);
+
+    // What is blocking this task (blockedTaskId = input.taskId → the blocking ones)
+    const blockedByRows = await ctx.db
+      .select({
+        taskId: taskDependencies.blockingTaskId,
+        taskTitle: tasks.title,
+      })
+      .from(taskDependencies)
+      .innerJoin(tasks, eq(taskDependencies.blockingTaskId, tasks.id))
+      .where(eq(taskDependencies.blockedTaskId, input.taskId));
+
+    // What this task is blocking (blockingTaskId = input.taskId → the blocked ones)
+    const blockingRows = await ctx.db
+      .select({
+        taskId: taskDependencies.blockedTaskId,
+        taskTitle: tasks.title,
+      })
+      .from(taskDependencies)
+      .innerJoin(tasks, eq(taskDependencies.blockedTaskId, tasks.id))
+      .where(eq(taskDependencies.blockingTaskId, input.taskId));
+
+    return {
+      blockedBy: blockedByRows,
+      blocking: blockingRows,
     };
   },
 };

@@ -32,12 +32,14 @@ import type { TaskPlanDraft } from "~/server/llm/schemas/a2TaskPlannerSchemas";
 import type { NotesVaultDraft } from "~/server/llm/schemas/a3NotesVaultSchemas";
 import type { EventsPublisherDraft } from "~/server/llm/schemas/a4EventsPublisherSchemas";
 import type { OrgAdminDraft } from "~/server/llm/schemas/a5OrgAdminSchemas";
+import type { ProjectManagerDraft } from "~/server/llm/schemas/a6ProjectManagerSchemas";
 
 import { a1Concierge } from "./a1Concierge";
 import { a2TaskPlanner } from "./a2TaskPlanner";
 import { a3NotesVault } from "./a3NotesVault";
 import { a4EventsPublisher } from "./a4EventsPublisher";
 import { a5OrgAdmin } from "./a5OrgAdmin";
+import { a6ProjectManager } from "./a6ProjectManager";
 import type { AgentDraftInput } from "./shared";
 
 const log = createLogger("agent.handoff");
@@ -49,7 +51,8 @@ export type AgentPlan =
   | { kind: "tasks"; draftId: string; plan: TaskPlanDraft }
   | { kind: "notes"; draftId: string; plan: NotesVaultDraft }
   | { kind: "events"; draftId: string; plan: EventsPublisherDraft }
-  | { kind: "org"; draftId: string; plan: OrgAdminDraft };
+  | { kind: "org"; draftId: string; plan: OrgAdminDraft }
+  | { kind: "project_manager"; draftId: string; plan: ProjectManagerDraft };
 
 export type AgentTurnResult = {
   /** A1's own draft id, always present. */
@@ -169,6 +172,17 @@ async function runHandoff(
         originalMessage,
       });
       return { kind: "org", draftId: res.draftId, plan: res.plan };
+    }
+
+    case "project_manager": {
+      input.onSubAgent?.("project_manager");
+      const res = await a6ProjectManager.projectManagerDraft({
+        ctx: input.ctx,
+        message,
+        handoffContext,
+        originalMessage,
+      });
+      return { kind: "project_manager", draftId: res.draftId, plan: res.plan };
     }
   }
 }

@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, type TRPCContext } from "~/server/api/trpc";
@@ -56,6 +57,10 @@ async function assertProjectAccess(ctx: TRPCContext, projectId: number) {
 
 function normalizePair(a: string, b: string): { userOneId: string; userTwoId: string } {
   return a < b ? { userOneId: a, userTwoId: b } : { userOneId: b, userTwoId: a };
+}
+
+function generatePublicId(): string {
+  return crypto.randomBytes(9).toString("base64url");
 }
 
 /**
@@ -507,7 +512,7 @@ export const chatRouter = createTRPCRouter({
       const { userOneId, userTwoId } = normalizePair(selfId, input.otherUserId);
 
       const [existing] = await ctx.db
-        .select({ id: directConversations.id })
+        .select({ id: directConversations.id, publicId: directConversations.publicId })
         .from(directConversations)
         .where(
           and(
@@ -518,7 +523,7 @@ export const chatRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (existing) return { conversationId: existing.id };
+      if (existing) return { conversationId: existing.id, publicId: existing.publicId };
 
       const [created] = await ctx.db
         .insert(directConversations)
@@ -529,8 +534,9 @@ export const chatRouter = createTRPCRouter({
           userTwoId,
           lastMessageAt: sql`CURRENT_TIMESTAMP`,
           updatedAt: sql`CURRENT_TIMESTAMP`,
+          publicId: generatePublicId(),
         })
-        .returning({ id: directConversations.id });
+        .returning({ id: directConversations.id, publicId: directConversations.publicId });
 
       if (!created) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create conversation" });
 
@@ -544,7 +550,7 @@ export const chatRouter = createTRPCRouter({
         ])
         .onConflictDoNothing();
 
-      return { conversationId: created.id };
+      return { conversationId: created.id, publicId: created.publicId };
     }),
 
   listMessages: protectedProcedure
@@ -1072,7 +1078,7 @@ export const chatRouter = createTRPCRouter({
       const { userOneId, userTwoId } = normalizePair(selfId, input.otherUserId);
 
       const [existing] = await ctx.db
-        .select({ id: directConversations.id })
+        .select({ id: directConversations.id, publicId: directConversations.publicId })
         .from(directConversations)
         .where(
           and(
@@ -1083,7 +1089,7 @@ export const chatRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (existing) return { conversationId: existing.id };
+      if (existing) return { conversationId: existing.id, publicId: existing.publicId };
 
       const [created] = await ctx.db
         .insert(directConversations)
@@ -1094,8 +1100,9 @@ export const chatRouter = createTRPCRouter({
           userTwoId,
           lastMessageAt: sql`CURRENT_TIMESTAMP`,
           updatedAt: sql`CURRENT_TIMESTAMP`,
+          publicId: generatePublicId(),
         })
-        .returning({ id: directConversations.id });
+        .returning({ id: directConversations.id, publicId: directConversations.publicId });
 
       if (!created) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create conversation" });
 
@@ -1109,7 +1116,7 @@ export const chatRouter = createTRPCRouter({
         ])
         .onConflictDoNothing();
 
-      return { conversationId: created.id };
+      return { conversationId: created.id, publicId: created.publicId };
     }),
 
   /**

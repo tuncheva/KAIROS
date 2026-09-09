@@ -16,6 +16,10 @@ import { createLogger } from "~/server/logger";
 
 const log = createLogger("note");
 
+function generatePublicId(): string {
+  return crypto.randomBytes(9).toString("base64url");
+}
+
 /**
  * Throttle a note-password attempt before any Argon2 work happens.
  *
@@ -92,6 +96,7 @@ export const noteRouter = createTRPCRouter({
           passwordHash: passwordHash,
           passwordSalt: passwordSalt,
           shareStatus: 'private',
+          publicId: generatePublicId(),
         }).returning();
 
         if (!newNote) {
@@ -146,6 +151,7 @@ export const noteRouter = createTRPCRouter({
         if (n.passwordHash) {
           return {
             id: n.id,
+            publicId: n.publicId ?? null,
             title: n.title,
             createdAt: n.createdAt,
             updatedAt: n.updatedAt,
@@ -175,6 +181,7 @@ export const noteRouter = createTRPCRouter({
       const shares = await ctx.db
         .select({
           id: stickyNotes.id,
+          publicId: stickyNotes.publicId,
           title: stickyNotes.title,
           content: stickyNotes.content,
           createdAt: stickyNotes.createdAt,

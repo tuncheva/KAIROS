@@ -48,6 +48,7 @@ export const TaskCreateModelSchema = z
       .default([]),
     orderIndex: z.number().int().min(0).optional(),
     dueDate: ISODateTimeStringSchema.nullable().optional(),
+    projectId: z.number().int().positive().optional(),
   })
   .strip();
 
@@ -70,6 +71,7 @@ export const TaskUpdateDraftSchema = z
       })
       .strip(),
     reason: plainString(z.string().max(500)).optional(),
+    projectId: z.number().int().positive().optional(),
   })
   .strip();
 
@@ -78,6 +80,7 @@ export const TaskStatusChangeDraftSchema = z
     taskId: z.number().int().positive(),
     status: TaskStatusSchema,
     reason: plainString(z.string().max(500)).optional(),
+    projectId: z.number().int().positive().optional(),
   })
   .strip();
 
@@ -87,8 +90,23 @@ export const TaskDeleteDraftSchema = z
     reason: plainString(z.string().min(1).max(500)),
     /** Must be true for deletes to be considered at all */
     dangerous: z.boolean(),
+    projectId: z.number().int().positive().optional(),
   })
   .strip();
+
+export const TaskCommentDraftSchema = z
+  .object({
+    taskId: z.number().int().positive(),
+    content: z.string().min(1).max(5000),
+    reason: plainString(z.string().max(300)).optional(),
+  })
+  .strip();
+
+export const TaskDependencyDraftSchema = z.object({
+  blockedTaskId: z.number().int().positive(),
+  blockingTaskId: z.number().int().positive(),
+  reason: plainString(z.string().max(300)).optional(),
+}).strip();
 
 export const TaskPlanDiffPreviewSchema = z
   .object({
@@ -97,6 +115,7 @@ export const TaskPlanDiffPreviewSchema = z
     updates: z.array(plainString(z.string().min(1))).max(50).default([]),
     statusChanges: z.array(plainString(z.string().min(1))).max(50).default([]),
     deletes: z.array(plainString(z.string().min(1))).max(50).default([]),
+    dependencies: z.array(plainString(z.string().min(1))).max(30).default([]),
   })
   .strip();
 
@@ -110,6 +129,7 @@ export const TaskPlannerScopeSchema = z
      * column, so an absent value there fails closed.
      */
     projectId: z.number().int().positive().optional(),
+    crossProject: z.boolean().optional(),
   })
   .strip();
 
@@ -131,6 +151,8 @@ export const TaskPlanModelOutputSchema = z
     updates: z.array(TaskUpdateDraftSchema).max(50).default([]),
     statusChanges: z.array(TaskStatusChangeDraftSchema).max(50).default([]),
     deletes: z.array(TaskDeleteDraftSchema).max(10).default([]),
+    comments: z.array(TaskCommentDraftSchema).max(20).default([]),
+    dependencies: z.array(TaskDependencyDraftSchema).max(30).default([]),
 
     orderingRationale: z.string().max(2000).optional(),
     assigneeRationale: z.string().max(2000).optional(),
@@ -162,6 +184,8 @@ export const TaskPlanDraftSchema = z
     updates: z.array(TaskUpdateDraftSchema).max(50).default([]),
     statusChanges: z.array(TaskStatusChangeDraftSchema).max(50).default([]),
     deletes: z.array(TaskDeleteDraftSchema).max(10).default([]),
+    comments: z.array(TaskCommentDraftSchema).max(20).default([]),
+    dependencies: z.array(TaskDependencyDraftSchema).max(30).default([]),
 
     orderingRationale: z.string().max(2000).optional(),
     assigneeRationale: z.string().max(2000).optional(),

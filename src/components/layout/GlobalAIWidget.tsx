@@ -59,6 +59,18 @@ export function GlobalAIWidget() {
 
   const [open, setOpen] = useState(false);
   /**
+   * Latches true the first time the widget is opened and never flips back.
+   *
+   * The overlay is a heavy component (ProjectIntelligenceChat + rehydration
+   * query) that we do not want in the bundle until needed, so it is only
+   * mounted after the first open. Once mounted it stays mounted for the
+   * session: `A1ChatWidgetOverlay` hides itself with `display:none` instead
+   * of returning null, so its internal state — the fetched conversation
+   * history, the message list, the conversation id — survives close/reopen
+   * without a refetch.
+   */
+  const [everOpened, setEverOpened] = useState(false);
+  /**
    * Whether the palette's code has been asked for yet.
    *
    * The palette used to own the ⌘K listener, which only works if the palette is
@@ -110,7 +122,7 @@ export function GlobalAIWidget() {
    * so nothing would be there to hear the event that is supposed to open it.
    */
   useEffect(() => {
-    const handler = () => setOpen(true);
+    const handler = () => { setOpen(true); setEverOpened(true); };
     window.addEventListener("kairos:openAI", handler);
     return () => window.removeEventListener("kairos:openAI", handler);
   }, []);
@@ -130,11 +142,14 @@ export function GlobalAIWidget() {
               onOpen={(text) => {
                 if (text) setAsk((a) => ({ text, n: a.n + 1 }));
                 setOpen(true);
+                setEverOpened(true);
               }}
             />
           )}
 
-          {open && (
+          {/* Mounted on first open, then kept alive for the session so the
+              conversation history survives close/reopen without re-fetching. */}
+          {everOpened && (
             <A1ChatWidgetOverlay
               isOpen={open}
               onOpenChange={setOpen}

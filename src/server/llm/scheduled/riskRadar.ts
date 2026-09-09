@@ -27,9 +27,10 @@ import "server-only";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 import type { TRPCContext } from "~/server/api/trpc";
-import { aiFindings, projects, tasks } from "~/server/db/schema";
+import { aiFindings, projects, taskDependencies, tasks } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
 import { loadVisibleScope, visibleProjectsWhere } from "~/server/llm/tools/a1/scope";
+import { chatCompletion } from "~/server/llm/core/modelClient";
 
 import { deadlineFindings } from "./deadlines";
 
@@ -44,7 +45,9 @@ export type FindingKind =
   | "missing_due_dates"
   | "blocked_tasks"
   | "event_needs_detail"
-  | "deadline_approaching";
+  | "deadline_approaching"
+  | "dependency_cascade"
+  | "ai_pattern";
 
 export interface Finding {
   kind: FindingKind;
@@ -56,6 +59,8 @@ export interface Finding {
   fingerprint: string;
   /** Task ids the finding is about, for the pre-drafted fix (B-3). */
   taskIds: number[];
+  /** How the finding was produced. Defaults to "deterministic". */
+  source?: "deterministic" | "ai_pattern";
 }
 
 /** How stale a project must be before "stalled" is worth saying. */
@@ -82,7 +87,7 @@ function bucket(count: number): string {
 export async function detectFindings(
   ctx: TRPCContext,
   userId: string,
-): Promise<Finding[]> {
+): Promise<{ findings: Finding[]; projectNames: Map<number, string> }> {
   const scope = await loadVisibleScope(ctx, userId);
 
   const visible = await ctx.db
@@ -90,7 +95,7 @@ export async function detectFindings(
     .from(projects)
     .where(and(visibleProjectsWhere(scope), eq(projects.status, "active")));
 
-  if (!visible.length) return [];
+  if (!visible.length) return { findings: [], projectNames: new Map() };
 
   const projectIds = visible.map((p) => p.id);
   const titleById = new Map(visible.map((p) => [p.id, p.title]));
@@ -197,6 +202,58 @@ export async function detectFindings(
     }
   }
 
+  // Dependency cascade check: find any open task that is waiting on an overdue
+  // blocking task. One query across all project task ids rather than per-project.
+  if (projectIds.length) {
+    const allTaskIds = rows.map((r) => r.id);
+    if (allTaskIds.length) {
+      const depRows = await ctx.db
+        .select({
+          blockedTaskId: taskDependencies.blockedTaskId,
+          blockingTaskId: taskDependencies.blockingTaskId,
+        })
+        .from(taskDependencies)
+        .where(
+          inArray(taskDependencies.blockedTaskId, allTaskIds),
+        );
+
+      // Build a lookup for rows by id
+      const taskById = new Map(rows.map((r) => [r.id, r]));
+      const now2 = new Date();
+
+      // Per-project cascade detection
+      const cascadeByProject = new Map<number, boolean>();
+      for (const dep of depRows) {
+        const blockedTask = taskById.get(dep.blockedTaskId);
+        const blockingTask = taskById.get(dep.blockingTaskId);
+        if (!blockedTask || !blockingTask) continue;
+        // Cascade: blocked task is not completed, blocking task is overdue
+        if (
+          blockedTask.status !== "completed" &&
+          blockingTask.dueDate &&
+          blockingTask.dueDate < now2 &&
+          blockingTask.status !== "completed"
+        ) {
+          cascadeByProject.set(blockedTask.projectId, true);
+        }
+      }
+
+      for (const [projectId, hasCascade] of cascadeByProject) {
+        if (!hasCascade) continue;
+        const name = titleById.get(projectId) ?? "this project";
+        findings.push({
+          kind: "dependency_cascade",
+          severity: "critical",
+          projectId,
+          title: `Cascading delays in ${name}`,
+          detail: `At least one blocked task in ${name} is waiting on an overdue dependency — the delay is compounding.`,
+          fingerprint: `dep_cascade:${String(projectId)}`,
+          taskIds: [],
+        });
+      }
+    }
+  }
+
   // Deadline watch runs once across every visible task rather than inside the
   // per-project loop: it is about the caller's own week, and a person's deadlines
   // do not partition by project. It reuses `rows`, so it costs no extra query.
@@ -219,7 +276,87 @@ export async function detectFindings(
     });
   }
 
-  return findings;
+  return { findings, projectNames: titleById };
+}
+
+/**
+ * Pattern-based findings via model analysis.
+ *
+ * Runs after deterministic detection to look for cross-project patterns that
+ * SQL counts cannot see: recurring themes across multiple projects, systemic
+ * issues that only become visible when findings are read together. Failures are
+ * logged and swallowed — pattern findings are additive, never a hard dependency.
+ */
+export async function detectPatternFindings(
+  findings: Finding[],
+  projectNames: Map<number, string>,
+): Promise<Finding[]> {
+  if (findings.length === 0) return [];
+
+  const summary = findings
+    .map((f) => `- [${f.kind}] ${f.title}: ${f.detail}`)
+    .join("\n");
+
+  const projectList = Array.from(projectNames.entries())
+    .map(([id, name]) => `${String(id)}: ${name}`)
+    .join(", ");
+
+  try {
+    const response = await chatCompletion({
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a project risk analyst. Given a list of findings from multiple projects, identify cross-project patterns that indicate systemic issues. Return a JSON array of pattern findings. Each finding must have: kind (always 'ai_pattern'), severity ('info'|'warning'|'critical'), projectId (null for cross-project), title (max 80 chars), detail (1-2 sentences), fingerprint (stable key like 'pattern:theme_name'), taskIds (empty array). Return an empty array if there are no meaningful patterns. Return ONLY the JSON array, no other text.",
+        },
+        {
+          role: "user",
+          content: `Projects: ${projectList}\n\nFindings:\n${summary}\n\nIdentify cross-project patterns. Return JSON array only.`,
+        },
+      ],
+      tier: "fast",
+      temperature: 0,
+      maxTokens: 1000,
+    });
+
+    const text = response.content.trim();
+    // Extract JSON array from response
+    const match = /\[[\s\S]*\]/.exec(text);
+    if (!match) return [];
+
+    const parsed = JSON.parse(match[0]) as unknown[];
+    if (!Array.isArray(parsed)) return [];
+
+    const patternFindings: Finding[] = [];
+    for (const item of parsed) {
+      if (
+        typeof item === "object" &&
+        item !== null &&
+        "kind" in item &&
+        "severity" in item &&
+        "title" in item &&
+        "detail" in item &&
+        "fingerprint" in item
+      ) {
+        const f = item as Record<string, unknown>;
+        patternFindings.push({
+          kind: "ai_pattern",
+          severity: (f.severity as FindingSeverity) ?? "info",
+          projectId: typeof f.projectId === "number" ? f.projectId : null,
+          title: String(f.title).slice(0, 80),
+          detail: String(f.detail),
+          fingerprint: String(f.fingerprint),
+          taskIds: Array.isArray(f.taskIds) ? (f.taskIds as number[]) : [],
+          source: "ai_pattern",
+        });
+      }
+    }
+
+    return patternFindings;
+  } catch (err) {
+    log.warn("pattern finding detection failed", { err });
+    return [];
+  }
 }
 
 /**
@@ -262,6 +399,7 @@ export async function persistFindings(
       severity: f.severity,
       title: f.title,
       detail: f.detail,
+      source: f.source ?? "deterministic",
       status: "open",
     })),
   );
@@ -352,6 +490,16 @@ export function suggestedFixFor(finding: Finding): SuggestedFix | null {
     case "stalled_project":
     case "event_needs_detail":
       return null;
+    case "dependency_cascade":
+      return {
+        prompt: `Review the dependency cascade in project ${String(finding.projectId)}. Identify which blocking tasks are overdue and suggest how to unblock them or adjust timelines.`,
+        label: "Review cascade",
+      };
+    case "ai_pattern":
+      return {
+        prompt: `I have a cross-project pattern finding: "${finding.title}". ${finding.detail} Please analyse this pattern and suggest concrete actions to address it.`,
+        label: "Address pattern",
+      };
   }
 }
 

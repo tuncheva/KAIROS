@@ -225,6 +225,34 @@
       "when": 1787961613010,
       "tag": "0040_drop_password_reset_code",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1757462400000,
+      "tag": "0041_phase1_4_features",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1788938634113,
+      "tag": "0033_quiet_bromley",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1788938700000,
+      "tag": "0042_ensure_public_ids",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1788938760000,
+      "tag": "0043_backfill_public_ids",
+      "breakpoints": true
     }
   ]
 }

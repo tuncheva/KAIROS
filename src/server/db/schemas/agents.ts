@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, type InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -14,10 +14,12 @@ import {
   agentNotesVaultDraftStatusEnum,
   agentEventsPublisherDraftStatusEnum,
   agentOrgAdminDraftStatusEnum,
+  agentProjectManagerDraftStatusEnum,
   aiMessageRoleEnum,
 } from "./enums";
 import { users } from "./users";
 import { projects } from "./projects";
+import { organizations } from "./organizations";
 
 export const agentTaskPlannerDrafts = createTable(
   "agent_task_planner_drafts",
@@ -28,8 +30,9 @@ export const agentTaskPlannerDrafts = createTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     projectId: integer("project_id")
-      .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
+    orgId: integer("org_id")
+      .references(() => organizations.id, { onDelete: "cascade" }),
     message: text("message").notNull(),
     planJson: text("plan_json").notNull(),
     planHash: varchar("plan_hash", { length: 64 }).notNull(),
@@ -61,7 +64,6 @@ export const agentTaskPlannerApplies = createTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     projectId: integer("project_id")
-      .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     planHash: varchar("plan_hash", { length: 64 }).notNull(),
     /**
@@ -554,6 +556,12 @@ export const aiFindings = createTable(
     detail: text("detail").notNull(),
     /** A2/A3/A4 draft id that fixes this, when the watcher could draft one. */
     suggestedDraftId: varchar("suggested_draft_id", { length: 80 }),
+    /**
+     * How the finding was produced.
+     * "deterministic" — a SQL count that cannot hallucinate.
+     * "ai_pattern" — a model-identified cross-project pattern.
+     */
+    source: varchar("source", { length: 20 }).notNull().default("deterministic"),
     status: varchar("status", { length: 16 }).notNull().default("open"),
     dismissedAt: timestamp("dismissed_at", { mode: "date", withTimezone: true }),
     resolvedAt: timestamp("resolved_at", { mode: "date", withTimezone: true }),
@@ -640,6 +648,60 @@ export const agentOrgAdminApplies = createTable(
   (t) => [
     index("a5_apply_draft_idx").on(t.draftId),
     index("a5_apply_user_idx").on(t.userId),
+  ],
+);
+
+/**
+ * A6 — Project Manager drafts.
+ *
+ * Same shape as A2/A3/A4/A5 so all five agents have one storage story.
+ * No `projectId` foreign key — the plan may span multiple projects (creates,
+ * updates, archives), so there is no single project to constrain it to.
+ */
+export const agentProjectManagerDrafts = createTable(
+  "agent_project_manager_drafts",
+  (d) => ({
+    id: varchar("id", { length: 80 }).primaryKey(),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    message: text("message").notNull(),
+    planJson: text("plan_json").notNull(),
+    planHash: varchar("plan_hash", { length: 64 }).notNull(),
+    status: agentProjectManagerDraftStatusEnum("status").notNull().default("draft"),
+    confirmationToken: text("confirmation_token"),
+    confirmedAt: timestamp("confirmed_at", { mode: "date", withTimezone: true }),
+    appliedAt: timestamp("applied_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }),
+  }),
+  (t) => [
+    index("a6_draft_user_idx").on(t.userId),
+    index("a6_draft_status_idx").on(t.status),
+    index("a6_draft_plan_hash_idx").on(t.planHash),
+  ],
+);
+
+export const agentProjectManagerApplies = createTable(
+  "agent_project_manager_applies",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    draftId: varchar("draft_id", { length: 80 })
+      .notNull()
+      .references(() => agentProjectManagerDrafts.id, { onDelete: "cascade" }),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    planHash: varchar("plan_hash", { length: 64 }).notNull(),
+    resultJson: text("result_json").notNull(),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("a6_apply_draft_idx").on(t.draftId),
+    index("a6_apply_user_idx").on(t.userId),
   ],
 );
 
@@ -866,6 +928,7 @@ export const documentChunks = createTable(
     content: text("content").notNull(),
     /** Page the passage starts on, for citation. Null when unknown. */
     page: integer("page"),
+    // embedding vector(1536) — managed by migration 0041, queried via raw sql in search.ts
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   }),
   (t) => [
@@ -938,6 +1001,8 @@ export const calendarConnections = createTable(
      * clearing this and doing a full pull.
      */
     syncToken: text("sync_token"),
+    /** The OAuth scopes the user granted, stored to check write capability. */
+    scope: varchar("scope", { length: 512 }),
     lastSyncedAt: timestamp("last_synced_at", { mode: "date", withTimezone: true }),
     lastError: text("last_error"),
     /** Consecutive sync failures, same convention as `ai_schedules`. */
@@ -1023,3 +1088,23 @@ export const externalEvents = createTable(
     ),
   ],
 );
+
+export const aiReminders = createTable(
+  "ai_reminders",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    userId: d.varchar("user_id", { length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    fireAt: timestamp("fire_at", { mode: "date", withTimezone: true }).notNull(),
+    /** The conversation that created this, so the notification link points back. */
+    sourceConversationId: varchar("source_conversation_id", { length: 80 }),
+    firedAt: timestamp("fired_at", { mode: "date", withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("ai_reminder_user_idx").on(t.userId),
+    index("ai_reminder_fire_at_idx").on(t.fireAt, t.firedAt),
+  ]
+);
+export type AiReminder = InferSelectModel<typeof aiReminders>;
