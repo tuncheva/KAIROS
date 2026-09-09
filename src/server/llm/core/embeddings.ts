@@ -1,15 +1,25 @@
 /**
  * Text embedding — vector representation for semantic search.
  *
- * Uses the same OpenAI-compatible base URL as chat completions, but the
- * /embeddings endpoint. Gated on LLM_EMBEDDING_MODEL being set: if it is not,
- * every call returns null, which is the signal to fall back to keyword search.
- * That keeps embedding search an additive feature rather than a hard dependency.
+ * Uses an OpenAI-compatible /embeddings endpoint. Gated on LLM_EMBEDDING_MODEL
+ * being set: if it is not, every call returns null, which is the signal to fall
+ * back to keyword search. That keeps embedding search an additive feature rather
+ * than a hard dependency.
+ *
+ * Endpoint resolution, highest-priority first:
+ *   1. LLM_EMBEDDING_BASE_URL + LLM_EMBEDDING_API_KEY — a dedicated embedding
+ *      provider (e.g. OpenAI for embeddings while another gateway handles chat).
+ *   2. The resolved LLM config (LLM_PROVIDER preset or LLM_BASE_URL / LLM_API_KEY)
+ *      — works when the same gateway serves both chat and embeddings.
+ *
+ * This lets the project use, say, Velocity for chat completions and OpenAI's
+ * text-embedding-3-small for semantic search, with one extra env var each.
  */
 import "server-only";
 
 import { env } from "~/env";
 import { createLogger } from "~/server/logger";
+import { resolveLlmConfig } from "./providers";
 
 const log = createLogger("llm.embed");
 
@@ -18,8 +28,13 @@ const TIMEOUT_MS = 15_000;
 function getEmbeddingConfig(): { baseUrl: string; apiKey: string; model: string; dims: number } | null {
   const model = env.LLM_EMBEDDING_MODEL;
   if (!model) return null;
-  const baseUrl = (env.LLM_BASE_URL ?? "").replace(/\/$/, "");
-  const apiKey = env.LLM_API_KEY ?? "";
+
+  // Embedding-specific overrides take priority; fall back to the main LLM config
+  // so that providers which serve both chat and embeddings only need one set of vars.
+  const resolved = resolveLlmConfig(env);
+  const baseUrl = (env.LLM_EMBEDDING_BASE_URL ?? resolved.baseUrl).replace(/\/$/, "");
+  const apiKey = env.LLM_EMBEDDING_API_KEY ?? resolved.apiKey;
+
   if (!baseUrl || !apiKey) return null;
   const dims = Number(env.LLM_EMBEDDING_DIMS ?? "1536");
   return { baseUrl, apiKey, model, dims: Number.isInteger(dims) && dims > 0 ? dims : 1536 };

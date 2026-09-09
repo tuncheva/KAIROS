@@ -68,6 +68,14 @@ export const env = createEnv({
     LLM_EMBEDDING_MODEL: z.string().optional(),
     LLM_EMBEDDING_DIMS: z.string().optional(),
     /**
+     * Optional dedicated embedding endpoint. When set, embedding calls go here
+     * instead of the main LLM base URL — use when the chat provider does not
+     * serve embeddings (e.g. Velocity for chat, OpenAI for text-embedding-3-small).
+     */
+    LLM_EMBEDDING_BASE_URL: z.string().url().optional(),
+    /** API key for the embedding endpoint. Falls back to the main LLM key. */
+    LLM_EMBEDDING_API_KEY: z.string().optional(),
+    /**
      * Chain-of-thought budget for the strong tier, on models that expose one —
      * either as a `reasoning_effort` chat-template flag or as a top-level
      * `reasoning_effort` field. Reasoning is emitted before the first visible
@@ -132,6 +140,8 @@ export const env = createEnv({
     LLM_MODEL_FAST: process.env.LLM_MODEL_FAST,
     LLM_EMBEDDING_MODEL: process.env.LLM_EMBEDDING_MODEL,
     LLM_EMBEDDING_DIMS: process.env.LLM_EMBEDDING_DIMS,
+    LLM_EMBEDDING_BASE_URL: process.env.LLM_EMBEDDING_BASE_URL,
+    LLM_EMBEDDING_API_KEY: process.env.LLM_EMBEDDING_API_KEY,
     LLM_REASONING_EFFORT: process.env.LLM_REASONING_EFFORT,
     AI_RATE_LIMIT: process.env.AI_RATE_LIMIT,
     AI_SYSTEM_RATE_LIMIT: process.env.AI_SYSTEM_RATE_LIMIT,
