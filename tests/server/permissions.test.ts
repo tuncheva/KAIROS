@@ -247,11 +247,20 @@ describe("membershipHasFlag", () => {
     expect(membershipHasFlag(membership, "canEditProjects")).toBe(true);
   });
 
-  it("falls back to the role template for legacy all-false rows", () => {
-    // `join` used to insert every flag as false regardless of role, so an
-    // un-backfilled contributor is indistinguishable from a view-only member by
-    // columns alone. Without this fallback they would lose write access.
-    const legacyWorker = {
+  it("does not resurrect the role template for an all-false row", () => {
+    /*
+     * This used to assert the opposite. `membershipHasFlag` carried a fallback:
+     * when every column was false it answered from the role template instead,
+     * because `join` and `acceptInvite` once wrote all-false rows regardless of
+     * role and such a row was indistinguishable from a deliberate revocation.
+     *
+     * Migration 0020_backfill_member_permissions filled those rows in, and no row
+     * in the database now holds an all-false set for a write-capable role — so
+     * the fallback had stopped affecting real data while still meaning that
+     * revoking every capability from a member silently restored the role's
+     * defaults. The columns are the source of truth; all-false means no.
+     */
+    const strippedWorker = {
       role: "worker",
       canAddMembers: false,
       canAssignTasks: false,
@@ -263,9 +272,8 @@ describe("membershipHasFlag", () => {
       canViewAnalytics: false,
     };
 
-    expect(membershipHasFlag(legacyWorker, "canEditProjects")).toBe(true);
-    // …but only what the template actually grants.
-    expect(membershipHasFlag(legacyWorker, "canDeleteTasks")).toBe(false);
+    expect(membershipHasFlag(strippedWorker, "canEditProjects")).toBe(false);
+    expect(membershipHasFlag(strippedWorker, "canDeleteTasks")).toBe(false);
   });
 
   it("keeps a legacy mentor row read-only", () => {

@@ -1,4 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+/*
+ * `slidingWindow` reads `REDIS_NATIVE_URL` through `~/env`, and these specs run
+ * in a jsdom environment where `@t3-oss/env` refuses any server-scoped variable
+ * because `window` exists. Supplying the module directly is the convention the
+ * other server suites use (see tests/agents/toolAuthorization.test.ts).
+ *
+ * Leaving `REDIS_NATIVE_URL` undefined is deliberate: it selects the in-process
+ * fallback window, which is what these assertions exercise.
+ */
+vi.mock("~/env", () => ({ env: { REDIS_NATIVE_URL: undefined } }));
 
 import {
   checkAuthRateLimit,

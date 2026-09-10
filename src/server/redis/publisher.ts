@@ -9,14 +9,20 @@
 
 import "server-only";
 
-const REDIS_NATIVE_URL = process.env.REDIS_NATIVE_URL;
+import { env } from "~/env";
 import { createLogger } from "~/server/logger";
 import { optionalImport } from "~/server/optionalImport";
 
+const REDIS_NATIVE_URL = env.REDIS_NATIVE_URL;
+
 const log = createLogger("publisher");
-const WS_INTERNAL_URL =
-  process.env.WS_INTERNAL_URL ?? "http://localhost:3001";
-const WS_SECRET = process.env.WS_SECRET ?? "";
+const WS_INTERNAL_URL = env.WS_INTERNAL_URL ?? "http://localhost:3001";
+
+// Via `env` rather than `process.env.WS_SECRET ?? ""`. The schema requires at
+// least 32 characters; the old default silently substituted an empty secret,
+// which the WS server's own check would then reject on every publish — a
+// misconfiguration that presented as "sockets are quiet" rather than as an error.
+const WS_SECRET = env.WS_SECRET;
 
 // ── Redis client (lazy init) ─────────────────────────────────────────
 

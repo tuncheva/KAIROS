@@ -227,13 +227,6 @@
       "breakpoints": true
     },
     {
-      "idx": 32,
-      "version": "7",
-      "when": 1757462400000,
-      "tag": "0041_phase1_4_features",
-      "breakpoints": true
-    },
-    {
       "idx": 33,
       "version": "7",
       "when": 1788938634113,
@@ -252,6 +245,20 @@
       "version": "7",
       "when": 1788938760000,
       "tag": "0043_backfill_public_ids",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1788938820000,
+      "tag": "0041_phase1_4_features",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1788938880000,
+      "tag": "0044_pgvector_embeddings",
       "breakpoints": true
     }
   ]

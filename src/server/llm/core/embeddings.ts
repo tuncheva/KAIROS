@@ -25,6 +25,16 @@ const log = createLogger("llm.embed");
 
 const TIMEOUT_MS = 15_000;
 
+/**
+ * Must equal the width of the `embedding` columns, which migration
+ * 0044_pgvector_embeddings creates as `vector(1024)`.
+ *
+ * pgvector fixes the dimension at the column, so a mismatch is not degraded
+ * results — it is a Postgres error on insert. Changing this means changing the
+ * columns and rebuilding their HNSW indexes in the same migration.
+ */
+const DEFAULT_EMBEDDING_DIMS = 1024;
+
 function getEmbeddingConfig(): { baseUrl: string; apiKey: string; model: string; dims: number } | null {
   const model = env.LLM_EMBEDDING_MODEL;
   if (!model) return null;
@@ -36,8 +46,13 @@ function getEmbeddingConfig(): { baseUrl: string; apiKey: string; model: string;
   const apiKey = env.LLM_EMBEDDING_API_KEY ?? resolved.apiKey;
 
   if (!baseUrl || !apiKey) return null;
-  const dims = Number(env.LLM_EMBEDDING_DIMS ?? "1536");
-  return { baseUrl, apiKey, model, dims: Number.isInteger(dims) && dims > 0 ? dims : 1536 };
+  const dims = Number(env.LLM_EMBEDDING_DIMS ?? String(DEFAULT_EMBEDDING_DIMS));
+  return {
+    baseUrl,
+    apiKey,
+    model,
+    dims: Number.isInteger(dims) && dims > 0 ? dims : DEFAULT_EMBEDDING_DIMS,
+  };
 }
 
 /** True when the embedding endpoint is configured. */
@@ -45,9 +60,9 @@ export function isEmbeddingConfigured(): boolean {
   return getEmbeddingConfig() !== null;
 }
 
-/** The embedding dimension, for schema alignment. Defaults to 1536. */
+/** The embedding dimension, for schema alignment. */
 export function embeddingDims(): number {
-  return getEmbeddingConfig()?.dims ?? 1536;
+  return getEmbeddingConfig()?.dims ?? DEFAULT_EMBEDDING_DIMS;
 }
 
 /**

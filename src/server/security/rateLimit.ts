@@ -14,6 +14,7 @@
 
 import { TRPCError } from "@trpc/server";
 
+import { env } from "~/env";
 import { readWindow, recordHit } from "~/server/security/slidingWindow";
 
 // ---------------------------------------------------------------------------
@@ -28,10 +29,11 @@ import { readWindow, recordHit } from "~/server/security/slidingWindow";
  * stays env-configurable because a deployment still needs one number it can turn
  * down in an incident without touching plan definitions.
  */
-const DEFAULT_MAX_REQUESTS_PER_WINDOW = parseInt(
-  process.env.AI_RATE_LIMIT ?? "50",
-  10,
-);
+// Through `env`, which coerces and rejects a non-positive value at boot. The
+// previous `parseInt(process.env.AI_RATE_LIMIT ?? "50", 10)` turned a typo into
+// NaN, and every `remaining > NaN` comparison is false — a malformed value
+// silently blocked all AI requests instead of failing loudly at startup.
+const DEFAULT_MAX_REQUESTS_PER_WINDOW = env.AI_RATE_LIMIT;
 
 /** Sliding window duration in milliseconds (24 hours). */
 const WINDOW_MS = 24 * 60 * 60 * 1000;

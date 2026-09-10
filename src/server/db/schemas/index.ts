@@ -9,4 +9,3 @@ export * from "./chat";
 export * from "./notifications";
 export * from "./agents";
 export * from "./relations";
-export * from "./vectorColumn";

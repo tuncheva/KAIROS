@@ -86,13 +86,19 @@ describe("contentSecurityPolicy", () => {
   });
 
   it("allows the hosts the app actually loads from", () => {
-    // Derived from reading the source: Maps SDK, UploadThing, Google avatars.
-    for (const host of [
-      "https://maps.googleapis.com",
-      "https://uploadthing.com",
-      "https://lh3.googleusercontent.com",
-    ]) {
+    // Derived from reading the source: UploadThing, Google avatars.
+    for (const host of ["https://uploadthing.com", "https://lh3.googleusercontent.com"]) {
       expect(policy).toContain(host);
+    }
+  });
+
+  it("no longer reaches Google Maps", () => {
+    // `@react-google-maps/api` was a dependency with no importer anywhere in the
+    // tree, so the policy was opening script-src, img-src, connect-src and
+    // frame-src to two Google hosts for a feature that did not exist. The package
+    // is gone; if maps come back, the allowlist entry comes back with them.
+    for (const host of ["https://maps.googleapis.com", "https://maps.gstatic.com"]) {
+      expect(policy).not.toContain(host);
     }
   });
 

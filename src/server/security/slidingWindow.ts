@@ -40,10 +40,11 @@
 
 import "server-only";
 
+import { env } from "~/env";
 import { optionalImport } from "~/server/optionalImport";
 import { createLogger } from "~/server/logger";
 
-const REDIS_NATIVE_URL = process.env.REDIS_NATIVE_URL;
+const REDIS_NATIVE_URL = env.REDIS_NATIVE_URL;
 
 const KEY_PREFIX = "rl:";
 const log = createLogger("rateLimit");

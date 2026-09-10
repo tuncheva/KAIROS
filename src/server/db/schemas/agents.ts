@@ -928,7 +928,9 @@ export const documentChunks = createTable(
     content: text("content").notNull(),
     /** Page the passage starts on, for citation. Null when unknown. */
     page: integer("page"),
-    // embedding vector(1536) — managed by migration 0041, queried via raw sql in search.ts
+    // embedding vector(1024) — deliberately absent from this schema: created by
+    // migration 0044_pgvector_embeddings and queried via raw sql in search.ts.
+    // See the note on `tasks.embedding` for why.
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   }),
   (t) => [

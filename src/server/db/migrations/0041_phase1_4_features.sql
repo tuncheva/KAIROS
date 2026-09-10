@@ -6,7 +6,6 @@
 -- allows it (IF NOT EXISTS / IF EXISTS / ADD COLUMN IF NOT EXISTS).
 --
 -- Sections, in dependency order:
---   A. pgvector extension (required before any vector column)
 --   B. New enum: agent_project_manager_draft_status
 --   C. A2 cross-project: make project_id nullable, add org_id
 --   D. A6 Project Manager tables
@@ -14,15 +13,16 @@
 --   F. AI reminders table
 --   G. Calendar connection scope column (Phase 3)
 --   H. AI findings source column (Phase 4)
---   I. Embedding columns on document_chunks, tasks, sticky_notes (Phase 4)
 --   J. Public ID columns on sticky_notes, direct_conversations (nav change)
 --   K. Indexes
-
--- ─────────────────────────────────────────────────────────────────────────────
--- A. pgvector
--- ─────────────────────────────────────────────────────────────────────────────
-CREATE EXTENSION IF NOT EXISTS vector;
---> statement-breakpoint
+--
+-- Everything pgvector-related — the extension, the `embedding` columns and their
+-- HNSW indexes — used to live here as sections A and I. It moved to
+-- 0044_pgvector_embeddings so that a database whose role cannot
+-- `CREATE EXTENSION` still gets the foreign keys and indexes below. When those
+-- statements shared a migration with the extension, one privilege error rolled
+-- back all 37 statements and left four tables with a primary key and nothing
+-- else — no FKs, no indexes. See that file for why the dimension is 1024.
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- B. New enum
@@ -63,9 +63,16 @@ CREATE TABLE IF NOT EXISTS "agent_project_manager_drafts" (
   "expires_at" timestamp with time zone
 );
 --> statement-breakpoint
-ALTER TABLE "agent_project_manager_drafts"
-  ADD CONSTRAINT "agent_project_manager_drafts_user_id_user_id_fk"
-  FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+-- Postgres has no ADD CONSTRAINT IF NOT EXISTS, so every FK below is wrapped in
+-- a duplicate_object guard. Without it this migration is only runnable against a
+-- database that has none of these constraints yet — which is exactly the
+-- assumption that failed here before.
+DO $$ BEGIN
+  ALTER TABLE "agent_project_manager_drafts"
+    ADD CONSTRAINT "agent_project_manager_drafts_user_id_user_id_fk"
+    FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS "agent_project_manager_applies" (
@@ -78,13 +85,19 @@ CREATE TABLE IF NOT EXISTS "agent_project_manager_applies" (
   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "agent_project_manager_applies"
-  ADD CONSTRAINT "agent_project_manager_applies_draft_id_fk"
-  FOREIGN KEY ("draft_id") REFERENCES "public"."agent_project_manager_drafts"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+DO $$ BEGIN
+  ALTER TABLE "agent_project_manager_applies"
+    ADD CONSTRAINT "agent_project_manager_applies_draft_id_fk"
+    FOREIGN KEY ("draft_id") REFERENCES "public"."agent_project_manager_drafts"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
-ALTER TABLE "agent_project_manager_applies"
-  ADD CONSTRAINT "agent_project_manager_applies_user_id_user_id_fk"
-  FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+DO $$ BEGIN
+  ALTER TABLE "agent_project_manager_applies"
+    ADD CONSTRAINT "agent_project_manager_applies_user_id_user_id_fk"
+    FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -95,21 +108,40 @@ CREATE TABLE IF NOT EXISTS "task_dependencies" (
     (sequence name "task_dependencies_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
   "blocked_task_id" integer NOT NULL,
   "blocking_task_id" integer NOT NULL,
-  "created_by_id" varchar(255) NOT NULL,
+  -- camelCase deliberately. This column was written as "created_by_id" when the
+  -- migration was hand-authored, but `taskDependencies.createdById` in the
+  -- Drizzle schema passes no explicit column name, so drizzle derives
+  -- "createdById" — and that is what `db:push` created and what the ORM quotes
+  -- in every query. Nine tables in this database spell it "createdById"
+  -- (event, event_comment, event_like, notebooks, projects, sticky_notes,
+  -- task_comments, tasks and this one) against two that use "created_by_id"
+  -- (organizations, organization_join_codes). Matching the majority here keeps a
+  -- database built from migrations identical to the one built by push; the wider
+  -- inconsistency is pre-existing and noted in profile.ts.
+  "createdById" varchar(255) NOT NULL,
   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "task_dependencies"
-  ADD CONSTRAINT "task_dependencies_blocked_task_id_tasks_id_fk"
-  FOREIGN KEY ("blocked_task_id") REFERENCES "public"."tasks"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+DO $$ BEGIN
+  ALTER TABLE "task_dependencies"
+    ADD CONSTRAINT "task_dependencies_blocked_task_id_tasks_id_fk"
+    FOREIGN KEY ("blocked_task_id") REFERENCES "public"."tasks"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
-ALTER TABLE "task_dependencies"
-  ADD CONSTRAINT "task_dependencies_blocking_task_id_tasks_id_fk"
-  FOREIGN KEY ("blocking_task_id") REFERENCES "public"."tasks"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+DO $$ BEGIN
+  ALTER TABLE "task_dependencies"
+    ADD CONSTRAINT "task_dependencies_blocking_task_id_tasks_id_fk"
+    FOREIGN KEY ("blocking_task_id") REFERENCES "public"."tasks"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
-ALTER TABLE "task_dependencies"
-  ADD CONSTRAINT "task_dependencies_created_by_id_user_id_fk"
-  FOREIGN KEY ("created_by_id") REFERENCES "public"."user"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+DO $$ BEGIN
+  ALTER TABLE "task_dependencies"
+    ADD CONSTRAINT "task_dependencies_created_by_id_user_id_fk"
+    FOREIGN KEY ("createdById") REFERENCES "public"."user"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -127,9 +159,12 @@ CREATE TABLE IF NOT EXISTS "ai_reminders" (
   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "ai_reminders"
-  ADD CONSTRAINT "ai_reminders_user_id_user_id_fk"
-  FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+DO $$ BEGIN
+  ALTER TABLE "ai_reminders"
+    ADD CONSTRAINT "ai_reminders_user_id_user_id_fk"
+    FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -144,21 +179,6 @@ ALTER TABLE "calendar_connections"
 -- ─────────────────────────────────────────────────────────────────────────────
 ALTER TABLE "ai_findings"
   ADD COLUMN IF NOT EXISTS "source" varchar(20) DEFAULT 'deterministic' NOT NULL;
---> statement-breakpoint
-
--- ─────────────────────────────────────────────────────────────────────────────
--- I. Embedding columns (Phase 4 — semantic search)
---    vector(1536) matches the default LLM_EMBEDDING_DIMS.
---    All nullable — rows without embeddings fall back to keyword search.
--- ─────────────────────────────────────────────────────────────────────────────
-ALTER TABLE "document_chunks"
-  ADD COLUMN IF NOT EXISTS "embedding" vector(1536);
---> statement-breakpoint
-ALTER TABLE "tasks"
-  ADD COLUMN IF NOT EXISTS "embedding" vector(1536);
---> statement-breakpoint
-ALTER TABLE "sticky_notes"
-  ADD COLUMN IF NOT EXISTS "embedding" vector(1536);
 --> statement-breakpoint
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -193,17 +213,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS "task_dep_unique" ON "task_dependencies" USING
 CREATE INDEX IF NOT EXISTS "ai_reminder_user_idx" ON "ai_reminders" USING btree ("user_id");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "ai_reminder_fire_at_idx" ON "ai_reminders" USING btree ("fire_at","fired_at");
---> statement-breakpoint
--- HNSW indexes for cosine similarity. Only effective once pgvector is installed
--- and rows have embeddings; no-op otherwise.
-CREATE INDEX IF NOT EXISTS "document_chunk_embedding_idx"
-  ON "document_chunks" USING hnsw ("embedding" vector_cosine_ops);
---> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "task_embedding_idx"
-  ON "tasks" USING hnsw ("embedding" vector_cosine_ops);
---> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "note_embedding_idx"
-  ON "sticky_notes" USING hnsw ("embedding" vector_cosine_ops);
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "note_public_id_idx" ON "sticky_notes" USING btree ("public_id");
 --> statement-breakpoint

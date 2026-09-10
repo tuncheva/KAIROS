@@ -214,20 +214,29 @@ export const searchDocumentsTool: A1Tool<
   SearchDocumentsOutput
 > = {
   name: "searchDocuments",
-  inputSchema: z
-    .object({
-      query: z
-        .string()
-        .min(2)
-        .max(200)
-        .describe(
-          isEmbeddingConfigured()
-            ? "Describe what you are looking for in your own words — the query is matched semantically, so natural phrasing works better than exact keywords."
-            : "Words likely to appear in the document. This is a keyword search, not a semantic one, so use the terms the document itself would use.",
-        ),
-      limit: z.number().int().min(1).max(MAX_LIMIT).optional(),
-    })
-    .strict(),
+  // `describe` is resolved through a getter rather than inline, because
+  // `isEmbeddingConfigured()` reads the validated server env. Called while this
+  // module's top-level bindings are being initialised it ran at *import* time,
+  // so merely importing the A1 tool registry required a server environment —
+  // which broke every client-side and test consumer of the registry — and froze
+  // the wording at process start. Now it is read the first time the schema is
+  // actually built.
+  get inputSchema() {
+    return z
+      .object({
+        query: z
+          .string()
+          .min(2)
+          .max(200)
+          .describe(
+            isEmbeddingConfigured()
+              ? "Describe what you are looking for in your own words — the query is matched semantically, so natural phrasing works better than exact keywords."
+              : "Words likely to appear in the document. This is a keyword search, not a semantic one, so use the terms the document itself would use.",
+          ),
+        limit: z.number().int().min(1).max(MAX_LIMIT).optional(),
+      })
+      .strict();
+  },
   outputSchema: z.custom<SearchDocumentsOutput>(),
 
   async execute(ctx, input) {

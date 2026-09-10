@@ -55,7 +55,39 @@ const COLUMNS: Array<[string, string]> = [
   // Meeting prep's idempotence key: without it an hourly sweep briefs the same
   // meeting on every tick inside the horizon.
   ["external_events", "prepped_at"],
+  // The pgvector columns from 0044_pgvector_embeddings. These are the reason this
+  // section exists: they live in raw SQL rather than the Drizzle schema, so
+  // `db:push` cannot create them and their absence is invisible to every other
+  // check. All three were missing from the live database for the entire life of
+  // the feature. Their width is asserted separately below.
+  ["document_chunks", "embedding"],
+  ["tasks", "embedding"],
+  ["sticky_notes", "embedding"],
 ];
+
+/**
+ * Foreign keys and unique constraints that only a migration creates.
+ *
+ * `task_dependencies`, `ai_reminders` and the two A6 tables were found in
+ * production carrying a primary key and nothing else — no FKs, so deleting a user
+ * or task left orphan rows behind where the code assumes ON DELETE CASCADE, and
+ * no `task_dep_unique`, so a dependency edge could be inserted twice.
+ */
+const CONSTRAINTS = [
+  "agent_project_manager_drafts_user_id_user_id_fk",
+  "agent_project_manager_applies_draft_id_fk",
+  "agent_project_manager_applies_user_id_user_id_fk",
+  "task_dependencies_blocked_task_id_tasks_id_fk",
+  "task_dependencies_blocking_task_id_tasks_id_fk",
+  "task_dependencies_created_by_id_user_id_fk",
+  "ai_reminders_user_id_user_id_fk",
+];
+
+/** Extensions a migration installs. Absent, every vector query fails outright. */
+const EXTENSIONS = ["vector"];
+
+/** Must match DEFAULT_EMBEDDING_DIMS in ~/server/llm/core/embeddings.ts. */
+const EMBEDDING_DIMS = 1024;
 
 /** Enum values added alongside a feature are as skippable as a column. */
 const ENUM_VALUES: Array<[string, string]> = [
@@ -68,6 +100,25 @@ const INDEXES = [
   "ai_message_content_fts_idx",
   "document_chunk_fts_idx",
   "verification_code_lookup_idx",
+  // From 0041. `task_dep_unique` is the only thing stopping a dependency edge
+  // being inserted twice, and `ai_reminder_fire_at_idx` is what keeps the
+  // reminder sweep off a sequential scan on every tick. Both were missing.
+  "task_dep_blocked_idx",
+  "task_dep_blocking_idx",
+  "task_dep_unique",
+  "ai_reminder_user_idx",
+  "ai_reminder_fire_at_idx",
+  "a6_draft_user_idx",
+  "a6_draft_status_idx",
+  "a6_draft_plan_hash_idx",
+  "a6_apply_draft_idx",
+  "a6_apply_user_idx",
+  // The HNSW indexes from 0044. Without them vector search still returns correct
+  // results, by exhaustive scan — correct and unusably slow, which is the kind of
+  // regression no test notices.
+  "document_chunk_embedding_idx",
+  "task_embedding_idx",
+  "note_embedding_idx",
 ];
 
 async function main(): Promise<void> {
@@ -110,6 +161,38 @@ async function main(): Promise<void> {
       const ok = rows.length > 0;
       if (!ok) missing += 1;
       console.log(`index   ${index.padEnd(32)} ${ok ? "OK" : "MISSING"}`);
+    }
+
+    for (const extension of EXTENSIONS) {
+      const rows = await sql`SELECT 1 FROM pg_extension WHERE extname = ${extension}`;
+      const ok = rows.length > 0;
+      if (!ok) missing += 1;
+      console.log(`ext     ${extension.padEnd(32)} ${ok ? "OK" : "MISSING"}`);
+    }
+
+    for (const constraint of CONSTRAINTS) {
+      const rows = await sql`SELECT 1 FROM pg_constraint WHERE conname = ${constraint}`;
+      const ok = rows.length > 0;
+      if (!ok) missing += 1;
+      console.log(`constr  ${constraint.slice(0, 32).padEnd(32)} ${ok ? "OK" : "MISSING"}`);
+    }
+
+    // A vector column of the wrong width is worse than a missing one: it passes
+    // the column check above and then rejects every insert at runtime, because
+    // pgvector fixes the dimension at the column rather than at query time.
+    for (const table of ["document_chunks", "tasks", "sticky_notes"]) {
+      const [row] = await sql<{ type: string }[]>`
+        SELECT format_type(a.atttypid, a.atttypmod) AS type
+        FROM pg_attribute a
+        JOIN pg_class c ON c.oid = a.attrelid
+        WHERE c.relname = ${table} AND a.attname = 'embedding'
+          AND a.attnum > 0 AND NOT a.attisdropped`;
+      const expected = `vector(${String(EMBEDDING_DIMS)})`;
+      const ok = row?.type === expected;
+      if (!ok) missing += 1;
+      console.log(
+        `dims    ${`${table}.embedding`.padEnd(32)} ${ok ? "OK" : `EXPECTED ${expected}, GOT ${row?.type ?? "nothing"}`}`,
+      );
     }
 
     // The full-text index is only used if the query's configuration matches the

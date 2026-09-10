@@ -49,7 +49,10 @@ export const tasks = createTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     orderIndex: integer("order_index").notNull().default(0),
-    // embedding vector(1536) — managed by migration 0041, queried via raw sql in searchTools.ts
+    // embedding vector(1024) — deliberately absent from this schema: created by
+    // migration 0044_pgvector_embeddings and queried via raw sql in
+    // searchTools.ts. Drizzle has no pgvector type, so adding it here would make
+    // `db:push`/`generate` propose dropping it. `pnpm db:verify` checks it exists.
     clientRequestId: varchar("client_request_id", { length: 128 }),
   }),
   (t) => [
