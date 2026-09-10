@@ -53,6 +53,22 @@ interface NotePreviewItem {
  * is deciding about one thing — "these changes to my organization" — not about
  * four separate categories, and the confirm is all-or-nothing anyway.
  */
+/**
+ * One A6 project-lifecycle operation, flattened for review.
+ *
+ * Same shape and same reasoning as {@link OrgChangeItem}: the user is deciding
+ * about "these changes to my projects", and confirm is all-or-nothing.
+ */
+interface ProjectChangeItem {
+  kind: "create" | "update" | "archive";
+  /** The project's title — the new one for a create, the current one otherwise. */
+  title: string;
+  /** A6 requires a rationale on every operation, so the card always has one. */
+  rationale: string;
+  /** What the patch changes, for an update. */
+  detail?: string;
+}
+
 interface OrgChangeItem {
   kind: "role" | "permission" | "removal" | "invite";
   /** The person affected: a display name, or an email for an invite. */
@@ -110,12 +126,21 @@ type ChatMsg =
          */
         | { type: "org_confirm"; draftId: string }
         | { type: "org_apply"; draftId: string; confirmationToken: string }
+        /*
+         * Project changes stay two-step for the same reason org changes do:
+         * archiving a project takes a board away from everyone working in it,
+         * and a rename breaks whatever linked to the old title.
+         */
+        | { type: "project_confirm"; draftId: string }
+        | { type: "project_apply"; draftId: string; confirmationToken: string }
       >;
       inlineTasks?: InlineTask[];
       eventPreviews?: EventPreviewItem[];
       notePreviews?: NotePreviewItem[];
       orgPreviews?: OrgChangeItem[];
       orgWarnings?: string[];
+      projectPreviews?: ProjectChangeItem[];
+      projectWarnings?: string[];
     };
 
 interface NotesDraftResponse {
@@ -144,6 +169,8 @@ interface EventsDraftResponse {
 interface TaskPlannerDraftResponse {
   draftId?: string;
   plan?: {
+    /** A2's prose. Optional on the schema, so optional here. */
+    summary?: string;
     creates?: unknown[];
     updates?: unknown[];
     statusChanges?: unknown[];
@@ -205,6 +232,63 @@ interface OrgAdminDraftResponse {
     invites?: Array<{ email: string; role?: string; rationale: string }>;
     warnings?: string[];
     questions?: string[];
+  };
+}
+
+/**
+ * A6's plan shape.
+ *
+ * Modelled rather than cast for the same reason A5's is: it carries `warnings`
+ * — archiving a project teammates are working in — and those have to reach the
+ * screen.
+ */
+interface ProjectManagerDraftResponse {
+  draftId?: string;
+  plan?: {
+    summary?: string;
+    creates?: Array<{
+      title: string;
+      description?: string;
+      organizationId?: number;
+      rationale: string;
+    }>;
+    updates?: Array<{
+      projectId: number;
+      projectTitle: string;
+      patch?: {
+        title?: string;
+        description?: string;
+        status?: "active" | "archived";
+      };
+      rationale: string;
+    }>;
+    archives?: Array<{
+      projectId: number;
+      projectTitle: string;
+      rationale: string;
+    }>;
+    warnings?: string[];
+    questions?: string[];
+  };
+}
+
+interface ProjectManagerConfirmResponse {
+  confirmationToken: string;
+  summary?: {
+    creates: number;
+    updates: number;
+    archives: number;
+  };
+}
+
+interface ProjectManagerApplyResponse {
+  applied?: boolean;
+  results?: {
+    created?: number;
+    updated?: number;
+    archived?: number;
+    /** Operations the server refused, and why. Never silently dropped. */
+    refused?: string[];
   };
 }
 
@@ -614,6 +698,58 @@ function OrgChangePreviewCard({
   );
 }
 
+function ProjectChangePreviewCard({
+  item,
+  index,
+}: {
+  item: ProjectChangeItem;
+  index: number;
+}) {
+  const t = useTranslations("agents");
+  const { Icon, label, accent } =
+    item.kind === "create"
+      ? {
+          Icon: FileText,
+          label: t("previewProjectCreate"),
+          accent: "rgb(var(--accent-primary))",
+        }
+      : item.kind === "update"
+        ? {
+            Icon: Pencil,
+            label: t("previewProjectUpdate"),
+            accent: "rgb(234 179 8)",
+          }
+        : {
+            Icon: Trash2,
+            label: t("previewProjectArchive"),
+            accent: "rgb(239 68 68)",
+          };
+
+  return (
+    <div
+      className="kairos-preview-card"
+      style={{ animationDelay: `${index * 60}ms`, borderLeftColor: accent }}
+    >
+      <div className="flex items-center gap-2 mb-1.5">
+        <Icon size={12} style={{ color: accent }} />
+        <span
+          className="text-[10px] font-bold uppercase tracking-wide"
+          style={{ color: accent }}
+        >
+          {label}
+        </span>
+      </div>
+      <p className="text-xs text-fg-primary font-medium">{item.title}</p>
+      {item.detail && (
+        <p className="text-xs text-fg-secondary mt-0.5">{item.detail}</p>
+      )}
+      <p className="text-[10px] text-fg-quaternary mt-1 italic">
+        {item.rationale}
+      </p>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Main Component                                                    */
 /* ------------------------------------------------------------------ */
@@ -854,9 +990,21 @@ export function ProjectIntelligenceChat(props: {
   /** Render a sub-agent's plan into chat text, previews and action buttons. */
   const buildPlanMessage = useCallback(
     (payload: AgentTurnPayload): Omit<ChatMsg & { role: "agent" }, "role"> => {
-      const summary = payload.a1.answer?.summary;
       const msgId = generateMsgId();
       const plan = payload.plan;
+
+      /*
+       * The prose to show when a plan has nothing to confirm.
+       *
+       * A1's answer is only half of it. On a pinned turn A1 never runs at all,
+       * so `a1.answer` is undefined by construction — and that is exactly the
+       * turn where the user typed a question at a write agent. The sub-agent's
+       * own summary is the answer in that case, so it is preferred, and A1's
+       * answer stays as the fallback for the Auto path.
+       */
+      const planSummary = (plan?.plan as { summary?: string } | undefined)
+        ?.summary;
+      const summary = planSummary ?? payload.a1.answer?.summary;
 
       if (!plan) {
         const text = [
@@ -891,8 +1039,15 @@ export function ProjectIntelligenceChat(props: {
         const deletes = p?.deletes?.length ?? 0;
         const total = creates + updates + statusChanges + deletes;
 
+        // A plan with no operations is often an *answer* — the user asked the
+        // planner a question. A2's own words come first; "No changes needed."
+        // is the last resort, not the first.
         if (total === 0) {
-          return { text: t("noChanges"), createdAt: new Date(), msgId };
+          return {
+            text: summary ?? p?.orderingRationale ?? t("noChanges"),
+            createdAt: new Date(),
+            msgId,
+          };
         }
 
         const diffLines: string[] = [];
@@ -949,7 +1104,9 @@ export function ProjectIntelligenceChat(props: {
               ? t("noteUpdate")
               : deletes > 0
                 ? t("noteDelete")
-                : t("noNoteChanges");
+                : // Nothing to do usually means the message was a question, so
+                  // A3's own answer beats the canned "no changes needed".
+                  (summary ?? t("noNoteChanges"));
 
         const ops = [
           creates > 0 ? t("createOps", { count: creates }) : null,
@@ -1078,6 +1235,100 @@ export function ProjectIntelligenceChat(props: {
         };
       }
 
+      if (plan.kind === "project_manager") {
+        const op = plan.plan as ProjectManagerDraftResponse["plan"];
+
+        // A6 asks before it acts, so an unanswered question is not yet a plan —
+        // the same short-circuit A5 and the task branch use.
+        const projectQuestions = Array.isArray(op?.questions)
+          ? op.questions
+          : [];
+        if (projectQuestions.length > 0) {
+          return {
+            text: `${t("needMoreInfo")}\n${projectQuestions.map((q) => asBullet(q)).join("\n")}`,
+            createdAt: new Date(),
+            msgId,
+          };
+        }
+
+        const creates = op?.creates ?? [];
+        const updates = op?.updates ?? [];
+        const archives = op?.archives ?? [];
+        const projectWarnings = op?.warnings ?? [];
+        const projectTotal = creates.length + updates.length + archives.length;
+
+        // Nothing to apply: the message was a question, or A6 declined it. Its
+        // summary is the answer, and this is the branch whose absence made the
+        // Project Manager reply "I couldn't generate a response for that" to
+        // every question ever put to it.
+        if (projectTotal === 0) {
+          return {
+            text: op?.summary ?? summary ?? t("noProjectChanges"),
+            createdAt: new Date(),
+            msgId,
+          };
+        }
+
+        const projectPreviews: ProjectChangeItem[] = [
+          ...creates.map((c) => ({
+            kind: "create" as const,
+            title: c.title,
+            rationale: c.rationale,
+            detail: c.description,
+          })),
+          ...updates.map((u) => {
+            // Without saying what the patch changes, a rename and a description
+            // edit look identical on the card.
+            const changes = [
+              u.patch?.title ? `→ ${u.patch.title}` : null,
+              u.patch?.description ? t("projectDescriptionChange") : null,
+              u.patch?.status ? `${t("projectStatusChange")}: ${u.patch.status}` : null,
+            ].filter(Boolean);
+            return {
+              kind: "update" as const,
+              title: u.projectTitle,
+              rationale: u.rationale,
+              detail: changes.length > 0 ? changes.join(" · ") : undefined,
+            };
+          }),
+          ...archives.map((a) => ({
+            kind: "archive" as const,
+            title: a.projectTitle,
+            rationale: a.rationale,
+          })),
+        ];
+
+        const projectOps = [
+          creates.length > 0
+            ? t("projectCreateOps", { count: creates.length })
+            : null,
+          updates.length > 0
+            ? t("projectUpdateOps", { count: updates.length })
+            : null,
+          archives.length > 0
+            ? t("projectArchiveOps", { count: archives.length })
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+        return {
+          text: [
+            op?.summary ?? summary ?? "",
+            projectOps,
+            t("projectReviewThenConfirm"),
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          createdAt: new Date(),
+          msgId,
+          actions: [{ type: "project_confirm" as const, draftId: plan.draftId }],
+          projectPreviews,
+          projectWarnings:
+            projectWarnings.length > 0 ? projectWarnings : undefined,
+        };
+      }
+
       // Everything above returned, so `plan.kind` is "events" here. The guard
       // is what makes the cast below honest: this used to be a bare fall-through
       // that read an org plan through the event plan's field names.
@@ -1150,7 +1401,9 @@ export function ProjectIntelligenceChat(props: {
       return {
         text: [
           p?.summary ?? summary ?? "",
-          ops || t("noChanges"),
+          // "No changes needed." only when there is no prose to read instead —
+          // appending it to an answered question reads as a non sequitur.
+          ops || (summary ? "" : t("noChanges")),
           hasOps ? t("editThenApply") : "",
         ]
           .filter(Boolean)
@@ -1265,6 +1518,9 @@ export function ProjectIntelligenceChat(props: {
 
   const orgConfirmMutation = api.agent.orgAdminConfirm.useMutation();
   const orgApplyMutation = api.agent.orgAdminApply.useMutation();
+
+  const projectConfirmMutation = api.agent.projectManagerConfirm.useMutation();
+  const projectApplyMutation = api.agent.projectManagerApply.useMutation();
 
   /* ---------- Task Planner mutations ---------- */
 
@@ -1874,6 +2130,20 @@ export function ProjectIntelligenceChat(props: {
                 m.role === "agent" &&
                 Array.isArray((m as { orgWarnings?: string[] }).orgWarnings) &&
                 ((m as { orgWarnings?: string[] }).orgWarnings?.length ?? 0) > 0;
+              const hasProjectPreviews =
+                m.role === "agent" &&
+                Array.isArray(
+                  (m as { projectPreviews?: ProjectChangeItem[] }).projectPreviews,
+                ) &&
+                ((m as { projectPreviews?: ProjectChangeItem[] }).projectPreviews
+                  ?.length ?? 0) > 0;
+              const hasProjectWarnings =
+                m.role === "agent" &&
+                Array.isArray(
+                  (m as { projectWarnings?: string[] }).projectWarnings,
+                ) &&
+                ((m as { projectWarnings?: string[] }).projectWarnings?.length ??
+                  0) > 0;
 
               return (
                 <div
@@ -2121,6 +2391,59 @@ export function ProjectIntelligenceChat(props: {
                             </div>
                           ),
                         )}
+                      </div>
+                    )}
+
+                    {/* A6's warnings, above the change list for the same reason. */}
+                    {hasProjectWarnings && (
+                      <div
+                        className="kairos-preview-list"
+                        data-testid="project-warnings"
+                      >
+                        {(
+                          (m as { projectWarnings?: string[] }).projectWarnings ??
+                          []
+                        ).map((w, wIdx) => (
+                          <div
+                            key={`project-warn-${wIdx}`}
+                            className="flex items-start gap-2 rounded-md p-2"
+                            style={{ backgroundColor: "rgb(239 68 68 / 0.1)" }}
+                          >
+                            <AlertCircle
+                              size={12}
+                              style={{
+                                color: "rgb(239 68 68)",
+                                flexShrink: 0,
+                                marginTop: 2,
+                              }}
+                            />
+                            <p
+                              className="text-[11px]"
+                              style={{ color: "rgb(239 68 68)" }}
+                            >
+                              {w}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Project changes (shown before the user confirms) */}
+                    {hasProjectPreviews && (
+                      <div
+                        className="kairos-preview-list"
+                        data-testid="project-previews"
+                      >
+                        {(
+                          (m as { projectPreviews?: ProjectChangeItem[] })
+                            .projectPreviews ?? []
+                        ).map((item, pIdx) => (
+                          <ProjectChangePreviewCard
+                            key={`project-${pIdx}`}
+                            item={item}
+                            index={pIdx}
+                          />
+                        ))}
                       </div>
                     )}
 
@@ -2753,6 +3076,161 @@ export function ProjectIntelligenceChat(props: {
                                 {orgApplyMutation.isPending
                                   ? t("applying")
                                   : t("applyOrgChanges")}
+                              </button>
+                            );
+                          }
+
+                          /* ---- Project Manager Confirm (step 1 of 2) ---- */
+                          if (a.type === "project_confirm") {
+                            return (
+                              <button
+                                key={`${a.type}-${a.draftId}-${aIdx}`}
+                                type="button"
+                                className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all hover:scale-[1.03] active:scale-95"
+                                style={{
+                                  backgroundColor: "rgb(var(--accent-primary) / 0.15)",
+                                  color: "rgb(var(--accent-primary))",
+                                }}
+                                disabled={projectConfirmMutation.isPending}
+                                onClick={async () => {
+                                  try {
+                                    const res =
+                                      (await projectConfirmMutation.mutateAsync({
+                                        draftId: a.draftId,
+                                      })) as ProjectManagerConfirmResponse;
+                                    const c = res.summary;
+                                    // The server's own count, not the draft's —
+                                    // this is what Apply is about to execute.
+                                    const counted = c
+                                      ? [
+                                          c.creates > 0
+                                            ? t("projectCreateOps", { count: c.creates })
+                                            : null,
+                                          c.updates > 0
+                                            ? t("projectUpdateOps", { count: c.updates })
+                                            : null,
+                                          c.archives > 0
+                                            ? t("projectArchiveOps", {
+                                                count: c.archives,
+                                              })
+                                            : null,
+                                        ]
+                                          .filter(Boolean)
+                                          .join(" · ")
+                                      : "";
+
+                                    setMessages((prev) => [
+                                      ...prev,
+                                      {
+                                        role: "agent",
+                                        text: t("projectConfirmed", {
+                                          summary: counted || t("readyToApply"),
+                                        }),
+                                        createdAt: new Date(),
+                                        actions: [
+                                          {
+                                            type: "project_apply",
+                                            draftId: a.draftId,
+                                            confirmationToken: res.confirmationToken,
+                                          },
+                                        ],
+                                      },
+                                    ]);
+                                  } catch (err) {
+                                    const msg =
+                                      err instanceof Error ? err.message : "Confirm failed";
+                                    setMessages((prev) => [
+                                      ...prev,
+                                      {
+                                        role: "agent",
+                                        text: msg.includes("status=confirmed")
+                                          ? t("alreadyConfirmed")
+                                          : t("confirmFailed", { error: msg }),
+                                        createdAt: new Date(),
+                                      },
+                                    ]);
+                                  }
+                                }}
+                              >
+                                {projectConfirmMutation.isPending
+                                  ? t("confirming")
+                                  : t("confirmProjectChanges")}
+                              </button>
+                            );
+                          }
+
+                          /* ---- Project Manager Apply (step 2 of 2) ---- */
+                          if (a.type === "project_apply") {
+                            return (
+                              <button
+                                key={`${a.type}-${a.draftId}-${aIdx}`}
+                                type="button"
+                                className="text-xs px-3 py-1.5 rounded-lg text-white transition-all hover:scale-[1.03] active:scale-95"
+                                style={{
+                                  backgroundColor: "rgb(var(--accent-primary))",
+                                }}
+                                disabled={projectApplyMutation.isPending}
+                                onClick={async () => {
+                                  try {
+                                    const res = (await projectApplyMutation.mutateAsync({
+                                      draftId: a.draftId,
+                                      confirmationToken: a.confirmationToken,
+                                    })) as ProjectManagerApplyResponse;
+                                    const r = res.results;
+                                    const applied = [
+                                      (r?.created ?? 0) > 0
+                                        ? t("projectCreateOps", { count: r!.created! })
+                                        : null,
+                                      (r?.updated ?? 0) > 0
+                                        ? t("projectUpdateOps", { count: r!.updated! })
+                                        : null,
+                                      (r?.archived ?? 0) > 0
+                                        ? t("projectArchiveOps", { count: r!.archived! })
+                                        : null,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · ");
+                                    // A refusal is the server declining a write the
+                                    // user just approved. Never swallow it.
+                                    const refused = r?.refused ?? [];
+
+                                    setMessages((prev) => [
+                                      ...prev,
+                                      {
+                                        role: "agent",
+                                        text: [
+                                          t("projectDone"),
+                                          applied,
+                                          refused.length > 0
+                                            ? t("projectRefused", {
+                                                count: refused.length,
+                                              })
+                                            : null,
+                                          ...refused.map((x) => asBullet(x)),
+                                        ]
+                                          .filter(Boolean)
+                                          .join("\n"),
+                                        createdAt: new Date(),
+                                      },
+                                    ]);
+                                    void utils.project.invalidate();
+                                  } catch (err) {
+                                    const msg =
+                                      err instanceof Error ? err.message : "Apply failed";
+                                    setMessages((prev) => [
+                                      ...prev,
+                                      {
+                                        role: "agent",
+                                        text: t("applyFailed", { error: msg }),
+                                        createdAt: new Date(),
+                                      },
+                                    ]);
+                                  }
+                                }}
+                              >
+                                {projectApplyMutation.isPending
+                                  ? t("applying")
+                                  : t("applyProjectChanges")}
                               </button>
                             );
                           }

@@ -1,5 +1,6 @@
 import type { A4ContextPack } from "../context/a4ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
+import { answerableRule } from "~/server/llm/prompts/answerableRule";
 import {
   languageRule,
   wantsBulgarianGuidance,
@@ -186,6 +187,8 @@ You are in DRAFT mode.
 - Always provide a clear, friendly summary that explains the plan in human terms.
 - If the request is ambiguous, populate questionsForUser with specific, helpful questions.
 - Include risks only when genuinely relevant (e.g., "This deletes an event with 15 RSVPs").
+
+${answerableRule()}
 
 ## Hard Rules
 1. **EVENT CREATION IS MANDATORY WHEN REQUESTED**: If the user asks to create/make/schedule/add an event, the creates array MUST contain at least one event. Empty creates array when event creation is requested is a CRITICAL ERROR.

@@ -147,6 +147,18 @@ export const TaskPlanModelOutputSchema = z
     // Use .catch() to default to "task_planner" if the LLM omits or returns wrong value
     agentId: z.literal("task_planner").catch("task_planner"),
 
+    /**
+     * What the plan does, in prose — and the only place A2 can answer a message
+     * that asks rather than instructs.
+     *
+     * The prompt has told the model to write a `summary` for as long as it has
+     * existed ("always sound human and relaxed in the summary"), while the
+     * schema stripped it, so it was generated and thrown away on every turn.
+     * Optional because a plan is still valid without one, and because plans
+     * persisted before this field existed must keep parsing.
+     */
+    summary: plainString(z.string().min(1).max(2000)).optional(),
+
     creates: z.array(TaskCreateModelSchema).max(30).default([]),
     updates: z.array(TaskUpdateDraftSchema).max(50).default([]),
     statusChanges: z.array(TaskStatusChangeDraftSchema).max(50).default([]),
@@ -179,6 +191,9 @@ export const TaskPlanDraftSchema = z
     // Use .catch() to default to "task_planner" if the LLM omits or returns wrong value
     agentId: z.literal("task_planner").catch("task_planner"),
     scope: TaskPlannerScopeSchema,
+
+    /** See {@link TaskPlanModelOutputSchema.shape.summary}. Carried through as-is. */
+    summary: plainString(z.string().min(1).max(2000)).optional(),
 
     creates: z.array(TaskCreateDraftSchema).max(30).default([]),
     updates: z.array(TaskUpdateDraftSchema).max(50).default([]),

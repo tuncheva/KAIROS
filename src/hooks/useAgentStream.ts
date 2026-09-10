@@ -19,7 +19,15 @@ import { useCallback, useRef, useState } from "react";
  */
 
 export interface AgentPlan {
-  kind: "tasks" | "notes" | "events" | "org";
+  /**
+   * Must stay in step with `AgentPlan` in `orchestrator/handoff.ts`.
+   *
+   * `project_manager` was missing here, so a project plan arrived as a kind the
+   * chat's renderer had no branch for and fell through to "I couldn't generate
+   * a response" — with the union incomplete, TypeScript could not point out
+   * that the fall-through was reachable.
+   */
+  kind: "tasks" | "notes" | "events" | "org" | "project_manager";
   draftId: string;
   plan: Record<string, unknown>;
 }

@@ -15,6 +15,11 @@ import {
   OrgAdminDraftInputSchema,
 } from "~/server/llm/schemas/a5OrgAdminSchemas";
 import {
+  ProjectManagerApplyInputSchema,
+  ProjectManagerConfirmInputSchema,
+  ProjectManagerDraftInputSchema,
+} from "~/server/llm/schemas/a6ProjectManagerSchemas";
+import {
   clearMemory,
   deleteFact,
   FactKeySchema,
@@ -385,6 +390,45 @@ export const agentRouter = createTRPCRouter({
     .input(OrgAdminApplyInputSchema)
     .mutation(async ({ ctx, input }) => {
       return agentOrchestrator.orgAdminApply({
+        ctx,
+        draftId: input.draftId,
+        confirmationToken: input.confirmationToken,
+      });
+    }),
+
+  // -------------------------------------------------------------------------
+  // A6 Project Manager
+  //
+  // A6 shipped reachable only through `runAgentTurn`'s handoff, which drafts and
+  // nothing more: `projectManagerConfirm` and `projectManagerApply` existed with
+  // no route to them, so a project plan could be drafted and never applied.
+  // Two-step like A5 rather than one-click like notes and events — archiving a
+  // project takes a board away from everyone working in it.
+  // -------------------------------------------------------------------------
+
+  projectManagerDraft: rateLimitedProcedure
+    .input(ProjectManagerDraftInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return agentOrchestrator.projectManagerDraft({
+        ctx,
+        message: input.message,
+        organizationId: input.organizationId,
+      });
+    }),
+
+  projectManagerConfirm: protectedProcedure
+    .input(ProjectManagerConfirmInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return agentOrchestrator.projectManagerConfirm({
+        ctx,
+        draftId: input.draftId,
+      });
+    }),
+
+  projectManagerApply: protectedProcedure
+    .input(ProjectManagerApplyInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return agentOrchestrator.projectManagerApply({
         ctx,
         draftId: input.draftId,
         confirmationToken: input.confirmationToken,

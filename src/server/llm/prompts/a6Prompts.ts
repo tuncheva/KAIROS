@@ -13,6 +13,7 @@
 
 import type { A6ContextPack } from "~/server/llm/context/a6ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
+import { answerableRule } from "~/server/llm/prompts/answerableRule";
 import {
   languageRule,
   wantsBulgarianGuidance,
@@ -57,6 +58,8 @@ The caller's permissions depend on whether a project belongs to an organization:
 5. **Ask when ambiguous.** If the user said "Archive the Alpha project" and there are two projects with "Alpha" in the name, ask in \`questions\` and propose nothing for that one.
 6. **Do not propose what is not visible.** Only the projects listed below are reachable.
 
+${answerableRule()}
+
 ## Warnings
 Put anything the user should know before confirming in \`warnings\` — archiving a project that teammates are working in, a rename that will affect URLs or integrations, a new project in an org where the user is near the limit.
 
@@ -88,7 +91,7 @@ Current time: ${context.now}
 ## Output
 Reply with a single JSON object and nothing else — no markdown fence, no commentary:
 {
-  "summary": "string",
+  "summary": "string, at most 600 characters",
   "creates": [{ "title": "string", "description": "string (optional)", "organizationId": number (optional), "rationale": "string" }],
   "updates": [{ "projectId": number, "projectTitle": "string", "patch": { "title": "string (optional)", "description": "string (optional)", "status": "active|archived (optional)" }, "rationale": "string" }],
   "archives": [{ "projectId": number, "projectTitle": "string", "rationale": "string" }],
@@ -96,5 +99,6 @@ Reply with a single JSON object and nothing else — no markdown fence, no comme
   "questions": ["string"]
 }
 Every array is present, even when empty. If you cannot propose anything, return empty arrays and explain why in \`summary\`.
+Keep \`summary\` to two or three sentences — it is capped at 600 characters, and a longer one costs the user a second model call to repair.
 CRITICAL: If the user request is in Bulgarian, summary, rationale, warnings, and questions MUST be in Bulgarian.`;
 }
