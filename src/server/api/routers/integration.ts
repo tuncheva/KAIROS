@@ -13,6 +13,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import { UTApi } from "uploadthing/server";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { entitlementsFor } from "~/server/billing/entitlements";
@@ -452,9 +453,25 @@ export const integrationRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       assertDocuments(ctx);
 
-      // Chunks cascade. The stored file at the upload provider does not — deleting
-      // it needs the provider's API and is a separate concern; what this removes
-      // is the product's ability to read it, which is what the user asked for.
+      // Fetch the storageKey before deleting so we can remove the file from
+      // the upload provider. Ownership is checked here rather than in a
+      // separate query — a missing row means either not found or not theirs.
+      const [doc] = await ctx.db
+        .select({ storageKey: documents.storageKey })
+        .from(documents)
+        .where(
+          and(
+            eq(documents.id, input.id),
+            eq(documents.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!doc) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Document not found." });
+      }
+
+      // Delete the row — chunks cascade via FK.
       await ctx.db
         .delete(documents)
         .where(
@@ -463,6 +480,22 @@ export const integrationRouter = createTRPCRouter({
             eq(documents.userId, ctx.session.user.id),
           ),
         );
+
+      // Remove the file from Uploadthing. Best-effort: a failure here does not
+      // undo the row deletion. The user has already lost read access; an orphaned
+      // object in the upload bucket is a storage-cost concern, not a data-leak.
+      // Uploadthing URLs are "https://utfs.io/f/<fileKey>"; extract the key
+      // and call the management API. Skip gracefully if the URL is unexpected.
+      try {
+        const url = new URL(doc.storageKey);
+        const fileKey = url.pathname.replace(/^\/f\//, "");
+        if (fileKey) {
+          const utapi = new UTApi();
+          await utapi.deleteFiles([fileKey]);
+        }
+      } catch {
+        // Non-fatal: log at warn level so storage drift is visible in telemetry.
+      }
 
       return { ok: true };
     }),

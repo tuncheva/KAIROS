@@ -36,6 +36,7 @@ export const TargetAgentSchema = z.enum([
   "notes_vault",
   "events_publisher",
   "org_admin",
+  "project_manager",
 ]);
 
 export type TargetAgent = z.infer<typeof TargetAgentSchema>;

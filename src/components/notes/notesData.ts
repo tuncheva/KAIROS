@@ -25,6 +25,7 @@ export interface NoteUser {
 
 export interface NoteItem {
   id: number;
+  publicId?: string | null;
   title: string | null;
   /** Null whenever the note is encrypted and has not been unlocked this session. */
   content: string | null;

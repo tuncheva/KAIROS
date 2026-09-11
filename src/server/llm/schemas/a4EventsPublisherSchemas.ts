@@ -92,6 +92,31 @@ export const EventLikeToggleSchema = z
   })
   .strip();
 
+/* ─── Personal calendar event schemas ─── */
+
+export const CalendarEventCreateSchema = z
+  .object({
+    title: plainString(z.string().min(1).max(256)),
+    description: z.string().max(2000).optional(),
+    location: z.string().max(512).optional(),
+    startDateTime: z.string().describe("ISO-8601 UTC datetime, e.g. 2026-09-12T14:00:00Z"),
+    endDateTime: z.string().describe("ISO-8601 UTC datetime, must be after startDateTime"),
+    /** Stable key so the apply step can be idempotent; server-assigned. */
+    clientRequestId: z.string().min(1).max(64),
+  })
+  .strip();
+
+export const CalendarEventDeleteSchema = z
+  .object({
+    googleEventId: z.string().min(1).max(256),
+    /** Human-readable title shown on the confirm card. */
+    title: plainString(z.string().min(1).max(256)),
+  })
+  .strip();
+
+export type CalendarEventCreate = z.infer<typeof CalendarEventCreateSchema>;
+export type CalendarEventDelete = z.infer<typeof CalendarEventDeleteSchema>;
+
 /* ─── Draft plan (full LLM output) ─── */
 
 export const EventsPublisherDraftSchema = z
@@ -100,6 +125,8 @@ export const EventsPublisherDraftSchema = z
     creates: z.array(EventCreateSchema).max(10).default([]),
     updates: z.array(EventUpdateSchema).max(20).default([]),
     deletes: z.array(EventDeleteSchema).max(5).default([]),
+    calendarCreates: z.array(CalendarEventCreateSchema).max(5).default([]),
+    calendarDeletes: z.array(CalendarEventDeleteSchema).max(5).default([]),
     comments: z
       .object({
         add: z.array(EventCommentAddSchema).max(20).default([]),
@@ -198,6 +225,9 @@ export const EventsPublisherApplyOutputSchema = z
         commentsRemoved: z.number().int().min(0),
         rsvpsSet: z.number().int().min(0),
         likesToggled: z.number().int().min(0),
+        calendarCreated: z.number().int().min(0),
+        calendarDeleted: z.number().int().min(0),
+        calendarRefused: z.array(z.string()),
       })
       .strict(),
   })

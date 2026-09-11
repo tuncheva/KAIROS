@@ -24,12 +24,13 @@
 
 import "server-only";
 
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte } from "drizzle-orm";
 
 import { db } from "~/server/db";
 import { notify } from "~/server/notifications/dispatch";
 import {
   aiCustomSchedules,
+  aiReminders,
   aiSchedules,
   externalEvents,
   users,
@@ -58,6 +59,7 @@ import {
 } from "./dailyBrief";
 import {
   detectFindings,
+  detectPatternFindings,
   persistFindings,
   resolveStaleFindings,
 } from "./riskRadar";
@@ -116,6 +118,8 @@ export interface RunReport {
   custom?: CustomReport;
   /** Present once the meeting-prep pass has run. */
   meetingPrep?: CustomReport;
+  /** Number of point-in-time reminders fired this tick. */
+  reminders?: number;
 }
 
 /**
@@ -338,7 +342,7 @@ async function runDailyBrief(target: RunTarget): Promise<number> {
 
   const ctx = systemContextFor(user);
 
-  const findings = await detectFindings(ctx, userId);
+  const { findings, projectNames } = await detectFindings(ctx, userId);
   const fresh = await persistFindings(ctx, userId, findings);
   await resolveStaleFindings(
     ctx,
@@ -381,6 +385,18 @@ async function runDailyBrief(target: RunTarget): Promise<number> {
     withModel: allowed,
   });
 
+  // Pattern pass — runs after the brief is delivered so it never delays it.
+  if (allowed && findings.length > 0) {
+    try {
+      const patternFindings = await detectPatternFindings(findings, projectNames);
+      if (patternFindings.length > 0) {
+        await persistFindings(ctx, userId, patternFindings);
+      }
+    } catch (err) {
+      log.warn("pattern findings pass failed", { userId, err });
+    }
+  }
+
   return 1;
 }
 
@@ -391,13 +407,27 @@ async function runRiskRadar(target: RunTarget): Promise<number> {
   if (!user) return 0;
 
   const ctx = systemContextFor(user);
-  const findings = await detectFindings(ctx, userId);
-  const fresh = await persistFindings(ctx, userId, findings);
+  const { findings, projectNames } = await detectFindings(ctx, userId);
+  let fresh = await persistFindings(ctx, userId, findings);
   await resolveStaleFindings(
     ctx,
     userId,
     findings.map((f) => f.fingerprint),
   );
+
+  // Pattern pass — runs before notification so notable patterns can be included.
+  const allowed = await consumeSystemRateLimit(userId);
+  if (allowed && findings.length > 0) {
+    try {
+      const patternFindings = await detectPatternFindings(findings, projectNames);
+      if (patternFindings.length > 0) {
+        const freshPatterns = await persistFindings(ctx, userId, patternFindings);
+        fresh = [...fresh, ...freshPatterns.filter((f) => f.severity !== "info")];
+      }
+    } catch (err) {
+      log.warn("pattern findings pass failed", { userId, err });
+    }
+  }
 
   // Only genuinely new findings are worth a notification, and only the ones that
   // matter — an "info" finding is something to see when you next look, not
@@ -718,6 +748,59 @@ async function runDueCustomSchedules(now: Date): Promise<CustomReport> {
   return report;
 }
 
+/**
+ * Fire any reminders that are due.
+ *
+ * Idempotent: each reminder is claimed by setting `firedAt` before delivery is
+ * attempted. A second concurrent tick that finds the same row will skip it
+ * because `firedAt` is already set.
+ */
+async function runDueReminders(now: Date): Promise<number> {
+  const due = await db
+    .select({
+      id: aiReminders.id,
+      userId: aiReminders.userId,
+      text: aiReminders.text,
+      sourceConversationId: aiReminders.sourceConversationId,
+    })
+    .from(aiReminders)
+    .where(
+      and(
+        lte(aiReminders.fireAt, now),
+        isNull(aiReminders.firedAt),
+        isNull(aiReminders.cancelledAt),
+      ),
+    )
+    .limit(100);
+
+  for (const reminder of due) {
+    // Claim idempotently: only proceed if this tick is the first to set firedAt.
+    const claimed = await db
+      .update(aiReminders)
+      .set({ firedAt: now })
+      .where(
+        and(eq(aiReminders.id, reminder.id), isNull(aiReminders.firedAt)),
+      )
+      .returning({ id: aiReminders.id });
+
+    if (!claimed.length) continue;
+
+    await notify({
+      db,
+      userId: reminder.userId,
+      category: "requested",
+      type: "system",
+      title: "Reminder",
+      message: reminder.text,
+      link: reminder.sourceConversationId
+        ? `/chat/ai/${reminder.sourceConversationId}`
+        : "/chat/ai",
+    });
+  }
+
+  return due.length;
+}
+
 /** Process an array with a bounded number in flight. */
 async function mapLimit<T>(
   items: T[],
@@ -829,6 +912,12 @@ export async function runDueSchedules(now = new Date()): Promise<RunReport> {
     report.meetingPrep = await runDueMeetingPreps(now);
   } catch (err) {
     log.error("meeting prep sweep failed", { err });
+  }
+
+  try {
+    report.reminders = await runDueReminders(now);
+  } catch (err) {
+    log.error("reminder sweep failed", { err });
   }
 
   return report;

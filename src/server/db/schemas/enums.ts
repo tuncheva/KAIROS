@@ -128,6 +128,10 @@ export const agentOrgAdminDraftStatusEnum = pgEnum(
   "agent_org_admin_draft_status",
   ["draft", "confirmed", "applied", "expired"] as const,
 );
+export const agentProjectManagerDraftStatusEnum = pgEnum(
+  "agent_project_manager_draft_status",
+  ["draft", "confirmed", "applied", "expired"] as const,
+);
 
 /**
  * Roles an AI message can have.

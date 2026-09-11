@@ -52,6 +52,10 @@ export const a1WorkspaceConciergeProfile: AgentProfile = {
     "searchDocuments",
     "rememberFact",
     "forgetFact",
+    "getTaskDependencies",
+    "scheduleReminder",
+    "listReminders",
+    "cancelReminder",
   ],
   routingRules: {
     modify_tasks: "task_planner",

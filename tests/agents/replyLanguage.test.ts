@@ -192,7 +192,7 @@ const PROMPTS: Array<[string, (message: string) => string]> = [
   [
     "A4",
     (message) =>
-      getA4SystemPrompt({ userId: "u1", events: [], locale: "bg", memory: [] }, message),
+      getA4SystemPrompt({ userId: "u1", events: [], locale: "bg", memory: [], calendar: null }, message),
   ],
   [
     "A5",

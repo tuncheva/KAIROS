@@ -282,9 +282,14 @@ export async function listConversations(
       title: aiConversations.title,
       projectId: aiConversations.projectId,
       updatedAt: aiConversations.updatedAt,
+      // The correlation must be written table-qualified. Drizzle renders a bare
+      // column reference as `"id"`, and inside this subquery `"id"` resolves
+      // against `ai_messages` — its own integer primary key — rather than the
+      // outer conversation, so the whole query failed with
+      // `operator does not exist: character varying = integer`.
       messageCount: sql<number>`(
         SELECT count(*) FROM ${aiMessages} AS m
-        WHERE m.conversation_id = ${aiConversations.id}
+        WHERE m.conversation_id = ${aiConversations}."id"
       )`.mapWith(Number),
     })
     .from(aiConversations)

@@ -22,12 +22,14 @@ export const directConversations = createTable(
     lastMessageAt: d.timestamp("last_message_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
     createdAt: d.timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
     updatedAt: d.timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    publicId: d.varchar("public_id", { length: 21 }),
   }),
   (t) => [
     index("direct_convo_project_idx").on(t.projectId),
     index("direct_convo_org_idx").on(t.organizationId),
     index("direct_convo_user_one_idx").on(t.userOneId),
     index("direct_convo_user_two_idx").on(t.userTwoId),
+    uniqueIndex("direct_convo_public_id_idx").on(t.publicId),
   ]
 );
 

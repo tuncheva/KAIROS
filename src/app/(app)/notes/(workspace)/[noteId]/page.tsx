@@ -22,8 +22,10 @@ export default async function NotePageRoute({
   params: Promise<{ noteId: string }>;
 }) {
   const { noteId } = await params;
-  const id = Number(noteId);
-  if (!Number.isInteger(id) || id <= 0) notFound();
+  /* Reject empty, "new" (handled by a sibling static route), or
+     path-traversal-style strings. Any other non-empty string is a publicId
+     (or a legacy numeric id) and is resolved client-side by NotesWorkspace. */
+  if (!noteId || noteId === "new" || noteId.includes("/") || noteId.includes("..")) notFound();
 
   return null;
 }

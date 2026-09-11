@@ -41,7 +41,13 @@ export type A1ReadToolName =
   | "searchDocuments"
   // Assistant memory (writes only the caller's own preference row — see memory.ts)
   | "rememberFact"
-  | "forgetFact";
+  | "forgetFact"
+  // Task dependencies
+  | "getTaskDependencies"
+  // Point-in-time reminders
+  | "scheduleReminder"
+  | "listReminders"
+  | "cancelReminder";
 
 export interface A1Tool<TName extends A1ReadToolName, TInput, TOutput> {
   name: TName;

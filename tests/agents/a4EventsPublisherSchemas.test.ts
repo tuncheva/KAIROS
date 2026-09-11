@@ -525,6 +525,11 @@ describe("EventsPublisherApplyOutputSchema", () => {
         commentsRemoved: 0,
         rsvpsSet: 0,
         likesToggled: 0,
+        // Required since the calendar write-back landed. The schema is `.strict()`
+        // on both sides, so an apply result missing these is rejected outright.
+        calendarCreated: 0,
+        calendarDeleted: 0,
+        calendarRefused: [],
       },
     });
     expect(result.success).toBe(true);

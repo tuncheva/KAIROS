@@ -39,11 +39,11 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 
-import {
-  flagsForRole,
-  type MemberPermissionFlags,
-  type PermissionFlag,
-} from "~/lib/permissions";
+// `flagsForRole` is deliberately not imported here any more: role templates apply
+// when a membership row is written, and every authorization decision reads the
+// columns. Deriving flags from the role at *check* time was the fail-open path
+// removed from `membershipHasFlag`.
+import type { MemberPermissionFlags, PermissionFlag } from "~/lib/permissions";
 import type { TRPCContext } from "~/server/api/trpc";
 import {
   organizationMembers,
@@ -211,27 +211,26 @@ const FLAG_LABELS: Record<PermissionFlag, string> = {
 };
 
 /**
- * Read a capability off a membership row, falling back to the role template when
- * the row predates the flag backfill.
+ * Read a capability off a membership row. The columns are the source of truth.
  *
- * The fallback exists because `join` used to insert memberships with every flag
- * `false` regardless of role, so rows written before the backfill migration
- * cannot be distinguished from a deliberate revocation by looking at the columns
- * alone. Deriving from the role in that case keeps existing contributors working.
- * Once every row is backfilled this reduces to a plain column read.
+ * This used to carry a fallback: when *every* flag on the row was false it
+ * derived the answer from the role template instead, because `join` and
+ * `acceptInvite` once inserted memberships with all flags false regardless of
+ * role, and such a row was indistinguishable from a deliberate revocation.
+ *
+ * That fallback was transitional and is now removed. Migration
+ * 0020_backfill_member_permissions populated those rows from their roles, and no
+ * row in the database has an all-false flag set for a write-capable role — so
+ * the fallback no longer changes any answer for real data, while it does make
+ * "revoke every capability from this member" silently restore the role's
+ * defaults. Reading the columns plainly fails closed instead.
  */
 export function membershipHasFlag(
   membership: Membership | null,
   flag: PermissionFlag,
 ): boolean {
   if (!membership) return false;
-  if (membership[flag]) return true;
-
-  const everyFlagFalse = (
-    Object.keys(FLAG_LABELS) as PermissionFlag[]
-  ).every((key) => !membership[key]);
-
-  return everyFlagFalse ? flagsForRole(membership.role)[flag] : false;
+  return membership[flag];
 }
 
 function denyMissingFlag(flag: PermissionFlag): never {

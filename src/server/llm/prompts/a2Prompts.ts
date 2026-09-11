@@ -1,5 +1,6 @@
 import type { A2ContextPack } from "../context/a2ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
+import { answerableRule } from "~/server/llm/prompts/answerableRule";
 import {
   languageRule,
   wantsBulgarianGuidance,
@@ -115,6 +116,8 @@ ${wantsBulgarianGuidance(...userText) ? `Write Bulgarian task titles as natural 
 - If assigning to a person, briefly explain why (expertise, availability, existing work).
 - Always include a risk assessment for non-trivial plans.
 
+${answerableRule()}
+
 ## Planning Rubric
 - Decompose goal → milestones → tasks.
 - Tasks should be specific and completable in 1-3 days.
@@ -133,6 +136,7 @@ Return ONLY a JSON object matching:
 {
   "agentId": "task_planner",
   "scope": { "orgId?": string | number, "projectId": number },
+  "summary": "string — what this plan does, or your answer when the message asked a question",
   "creates": [
     {
       "title": "string",

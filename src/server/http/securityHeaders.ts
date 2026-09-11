@@ -40,12 +40,11 @@
  * source it names.
  */
 
+import { env } from "~/env";
 import { THEME_INIT_SCRIPT_SHA256 } from "~/server/http/themeInitScript";
 
 /** Origins the browser genuinely needs to reach, by directive. */
 const ALLOWLIST = {
-  /** `@react-google-maps/api` loads the Maps JS SDK from here. */
-  maps: ["https://maps.googleapis.com", "https://maps.gstatic.com"],
   /** UploadThing's client talks to its API and serves files from utfs.io. */
   uploads: [
     "https://uploadthing.com",
@@ -68,7 +67,7 @@ const ALLOWLIST = {
  * `'self'` when the WS server runs on its own origin.
  */
 function websocketOrigins(): string[] {
-  const url = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
+  const url = env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
   try {
     const { origin } = new URL(url);
     // Same host over the ws/wss scheme, for the upgrade.
@@ -144,7 +143,6 @@ export function contentSecurityPolicy(nonce: string): string {
       // does not carry `nonce` into the client tree — see `~/server/http/themeInitScript`.
       THEME_INIT_SCRIPT_SHA256,
       "'strict-dynamic'",
-      ...ALLOWLIST.maps,
       // React refresh and the dev overlay evaluate generated code.
       ...(isDev ? ["'unsafe-eval'"] : []),
     ],
@@ -161,7 +159,6 @@ export function contentSecurityPolicy(nonce: string): string {
       "blob:",
       ...ALLOWLIST.images,
       ...ALLOWLIST.uploads,
-      ...ALLOWLIST.maps,
     ],
 
     "font-src": ["'self'", "data:"],
@@ -170,13 +167,11 @@ export function contentSecurityPolicy(nonce: string): string {
       "'self'",
       ...ws,
       ...ALLOWLIST.uploads,
-      ...ALLOWLIST.maps,
       // The dev server's HMR socket.
       ...(isDev ? ["ws://localhost:*", "http://localhost:*"] : []),
     ],
 
-    // Maps renders into an iframe on some code paths.
-    "frame-src": ["'self'", ...ALLOWLIST.maps],
+    "frame-src": ["'self'"],
 
     "worker-src": ["'self'", "blob:"],
 
@@ -207,6 +202,12 @@ export function contentSecurityPolicy(nonce: string): string {
  * protection rather than away from it.
  */
 export function isCspEnforced(): boolean {
+  // Read directly rather than through `~/env`. This module is reached from
+  // `proxy.ts` and from tests that run in a jsdom environment, and `env` throws
+  // on a *server*-scoped variable whenever `window` exists. `CSP_REPORT_ONLY` is
+  // still declared in `~/env` so it is validated at boot and documented in one
+  // place; only the read is direct. `NEXT_PUBLIC_WS_URL` above is client-scoped,
+  // so that one goes through `env` safely.
   const reportOnly = process.env.CSP_REPORT_ONLY;
   return !(reportOnly === "1" || reportOnly === "true");
 }

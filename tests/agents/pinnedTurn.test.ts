@@ -19,6 +19,7 @@ const taskPlannerDraft = vi.fn();
 const notesVaultDraft = vi.fn();
 const eventsPublisherDraft = vi.fn();
 const orgAdminDraft = vi.fn();
+const projectManagerDraft = vi.fn();
 
 vi.mock("~/server/llm/orchestrator/a1Concierge", () => ({
   a1Concierge: { draft: a1Draft },
@@ -35,8 +36,12 @@ vi.mock("~/server/llm/orchestrator/a4EventsPublisher", () => ({
 vi.mock("~/server/llm/orchestrator/a5OrgAdmin", () => ({
   a5OrgAdmin: { orgAdminDraft },
 }));
+vi.mock("~/server/llm/orchestrator/a6ProjectManager", () => ({
+  a6ProjectManager: { projectManagerDraft },
+}));
 
 const { runAgentTurn } = await import("~/server/llm/orchestrator/handoff");
+const { HANDOFF_TARGETS } = await import("~/server/llm/agents/registry");
 
 /** The minimum `runAgentTurn` needs; the mocks ignore all of it. */
 const BASE = {
@@ -77,6 +82,10 @@ beforeEach(() => {
   notesVaultDraft.mockResolvedValue({ draftId: "a3-draft", plan: { ok: true } });
   eventsPublisherDraft.mockResolvedValue({ draftId: "a4-draft", plan: { ok: true } });
   orgAdminDraft.mockResolvedValue({ draftId: "a5-draft", plan: { ok: true } });
+  projectManagerDraft.mockResolvedValue({
+    draftId: "a6-draft",
+    plan: { ok: true },
+  });
 });
 
 describe("Auto — unchanged by the picker", () => {
@@ -150,12 +159,18 @@ describe("pinned agent", () => {
   });
 
   it("reaches each pinnable agent", async () => {
+    // Derived from the registry rather than hand-listed: this list omitted
+    // `project_manager`, so nothing failed when the Project Manager was pinned
+    // and its plan reached a chat with no branch to render it.
     const cases = [
       ["task_planner", taskPlannerDraft, "tasks"],
       ["notes_vault", notesVaultDraft, "notes"],
       ["events_publisher", eventsPublisherDraft, "events"],
       ["org_admin", orgAdminDraft, "org"],
+      ["project_manager", projectManagerDraft, "project_manager"],
     ] as const;
+
+    expect(cases.map(([agent]) => agent)).toEqual([...HANDOFF_TARGETS]);
 
     for (const [agent, spy, kind] of cases) {
       vi.clearAllMocks();

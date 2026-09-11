@@ -29,6 +29,17 @@ vi.mock("~/server/security/slidingWindow", () => ({
     Promise.resolve({ count: state.count + 1, oldest: state.oldest }),
 }));
 
+/*
+ * `rateLimit` now takes its default ceiling from `~/env` rather than parsing
+ * `process.env.AI_RATE_LIMIT` itself, so the env module has to be supplied here:
+ * these specs run under jsdom, where `@t3-oss/env` refuses server-scoped reads.
+ *
+ * 50 is the schema's own default. Every assertion below passes an explicit
+ * ceiling, so this value only stands in for "nobody said", which is the one case
+ * the default exists to cover.
+ */
+vi.mock("~/env", () => ({ env: { AI_RATE_LIMIT: 50 } }));
+
 const { checkRateLimit, consumeRateLimit } = await import(
   "~/server/security/rateLimit"
 );

@@ -2072,7 +2072,19 @@
     "orgDone": "Organization changes applied.",
     "orgRefused": "{count} operation(s) were refused by the server:",
     "confirmOrgChanges": "Confirm Org Changes",
-    "applyOrgChanges": "Apply Org Changes"
+    "applyOrgChanges": "Apply Org Changes",
+    "noProjectChanges": "No project changes needed.",
+    "projectReviewThenConfirm": "Review the changes below, then confirm.",
+    "projectCreateOps": "{count} project(s) to create",
+    "projectUpdateOps": "{count} project update(s)",
+    "projectArchiveOps": "{count} project(s) to archive",
+    "projectDescriptionChange": "new description",
+    "projectStatusChange": "status",
+    "projectConfirmed": "Project changes confirmed. {summary}",
+    "projectDone": "Project changes applied.",
+    "projectRefused": "{count} operation(s) were refused by the server:",
+    "confirmProjectChanges": "Confirm Project Changes",
+    "applyProjectChanges": "Apply Project Changes"
   },
   "onboarding": {
     "welcome": {
@@ -2284,7 +2296,10 @@
     "previewOrgRole": "Role change",
     "previewOrgPermission": "Permission change",
     "previewOrgRemoval": "Remove member",
-    "previewOrgInvite": "Invite member"
+    "previewOrgInvite": "Invite member",
+    "previewProjectCreate": "New project",
+    "previewProjectUpdate": "Update project",
+    "previewProjectArchive": "Archive project"
   },
   "aiConsole": {
     "conversations": "Conversations",

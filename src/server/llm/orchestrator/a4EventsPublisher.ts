@@ -35,6 +35,12 @@ import {
   mintConfirmationToken,
   readConfirmationToken,
 } from "./shared";
+import { getCalendarAccess } from "~/server/llm/calendar/calendarToken";
+import {
+  createGoogleCalendarEvent,
+  deleteGoogleCalendarEvent,
+  hasWriteScope,
+} from "~/server/calendar/google";
 
 /**
  * Load a draft and assert it belongs to the caller.
@@ -316,6 +322,9 @@ export const a4EventsPublisher = {
       commentsRemoved: 0,
       rsvpsSet: 0,
       likesToggled: 0,
+      calendarCreated: 0,
+      calendarDeleted: 0,
+      calendarRefused: [],
     };
 
     const db = input.ctx.db;
@@ -463,6 +472,49 @@ export const a4EventsPublisher = {
         });
       }
       results.likesToggled++;
+    }
+
+    // ---- personal calendar events
+    let calAccess: { accessToken: string; scope: string | null } | null = null;
+
+    if (plan.calendarCreates.length > 0 || plan.calendarDeletes.length > 0) {
+      calAccess = await getCalendarAccess(input.ctx, userId);
+    }
+
+    for (const op of plan.calendarCreates) {
+      if (!calAccess) {
+        results.calendarRefused.push(`"${op.title}": no calendar connected. Connect Google Calendar in Settings.`);
+        continue;
+      }
+      if (!hasWriteScope(calAccess.scope)) {
+        results.calendarRefused.push(`"${op.title}": connected calendar is read-only. Reconnect with write access in Settings.`);
+        continue;
+      }
+      try {
+        await createGoogleCalendarEvent(calAccess.accessToken, {
+          summary: op.title,
+          description: op.description,
+          location: op.location,
+          startDateTime: op.startDateTime,
+          endDateTime: op.endDateTime,
+        });
+        results.calendarCreated += 1;
+      } catch (err) {
+        results.calendarRefused.push(`"${op.title}": ${err instanceof Error ? err.message : "Google Calendar error"}`);
+      }
+    }
+
+    for (const op of plan.calendarDeletes) {
+      if (!calAccess || !hasWriteScope(calAccess.scope)) {
+        results.calendarRefused.push(`"${op.title}": calendar not connected or read-only.`);
+        continue;
+      }
+      try {
+        await deleteGoogleCalendarEvent(calAccess.accessToken, op.googleEventId);
+        results.calendarDeleted += 1;
+      } catch (err) {
+        results.calendarRefused.push(`"${op.title}": ${err instanceof Error ? err.message : "Google Calendar error"}`);
+      }
     }
 
     await db.insert(agentEventsPublisherApplies).values({

@@ -20,6 +20,8 @@ import { buildA3Context } from "~/server/llm/context/a3ContextBuilder";
 import { getA3SystemPrompt } from "~/server/llm/prompts/a3Prompts";
 
 import { completeJson } from "~/server/llm/core/jsonRepair";
+import { chatCompletion } from "~/server/llm/core/modelClient";
+import { toPlainText } from "~/server/llm/core/plainText";
 
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
 
@@ -99,8 +101,45 @@ export const a3NotesVault = {
       }),
     };
 
-    const planHash = computePlanHash(guardedPlan);
-    const plan: NotesVaultDraft = { ...guardedPlan, planHash };
+    // Resolve generateAndCreate operations with a second model call each.
+    const resolvedOps: typeof guardedPlan.operations = [];
+    for (const op of guardedPlan.operations) {
+      if (op.type !== "generateAndCreate") {
+        resolvedOps.push(op);
+        continue;
+      }
+      try {
+        const gen = await chatCompletion({
+          temperature: 0.5,
+          maxTokens: 4000,
+          purpose: "a3.generate",
+          messages: [
+            {
+              role: "system",
+              content: `You are a note-writing assistant. Write the requested note content in plain text (markdown allowed). Write only the content — no preamble, no "Here is the note:", no meta-commentary. Be thorough and useful.`,
+            },
+            { role: "user", content: op.prompt },
+          ],
+        });
+        const content = toPlainText(gen.content);
+        resolvedOps.push({
+          type: "create" as const,
+          content: content.length > 0 ? content : `[Generated content for: ${op.prompt}]`,
+          reason: op.reason,
+        });
+      } catch {
+        // If generation fails, keep a placeholder so the plan is not empty.
+        resolvedOps.push({
+          type: "create" as const,
+          content: `[Content generation failed for: ${op.prompt}]`,
+          reason: op.reason,
+        });
+      }
+    }
+
+    const resolvedPlan = { ...guardedPlan, operations: resolvedOps };
+    const planHash = computePlanHash(resolvedPlan);
+    const plan: NotesVaultDraft = { ...resolvedPlan, planHash };
 
     await input.ctx.db.insert(agentNotesVaultDrafts).values({
       id: draftId,

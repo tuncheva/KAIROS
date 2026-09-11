@@ -51,6 +51,11 @@ function queryStub(rows: unknown[]) {
     "limit",
     "groupBy",
     "offset",
+    // Write-side links, so a tool that authorizes and *then* writes can be driven
+    // all the way through rather than only to its first refusal.
+    "set",
+    "values",
+    "returning",
   ]) {
     builder[method] = () => builder;
   }
@@ -64,6 +69,8 @@ function ctxWith(rows: unknown[], userId = "user-1") {
     db: {
       select: () => queryStub(rows),
       delete: () => queryStub(rows),
+      update: () => queryStub(rows),
+      insert: () => queryStub(rows),
       query: {},
     },
     session: { user: { id: userId, email: "a@b.c", name: "A" } },
@@ -124,7 +131,14 @@ describe("project-scoped tools authorize the project id", () => {
 // Task-scoped tools — the project comes from the row, not the caller
 // ---------------------------------------------------------------------------
 
-const TASK_SCOPED = ["listTaskComments", "getTaskActivity", "getTaskDetail"] as const;
+const TASK_SCOPED = [
+  "listTaskComments",
+  "getTaskActivity",
+  "getTaskDetail",
+  // Added with the dependency graph. It takes a caller-supplied taskId and, like
+  // its siblings, must authorize the task's *project* rather than the task id.
+  "getTaskDependencies",
+] as const;
 
 describe("task-scoped tools authorize the task's project", () => {
   it.each(TASK_SCOPED)("%s resolves the project then checks it", async (name) => {
@@ -271,6 +285,57 @@ describe("every tool refuses an unauthenticated caller", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Reminder tools — scoped to the caller, not to a project
+// ---------------------------------------------------------------------------
+
+/**
+ * Reminders belong to a user, so there is no project to authorize. `cancelReminder`
+ * is the one that takes a caller-supplied id, and the row it loads carries the
+ * owner: the check that matters is that it compares that owner to the session and
+ * refuses a reminder belonging to somebody else.
+ */
+describe("reminder tools scope to the caller", () => {
+  it("scheduleReminder refuses an anonymous caller", async () => {
+    const anonymousCtx = {
+      db: { select: () => queryStub([]), query: {} },
+      session: null,
+      headers: new Headers(),
+    } as never;
+
+    await expect(
+      A1_READ_TOOLS.scheduleReminder.execute(anonymousCtx, {
+        text: "ping me",
+        fireAt: "2099-01-01T00:00:00.000Z",
+      } as never),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
+  it("cancelReminder refuses a reminder owned by another user", async () => {
+    const ctx = ctxWith([{ id: 3, userId: "someone-else" }], "user-1");
+
+    await expect(
+      A1_READ_TOOLS.cancelReminder.execute(ctx, { reminderId: 3 } as never),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("cancelReminder refuses a reminder that does not exist", async () => {
+    await expect(
+      A1_READ_TOOLS.cancelReminder.execute(ctxWith([]), {
+        reminderId: 3,
+      } as never),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("cancelReminder accepts the owner", async () => {
+    const ctx = ctxWith([{ id: 3, userId: "user-1" }], "user-1");
+
+    await expect(
+      A1_READ_TOOLS.cancelReminder.execute(ctx, { reminderId: 3 } as never),
+    ).resolves.toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // The guard that keeps this suite honest as tools are added
 // ---------------------------------------------------------------------------
 
@@ -287,6 +352,13 @@ describe("registry coverage", () => {
     "getWorkloadByAssignee",
     "listOrgMembers",
     "listEventRsvps",
+    // Covered by "reminder tools scope to the caller" above. These authorize
+    // against the session rather than a project: `cancelReminder` compares the
+    // row's owner to the caller, and `scheduleReminder`'s only id input
+    // (sourceConversationId) is an opaque label on a row the caller owns, never
+    // used to reach another user's data.
+    "cancelReminder",
+    "scheduleReminder",
   ]);
 
   it("has an authorization test for every id-taking tool", () => {

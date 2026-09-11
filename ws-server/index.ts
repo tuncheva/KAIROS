@@ -128,14 +128,17 @@ interface RedisAdapterModuleLike {
 if (REDIS_NATIVE_URL) {
   void (async () => {
     try {
-      // Both packages are optional peer dependencies that may not be installed,
-      // so their imports cannot be type-resolved. Absorb each into `unknown` and
-      // cast once against a declared shape, rather than letting `any` leak into
-      // every downstream call.
-      // @ts-expect-error -- redis is an optional peer dependency, may not be installed
+      // Both packages are optional: declared in `optionalDependencies`, so a
+      // `pnpm install --no-optional` or a failed optional build leaves them
+      // absent and these imports throw at runtime. The catch below handles that.
+      //
+      // They used to carry `@ts-expect-error` because nothing declared them at
+      // all, so the specifiers did not resolve. Now that they are declared the
+      // types resolve, and the directives would themselves be errors. Each result
+      // is still absorbed into `unknown` and cast once against a declared shape,
+      // to keep the optional packages' own types off the public surface here.
       const redisMod: unknown = await import("redis");
       const { createClient } = redisMod as RedisModuleLike;
-      // @ts-expect-error -- @socket.io/redis-adapter is an optional peer dependency
       const adapterMod: unknown = await import("@socket.io/redis-adapter");
       const { createAdapter } = adapterMod as RedisAdapterModuleLike;
 

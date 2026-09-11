@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { env } from "~/env";
 import { auth } from "~/server/auth";
 import { signWsTicket } from "~/server/ws/sign";
 
@@ -16,7 +17,10 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const secret = process.env.WS_SECRET;
+  // `env` already enforces `.min(32)`, so this guard is only reachable when
+  // validation was skipped (SKIP_ENV_VALIDATION). Kept so that path fails closed
+  // with a 503 rather than issuing a ticket signed with a weak or absent secret.
+  const secret = env.WS_SECRET;
   if (!secret || secret.length < 32) {
     return NextResponse.json(
       { error: "WebSocket service unavailable — WS_SECRET missing or too short" },

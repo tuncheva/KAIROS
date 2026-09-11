@@ -1,8 +1,9 @@
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
 import type { TRPCContext } from "~/server/api/trpc";
-import { events, eventComments, eventLikes, users } from "~/server/db/schema";
+import { events, eventComments, eventLikes, users, calendarConnections } from "~/server/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
+import { hasWriteScope } from "~/server/calendar/google";
 
 export interface A4ContextEvent {
   id: number;
@@ -29,6 +30,11 @@ export interface A4ContextPack {
   locale: SupportedLocale;
   /** Global facts plus any the user set for the Events Publisher specifically. */
   memory: MemoryFact[];
+  calendar: {
+    connected: boolean;
+    /** True only when the stored token has the events write scope. */
+    writeEnabled: boolean;
+  } | null;
 }
 
 /**
@@ -62,15 +68,27 @@ export async function buildA4Context(input: {
     .orderBy(desc(events.createdAt))
     .limit(30);
 
-  const [memory, locale] = await Promise.all([
-    loadUserMemory(input.ctx, userId, "events_publisher"),
-    resolveUserLocale(input.ctx, userId),
+  const [[calConn], [memory, locale]] = await Promise.all([
+    input.ctx.db
+      .select({ scope: calendarConnections.scope })
+      .from(calendarConnections)
+      .where(eq(calendarConnections.userId, userId))
+      .limit(1),
+    Promise.all([
+      loadUserMemory(input.ctx, userId, "events_publisher"),
+      resolveUserLocale(input.ctx, userId),
+    ]),
   ]);
+
+  const calendar = calConn
+    ? { connected: true, writeEnabled: hasWriteScope(calConn.scope) }
+    : null;
 
   return {
     userId,
     locale,
     memory,
+    calendar,
     events: rows.map((r) => ({
       id: r.id,
       title: r.title,

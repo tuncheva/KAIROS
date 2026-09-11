@@ -1,5 +1,5 @@
 import { type InferInsertModel, type InferSelectModel, sql } from "drizzle-orm";
-import { index, text, timestamp, varchar, integer } from "drizzle-orm/pg-core";
+import { index, text, timestamp, varchar, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { createTable, taskStatusEnum, taskPriorityEnum } from "./enums";
 import { users } from "./users";
 import { projects } from "./projects";
@@ -49,6 +49,10 @@ export const tasks = createTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     orderIndex: integer("order_index").notNull().default(0),
+    // embedding vector(1024) — deliberately absent from this schema: created by
+    // migration 0044_pgvector_embeddings and queried via raw sql in
+    // searchTools.ts. Drizzle has no pgvector type, so adding it here would make
+    // `db:push`/`generate` propose dropping it. `pnpm db:verify` checks it exists.
     clientRequestId: varchar("client_request_id", { length: 128 }),
   }),
   (t) => [
@@ -109,6 +113,23 @@ export const taskActivityLog = createTable(
     index("activity_user_idx").on(t.userId),
   ]
 );
+
+export const taskDependencies = createTable(
+  "task_dependencies",
+  (d) => ({
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    blockedTaskId: integer("blocked_task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+    blockingTaskId: integer("blocking_task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+    createdById: d.varchar({ length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  }),
+  (t) => [
+    index("task_dep_blocked_idx").on(t.blockedTaskId),
+    index("task_dep_blocking_idx").on(t.blockingTaskId),
+    uniqueIndex("task_dep_unique").on(t.blockedTaskId, t.blockingTaskId),
+  ]
+);
+export type TaskDependency = InferSelectModel<typeof taskDependencies>;
 
 export type Task = InferSelectModel<typeof tasks>;
 export type NewTask = InferInsertModel<typeof tasks>;

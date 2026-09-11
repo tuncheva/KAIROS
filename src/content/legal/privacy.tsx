@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { LegalSection } from "~/components/marketing/LegalPage";
 
 /**
@@ -14,20 +14,16 @@ import type { LegalSection } from "~/components/marketing/LegalPage";
  *
  * 2. Every claim below is drawn from what the code actually does — the Drizzle
  *    schemas under `src/server/db/schemas`, the providers declared in `src/env.js`,
- *    the export route, the account-deletion flow. Anything that needs a human
- *    decision instead of a code reading is wrapped in <Todo>, which renders
- *    *visibly* on the page. An unreviewed policy has to look unreviewed; this makes
- *    it impossible to ship the remaining gaps by accident.
+ *    the export route, the account-deletion flow, the cookies actually set. Where
+ *    behaviour is surprising, the document says so rather than smoothing it over:
+ *    the deletion cascade reaching organizations you created, and the export
+ *    covering less than a portability request, are both stated plainly.
+ *
+ * Keep it that way. If a statement here and the code disagree, one of them is a
+ * bug, and it is usually not the policy that should change first.
  */
 
-/** A gap that needs a human answer before this page can be published. */
-function Todo({ children }: { children: ReactNode }) {
-    return (
-        <span className="mx-0.5 inline-block rounded-[3px] border border-amber-400/30 bg-amber-400/[0.12] px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.1em] text-amber-200/90">
-            To do — legal review: {children}
-        </span>
-    );
-}
+const CONTACT_EMAIL = "madebykairos@gmail.com";
 
 function Bullets({ items }: { items: ReactNode[] }) {
     return (
@@ -48,6 +44,12 @@ const settingsLink = (
     </Link>
 );
 
+const mail = (
+    <a href={`mailto:${CONTACT_EMAIL}`} className="k-nav text-fg-primary">
+        {CONTACT_EMAIL}
+    </a>
+);
+
 const sections: LegalSection[] = [
     {
         id: "who-we-are",
@@ -56,15 +58,17 @@ const sections: LegalSection[] = [
             <>
                 <p>
                     Kairos is a workspace for planning work with a team and publishing the events that
-                    come out of it. This policy covers the Kairos web application and the accounts,
-                    organizations, and content inside it.
+                    come out of it. This policy covers the Kairos web application at
+                    kairosonline.net and the accounts, organizations, and content inside it.
                 </p>
                 <p>
-                    The data controller is{" "}
-                    <Todo>
-                        legal entity name, registered address, company number, and whether a data
-                        protection officer has been appointed
-                    </Todo>
+                    Kairos is built and operated by an individual developer in Bulgaria as an
+                    independent project, not by a registered company. That person is the data
+                    controller for everything described here and can be reached at {mail}. Because
+                    Kairos is neither a public authority nor an organisation whose core activity is
+                    large-scale monitoring or processing of special-category data, no data protection
+                    officer is appointed; requests go to the address above and are answered by the
+                    person who runs the service.
                 </p>
             </>
         ),
@@ -138,14 +142,19 @@ const sections: LegalSection[] = [
                     your behalf, and undo it.
                 </p>
                 <p>
-                    To generate a reply we send the relevant part of your prompt and context to a
-                    large-language-model provider. The provider Kairos uses is set by deployment
-                    configuration rather than fixed in the code, so before this page is published:{" "}
-                    <Todo>
-                        name the provider(s) actually used in production, their processing location,
-                        their retention window, and confirm in writing that they do not train on our
-                        submissions
-                    </Todo>
+                    To generate a reply we send the relevant part of your prompt and the surrounding
+                    context to <strong className="font-semibold text-fg-primary">NVIDIA</strong>, whose
+                    hosted inference endpoints run the models behind these features. We send only what
+                    the request needs — the conversation in front of you and the records it refers to —
+                    never your password hash, your tokens, or content from workspaces you are not a
+                    member of. Prompts are sent for inference and to keep the service running, not as
+                    training data; NVIDIA&apos;s own terms for these endpoints govern what it may do
+                    with them, and we do not grant any provider permission to train on your content.
+                </p>
+                <p>
+                    We also generate embeddings — numeric representations of your text — so the
+                    assistant can find relevant notes and tasks. These are stored in our own database
+                    alongside the content they describe.
                 </p>
                 <p>
                     You can generate API keys and register webhooks to reach Kairos from your own tools.
@@ -157,37 +166,58 @@ const sections: LegalSection[] = [
     },
     {
         id: "signing-in",
-        heading: "Signing in with another service",
+        heading: "Signing in and connecting other services",
         body: (
-            <p>
-                If you sign in through an identity provider instead of a password, we store the
-                identifiers and tokens that provider returns so we can recognise you next time and,
-                where you granted it, act on your behalf. We do not receive your password for that
-                service. Sessions are stored server-side and end when you sign out or when they expire.
-            </p>
+            <>
+                <p>
+                    If you sign in through an identity provider instead of a password, we store the
+                    identifiers and tokens that provider returns so we can recognise you next time. We
+                    do not receive your password for that service. Sessions are stored server-side and
+                    end when you sign out or when they expire.
+                </p>
+                <p>
+                    Separately, you can connect a calendar so Kairos can show your real schedule
+                    alongside your work. Connecting one stores an access and refresh token for that
+                    account, encrypted at rest, plus the events Kairos reads from it. The tokens are
+                    scoped to your calendar and nothing else, the connection is listed in{" "}
+                    {settingsLink} with the account it belongs to, and disconnecting it there deletes
+                    the tokens and the imported events.
+                </p>
+            </>
         ),
     },
     {
         id: "cookies",
-        heading: "Cookies",
+        heading: "Cookies and local storage",
         body: (
             <>
-                <p>Kairos sets a small number of cookies, all of them functional:</p>
+                <p>Kairos sets three cookies, all of them functional:</p>
                 <Bullets
                     items={[
-                        "A session cookie, which is what keeps you signed in.",
+                        "A session cookie, which is what keeps you signed in. It ends when the session does.",
                         <>
-                            An account-switcher cookie (
-                            <code className="font-mono text-[15px]">kairos.accounts</code>), which
-                            remembers the accounts you switch between on this device. It lasts 30 days.
+                            <code className="font-mono text-[15px]">kairos.accounts</code> — remembers
+                            the accounts you switch between on this device, so you can move between
+                            them without signing in again. Server-signed, HTTP-only, and it expires
+                            after 30 days.
                         </>,
-                        "A locale cookie remembering the language you picked, and a theme cookie remembering light or dark.",
+                        <>
+                            <code className="font-mono text-[15px]">NEXT_LOCALE</code> — the language
+                            you picked, so the next page loads in it. It lasts a year.
+                        </>,
                     ]}
                 />
                 <p>
+                    A few display preferences — light or dark theme, accent colour, whether you have
+                    dismissed the intro, where you like the notification panel — are kept in your
+                    browser&apos;s local storage rather than in a cookie. They never leave your device.
+                </p>
+                <p>
                     We do not set advertising cookies, and we do not run third-party analytics or
-                    tracking scripts. That is why you are not being asked to accept a cookie banner. If
-                    that ever changes, this section changes with it and we will ask for consent first.
+                    tracking scripts. Fonts are served from Kairos itself rather than a font CDN, so
+                    browsing the product does not disclose your visit to a font provider. That is why
+                    you are not being asked to accept a cookie banner. If that ever changes, this
+                    section changes with it and we will ask for your consent first.
                 </p>
             </>
         ),
@@ -200,15 +230,16 @@ const sections: LegalSection[] = [
                 <p>In {settingsLink} you can turn these on or off at any time:</p>
                 <Bullets
                     items={[
-                        "Profile visibility — whether other people in the product can see your profile.",
+                        "Profile visibility — whether other people in the product can see your profile, and who counts as “other people”: everyone, your organization, or only people you share work with.",
                         "Online status — whether others can see when you are active.",
                         "Activity tracking — off by default.",
                         "Product data collection — off by default.",
                     ]}
                 />
                 <p>
-                    The last two are off unless you switch them on. You can also manage your
-                    notification preferences in the same place.
+                    The last two are off unless you switch them on, and switching them off again stops
+                    the collection from that moment. You can also manage your notification preferences
+                    in the same place.
                 </p>
             </>
         ),
@@ -219,26 +250,42 @@ const sections: LegalSection[] = [
         body: (
             <>
                 <p>
-                    We use a small set of service providers to run Kairos. They act on our instructions
-                    and only for the purposes below:
+                    We use a small set of service providers to run Kairos. They act on our instructions,
+                    under their own published data processing terms, and only for the purposes below:
                 </p>
                 <Bullets
                     items={[
-                        "A managed Postgres database, hosted in the European Union, which holds everything described above.",
-                        "A file-upload and storage provider, for the files and images you upload.",
-                        "A transactional email provider, for account emails — verification, password resets, notifications.",
-                        "A maps provider, used when an event has a location. Loading a map involves a request to that provider from your browser.",
-                        "A large-language-model provider, for the AI features described above.",
-                        "Our own realtime server, which delivers live updates and presence within the product.",
+                        <>
+                            <strong className="font-semibold text-fg-primary">Supabase</strong> —
+                            managed Postgres, hosted in the European Union (Ireland). This holds
+                            everything described above.
+                        </>,
+                        <>
+                            <strong className="font-semibold text-fg-primary">UploadThing</strong> —
+                            storage for the files and images you upload.
+                        </>,
+                        <>
+                            <strong className="font-semibold text-fg-primary">Resend</strong> —
+                            transactional email: address verification, password resets, and the
+                            notifications you asked to receive by mail.
+                        </>,
+                        <>
+                            <strong className="font-semibold text-fg-primary">NVIDIA</strong> — hosted
+                            model inference for the AI features described above.
+                        </>,
+                        <>
+                            <strong className="font-semibold text-fg-primary">
+                                Our own realtime server
+                            </strong>{" "}
+                            — delivers live updates and presence inside the product. It runs on our
+                            infrastructure, not a third party&apos;s.
+                        </>,
                     ]}
                 />
                 <p>
-                    Fonts are served from Kairos itself rather than a third-party font CDN, so browsing
-                    the product does not disclose your visit to a font provider.{" "}
-                    <Todo>
-                        name each provider explicitly and link its own privacy terms; confirm a data
-                        processing agreement is in place with each
-                    </Todo>
+                    There is no map embedded in the product. When an event has a location, Kairos shows
+                    a link that opens OpenStreetMap in a new tab — nothing is loaded from them unless
+                    you click it, and then you are visiting their site under their terms.
                 </p>
             </>
         ),
@@ -250,26 +297,39 @@ const sections: LegalSection[] = [
             <>
                 <p>
                     We keep your data for as long as your account is open. Content you create stays
-                    until you or a collaborator with permission deletes it, and account data stays until
-                    you close your account. There is one exception: on plans with a limited history
-                    window, assistant messages older than that window are deleted, and what survives is
-                    a summary of the conversation rather than the individual turns.
+                    until you or a collaborator with permission deletes it; account data, security
+                    state, agent audit trails and webhook delivery logs stay until you close your
+                    account, and are removed with it.
                 </p>
                 <p>
-                    Closing your account deletes it and the content you created —{" "}
-                    <Todo>
-                        the deletion currently cascades further than this section describes: it also
-                        removes organizations you created, along with the projects and tasks inside them,
-                        including other members&apos; work. Fix the cascade or describe this behaviour
-                        accurately and warn the account holder before publishing
-                    </Todo>
+                    Assistant conversations are currently kept for as long as your account is open. The
+                    product can age them out on plans with a limited history window — messages older
+                    than the window are deleted and a summary of the thread survives in their place —
+                    but no such limit applies to any account today.
                 </p>
                 <p>
-                    <Todo>
-                        agree a committed retention schedule — in particular for AI conversations,
-                        activity and audit logs, webhook delivery logs, and server logs — and state each
-                        period here rather than &quot;until you delete it&quot;
-                    </Todo>
+                    Closing your account from the security section of {settingsLink} deletes it
+                    immediately, and the deletion reaches further than most:
+                </p>
+                <Bullets
+                    items={[
+                        "Your profile, preferences, sessions, sign-in methods, API keys, assistant conversations, connected calendars and uploaded files are deleted.",
+                        <>
+                            <strong className="font-semibold text-fg-primary">
+                                Any organization you created is deleted too
+                            </strong>{" "}
+                            — along with the projects, tasks and content inside it, including work
+                            contributed by its other members. If you share an organization with people
+                            who need to keep it, transfer it or hand over ownership before you close
+                            your account.
+                        </>,
+                        "Where an item belongs to someone else, your identity is detached from it rather than the item being destroyed: tasks you created or were assigned inside someone else's project survive without you on them, and messages you sent in a direct conversation remain visible to the person you sent them to, no longer linked to an account.",
+                    ]}
+                />
+                <p>
+                    Backups taken by our database provider may retain deleted rows for a short period
+                    before they roll off, in line with that provider&apos;s backup schedule. We do not
+                    restore backups to recover data a user has deleted.
                 </p>
             </>
         ),
@@ -282,31 +342,37 @@ const sections: LegalSection[] = [
                 <p>
                     If you are in the EU or the UK, data protection law gives you the right to access
                     your data, correct it, delete it, take it elsewhere, restrict how we use it, and
-                    object to particular uses. Two of these are built into the product and you do not
-                    need to ask us:
+                    object to particular uses. Two of these are built into the product and need no
+                    request:
                 </p>
                 <Bullets
                     items={[
-                        "Export — download your tasks, notes, and events from your settings. Which file formats you get depends on your plan.",
+                        "Export — download your tasks, notes and events from your settings, as CSV, Markdown, or an ICS calendar file.",
                         "Deletion — close your account and delete your data from the security section of your settings.",
                     ]}
                 />
                 <p>
-                    <Todo>
-                        the export is narrower than an access or portability request: it covers tasks,
-                        notes, and events only — not your profile, direct messages, organization
-                        memberships, or assistant conversations — and the richer formats are limited by
-                        plan, with the free plan receiving tasks alone. A portability request cannot be
-                        conditioned on payment, so either widen the export or commit here to fulfilling
-                        these requests manually on request
-                    </Todo>
+                    The built-in export is narrower than a full access or portability request: it covers
+                    tasks, notes and events, not your profile, direct messages, organization
+                    memberships, or assistant conversations. So if you want everything, ask. Write to
+                    {" "}
+                    {mail} and we will assemble the rest by hand and send it to you in a structured,
+                    machine-readable file. That is free, and it does not depend on what you pay for
+                    Kairos.
                 </p>
                 <p>
-                    For anything else, contact us and we will answer.{" "}
-                    <Todo>
-                        privacy contact address, the response deadline we commit to, and the supervisory
-                        authority users may complain to
-                    </Todo>
+                    We answer requests within one month of receiving them. If a request is unusually
+                    complex we may extend that by up to two further months, and we will tell you inside
+                    the first month if we need to. To protect your account we may first need to confirm
+                    that the request comes from you.
+                </p>
+                <p>
+                    If you think we have handled your data badly, please tell us first — it is usually
+                    the fastest way to fix it. You also have the right to complain to a supervisory
+                    authority. Ours is the Bulgarian Commission for Personal Data Protection (Комисия
+                    за защита на личните данни), 2 Prof. Tsvetan Lazarov Blvd, Sofia 1592, cpdp.bg. If
+                    you live elsewhere in the EU you may complain to the authority where you live
+                    instead.
                 </p>
             </>
         ),
@@ -315,14 +381,19 @@ const sections: LegalSection[] = [
         id: "legal-basis",
         heading: "Why we are allowed to process it",
         body: (
-            <p>
-                We process your account and content data because we need it to provide the service you
-                asked for, and we process security data — sign-in attempts, lockouts, audit logs —
-                because we have a legitimate interest in keeping accounts from being taken over.
-                Optional features such as activity tracking run on your consent, which you can withdraw
-                in {settingsLink}.{" "}
-                <Todo>confirm this mapping of purposes to legal bases with counsel</Todo>
-            </p>
+            <>
+                <p>
+                    Each thing we do with your data rests on one of these grounds:
+                </p>
+                <Bullets
+                    items={[
+                        "Performance of a contract — your account, your content, the collaboration features, and the AI features you choose to use. These are the service you asked for; without this data there is no product to deliver.",
+                        "Legitimate interests — keeping accounts from being taken over, and keeping records of what changed and who changed it. This covers failed sign-in counts, lockouts, activity logs and agent audit trails. We keep it to the minimum that serves the purpose.",
+                        "Consent — optional features that are off until you switch them on, namely activity tracking and product data collection, and any email you opt into. You can withdraw consent at any time in your settings; withdrawing it does not affect what was lawfully processed before.",
+                        "Legal obligation — where we have to keep or disclose something to comply with the law.",
+                    ]}
+                />
+            </>
         ),
     },
     {
@@ -330,13 +401,14 @@ const sections: LegalSection[] = [
         heading: "Where your data goes",
         body: (
             <p>
-                The primary database is hosted in the European Union. Some of the providers listed above
-                may process data outside the EU — in particular the language-model and file-storage
-                providers.{" "}
-                <Todo>
-                    identify which providers transfer data outside the EEA and state the safeguard
-                    relied on for each
-                </Todo>
+                The database that holds your account and your content is hosted in the European Union.
+                Three of the providers listed above may process data outside the European Economic Area
+                in the course of their service — NVIDIA for model inference, UploadThing for file
+                storage, and Resend for outgoing email. Those transfers rely on the European
+                Commission&apos;s Standard Contractual Clauses as incorporated into each
+                provider&apos;s data processing terms, together with the technical measures described
+                here: encryption in transit throughout, and encryption at rest for credentials and
+                connected-service tokens.
             </p>
         ),
     },
@@ -345,11 +417,11 @@ const sections: LegalSection[] = [
         heading: "Children",
         body: (
             <p>
-                Kairos is built for teams at work and is not intended for children.{" "}
-                <Todo>
-                    set and state a minimum age, and describe what happens if we learn an account
-                    belongs to someone under it
-                </Todo>
+                Kairos is built for teams at work and is not aimed at children. You must be at least 14
+                to have an account, which is the age at which Bulgarian law lets someone consent to a
+                service like this one on their own. If we learn that an account belongs to someone
+                younger, we delete the account and its content without asking for anything further. If
+                you believe a child has an account here, write to {mail} and we will act on it.
             </p>
         ),
     },
@@ -358,32 +430,30 @@ const sections: LegalSection[] = [
         heading: "Changes to this policy",
         body: (
             <p>
-                When this policy changes we update the date at the top of the page. For changes that
-                affect how we use your data, we will tell you rather than expecting you to notice.{" "}
-                <Todo>
-                    decide how material changes are announced — in-product notice, email, or both — and
-                    how much notice is given
-                </Todo>
+                When this policy changes we update the date at the top of the page. If a change affects
+                how we use your data — a new processor, a new purpose, a shorter or longer retention
+                period — we will tell you in the product and by email at least 14 days before it takes
+                effect, so you have time to read it and, if you disagree, to export your data and close
+                your account. Changes that merely clarify wording take effect when published.
             </p>
         ),
     },
 ];
 
 export const privacyPolicy = {
-    lastUpdated: "24 August 2026",
+    lastUpdated: "11 September 2026",
     intro: (
         <>
-            <p className="rounded-md border border-amber-400/25 bg-amber-400/[0.07] px-5 py-4 text-[17px] leading-[1.6] text-amber-100/85">
-                <strong className="font-semibold">This is a working draft.</strong> Every statement
-                below describes what the Kairos code actually does today, but the document has not been
-                through legal review, and the highlighted items still need answers. Do not treat it as a
-                published policy until those are resolved.
-            </p>
             <p>
                 This page explains what Kairos collects, why, who else touches it, and what you can do
-                about it. We have tried to write it as a description of the system rather than as
-                boilerplate — where the honest answer is &quot;we have not decided yet&quot;, it says
-                so.
+                about it. It is written as a description of the system rather than as boilerplate: every
+                statement below describes what the product actually does today, including the parts that
+                are awkward to admit.
+            </p>
+            <p>
+                If something here is unclear, or you want data we have not made downloadable, write to
+                {" "}
+                {mail} and a person will answer.
             </p>
         </>
     ),

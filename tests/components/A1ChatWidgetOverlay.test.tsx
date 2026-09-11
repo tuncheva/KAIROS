@@ -27,9 +27,16 @@ describe("A1ChatWidgetOverlay", () => {
     localStorage.clear();
   });
 
-  it("renders nothing when closed", () => {
-    const { container } = render(<A1ChatWidgetOverlay />);
-    expect(container).toBeEmptyDOMElement();
+  /*
+   * The panel is hidden while closed, not unmounted — see the `display: none`
+   * branch in A1ChatWidgetOverlay. Keeping the subtree in the DOM is what lets
+   * close→reopen restore the message list and conversation id instead of
+   * starting a new thread, so "is it in the document" is the wrong question to
+   * ask here; "can the user see it" is the right one.
+   */
+  it("keeps the panel mounted but hidden when closed", () => {
+    render(<A1ChatWidgetOverlay />);
+    expect(getPanel()).not.toBeVisible();
   });
 
   it("opens the chat panel when kairos:openAI event is dispatched", () => {
@@ -80,10 +87,11 @@ describe("A1ChatWidgetOverlay", () => {
     act(() => {
       window.dispatchEvent(new CustomEvent("kairos:openAI"));
     });
-    expect(getPanel()).toBeInTheDocument();
+    expect(getPanel()).toBeVisible();
 
     await user.click(screen.getByLabelText("Close"));
-    expect(getPanel()).not.toBeInTheDocument();
+    // Hidden, not removed — the thread survives so reopening resumes it.
+    expect(getPanel()).not.toBeVisible();
   });
 
   it("minimises the panel on a title-bar double-click", async () => {

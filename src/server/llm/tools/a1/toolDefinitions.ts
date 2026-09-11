@@ -430,6 +430,84 @@ const DEFINITIONS: Record<A1ReadToolName, ToolDefinition> = {
       additionalProperties: false,
     },
   },
+
+  // -------------------------------------------------------------------------
+  // Task dependencies (Phase 2)
+  // -------------------------------------------------------------------------
+
+  getTaskDependencies: {
+    name: "getTaskDependencies",
+    description:
+      "What is blocking a task and what that task is blocking. Use for 'what is blocking X', 'what depends on Y', 'show me the dependency chain'.",
+    parameters: {
+      type: "object",
+      properties: {
+        taskId: {
+          type: "number",
+          description: "Numeric task id.",
+        },
+      },
+      required: ["taskId"],
+      additionalProperties: false,
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // Point-in-time reminders (Phase 2)
+  // -------------------------------------------------------------------------
+
+  scheduleReminder: {
+    name: "scheduleReminder",
+    description:
+      "Set a reminder for the user at a specific time. The notification fires automatically at that time. Use when the user says 'remind me in X hours', 'remind me about Y at 3pm', 'set a reminder for Friday'.",
+    parameters: {
+      type: "object",
+      properties: {
+        text: {
+          type: "string",
+          description: "The reminder message the user will see when it fires. Max 500 characters.",
+        },
+        fireAt: {
+          type: "string",
+          description: "When to fire the reminder, as an ISO-8601 UTC datetime e.g. 2026-09-09T15:00:00Z.",
+        },
+        sourceConversationId: {
+          type: "string",
+          description: "The current conversation id, so the notification links back here. Optional.",
+        },
+      },
+      required: ["text", "fireAt"],
+      additionalProperties: false,
+    },
+  },
+
+  listReminders: {
+    name: "listReminders",
+    description:
+      "List the user's pending (not yet fired, not cancelled) reminders. Use when the user asks 'what reminders do I have', 'show my reminders'.",
+    parameters: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
+
+  cancelReminder: {
+    name: "cancelReminder",
+    description:
+      "Cancel a pending reminder by its id. Use when the user says 'cancel that reminder', 'delete my reminder about X'.",
+    parameters: {
+      type: "object",
+      properties: {
+        reminderId: {
+          type: "number",
+          description: "The id of the reminder to cancel, from listReminders.",
+        },
+      },
+      required: ["reminderId"],
+      additionalProperties: false,
+    },
+  },
 };
 
 /**

@@ -1,9 +1,10 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 
 import type { TRPCContext } from "~/server/api/trpc";
 import { projects, tasks, projectCollaborators, users } from "~/server/db/schema";
 import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
+import { loadVisibleScope, visibleProjectsWhere } from "~/server/llm/tools/a1/scope";
 
 export interface A2ContextPack {
   session: {
@@ -13,6 +14,7 @@ export interface A2ContextPack {
   scope: {
     orgId?: string | number;
     projectId?: number;
+    crossProject?: boolean;
   };
   project?: {
     id: number;
@@ -22,6 +24,8 @@ export interface A2ContextPack {
   };
   /** Available projects when no specific projectId is in scope */
   availableProjects?: Array<{ id: number; title: string }>;
+  crossProject?: boolean;
+  allProjects?: Array<{ id: number; title: string; collaborators: Array<{ id: string; name: string | null }> }>;
   collaborators: Array<{ id: string; name: string | null }>;
   existingTasks: Array<{
     id: number;
@@ -70,6 +74,58 @@ export async function buildA2Context(input: {
 
   // Minimal pack when projectId missing; include available projects so A2 can reference them.
   if (!projectId) {
+    // Cross-project mode: when orgId is set and no projectId, load all visible projects
+    if (scope.orgId) {
+      const visibleScope = await loadVisibleScope(input.ctx, userId);
+      const allProjectRows = await input.ctx.db
+        .select({ id: projects.id, title: projects.title })
+        .from(projects)
+        .where(visibleProjectsWhere(visibleScope))
+        .orderBy(projects.id)
+        .limit(200);
+
+      const allProjects: Array<{ id: number; title: string; collaborators: Array<{ id: string; name: string | null }> }> = [];
+
+      for (const proj of allProjectRows) {
+        const collabs = await input.ctx.db
+          .select({ id: users.id, name: users.name })
+          .from(projectCollaborators)
+          .innerJoin(users, eq(projectCollaborators.collaboratorId, users.id))
+          .where(eq(projectCollaborators.projectId, proj.id));
+        allProjects.push({ ...proj, collaborators: collabs });
+      }
+
+      // All tasks across all visible projects (limit 200 total)
+      const allTaskIds = allProjectRows.map((p) => p.id);
+      const crossTasks = allTaskIds.length ? await input.ctx.db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          description: tasks.description,
+          status: tasks.status,
+          priority: tasks.priority,
+          assignedToId: tasks.assignedToId,
+          orderIndex: tasks.orderIndex,
+          dueDate: tasks.dueDate,
+        })
+        .from(tasks)
+        .where(inArray(tasks.projectId, allTaskIds))
+        .orderBy(tasks.projectId, desc(tasks.createdAt))
+        .limit(200) : [];
+
+      return {
+        session: { userId, activeOrganizationId },
+        scope,
+        collaborators: [],
+        existingTasks: crossTasks,
+        crossProject: true,
+        allProjects,
+        handoffContext: input.handoffContext,
+        locale,
+        memory,
+      };
+    }
+
     const userProjects = await input.ctx.db
       .select({ id: projects.id, title: projects.title })
       .from(projects)

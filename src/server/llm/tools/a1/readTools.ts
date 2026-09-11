@@ -24,6 +24,7 @@ import {
   getCalendarRangeTool,
   getProjectHealthTool,
   getTaskActivityTool,
+  getTaskDependenciesTool,
   getWorkloadByAssigneeTool,
   listEventRsvpsTool,
   listMyWorkTool,
@@ -32,6 +33,11 @@ import {
   listProjectCollaboratorsTool,
   listTaskCommentsTool,
 } from "./workspaceTools";
+import {
+  cancelReminderTool,
+  listRemindersTool,
+  scheduleReminderTool,
+} from "./reminderTools";
 
 // The name union and tool shape moved to `./types` once the surface outgrew one
 // file. Re-exported here because the profile and the tool definitions already
@@ -51,6 +57,7 @@ export type A1ReadToolsMap = {
   getTaskDetail: typeof getTaskDetailTool;
   listTaskComments: typeof listTaskCommentsTool;
   getTaskActivity: typeof getTaskActivityTool;
+  getTaskDependencies: typeof getTaskDependenciesTool;
   listMyWork: typeof listMyWorkTool;
   getWorkloadByAssignee: typeof getWorkloadByAssigneeTool;
   getCalendarRange: typeof getCalendarRangeTool;
@@ -61,6 +68,9 @@ export type A1ReadToolsMap = {
   searchWorkspace: typeof searchWorkspaceTool;
   rememberFact: typeof rememberFactTool;
   forgetFact: typeof forgetFactTool;
+  scheduleReminder: typeof scheduleReminderTool;
+  listReminders: typeof listRemindersTool;
+  cancelReminder: typeof cancelReminderTool;
 };
 
 // ---- getSessionContext
@@ -641,6 +651,7 @@ export const A1_READ_TOOLS: A1ReadToolsMap = {
   getTaskDetail: getTaskDetailTool,
   listTaskComments: listTaskCommentsTool,
   getTaskActivity: getTaskActivityTool,
+  getTaskDependencies: getTaskDependenciesTool,
   listMyWork: listMyWorkTool,
   getWorkloadByAssignee: getWorkloadByAssigneeTool,
   getCalendarRange: getCalendarRangeTool,
@@ -651,4 +662,7 @@ export const A1_READ_TOOLS: A1ReadToolsMap = {
   searchWorkspace: searchWorkspaceTool,
   rememberFact: rememberFactTool,
   forgetFact: forgetFactTool,
+  scheduleReminder: scheduleReminderTool,
+  listReminders: listRemindersTool,
+  cancelReminder: cancelReminderTool,
 };

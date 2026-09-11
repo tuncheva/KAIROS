@@ -30,7 +30,7 @@
 import "server-only";
 
 import { z } from "zod";
-import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 
 import {
   events,
@@ -42,6 +42,7 @@ import {
 
 import { loadVisibleScope, requireUser, visibleProjectsWhere } from "./scope";
 import type { A1Tool } from "./types";
+import { embedText, serializeEmbedding } from "~/server/llm/core/embeddings";
 
 const SEARCHABLE_KINDS = [
   "task",
@@ -141,7 +142,11 @@ export const searchWorkspaceTool: A1Tool<
     const perKind = Math.max(3, Math.ceil(limit / kinds.size));
     const hits: SearchHit[] = [];
 
-    // ---- projects
+    // Try to embed the query once and reuse for all vector-capable kinds
+    const queryEmbedding = await embedText(q);
+    const embeddingLiteral = queryEmbedding ? serializeEmbedding(queryEmbedding) : null;
+
+    // ---- projects (keyword only — less benefit from embeddings)
     if (kinds.has("project") && projectIds.length) {
       const rows = await ctx.db
         .select({
@@ -175,27 +180,61 @@ export const searchWorkspaceTool: A1Tool<
 
     // ---- tasks
     if (kinds.has("task") && projectIds.length) {
-      const rows = await ctx.db
-        .select({
-          id: tasks.id,
-          title: tasks.title,
-          description: tasks.description,
-          status: tasks.status,
-          projectId: tasks.projectId,
-          updatedAt: tasks.updatedAt,
-        })
-        .from(tasks)
-        .where(
-          and(
-            inArray(tasks.projectId, projectIds),
-            matches(["tasks.title", "tasks.description"], q),
-          ),
-        )
-        .orderBy(desc(tasks.updatedAt))
-        .limit(perKind);
+      let taskRows: Array<{
+        id: number;
+        title: string;
+        description: string | null;
+        status: string;
+        projectId: number;
+        updatedAt: Date;
+      }> = [];
+
+      if (embeddingLiteral) {
+        // Vector path: semantic similarity over title+description embeddings
+        taskRows = await ctx.db
+          .select({
+            id: tasks.id,
+            title: tasks.title,
+            description: tasks.description,
+            status: tasks.status,
+            projectId: tasks.projectId,
+            updatedAt: tasks.updatedAt,
+          })
+          .from(tasks)
+          .where(
+            and(
+              inArray(tasks.projectId, projectIds),
+              sql`"tasks"."embedding" IS NOT NULL`,
+            ),
+          )
+          .orderBy(sql`"tasks"."embedding" <=> ${embeddingLiteral}::vector`)
+          .limit(perKind);
+      }
+
+      // Fall back to keyword if no vector results (or no embeddings configured)
+      if (taskRows.length === 0) {
+        taskRows = await ctx.db
+          .select({
+            id: tasks.id,
+            title: tasks.title,
+            description: tasks.description,
+            status: tasks.status,
+            projectId: tasks.projectId,
+            updatedAt: tasks.updatedAt,
+          })
+          .from(tasks)
+          .where(
+            and(
+              inArray(tasks.projectId, projectIds),
+              matches(["tasks.title", "tasks.description"], q),
+            ),
+          )
+          .orderBy(desc(tasks.updatedAt))
+          .limit(perKind);
+      }
 
       hits.push(
-        ...rows.map((r) => ({
+        ...taskRows.map((r) => ({
           kind: "task" as const,
           id: r.id,
           title: r.title,
@@ -233,28 +272,59 @@ export const searchWorkspaceTool: A1Tool<
         ...(sharedIds.length ? [inArray(stickyNotes.id, sharedIds)] : []),
       )!;
 
-      const rows = await ctx.db
-        .select({
-          id: stickyNotes.id,
-          title: stickyNotes.title,
-          content: stickyNotes.content,
-          updatedAt: stickyNotes.updatedAt,
-        })
-        .from(stickyNotes)
-        .where(
-          and(
-            reachable,
-            // The lock is enforced in SQL so locked content is never loaded at
-            // all — not filtered out after the fact.
-            isNull(stickyNotes.passwordHash),
-            matches(["sticky_notes.title", "sticky_notes.content"], q),
-          ),
-        )
-        .orderBy(desc(stickyNotes.updatedAt))
-        .limit(perKind);
+      let noteRows: Array<{
+        id: number;
+        title: string | null;
+        content: string;
+        updatedAt: Date;
+      }> = [];
+
+      if (embeddingLiteral) {
+        // Vector path: semantic similarity
+        noteRows = await ctx.db
+          .select({
+            id: stickyNotes.id,
+            title: stickyNotes.title,
+            content: stickyNotes.content,
+            updatedAt: stickyNotes.updatedAt,
+          })
+          .from(stickyNotes)
+          .where(
+            and(
+              reachable,
+              isNull(stickyNotes.passwordHash),
+              sql`"sticky_notes"."embedding" IS NOT NULL`,
+            ),
+          )
+          .orderBy(sql`"sticky_notes"."embedding" <=> ${embeddingLiteral}::vector`)
+          .limit(perKind);
+      }
+
+      // Fall back to keyword if no vector results
+      if (noteRows.length === 0) {
+        noteRows = await ctx.db
+          .select({
+            id: stickyNotes.id,
+            title: stickyNotes.title,
+            content: stickyNotes.content,
+            updatedAt: stickyNotes.updatedAt,
+          })
+          .from(stickyNotes)
+          .where(
+            and(
+              reachable,
+              // The lock is enforced in SQL so locked content is never loaded at
+              // all — not filtered out after the fact.
+              isNull(stickyNotes.passwordHash),
+              matches(["sticky_notes.title", "sticky_notes.content"], q),
+            ),
+          )
+          .orderBy(desc(stickyNotes.updatedAt))
+          .limit(perKind);
+      }
 
       hits.push(
-        ...rows.map((r) => ({
+        ...noteRows.map((r) => ({
           kind: "note" as const,
           id: r.id,
           title: r.title ?? "Untitled note",

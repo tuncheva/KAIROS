@@ -26,6 +26,7 @@
 
 import crypto from "node:crypto";
 
+import { env } from "~/env";
 import type { TRPCContext } from "~/server/api/trpc";
 import { entitlementsFor } from "~/server/billing/entitlements";
 import { db } from "~/server/db";
@@ -52,7 +53,7 @@ const log = createLogger("api.internal.ai");
 
 /** Constant-time compare that does not leak length through an early return. */
 function secretMatches(provided: string | null): boolean {
-  const expected = process.env.WS_SECRET;
+  const expected = env.WS_SECRET;
 
   // No secret configured means the endpoint is closed, not open.
   if (!expected || expected.length < 32) return false;

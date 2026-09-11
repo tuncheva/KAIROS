@@ -11,9 +11,13 @@ import {
 import { io, type Socket } from "socket.io-client";
 import { useSession } from "next-auth/react";
 
+import { env } from "~/env";
 import { useWsToken } from "~/hooks/useWsToken";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
+// Via `env`, which declares this under `client` — safe to read from a browser
+// bundle, and validated as a URL at boot rather than failing as a socket that
+// never connects.
+const WS_URL = env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
 
 interface SocketContextValue {
   socket: Socket | null;

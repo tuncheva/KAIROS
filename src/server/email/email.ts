@@ -1,6 +1,7 @@
 import "server-only";
 
 import { Resend } from 'resend';
+import { env } from "~/env";
 import { createLogger } from "~/server/logger";
 
 const log = createLogger("email");
@@ -617,13 +618,13 @@ let cachedEmailService: EmailService | null = null;
 
 export function getEmailService(): EmailService {
   // Always re-read env to pick up changes (no stale cached fromEmail)
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = env.RESEND_API_KEY;
   if (!apiKey) {
     log.error('RESEND_API_KEY is not set; email is disabled');
     throw new Error('RESEND_API_KEY is not set in environment variables');
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const appUrl = env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) {
     log.error('NEXT_PUBLIC_APP_URL is not set; email links would be broken');
     throw new Error('NEXT_PUBLIC_APP_URL is not set in environment variables');

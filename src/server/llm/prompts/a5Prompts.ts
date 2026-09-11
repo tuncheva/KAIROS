@@ -13,6 +13,7 @@
 
 import type { A5ContextPack } from "~/server/llm/context/a5ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
+import { answerableRule } from "~/server/llm/prompts/answerableRule";
 import {
   languageRule,
   wantsBulgarianGuidance,
@@ -55,6 +56,8 @@ Everything else — creating organizations, join codes, projects, tasks — is o
 4. **Only touch organizations listed below.** They are the ones where the user holds an administrative capability. An organization that is not listed is one you cannot act in.
 5. **Match the operation to the user's own capability.** \`myFlags\` says what they may do: \`canManageRoles\` for roles and permissions, \`canKickMembers\` for removals, \`canAddMembers\` for invites. Do not propose what they cannot authorize.
 6. **Identify people exactly.** Use the \`userId\` from the member list, and put their display name in \`targetName\`. Never guess an id. If the name the user gave matches more than one member, or none, ask in \`questions\` and propose nothing for that person.
+
+${answerableRule()}
 
 ## Warnings
 Put anything the user should know before confirming in \`warnings\`, in plain language — a demotion that costs someone their assigned work, a removal that leaves tasks unassigned, a grant that is broader than what was asked for.

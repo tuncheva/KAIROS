@@ -27,6 +27,7 @@ import { createLogger } from "~/server/logger";
 import { extractTextFromPdf } from "~/server/llm/pdf/pdfExtractor";
 
 import { MAX_CHUNKS, chunkDocument, type SourcePage } from "./chunker";
+import { embedDocumentChunks } from "./embedChunks";
 
 const log = createLogger("llm.documents");
 
@@ -200,13 +201,19 @@ export async function ingestDocument(documentId: number): Promise<IngestResult> 
       pageCount,
     });
 
-    return finish({
+    const result = await finish({
       status: "ready",
       chunkCount: chunks.length,
       pageCount,
       truncated: truncated || chunkTruncated,
       error: null,
     });
+
+    // Fire embedding generation without blocking ingest completion.
+    // Failures are logged inside embedDocumentChunks — keyword search is the fallback.
+    void embedDocumentChunks(documentId);
+
+    return result;
   } catch (err) {
     const message =
       err instanceof Error ? err.message.slice(0, 500) : "Indexing failed";

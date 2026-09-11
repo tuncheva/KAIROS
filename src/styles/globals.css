@@ -70,7 +70,9 @@
 }
 
 :root {
-  /* Keep CSS var aligned with Tailwind's `font-sans` (see `tailwind.config.cjs`). */
+  /* Keep this aligned with the `--font-sans` registered in `@theme inline` above.
+     Tailwind v4 is configured entirely from this file — there is no
+     tailwind.config.js, and v4 would not load one without an `@config` directive. */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "KairosEmoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 

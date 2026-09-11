@@ -2072,7 +2072,19 @@
     "orgDone": "Промените в организацията са приложени.",
     "orgRefused": "{count} операция(и) бяха отказани от сървъра:",
     "confirmOrgChanges": "Потвърди промените",
-    "applyOrgChanges": "Приложи промените"
+    "applyOrgChanges": "Приложи промените",
+    "noProjectChanges": "Няма нужда от промени по проектите.",
+    "projectReviewThenConfirm": "Прегледайте промените по-долу и потвърдете.",
+    "projectCreateOps": "{count} нов(и) проект(а)",
+    "projectUpdateOps": "{count} промяна(и) по проект(и)",
+    "projectArchiveOps": "{count} проект(а) за архивиране",
+    "projectDescriptionChange": "ново описание",
+    "projectStatusChange": "статус",
+    "projectConfirmed": "Промените по проектите са потвърдени. {summary}",
+    "projectDone": "Промените по проектите са приложени.",
+    "projectRefused": "{count} операция(и) бяха отказани от сървъра:",
+    "confirmProjectChanges": "Потвърди промените по проектите",
+    "applyProjectChanges": "Приложи промените по проектите"
   },
   "onboarding": {
     "welcome": {
@@ -2284,7 +2296,10 @@
     "previewOrgRole": "Промяна на роля",
     "previewOrgPermission": "Промяна на права",
     "previewOrgRemoval": "Премахване на член",
-    "previewOrgInvite": "Покана за член"
+    "previewOrgInvite": "Покана за член",
+    "previewProjectCreate": "Нов проект",
+    "previewProjectUpdate": "Промяна на проект",
+    "previewProjectArchive": "Архивиране на проект"
   },
   "aiConsole": {
     "conversations": "Разговори",

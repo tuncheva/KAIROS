@@ -65,7 +65,7 @@ const a3 = (locale: SupportedLocale): string =>
   getA3SystemPrompt({ userId: "u1", notes: [], locale, memory: [] });
 
 const a4 = (locale: SupportedLocale): string =>
-  getA4SystemPrompt({ userId: "u1", events: [], locale, memory: [] });
+  getA4SystemPrompt({ userId: "u1", events: [], locale, memory: [], calendar: null });
 
 const a5 = (locale: SupportedLocale): string =>
   getA5SystemPrompt({

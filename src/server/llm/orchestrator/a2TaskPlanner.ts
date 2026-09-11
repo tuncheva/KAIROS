@@ -40,8 +40,11 @@ import { localized, type LocalizedText } from "~/server/llm/locale";
 import {
   tasks,
   taskActivityLog,
+  taskComments,
+  taskDependencies,
   agentTaskPlannerDrafts,
   agentTaskPlannerApplies,
+  organizationMembers,
 } from "~/server/db/schema";
 import {
   createDraftId,
@@ -196,6 +199,33 @@ export const a2TaskPlanner = {
       );
     }
 
+    // Cross-project mode: verify the user is actually a member of the org
+    const resolvedOrgId = input.scope?.orgId
+      ? typeof input.scope.orgId === "string"
+        ? parseInt(input.scope.orgId, 10)
+        : input.scope.orgId
+      : undefined;
+
+    if (resolvedOrgId && !resolvedProjectId) {
+      const [membership] = await input.ctx.db
+        .select({ id: organizationMembers.id })
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, resolvedOrgId),
+            eq(organizationMembers.userId, userId),
+          ),
+        )
+        .limit(1);
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You are not a member of that organization",
+        });
+      }
+    }
+
     const draftId = createDraftId();
 
     const contextPack = await buildA2Context({
@@ -294,12 +324,14 @@ export const a2TaskPlanner = {
       return { draftId, plan: planWithQuestion };
     }
 
-    // Persist the draft when we have a resolved projectId.
-    if (typeof resolvedProjectId === "number") {
+    // Persist the draft: for cross-project (orgId set, no projectId) we store
+    // projectId as null and orgId set. For normal drafts, projectId is set.
+    if (typeof resolvedProjectId === "number" || resolvedOrgId) {
       await input.ctx.db.insert(agentTaskPlannerDrafts).values({
         id: draftId,
         userId,
-        projectId: resolvedProjectId,
+        projectId: resolvedProjectId ?? null,
+        orgId: resolvedOrgId ?? null,
         message: input.message,
         planJson: JSON.stringify(plan),
         planHash,
@@ -411,6 +443,7 @@ export const a2TaskPlanner = {
         id: agentTaskPlannerDrafts.id,
         userId: agentTaskPlannerDrafts.userId,
         projectId: agentTaskPlannerDrafts.projectId,
+        orgId: agentTaskPlannerDrafts.orgId,
         planJson: agentTaskPlannerDrafts.planJson,
         planHash: agentTaskPlannerDrafts.planHash,
         status: agentTaskPlannerDrafts.status,
@@ -446,19 +479,206 @@ export const a2TaskPlanner = {
       JSON.parse(draft.planJson) as unknown,
     );
 
+    // Determine if this is a cross-project draft (orgId is set, projectId is null).
+    const isCrossProject = draft.orgId !== null && draft.projectId === null;
+
     // `plan.scope.projectId` round-trips through the LLM's JSON output, so it is
     // not a trusted value. `draft.projectId` is the column this server wrote at
     // draft time and is the only authority for where writes may land. They should
-    // always agree; a mismatch means the plan was tampered with or the model
-    // rewrote the scope, and either way we refuse rather than guess.
+    // always agree (for single-project plans); a mismatch means the plan was
+    // tampered with or the model rewrote the scope, and either way we refuse.
     const targetProjectId = draft.projectId;
-    if (plan.scope.projectId !== targetProjectId) {
+    if (!isCrossProject && plan.scope.projectId !== targetProjectId) {
       throw new TRPCError({
         code: "BAD_REQUEST",
         message:
           "Plan scope does not match the project this draft was created for",
       });
     }
+
+    const createdTaskIds: number[] = [];
+    const updatedTaskIds: number[] = [];
+    const statusChangedTaskIds: number[] = [];
+    const deletedTaskIds: number[] = [];
+    /** Operations that were refused because the user lacks project permission. */
+    const refused: Array<{ kind: string; taskId?: number; reason: string }> = [];
+    /** Captured before-image for undo support; empty for cross-project drafts. */
+    let storedBeforeImage = buildBeforeImage({ tasks: [] });
+
+    if (isCrossProject) {
+      // Cross-project apply: group operations by their per-operation projectId field,
+      // check permissions per group, and skip refused groups rather than aborting all.
+      const projectGroups = new Map<number, {
+        creates: typeof plan.creates;
+        updates: typeof plan.updates;
+        statusChanges: typeof plan.statusChanges;
+        deletes: typeof plan.deletes;
+      }>();
+
+      const getGroup = (pid: number) => {
+        let g = projectGroups.get(pid);
+        if (!g) {
+          g = { creates: [], updates: [], statusChanges: [], deletes: [] };
+          projectGroups.set(pid, g);
+        }
+        return g;
+      };
+
+      for (const c of plan.creates) {
+        if (c.projectId) getGroup(c.projectId).creates.push(c);
+      }
+      for (const u of plan.updates) {
+        if (u.projectId) getGroup(u.projectId).updates.push(u);
+      }
+      for (const s of plan.statusChanges) {
+        if (s.projectId) getGroup(s.projectId).statusChanges.push(s);
+      }
+      for (const d of plan.deletes) {
+        if (d.projectId) getGroup(d.projectId).deletes.push(d);
+      }
+
+      for (const [pid, group] of projectGroups) {
+        // Per-project permission check
+        try {
+          if (group.creates.length > 0) {
+            await assertProjectPermission(input.ctx, pid, "canAssignTasks");
+          }
+          if (group.updates.length > 0 || group.statusChanges.length > 0) {
+            await assertProjectPermission(input.ctx, pid, "canEditProjects");
+          }
+          if (group.deletes.length > 0) {
+            await assertProjectPermission(input.ctx, pid, "canDeleteTasks");
+          }
+          await assertProjectAccess(input.ctx, pid, "write");
+        } catch {
+          // Permission denied for this project — refuse all ops in this group
+          for (const c of group.creates) {
+            refused.push({ kind: "create", reason: `No permission on project ${pid}` });
+          }
+          for (const u of group.updates) {
+            refused.push({ kind: "update", taskId: u.taskId, reason: `No permission on project ${pid}` });
+          }
+          for (const s of group.statusChanges) {
+            refused.push({ kind: "statusChange", taskId: s.taskId, reason: `No permission on project ${pid}` });
+          }
+          for (const d of group.deletes) {
+            refused.push({ kind: "delete", taskId: d.taskId, reason: `No permission on project ${pid}` });
+          }
+          continue;
+        }
+
+        // Apply creates for this project
+        for (const c of group.creates) {
+          const existing = await input.ctx.db
+            .select({ id: tasks.id })
+            .from(tasks)
+            .where(
+              and(
+                eq(tasks.projectId, pid),
+                eq(tasks.clientRequestId, c.clientRequestId),
+              ),
+            )
+            .limit(1);
+
+          if (existing[0]?.id) {
+            createdTaskIds.push(existing[0].id);
+            continue;
+          }
+
+          const inserted = await input.ctx.db
+            .insert(tasks)
+            .values({
+              title: c.title,
+              description: c.description,
+              projectId: pid,
+              priority: c.priority,
+              assignedToId: c.assignedToId ?? null,
+              dueDate: c.dueDate ? new Date(c.dueDate) : null,
+              orderIndex: c.orderIndex ?? 0,
+              createdById: userId,
+              lastEditedById: userId,
+              lastEditedAt: new Date(),
+              clientRequestId: c.clientRequestId,
+            })
+            .returning({ id: tasks.id });
+
+          if (inserted[0]?.id) {
+            createdTaskIds.push(inserted[0].id);
+            await input.ctx.db.insert(taskActivityLog).values({
+              taskId: inserted[0].id,
+              userId,
+              action: "created",
+              newValue: "Task created",
+            });
+          }
+        }
+
+        // Apply updates for this project
+        for (const u of group.updates) {
+          await input.ctx.db
+            .update(tasks)
+            .set({
+              ...u.patch,
+              assignedToId: "assignedToId" in u.patch ? (u.patch.assignedToId ?? null) : undefined,
+              dueDate: "dueDate" in u.patch ? (u.patch.dueDate ? new Date(u.patch.dueDate) : null) : undefined,
+              lastEditedById: userId,
+              lastEditedAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(and(eq(tasks.id, u.taskId), eq(tasks.projectId, pid)));
+          updatedTaskIds.push(u.taskId);
+          await input.ctx.db.insert(taskActivityLog).values({
+            taskId: u.taskId,
+            userId,
+            action: "updated",
+            newValue: "Task updated",
+          });
+        }
+
+        // Apply status changes for this project
+        for (const s of group.statusChanges) {
+          await input.ctx.db
+            .update(tasks)
+            .set({
+              status: s.status,
+              completedAt: s.status === "completed" ? new Date() : null,
+              completedById: s.status === "completed" ? userId : null,
+              completionNote: s.status === "completed" ? undefined : null,
+              lastEditedById: userId,
+              lastEditedAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(and(eq(tasks.id, s.taskId), eq(tasks.projectId, pid)));
+          statusChangedTaskIds.push(s.taskId);
+          await input.ctx.db.insert(taskActivityLog).values({
+            taskId: s.taskId,
+            userId,
+            action: "status_changed",
+            newValue: s.status,
+          });
+        }
+
+        // Apply deletes for this project
+        for (const d of group.deletes) {
+          if (!d.dangerous) continue;
+          await input.ctx.db
+            .delete(tasks)
+            .where(and(eq(tasks.id, d.taskId), eq(tasks.projectId, pid)));
+          deletedTaskIds.push(d.taskId);
+        }
+      }
+    } else {
+      // Single-project apply — original path
+
+      // A non-cross-project draft must have a projectId.
+      if (targetProjectId === null || targetProjectId === undefined) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Draft has no project — cannot apply",
+        });
+      }
+      // Safe to narrow after the guard above.
+      const singleProjectId: number = targetProjectId;
 
     // Re-check access at apply time: membership or collaborator permission may
     // have been revoked between draft and apply.
@@ -470,31 +690,26 @@ export const a2TaskPlanner = {
     if (plan.creates.length > 0) {
       await assertProjectPermission(
         input.ctx,
-        targetProjectId,
+        singleProjectId,
         "canAssignTasks",
       );
     }
     if (plan.updates.length > 0 || plan.statusChanges.length > 0) {
       await assertProjectPermission(
         input.ctx,
-        targetProjectId,
+        singleProjectId,
         "canEditProjects",
       );
     }
     if (plan.deletes.length > 0) {
       await assertProjectPermission(
         input.ctx,
-        targetProjectId,
+        singleProjectId,
         "canDeleteTasks",
       );
     }
     // An empty plan still needs basic write access to be a legitimate request.
-    await assertProjectAccess(input.ctx, targetProjectId, "write");
-
-    const createdTaskIds: number[] = [];
-    const updatedTaskIds: number[] = [];
-    const statusChangedTaskIds: number[] = [];
-    const deletedTaskIds: number[] = [];
+    await assertProjectAccess(input.ctx, singleProjectId, "write");
 
     // Read the rows this plan is about to change, *before* changing them.
     //
@@ -535,12 +750,12 @@ export const a2TaskPlanner = {
               // Scoped to the project being applied to, like every other
               // statement here. An apply row must not become a way to read a task
               // from somewhere else.
-              eq(tasks.projectId, targetProjectId),
+              eq(tasks.projectId, singleProjectId),
             ),
           )
       : [];
 
-    const beforeImage = buildBeforeImage({
+    storedBeforeImage = buildBeforeImage({
       tasks: beforeRows.map((r) => ({
         ...r,
         dueDate: r.dueDate ? r.dueDate.toISOString() : null,
@@ -556,7 +771,7 @@ export const a2TaskPlanner = {
         .from(tasks)
         .where(
           and(
-            eq(tasks.projectId, targetProjectId),
+            eq(tasks.projectId, singleProjectId),
             eq(tasks.clientRequestId, c.clientRequestId),
           ),
         )
@@ -572,7 +787,7 @@ export const a2TaskPlanner = {
         .values({
           title: c.title,
           description: c.description,
-          projectId: targetProjectId,
+          projectId: singleProjectId,
           priority: c.priority,
           assignedToId: c.assignedToId ?? null,
           dueDate: c.dueDate ? new Date(c.dueDate) : null,
@@ -617,7 +832,7 @@ export const a2TaskPlanner = {
           updatedAt: new Date(),
         })
         .where(
-          and(eq(tasks.id, u.taskId), eq(tasks.projectId, targetProjectId)),
+          and(eq(tasks.id, u.taskId), eq(tasks.projectId, singleProjectId)),
         );
       updatedTaskIds.push(u.taskId);
       await input.ctx.db.insert(taskActivityLog).values({
@@ -642,7 +857,7 @@ export const a2TaskPlanner = {
           updatedAt: new Date(),
         })
         .where(
-          and(eq(tasks.id, s.taskId), eq(tasks.projectId, targetProjectId)),
+          and(eq(tasks.id, s.taskId), eq(tasks.projectId, singleProjectId)),
         );
       statusChangedTaskIds.push(s.taskId);
       await input.ctx.db.insert(taskActivityLog).values({
@@ -658,9 +873,63 @@ export const a2TaskPlanner = {
       await input.ctx.db
         .delete(tasks)
         .where(
-          and(eq(tasks.id, d.taskId), eq(tasks.projectId, targetProjectId)),
+          and(eq(tasks.id, d.taskId), eq(tasks.projectId, singleProjectId)),
         );
       deletedTaskIds.push(d.taskId);
+    }
+
+    // Apply comments. Each comment is verified to belong to the target project
+    // before insertion — the model should only reference task ids it was shown in
+    // the context pack, but we re-check to prevent a hallucinated id from
+    // landing a comment on a task in a different project.
+    for (const c of plan.comments ?? []) {
+      const [belongs] = await input.ctx.db
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(and(eq(tasks.id, c.taskId), eq(tasks.projectId, singleProjectId)))
+        .limit(1);
+
+      if (!belongs) continue;
+
+      await input.ctx.db.insert(taskComments).values({
+        taskId: c.taskId,
+        content: c.content,
+        createdById: userId,
+      });
+    }
+    } // end else (single-project path)
+
+    // Apply task dependencies — shared across both single and cross-project paths.
+    // For each dependency op, verify both task IDs are visible to this user.
+    for (const dep of plan.dependencies ?? []) {
+      // Verify both tasks exist and the user can read them (i.e. can read their projects)
+      const taskRows = await input.ctx.db
+        .select({ id: tasks.id, projectId: tasks.projectId })
+        .from(tasks)
+        .where(inArray(tasks.id, [dep.blockedTaskId, dep.blockingTaskId]));
+
+      if (taskRows.length < 2) continue; // one or both tasks not found
+
+      const projectIdsToCheck = [...new Set(taskRows.map((r) => r.projectId))];
+      let accessible = true;
+      for (const pid of projectIdsToCheck) {
+        try {
+          await assertProjectAccess(input.ctx, pid, "read");
+        } catch {
+          accessible = false;
+          break;
+        }
+      }
+      if (!accessible) continue;
+
+      await input.ctx.db
+        .insert(taskDependencies)
+        .values({
+          blockedTaskId: dep.blockedTaskId,
+          blockingTaskId: dep.blockingTaskId,
+          createdById: userId,
+        })
+        .onConflictDoNothing();
     }
 
     const resultJson = JSON.stringify({
@@ -668,6 +937,7 @@ export const a2TaskPlanner = {
       updatedTaskIds,
       statusChangedTaskIds,
       deletedTaskIds,
+      ...(refused.length ? { refused } : {}),
     });
 
     await input.ctx.db.insert(agentTaskPlannerApplies).values({
@@ -676,7 +946,7 @@ export const a2TaskPlanner = {
       projectId: draft.projectId,
       planHash: draft.planHash,
       resultJson,
-      beforeJson: JSON.stringify(beforeImage),
+      beforeJson: JSON.stringify(storedBeforeImage),
     });
 
     await input.ctx.db

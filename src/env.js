@@ -65,6 +65,16 @@ export const env = createEnv({
      * optimisation rather than a requirement.
      */
     LLM_MODEL_FAST: z.string().optional(),
+    LLM_EMBEDDING_MODEL: z.string().optional(),
+    LLM_EMBEDDING_DIMS: z.string().optional(),
+    /**
+     * Optional dedicated embedding endpoint. When set, embedding calls go here
+     * instead of the main LLM base URL — use when the chat provider does not
+     * serve embeddings (e.g. Velocity for chat, OpenAI for text-embedding-3-small).
+     */
+    LLM_EMBEDDING_BASE_URL: z.string().url().optional(),
+    /** API key for the embedding endpoint. Falls back to the main LLM key. */
+    LLM_EMBEDDING_API_KEY: z.string().optional(),
     /**
      * Chain-of-thought budget for the strong tier, on models that expose one —
      * either as a `reasoning_effort` chat-template flag or as a top-level
@@ -93,13 +103,34 @@ export const env = createEnv({
 
     WS_INTERNAL_URL: z.string().optional(),
 
+    /**
+     * Redis, for cross-instance rate-limit windows and socket fan-out.
+     *
+     * Unset the app runs single-instance with in-process fallbacks, which is the
+     * default and fine for development. Set, it also needs the optional `redis`
+     * and `@socket.io/redis-adapter` packages present.
+     */
+    REDIS_NATIVE_URL: z.string().optional(),
+
+    /**
+     * silent | error | warn | info | debug. Unset: debug in dev, info in prod.
+     *
+     * Declared here for validation and discoverability, but `~/server/logger`
+     * deliberately reads `process.env.LOG_LEVEL` directly rather than importing
+     * this module: it is not marked `server-only` and must stay usable from any
+     * runtime, and a server-scoped `env` read from a client bundle throws.
+     */
+    LOG_LEVEL: z.enum(["silent", "error", "warn", "info", "debug"]).optional(),
+
+    /** Any non-empty value sends CSP as report-only instead of enforcing it. */
+    CSP_REPORT_ONLY: z.string().optional(),
+
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
   },
 
   client: {
-    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: z.string().optional(),
     NEXT_PUBLIC_WS_URL: z.string().optional(),
     // Declared here rather than under `server`: the NEXT_PUBLIC_ prefix means
     // Next inlines it into the client bundle, so validating it as a server-only
@@ -128,6 +159,10 @@ export const env = createEnv({
     LLM_MODEL: process.env.LLM_MODEL,
     LLM_FALLBACK_MODEL: process.env.LLM_FALLBACK_MODEL,
     LLM_MODEL_FAST: process.env.LLM_MODEL_FAST,
+    LLM_EMBEDDING_MODEL: process.env.LLM_EMBEDDING_MODEL,
+    LLM_EMBEDDING_DIMS: process.env.LLM_EMBEDDING_DIMS,
+    LLM_EMBEDDING_BASE_URL: process.env.LLM_EMBEDDING_BASE_URL,
+    LLM_EMBEDDING_API_KEY: process.env.LLM_EMBEDDING_API_KEY,
     LLM_REASONING_EFFORT: process.env.LLM_REASONING_EFFORT,
     AI_RATE_LIMIT: process.env.AI_RATE_LIMIT,
     AI_SYSTEM_RATE_LIMIT: process.env.AI_SYSTEM_RATE_LIMIT,
@@ -137,10 +172,12 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
 
     NODE_ENV: process.env.NODE_ENV,
-    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL,
     WS_SECRET: process.env.WS_SECRET,
     WS_INTERNAL_URL: process.env.WS_INTERNAL_URL,
+    REDIS_NATIVE_URL: process.env.REDIS_NATIVE_URL,
+    LOG_LEVEL: process.env.LOG_LEVEL,
+    CSP_REPORT_ONLY: process.env.CSP_REPORT_ONLY,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

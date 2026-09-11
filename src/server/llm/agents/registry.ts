@@ -78,7 +78,7 @@ export const AGENTS: readonly AgentDescriptor[] = [
       "Turns a goal into a backlog, and revises a plan already on screen. Every change is drafted for your approval before anything is written.",
     kind: "conversational",
     tools: [],
-    operations: ["create task", "update task", "change task status", "delete task"],
+    operations: ["create task", "update task", "change task status", "delete task", "comment on task"],
     writes: true,
   },
   {
@@ -88,7 +88,7 @@ export const AGENTS: readonly AgentDescriptor[] = [
       "Creates, edits and deletes notes. Locked notes are excluded before their content is ever loaded.",
     kind: "conversational",
     tools: [],
-    operations: ["create note", "update note", "delete note"],
+    operations: ["create note", "update note", "delete note", "generate and create note"],
     writes: true,
   },
   {
@@ -106,6 +106,8 @@ export const AGENTS: readonly AgentDescriptor[] = [
       "delete comment",
       "set RSVP",
       "like event",
+      "create calendar event",
+      "delete calendar event",
     ],
     writes: true,
   },
@@ -125,6 +127,16 @@ export const AGENTS: readonly AgentDescriptor[] = [
     writes: true,
   },
   {
+    id: "project_manager",
+    name: "Project Manager",
+    description:
+      "Creates, renames, updates and archives projects. Each operation is confirmed before anything is written, and permission is checked live at apply time.",
+    kind: "conversational",
+    tools: [],
+    operations: ["create project", "update project", "archive project"],
+    writes: true,
+  },
+  {
     id: "daily_brief",
     name: "Daily Brief",
     description:
@@ -139,6 +151,26 @@ export const AGENTS: readonly AgentDescriptor[] = [
     name: "Risk Radar",
     description:
       "Watches for overdue work and stalled projects on a schedule. Detection is a database count, not a model call, so a finding is reproducible and still appears when your AI budget is spent.",
+    kind: "scheduled",
+    tools: [],
+    operations: [],
+    writes: false,
+  },
+  {
+    id: "weekly_retro",
+    name: "Weekly Retro",
+    description:
+      "Sends a brief retrospective once a week describing how the week went — tasks closed, created, carried over and stalled — in your saved interface language.",
+    kind: "scheduled",
+    tools: [],
+    operations: [],
+    writes: false,
+  },
+  {
+    id: "meeting_prep",
+    name: "Meeting Prep",
+    description:
+      "Sends a short brief before upcoming meetings from your connected calendar, including any related open tasks. Fires automatically when a meeting is within the prep horizon.",
     kind: "scheduled",
     tools: [],
     operations: [],

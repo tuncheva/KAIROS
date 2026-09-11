@@ -3,6 +3,7 @@
 // and structural typing made that silent rather than a compile error.
 import type { NotesVaultContextPack } from "../context/a3ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
+import { answerableRule } from "~/server/llm/prompts/answerableRule";
 import {
   languageRule,
   wantsBulgarianGuidance,
@@ -92,6 +93,8 @@ export function getA3SystemPrompt(
     "- For DELETE: always ask for explicit confirmation context and set dangerous=true.",
     "- For ORGANIZE: suggest logical groupings, tag suggestions, or content restructuring.",
     "- If the request is unclear, populate summary with a clarifying question instead of guessing.",
+    "",
+    answerableRule(),
     "",
     formatMemoryForPrompt(context.memory),
     "## AVAILABLE DATA",
