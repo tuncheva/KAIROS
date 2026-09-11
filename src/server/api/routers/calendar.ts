@@ -1,7 +1,15 @@
 import { z } from "zod";
 import { protectedProcedure, createTRPCRouter } from "~/server/api/trpc";
-import { stickyNotes, noteShares, tasks, projects, events, organizationMembers } from "~/server/db/schema";
-import { and, eq, gte, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
+import {
+  stickyNotes,
+  noteShares,
+  tasks,
+  projects,
+  events,
+  externalEvents,
+  organizationMembers,
+} from "~/server/db/schema";
+import { and, eq, gte, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 
 export const calendarRouter = createTRPCRouter({
   getForRange: protectedProcedure
@@ -92,6 +100,36 @@ export const calendarRouter = createTRPCRouter({
           ),
         );
 
+      /* Events from a connected calendar.
+         `starts_at` is the only date these have, so the window is applied to it
+         alone: a meeting that began before `from` and runs past it is out of
+         scope here, the same way a task whose due date falls outside the window
+         is. Cancelled rows are kept in the table on purpose — an agent brief may
+         still want to say a meeting is off — but a cancelled meeting is not
+         something to draw on someone's calendar, so it is filtered out here
+         rather than at write time. */
+      const externalRows = await ctx.db
+        .select({
+          id: externalEvents.id,
+          title: externalEvents.title,
+          description: externalEvents.description,
+          location: externalEvents.location,
+          startsAt: externalEvents.startsAt,
+          endsAt: externalEvents.endsAt,
+          allDay: externalEvents.allDay,
+          status: externalEvents.status,
+        })
+        .from(externalEvents)
+        .where(
+          and(
+            eq(externalEvents.userId, ctx.session.user.id),
+            ne(externalEvents.status, "cancelled"),
+            gte(externalEvents.startsAt, input.from),
+            lte(externalEvents.startsAt, input.to),
+          ),
+        )
+        .orderBy(externalEvents.startsAt);
+
       // Expose only whether a note is locked, never the Argon2 hash itself.
       const notes = noteRows.map(({ passwordHash, ...note }) => ({
         ...note,
@@ -102,6 +140,7 @@ export const calendarRouter = createTRPCRouter({
         tasks: taskRows,
         events: eventRows,
         notes,
+        external: externalRows,
       };
     }),
 });

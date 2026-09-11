@@ -66,6 +66,13 @@ const DEFAULT_WALL_CLOCK_MS = 90_000;
  */
 const TOOL_CONCURRENCY = 4;
 
+/**
+ * Reasoning budget for the loop's first call. See `firstPassReasoningEffort`.
+ *
+ * Explicitly passing `undefined` opts out; omitting the option takes this.
+ */
+const DEFAULT_FIRST_PASS_REASONING_EFFORT = "low" as const;
+
 /** Truncation guard for a tool result, so one huge row set cannot fill the context. */
 const MAX_TOOL_RESULT_CHARS = 12_000;
 
@@ -87,6 +94,24 @@ export interface ToolLoopOptions {
   wallClockMs?: number;
   temperature?: number;
   maxTokens?: number;
+  /**
+   * Chain-of-thought budget for the *first* call of the loop.
+   *
+   * The first call does one of two things: pick the lookups to run, or answer
+   * something that needs no lookup at all (a greeting, a capability question).
+   * Neither is the work the strong tier's reasoning budget is sized for — that
+   * work is synthesis, and synthesis happens on the calls *after* the tool
+   * results come back, which keep the configured effort.
+   *
+   * This matters because reasoning is emitted before the first visible
+   * character, so on a two-hop turn the user was paying for a full
+   * chain-of-thought twice and could not see either one.
+   *
+   * Set to `undefined` to spend the configured effort on every call — the right
+   * move if routing quality measurably drops, since the first call is also where
+   * A1 decides which sub-agents a turn needs.
+   */
+  firstPassReasoningEffort?: "low" | "medium" | "high" | "max";
   purpose?: string;
   signal?: AbortSignal;
   /** Called as each tool starts, for progress UI. */
@@ -272,6 +297,10 @@ export async function runToolLoop(
 ): Promise<ToolLoopResult> {
   const maxIterations = opts.maxIterations ?? DEFAULT_MAX_ITERATIONS;
   const deadline = Date.now() + (opts.wallClockMs ?? DEFAULT_WALL_CLOCK_MS);
+  const firstPassEffort =
+    "firstPassReasoningEffort" in opts
+      ? opts.firstPassReasoningEffort
+      : DEFAULT_FIRST_PASS_REASONING_EFFORT;
 
   const messages: ChatMessage[] = [...opts.messages];
   const toolCallsMade: ToolLoopResult["toolCallsMade"] = [];
@@ -294,6 +323,9 @@ export async function runToolLoop(
       toolChoice: "auto" as const,
       temperature: opts.temperature,
       maxTokens: opts.maxTokens,
+      // Only the first call. Every later one is reasoning over tool results,
+      // which is exactly what the configured effort is for.
+      reasoningEffort: iteration === 1 ? firstPassEffort : undefined,
       signal: opts.signal,
       purpose: `${opts.purpose ?? "toolLoop"}#${String(iteration)}`,
     };

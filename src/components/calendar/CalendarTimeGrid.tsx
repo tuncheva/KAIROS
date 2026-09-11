@@ -100,6 +100,18 @@ export function CalendarTimeGrid({
     };
   });
 
+  /* The now-line is a rule across today's column *and* a time pill in the
+     gutter, so the exact minute is readable without hovering a bare coloured
+     div. The gutter is a sibling of the columns rather than their parent, so
+     the offset both sides position against is computed once, here. */
+  const nowTop = Math.round((decimalHours(now) - hours.start) * ROW_HEIGHT);
+  const nowInRange = nowTop >= 0 && nowTop <= (hours.end - hours.start) * ROW_HEIGHT;
+  const showNowPill = nowInRange && columns.some((column) => column.isToday);
+  /* Each hour label's own centre line, so the one the timestamp would sit on
+     top of can step aside instead of showing through around its corners. */
+  const hourLabelHidden = (hour: number) =>
+    showNowPill && Math.abs(nowTop - ((hour - hours.start) * ROW_HEIGHT + 10)) < 15;
+
   return (
     <div
       ref={gridRef}
@@ -144,7 +156,7 @@ export function CalendarTimeGrid({
                   }}
                   className={cn(
                     "group flex min-w-0 flex-1 items-center gap-2 border-l border-border-light/70 px-3 py-2.5 transition-colors outline-none",
-                    column.isToday ? "bg-accent-primary/[0.08]" : "hover:bg-bg-secondary/40",
+                    column.isToday ? "bg-now-line/[0.06]" : "hover:bg-bg-secondary/40",
                     "focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-inset",
                   )}
                 >
@@ -152,7 +164,7 @@ export function CalendarTimeGrid({
                     aria-hidden="true"
                     className={cn(
                       "text-[11px] uppercase tracking-[0.12em]",
-                      column.isToday ? "text-accent-primary" : "text-fg-tertiary",
+                      column.isToday ? "text-now-line" : "text-fg-tertiary",
                     )}
                   >
                     {weekdayLabel(column.day)}
@@ -161,7 +173,7 @@ export function CalendarTimeGrid({
                     aria-hidden="true"
                     className={cn(
                       "text-base font-semibold tabular-nums",
-                      column.isToday ? "text-accent-primary" : "text-fg-primary",
+                      column.isToday ? "text-now-line" : "text-fg-primary",
                     )}
                   >
                     {column.day.getDate()}
@@ -242,17 +254,27 @@ export function CalendarTimeGrid({
               <div
                 key={hour}
                 style={{ height: ROW_HEIGHT }}
-                className="border-t border-transparent pt-1 pr-2.5 text-right text-[10px] leading-none tabular-nums text-fg-tertiary"
+                className={cn(
+                  "border-t border-transparent pt-1 pr-2.5 text-right text-[10px] leading-none tabular-nums text-fg-tertiary transition-opacity",
+                  hourLabelHidden(hour) && "opacity-0",
+                )}
               >
                 {pad2(hour)}:00
               </div>
             ))}
+
+            {showNowPill && (
+              <span
+                className="absolute right-1.5 -translate-y-1/2 rounded-full bg-now-line px-[7px] py-[3.5px] text-[10px] font-semibold leading-none tabular-nums text-white ring-1 ring-bg-elevated shadow-[0_1px_4px_rgb(var(--now-line)/0.4)]"
+                style={{ top: nowTop }}
+              >
+                {toHm(now)}
+              </span>
+            )}
           </div>
 
           {columns.map((column) => {
-            const nowTop = Math.round((decimalHours(now) - hours.start) * ROW_HEIGHT);
-            const showNow =
-              column.isToday && nowTop >= 0 && nowTop <= (hours.end - hours.start) * ROW_HEIGHT;
+            const showNow = column.isToday && nowInRange;
 
             return (
               <div
@@ -260,7 +282,7 @@ export function CalendarTimeGrid({
                 role="gridcell"
                 className={cn(
                   "relative min-w-0 flex-1 border-l border-border-light/70 transition-colors",
-                  column.isToday ? "bg-accent-primary/[0.03]" : "hover:bg-bg-secondary/30",
+                  column.isToday ? "bg-now-line/[0.025]" : "hover:bg-bg-secondary/30",
                 )}
               >
                 {/* Empty hours are creation targets. Clicking 14:00 used to do
@@ -289,8 +311,11 @@ export function CalendarTimeGrid({
                 ))}
 
                 {showNow && (
-                  <div className="pointer-events-none absolute right-0 left-0 h-px bg-error" style={{ top: nowTop }}>
-                    <span className="absolute -top-[3px] left-0 h-[7px] w-[7px] rounded-full bg-error" />
+                  <div className="pointer-events-none absolute right-0 left-0 z-10" style={{ top: nowTop }}>
+                    {/* A hairline growing out of the gutter's timestamp, fading
+                        across the day so it marks the minute without competing
+                        with the event chips it crosses. */}
+                    <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-now-line via-now-line/45 to-now-line/10" />
                     {/* The one live element on the page used to be a bare
                         coloured div — no text equivalent at all. */}
                     <span className="sr-only">{nowLabel(toHm(now))}</span>

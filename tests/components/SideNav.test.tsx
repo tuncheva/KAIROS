@@ -36,6 +36,48 @@ describe("SideNav", () => {
     expect(screen.getAllByText("Settings").length).toBeGreaterThanOrEqual(1);
   });
 
+  /* The tip is positioned for a 64px rail. Open, the row's own label is already
+     on screen and the tip lands on top of it — which showed as "N" beside a
+     floating "Notes" on every row once the rail had opened. */
+  describe("the hover tip", () => {
+    const railWidth = (container: HTMLElement, width: number) => {
+      const rail = container.querySelector(".kairos-rail");
+      if (!rail) throw new Error("no rail in the tree");
+      vi.spyOn(rail, "getBoundingClientRect").mockReturnValue({
+        width,
+        height: 800,
+        top: 0,
+        left: 0,
+        right: width,
+        bottom: 800,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      });
+    };
+
+    const notesRow = (container: HTMLElement) =>
+      container.querySelector('.kairos-rail a[href="/notes"]')!;
+
+    it("appears while the rail is collapsed", async () => {
+      const { container } = render(<SideNav />);
+      railWidth(container, 64);
+
+      await userEvent.hover(notesRow(container));
+
+      expect(container.querySelector(".kairos-rail-tip")).not.toBeNull();
+    });
+
+    it("stays away once the rail has opened", async () => {
+      const { container } = render(<SideNav />);
+      railWidth(container, 236);
+
+      await userEvent.hover(notesRow(container));
+
+      expect(container.querySelector(".kairos-rail-tip")).toBeNull();
+    });
+  });
+
   it("does not use legacy card classes in tooltips", () => {
     const { container } = render(<SideNav />);
     const tooltips = container.querySelectorAll("[class*='ios-card']");

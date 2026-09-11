@@ -35,15 +35,17 @@ import type { TRPCContext } from "~/server/api/trpc";
 import { createLogger } from "~/server/logger";
 import { entitlementsFor } from "~/server/billing/entitlements";
 import { consumeRateLimit } from "~/server/security/rateLimit";
-import { runAgentTurn } from "~/server/llm/orchestrator/handoff";
+import {
+  runAgentTurn,
+  type AgentTurnResult,
+} from "~/server/llm/orchestrator/handoff";
 import { isPinnable } from "~/server/llm/agents/registry";
 import type { TargetAgent } from "~/server/llm/schemas/a1WorkspaceConciergeSchemas";
 import {
   appendMessage,
-  ensureConversation,
   ensureTitle,
-  loadHistory,
   maybeSummarize,
+  openConversation,
 } from "~/server/llm/conversations";
 
 // The custom Node server in server.ts keeps connections open for as long as the
@@ -131,21 +133,77 @@ export async function POST(request: Request) {
     return Response.json({ error: detail, code: "TOO_MANY_REQUESTS" }, { status: 429 });
   }
 
-  const conversationId = await ensureConversation(ctx, {
+  // One select for the conversation, one for its recent turns — see
+  // `openConversation`. This is the last thing between the request and the first
+  // streamed byte, so whatever does not have to happen here does not.
+  const {
+    conversationId,
+    messages: history,
+    summary,
+  } = await openConversation(ctx, {
     conversationId: requestedConversationId,
     userId,
     projectId,
   });
-  const history = await loadHistory(ctx, conversationId, userId);
-
-  await appendMessage(ctx, {
-    conversationId,
-    role: "user",
-    content: message,
-  });
 
   const encoder = new TextEncoder();
   const startedAt = Date.now();
+
+  /**
+   * Filled in by the stream below, read by the `after` callback once the
+   * response has finished. Null means the turn failed and there is no assistant
+   * message to store — the user's own message is stored either way, so a thread
+   * that hit an error still reads back as something that was asked.
+   */
+  let turn: { result: AgentTurnResult; latencyMs: number } | null = null;
+
+  // Registered before the stream runs, executed after it finishes. None of this
+  // is anything the user can see, and `ensureTitle` and `maybeSummarize` are
+  // model calls of their own, so none of it belongs in front of the answer.
+  //
+  // The user's message used to be written before the response even started.
+  // Nothing in the turn reads it — the history it would belong to was loaded
+  // above, one statement earlier — so it was a round trip spent in front of the
+  // spinner for nothing.
+  after(async () => {
+    try {
+      await appendMessage(ctx, {
+        conversationId,
+        role: "user",
+        content: message,
+      });
+    } catch (err) {
+      log.error("failed to persist user message", { err });
+    }
+
+    if (turn) {
+      try {
+        await appendMessage(ctx, {
+          conversationId,
+          role: "assistant",
+          // Store the structured output, which is what the model produced
+          // and what the next turn should see — not the rendered bubble.
+          content: JSON.stringify(turn.result.a1),
+          // On a pinned turn A1 never ran, so attributing the message to it
+          // would make the history claim a model call that did not happen.
+          agentId: pinnedAgent ?? "workspace_concierge",
+          draftId: turn.result.plans[0]?.draftId ?? null,
+          latencyMs: turn.latencyMs,
+        });
+      } catch (err) {
+        log.error("failed to persist assistant message", { err });
+      }
+    }
+
+    // Independent of each other and of the writes above: one failing must not
+    // skip the other.
+    await Promise.allSettled([
+      history.length === 0
+        ? ensureTitle(ctx, conversationId, message)
+        : Promise.resolve(),
+      maybeSummarize(ctx, conversationId),
+    ]);
+  });
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -162,8 +220,8 @@ export async function POST(request: Request) {
           ctx,
           message,
           scope: projectId ? { projectId } : undefined,
-          conversationHistory: history.messages,
-          conversationSummary: history.summary,
+          conversationHistory: history,
+          conversationSummary: summary,
           priorTaskDraftId,
           pinnedAgent,
           signal: request.signal,
@@ -176,38 +234,8 @@ export async function POST(request: Request) {
         });
 
         const latencyMs = Date.now() - startedAt;
+        turn = { result, latencyMs };
         send("result", { ...result, conversationId, latencyMs });
-
-        // Persist after the response is on its way — the user should not wait on
-        // a write they cannot see. The title and the rolling summary are model
-        // calls of their own, so they especially belong here.
-        after(async () => {
-          try {
-            await appendMessage(ctx, {
-              conversationId,
-              role: "assistant",
-              // Store the structured output, which is what the model produced
-              // and what the next turn should see — not the rendered bubble.
-              content: JSON.stringify(result.a1),
-              // On a pinned turn A1 never ran, so attributing the message to it
-              // would make the history claim a model call that did not happen.
-              agentId: pinnedAgent ?? "workspace_concierge",
-              draftId: result.plans[0]?.draftId ?? null,
-              latencyMs,
-            });
-          } catch (err) {
-            log.error("failed to persist assistant message", { err });
-          }
-
-          // Independent of each other and of the write above: one failing must
-          // not skip the other.
-          await Promise.allSettled([
-            history.messages.length === 0
-              ? ensureTitle(ctx, conversationId, message)
-              : Promise.resolve(),
-            maybeSummarize(ctx, conversationId),
-          ]);
-        });
       } catch (err) {
         log.error("agent turn failed", { err });
         send("error", {

@@ -182,12 +182,17 @@ function nearestSupportedEffort(
 function reasoningEffortFor(
   model: string,
   tier: "fast" | "strong",
+  override?: string,
 ): string | undefined {
   const bare = model.slice(model.lastIndexOf("/") + 1);
   const spec = REASONING_EFFORT_MODELS.find(([prefix]) =>
     bare.startsWith(prefix),
   )?.[1];
   if (!spec) return undefined;
+  // A per-request override is a deliberate choice by a caller that knows what
+  // this particular call is for, so it outranks both the tier and the env dial —
+  // still resolved onto the model's own ladder, like every other source.
+  if (override) return nearestSupportedEffort(override, spec.supported);
   if (tier === "fast") {
     return nearestSupportedEffort(FAST_TIER_REASONING_EFFORT, spec.supported);
   }
@@ -208,6 +213,7 @@ function reasoningEffortFor(
 function chatTemplateKwargsFor(
   model: string,
   tier: "fast" | "strong",
+  override?: string,
 ): Record<string, unknown> | undefined {
   const bare = model.slice(model.lastIndexOf("/") + 1);
   const kwargs = CHAT_TEMPLATE_KWARGS.find(([prefix]) =>
@@ -218,7 +224,10 @@ function chatTemplateKwargsFor(
   return {
     ...kwargs,
     reasoning_effort:
-      tier === "fast" ? FAST_TIER_REASONING_EFFORT : strongTierReasoningEffort(),
+      override ??
+      (tier === "fast"
+        ? FAST_TIER_REASONING_EFFORT
+        : strongTierReasoningEffort()),
   };
 }
 
@@ -256,7 +265,12 @@ function getModelChain(): string[] {
  */
 function getFastModelChain(): string[] {
   const { fastModel, models } = config();
-  return fastModel ? [fastModel, ...models] : models;
+  if (!fastModel) return models;
+  // Deduplicated: pointing LLM_MODEL_FAST at the same id as LLM_MODEL is the
+  // normal configuration for a gateway that serves one model, and the naive
+  // concatenation turned that into the same endpoint twice — a doubled retry
+  // ladder (three attempts, then three more) against a model already known bad.
+  return [fastModel, ...models.filter((m) => m !== fastModel)];
 }
 
 /** Resolve the model chain for one request: explicit pin, then tier, then default. */
@@ -303,6 +317,16 @@ export interface ChatRequest {
    * `model` pins one explicitly.
    */
   tier?: "fast" | "strong";
+  /**
+   * Chain-of-thought budget for this one call, overriding the tier and
+   * `LLM_REASONING_EFFORT`.
+   *
+   * For callers that know a particular call does not need the depth the tier
+   * implies — picking which tools to fetch is not the same work as reasoning
+   * over what they returned. Resolved onto the model's own ladder, so a value it
+   * does not offer lands on the nearest cheaper rung rather than being rejected.
+   */
+  reasoningEffort?: "low" | "medium" | "high" | "max";
   temperature?: number;
   maxTokens?: number;
   /** Ask for `response_format: json_object`. Ignored when `tools` is set. */
@@ -503,14 +527,22 @@ function buildBody(
     max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
   };
 
-  const templateKwargs = chatTemplateKwargsFor(model, req.tier ?? "strong");
+  const templateKwargs = chatTemplateKwargsFor(
+    model,
+    req.tier ?? "strong",
+    req.reasoningEffort,
+  );
   if (templateKwargs) {
     // Top level, not nested: the OpenAI SDK's `extra_body` merges its keys into
     // the request root, and that is the shape the NIM reads off the wire.
     body.chat_template_kwargs = templateKwargs;
   }
 
-  const reasoningEffort = reasoningEffortFor(model, req.tier ?? "strong");
+  const reasoningEffort = reasoningEffortFor(
+    model,
+    req.tier ?? "strong",
+    req.reasoningEffort,
+  );
   if (reasoningEffort) {
     body.reasoning_effort = reasoningEffort;
   }

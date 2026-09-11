@@ -32,16 +32,28 @@ const RAIL_PIN_KEY = "kairos:railPinned";
 const railRowClass =
   "flex w-full items-center gap-4 border-l-2 px-5 py-[11px] text-sm whitespace-nowrap";
 
+/** `w-16` on the rail, in px. The tooltip is only for this width. */
+const RAIL_COLLAPSED_WIDTH = 64;
+
 /**
- * Labels sit in the clipped overflow; they fade in as the rail opens.
+ * Labels sit in the clipped overflow; they fade in once the rail has opened.
  *
  * `kairos-rail-label` is the hook the pinned and keyboard-focus rules in
  * `globals.css` use to hold them open. It is a class rather than a second Tailwind string picked during
  * render because the pinned state is only known after hydration, and swapping
  * the class then made every label fade in again on each load.
+ *
+ * The duration here is the *collapsing* one, and it is short on purpose. A row
+ * is `border-l-2` + `px-5` + a 20px icon + `gap-4`, so the label's box starts at
+ * 58px — inside a collapsed rail of 64px. Six pixels of the first letter are
+ * therefore always within the clip, and fading the label at the same rate as the
+ * 700ms width meant that sliver was painted while the rail was still shut: the
+ * initial fell out of its own word and sat alone at the edge until the width
+ * caught up. Leaving, the label now blinks out before the rail moves; arriving,
+ * `globals.css` holds it back until the rail is open (see the hover rule there).
  */
 const RAIL_LABEL =
-  "kairos-rail-label opacity-0 transition-opacity duration-[600ms] group-hover/rail:opacity-100 motion-reduce:transition-none";
+  "kairos-rail-label opacity-0 transition-opacity duration-[120ms] group-hover/rail:opacity-100 motion-reduce:transition-none";
 
 function RailLink({
   href,
@@ -76,8 +88,26 @@ function RailLink({
   const [tipTop, setTipTop] = useState<number | null>(null);
 
   const showTip = () => {
-    const box = ref.current?.getBoundingClientRect();
-    if (box) setTipTop(box.top + box.height / 2);
+    const link = ref.current;
+    if (!link) return;
+
+    /* Only while the rail is shut. The tip is fixed at 4.25rem — just past the
+       icon — which is deliberate against a 64px rail and wrong against an open
+       one: there the label is already on screen starting at 58px, and the tip
+       drops on top of it, covering every letter but the first. That is the
+       "N ⟨Notes⟩" the rail was showing on every row once it had opened.
+
+       Measured rather than tracked in state, because the rail opens three
+       different ways — a rested pointer, keyboard focus, the pin — and a flag
+       would have to be kept in step with all three. The width is the one fact
+       that is true in every case, mid-animation included. */
+    const rail = link.closest(".kairos-rail");
+    if (rail && rail.getBoundingClientRect().width > RAIL_COLLAPSED_WIDTH + 8) {
+      return;
+    }
+
+    const box = link.getBoundingClientRect();
+    setTipTop(box.top + box.height / 2);
   };
   const hideTip = () => setTipTop(null);
 

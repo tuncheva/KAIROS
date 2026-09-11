@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { replaceUrlSilently } from "~/lib/historyUrl";
 import { Search } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
@@ -90,7 +91,15 @@ export function SettingsWorkspace({ activeSection, user }: Props) {
 
      `replaceState`, not `pushState`: the tabs are one screen's worth of
      navigation, and Back should leave settings rather than walk back through
-     every tab the user glanced at. */
+     every tab the user glanced at.
+
+     Via `replaceUrlSilently`, because a bare `history.replaceState(null, …)` is
+     not the cheap thing it reads as: the App Router patches it into an
+     `ACTION_RESTORE`, which refetches this route's server component. `/settings`
+     is dynamic and has a `loading.tsx`, so every tab click threw up the skeleton
+     and landed back where it started — the first click appeared to do nothing at
+     all, and only a second one stuck. Nothing here reads `useSearchParams`, so
+     leaving the router's view of the URL alone costs this screen nothing. */
   const [section, setSection] = useState<SettingsSectionId>(activeSection);
 
   // A real navigation to /settings?section=… (the command palette, a bookmark,
@@ -101,7 +110,7 @@ export function SettingsWorkspace({ activeSection, user }: Props) {
 
   const selectSection = useCallback((id: SettingsSectionId) => {
     setSection(id);
-    window.history.replaceState(null, "", `/settings?section=${id}`);
+    replaceUrlSilently(`/settings?section=${id}`);
   }, []);
 
   const useT = useTranslations as unknown as (ns: string) => Translator;

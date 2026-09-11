@@ -244,6 +244,12 @@ function DetailPanel({
 
   const completed = item.kind === "task" && item.status === "completed";
 
+  /* An entry read from a connected calendar. Kairos holds a copy, not the
+     original: rescheduling it here would move nothing, and deleting it would
+     delete our copy and have the next sync put it straight back. So the whole
+     action bar is replaced by a line saying where it lives. */
+  const readOnly = item.kind === "external";
+
   const toggleComplete = () => {
     if (item.kind !== "task") return;
     // The toggle is its own undo: press it again and the task comes back.
@@ -256,15 +262,17 @@ function DetailPanel({
   };
 
   const reschedule = (at: Date) => {
+    if (readOnly) return;
     if (item.kind === "task") taskUpdate.mutate({ taskId: item.id, dueDate: at });
     else if (item.kind === "event") eventUpdate.mutate({ eventId: item.id, eventDate: at });
-    else noteDate.mutate({ id: item.id, calendarDate: at });
+    else if (item.kind === "note") noteDate.mutate({ id: item.id, calendarDate: at });
   };
 
   const remove = () => {
+    if (readOnly) return;
     if (item.kind === "task") taskDelete.mutate({ taskId: item.id });
     else if (item.kind === "event") eventDelete.mutate({ eventId: item.id });
-    else noteDelete.mutate({ id: item.id });
+    else if (item.kind === "note") noteDelete.mutate({ id: item.id });
   };
 
   const openHref =
@@ -312,6 +320,21 @@ function DetailPanel({
           ? `${toHm(item.date)} – ${toHm(item.endsAt)}`
           : t("startsAtUnknownEnd", { time: toHm(item.date) }),
     });
+  } else if (item.kind === "external") {
+    rows.push({ label: t("dateLabel"), value: dateLabel });
+    rows.push({
+      label: t("timeLabel"),
+      value: item.allDay
+        ? t("allDay")
+        : item.endsAt
+          ? `${toHm(item.date)} – ${toHm(item.endsAt)}`
+          : t("startsAtUnknownEnd", { time: toHm(item.date) }),
+    });
+    if (item.location) rows.push({ label: t("locationLabel"), value: item.location });
+    if (item.status === "tentative") {
+      rows.push({ label: t("statusLabel"), value: t("tentative"), tone: "text-warning" });
+    }
+    rows.push({ label: t("sourceLabel"), value: t("sourceGoogleCalendar") });
   } else {
     rows.push({ label: t("dateLabel"), value: dateLabel });
     rows.push({ label: t("typeLabel"), value: t("stickyNote") });
@@ -322,7 +345,8 @@ function DetailPanel({
     });
   }
 
-  const body = item.kind === "event" ? item.description : "";
+  const body =
+    item.kind === "event" || item.kind === "external" ? item.description : "";
 
   return (
     <>
@@ -403,7 +427,13 @@ function DetailPanel({
           One primary, two secondary, then a menu. Five flat buttons put
           Delete one slip away from Complete; this keeps every control one
           click away without any of them competing for the eye. */}
-      {tab === "view" && (
+      {tab === "view" && readOnly && (
+        <div className="shrink-0 border-t border-border-light bg-bg-surface px-5 py-4">
+          <p className="text-[12px] leading-snug text-fg-tertiary">{t("externalReadOnly")}</p>
+        </div>
+      )}
+
+      {tab === "view" && !readOnly && (
         <div className="flex shrink-0 items-center gap-2 border-t border-border-light bg-bg-surface px-5 py-4">
           {item.kind === "task" ? (
             <button

@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
   X,
 } from "~/components/ui/icons";
+import { replaceUrlSilently } from "~/lib/historyUrl";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { useLocale, useTranslations } from "next-intl";
@@ -241,7 +242,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
   }, [visibleItems]);
 
   const kindCounts = useMemo(() => {
-    const counts: Record<CalendarKind, number> = { task: 0, event: 0, note: 0 };
+    const counts: Record<CalendarKind, number> = { task: 0, event: 0, note: 0, external: 0 };
     for (const item of allItems) counts[item.kind] += 1;
     return counts;
   }, [allItems]);
@@ -306,7 +307,12 @@ function CalendarWorkspace({ today }: { today: Date }) {
      one page, so each arrow press should not become a history entry you have
      to walk back through — and routing would re-render the shell above for a
      change that is entirely local to this grid. Back still leaves the
-     calendar, which is what the button appeared to promise and never did. */
+     calendar, which is what the button appeared to promise and never did.
+
+     `replaceUrlSilently` rather than `history.replaceState` directly: the
+     App Router turns the latter into a fresh RSC request for the new URL, so
+     this effect — which runs on every arrow press, filter toggle and debounced
+     search keystroke — was refetching the route each time, skeleton and all. */
   useEffect(() => {
     const next = new URLSearchParams();
     next.set("view", view);
@@ -321,7 +327,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
     if (kinds.size !== ITEM_KINDS.length) next.set("kinds", [...kinds].join(","));
     if (statuses.size !== TASK_STATUSES.length) next.set("status", [...statuses].join(","));
     if (priorities.size !== TASK_PRIORITIES.length) next.set("prio", [...priorities].join(","));
-    window.history.replaceState(null, "", `?${next.toString()}`);
+    replaceUrlSilently(`?${next.toString()}`);
   }, [anchor, kinds, priorities, query, rangeText, statuses, view]);
 
   /* ---------------- labels ---------------- */
@@ -367,7 +373,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
     (item: CalendarItem) => {
       const parts = [t(KIND_LABEL_KEYS[item.kind]), item.title];
       if (item.allDay) parts.push(t("allDay"));
-      else if (item.kind === "event" && item.endsAt)
+      else if ((item.kind === "event" || item.kind === "external") && item.endsAt)
         parts.push(`${toHm(item.date)}–${toHm(item.endsAt)}`);
       else parts.push(toHm(item.date));
 
@@ -377,6 +383,10 @@ function CalendarWorkspace({ today }: { today: Date }) {
         if (item.projectTitle) parts.push(item.projectTitle);
       }
       if (item.kind === "note" && item.locked) parts.push(t("locked"));
+      // The one kind nothing on this page can change. Said out loud, because a
+      // sighted user infers it from the dimmed treatment and a screen-reader
+      // user would otherwise reach the detail panel before finding out.
+      if (item.kind === "external") parts.push(t("readOnlyItem"));
       return parts.join(", ");
     },
     [t],
@@ -390,6 +400,9 @@ function CalendarWorkspace({ today }: { today: Date }) {
           .join(" · ");
       }
       if (item.kind === "event") return t(KIND_LABEL_KEYS.event);
+      if (item.kind === "external") {
+        return [t(KIND_LABEL_KEYS.external), item.location].filter(Boolean).join(" · ");
+      }
       return t(KIND_LABEL_KEYS.note);
     },
     [t],

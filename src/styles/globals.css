@@ -47,6 +47,7 @@
   --color-success: rgb(var(--success));
   --color-warning: rgb(var(--warning));
   --color-error: rgb(var(--error));
+  --color-now-line: rgb(var(--now-line));
   --color-info: rgb(var(--info));
   --color-dash-day: rgb(var(--dash-day));
 
@@ -127,6 +128,7 @@
   --warning-light: 254 243 199;
   --error: 239 68 68;
   --error-light: 254 226 226;
+  --now-line: 255 45 58;
   --info: 59 130 246;
   --info-light: 219 234 254;
 
@@ -257,6 +259,7 @@
   --warning-light: 120 53 15;
   --error: 248 113 113;
   --error-light: 127 29 29;
+  --now-line: 255 86 86;
   --info: 96 165 250;
   --info-light: 30 58 138;
 
@@ -2855,9 +2858,21 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
 
    Every surface that moves with the rail gets the same delay or they tear
    apart: the rail's own width, the labels' fade, and the page's margin. */
-.kairos-rail:hover,
-.kairos-rail:hover .kairos-rail-label {
+.kairos-rail:hover {
   transition-delay: 1000ms;
+}
+
+/* The labels come in last, and only once the rail has actually made room for
+   them. 1000ms of rest, then the 700ms width, which on this curve is ~92% done
+   by 450ms in — hence 1450ms. Before this they shared the rail's 1000ms delay
+   and faded over 600ms, which painted each label while its row was still 64px
+   wide: all that fitted was the first letter, stranded at the clip edge with
+   the rest of its word arriving behind it. The tooltip's own 1.4s animation
+   ends at the same moment, so the sequence now reads as one movement —
+   tooltip out, rail open, labels in — instead of three things at once. */
+.kairos-rail:hover .kairos-rail-label {
+  transition-delay: 1450ms;
+  transition-duration: 300ms;
 }
 
 @media (min-width: 1024px) {

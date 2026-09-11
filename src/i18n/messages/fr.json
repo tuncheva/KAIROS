@@ -31,7 +31,14 @@
       "priority": "Priorité",
       "allItems": "Tout",
       "noItemsMonth": "Aucun élément ce mois-ci.",
-      "noItemsDay": "Rien de prévu pour ce jour."
+      "noItemsDay": "Rien de prévu pour ce jour.",
+      "externalType": "Importés",
+      "readOnlyItem": "lecture seule",
+      "locationLabel": "Lieu",
+      "sourceLabel": "Source",
+      "sourceGoogleCalendar": "Google Agenda",
+      "tentative": "Provisoire",
+      "externalReadOnly": "Cet événement provient d'un agenda connecté. Modifiez-le là-bas — il sera mis à jour ici à la prochaine synchronisation."
     }
   },
   "notes": {
@@ -1057,7 +1064,8 @@
       "active": "{count} en cours",
       "todo": "{count} à faire",
       "dayGone": "{percent}% de la journée écoulée",
-      "ofTasksDone": "des tâches faites"
+      "ofTasksDone": "des tâches faites",
+      "ofTodayGone": "de la journée écoulée"
     },
     "projects": {
       "untitled": "Projet sans titre",

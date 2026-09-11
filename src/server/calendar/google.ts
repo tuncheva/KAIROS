@@ -166,6 +166,31 @@ export interface GoogleEvent {
   attendees?: Array<{ self?: boolean; responseStatus?: string }>;
 }
 
+/**
+ * Google's status code alone does not identify the fault. A 403 is "the API is
+ * not enabled on this project", "this token lacks the scope" and "you are being
+ * rate limited" all at once, and the three have nothing to do with each other.
+ * The `reason` in the error body is what separates them, so it travels with the
+ * thrown error rather than being dropped on the floor at the fetch site.
+ */
+async function googleError(response: Response, context: string): Promise<Error> {
+  let detail = "";
+  try {
+    const body = (await response.json()) as {
+      error?: { message?: string; errors?: Array<{ reason?: string }> };
+    };
+    const reason = body.error?.errors?.[0]?.reason;
+    detail = [reason, body.error?.message].filter(Boolean).join(": ");
+  } catch {
+    /* A non-JSON error body is not worth failing over — the status still says
+       something, and this path is already an error path. */
+  }
+
+  return new Error(
+    `${context} returned ${String(response.status)}${detail ? ` — ${detail}` : ""}`,
+  );
+}
+
 export interface ListResult {
   events: GoogleEvent[];
   /** Present on the last page; feed it to the next sync. */
@@ -244,9 +269,7 @@ export async function listEvents(input: {
     }
 
     if (!response.ok) {
-      throw new Error(
-        `Google Calendar returned ${String(response.status)}`,
-      );
+      throw await googleError(response, "Google Calendar list");
     }
 
     const json = (await response.json()) as {
@@ -313,8 +336,7 @@ export async function createGoogleCalendarEvent(
     );
 
     if (!response.ok) {
-      const err = (await response.json()) as { error?: { message?: string } };
-      throw new Error(err.error?.message ?? `Google Calendar API error ${response.status}`);
+      throw await googleError(response, "Google Calendar insert");
     }
 
     const result = (await response.json()) as { id?: string; htmlLink?: string };
@@ -344,11 +366,29 @@ export async function deleteGoogleCalendarEvent(
 
     // 204 = success, 410 = already deleted — both are fine
     if (!response.ok && response.status !== 410) {
-      throw new Error(`Google Calendar delete failed: ${response.status}`);
+      throw await googleError(response, "Google Calendar delete");
     }
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Whether a grant actually carries calendar access at all.
+ *
+ * Worth checking explicitly, because Google's granular consent screen lets the
+ * user untick the calendar permissions and press Continue. Combined with
+ * `include_granted_scopes=true`, the token response then comes back carrying
+ * only the scopes the sign-in flow already had — `email profile openid` — which
+ * looks like a successful authorisation and fails `403 insufficientPermissions`
+ * on every list call thereafter.
+ *
+ * Matches `auth/calendar` rather than a specific scope, so `calendar.readonly`,
+ * `calendar.events` and full `calendar` all satisfy it.
+ */
+export function hasCalendarScope(scope: string | null | undefined): boolean {
+  if (!scope) return false;
+  return scope.includes("auth/calendar");
 }
 
 export function hasWriteScope(scope: string | null | undefined): boolean {

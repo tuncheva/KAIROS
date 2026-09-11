@@ -15,9 +15,7 @@
  * E-2: a turn may now run up to three sub-agents. "Break down Alpha, note the
  * risks, and schedule the kickoff" is one sentence and three domains, and the
  * single-handoff version silently delivered whichever third A1 picked. They run
- * sequentially — the sub-agents each cost a model call, and running them in
- * parallel would multiply the peak load for a turn the user is already waiting
- * on — and each one's failure is contained to itself.
+ * concurrently, bounded at three, and each one's failure is contained to itself.
  */
 
 import { TRPCError } from "@trpc/server";
@@ -252,20 +250,38 @@ export async function runAgentTurn(
     return { draftId, a1, plans: [], handoffErrors: [] };
   }
 
+  // Concurrently, bounded by `MAX_SUB_AGENTS`.
+  //
+  // These used to run one after another, on the reasoning that parallel
+  // sub-agents would multiply a turn's peak load. They do — by at most three,
+  // against a per-user daily budget that already meters every one of these calls
+  // — and the cost of not doing it was paid by the user, in full, on the turn
+  // they were waiting on: three model calls end to end for a request they wrote
+  // as one sentence.
+  //
+  // The agents are independent by construction. A1 emits at most one handoff per
+  // agent, so no two here write the same kind of draft, and each produces a draft
+  // for review rather than applying anything.
+  const settled = await Promise.allSettled(
+    handoffs.map((handoff) => runHandoff(input, handoff, input.message)),
+  );
+
+  // Rebuilt in A1's order rather than completion order: `plans[0]` is the one a
+  // single-plan client renders, and that has to stay the plan A1 asked for first.
   const plans: AgentPlan[] = [];
   const handoffErrors: string[] = [];
 
-  for (const handoff of handoffs) {
-    try {
-      plans.push(await runHandoff(input, handoff, input.message));
-    } catch (err) {
-      log.error("handoff sub-agent failed", {
-        targetAgent: handoff.targetAgent,
-        err,
-      });
-      handoffErrors.push(errorText(err));
+  settled.forEach((outcome, i) => {
+    if (outcome.status === "fulfilled") {
+      plans.push(outcome.value);
+      return;
     }
-  }
+    log.error("handoff sub-agent failed", {
+      targetAgent: handoffs[i]?.targetAgent,
+      err: outcome.reason,
+    });
+    handoffErrors.push(errorText(outcome.reason));
+  });
 
   return { draftId, a1, plans, plan: plans[0], handoffErrors };
 }

@@ -64,10 +64,20 @@ export async function sendDueEventReminders(now = new Date()): Promise<ReminderR
         // Declining an event cancels its reminder. Without this, changing an RSVP
         // to `not_going` left the reminder armed.
         sql`${eventRsvps.status} <> 'not_going'`,
-        // Due: the reminder moment has passed.
+        /* Due: the reminder moment has passed.
+
+           The bound is an ISO string with an explicit cast, not a `Date`.
+           Drizzle encodes a `Date` using the *column's* driver mapper, and there
+           is no column on the left here — only a raw expression — so the Date
+           reached postgres.js unconverted and it threw
+           `ERR_INVALID_ARG_TYPE ... Received an instance of Date` while binding
+           parameters. That aborted the whole sweep, so no event reminder had
+           ever been sent. Comparing against a column (as everything else in this
+           codebase does) hides the problem; comparing against an expression
+           exposes it. */
         lte(
           sql`${events.eventDate} - (${eventRsvps.reminderMinutesBefore} * interval '1 minute')`,
-          now,
+          sql`${now.toISOString()}::timestamptz`,
         ),
         /* But the event itself has not long since gone by. Measured from
            when it *ends*, not when it starts: a three-day conference on its
@@ -75,7 +85,7 @@ export async function sendDueEventReminders(now = new Date()): Promise<ReminderR
            here dropped its reminders as stale while it was under way. */
         gte(
           sql`COALESCE(${events.endsAt}, ${events.eventDate})`,
-          new Date(now.getTime() - STALE_AFTER_MS),
+          sql`${new Date(now.getTime() - STALE_AFTER_MS).toISOString()}::timestamptz`,
         ),
       ),
     )

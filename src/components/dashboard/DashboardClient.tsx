@@ -581,6 +581,10 @@ function TeamToday({
  * so this says what to do instead — and the day arc still runs, which is the
  * point the design makes about an empty dashboard.
  */
+const TAU = Math.PI * 2;
+/** One tick per hour of the day, drawn round the outer ring. */
+const HOUR_TICKS = Array.from({ length: 24 }, (_, hour) => hour);
+
 function FirstRun({
   dayGone,
   now,
@@ -681,17 +685,52 @@ function FirstRun({
         </div>
       </div>
 
-      <aside className="flex flex-col items-center justify-center gap-[22px] px-8 py-16 sm:py-24">
+      {/* Weighted upward rather than centred on the column: the caption hangs
+          below the dial, so a block centred on its own bounding box reads as
+          sitting low. The extra bottom padding lifts the optical centre. */}
+      <aside className="flex flex-col items-center justify-center gap-[22px] px-8 pt-12 pb-28 sm:pt-16 sm:pb-40">
         <div className="dash-fade relative h-[200px] w-[200px]" style={rise(0.3)}>
           <svg viewBox="0 0 200 200" className="block h-[200px] w-[200px]">
+            {/* Twenty-four ticks, one per hour, with the quarters of the day
+                drawn longer. The ring used to be a `stroke-dasharray` of no
+                particular count — decorative hatching that happened to look
+                like a dial. Hours cost the same to draw and make the caption
+                ("the inner arc tracks the day itself") true of the outer ring
+                as well: the hours behind you are tinted, the ones ahead are
+                not, so the dial can be read at a glance without the number.
+
+                Tinted from `dayGone` rather than the entrance tween, so the
+                ticks state a fact while only the arc animates in. */}
+            {HOUR_TICKS.map((hour) => {
+              const angle = (hour / 24) * TAU - Math.PI / 2;
+              const quarter = hour % 6 === 0;
+              const inner = quarter ? 76 : 80;
+              return (
+                <line
+                  key={hour}
+                  x1={100 + Math.cos(angle) * inner}
+                  y1={100 + Math.sin(angle) * inner}
+                  x2={100 + Math.cos(angle) * 88}
+                  y2={100 + Math.sin(angle) * 88}
+                  strokeWidth={quarter ? 2 : 1.5}
+                  strokeLinecap="round"
+                  className={
+                    hour / 24 < dayGone ? "stroke-dash-day/45" : "stroke-border-light/50"
+                  }
+                />
+              );
+            })}
+
+            {/* The track the arc runs on. Without it the arc was a crescent
+                floating in the middle of the dial, with nothing to say how far
+                round it had left to go. */}
             <circle
               cx="100"
               cy="100"
-              r="82"
+              r="62"
               fill="none"
-              strokeWidth="12"
-              strokeDasharray="3 9"
-              className="stroke-border-light/60"
+              strokeWidth="4"
+              className="stroke-border-light/30"
             />
             <circle
               cx="100"
@@ -703,15 +742,46 @@ function FirstRun({
               strokeDasharray={RING_DAY}
               strokeDashoffset={dashOffset(RING_DAY, dayGone, p)}
               transform="rotate(-90 100 100)"
-              opacity="0.8"
               className="stroke-dash-day"
             />
+            {/* The head of the arc — where "now" actually is. */}
+            <circle
+              cx={100 + Math.cos(dayGone * p * TAU - Math.PI / 2) * 62}
+              cy={100 + Math.sin(dayGone * p * TAU - Math.PI / 2) * 62}
+              r="3.5"
+              className="fill-dash-day"
+            />
           </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-quaternary">
+          {/* Number over caption, the same shape as `WorkspaceRing` above.
+
+              As one line it did not fit the dial it sits in: "47% OF TODAY
+              GONE" at 11px with 0.14em tracking measures ~150px, against an
+              inner arc of 124px across and a tick ring whose inner edge is at
+              152px. So the label spilled out of the arc and collided with the
+              ticks at both ends. Split, the widest line is the caption at
+              ~95px, which clears the arc with room on either side. */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+            <span
+              aria-hidden="true"
+              className="text-[34px] leading-none font-semibold tabular-nums tracking-[-0.03em] text-fg-primary"
+            >
+              {Math.round(dayGone * 100)}%
+            </span>
+            <span
+              aria-hidden="true"
+              className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary"
+            >
+              {t("workspace.ofTodayGone")}
+            </span>
+            {/* Split for layout, read back whole: the two spans above are one
+                sentence, and announcing "47 percent" and "of today gone" as
+                separate stops is worse than either. */}
+            <span className="sr-only">
               {t("workspace.dayGone", { percent: Math.round(dayGone * 100) })}
             </span>
-            <span className="text-[15px] font-semibold text-fg-secondary">{timeLeft}</span>
+            <span className="mt-1.5 text-[13px] font-semibold tabular-nums text-fg-tertiary">
+              {timeLeft}
+            </span>
           </div>
         </div>
         <p className="max-w-[250px] text-center text-sm leading-[1.6] text-fg-quaternary">

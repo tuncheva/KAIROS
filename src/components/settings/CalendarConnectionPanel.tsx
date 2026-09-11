@@ -143,11 +143,12 @@ export function CalendarConnectionPanel() {
 /**
  * What the OAuth callback reported.
  *
- * Four outcomes, and they are not interchangeable. `cancelled` is a decision, not
- * a failure. `no_refresh` is the one worth spelling out: Google granted access
+ * Five outcomes, and they are not interchangeable. `cancelled` is a decision, not
+ * a failure. `no_refresh` is one worth spelling out: Google granted access
  * without a refresh token, which the callback refuses to store because it would
  * work for an hour and then die silently — the user needs to know to approve
- * everything on the consent screen.
+ * everything on the consent screen. `no_scope` is the same class of problem and
+ * the more common one: consent was given, but not to the calendar itself.
  */
 function OutcomeBanner({
   reason,
@@ -165,7 +166,9 @@ function OutcomeBanner({
         ? "calendarCancelled"
         : reason === "no_refresh"
           ? "calendarNoRefresh"
-          : "calendarFailed";
+          : reason === "no_scope"
+            ? "calendarNoScope"
+            : "calendarFailed";
 
   const good = reason === "connected";
 

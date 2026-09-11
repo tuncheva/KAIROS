@@ -6,7 +6,7 @@
 /*  light/dark theme and the user's accent choice.                    */
 /* ------------------------------------------------------------------ */
 
-export type CalendarKind = "task" | "event" | "note";
+export type CalendarKind = "task" | "event" | "note" | "external";
 
 /**
  * The period on screen.
@@ -42,6 +42,25 @@ export type CalendarEvent = {
   description: string;
 };
 
+/**
+ * An event read from a connected calendar.
+ *
+ * Deliberately a separate kind rather than folded into `CalendarEvent`. It is
+ * read-only here — Kairos does not own it, cannot reschedule it, and must not
+ * offer to — and it carries `allDay` as a *fact* from the provider rather than
+ * the midnight heuristic the product's own rows are read with.
+ */
+export type CalendarExternalEvent = {
+  id: number;
+  title: string;
+  description: string | null;
+  location: string | null;
+  startsAt: Date | string;
+  endsAt: Date | string | null;
+  allDay: boolean;
+  status: string;
+};
+
 export type CalendarNote = {
   id: number;
   title: string | null;
@@ -57,6 +76,7 @@ export type CalendarData = {
   tasks: CalendarTask[];
   events: CalendarEvent[];
   notes: CalendarNote[];
+  external: CalendarExternalEvent[];
 };
 
 export type CalendarItem =
@@ -83,7 +103,19 @@ export type CalendarItem =
       endsAt: Date | null;
       description: string;
     }
-  | { kind: "note"; id: number; title: string; date: Date; allDay: boolean; locked: boolean };
+  | { kind: "note"; id: number; title: string; date: Date; allDay: boolean; locked: boolean }
+  | {
+      kind: "external";
+      id: number;
+      title: string;
+      date: Date;
+      allDay: boolean;
+      endsAt: Date | null;
+      description: string;
+      location: string | null;
+      /** `confirmed` or `tentative`; cancelled rows never reach the client. */
+      status: string;
+    };
 
 /* ------------------------------------------------------------------ */
 /*  Dates — all arithmetic is local-time, weeks start on Monday.       */
@@ -248,6 +280,24 @@ export function toCalendarItems(
       description: event.description,
     });
   }
+  for (const external of data?.external ?? []) {
+    const date = new Date(external.startsAt);
+    const end = external.endsAt ? new Date(external.endsAt) : null;
+    items.push({
+      kind: "external",
+      id: external.id,
+      title: external.title,
+      date,
+      // The provider said so. A date-only event is genuinely all-day; a timed
+      // one that happens to start at midnight is not, which is exactly the case
+      // the midnight heuristic gets wrong for imported rows.
+      allDay: external.allDay,
+      endsAt: end && !Number.isNaN(end.getTime()) && end > date ? end : null,
+      description: external.description ?? "",
+      location: external.location,
+      status: external.status,
+    });
+  }
   for (const note of data?.notes ?? []) {
     if (!note.calendarDate) continue;
     const date = new Date(note.calendarDate);
@@ -285,6 +335,8 @@ export type ItemFilters = {
 function searchable(item: CalendarItem) {
   if (item.kind === "task") return `${item.title} ${item.projectTitle ?? ""}`;
   if (item.kind === "event") return `${item.title} ${item.description}`;
+  if (item.kind === "external")
+    return `${item.title} ${item.description} ${item.location ?? ""}`;
   return item.title;
 }
 
@@ -362,6 +414,18 @@ const EVENT_TONE: Tone = {
   dot: "bg-info",
 };
 
+/**
+ * An imported event reads as an event — it is one — but at a lower contrast,
+ * because it is the one kind on the grid the user cannot act on from here.
+ */
+const EXTERNAL_TONE: Tone = {
+  bar: "bg-info/60",
+  bg: "bg-info/[0.06]",
+  border: "border-info/20",
+  text: "text-info/80",
+  dot: "bg-info/60",
+};
+
 const NOTE_TONE: Tone = {
   bar: "bg-fg-quaternary",
   bg: "bg-transparent",
@@ -377,6 +441,7 @@ export function priorityTone(priority: string): Tone {
 export function toneFor(item: Pick<CalendarItem, "kind"> & { priority?: string }): Tone {
   if (item.kind === "task") return priorityTone(item.priority ?? "medium");
   if (item.kind === "event") return EVENT_TONE;
+  if (item.kind === "external") return EXTERNAL_TONE;
   return NOTE_TONE;
 }
 
@@ -392,6 +457,7 @@ export const KIND_CHIP_TONE: Record<CalendarKind, Tone> = {
     text: "text-fg-secondary",
     dot: "bg-fg-quaternary",
   },
+  external: EXTERNAL_TONE,
 };
 
 export const STATUS_LABEL_KEYS: Record<string, string> = {
@@ -412,6 +478,7 @@ export const KIND_LABEL_KEYS: Record<CalendarKind, string> = {
   task: "taskType",
   event: "eventType",
   note: "noteType",
+  external: "externalType",
 };
 
 /**
@@ -428,11 +495,12 @@ export const KIND_GLYPH: Record<CalendarKind, string> = {
   task: "✓",
   event: "●",
   note: "▪",
+  external: "◇",
 };
 
 export const TASK_STATUSES = ["pending", "in_progress", "blocked", "completed"] as const;
 export const TASK_PRIORITIES = ["urgent", "high", "medium", "low"] as const;
-export const ITEM_KINDS: CalendarKind[] = ["task", "event", "note"];
+export const ITEM_KINDS: CalendarKind[] = ["task", "event", "note", "external"];
 
 /* ------------------------------------------------------------------ */
 /*  Time-grid geometry                                                */
@@ -462,7 +530,8 @@ const MARKER_MINUTES = 24;
  * boxes.
  */
 export function itemSpan(item: CalendarItem): { minutes: number; known: boolean } {
-  if (item.kind !== "event") return { minutes: MARKER_MINUTES, known: true };
+  if (item.kind !== "event" && item.kind !== "external")
+    return { minutes: MARKER_MINUTES, known: true };
   if (!item.endsAt) return { minutes: ASSUMED_EVENT_MINUTES, known: false };
   const minutes = (item.endsAt.getTime() - item.date.getTime()) / 60_000;
   return { minutes: Math.max(minutes, MIN_EVENT_MINUTES), known: true };

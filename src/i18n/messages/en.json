@@ -174,7 +174,14 @@
       "createKind": "Create {kind}",
       "taskCreated": "Task created",
       "eventCreated": "Event created",
-      "noteCreated": "Note created"
+      "noteCreated": "Note created",
+      "externalType": "Imported",
+      "readOnlyItem": "read-only",
+      "locationLabel": "Location",
+      "sourceLabel": "Source",
+      "sourceGoogleCalendar": "Google Calendar",
+      "tentative": "Tentative",
+      "externalReadOnly": "This event comes from a connected calendar. Change it there and it will update here on the next sync."
     }
   },
   "notes": {
@@ -1076,6 +1083,7 @@
       "calendarCancelled": "Connection cancelled.",
       "calendarFailed": "Could not connect the calendar. Try again.",
       "calendarNoRefresh": "Google did not grant lasting access. Try connecting again and approve all requested permissions.",
+      "calendarNoScope": "Google did not grant calendar access. Connect again and tick the calendar permissions on the consent screen.",
       "dismiss": "Dismiss",
       "calendarGroup": "Calendar",
       "calendarGroupHint": "Meeting prep is inert without a connected calendar."
@@ -2184,7 +2192,8 @@
       "active": "{count} active",
       "todo": "{count} to do",
       "dayGone": "{percent}% of today gone",
-      "ofTasksDone": "of tasks done"
+      "ofTasksDone": "of tasks done",
+      "ofTodayGone": "of today gone"
     },
     "projects": {
       "untitled": "Untitled project",

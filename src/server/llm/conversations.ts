@@ -62,20 +62,49 @@ export function createConversationId(): string {
   return `conv_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
+export interface ReplayContext {
+  /** What was established in turns that have aged out of the replay window. */
+  summary: string | null;
+  /** The recent turns, oldest first. */
+  messages: Array<{ role: "user" | "assistant"; content: string }>;
+}
+
+export interface OpenedConversation extends ReplayContext {
+  conversationId: string;
+  /** True when this turn created the row, so there is nothing to replay. */
+  created: boolean;
+}
+
 /**
- * Resolve the conversation to append to, creating one when needed.
+ * Resolve the conversation for this turn and load what should be replayed into
+ * the model — in as few round trips as the work actually needs.
+ *
+ * This was three functions' worth of queries run one after another, all of them
+ * in front of the streamed response: `ensureConversation` selected the row and
+ * then wrote `updatedAt`, `loadHistory` selected the very same row again for its
+ * summary, and only then fetched the messages. Four sequential round trips, two
+ * of them redundant, on the path the user is staring at a spinner during.
+ *
+ * Now: one select for the conversation, one for its messages. The `updatedAt`
+ * bump is gone entirely rather than moved — `appendMessage` already writes it,
+ * and this turn always appends at least the user's message afterwards.
  *
  * A conversation id supplied by the client is only accepted if it belongs to the
  * caller; anything else starts a fresh conversation rather than erroring, since
  * a stale id in localStorage should not break the chat.
  */
-export async function ensureConversation(
+export async function openConversation(
   ctx: TRPCContext,
-  input: { conversationId?: string; userId: string; projectId?: number | null },
-): Promise<string> {
+  input: {
+    conversationId?: string;
+    userId: string;
+    projectId?: number | null;
+    limit?: number;
+  },
+): Promise<OpenedConversation> {
   if (input.conversationId) {
-    const [existing] = await ctx.db
-      .select({ id: aiConversations.id })
+    const [conversation] = await ctx.db
+      .select({ id: aiConversations.id, summary: aiConversations.summary })
       .from(aiConversations)
       .where(
         and(
@@ -85,12 +114,32 @@ export async function ensureConversation(
       )
       .limit(1);
 
-    if (existing) {
-      await ctx.db
-        .update(aiConversations)
-        .set({ updatedAt: new Date() })
-        .where(eq(aiConversations.id, existing.id));
-      return existing.id;
+    if (conversation) {
+      const rows = await ctx.db
+        .select({
+          role: aiMessages.role,
+          content: aiMessages.content,
+        })
+        .from(aiMessages)
+        .where(eq(aiMessages.conversationId, conversation.id))
+        .orderBy(desc(aiMessages.createdAt))
+        .limit(input.limit ?? REPLAY_LIMIT);
+
+      // Tool messages are excluded: their results belong to the turn that
+      // fetched them, and replaying them without the matching tool_call ids is
+      // invalid.
+      return {
+        conversationId: conversation.id,
+        created: false,
+        summary: conversation.summary,
+        messages: rows
+          .filter((r) => r.role === "user" || r.role === "assistant")
+          .reverse()
+          .map((r) => ({
+            role: r.role as "user" | "assistant",
+            content: r.content,
+          })),
+      };
     }
   }
 
@@ -100,63 +149,7 @@ export async function ensureConversation(
     userId: input.userId,
     projectId: input.projectId ?? null,
   });
-  return id;
-}
-
-export interface ReplayContext {
-  /** What was established in turns that have aged out of the replay window. */
-  summary: string | null;
-  /** The recent turns, oldest first. */
-  messages: Array<{ role: "user" | "assistant"; content: string }>;
-}
-
-/**
- * The context to replay into the model: the rolling summary, plus recent turns.
- *
- * Returns an empty context rather than throwing when the conversation does not
- * belong to the caller — a stale id should degrade to "no history", not a 500.
- */
-export async function loadHistory(
-  ctx: TRPCContext,
-  conversationId: string,
-  userId: string,
-  limit = REPLAY_LIMIT,
-): Promise<ReplayContext> {
-  const [conversation] = await ctx.db
-    .select({ id: aiConversations.id, summary: aiConversations.summary })
-    .from(aiConversations)
-    .where(
-      and(
-        eq(aiConversations.id, conversationId),
-        eq(aiConversations.userId, userId),
-      ),
-    )
-    .limit(1);
-
-  if (!conversation) return { summary: null, messages: [] };
-
-  const rows = await ctx.db
-    .select({
-      role: aiMessages.role,
-      content: aiMessages.content,
-      createdAt: aiMessages.createdAt,
-    })
-    .from(aiMessages)
-    .where(eq(aiMessages.conversationId, conversationId))
-    .orderBy(desc(aiMessages.createdAt))
-    .limit(limit);
-
-  // Tool messages are excluded: their results belong to the turn that fetched
-  // them, and replaying them without the matching tool_call ids is invalid.
-  const messages = rows
-    .filter((r) => r.role === "user" || r.role === "assistant")
-    .reverse()
-    .map((r) => ({
-      role: r.role as "user" | "assistant",
-      content: r.content,
-    }));
-
-  return { summary: conversation.summary, messages };
+  return { conversationId: id, created: true, summary: null, messages: [] };
 }
 
 export interface AppendMessageInput {
