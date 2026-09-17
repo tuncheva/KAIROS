@@ -26,9 +26,19 @@ import { describe, expect, it } from "vitest";
 import {
   FREE_ENTITLEMENTS,
   PRO_ENTITLEMENTS,
+  TEAM_ENTITLEMENTS,
   entitlementsForPlan,
+  higherPlan,
   type Entitlements,
+  type PlanId,
 } from "~/lib/entitlements";
+
+/** Every plan, so a new tier cannot be added without these checks covering it. */
+const ALL_PLANS = [
+  FREE_ENTITLEMENTS,
+  PRO_ENTITLEMENTS,
+  TEAM_ENTITLEMENTS,
+] as const;
 
 /** Flags describing features that exist in the shipped product today. */
 const SHIPPED_FLAGS = [
@@ -41,17 +51,18 @@ const SHIPPED_FLAGS = [
 ] as const satisfies readonly (keyof Entitlements)[];
 
 describe("plan definitions", () => {
-  it("describes both plans with exactly the same set of flags", () => {
-    expect(Object.keys(FREE_ENTITLEMENTS).sort()).toEqual(
-      Object.keys(PRO_ENTITLEMENTS).sort(),
-    );
+  it("describes every plan with exactly the same set of flags", () => {
+    const reference = Object.keys(FREE_ENTITLEMENTS).sort();
+    for (const plan of ALL_PLANS) {
+      expect(Object.keys(plan).sort(), plan.plan).toEqual(reference);
+    }
   });
 
   it("never leaves a flag undefined on either plan", () => {
     // Distinct from the key-set check: a key can be present and explicitly
     // undefined, which reads as "not granted" for booleans and as a crash for
     // anything else.
-    for (const plan of [FREE_ENTITLEMENTS, PRO_ENTITLEMENTS]) {
+    for (const plan of ALL_PLANS) {
       for (const [flag, value] of Object.entries(plan)) {
         expect(value, `${plan.plan}.${flag}`).toBeDefined();
       }
@@ -89,7 +100,105 @@ describe("plan definitions", () => {
   it("resolves each plan id to the matching flag set", () => {
     expect(entitlementsForPlan("free")).toBe(FREE_ENTITLEMENTS);
     expect(entitlementsForPlan("pro")).toBe(PRO_ENTITLEMENTS);
+    expect(entitlementsForPlan("team")).toBe(TEAM_ENTITLEMENTS);
     expect(entitlementsForPlan("free").plan).toBe("free");
     expect(entitlementsForPlan("pro").plan).toBe("pro");
+    expect(entitlementsForPlan("team").plan).toBe("team");
+  });
+});
+
+/**
+ * Team is Pro plus organization features, and the "plus" has to be total.
+ *
+ * The failure this guards against is silent and expensive: Pro gains a flag,
+ * Team is a hand-written literal that nobody updates, and the more expensive
+ * plan offers less than the cheaper one. `TEAM_ENTITLEMENTS` spreads Pro
+ * precisely so that cannot happen — these assertions are what notice if someone
+ * "tidies" the spread away into an explicit object.
+ */
+describe("Team relative to Pro", () => {
+  /** The flags that are the Pro/Team boundary. */
+  const ORG_FLAGS = [
+    "orgAdminAgent",
+    "sharedOrgMemory",
+    "orgWideRiskRadar",
+    "auditTrail",
+    "priorityModel",
+  ] as const satisfies readonly (keyof Entitlements)[];
+
+  it("grants Team every boolean flag Pro has", () => {
+    for (const [flag, value] of Object.entries(PRO_ENTITLEMENTS)) {
+      if (typeof value !== "boolean" || !value) continue;
+      expect(
+        TEAM_ENTITLEMENTS[flag as keyof Entitlements],
+        `team.${flag} must not be less than pro.${flag}`,
+      ).toBe(true);
+    }
+  });
+
+  it("never gives Team a smaller numeric ceiling than Pro", () => {
+    expect(TEAM_ENTITLEMENTS.aiRequestsPerDay).toBeGreaterThanOrEqual(
+      PRO_ENTITLEMENTS.aiRequestsPerDay,
+    );
+    expect(TEAM_ENTITLEMENTS.maxSchedules).toBeGreaterThanOrEqual(
+      PRO_ENTITLEMENTS.maxSchedules,
+    );
+    // `null` is unlimited, so Pro's null must not become a number on Team.
+    if (PRO_ENTITLEMENTS.historyDays === null) {
+      expect(TEAM_ENTITLEMENTS.historyDays).toBeNull();
+    }
+  });
+
+  it("reserves the organization flags for Team alone", () => {
+    for (const flag of ORG_FLAGS) {
+      expect(FREE_ENTITLEMENTS[flag], `free.${flag}`).toBe(false);
+      expect(PRO_ENTITLEMENTS[flag], `pro.${flag}`).toBe(false);
+      expect(TEAM_ENTITLEMENTS[flag], `team.${flag}`).toBe(true);
+    }
+  });
+});
+
+/**
+ * `higherPlan` decides what someone covered twice actually gets.
+ *
+ * It is the only place the tiers are ordered, and getting it wrong is not
+ * visible in the UI — a Team member with a lapsed personal Pro would simply find
+ * features missing, with nothing on screen explaining why.
+ */
+describe("higherPlan", () => {
+  const PLANS: readonly PlanId[] = ["free", "pro", "team"];
+
+  it("is commutative", () => {
+    for (const a of PLANS) {
+      for (const b of PLANS) {
+        expect(higherPlan(a, b), `${a} vs ${b}`).toBe(higherPlan(b, a));
+      }
+    }
+  });
+
+  it("never returns a plan that was not offered", () => {
+    for (const a of PLANS) {
+      for (const b of PLANS) {
+        expect([a, b]).toContain(higherPlan(a, b));
+      }
+    }
+  });
+
+  it("prefers the more generous tier", () => {
+    expect(higherPlan("free", "pro")).toBe("pro");
+    expect(higherPlan("pro", "team")).toBe("team");
+    expect(higherPlan("free", "team")).toBe("team");
+  });
+
+  it("is idempotent", () => {
+    for (const plan of PLANS) {
+      expect(higherPlan(plan, plan)).toBe(plan);
+    }
+  });
+
+  it("keeps a personal Pro when the active org is unpaid", () => {
+    // The case that motivated taking a maximum rather than letting the org win:
+    // joining a Free organization must not cancel the plan you pay for.
+    expect(higherPlan("pro", "free")).toBe("pro");
   });
 });
