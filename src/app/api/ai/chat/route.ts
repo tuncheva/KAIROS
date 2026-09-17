@@ -126,7 +126,7 @@ export async function POST(request: Request) {
   // Same door as the tRPC procedures: one AI request off the caller's daily
   // budget, refused before any model call.
   try {
-    await consumeRateLimit(userId, entitlementsFor(ctx).aiRequestsPerDay);
+    await consumeRateLimit(userId, (await entitlementsFor(ctx)).aiRequestsPerDay);
   } catch (err) {
     const detail =
       err instanceof Error ? err.message : "Rate limit exceeded";

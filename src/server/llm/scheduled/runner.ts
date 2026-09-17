@@ -37,7 +37,7 @@ import {
 } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
 
-import { entitlementsFor } from "~/server/billing/entitlements";
+import { entitlementsForUser } from "~/server/billing/entitlements";
 import { sendBriefEmail } from "~/server/email/email";
 
 import { runCustomSchedule } from "./customSchedules";
@@ -682,9 +682,12 @@ async function runDueCustomSchedules(now: Date): Promise<CustomReport> {
       if (!user) continue;
 
       const used = perUserCount.get(schedule.userId) ?? 0;
-      const allowance = entitlementsFor(
-        systemContextFor(user),
-      ).maxSchedules;
+      // By user id, not through `systemContextFor`. A synthesised context is a
+      // new object every iteration, so the per-request memo in the resolver
+      // could never hit it — this loop would have issued two queries per
+      // schedule for an answer that only depends on the user.
+      const allowance = (await entitlementsForUser(schedule.userId))
+        .maxSchedules;
 
       if (used >= allowance) {
         report.skippedOverCap += 1;

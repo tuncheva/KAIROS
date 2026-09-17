@@ -19,6 +19,8 @@ import {
   themeEnum,
   profileAudienceEnum,
   verificationCodePurposeEnum,
+  planEnum,
+  subscriptionStatusEnum,
 } from "./enums";
 
 export const users = createTable("user", (d) => ({
@@ -186,6 +188,50 @@ export const users = createTable("user", (d) => ({
 
     twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
     twoFactorSecret: varchar("two_factor_secret", { length: 255 }),
+
+
+    /**
+     * Billing — this person's own subscription.
+     *
+     * Columns rather than a `subscriptions` table, deliberately. Every request
+     * that resolves entitlements reads this, and the read is on the hot path of
+     * the rate limiter; a join to answer "what may you do" is a join on every AI
+     * turn. The cost of the choice is that there is no subscription *history*
+     * here — only the current state. Stripe holds the history, and it is the
+     * better system of record for it.
+     *
+     * This is only half the answer. Team is bought by an organization, so the
+     * plan that actually applies to someone is the better of this column and
+     * their active org's — see `~/server/billing/entitlements`.
+     *
+     * `plan` is denormalised from `subscriptionStatus` + Stripe's price on
+     * purpose: it is what every reader wants, and deriving it on each read means
+     * the "is past_due still entitled?" rule living in more than one place.
+     * `~/server/billing/subscriptions` is the only writer.
+     */
+    plan: planEnum("plan").default("free").notNull(),
+    /**
+     * Stripe's customer handle, kept even after a subscription ends.
+     *
+     * Nulling it on cancellation would orphan the customer's invoice history and
+     * make a returning subscriber a second customer with the same email — which
+     * is how one person ends up with two payment methods and two receipts for
+     * the same account.
+     */
+    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }).unique(),
+    stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }).unique(),
+    subscriptionStatus: subscriptionStatusEnum("subscription_status"),
+    /**
+     * When the paid period ends — the moment access lapses if nothing renews.
+     *
+     * Stored so the UI can say "until 14 March" rather than only "cancelling",
+     * and so a webhook that never arrives cannot leave someone paying for
+     * nothing: the resolver treats a period end in the past as unentitled
+     * regardless of what `status` still claims.
+     */
+    currentPeriodEnd: timestamp("current_period_end", { mode: "date", withTimezone: true }),
+    /** Set when the subscriber has cancelled but the period they paid for runs on. */
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
 
     createdAt: timestamp("created_at")
       .default(sql`CURRENT_TIMESTAMP`)

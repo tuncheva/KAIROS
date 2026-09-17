@@ -27,9 +27,7 @@
 import crypto from "node:crypto";
 
 import { env } from "~/env";
-import type { TRPCContext } from "~/server/api/trpc";
-import { entitlementsFor } from "~/server/billing/entitlements";
-import { db } from "~/server/db";
+import { entitlementsForUser } from "~/server/billing/entitlements";
 import { createLogger } from "~/server/logger";
 import {
   cullExpiredHistory,
@@ -117,12 +115,14 @@ export async function POST(request: Request) {
     let retention: CullReport | { error: string };
     try {
       retention = await cullExpiredHistory({
-        resolveHistoryDays: (userId) =>
-          entitlementsFor({
-            db,
-            apiKeyId: null,
-            session: { user: { id: userId } },
-          } as TRPCContext).historyDays,
+        // Resolved by user id rather than through a synthesised context. The
+        // cast this used to need was already a fiction — the object had a `db`
+        // and a user id and nothing else a `TRPCContext` promises — and it
+        // became an expensive one once entitlements hit the database, because
+        // each iteration built a fresh object that the per-request memo could
+        // never hit.
+        resolveHistoryDays: async (userId) =>
+          (await entitlementsForUser(userId)).historyDays,
       });
     } catch (err) {
       log.error("history cull failed", { err });

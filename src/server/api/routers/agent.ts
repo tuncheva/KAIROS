@@ -93,7 +93,7 @@ import {
 const rateLimitedProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   await consumeRateLimit(
     ctx.session.user.id,
-    entitlementsFor(ctx).aiRequestsPerDay,
+    (await entitlementsFor(ctx)).aiRequestsPerDay,
   );
   return next();
 });
@@ -135,7 +135,7 @@ export const agentRouter = createTRPCRouter({
   rateLimitStatus: protectedProcedure.query(async ({ ctx }) => {
     return checkRateLimit(
       ctx.session.user.id,
-      entitlementsFor(ctx).aiRequestsPerDay,
+      (await entitlementsFor(ctx)).aiRequestsPerDay,
     );
   }),
   /**
@@ -728,7 +728,7 @@ export const agentRouter = createTRPCRouter({
     return {
       schedules: rows,
       /** So the UI can say "2 of 3 used" rather than only refusing at the limit. */
-      allowance: entitlementsFor(ctx).maxSchedules,
+      allowance: (await entitlementsFor(ctx)).maxSchedules,
     };
   }),
 
@@ -743,7 +743,7 @@ export const agentRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const allowance = entitlementsFor(ctx).maxSchedules;
+      const allowance = (await entitlementsFor(ctx)).maxSchedules;
 
       const [{ count } = { count: 0 }] = await ctx.db
         .select({ count: sql<number>`count(*)`.mapWith(Number) })
@@ -974,12 +974,13 @@ export const agentRouter = createTRPCRouter({
       z.object({ days: z.number().int().min(1).max(90).optional() }).optional(),
     )
     .query(async ({ ctx, input }) => {
+      // Resolved before the Promise.all rather than inside it: the ceiling is an
+      // argument to the rate-limit read, not a peer of it.
+      const { aiRequestsPerDay } = await entitlementsFor(ctx);
+
       const [metrics, interactive, system] = await Promise.all([
         getAiMetrics(ctx, ctx.session.user.id, input?.days ?? 30),
-        checkRateLimit(
-          ctx.session.user.id,
-          entitlementsFor(ctx).aiRequestsPerDay,
-        ),
+        checkRateLimit(ctx.session.user.id, aiRequestsPerDay),
         checkSystemRateLimit(ctx.session.user.id),
       ]);
       return { ...metrics, quota: { interactive, system } };

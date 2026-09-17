@@ -163,3 +163,35 @@ export const verificationCodePurposeEnum = pgEnum("verification_code_purpose", [
   /** Authorise setting a new account password without being signed in. */
   "password_reset",
 ]);
+
+/**
+ * Which plan a subscriber is on.
+ *
+ * Mirrors `PlanId` in `~/lib/entitlements`, and has to: that module is the
+ * definition of what a plan grants, this is the definition of what the database
+ * may store, and a value in one that the other rejects is a row nothing can
+ * resolve. Adding a tier means both, in the same migration.
+ */
+export const planEnum = pgEnum("plan", ["free", "pro", "team"]);
+
+/**
+ * The Stripe subscription statuses that matter to us.
+ *
+ * A subset, not the whole Stripe vocabulary. `incomplete_expired` and `paused`
+ * collapse into `canceled` on the way in — see `~/server/billing/subscriptions`
+ * — because the only question this column is ever asked is "does this row still
+ * entitle anyone to anything", and a status we store but never branch on is a
+ * value that will eventually be branched on wrongly.
+ *
+ * `past_due` is kept distinct from `canceled` on purpose. A card that failed
+ * yesterday is a customer to email, not a customer to lock out, and the two need
+ * to be tellable apart for the grace period in `planFromSubscription` to exist
+ * at all.
+ */
+export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "active",
+  "trialing",
+  "past_due",
+  "canceled",
+  "incomplete",
+]);

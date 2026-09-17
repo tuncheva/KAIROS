@@ -1,6 +1,6 @@
 import { type InferInsertModel, type InferSelectModel, sql } from "drizzle-orm";
 import { index, timestamp, varchar, integer, boolean, text, uniqueIndex } from "drizzle-orm/pg-core";
-import { createTable, orgRoleEnum } from "./enums";
+import { createTable, orgRoleEnum, planEnum, subscriptionStatusEnum } from "./enums";
 import { users } from "./users";
 
 export const organizations = createTable(
@@ -14,6 +14,38 @@ export const organizations = createTable(
     createdById: varchar("created_by_id", { length: 255 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+
+    /**
+     * Billing — the organization's Team subscription.
+     *
+     * The same column set `users` carries, on the other thing that can hold a
+     * subscription. Team is sold per seat to an organization, so it cannot live
+     * on a person: the payer is usually one admin, and putting the plan on their
+     * row would mean everyone else's entitlements depend on a user they may not
+     * be able to see, and would vanish if that admin left.
+     *
+     * Every member of an org whose subscription is live gets the Team flag set,
+     * regardless of their own `users.plan`. The resolver takes the better of the
+     * two — see `~/server/billing/entitlements`.
+     */
+    plan: planEnum("plan").default("free").notNull(),
+    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }).unique(),
+    stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }).unique(),
+    subscriptionStatus: subscriptionStatusEnum("subscription_status"),
+    currentPeriodEnd: timestamp("current_period_end", { mode: "date", withTimezone: true }),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
+    /**
+     * Seats paid for, which is not the same as members present.
+     *
+     * Stored rather than counted from `organization_members`, because the number
+     * that matters for entitlement is the one Stripe is invoicing. Letting the
+     * membership count *be* the seat count would mean adding a colleague
+     * silently increases the bill with no one having agreed to it; instead the
+     * seat count is what was bought, and exceeding it is a condition the org
+     * admin is asked to resolve.
+     */
+    seats: integer("seats").default(0).notNull(),
+
     createdAt: timestamp("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),

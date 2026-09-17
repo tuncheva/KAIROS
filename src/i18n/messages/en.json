@@ -882,7 +882,8 @@
       "appearance": "Appearance",
       "ai": "AI assistant",
       "developer": "Developer",
-      "privacy": "Privacy"
+      "privacy": "Privacy",
+      "billing": "Billing"
     },
     "workspace": {
       "organizations": {
@@ -1169,6 +1170,54 @@
       "edit": "Edit profile",
       "editDesc": "Change your name, picture or bio",
       "editAction": "Open"
+    },
+    "billing": {
+      "title": "Billing",
+      "subtitle": "What you are on, what it costs, and how to change it.",
+      "loading": "Loading…",
+      "opening": "Opening…",
+      "manage": "Manage",
+      "unknownDate": "Unknown",
+      "planName": {
+        "free": "Free",
+        "pro": "Pro",
+        "team": "Team"
+      },
+      "currentTitle": "Your plan",
+      "currentDescription": "The plan in force is the better of your own and your organization's.",
+      "currentPlan": "Current plan",
+      "renewsOn": "Renews on",
+      "endsOn": "Access ends on",
+      "pastDueTitle": "Payment failed",
+      "pastDueBody": "Your card was declined. We will keep retrying — update it to avoid losing access.",
+      "manageTitle": "Manage subscription",
+      "manageBody": "Change your card, download invoices or cancel, on Stripe.",
+      "orgTitle": "Organization",
+      "orgDescription": "Team is bought per seat and covers everyone in the organization.",
+      "seatsTitle": "Seats",
+      "seatsBody": "{seats} paid for, {members} members",
+      "overSeatsTitle": "More members than seats",
+      "overSeatsBody": "Add seats so everyone stays covered.",
+      "orgManageTitle": "Manage organization billing",
+      "orgManageBody": "Seats, card and invoices, on Stripe.",
+      "orgManageDenied": "Only an organization admin can change this.",
+      "upgradeTitle": "Upgrade",
+      "upgradeDescription": "Free gives you the whole assistant when you ask. Paid plans make it work while you do not.",
+      "upgradeFooter": "Prices are per seat, excluding VAT. Cancel any time — access runs to the end of the period you paid for.",
+      "intervalLabel": "Billing interval",
+      "intervalMonth": "Monthly",
+      "intervalYear": "Yearly · 2 months free",
+      "perSeatMonth": "per seat / month",
+      "perSeatYear": "per seat / year",
+      "choose": "Choose {plan}",
+      "alreadyOn": "You are already on this plan.",
+      "notConfigured": "Not available in this deployment.",
+      "teamNeedsOrg": "Switch to an organization workspace to buy Team.",
+      "teamNeedsAdmin": "Only an organization admin can buy Team.",
+      "successTitle": "You are subscribed",
+      "successBody": "Your plan is being applied — it may take a few seconds to appear.",
+      "cancelledTitle": "Checkout cancelled",
+      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready."
     }
   },
   "create": {

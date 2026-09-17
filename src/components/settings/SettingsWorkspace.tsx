@@ -67,6 +67,9 @@ const AiSettingsClient = dynamic(() =>
 const DeveloperSettingsClient = dynamic(() =>
   import("./DeveloperSettingsClient").then((m) => m.DeveloperSettingsClient),
 );
+const BillingSettingsClient = dynamic(() =>
+  import("./BillingSettingsClient").then((m) => m.BillingSettingsClient),
+);
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -313,6 +316,8 @@ function SectionBody({ id, user }: { id: SettingsSectionId; user: Props["user"] 
       return <AppearanceSettings />;
     case "ai":
       return <AiSettingsClient />;
+    case "billing":
+      return <BillingSettingsClient />;
     case "developer":
       return <DeveloperSettingsClient />;
   }

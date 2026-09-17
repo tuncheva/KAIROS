@@ -125,6 +125,37 @@ export const env = createEnv({
     /** Any non-empty value sends CSP as report-only instead of enforcing it. */
     CSP_REPORT_ONLY: z.string().optional(),
 
+    /**
+     * Stripe.
+     *
+     * All optional, and the whole billing surface degrades to "unavailable"
+     * rather than failing at boot when they are unset. That is not politeness —
+     * it is what keeps the app runnable in development and CI without a Stripe
+     * account, and what makes `isBillingConfigured()` a real question with a
+     * real answer rather than an assertion that always holds.
+     *
+     * The consequence is that a *production* deploy missing these will run with
+     * checkout disabled instead of crashing. `~/server/billing/stripe` logs a
+     * warning at first use for exactly that reason.
+     */
+    STRIPE_SECRET_KEY: z.string().optional(),
+    /**
+     * The signing secret for the webhook endpoint, from the Stripe dashboard.
+     *
+     * Without it the webhook route rejects every delivery. That is deliberate
+     * and must never become a bypass: the route mutates subscription state
+     * purely on the strength of its payload, so an unverified POST to it is a
+     * free Pro subscription for anyone who can reach the URL.
+     */
+    STRIPE_WEBHOOK_SECRET: z.string().optional(),
+
+    // Price IDs, one per (plan × interval). Server-side so a test-mode id can
+    // never be inlined into a client bundle and charge a real customer nothing.
+    STRIPE_PRICE_PRO_MONTHLY: z.string().optional(),
+    STRIPE_PRICE_PRO_ANNUAL: z.string().optional(),
+    STRIPE_PRICE_TEAM_MONTHLY: z.string().optional(),
+    STRIPE_PRICE_TEAM_ANNUAL: z.string().optional(),
+
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -178,6 +209,13 @@ export const env = createEnv({
     REDIS_NATIVE_URL: process.env.REDIS_NATIVE_URL,
     LOG_LEVEL: process.env.LOG_LEVEL,
     CSP_REPORT_ONLY: process.env.CSP_REPORT_ONLY,
+
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    STRIPE_PRICE_PRO_MONTHLY: process.env.STRIPE_PRICE_PRO_MONTHLY,
+    STRIPE_PRICE_PRO_ANNUAL: process.env.STRIPE_PRICE_PRO_ANNUAL,
+    STRIPE_PRICE_TEAM_MONTHLY: process.env.STRIPE_PRICE_TEAM_MONTHLY,
+    STRIPE_PRICE_TEAM_ANNUAL: process.env.STRIPE_PRICE_TEAM_ANNUAL,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

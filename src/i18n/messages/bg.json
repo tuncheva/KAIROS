@@ -882,7 +882,8 @@
       "appearance": "Изглед",
       "ai": "AI асистент",
       "developer": "Разработчик",
-      "privacy": "Поверителност"
+      "privacy": "Поверителност",
+      "billing": "Фактуриране"
     },
     "workspace": {
       "organizations": {
@@ -1169,6 +1170,54 @@
       "edit": "Редактирай профила",
       "editDesc": "Промени име, снимка или биография",
       "editAction": "Отвори"
+    },
+    "billing": {
+      "title": "Фактуриране",
+      "subtitle": "Какъв план имате, колко струва и как да го промените.",
+      "loading": "Зареждане…",
+      "opening": "Отваряне…",
+      "manage": "Управление",
+      "unknownDate": "Неизвестна",
+      "planName": {
+        "free": "Free",
+        "pro": "Pro",
+        "team": "Team"
+      },
+      "currentTitle": "Вашият план",
+      "currentDescription": "The plan in force is the better of your own and your organization's.",
+      "currentPlan": "Текущ план",
+      "renewsOn": "Подновява се на",
+      "endsOn": "Достъпът спира на",
+      "pastDueTitle": "Payment failed",
+      "pastDueBody": "Your card was declined. We will keep retrying — update it to avoid losing access.",
+      "manageTitle": "Manage subscription",
+      "manageBody": "Change your card, download invoices or cancel, on Stripe.",
+      "orgTitle": "Organization",
+      "orgDescription": "Team is bought per seat and covers everyone in the organization.",
+      "seatsTitle": "Места",
+      "seatsBody": "{seats} платени, {members} членове",
+      "overSeatsTitle": "More members than seats",
+      "overSeatsBody": "Add seats so everyone stays covered.",
+      "orgManageTitle": "Manage organization billing",
+      "orgManageBody": "Seats, card and invoices, on Stripe.",
+      "orgManageDenied": "Only an organization admin can change this.",
+      "upgradeTitle": "Надграждане",
+      "upgradeDescription": "Free gives you the whole assistant when you ask. Paid plans make it work while you do not.",
+      "upgradeFooter": "Prices are per seat, excluding VAT. Cancel any time — access runs to the end of the period you paid for.",
+      "intervalLabel": "Billing interval",
+      "intervalMonth": "Месечно",
+      "intervalYear": "Годишно · 2 месеца безплатно",
+      "perSeatMonth": "на място / месец",
+      "perSeatYear": "на място / година",
+      "choose": "Избери {plan}",
+      "alreadyOn": "You are already on this plan.",
+      "notConfigured": "Not available in this deployment.",
+      "teamNeedsOrg": "Switch to an organization workspace to buy Team.",
+      "teamNeedsAdmin": "Only an organization admin can buy Team.",
+      "successTitle": "You are subscribed",
+      "successBody": "Your plan is being applied — it may take a few seconds to appear.",
+      "cancelledTitle": "Checkout cancelled",
+      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready."
     }
   },
   "create": {

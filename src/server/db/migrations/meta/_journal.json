@@ -260,6 +260,13 @@
       "when": 1788938880000,
       "tag": "0044_pgvector_embeddings",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1788938940000,
+      "tag": "0045_billing",
+      "breakpoints": true
     }
   ]
 }

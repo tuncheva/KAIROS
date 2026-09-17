@@ -14,6 +14,11 @@ export const SETTINGS_SECTIONS = [
   "language",
   "appearance",
   "ai",
+  // Last in the rail on purpose. It is the only section that is not a setting —
+  // nothing on it changes how the app behaves for you — so putting it above
+  // "Appearance" would push nine things people actually adjust below the thing
+  // they adjust once.
+  "billing",
   "developer",
 ] as const;
 
