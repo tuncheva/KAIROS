@@ -13,10 +13,13 @@
  *   then charged through Stripe, and a mismatch between what the page promises
  *   and what the price id bills is the kind of bug that arrives as a chargeback.
  *
- * `planFromSubscription` is imported from a `server-only` module. That is fine
- * under vitest — the package is stubbed in the test setup — and the alternative,
- * duplicating the rule into a pure module purely so a test can reach it, would
- * put the decision in two places.
+ * `planFromSubscription` is imported from `~/lib/subscription-status` rather than
+ * from `~/server/billing/subscriptions`, which re-exports it. Not a style
+ * preference: the server module imports `~/server/db`, which reads
+ * `env.DATABASE_URL` at import time, which throws under this suite's jsdom
+ * environment. Importing it there made the whole file fail to collect — vitest
+ * reported `billing.test.ts (0 test)` and every assertion below silently never
+ * ran. The rule has one definition; only the import path moved.
  */
 
 import { describe, expect, it } from "vitest";
@@ -29,7 +32,10 @@ import {
   isPurchasablePlan,
   priceFor,
 } from "~/lib/plans";
-import { planFromSubscription } from "~/server/billing/subscriptions";
+import {
+  isLiveSubscription,
+  planFromSubscription,
+} from "~/lib/subscription-status";
 
 describe("planFromSubscription", () => {
   it("entitles an active or trialing subscriber", () => {
@@ -64,6 +70,51 @@ describe("planFromSubscription", () => {
     // price, say. Falling back to free is the only safe direction: the
     // alternative is guessing a tier from an id we cannot interpret.
     expect(planFromSubscription("active", null)).toBe("free");
+  });
+});
+
+describe("isLiveSubscription", () => {
+  it("counts anything Stripe is still collecting on", () => {
+    // The guard that stops a second checkout from double-billing. `past_due` is
+    // live for this purpose too: the card is being retried, and a second
+    // subscription started during dunning bills alongside the first.
+    expect(isLiveSubscription("active")).toBe(true);
+    expect(isLiveSubscription("trialing")).toBe(true);
+    expect(isLiveSubscription("past_due")).toBe(true);
+  });
+
+  it("does not block checkout after a cancellation", () => {
+    // Someone who cancelled must be able to buy again — this is the ordinary
+    // resubscribe path, and treating it as a double purchase would leave them
+    // with no way back other than support.
+    expect(isLiveSubscription("canceled")).toBe(false);
+    expect(isLiveSubscription(null)).toBe(false);
+  });
+
+  it("does not block the retry of a checkout that never completed", () => {
+    // `incomplete` means the first payment failed. There is nothing to
+    // double-bill, and blocking here would strand a user whose card was declined
+    // once behind a portal that has no subscription to show them.
+    expect(isLiveSubscription("incomplete")).toBe(false);
+  });
+
+  it("grants nothing it would not also block on, and vice versa", () => {
+    // The two rules coincide today but answer different questions, so they are
+    // written separately. This pins the overlap: anything that grants a plan
+    // must also block a second purchase, or an entitled user could buy twice.
+    const statuses = [
+      "active",
+      "trialing",
+      "past_due",
+      "canceled",
+      "incomplete",
+    ] as const;
+
+    for (const status of statuses) {
+      if (planFromSubscription(status, "pro") !== "free") {
+        expect(isLiveSubscription(status), status).toBe(true);
+      }
+    }
   });
 });
 

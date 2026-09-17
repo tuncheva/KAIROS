@@ -26,7 +26,7 @@ import type Stripe from "stripe";
 
 import { stripe } from "~/server/billing/stripe";
 import {
-  clearSubscription,
+  clearSubscriptionIfCurrent,
   customerIdOf,
   ownerFromMetadata,
   rememberCustomer,
@@ -155,15 +155,11 @@ async function handle(event: Stripe.Event, client: Stripe): Promise<void> {
     }
 
     case "customer.subscription.deleted": {
-      const subscription = event.data.object;
-      const owner = ownerFromMetadata(subscription.metadata);
-      if (owner) {
-        await clearSubscription(owner);
-      } else {
-        // Falls through to the generic sync, which resolves the owner by stored
-        // subscription id and writes `canceled` from the object's own status.
-        await syncSubscription(subscription);
-      }
+      // Clearing rather than syncing, because this is the one event where
+      // Stripe's object still describes the plan that just ended — and guarded
+      // on the subscription id, because a late `deleted` for a subscription the
+      // owner has already replaced would revoke a plan they are paying for.
+      await clearSubscriptionIfCurrent(event.data.object);
       return;
     }
 

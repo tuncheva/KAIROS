@@ -24,17 +24,23 @@ import { users } from "~/server/db/schemas/users";
 import { organizations } from "~/server/db/schemas/organizations";
 import { createLogger } from "~/server/logger";
 import type { PlanId } from "~/lib/entitlements";
+import {
+  isLiveSubscription,
+  planFromSubscription,
+  type SubscriptionStatus,
+} from "~/lib/subscription-status";
 import { planFromPriceId } from "./stripe";
 
 const log = createLogger("billing:subscriptions");
 
-/** The statuses `subscription_status` may hold — see the enum's docblock. */
-export type SubscriptionStatus =
-  | "active"
-  | "trialing"
-  | "past_due"
-  | "canceled"
-  | "incomplete";
+// Re-exported so callers keep importing the billing vocabulary from the billing
+// module; the definitions live in `~/lib/subscription-status` because they are
+// pure and this file is not — see that file's docblock.
+export {
+  planFromSubscription,
+  isLiveSubscription,
+  type SubscriptionStatus,
+} from "~/lib/subscription-status";
 
 /**
  * Who a subscription belongs to.
@@ -81,28 +87,6 @@ function normaliseStatus(status: Stripe.Subscription.Status): SubscriptionStatus
     default:
       return "canceled";
   }
-}
-
-/**
- * Whether a status still entitles the subscriber, and which plan to record.
- *
- * `past_due` deliberately keeps the plan. Stripe retries a failed card for days
- * before giving up, and the overwhelming majority of those retries succeed — an
- * expired card on a Tuesday should produce a dunning email, not a Wednesday where
- * the user's saved schedules stop firing and their history is culled to 30 days.
- * The lockout arrives when Stripe itself gives up and sends `canceled`.
- *
- * `incomplete` does *not* grant anything: it means the first payment has not
- * succeeded yet, so there is no reason to believe it ever will.
- */
-export function planFromSubscription(
-  status: SubscriptionStatus,
-  plan: PlanId | null,
-): PlanId {
-  if (!plan) return "free";
-  return status === "active" || status === "trialing" || status === "past_due"
-    ? plan
-    : "free";
 }
 
 /**
@@ -192,6 +176,11 @@ export function ownerFromMetadata(
  * risk is accepted: an `updated` arriving after a `deleted` would resurrect a
  * cancelled plan until the next event. The mitigation is that cancellation also
  * sets `currentPeriodEnd`, which the resolver enforces independently.
+ *
+ * The one out-of-order case that is *not* accepted is a late event about a
+ * subscription the owner has already replaced — see {@link supersedes}. That one
+ * takes a paying customer's plan away, which no later event necessarily puts
+ * back.
  */
 export async function syncSubscription(
   subscription: Stripe.Subscription,
@@ -214,6 +203,21 @@ export async function syncSubscription(
   }
 
   const status = normaliseStatus(subscription.status);
+
+  // A dead subscription that is not the one on file is a late event about
+  // something already replaced. Writing it would revoke the plan the owner is
+  // currently paying for. A *live* one is allowed through even when the ids
+  // differ, because that is exactly what a legitimate replacement looks like.
+  if (!isLiveSubscription(status) && (await supersedes(owner, subscription.id))) {
+    log.info("ignoring a stale event for a superseded subscription", {
+      ownerKind: owner.kind,
+      ownerId: String(owner.id),
+      subscriptionId: subscription.id,
+      status,
+    });
+    return owner;
+  }
+
   const plan = planFromSubscription(status, planOf(subscription));
 
   const patch = {
@@ -267,6 +271,91 @@ async function ownerFromSubscriptionId(
     columns: { id: true },
   });
   return user ? { kind: "user", id: user.id } : null;
+}
+
+/**
+ * The subscription and status currently on file for an owner.
+ *
+ * Exported because the checkout mutation needs exactly this to decide whether
+ * starting a second checkout would double-bill someone, and reaching into the
+ * two tables from the router would be the third place that has to remember which
+ * columns hold subscription state.
+ */
+export async function billingStateOf(owner: BillingOwner): Promise<{
+  subscriptionId: string | null;
+  status: SubscriptionStatus | null;
+}> {
+  const row =
+    owner.kind === "organization"
+      ? await db.query.organizations.findFirst({
+          where: eq(organizations.id, owner.id),
+          columns: { stripeSubscriptionId: true, subscriptionStatus: true },
+        })
+      : await db.query.users.findFirst({
+          where: eq(users.id, owner.id),
+          columns: { stripeSubscriptionId: true, subscriptionStatus: true },
+        });
+
+  return {
+    subscriptionId: row?.stripeSubscriptionId ?? null,
+    status: row?.subscriptionStatus ?? null,
+  };
+}
+
+/**
+ * Whether the owner's row names a *different* subscription than the one in hand.
+ *
+ * False when nothing is on file: a first sync has no id to disagree with, and
+ * treating "unknown" as "superseded" would drop the very first event of every
+ * subscription's life.
+ */
+async function supersedes(
+  owner: BillingOwner,
+  subscriptionId: string,
+): Promise<boolean> {
+  const { subscriptionId: current } = await billingStateOf(owner);
+  return current !== null && current !== subscriptionId;
+}
+
+/**
+ * Handle `customer.subscription.deleted` — clear the plan, but only if the
+ * subscription that died is the one the owner is actually on.
+ *
+ * Stripe does not guarantee delivery order, and a cancellation can arrive after
+ * its replacement is already live: cancel Pro, buy Team an hour later, and a
+ * retried `deleted` for the old subscription lands on an owner who is paying.
+ * Clearing unconditionally would drop them to Free with no later event to put it
+ * back — unlike the resurrection case, which the next `updated` corrects. So the
+ * id is checked first, and a mismatch is ignored rather than applied.
+ */
+export async function clearSubscriptionIfCurrent(
+  subscription: Stripe.Subscription,
+): Promise<void> {
+  const owner =
+    ownerFromMetadata(subscription.metadata) ??
+    (await ownerFromSubscriptionId(subscription.id));
+
+  if (!owner) {
+    // Not an error. A subscription this deployment never synced — created
+    // against another environment sharing the Stripe account, say — has no row
+    // to clear, and there is nothing to do about it.
+    log.warn("no owner for deleted subscription; nothing to clear", {
+      subscriptionId: subscription.id,
+      customerId: customerIdOf(subscription.customer),
+    });
+    return;
+  }
+
+  if (await supersedes(owner, subscription.id)) {
+    log.info("ignoring deletion of a superseded subscription", {
+      ownerKind: owner.kind,
+      ownerId: String(owner.id),
+      subscriptionId: subscription.id,
+    });
+    return;
+  }
+
+  await clearSubscription(owner);
 }
 
 /**

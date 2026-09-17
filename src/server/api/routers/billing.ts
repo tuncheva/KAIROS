@@ -25,7 +25,11 @@ import {
   priceIdFor,
   stripe,
 } from "~/server/billing/stripe";
-import type { BillingOwner } from "~/server/billing/subscriptions";
+import {
+  billingStateOf,
+  isLiveSubscription,
+  type BillingOwner,
+} from "~/server/billing/subscriptions";
 import { organizations, organizationMembers } from "~/server/db/schemas/organizations";
 import { users } from "~/server/db/schemas/users";
 import { PLAN_CATALOGUE, PURCHASABLE_PLANS } from "~/lib/plans";
@@ -188,6 +192,28 @@ export const billingRouter = createTRPCRouter({
       const { owner, customerId, quantity } = descriptor.perOrganization
         ? await resolveOrgOwner(ctx, userId, input.organizationId, input.seats, descriptor.minimumSeats)
         : await resolvePersonalOwner(ctx, userId);
+
+      // A second checkout for an owner who already has a live subscription
+      // creates a second one: Stripe bills both, and the webhook's single
+      // `stripeSubscriptionId` column can only remember the newer, leaving the
+      // older charging a card forever with nothing in this app pointing at it.
+      // The UI already hides the button — this is the same rule on the mutation,
+      // which is where it matters, because the client-side version is a hint and
+      // this one is the guarantee. It is also the concurrency guard: two admins
+      // reaching Team checkout at once is the realistic way this happens.
+      //
+      // Every change to a live subscription — interval, seats, tier, card —
+      // belongs in the billing portal, which prorates. Checkout does not.
+      const existing = await billingStateOf(owner);
+      if (isLiveSubscription(existing.status)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            owner.kind === "organization"
+              ? "This organization already has a subscription. Change it from the billing portal."
+              : "You already have a subscription. Change it from the billing portal.",
+        });
+      }
 
       const session = await client.checkout.sessions.create({
         mode: "subscription",
