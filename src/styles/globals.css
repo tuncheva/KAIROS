@@ -51,6 +51,22 @@
   --color-info: rgb(var(--info));
   --color-dash-day: rgb(var(--dash-day));
 
+  /* Semantic status families — surface / border / ink, drawn from the brand
+     ramp (danger ← strawberry, warning ← caramel, success ← mint, info ← sky).
+     Every ink-on-surface pair clears WCAG AA in both modes; see docs/theme.md. */
+  --color-status-success-surface: rgb(var(--status-success-surface));
+  --color-status-success-border: rgb(var(--status-success-border));
+  --color-status-success-ink: rgb(var(--status-success-ink));
+  --color-status-warning-surface: rgb(var(--status-warning-surface));
+  --color-status-warning-border: rgb(var(--status-warning-border));
+  --color-status-warning-ink: rgb(var(--status-warning-ink));
+  --color-status-danger-surface: rgb(var(--status-danger-surface));
+  --color-status-danger-border: rgb(var(--status-danger-border));
+  --color-status-danger-ink: rgb(var(--status-danger-ink));
+  --color-status-info-surface: rgb(var(--status-info-surface));
+  --color-status-info-border: rgb(var(--status-info-border));
+  --color-status-info-ink: rgb(var(--status-info-ink));
+
   /* Semantic event colors */
   --color-event-active: rgb(var(--event-active));
   --color-event-upcoming: rgb(var(--event-upcoming));
@@ -63,6 +79,27 @@
   /* Font families */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif, "KairosEmoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-display: var(--font-display), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  /* ─── Radius scale ───
+     Four steps, tied to the element class rather than to taste:
+       sm  chips / inputs      md  buttons / fields
+       lg  cards / panels      xl  dialogs / drawers
+     `rounded-full` is reserved for the marketing pages. */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* ─── Control scale ───
+     Heights for the same four classes, plus the two container paddings.
+     Registered in the spacing namespace, so `h-control-md`, `min-h-control-lg`,
+     `p-pad-card` and `p-pad-dialog` all resolve. */
+  --spacing-control-sm: 32px;
+  --spacing-control-md: 40px;
+  --spacing-control-lg: 48px;
+  --spacing-control-xl: 56px;
+  --spacing-pad-card: 16px;
+  --spacing-pad-dialog: 22px;
 
 }
 
@@ -131,6 +168,30 @@
   --now-line: 255 45 58;
   --info: 59 130 246;
   --info-light: 219 234 254;
+
+  /* Semantic status families — Light.
+     Additive: the scalars above stay put, other code still reads them. */
+  --status-success-surface: 239 248 245;
+  --status-success-border: 81 154 133;
+  --status-success-ink: 65 122 106;
+  --status-warning-surface: 253 246 240;
+  --status-warning-border: 182 131 84;
+  --status-warning-ink: 144 104 67;
+  --status-danger-surface: 254 235 237;
+  --status-danger-border: 240 58 71;
+  --status-danger-ink: 203 49 60;
+  --status-info-surface: 233 241 249;
+  --status-info-border: 39 111 191;
+  --status-info-ink: 33 93 160;
+
+  /* Radius + control scale, also exposed as plain custom properties so hand-written
+     CSS further down this file can reach the same four steps. */
+  --control-h-sm: 32px;
+  --control-h-md: 40px;
+  --control-h-lg: 48px;
+  --control-h-xl: 56px;
+  --control-pad-card: 16px;
+  --control-pad-dialog: 22px;
 
   /* Dashboard: the cyan "day elapsed" arc, distinct from the accent so the
      workspace ring can carry two unrelated readings at once. */
@@ -262,6 +323,20 @@
   --now-line: 255 86 86;
   --info: 96 165 250;
   --info-light: 30 58 138;
+
+  /* Semantic status families — Dark. */
+  --status-success-surface: 29 41 41;
+  --status-success-border: 67 122 108;
+  --status-success-ink: 95 180 156;
+  --status-warning-surface: 48 39 34;
+  --status-warning-border: 144 106 72;
+  --status-warning-ink: 233 168 108;
+  --status-danger-surface: 49 24 29;
+  --status-danger-border: 196 50 61;
+  --status-danger-ink: 241 71 83;
+  --status-info-surface: 21 31 46;
+  --status-info-border: 38 106 182;
+  --status-info-ink: 78 137 203;
 
   /* Dashboard: cyan "day elapsed" arc — see the light-mode note above. */
   --dash-day: 34 211 238;
