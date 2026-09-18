@@ -324,7 +324,7 @@ describe("EventCard – the proposal's card, not the old one", () => {
   });
 
   it("draws the reactions flat, under a hairline", () => {
-    expect(card).toContain("border-t border-slate-100 px-2.5 py-2");
+    expect(card).toContain("border-t border-border-light px-2.5 py-2");
     expect(card).not.toContain("flex h-9 items-center gap-2 rounded-lg border px-3");
   });
 

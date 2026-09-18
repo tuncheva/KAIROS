@@ -115,7 +115,7 @@ function CommentComposer({
   };
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-white/5">
+    <div className="flex items-center gap-2 rounded-xl border border-border-medium bg-bg-secondary px-3 py-2">
       <input
         type="text"
         value={text}
@@ -171,7 +171,7 @@ function Thread({
       />
 
       {thread.replies.length > 0 && (
-        <ul className="ml-8 flex flex-col gap-2.5 border-l border-slate-200 pl-3 dark:border-white/10">
+        <ul className="ml-8 flex flex-col gap-2.5 border-l border-border-medium pl-3">
           {thread.replies.map((reply) => (
             <li key={reply.id}>
               <CommentBody comment={reply} hostId={hostId} />
@@ -242,7 +242,7 @@ export function EventDiscussion({
           placeholder={t("askTheHost")}
         />
       ) : (
-        <p className="rounded-xl border border-dashed border-slate-300 px-3 py-2.5 text-sm text-fg-tertiary dark:border-white/15">
+        <p className="rounded-xl border border-dashed border-border-strong px-3 py-2.5 text-sm text-fg-tertiary">
           {t("signInToComment")}
         </p>
       )}

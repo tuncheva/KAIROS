@@ -193,9 +193,9 @@ export function InviteQrDialog({
                 dangerouslySetInnerHTML={{ __html: active.qrSvg }}
               />
             ) : revoked ? (
-              <ShieldOff size={30} className="text-slate-300" />
+              <ShieldOff size={30} className="text-fg-quaternary" />
             ) : (
-              <Loader2 size={28} className="animate-spin text-slate-400" />
+              <Loader2 size={28} className="animate-spin text-fg-quaternary" />
             )}
           </div>
 

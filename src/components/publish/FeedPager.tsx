@@ -60,7 +60,7 @@ export function FeedPager({
 
   if (pageCount <= 1 && !hasMore) return null;
 
-  const step = "grid h-9 min-w-9 place-items-center rounded-lg border border-slate-200 px-2.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10";
+  const step = "grid h-9 min-w-9 place-items-center rounded-lg border border-border-medium px-2.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
     <nav

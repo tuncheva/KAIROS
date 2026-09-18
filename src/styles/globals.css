@@ -1365,8 +1365,8 @@ summary,
   transform: scaleY(0);
   transform-origin: top;
 
-  /* neutral line color on hover (fallback-friendly) */
-  background-color: rgba(148, 163, 184, 0.9); /* slate-400-ish */
+  /* neutral line colour on hover — the hairline token, so it follows the theme */
+  background-color: rgb(var(--border-strong) / 0.9);
 
   /* Smooth animation for state changes */
   transition:

@@ -73,7 +73,7 @@ function InviteInbox() {
                 type="button"
                 onClick={() => decline.mutate({ inviteId: invite.id })}
                 disabled={accept.isPending || decline.isPending}
-                className="h-8 rounded-lg border border-slate-200 px-3 text-xs text-fg-secondary transition-colors hover:bg-slate-100 disabled:opacity-50 dark:border-white/10 dark:hover:bg-white/5"
+                className="h-8 rounded-lg border border-border-medium px-3 text-xs text-fg-secondary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
               >
                 {t("declineInvite")}
               </button>

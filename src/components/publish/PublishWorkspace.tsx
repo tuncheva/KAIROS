@@ -310,7 +310,7 @@ export function PublishWorkspace() {
               <button
                 type="button"
                 onClick={() => setFilter({ view: "past" })}
-                className="h-9 rounded-lg border border-slate-200 px-4 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary dark:border-white/10"
+                className="h-9 rounded-lg border border-border-medium px-4 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
               >
                 {t("browsePast", { count: counts.past })}
               </button>
@@ -417,7 +417,7 @@ export function PublishWorkspace() {
               <div
                 role="group"
                 aria-label={t("feedSource")}
-                className="flex shrink-0 gap-0.5 rounded-lg bg-slate-100 p-0.5 dark:bg-white/5"
+                className="flex shrink-0 gap-0.5 rounded-lg bg-bg-tertiary p-0.5"
               >
                 {(["following", "discover"] as const).map((candidate) => (
                   <button
@@ -449,7 +449,7 @@ export function PublishWorkspace() {
                 onChange={(event) => setSearchText(event.target.value)}
                 placeholder={t("searchPlaceholder")}
                 aria-label={t("searchPlaceholder")}
-                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-8 text-[13px] text-fg-primary placeholder:text-fg-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary/40 dark:border-white/10 dark:bg-white/5"
+                className="h-9 w-full rounded-lg border border-border-medium bg-bg-secondary pl-8 pr-8 text-[13px] text-fg-primary placeholder:text-fg-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary/40"
               />
               {searchText && (
                 <button
@@ -476,7 +476,7 @@ export function PublishWorkspace() {
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-bg-overlay shadow-2xl dark:border-white/5">
+            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-border-medium bg-bg-overlay shadow-2xl">
               <CreateEventForm
                 initialTitle={draft.title}
                 focusField={draft.focus}

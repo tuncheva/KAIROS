@@ -416,7 +416,7 @@ export function SideNav() {
           renders later in the tree, so it won every time — covering the last
           item on every phone. The launcher also lifts to `bottom-24` to clear
           this bar; the toast viewport uses the same clearance. */}
-      <nav className={`kairos-mobile-bottomnav fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-bg-primary/95 pt-2 backdrop-blur-md lg:hidden dark:border-white/[0.06] ${isMobileMenuOpen ? "hidden" : ""}`} aria-label="Primary">
+      <nav className={`kairos-mobile-bottomnav fixed bottom-0 left-0 right-0 z-50 border-t border-border-medium bg-bg-primary/95 pt-2 backdrop-blur-md lg:hidden ${isMobileMenuOpen ? "hidden" : ""}`} aria-label="Primary">
         <div className="flex items-center justify-around gap-1">
           {mobileBottomItems.map((item) => {
             const isActive = isItemActive(item.href);

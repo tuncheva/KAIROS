@@ -209,7 +209,7 @@ export function EventPage({ eventId }: { eventId: number }) {
             className={`h-10 flex-1 rounded-lg text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
               active
                 ? "bg-accent-primary text-white"
-                : "border border-slate-200 text-fg-secondary hover:bg-slate-100 dark:border-white/10 dark:hover:bg-white/5"
+                : "border border-border-medium text-fg-secondary hover:bg-bg-tertiary"
             }`}
           >
             {t(status)}
@@ -223,8 +223,8 @@ export function EventPage({ eventId }: { eventId: number }) {
         aria-pressed={event.userRsvpStatus === "not_going"}
         className={`h-10 rounded-lg px-3 text-[13px] transition-colors disabled:opacity-40 ${
           event.userRsvpStatus === "not_going"
-            ? "bg-slate-200 font-semibold text-fg-primary dark:bg-white/10"
-            : "border border-slate-200 text-fg-tertiary hover:bg-slate-100 dark:border-white/10 dark:hover:bg-white/5"
+            ? "bg-bg-tertiary font-semibold text-fg-primary"
+            : "border border-border-medium text-fg-tertiary hover:bg-bg-tertiary"
         }`}
       >
         {t("cantGo")}
@@ -237,7 +237,7 @@ export function EventPage({ eventId }: { eventId: number }) {
       {/* A slim bar rather than the app rail: most people who open this link
           do not have an account, and a sidebar of links they cannot use is a
           worse greeting than the event itself. */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-bg-primary/85 backdrop-blur-md dark:border-white/10">
+      <header className="sticky top-0 z-30 border-b border-border-medium bg-bg-primary/85 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4 sm:px-6">
           <Link
             href="/publish"
@@ -250,7 +250,7 @@ export function EventPage({ eventId }: { eventId: number }) {
           <button
             type="button"
             onClick={handleShare}
-            className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary dark:border-white/10"
+            className="flex h-9 items-center gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
           >
             <Share2 size={14} />
             <span className="hidden sm:inline">{t("share")}</span>
@@ -268,7 +268,7 @@ export function EventPage({ eventId }: { eventId: number }) {
 
       <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-6">
         {/* The cover, and the three things that decide whether to read on. */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-bg-elevated dark:border-white/10">
+        <div className="overflow-hidden rounded-2xl border border-border-medium bg-bg-elevated">
           {isValidImageUrl(event.imageUrl) && (
             <div className="relative aspect-[1200/500] bg-bg-tertiary">
               <Image
@@ -360,7 +360,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                 className={`flex h-9 items-center gap-2 rounded-lg border px-3 text-[13px] transition-colors ${
                   event.hasLiked
                     ? "border-accent-primary/50 bg-accent-primary/20 font-medium text-accent-primary"
-                    : "border-slate-200 text-fg-secondary hover:bg-slate-100 dark:border-white/10 dark:hover:bg-white/5"
+                    : "border-border-medium text-fg-secondary hover:bg-bg-tertiary"
                 }`}
               >
                 <Heart
@@ -381,7 +381,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                 className={`flex h-9 items-center gap-2 rounded-lg border px-3 text-[13px] transition-colors ${
                   event.hasSaved
                     ? "border-accent-primary/50 bg-accent-primary/20 font-medium text-accent-primary"
-                    : "border-slate-200 text-fg-secondary hover:bg-slate-100 dark:border-white/10 dark:hover:bg-white/5"
+                    : "border-border-medium text-fg-secondary hover:bg-bg-tertiary"
                 }`}
               >
                 <Bookmark
@@ -397,7 +397,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                 <button
                   type="button"
                   onClick={() => setShowEditForm(true)}
-                  className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary dark:border-white/10"
+                  className="flex h-9 items-center gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
                 >
                   <Pencil size={14} />
                   {t("edit.title")}
@@ -416,7 +416,7 @@ export function EventPage({ eventId }: { eventId: number }) {
           {/* The decision, the host, and where to go. */}
           <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
             {event.enableRsvp && (
-              <div className="hidden flex-col gap-3 rounded-2xl border border-slate-200 bg-bg-elevated p-4 lg:flex dark:border-white/10">
+              <div className="hidden flex-col gap-3 rounded-2xl border border-border-medium bg-bg-elevated p-4 lg:flex">
                 <div className="flex items-baseline justify-between">
                   <Stamp className="tracking-[0.14em]">{t("going")}</Stamp>
                   <span className="kairos-mono text-xl font-semibold text-fg-primary">
@@ -426,7 +426,7 @@ export function EventPage({ eventId }: { eventId: number }) {
 
                 {event.capacity !== null && (
                   <>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
                       <div
                         className={`h-full rounded-full ${full ? "bg-status-danger-ink" : "bg-accent-primary"}`}
                         style={{
@@ -464,7 +464,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                       </ProfileLink>
                     ))}
                     {attendees.length > 6 && (
-                      <span className="kairos-mono grid h-[30px] w-[30px] place-items-center rounded-full bg-slate-100 text-[10px] text-fg-tertiary ring-2 ring-bg-elevated dark:bg-white/10">
+                      <span className="kairos-mono grid h-[30px] w-[30px] place-items-center rounded-full bg-bg-tertiary text-[10px] text-fg-tertiary ring-2 ring-bg-elevated">
                         +{attendees.length - 6}
                       </span>
                     )}
@@ -474,7 +474,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                 {rsvpButtons}
 
                 {showReminders && !past && (
-                  <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-2.5 dark:border-white/[0.06]">
+                  <div className="flex flex-wrap gap-1.5 border-t border-border-light pt-2.5">
                     <Stamp className="w-full tracking-[0.12em]">
                       {t("getNotified")}
                     </Stamp>
@@ -510,7 +510,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                     RSVP row is disabled here and a reminder is not on offer
                     because there is nothing left to be reminded about. */}
                 {past && (
-                  <p className="flex items-start gap-2 border-t border-slate-100 pt-2.5 text-xs text-fg-tertiary dark:border-white/[0.06]">
+                  <p className="flex items-start gap-2 border-t border-border-light pt-2.5 text-xs text-fg-tertiary">
                     <BellOff size={13} className="mt-px shrink-0" />
                     {t("reminderPastEvent")}
                   </p>
@@ -518,7 +518,7 @@ export function EventPage({ eventId }: { eventId: number }) {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-bg-elevated p-4 dark:border-white/10">
+            <div className="flex flex-col gap-3 rounded-2xl border border-border-medium bg-bg-elevated p-4">
               <Stamp className="tracking-[0.14em]">{t("hostedBy")}</Stamp>
               <div className="flex items-center gap-3">
                 <ProfileLink userId={event.author.id} name={event.author.name}>
@@ -555,7 +555,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                   aria-pressed={event.viewerFollowsAuthor}
                   className={`flex h-9 items-center justify-center gap-2 rounded-lg text-[13px] font-semibold transition-colors ${
                     event.viewerFollowsAuthor
-                      ? "bg-slate-100 text-fg-secondary hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10"
+                      ? "bg-bg-secondary text-fg-secondary hover:bg-bg-tertiary"
                       : "bg-accent-primary text-white hover:bg-accent-hover"
                   }`}
                 >
@@ -565,7 +565,7 @@ export function EventPage({ eventId }: { eventId: number }) {
               )}
 
               {event.coHosts.length > 0 && (
-                <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-white/[0.06]">
+                <div className="flex flex-col gap-2 border-t border-border-light pt-3">
                   <Stamp className="tracking-[0.14em]">{t("coHosts")}</Stamp>
                   {event.coHosts.map((host) => (
                     <ProfileLink
@@ -588,7 +588,7 @@ export function EventPage({ eventId }: { eventId: number }) {
               )}
             </div>
 
-            <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-bg-elevated p-4 dark:border-white/10">
+            <div className="flex flex-col gap-2 rounded-2xl border border-border-medium bg-bg-elevated p-4">
               <Stamp className="tracking-[0.14em]">{t("where")}</Stamp>
               <p className="text-sm text-fg-primary">
                 {event.venue ?? regionLabel(event.region)}
@@ -616,7 +616,7 @@ export function EventPage({ eventId }: { eventId: number }) {
       {/* On a phone the decision is pinned, because scrolling back up to answer
           is the one thing this page must not ask for. */}
       {event.enableRsvp && !past && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-bg-primary/95 p-3 backdrop-blur-md lg:hidden dark:border-white/10">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border-medium bg-bg-primary/95 p-3 backdrop-blur-md lg:hidden">
           <div className="mb-2 flex items-center gap-2">
             <Users size={13} className="text-accent-primary" />
             <Stamp className="tracking-[0.12em]">
@@ -646,7 +646,7 @@ export function EventPage({ eventId }: { eventId: number }) {
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-bg-overlay shadow-2xl dark:border-white/5">
+            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-border-medium bg-bg-overlay shadow-2xl">
               <EditEventForm
                 event={{
                   id: event.id,

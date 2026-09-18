@@ -90,7 +90,7 @@ export function Panel({
 }) {
   return (
     <div
-      className={`rounded-xl border border-slate-200 bg-bg-elevated dark:border-white/5 ${
+      className={`rounded-xl border border-border-medium bg-bg-elevated ${
         padded ? "p-4" : ""
       } ${className}`}
     >
@@ -113,7 +113,7 @@ export function TitledPanel({
 }) {
   return (
     <Panel padded={false} className={`overflow-hidden ${className}`}>
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3.5 py-3 dark:border-white/[0.06]">
+      <div className="flex items-center justify-between gap-2 border-b border-border-light px-3.5 py-3">
         <h2 className="text-[13px] font-semibold text-fg-primary">{title}</h2>
         {aside}
       </div>
@@ -147,7 +147,7 @@ export function BandDivider({
         className={`h-px flex-1 ${
           accent
             ? "bg-gradient-to-r from-accent-primary/45 to-transparent"
-            : "bg-slate-200 dark:bg-white/10"
+            : "bg-border-medium"
         }`}
       />
     </div>
@@ -170,8 +170,8 @@ export function MetaChip({
 }) {
   const shell = `flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs ${
     dashed
-      ? "border border-dashed border-slate-300 text-fg-tertiary dark:border-white/15"
-      : "border border-slate-200 bg-slate-50 text-fg-secondary dark:border-white/10 dark:bg-white/5"
+      ? "border border-dashed border-border-strong text-fg-tertiary"
+      : "border border-border-medium bg-bg-secondary text-fg-secondary"
   }`;
 
   if (!onClick) {
@@ -220,7 +220,7 @@ export function InfoToast({
   const tone =
     info.type === "error"
       ? "border-status-danger-border bg-status-danger-surface text-status-danger-ink"
-      : "border-slate-200 bg-bg-elevated text-fg-primary dark:border-white/10";
+      : "border-border-medium bg-bg-elevated text-fg-primary";
   const Icon = info.type === "error" ? AlertCircle : Check;
 
   return (

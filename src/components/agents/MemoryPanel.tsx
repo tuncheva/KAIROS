@@ -112,7 +112,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
       )}
 
       {adding ? (
-        <div className="space-y-2 rounded-xl border border-slate-200 p-2.5 dark:border-white/[0.06]">
+        <div className="space-y-2 rounded-xl border border-border-medium p-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-fg-primary">
               {t("addFact")}
@@ -195,7 +195,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-xs font-medium text-fg-secondary transition-colors hover:bg-bg-secondary/60 dark:border-white/[0.12]"
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border-strong px-3 py-2 text-xs font-medium text-fg-secondary transition-colors hover:bg-bg-secondary/60"
         >
           <Plus className="h-3.5 w-3.5" />
           {t("addFact")}

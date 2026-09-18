@@ -45,7 +45,7 @@ export default function GlobalError({
           </button>
           <Link
             href="/"
-            className="px-5 py-2.5 border border-slate-200 dark:border-white/10 text-fg-secondary text-sm font-medium rounded-lg hover:bg-bg-secondary transition-colors"
+            className="px-5 py-2.5 border border-border-medium text-fg-secondary text-sm font-medium rounded-lg hover:bg-bg-secondary transition-colors"
           >
             {t("home")}
           </Link>

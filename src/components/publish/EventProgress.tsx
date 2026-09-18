@@ -48,7 +48,7 @@ export function EventProgressButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary dark:border-white/10 dark:bg-white/5"
+        className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border-medium bg-bg-elevated px-3 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
       >
         <BarChart3 size={14} className="text-accent-primary" />
         <span className="hidden sm:inline">{t("eventProgress")}</span>
@@ -111,9 +111,9 @@ function EventProgressDialog({ onClose }: { onClose: () => void }) {
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className="dash-rise flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-bg-overlay shadow-2xl sm:rounded-2xl dark:border-white/10"
+        className="dash-rise flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border border-border-medium bg-bg-overlay shadow-2xl sm:rounded-2xl"
       >
-        <header className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]">
+        <header className="flex items-center justify-between gap-3 border-b border-border-light px-5 py-4">
           <span className="flex flex-col">
             <h2 className="text-[15px] font-semibold text-fg-primary">
               {t("eventProgress")}
@@ -124,7 +124,7 @@ function EventProgressDialog({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label={t("close")}
-            className="rounded-full p-1.5 text-fg-tertiary transition-colors hover:bg-slate-100 hover:text-fg-primary dark:hover:bg-white/10"
+            className="rounded-full p-1.5 text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
           >
             <X size={16} />
           </button>
@@ -202,7 +202,7 @@ function EventProgressDialog({ onClose }: { onClose: () => void }) {
                             </span>
                           )}
                         </div>
-                        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
+                        <div className="h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
                           <div
                             className="h-full rounded-full bg-accent-primary transition-all duration-500"
                             style={{ width: `${percent}%` }}
