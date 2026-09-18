@@ -1875,7 +1875,7 @@ export function ProjectIntelligenceChat(props: {
               {t("deleteChatConfirmMessage")}
             </p>
             {newChatError && (
-              <p className="mt-3 text-xs text-red-400" role="alert">
+              <p className="mt-3 text-xs text-status-danger-ink" role="alert">
                 {t("deleteChatFailed", { error: newChatError })}
               </p>
             )}
@@ -1895,7 +1895,7 @@ export function ProjectIntelligenceChat(props: {
                 data-testid="new-chat-confirm"
                 onClick={() => void startNewChat()}
                 disabled={deleteConversationMutation.isPending}
-                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                className="rounded-lg border border-status-danger-border bg-status-danger-surface px-4 py-2 text-sm font-medium text-status-danger-ink transition-colors hover:border-status-danger-ink disabled:opacity-50"
               >
                 {deleteConversationMutation.isPending
                   ? t("deleting")
@@ -3440,7 +3440,7 @@ export function ProjectIntelligenceChat(props: {
       {props.hideHeader && newChatError && (
         <div
           role="alert"
-          className="shrink-0 border-t border-border-medium/60 bg-red-500/10 px-4 py-2 text-[11.5px] text-red-400"
+          className="shrink-0 border-t border-border-medium/60 bg-status-danger-surface px-4 py-2 text-[11.5px] text-status-danger-ink"
         >
           {t("deleteChatFailed", { error: newChatError })}
         </div>

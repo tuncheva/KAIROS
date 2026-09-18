@@ -145,9 +145,9 @@ export function DocumentsPanel() {
       </p>
 
       {error ? (
-        <div className="mb-2 flex items-start gap-2 rounded-xl bg-red-500/10 px-2.5 py-2">
-          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />
-          <p className="text-[11px] leading-snug text-red-500">{error}</p>
+        <div className="mb-2 flex items-start gap-2 rounded-xl bg-status-danger-surface px-2.5 py-2">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-status-danger-ink" />
+          <p className="text-[11px] leading-snug text-status-danger-ink">{error}</p>
         </div>
       ) : null}
 
@@ -187,7 +187,7 @@ export function DocumentsPanel() {
                     onClick={() => remove.mutate({ id: doc.id })}
                     disabled={remove.isPending}
                     aria-label={t("delete")}
-                    className="rounded-lg p-1 text-fg-tertiary transition-colors hover:bg-red-500/15 hover:text-red-500"
+                    className="rounded-lg p-1 text-fg-tertiary transition-colors hover:bg-status-danger-surface hover:text-status-danger-ink"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -239,7 +239,7 @@ function DocumentStatus({ doc, t }: StatusProps) {
 
   if (doc.status === "no_text") {
     return (
-      <p className="flex items-start gap-1.5 pt-1 text-[11px] leading-snug text-amber-600 dark:text-amber-400">
+      <p className="flex items-start gap-1.5 pt-1 text-[11px] leading-snug text-status-warning-ink">
         <ScanLine className="mt-0.5 h-3 w-3 shrink-0" />
         {t("noText")}
       </p>
@@ -248,7 +248,7 @@ function DocumentStatus({ doc, t }: StatusProps) {
 
   if (doc.status === "failed") {
     return (
-      <p className="flex items-start gap-1.5 pt-1 text-[11px] leading-snug text-red-500">
+      <p className="flex items-start gap-1.5 pt-1 text-[11px] leading-snug text-status-danger-ink">
         <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
         {doc.error ?? t("failed")}
       </p>

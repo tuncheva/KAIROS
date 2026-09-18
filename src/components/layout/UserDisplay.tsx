@@ -336,7 +336,7 @@ export function UserDisplay() {
  className="w-full px-2.5 py-1.5 text-sm rounded-lg bg-bg-secondary/60 text-fg-primary border border-border-light/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary"
  />
  {switchError ? (
- <div className="text-xs text-red-500">{switchError}</div>
+ <div className="text-xs text-status-danger-ink">{switchError}</div>
  ) : null}
  <div className="flex items-center gap-2">
  <button

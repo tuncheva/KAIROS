@@ -428,7 +428,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                   <>
                     <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
                       <div
-                        className={`h-full rounded-full ${full ? "bg-red-500" : "bg-accent-primary"}`}
+                        className={`h-full rounded-full ${full ? "bg-status-danger-ink" : "bg-accent-primary"}`}
                         style={{
                           width: `${Math.min(100, Math.round((event.rsvpCounts.going / event.capacity) * 100))}%`,
                         }}
@@ -439,7 +439,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                         {t("capacity", { count: event.capacity })}
                       </Stamp>
                       <Stamp
-                        className={`text-[9.5px] tracking-[0.12em] ${full ? "text-red-500" : "text-accent-primary"}`}
+                        className={`text-[9.5px] tracking-[0.12em] ${full ? "text-status-danger-ink" : "text-accent-primary"}`}
                       >
                         {full ? t("soldOut") : t("placesLeft", { count: left ?? 0 })}
                       </Stamp>
@@ -631,7 +631,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                 and the desktop card that carries it is hidden here. */}
             {!full && left !== null && (
               <Stamp
-                className={`tracking-[0.12em] ${left <= 10 ? "text-amber-500" : "text-accent-primary"}`}
+                className={`tracking-[0.12em] ${left <= 10 ? "text-status-warning-ink" : "text-accent-primary"}`}
               >
                 · {t("placesLeft", { count: left })}
               </Stamp>

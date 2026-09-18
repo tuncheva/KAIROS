@@ -219,7 +219,7 @@ export function InfoToast({
 
   const tone =
     info.type === "error"
-      ? "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+      ? "border-status-danger-border bg-status-danger-surface text-status-danger-ink"
       : "border-slate-200 bg-bg-elevated text-fg-primary dark:border-white/10";
   const Icon = info.type === "error" ? AlertCircle : Check;
 

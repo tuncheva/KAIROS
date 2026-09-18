@@ -78,7 +78,7 @@ function VerifyEmailContent() {
             {resend.isPending ? "Sending…" : "Send link"}
           </button>
           {resend.isError ? (
-            <p className="text-xs text-red-500">{resend.error.message}</p>
+            <p className="text-xs text-status-danger-ink">{resend.error.message}</p>
           ) : null}
         </form>
   );
@@ -88,7 +88,7 @@ function VerifyEmailContent() {
       <div className="w-full max-w-md bg-bg-secondary/60 border border-border-light/40 rounded-2xl p-8">
         {!token ? (
           <div className="space-y-3 text-center">
-            <AlertCircle className="mx-auto text-amber-500" size={32} />
+            <AlertCircle className="mx-auto text-status-warning-ink" size={32} />
             <h1 className="text-xl font-semibold text-fg-primary">
               Nothing to confirm
             </h1>
@@ -107,7 +107,7 @@ function VerifyEmailContent() {
           </div>
         ) : isVerified ? (
           <div className="space-y-4 text-center">
-            <CheckCircle className="mx-auto text-emerald-500" size={32} />
+            <CheckCircle className="mx-auto text-status-success-ink" size={32} />
             <h1 className="text-xl font-semibold text-fg-primary">
               Email confirmed
             </h1>
@@ -124,7 +124,7 @@ function VerifyEmailContent() {
         ) : (
           <div className="space-y-4">
             <div className="space-y-3 text-center">
-              <AlertCircle className="mx-auto text-red-500" size={32} />
+              <AlertCircle className="mx-auto text-status-danger-ink" size={32} />
               <h1 className="text-xl font-semibold text-fg-primary">
                 This link didn&apos;t work
               </h1>

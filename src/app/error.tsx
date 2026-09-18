@@ -29,7 +29,7 @@ export default function GlobalError({
   return (
     <div className="min-h-dvh flex items-center justify-center bg-bg-primary px-4">
       <div className="max-w-md w-full text-center space-y-6">
-        <div className="w-16 h-16 mx-auto rounded-2xl bg-red-500/10 flex items-center justify-center">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-status-danger-surface flex items-center justify-center">
           <span className="text-3xl">⚠</span>
         </div>
         <h1 className="text-2xl font-bold text-fg-primary">{t("title")}</h1>

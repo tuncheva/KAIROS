@@ -66,7 +66,7 @@ export function JoinWithQrClient({ code }: { code: string }) {
   if (peek.isError) {
     return (
       <Card>
-        <AlertCircle size={28} className="text-red-500" />
+        <AlertCircle size={28} className="text-status-danger-ink" />
         <p className="text-sm text-fg-secondary">{peek.error.message}</p>
         <SecondaryButton onClick={goToDashboard} label={t("joinGoToDashboard")} />
       </Card>
@@ -78,7 +78,7 @@ export function JoinWithQrClient({ code }: { code: string }) {
   if (joined) {
     return (
       <Card>
-        <CheckCircle2 size={28} className="text-emerald-500" />
+        <CheckCircle2 size={28} className="text-status-success-ink" />
         <p className="text-sm font-medium text-fg-primary">
           {t("joinedOrg", { name: joined })}
         </p>
@@ -102,7 +102,7 @@ export function JoinWithQrClient({ code }: { code: string }) {
 
     return (
       <Card>
-        <AlertCircle size={28} className="text-amber-500" />
+        <AlertCircle size={28} className="text-status-warning-ink" />
         <p className="text-sm text-fg-secondary">{reason}</p>
         <p className="text-xs text-fg-tertiary">{t("joinAskForFresh")}</p>
         <SecondaryButton onClick={goToDashboard} label={t("joinGoToDashboard")} />

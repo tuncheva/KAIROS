@@ -176,8 +176,8 @@ function OutcomeBanner({
     <div
       className={`mb-3 flex items-start justify-between gap-3 rounded-lg border px-3 py-2 ${
         good
-          ? "border-emerald-500/35 bg-emerald-500/10"
-          : "border-amber-500/35 bg-amber-500/10"
+          ? "border-status-success-border bg-status-success-surface"
+          : "border-status-warning-border bg-status-warning-surface"
       }`}
     >
       <p className="text-xs leading-snug text-fg-secondary">{t(key)}</p>

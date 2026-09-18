@@ -249,7 +249,7 @@ export function InviteQrDialog({
               type="button"
               onClick={() => revoke.mutate(input)}
               disabled={revoke.isPending}
-              className="rounded-lg px-3 py-2 text-xs font-medium text-fg-tertiary transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:opacity-60"
+              className="rounded-lg px-3 py-2 text-xs font-medium text-fg-tertiary transition-colors hover:bg-status-danger-surface hover:text-status-danger-ink disabled:opacity-60"
             >
               {t("inviteQrRevoke")}
             </button>

@@ -36,9 +36,9 @@ export function TurnTrailPanel({ events, running }: Props) {
     start: "bg-accent-primary",
     tool: "bg-fg-tertiary/60",
     handoff: "bg-accent-secondary",
-    draft: "bg-cyan-400 shadow-[0_0_0_4px_rgb(34_211_238/0.14)]",
-    done: "bg-emerald-400",
-    error: "bg-red-400",
+    draft: "bg-accent-primary shadow-[0_0_0_4px_rgb(var(--accent-primary)/0.14)]",
+    done: "bg-status-success-ink",
+    error: "bg-status-danger-ink",
   };
 
   const turns = groupByTurn(events);
@@ -108,9 +108,9 @@ export function TurnTrailPanel({ events, running }: Props) {
                               <span
                                 className={`text-[13px] font-semibold ${
                                   event.kind === "draft"
-                                    ? "text-cyan-300"
+                                    ? "text-accent-primary"
                                     : event.kind === "error"
-                                      ? "text-red-400"
+                                      ? "text-status-danger-ink"
                                       : "text-fg-primary"
                                 }`}
                               >

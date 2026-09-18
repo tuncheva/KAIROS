@@ -795,7 +795,7 @@ export function SignInModal({
           {sessionExpired ? (
             <p
               role="status"
-              className="mt-4 max-w-[380px] rounded-xl border border-amber-400/25 bg-amber-400/10 px-3.5 py-2.5 text-sm leading-[1.5] text-amber-200"
+              className="mt-4 max-w-[380px] rounded-xl border border-status-warning-border bg-status-warning-surface px-3.5 py-2.5 text-sm leading-[1.5] text-status-warning-ink"
             >
               {t("sessionExpired")}
             </p>
@@ -832,7 +832,7 @@ export function SignInModal({
           {(error || loadingMessage) && (
             <div className="mt-6 flex flex-col gap-2">
               {error && (
-                <p className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                <p className="rounded-xl border border-status-danger-border bg-status-danger-surface px-4 py-3 text-sm text-status-danger-ink">
                   {error}
                 </p>
               )}

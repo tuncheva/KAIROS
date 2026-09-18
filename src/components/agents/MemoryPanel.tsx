@@ -93,7 +93,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
                   onClick={() => forget.mutate({ id: fact.id })}
                   disabled={forget.isPending}
                   aria-label={t("forget")}
-                  className="shrink-0 rounded-lg p-1 text-fg-tertiary transition-colors hover:bg-red-500/15 hover:text-red-500"
+                  className="shrink-0 rounded-lg p-1 text-fg-tertiary transition-colors hover:bg-status-danger-surface hover:text-status-danger-ink"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -172,12 +172,12 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
               hit; surfacing it here is the difference between "nothing happened"
               and "you already have twenty of these". */}
           {upsert.data && !upsert.data.stored && (
-            <p className="text-[11px] leading-snug text-amber-600 dark:text-amber-400">
+            <p className="text-[11px] leading-snug text-status-warning-ink">
               {upsert.data.message}
             </p>
           )}
           {upsert.error && (
-            <p className="text-[11px] leading-snug text-red-500">
+            <p className="text-[11px] leading-snug text-status-danger-ink">
               {upsert.error.message}
             </p>
           )}

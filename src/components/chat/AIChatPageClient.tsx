@@ -297,7 +297,7 @@ export function AIChatPageClient() {
                 setConfirmDelete(true);
               }}
               disabled={!activeId}
-              className="kairos-stamp flex items-center gap-1.5 rounded-[7px] border border-border-medium/70 px-2.5 py-1.5 text-[10px] text-fg-secondary transition-colors hover:border-red-400/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
+              className="kairos-stamp flex items-center gap-1.5 rounded-[7px] border border-border-medium/70 px-2.5 py-1.5 text-[10px] text-fg-secondary transition-colors hover:border-status-danger-border hover:text-status-danger-ink disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Trash2 className="h-3 w-3" />
               <span className="hidden sm:inline">{t("delete")}</span>
@@ -395,7 +395,7 @@ export function AIChatPageClient() {
             </p>
 
             {deleteError && (
-              <p className="mt-3 text-sm text-red-400">
+              <p className="mt-3 text-sm text-status-danger-ink">
                 {tChat("deleteChatFailed")} {deleteError}
               </p>
             )}
@@ -416,7 +416,7 @@ export function AIChatPageClient() {
                 data-testid="delete-conversation-confirm"
                 onClick={() => void deleteActiveThread()}
                 disabled={deleteConversation.isPending}
-                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                className="rounded-lg border border-status-danger-border bg-status-danger-surface px-4 py-2 text-sm font-medium text-status-danger-ink transition-colors hover:border-status-danger-ink disabled:opacity-50"
               >
                 {deleteConversation.isPending
                   ? tChat("deleting")

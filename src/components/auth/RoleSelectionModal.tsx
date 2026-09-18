@@ -230,7 +230,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
         {step === "admin-setup" && generatedCode && (
           <>
             <div className="text-center mb-6">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-4 border border-status-success-border bg-status-success-surface rounded-2xl flex items-center justify-center">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
