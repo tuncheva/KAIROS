@@ -67,8 +67,8 @@ export function RsvpDashboard({
       aria-label={t("responsesDashboard")}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
     >
-      <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border-medium bg-bg-overlay shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-2xl bg-bg-overlay/95 p-4 backdrop-blur-sm sm:p-6">
+      <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl border border-border-medium bg-bg-overlay shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-xl bg-bg-overlay/95 p-4 backdrop-blur-sm sm:p-6">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-lg bg-accent-primary/20">
               <BarChart3 size={18} className="text-accent-primary" />

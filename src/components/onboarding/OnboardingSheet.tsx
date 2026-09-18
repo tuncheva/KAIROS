@@ -148,7 +148,7 @@ export function OnboardingSheet() {
         role="dialog"
         aria-modal="true"
         aria-label={t("title")}
-        className={`onboarding-sheet-dialog dark relative flex max-h-[88dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-bg-overlay text-fg-primary shadow-2xl ${
+        className={`onboarding-sheet-dialog dark relative flex max-h-[88dvh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-white/10 bg-bg-overlay text-fg-primary shadow-2xl ${
           closing ? "onboarding-sheet-dialog--out" : ""
         }`}
       >
@@ -201,7 +201,7 @@ export function OnboardingSheet() {
                 type="button"
                 onClick={() => setTab(item.id)}
                 aria-pressed={tab === item.id}
-                className={`rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary ${
+                className={`rounded-md px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary ${
                   tab === item.id
                     ? "bg-accent-primary text-white"
                     : "border border-white/10 text-fg-tertiary hover:border-white/20 hover:text-fg-primary"

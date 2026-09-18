@@ -135,7 +135,7 @@ export function MessageBubble({
     <div
       id={`chat-message-${message.id}`}
       className={`group flex items-end gap-2 ${isOwn ? "flex-row-reverse" : ""} ${
-        highlighted ? "rounded-2xl ring-2 ring-accent-primary/50 bg-accent-primary/5 py-1" : ""
+        highlighted ? "rounded-lg ring-2 ring-accent-primary/50 bg-accent-primary/5 py-1" : ""
       } transition-colors`}
     >
       {showAvatar && !isOwn ? (
@@ -153,7 +153,7 @@ export function MessageBubble({
 
         <div className={`flex items-end gap-1 ${isOwn ? "flex-row-reverse" : ""}`}>
           <div
-            className={`px-3.5 py-2.5 rounded-2xl ${
+            className={`px-3.5 py-2.5 rounded-lg ${
               isOwn ? "rounded-br-md" : "rounded-bl-md"
             } ${deleted ? "bg-bg-secondary text-fg-tertiary italic" : bubbleTone} ${
               pending ? "opacity-60" : ""
@@ -163,7 +163,7 @@ export function MessageBubble({
               <button
                 type="button"
                 onClick={() => onJumpToMessage(message.replyTo!.id)}
-                className={`block w-full text-left mb-2 pl-2 border-l-2 text-xs rounded-r hover:opacity-80 transition-opacity ${
+                className={`block w-full text-left mb-2 pl-2 border-l-2 text-xs rounded-r-sm hover:opacity-80 transition-opacity ${
                   isOwn ? "border-white/50 text-white/80" : "border-accent-primary/60 text-fg-tertiary"
                 }`}
               >
@@ -400,7 +400,7 @@ export function MessageBubble({
                 onClick={() => onToggleReaction(message.id, group.emoji)}
                 aria-pressed={group.mine}
                 aria-label={`${group.emoji} ${group.count}`}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs transition-colors ${
                   group.mine
                     ? "bg-accent-primary/15 text-accent-primary ring-1 ring-accent-primary/35"
                     : "bg-bg-secondary text-fg-secondary ring-1 ring-border-light/60 hover:bg-bg-tertiary"

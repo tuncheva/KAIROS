@@ -161,7 +161,7 @@ export function ConversationsRail({
               type="button"
               onClick={() => setQuery("")}
               aria-label={t("clearSearch")}
-              className="shrink-0 rounded p-0.5 text-fg-tertiary transition-colors hover:text-fg-primary"
+              className="shrink-0 rounded-sm p-0.5 text-fg-tertiary transition-colors hover:text-fg-primary"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -195,7 +195,7 @@ export function ConversationsRail({
                     type="button"
                     onClick={() => onSelect(row.id)}
                     aria-current={active ? "true" : undefined}
-                    className={`flex flex-col gap-1.5 rounded-[9px] px-2.5 py-2.5 text-left transition-colors ${
+                    className={`flex flex-col gap-1.5 rounded-sm px-2.5 py-2.5 text-left transition-colors ${
                       active
                         ? "border-l-2 border-accent-primary bg-accent-primary/10"
                         : "border-l-2 border-transparent hover:bg-bg-tertiary/70"
@@ -239,7 +239,7 @@ export function ConversationsRail({
                 key={`${hit.conversationId}-${hit.createdAt.toISOString()}`}
                 type="button"
                 onClick={() => onSelect(hit.conversationId)}
-                className="flex flex-col gap-1 rounded-[9px] border-l-2 border-transparent px-2.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary/70"
+                className="flex flex-col gap-1 rounded-sm border-l-2 border-transparent px-2.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary/70"
               >
                 <span className="line-clamp-1 text-[12.5px] font-medium text-fg-secondary">
                   {hit.conversationTitle?.trim() ?? t("untitledConversation")}

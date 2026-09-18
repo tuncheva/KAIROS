@@ -174,7 +174,7 @@ export function SettingsWorkspace({ activeSection, user }: Props) {
         <div ref={shellRef} className="flex min-h-full flex-col lg:flex-row">
           <aside className="flex-none border-b border-border-light lg:w-[264px] lg:border-b-0 lg:border-r">
             <div className="px-6 pb-5 pt-6 lg:pt-8">
-              <div className="flex items-center gap-2.5 rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 focus-within:border-accent-primary">
+              <div className="flex items-center gap-2.5 rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 focus-within:border-accent-primary">
                 <Search size={14} className="flex-none text-fg-tertiary" />
                 <input
                   value={rawQuery}

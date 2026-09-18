@@ -169,7 +169,7 @@ export function WorkspaceMenu() {
           <div
             ref={menuRef}
             role="menu"
-            className="absolute left-0 z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-border-light/60 bg-bg-surface shadow-2xl"
+            className="absolute left-0 z-50 mt-2 w-72 overflow-hidden rounded-lg border border-border-light/60 bg-bg-surface shadow-2xl"
           >
             <div className="px-3 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wider text-fg-tertiary">
               {t("switchWorkspace")}

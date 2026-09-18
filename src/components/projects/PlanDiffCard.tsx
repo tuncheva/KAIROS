@@ -121,7 +121,7 @@ function KindBadge({
 
   return (
     <span
-      className={`kairos-stamp shrink-0 rounded px-1.5 py-0.5 text-[9px] ${tone}`}
+      className={`kairos-stamp shrink-0 rounded-sm px-1.5 py-0.5 text-[9px] ${tone}`}
     >
       {t(kind)}
     </span>

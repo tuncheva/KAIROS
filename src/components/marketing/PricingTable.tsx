@@ -106,7 +106,7 @@ function PlanColumn({
 
   return (
     <div
-      className={`flex flex-col gap-5 rounded-2xl border p-6 ${
+      className={`flex flex-col gap-5 rounded-lg border p-6 ${
         featured
           ? "border-accent-primary/40 bg-bg-elevated"
           : "border-border-light bg-transparent"

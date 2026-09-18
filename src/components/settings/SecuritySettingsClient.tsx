@@ -320,7 +320,7 @@ export function SecuritySettingsClient() {
       desc: feedUrl ? (
         <span className="flex flex-col gap-1">
           <span>{t("calendarFeedDesc")}</span>
-          <code className="break-all rounded bg-bg-secondary px-1.5 py-1 text-[11px] text-fg-secondary">
+          <code className="break-all rounded-sm bg-bg-secondary px-1.5 py-1 text-[11px] text-fg-secondary">
             {feedUrl}
           </code>
           <span className="text-[11px] text-fg-quaternary">

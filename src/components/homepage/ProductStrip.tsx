@@ -99,7 +99,7 @@ export function ProductStrip() {
                     {FRAMES.map((key) => (
                         <figure
                             key={key}
-                            className="k-ph m-0 flex h-[260px] w-[min(86vw,620px)] flex-col justify-end rounded-[18px] border border-white/[0.09] bg-bg-surface p-[26px] sm:h-[380px]"
+                            className="k-ph m-0 flex h-[260px] w-[min(86vw,620px)] flex-col justify-end rounded-xl border border-white/[0.09] bg-bg-surface p-[26px] sm:h-[380px]"
                         >
                             <figcaption className="font-mono text-[11px] uppercase tracking-[0.16em] text-[rgb(140,140,152)]">
                                 {t(key)}

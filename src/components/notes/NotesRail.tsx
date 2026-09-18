@@ -142,7 +142,7 @@ export function NotesRail({
               type="button"
               onClick={() => onQueryChange("")}
               aria-label={t("common.clearSearch")}
-              className="kairos-tap grid h-5 w-5 flex-none place-items-center rounded text-fg-tertiary transition-colors hover:text-fg-primary"
+              className="kairos-tap grid h-5 w-5 flex-none place-items-center rounded-sm text-fg-tertiary transition-colors hover:text-fg-primary"
             >
               <X size={12} />
             </button>

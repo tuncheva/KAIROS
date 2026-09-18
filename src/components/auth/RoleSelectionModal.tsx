@@ -89,7 +89,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
         role="dialog"
         aria-modal="true"
         aria-label={t("welcome.title")}
-        className="w-full max-w-lg bg-bg-elevated shadow-2xl rounded-3xl border border-accent-primary/20 kairos-page-enter overflow-hidden"
+        className="w-full max-w-lg bg-bg-elevated shadow-2xl rounded-xl border border-accent-primary/20 kairos-page-enter overflow-hidden"
       >
         {/* Purple gradient header */}
         <div className="h-2 bg-gradient-to-r from-accent-primary via-accent-secondary to-accent-tertiary" />
@@ -109,7 +109,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
           {step === "choose" && (
             <>
               <div className="text-center mb-8">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-accent-primary to-accent-hover rounded-2xl flex items-center justify-center shadow-lg">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-accent-primary to-accent-hover rounded-lg flex items-center justify-center shadow-lg">
                   <span className="text-3xl font-bold text-white">K</span>
                 </div>
                 <h3 className="text-3xl font-bold text-fg-primary mb-2">
@@ -123,7 +123,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
               <div className="space-y-4">
                 <button
                   onClick={() => setStep("admin-setup")}
-                  className="w-full p-6 bg-gradient-to-br from-accent-primary/10 to-accent-secondary/10 hover:from-accent-primary/20 hover:to-accent-secondary/20 rounded-2xl transition-all duration-200 text-left group border-2 border-accent-primary/30 hover:border-accent-primary/60 hover:shadow-lg"
+                  className="w-full p-6 bg-gradient-to-br from-accent-primary/10 to-accent-secondary/10 hover:from-accent-primary/20 hover:to-accent-secondary/20 rounded-lg transition-all duration-200 text-left group border-2 border-accent-primary/30 hover:border-accent-primary/60 hover:shadow-lg"
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -137,7 +137,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
                 <button
                   onClick={() => setPersonalMode.mutate()}
                   disabled={setPersonalMode.isPending}
-                  className="w-full p-6 bg-bg-surface hover:bg-bg-tertiary rounded-2xl transition-all duration-200 text-left group disabled:opacity-50 disabled:cursor-not-allowed border-2 border-border-medium hover:border-accent-primary/40"
+                  className="w-full p-6 bg-bg-surface hover:bg-bg-tertiary rounded-lg transition-all duration-200 text-left group disabled:opacity-50 disabled:cursor-not-allowed border-2 border-border-medium hover:border-accent-primary/40"
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -153,7 +153,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
                     pick Personal and go hunting for the join field later. */}
                 <button
                   onClick={() => setStep("join")}
-                  className="w-full p-6 bg-bg-surface hover:bg-bg-tertiary rounded-2xl transition-all duration-200 text-left group border-2 border-border-medium hover:border-accent-primary/40"
+                  className="w-full p-6 bg-bg-surface hover:bg-bg-tertiary rounded-lg transition-all duration-200 text-left group border-2 border-border-medium hover:border-accent-primary/40"
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -230,7 +230,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
         {step === "admin-setup" && generatedCode && (
           <>
             <div className="text-center mb-6">
-              <div className="w-16 h-16 mx-auto mb-4 border border-status-success-border bg-status-success-surface rounded-2xl flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-4 border border-status-success-border bg-status-success-surface rounded-lg flex items-center justify-center">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
@@ -239,7 +239,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
               <p className="text-fg-secondary">{t("createOrg.sharePrompt")}</p>
             </div>
 
-            <div className="bg-gradient-to-br from-accent-primary/10 to-accent-secondary/10 rounded-2xl p-6 text-center mb-6 border-2 border-accent-primary/30">
+            <div className="bg-gradient-to-br from-accent-primary/10 to-accent-secondary/10 rounded-lg p-6 text-center mb-6 border-2 border-accent-primary/30">
               <p className="text-xs text-fg-tertiary uppercase tracking-wider mb-3 font-semibold">{t("createOrg.codeLabel")}</p>
               <p className="text-4xl font-bold text-accent-primary tracking-[0.3em] font-mono mb-4">
                 {generatedCode}

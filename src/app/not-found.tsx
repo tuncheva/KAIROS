@@ -13,7 +13,7 @@ export default function NotFound() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-bg-primary kairos-page-enter">
       <div className="text-center space-y-6 max-w-md px-6">
-        <div className="w-20 h-20 mx-auto rounded-2xl bg-accent-primary/10 flex items-center justify-center">
+        <div className="w-20 h-20 mx-auto rounded-lg bg-accent-primary/10 flex items-center justify-center">
           <span className="text-4xl font-bold text-accent-primary">404</span>
         </div>
         <div>

@@ -62,7 +62,7 @@ function PillGroup<T extends string>({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(option.key)}
-            className={`rounded-[9px] border px-2.5 py-[11px] text-[13px] font-medium transition-colors duration-300 ${
+            className={`rounded-sm border px-2.5 py-[11px] text-[13px] font-medium transition-colors duration-300 ${
               active
                 ? "border-accent-primary/55 bg-accent-primary/[0.14] text-fg-primary"
                 : "border-border-light/60 bg-transparent text-fg-tertiary hover:border-border-strong/60 hover:text-fg-secondary"
@@ -77,7 +77,7 @@ function PillGroup<T extends string>({
 }
 
 const FIELD =
-  "rounded-[9px] border border-border-light/60 bg-bg-tertiary px-3.5 text-fg-primary outline-none transition-colors duration-300 placeholder:text-fg-quaternary focus:border-accent-primary/60";
+  "rounded-sm border border-border-light/60 bg-bg-tertiary px-3.5 text-fg-primary outline-none transition-colors duration-300 placeholder:text-fg-quaternary focus:border-accent-primary/60";
 
 /**
  * The "New project" affordance: a button in the topbar and the drawer it opens.
@@ -249,7 +249,7 @@ export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolea
                 type="button"
                 onClick={close}
                 aria-label={t("close")}
-                className="flex h-[30px] w-[30px] items-center justify-center rounded-[7px] border border-border-light/70 text-fg-tertiary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
+                className="flex h-[30px] w-[30px] items-center justify-center rounded-sm border border-border-light/70 text-fg-tertiary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
               >
                 <X size={15} aria-hidden />
               </button>
@@ -336,14 +336,14 @@ export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolea
                 <button
                   type="button"
                   onClick={close}
-                  className="rounded-[9px] border border-border-light/70 px-[18px] py-3 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
+                  className="rounded-sm border border-border-light/70 px-[18px] py-3 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
                 >
                   {t("cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={!canSubmit}
-                  className="flex-1 rounded-[9px] bg-accent-primary px-[18px] py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-px hover:bg-accent-hover disabled:pointer-events-none disabled:opacity-50"
+                  className="flex-1 rounded-sm bg-accent-primary px-[18px] py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-px hover:bg-accent-hover disabled:pointer-events-none disabled:opacity-50"
                 >
                   {pending ? t("creating") : t("submit")}
                 </button>

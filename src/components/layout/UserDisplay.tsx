@@ -195,8 +195,8 @@ export function UserDisplay() {
  return (
  <div className="flex items-center gap-3 animate-pulse">
  <div className="hidden sm:flex flex-col items-end gap-1">
- <div className="h-4 bg-bg-tertiary/60 rounded w-24" />
- <div className="h-3 bg-bg-tertiary/60 rounded w-32" />
+ <div className="h-4 bg-bg-tertiary/60 rounded-sm w-24" />
+ <div className="h-3 bg-bg-tertiary/60 rounded-sm w-32" />
  </div>
  <div className="w-8 h-8 bg-bg-tertiary/60 rounded-full" />
  </div>
@@ -249,7 +249,7 @@ export function UserDisplay() {
 
  {isOpen && (
  <div
- className="absolute right-0 mt-3 w-64 rounded-2xl border border-border-medium shadow-2xl overflow-hidden z-50 bg-bg-elevated"
+ className="absolute right-0 mt-3 w-64 rounded-lg border border-border-medium shadow-2xl overflow-hidden z-50 bg-bg-elevated"
  role="menu"
  aria-label={tSettings("title")}
  >

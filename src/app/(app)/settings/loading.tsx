@@ -7,8 +7,8 @@ export default function SettingsLoading() {
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 bg-bg-secondary rounded-lg animate-pulse" />
               <div className="space-y-1">
-                <div className="h-6 w-24 bg-bg-secondary rounded animate-pulse" />
-                <div className="h-3 w-40 bg-bg-secondary rounded animate-pulse" />
+                <div className="h-6 w-24 bg-bg-secondary rounded-sm animate-pulse" />
+                <div className="h-3 w-40 bg-bg-secondary rounded-sm animate-pulse" />
               </div>
             </div>
             <div className="h-8 w-8 bg-bg-secondary rounded-full animate-pulse" />
@@ -21,7 +21,7 @@ export default function SettingsLoading() {
             ))}
           </aside>
           <main className="flex-1 p-6 space-y-6">
-            <div className="h-8 w-48 bg-bg-secondary rounded animate-pulse" />
+            <div className="h-8 w-48 bg-bg-secondary rounded-sm animate-pulse" />
             <div className="space-y-4">
               <div className="h-12 bg-bg-secondary rounded-lg animate-pulse" />
               <div className="h-12 bg-bg-secondary rounded-lg animate-pulse" />

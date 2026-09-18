@@ -371,7 +371,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
       <article
         id={`event-${event.id}`}
         data-testid="event-card"
-        className="dash-rise overflow-hidden rounded-2xl bg-bg-elevated shadow-[0_0_0_0.5px_rgba(200,200,200,0.55),0_2px_8px_-2px_rgba(0,0,0,0.08),0_4px_16px_-4px_rgba(0,0,0,0.06)] target:ring-2 target:ring-accent-primary/50 dark:shadow-[0_0_0_0.5px_rgba(60,60,60,0.9),0_2px_12px_-2px_rgba(0,0,0,0.4),0_6px_24px_-6px_rgba(0,0,0,0.3)]"
+        className="dash-rise overflow-hidden rounded-lg bg-bg-elevated shadow-[0_0_0_0.5px_rgba(200,200,200,0.55),0_2px_8px_-2px_rgba(0,0,0,0.08),0_4px_16px_-4px_rgba(0,0,0,0.06)] target:ring-2 target:ring-accent-primary/50 dark:shadow-[0_0_0_0.5px_rgba(60,60,60,0.9),0_2px_12px_-2px_rgba(0,0,0,0.4),0_6px_24px_-6px_rgba(0,0,0,0.3)]"
       >
         {/* Who posted it, and why you are seeing it. */}
         <div className="flex items-center gap-2.5 px-3.5 pb-2.5 pt-3">
@@ -419,7 +419,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
               onClick={handleFollow}
               disabled={follow.isPending || unfollow.isPending}
               aria-pressed={event.viewerFollowsAuthor}
-              className={`kairos-stamp hidden h-7 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[9.5px] tracking-[0.12em] transition-colors sm:flex ${
+              className={`kairos-stamp hidden h-control-sm shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[9.5px] tracking-[0.12em] transition-colors sm:flex ${
                 event.viewerFollowsAuthor
                   ? "bg-bg-tertiary text-fg-tertiary hover:text-fg-secondary"
                   : "bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20"
@@ -621,17 +621,17 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
 
             {/* The facts a person needs before they can decide. */}
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="flex h-7 items-center gap-1.5 rounded-lg border border-border-medium bg-bg-secondary px-2 text-[11px] text-fg-secondary">
+              <span className="flex h-control-sm items-center gap-1.5 rounded-lg border border-border-medium bg-bg-secondary px-2 text-[11px] text-fg-secondary">
                 <MapPin size={11} className="text-accent-primary" />
                 <span className="max-w-[220px] truncate">{placeLine(event)}</span>
               </span>
-              <span className="flex h-7 items-center gap-1.5 rounded-lg border border-border-medium bg-bg-secondary px-2 text-[11px] text-fg-secondary">
+              <span className="flex h-control-sm items-center gap-1.5 rounded-lg border border-border-medium bg-bg-secondary px-2 text-[11px] text-fg-secondary">
                 <Clock size={11} className="text-accent-primary" />
                 {formatTimeRange(event, locale)}
               </span>
               {!past && left !== null && (
                 <span
-                  className={`flex h-7 items-center gap-1.5 rounded-lg px-2 text-[11px] ${
+                  className={`flex h-control-sm items-center gap-1.5 rounded-lg px-2 text-[11px] ${
                     full
                       ? "bg-status-danger-surface text-status-danger-ink"
                       : left <= NEARLY_FULL
@@ -644,7 +644,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                 </span>
               )}
               {past && (
-                <span className="flex h-7 items-center rounded-lg bg-bg-tertiary px-2 text-[11px] text-fg-tertiary">
+                <span className="flex h-control-sm items-center rounded-lg bg-bg-tertiary px-2 text-[11px] text-fg-tertiary">
                   {t("past")}
                 </span>
               )}
@@ -839,7 +839,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-border-medium bg-bg-overlay shadow-2xl">
+            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border-medium bg-bg-overlay shadow-2xl">
               <EditEventForm
                 event={{
                   id: event.id,

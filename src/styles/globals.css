@@ -530,7 +530,7 @@ textarea::-moz-selection,
   );
   box-shadow: var(--shadow-md);
   border: 1px solid rgb(var(--border-light) / 0.7);
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -582,7 +582,7 @@ summary,
     textarea,
     select
   ) {
-    border-radius: 10px;
+    border-radius: var(--radius-md);
   }
 }
 
@@ -600,7 +600,7 @@ summary,
   top: 0.75rem;
   z-index: 1000;
   padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   background-color: rgb(var(--bg-secondary));
   color: rgb(var(--text-primary));
   border: 1px solid rgb(var(--border-light));
@@ -637,7 +637,7 @@ summary,
   background: linear-gradient(135deg, rgb(var(--accent-primary)) 0%, rgb(var(--accent-secondary)) 100%);
   color: #0f172a;
   font-weight: 600;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   border: none;
   box-shadow: var(--shadow-md);
   cursor: pointer;
@@ -686,7 +686,7 @@ summary,
   border: 2px solid rgb(var(--border-medium));
   color: rgb(var(--text-primary));
   font-weight: 600;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   box-shadow: var(--shadow-sm);
@@ -703,7 +703,7 @@ summary,
 .input-base {
   padding: 0.875rem 1rem;
   border: 2px solid rgb(var(--border-light));
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   background-color: rgb(var(--bg-surface));
   color: rgb(var(--text-primary));
   outline: none;
@@ -729,7 +729,7 @@ summary,
 .card-base {
   background-color: rgb(var(--bg-surface));
   border: 1px solid rgb(var(--border-light));
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -742,7 +742,7 @@ summary,
 .card-interactive {
   background-color: rgb(var(--bg-surface));
   border: 1px solid rgb(var(--border-light));
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -901,7 +901,7 @@ summary,
   left: -5px;
   right: -5px;
   bottom: -5px;
-  border-radius: 1rem; 
+  border-radius: var(--radius-xl); 
   background: transparent;
   transition: opacity 0.3s ease-in-out;
   pointer-events: none;
@@ -1131,7 +1131,7 @@ summary,
 /* Kairos Card System - System Settings Style */
 .kairos-system-card {
   background: rgb(var(--bg-surface) / 0.8);
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   box-shadow: 
     0 0 0 0.5px rgba(var(--border-light) / 0.5),
     0 2px 8px -2px rgba(0, 0, 0, 0.08),
@@ -1150,7 +1150,7 @@ summary,
 
 .kairos-system-card-elevated {
   background: rgb(var(--bg-elevated) / 0.9);
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   box-shadow: 
     0 0 0 0.5px rgba(var(--border-light) / 0.6),
     0 4px 12px -2px rgba(0, 0, 0, 0.1),
@@ -1477,7 +1477,7 @@ summary,
   align-items: center;
   gap: 0.375rem;
   padding: 0.375rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
@@ -1512,7 +1512,7 @@ summary,
 
 .kairos-system-dropdown {
   background-color: #ffffff;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   border-width: 0.5px;
@@ -1586,7 +1586,7 @@ summary,
 /* Kairos permission badge */
 .kairos-system-permission-badge {
   padding: 0.375rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 500;
   background-color: rgba(209, 209, 214, 0.2);
@@ -1641,11 +1641,11 @@ summary,
 
 /* Kairos corner radius */
 .kairos-system-rounded-lg {
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .kairos-system-rounded-xl {
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
 }
 
 /* Kairos scrolling */
@@ -1910,7 +1910,7 @@ summary,
 /* Futuristic card with subtle glow */
 .kairos-card {
   background: rgb(var(--bg-elevated));
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(var(--border-light), 0.5);
   transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   position: relative;
@@ -1973,7 +1973,7 @@ summary,
 .kairos-input {
   background: rgba(var(--bg-surface), 0.8);
   border: 1px solid rgba(var(--border-light), 0.5);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 10px 14px;
   font-size: 14px;
   color: rgb(var(--fg-primary));
@@ -2012,7 +2012,7 @@ summary,
 
 .kairos-modal-content {
   background: rgb(var(--bg-primary));
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(var(--border-light), 0.3);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
   animation: kairos-modal-enter 0.3s cubic-bezier(0.22, 1, 0.36, 1);
@@ -2060,7 +2060,7 @@ summary,
 
 .kairos-chat-response code {
   background: rgba(var(--bg-tertiary), 0.8);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 0.15em 0.4em;
   font-size: 0.9em;
   font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
@@ -2068,7 +2068,7 @@ summary,
 
 .kairos-chat-response pre {
   background: rgba(var(--bg-tertiary), 0.8);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 0.75em 1em;
   overflow-x: auto;
   margin: 0.5em 0;
@@ -2168,7 +2168,7 @@ summary,
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: rgb(var(--accent-primary) / 0.06);
   border: 1px solid rgb(var(--accent-primary) / 0.12);
   font-size: 12px;
@@ -3483,7 +3483,7 @@ input[type="search"]::-webkit-search-results-decoration {
   align-items: flex-start;
   gap: 0.5625rem;
   padding: 0.625rem 0.6875rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   background: rgb(var(--bg-elevated));
   color: rgb(var(--fg-primary));
   font-size: 0.8125rem;
@@ -3508,7 +3508,7 @@ input[type="search"]::-webkit-search-results-decoration {
   width: 1.125rem;
   height: 1.125rem;
   margin-top: 0.0625rem;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   display: grid;
   place-items: center;
   color: var(--toast-rule);
@@ -3874,7 +3874,7 @@ input[type="search"]::-webkit-search-results-decoration {
   transform: translateY(-50%);
   z-index: 50; /* above the rail (z-40), below modals */
   padding: 0.3125rem 0.5rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   background: rgb(var(--bg-elevated));
   color: rgb(var(--fg-primary));
   font-size: 0.75rem;

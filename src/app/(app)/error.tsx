@@ -33,7 +33,7 @@ export default function AppError({
     <div className="rail-offset min-h-dvh bg-bg-primary">
       <main id="main-content" className="flex min-h-dvh items-center justify-center px-4">
         <div className="w-full max-w-md space-y-5 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-error/10 border border-error/20">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-error/10 border border-error/20">
             <span aria-hidden="true" className="text-2xl">
               ⚠
             </span>

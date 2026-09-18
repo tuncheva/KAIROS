@@ -25,7 +25,7 @@ export function Stats() {
 
     return (
         <section className="mx-auto w-full max-w-[1280px] px-6 pb-[110px] lg:px-12">
-            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[18px] border border-white/10 bg-white/10 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 lg:grid-cols-4">
                 {CELLS.map((cell) => (
                     <div key={cell.labelKey} data-reveal className="bg-bg-surface px-[30px] py-[38px]">
                         <div

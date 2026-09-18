@@ -4,7 +4,7 @@ export default function PublishLoading() {
       <div className="rail-offset kairos-topbar-gap">
         <header className="sticky top-16 lg:top-0 z-30 bg-bg-primary border-b border-border-light">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex justify-between items-center">
-            <div className="h-7 w-32 bg-bg-secondary rounded animate-pulse" />
+            <div className="h-7 w-32 bg-bg-secondary rounded-sm animate-pulse" />
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 bg-bg-secondary rounded-full animate-pulse" />
               <div className="h-8 w-8 bg-bg-secondary rounded-full animate-pulse" />

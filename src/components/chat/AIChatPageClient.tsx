@@ -268,7 +268,7 @@ export function AIChatPageClient() {
                 onClick={() => setRailOpen(true)}
                 title={t("showConversations")}
                 aria-label={t("showConversations")}
-                className="hidden items-center gap-2 rounded-[7px] border border-border-medium/70 px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-bg-tertiary lg:flex"
+                className="hidden items-center gap-2 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-bg-tertiary lg:flex"
               >
                 <PanelLeftOpen className="h-[15px] w-[15px]" />
                 <span className="kairos-stamp text-[10px]">
@@ -282,7 +282,7 @@ export function AIChatPageClient() {
             </h1>
 
             {scopeProject && (
-              <span className="kairos-stamp hidden shrink-0 rounded-[5px] border border-border-medium/70 px-2 py-1 text-[10px] text-fg-tertiary sm:inline">
+              <span className="kairos-stamp hidden shrink-0 rounded-sm border border-border-medium/70 px-2 py-1 text-[10px] text-fg-tertiary sm:inline">
                 {scopeProject.title}
               </span>
             )}
@@ -297,7 +297,7 @@ export function AIChatPageClient() {
                 setConfirmDelete(true);
               }}
               disabled={!activeId}
-              className="kairos-stamp flex items-center gap-1.5 rounded-[7px] border border-border-medium/70 px-2.5 py-1.5 text-[10px] text-fg-secondary transition-colors hover:border-status-danger-border hover:text-status-danger-ink disabled:cursor-not-allowed disabled:opacity-40"
+              className="kairos-stamp flex items-center gap-1.5 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-[10px] text-fg-secondary transition-colors hover:border-status-danger-border hover:text-status-danger-ink disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Trash2 className="h-3 w-3" />
               <span className="hidden sm:inline">{t("delete")}</span>
@@ -386,7 +386,7 @@ export function AIChatPageClient() {
           aria-modal="true"
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
         >
-          <div className="w-full max-w-md rounded-2xl border border-border-medium bg-bg-primary p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-xl border border-border-medium bg-bg-primary p-6 shadow-2xl">
             <h2 className="text-lg font-bold text-fg-primary">
               {tChat("deleteChatTitle")}
             </h2>

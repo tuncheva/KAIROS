@@ -251,7 +251,7 @@ export function ProfileDrawer({
               type="button"
               onClick={onClose}
               aria-label={t("close")}
-              className="flex h-[30px] w-[30px] items-center justify-center rounded-[7px] border border-border-light/70 text-fg-tertiary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
+              className="flex h-[30px] w-[30px] items-center justify-center rounded-sm border border-border-light/70 text-fg-tertiary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
             >
               <X size={15} aria-hidden />
             </button>
@@ -340,7 +340,7 @@ export function ProfileDrawer({
                   <>
                     {/* Counts. Buttons, not labels — the follower count is the
                         way into the follower list. */}
-                    <div className="mx-[26px] flex items-center justify-center gap-6 rounded-[11px] border border-border-light/50 bg-bg-tertiary/40 py-3">
+                    <div className="mx-[26px] flex items-center justify-center gap-6 rounded-md border border-border-light/50 bg-bg-tertiary/40 py-3">
                       <button
                         type="button"
                         onClick={() => setTab("followers")}
@@ -372,7 +372,7 @@ export function ProfileDrawer({
                             onClose();
                             router.push("/settings?section=profile");
                           }}
-                          className="w-full rounded-[9px] border border-border-light/70 py-2.5 text-[14px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary"
+                          className="w-full rounded-sm border border-border-light/70 py-2.5 text-[14px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary"
                         >
                           {t("editProfile")}
                         </button>
@@ -390,7 +390,7 @@ export function ProfileDrawer({
                             onClick={() =>
                               startChat.mutate({ otherUserId: full.id })
                             }
-                            className="flex flex-1 items-center justify-center gap-2 rounded-[9px] border border-border-light/70 py-2.5 text-[14px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
+                            className="flex flex-1 items-center justify-center gap-2 rounded-sm border border-border-light/70 py-2.5 text-[14px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
                           >
                             <MessageCircle size={15} aria-hidden />
                             {t("message")}
@@ -406,7 +406,7 @@ export function ProfileDrawer({
                                 ? unfollow.mutate({ userId: full.id })
                                 : follow.mutate({ userId: full.id })
                             }
-                            className={`flex flex-1 items-center justify-center gap-2 rounded-[9px] py-2.5 text-[14px] font-medium transition-colors disabled:opacity-50 ${
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-sm py-2.5 text-[14px] font-medium transition-colors disabled:opacity-50 ${
                               full.isFollowing
                                 ? "border border-border-light/70 text-fg-primary hover:bg-bg-tertiary"
                                 : "bg-accent-primary text-white hover:opacity-90"
@@ -529,7 +529,7 @@ export function ProfileDrawer({
                           (activityQuery.data ?? []).map((item) => (
                             <div
                               key={`${item.kind}-${item.eventId}`}
-                              className="rounded-[10px] border border-border-light/50 px-3.5 py-3"
+                              className="rounded-md border border-border-light/50 px-3.5 py-3"
                             >
                               <span className={STAMP}>
                                 {item.kind === "published_event"
@@ -560,7 +560,7 @@ export function ProfileDrawer({
                               key={person.id}
                               type="button"
                               onClick={() => openProfile(person.id)}
-                              className="flex items-center gap-3 rounded-[10px] border border-border-light/50 px-3.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary"
+                              className="flex items-center gap-3 rounded-md border border-border-light/50 px-3.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary"
                             >
                               {person.image ? (
                                 <Image
@@ -674,7 +674,7 @@ function SharedTab({
           {data.organizations.map((org) => (
             <div
               key={org.id}
-              className="rounded-[10px] border border-border-light/50 px-3.5 py-2.5 text-[14px] text-fg-primary"
+              className="rounded-md border border-border-light/50 px-3.5 py-2.5 text-[14px] text-fg-primary"
             >
               {org.name}
             </div>
@@ -690,7 +690,7 @@ function SharedTab({
               key={project.id}
               type="button"
               onClick={() => onOpenProject(project.id)}
-              className="rounded-[10px] border border-border-light/50 px-3.5 py-2.5 text-left text-[14px] text-fg-primary transition-colors hover:bg-bg-tertiary"
+              className="rounded-md border border-border-light/50 px-3.5 py-2.5 text-left text-[14px] text-fg-primary transition-colors hover:bg-bg-tertiary"
             >
               {project.title}
             </button>
@@ -706,7 +706,7 @@ function SharedTab({
               key={event.id}
               type="button"
               onClick={() => onOpenEvent(event.id)}
-              className="rounded-[10px] border border-border-light/50 px-3.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary"
+              className="rounded-md border border-border-light/50 px-3.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary"
             >
               <span className="block text-[14px] text-fg-primary">
                 {event.title}

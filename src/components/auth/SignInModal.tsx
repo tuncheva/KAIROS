@@ -520,7 +520,7 @@ export function SignInModal({
         />
         <span
           aria-hidden="true"
-          className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border transition-colors duration-200 ${
+          className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm border transition-colors duration-200 ${
             agreeTerms
               ? "border-accent-primary bg-accent-primary"
               : "border-white/20 group-hover:border-white/40"
@@ -715,7 +715,7 @@ export function SignInModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="kairos-auth-title"
-        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl overflow-hidden rounded-[18px] border border-white/10 bg-bg-overlay lg:grid-cols-2"
+        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl overflow-hidden rounded-xl border border-white/10 bg-bg-overlay lg:grid-cols-2"
       >
         {/* ─── Left: brand panel (hidden on narrow screens) ─── */}
         <div className="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.08] bg-bg-secondary p-11 lg:flex">
@@ -730,7 +730,7 @@ export function SignInModal({
 
           <div className="relative flex items-center gap-3">
             <div
-              className="flex h-[30px] w-[30px] items-center justify-center rounded-[9px]"
+              className="flex h-[30px] w-[30px] items-center justify-center rounded-sm"
               style={{
                 background:
                   "linear-gradient(140deg, rgb(var(--accent-primary)), rgb(var(--accent-secondary)))",

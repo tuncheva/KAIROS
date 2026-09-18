@@ -48,7 +48,7 @@ export function EventProgressButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border-medium bg-bg-elevated px-3 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
+        className="flex h-control-md shrink-0 items-center gap-2 rounded-lg border border-border-medium bg-bg-elevated px-3 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
       >
         <BarChart3 size={14} className="text-accent-primary" />
         <span className="hidden sm:inline">{t("eventProgress")}</span>
@@ -111,7 +111,7 @@ function EventProgressDialog({ onClose }: { onClose: () => void }) {
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className="dash-rise flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border border-border-medium bg-bg-overlay shadow-2xl sm:rounded-2xl"
+        className="dash-rise flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-xl border border-border-medium bg-bg-overlay shadow-2xl sm:rounded-lg"
       >
         <header className="flex items-center justify-between gap-3 border-b border-border-light px-5 py-4">
           <span className="flex flex-col">

@@ -93,7 +93,7 @@ export function ConversationDetails({
 
         {isLoading ? (
           <div className="px-4 py-5 space-y-3" aria-hidden="true">
-            <div className="h-3 w-1/3 rounded bg-bg-secondary animate-pulse" />
+            <div className="h-3 w-1/3 rounded-sm bg-bg-secondary animate-pulse" />
             <div className="h-10 rounded-lg bg-bg-secondary animate-pulse" />
             <div className="h-10 rounded-lg bg-bg-secondary animate-pulse" />
           </div>

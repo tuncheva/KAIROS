@@ -52,7 +52,7 @@ export function ToolInspector({ agent, used, canAddCustomTools }: Props) {
                 <span className="w-4 shrink-0 text-right text-fg-tertiary">
                   {i + 1}
                 </span>
-                <code className="rounded bg-bg-secondary px-1.5 py-0.5 font-mono">
+                <code className="rounded-sm bg-bg-secondary px-1.5 py-0.5 font-mono">
                   {name}
                 </code>
               </li>

@@ -362,7 +362,7 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
               type="checkbox"
               checked={enableRsvp}
               onChange={(e) => setEnableRsvp(e.target.checked)}
-              className="w-3.5 h-3.5 rounded bg-bg-tertiary text-accent-primary focus:ring-accent-primary/30 cursor-pointer border-accent-primary/20"
+              className="w-3.5 h-3.5 rounded-sm bg-bg-tertiary text-accent-primary focus:ring-accent-primary/30 cursor-pointer border-accent-primary/20"
             />
             <span className="text-xs text-fg-secondary">{t("enableRsvp")}</span>
           </label>
@@ -372,7 +372,7 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
                 type="checkbox"
                 checked={sendReminders}
                 onChange={(e) => setSendReminders(e.target.checked)}
-                className="w-3.5 h-3.5 rounded bg-bg-tertiary text-accent-primary focus:ring-accent-primary/30 cursor-pointer border-accent-primary/20"
+                className="w-3.5 h-3.5 rounded-sm bg-bg-tertiary text-accent-primary focus:ring-accent-primary/30 cursor-pointer border-accent-primary/20"
               />
               <span className="text-xs text-fg-secondary">{t("sendReminders")}</span>
             </label>

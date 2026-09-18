@@ -148,7 +148,7 @@ function WhoToFollow() {
               type="button"
               onClick={() => follow.mutate({ userId: person.id })}
               disabled={follow.isPending}
-              className="kairos-stamp flex h-7 shrink-0 items-center gap-1 rounded-lg bg-accent-primary/10 px-2.5 text-[9.5px] tracking-[0.12em] text-accent-primary transition-colors hover:bg-accent-primary/20 disabled:opacity-50"
+              className="kairos-stamp flex h-control-sm shrink-0 items-center gap-1 rounded-lg bg-accent-primary/10 px-2.5 text-[9.5px] tracking-[0.12em] text-accent-primary transition-colors hover:bg-accent-primary/20 disabled:opacity-50"
             >
               <UserPlus size={11} />
               {t("follow")}

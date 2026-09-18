@@ -478,7 +478,7 @@ export function NotificationSystem() {
         setFilter(value);
         setExpanded(false);
       }}
-      className={`${label} rounded-[7px] px-2.5 py-1.5 transition-colors ${
+      className={`${label} rounded-sm px-2.5 py-1.5 transition-colors ${
         filter === value
           ? "bg-bg-secondary text-fg-primary"
           : "text-fg-tertiary hover:text-fg-primary"
@@ -501,7 +501,7 @@ export function NotificationSystem() {
         {floatingNotifs.map((notif) => (
           <div
             key={notif.id}
-            className="animate-in fade-in pointer-events-auto flex w-full max-w-[calc(100vw-2rem)] cursor-pointer items-start gap-3 rounded-[13px] border border-border-light bg-bg-elevated p-3.5 shadow-2xl duration-300 hover:bg-bg-secondary/60"
+            className="animate-in fade-in pointer-events-auto flex w-full max-w-[calc(100vw-2rem)] cursor-pointer items-start gap-3 rounded-md border border-border-light bg-bg-elevated p-3.5 shadow-2xl duration-300 hover:bg-bg-secondary/60"
             onClick={() => {
               dismissFloating(notif.id);
               if (notif.link) router.push(notif.link);
@@ -545,7 +545,7 @@ export function NotificationSystem() {
           ref={bellRef}
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className={`relative flex h-8 w-8 items-center justify-center rounded-[9px] transition-colors ${
+          className={`relative flex h-8 w-8 items-center justify-center rounded-sm transition-colors ${
             isOpen
               ? "bg-accent-primary/12 text-accent-primary"
               : "text-fg-secondary hover:bg-bg-secondary/60 hover:text-fg-primary"
@@ -580,7 +580,7 @@ export function NotificationSystem() {
               ref={panelRef}
               role="dialog"
               aria-label={t("title")}
-              className="animate-in slide-in-from-top-2 absolute right-0 z-50 mt-2 w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-border-light bg-bg-elevated shadow-2xl duration-200 sm:w-[380px]"
+              className="animate-in slide-in-from-top-2 absolute right-0 z-50 mt-2 w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border border-border-light bg-bg-elevated shadow-2xl duration-200 sm:w-[380px]"
             >
               <div className="flex items-baseline gap-2.5 px-[18px] pb-3 pt-4">
                 <h3 className="text-[15px] font-bold tracking-[-0.012em] text-fg-primary">

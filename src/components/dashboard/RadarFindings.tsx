@@ -115,7 +115,7 @@ export function RadarFindings({
       {/* Nothing found is the good case, and it should look like it rather than
           like an empty state that suggests something failed to load. */}
       {rows.length === 0 ? (
-        <p className="rounded-[11px] border border-border-light/60 bg-bg-elevated px-[19px] py-4 text-[13px] text-fg-tertiary">
+        <p className="rounded-md border border-border-light/60 bg-bg-elevated px-[19px] py-4 text-[13px] text-fg-tertiary">
           {findings.isLoading ? t("loading") : t("allClear")}
         </p>
       ) : (
@@ -129,7 +129,7 @@ export function RadarFindings({
             return (
               <article
                 key={finding.id}
-                className={`flex min-h-[172px] flex-col gap-2.5 rounded-[11px] border border-l-[3px] border-border-light/60 px-[19px] pb-[15px] pt-[17px] ${tone.edge} ${tone.wash}`}
+                className={`flex min-h-[172px] flex-col gap-2.5 rounded-md border border-l-[3px] border-border-light/60 px-[19px] pb-[15px] pt-[17px] ${tone.edge} ${tone.wash}`}
               >
                 <div className="flex items-center gap-2.5">
                   <span
@@ -163,7 +163,7 @@ export function RadarFindings({
                           `/chat/ai?prefill=${encodeURIComponent(finding.suggestedFix!.prompt)}`,
                         )
                       }
-                      className={`flex items-center gap-[7px] rounded-[7px] border px-[11px] py-[7px] text-xs font-semibold text-fg-primary transition-opacity hover:opacity-80 ${tone.button}`}
+                      className={`flex items-center gap-[7px] rounded-sm border px-[11px] py-[7px] text-xs font-semibold text-fg-primary transition-opacity hover:opacity-80 ${tone.button}`}
                     >
                       {finding.suggestedFix.label}
                       <ArrowRight size={13} aria-hidden />
@@ -172,7 +172,7 @@ export function RadarFindings({
                     <button
                       type="button"
                       onClick={() => router.push(`/projects?projectId=${finding.projectId}`)}
-                      className="rounded-[7px] border border-border-medium px-[11px] py-[7px] text-xs font-semibold text-fg-primary transition-colors hover:bg-bg-tertiary"
+                      className="rounded-sm border border-border-medium px-[11px] py-[7px] text-xs font-semibold text-fg-primary transition-colors hover:bg-bg-tertiary"
                     >
                       {t("openProject")}
                     </button>

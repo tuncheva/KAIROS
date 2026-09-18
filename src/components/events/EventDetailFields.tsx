@@ -159,7 +159,7 @@ function CoHostPicker({
         {chosen.map((person) => (
           <span
             key={person.id}
-            className="flex items-center gap-1.5 rounded-full bg-accent-primary/10 py-1 pl-1 pr-2 text-xs text-accent-primary"
+            className="flex items-center gap-1.5 rounded-sm bg-accent-primary/10 py-1 pl-1 pr-2 text-xs text-accent-primary"
           >
             <PersonAvatar name={person.name} image={person.image} size="sm" />
             <span className="max-w-[120px] truncate">{person.name}</span>
@@ -374,7 +374,7 @@ export function EventDetailFields({
             disabled={disabled}
             aria-pressed={values.coverTheme === null}
             title={t("coverAuto")}
-            className={`kairos-mono h-9 rounded-lg px-3 text-[11px] transition-colors ${
+            className={`kairos-mono h-control-md rounded-lg px-3 text-[11px] transition-colors ${
               values.coverTheme === null
                 ? "bg-accent-primary/15 font-semibold text-accent-primary ring-1 ring-inset ring-accent-primary/30"
                 : "bg-bg-tertiary text-fg-secondary hover:text-fg-primary"

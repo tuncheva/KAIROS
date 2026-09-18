@@ -5,7 +5,7 @@ export default function ProgressLoading() {
         <header className="sticky top-16 lg:top-0 z-30 topbar-solid">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <div className="h-7 w-28 bg-bg-secondary rounded animate-pulse" />
+              <div className="h-7 w-28 bg-bg-secondary rounded-sm animate-pulse" />
               <div className="h-8 w-32 bg-bg-secondary rounded-lg animate-pulse" />
             </div>
             <div className="flex items-center gap-3">

@@ -139,7 +139,7 @@ export function NotesDialog({
       <div className="flex items-start gap-3 px-4 pt-4">
         <span
           aria-hidden="true"
-          className={`grid h-8 w-8 flex-none place-items-center rounded-[9px] border ${tones[tone]}`}
+          className={`grid h-8 w-8 flex-none place-items-center rounded-sm border ${tones[tone]}`}
         >
           {icon}
         </span>
@@ -337,7 +337,7 @@ export function DialogBlock({
 
   return (
     <div
-      className={`mt-4 rounded-[10px] border p-3.5 ${tones[tone]} ${reveal ? "notes-strip" : ""}`}
+      className={`mt-4 rounded-md border p-3.5 ${tones[tone]} ${reveal ? "notes-strip" : ""}`}
     >
       {title && (
         <p className={`text-[12.5px] font-bold tracking-[-0.005em] ${heads[tone]}`}>{title}</p>

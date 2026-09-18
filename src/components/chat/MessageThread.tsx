@@ -264,7 +264,7 @@ export function MessageThread({
         {peerTyping && (
           <div className="flex items-end gap-2" aria-live="polite">
             <div className="w-[26px]" />
-            <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-bg-elevated kairos-system-card flex items-center gap-1">
+            <div className="px-4 py-3 rounded-lg rounded-bl-md bg-bg-elevated kairos-system-card flex items-center gap-1">
               <span className="sr-only">{t("isTyping", { name: peerName })}</span>
               <Dot delay="0ms" />
               <Dot delay="150ms" />

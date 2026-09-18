@@ -250,7 +250,7 @@ export function EventPage({ eventId }: { eventId: number }) {
           <button
             type="button"
             onClick={handleShare}
-            className="flex h-9 items-center gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
+            className="flex h-control-md items-center gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
           >
             <Share2 size={14} />
             <span className="hidden sm:inline">{t("share")}</span>
@@ -258,7 +258,7 @@ export function EventPage({ eventId }: { eventId: number }) {
           {!session && (
             <Link
               href={`/?callbackUrl=/events/${eventId}`}
-              className="flex h-9 items-center rounded-lg bg-accent-primary px-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="flex h-control-md items-center rounded-lg bg-accent-primary px-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
             >
               {t("signIn")}
             </Link>
@@ -268,7 +268,7 @@ export function EventPage({ eventId }: { eventId: number }) {
 
       <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-6">
         {/* The cover, and the three things that decide whether to read on. */}
-        <div className="overflow-hidden rounded-2xl border border-border-medium bg-bg-elevated">
+        <div className="overflow-hidden rounded-lg border border-border-medium bg-bg-elevated">
           {isValidImageUrl(event.imageUrl) && (
             <div className="relative aspect-[1200/500] bg-bg-tertiary">
               <Image
@@ -321,14 +321,14 @@ export function EventPage({ eventId }: { eventId: number }) {
             )}
 
             <div className="flex flex-wrap gap-2">
-              <span className="flex h-9 items-center gap-2 rounded-lg bg-bg-elevated/75 px-3 text-[13px] text-fg-secondary backdrop-blur-sm">
+              <span className="flex h-control-md items-center gap-2 rounded-lg bg-bg-elevated/75 px-3 text-[13px] text-fg-secondary backdrop-blur-sm">
                 <Clock size={13} className="text-accent-primary" />
                 {/* `withYear` rather than `long`: the long format already ends
                     in a time, which read as "4 July 2026 13:00 · 13:00". */}
                 {formatDate(new Date(event.eventDate), "withYear")} ·{" "}
                 {formatTimeRange(event, locale)}
               </span>
-              <span className="flex h-9 items-center gap-2 rounded-lg bg-bg-elevated/75 px-3 text-[13px] text-fg-secondary backdrop-blur-sm">
+              <span className="flex h-control-md items-center gap-2 rounded-lg bg-bg-elevated/75 px-3 text-[13px] text-fg-secondary backdrop-blur-sm">
                 <MapPin size={13} className="text-accent-primary" />
                 {placeLine(event)}
               </span>
@@ -357,7 +357,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                 }}
                 disabled={toggleLike.isPending}
                 aria-pressed={event.hasLiked}
-                className={`flex h-9 items-center gap-2 rounded-lg border px-3 text-[13px] transition-colors ${
+                className={`flex h-control-md items-center gap-2 rounded-lg border px-3 text-[13px] transition-colors ${
                   event.hasLiked
                     ? "border-accent-primary/50 bg-accent-primary/20 font-medium text-accent-primary"
                     : "border-border-medium text-fg-secondary hover:bg-bg-tertiary"
@@ -378,7 +378,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                 }}
                 disabled={toggleSave.isPending}
                 aria-pressed={event.hasSaved}
-                className={`flex h-9 items-center gap-2 rounded-lg border px-3 text-[13px] transition-colors ${
+                className={`flex h-control-md items-center gap-2 rounded-lg border px-3 text-[13px] transition-colors ${
                   event.hasSaved
                     ? "border-accent-primary/50 bg-accent-primary/20 font-medium text-accent-primary"
                     : "border-border-medium text-fg-secondary hover:bg-bg-tertiary"
@@ -397,7 +397,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                 <button
                   type="button"
                   onClick={() => setShowEditForm(true)}
-                  className="flex h-9 items-center gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
+                  className="flex h-control-md items-center gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
                 >
                   <Pencil size={14} />
                   {t("edit.title")}
@@ -416,7 +416,7 @@ export function EventPage({ eventId }: { eventId: number }) {
           {/* The decision, the host, and where to go. */}
           <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
             {event.enableRsvp && (
-              <div className="hidden flex-col gap-3 rounded-2xl border border-border-medium bg-bg-elevated p-4 lg:flex">
+              <div className="hidden flex-col gap-3 rounded-lg border border-border-medium bg-bg-elevated p-4 lg:flex">
                 <div className="flex items-baseline justify-between">
                   <Stamp className="tracking-[0.14em]">{t("going")}</Stamp>
                   <span className="kairos-mono text-xl font-semibold text-fg-primary">
@@ -518,7 +518,7 @@ export function EventPage({ eventId }: { eventId: number }) {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 rounded-2xl border border-border-medium bg-bg-elevated p-4">
+            <div className="flex flex-col gap-3 rounded-lg border border-border-medium bg-bg-elevated p-4">
               <Stamp className="tracking-[0.14em]">{t("hostedBy")}</Stamp>
               <div className="flex items-center gap-3">
                 <ProfileLink userId={event.author.id} name={event.author.name}>
@@ -588,7 +588,7 @@ export function EventPage({ eventId }: { eventId: number }) {
               )}
             </div>
 
-            <div className="flex flex-col gap-2 rounded-2xl border border-border-medium bg-bg-elevated p-4">
+            <div className="flex flex-col gap-2 rounded-lg border border-border-medium bg-bg-elevated p-4">
               <Stamp className="tracking-[0.14em]">{t("where")}</Stamp>
               <p className="text-sm text-fg-primary">
                 {event.venue ?? regionLabel(event.region)}
@@ -646,7 +646,7 @@ export function EventPage({ eventId }: { eventId: number }) {
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-border-medium bg-bg-overlay shadow-2xl">
+            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border-medium bg-bg-overlay shadow-2xl">
               <EditEventForm
                 event={{
                   id: event.id,

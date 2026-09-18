@@ -57,7 +57,7 @@ function CommentBody({
             </span>
           </ProfileLink>
           {comment.author.id === hostId && (
-            <Stamp className="rounded bg-accent-primary/10 px-1.5 py-0.5 text-[9px] tracking-[0.14em] text-accent-primary">
+            <Stamp className="rounded-sm bg-accent-primary/10 px-1.5 py-0.5 text-[9px] tracking-[0.14em] text-accent-primary">
               {t("host")}
             </Stamp>
           )}

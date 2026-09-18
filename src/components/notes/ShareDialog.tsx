@@ -273,7 +273,7 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
       <p className={`${MICRO} mt-6 mb-1`}>{t("sharing.sharedWith")}</p>
 
       {sharesQuery.isLoading ? (
-        <div className="kairos-shimmer h-11 rounded-[10px]" aria-hidden="true" />
+        <div className="kairos-shimmer h-11 rounded-md" aria-hidden="true" />
       ) : shares.length === 0 ? (
         <p className="py-2 text-[12.5px] text-fg-tertiary">{t("sharing.notSharedYet")}</p>
       ) : (

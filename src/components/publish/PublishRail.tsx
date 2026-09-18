@@ -320,7 +320,7 @@ export function PublishRail({
           type="button"
           onClick={() => setShowMobileFilters((open) => !open)}
           aria-expanded={showMobileFilters}
-          className="flex h-9 items-center justify-between gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary"
+          className="flex h-control-md items-center justify-between gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary"
         >
           <span className="flex items-center gap-2">
             <SlidersHorizontal size={14} className="text-accent-primary" />

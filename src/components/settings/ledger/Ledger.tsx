@@ -575,7 +575,7 @@ export function LedgerAction({
   disabled?: boolean;
   title?: string;
 }) {
-  const className = `rounded-[7px] border px-[13px] py-1.5 text-[12.5px] font-medium transition-colors ${
+  const className = `rounded-sm border px-[13px] py-1.5 text-[12.5px] font-medium transition-colors ${
     danger
       ? "border-error/35 text-error hover:bg-error/10"
       : "border-border-medium text-fg-primary hover:bg-bg-tertiary"
@@ -634,7 +634,7 @@ export function LedgerInput({
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
       onKeyDown={onKeyDown}
-      className={`${width} max-w-full rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 disabled:opacity-50 ${
+      className={`${width} max-w-full rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 disabled:opacity-50 ${
         mono ? "font-mono tracking-[0.08em]" : ""
       }`}
     />
@@ -670,7 +670,7 @@ export function LedgerTextarea({
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
-      className="w-full max-w-[420px] resize-none rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] leading-[1.5] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 disabled:opacity-50"
+      className="w-full max-w-[420px] resize-none rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] leading-[1.5] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 disabled:opacity-50"
     />
   );
 }
@@ -696,7 +696,7 @@ export function LedgerSelect<T extends string | number>({
       aria-label={ariaLabel}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className={`${width} max-w-full cursor-pointer rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 disabled:cursor-not-allowed disabled:opacity-50`}
+      className={`${width} max-w-full cursor-pointer rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 disabled:cursor-not-allowed disabled:opacity-50`}
     >
       {options.map((o) => (
         <option
@@ -783,7 +783,7 @@ export function LedgerCheck({
       aria-checked={checked}
       aria-label={label}
       onClick={onClick}
-      className="flex cursor-pointer items-center gap-2.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/50"
+      className="flex cursor-pointer items-center gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/50"
     >
       {body}
     </button>

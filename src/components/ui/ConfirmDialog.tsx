@@ -142,7 +142,7 @@ export function ConfirmDialog({
               <span className="mb-1.5 block font-mono text-[9.5px] tracking-[0.13em] uppercase text-fg-quaternary">
                 {requireTextLabel}
               </span>
-              <span className="flex h-[38px] items-center rounded-[10px] border border-border-medium bg-bg-surface px-3 transition-colors focus-within:border-accent-primary/60 focus-within:bg-bg-elevated focus-within:ring-[3px] focus-within:ring-accent-primary/10">
+              <span className="flex h-[38px] items-center rounded-md border border-border-medium bg-bg-surface px-3 transition-colors focus-within:border-accent-primary/60 focus-within:bg-bg-elevated focus-within:ring-[3px] focus-within:ring-accent-primary/10">
                 <input
                   ref={inputRef}
                   type="text"
@@ -172,7 +172,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={dismiss}
-            className="inline-flex h-8 items-center justify-center rounded-[10px] border border-border-medium px-3.5 text-[13px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
+            className="inline-flex h-8 items-center justify-center rounded-md border border-border-medium px-3.5 text-[13px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
           >
             {cancelLabel}
           </button>
@@ -181,7 +181,7 @@ export function ConfirmDialog({
             type="button"
             onClick={() => onConfirm(typed)}
             disabled={isPending || !textOk}
-            className={`inline-flex h-8 items-center justify-center rounded-[10px] px-3.5 text-[13px] font-bold text-white transition-all duration-[350ms] hover:-translate-y-[1.5px] active:translate-y-0 disabled:pointer-events-none disabled:opacity-50 ${
+            className={`inline-flex h-8 items-center justify-center rounded-md px-3.5 text-[13px] font-bold text-white transition-all duration-[350ms] hover:-translate-y-[1.5px] active:translate-y-0 disabled:pointer-events-none disabled:opacity-50 ${
               destructive ? "bg-error hover:brightness-110" : "bg-accent-primary hover:bg-accent-hover"
             }`}
           >

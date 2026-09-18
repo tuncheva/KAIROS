@@ -385,7 +385,7 @@ export function A1ChatWidgetOverlay(props: {
        * animation and the collapse/expand height transition. Both live in
        * globals.css, where the reduced-motion override can reach them.
        */
-      className="kairos-menu-surface kairos-ai-widget fixed z-50 flex flex-col overflow-hidden rounded-2xl"
+      className="kairos-menu-surface kairos-ai-widget fixed z-50 flex flex-col overflow-hidden rounded-xl"
       data-interacting={interacting}
       style={panelStyle}
       onPointerDown={handlePointerDown}

@@ -79,7 +79,7 @@ export interface LockState {
 
 /** An inline strip: the calendar-date picker and the draft password field. */
 const STRIP =
-  "notes-strip mb-4 flex items-center gap-2.5 rounded-[10px] border border-border-medium bg-bg-surface px-3 py-2.5";
+  "notes-strip mb-4 flex items-center gap-2.5 rounded-md border border-border-medium bg-bg-surface px-3 py-2.5";
 const STRIP_INPUT =
   "min-w-0 flex-1 rounded-lg border border-border-medium bg-bg-elevated px-2.5 py-1.5 text-[12px] tabular-nums text-fg-primary outline-none transition-colors focus:border-accent-primary/60 focus:ring-[3px] focus:ring-accent-primary/10";
 
@@ -244,18 +244,18 @@ export function NotePage({
     return (
       <div className="flex h-full flex-col bg-bg-primary" aria-busy="true">
         <div className="min-h-[48px] flex-none border-b border-border-light/60 px-4 py-2">
-          <div className="kairos-shimmer h-3 w-24 rounded" />
+          <div className="kairos-shimmer h-3 w-24 rounded-sm" />
         </div>
         <div className="min-h-0 flex-1 px-5 pt-6 md:px-10">
           {/* 34px display serif, so the placeholder is that tall. */}
-          <div className="kairos-shimmer h-8 w-3/5 rounded" />
-          <div className="kairos-shimmer mt-4 h-2.5 w-2/5 rounded" />
+          <div className="kairos-shimmer h-8 w-3/5 rounded-sm" />
+          <div className="kairos-shimmer mt-4 h-2.5 w-2/5 rounded-sm" />
           <div className="mt-5 mb-5 h-px bg-border-light/50" />
           <div className="space-y-3">
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
-                className="kairos-shimmer h-2.5 rounded"
+                className="kairos-shimmer h-2.5 rounded-sm"
                 style={{ width: `${90 - (i % 4) * 12}%` }}
               />
             ))}

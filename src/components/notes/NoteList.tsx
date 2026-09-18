@@ -262,9 +262,9 @@ export function NoteList({
           <ul className="flex flex-col" aria-hidden="true">
             {[0, 1, 2, 3, 4, 5].map((i) => (
               <li key={i} className="space-y-2 border-b border-border-light/45 px-3.5 py-3.5">
-                <div className="kairos-shimmer h-3 w-1/2 rounded" />
-                <div className="kairos-shimmer h-2.5 w-4/5 rounded" />
-                <div className="kairos-shimmer h-2 w-1/4 rounded" />
+                <div className="kairos-shimmer h-3 w-1/2 rounded-sm" />
+                <div className="kairos-shimmer h-2.5 w-4/5 rounded-sm" />
+                <div className="kairos-shimmer h-2 w-1/4 rounded-sm" />
               </li>
             ))}
           </ul>

@@ -158,7 +158,7 @@ export function InviteQrDialog({
         role="dialog"
         aria-modal="true"
         aria-label={t("inviteQrTitle")}
-        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-border-light/60 bg-bg-surface shadow-2xl"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-sm flex-col overflow-hidden rounded-xl border border-border-light/60 bg-bg-surface shadow-2xl"
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border-light/40 px-5 py-4">
           <div className="min-w-0">

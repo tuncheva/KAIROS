@@ -131,7 +131,7 @@ export function JoinWithQrClient({ code }: { code: string }) {
 
   return (
     <Card>
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-primary/10">
+      <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-accent-primary/10">
         <Building2 size={24} className="text-accent-primary" />
       </div>
       <div className="space-y-1">
