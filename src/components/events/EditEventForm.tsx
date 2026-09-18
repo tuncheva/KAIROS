@@ -277,7 +277,7 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
                 required
               >
                 {REGIONS.map((r) => (
-                  <option key={r.value} value={r.value} className="dark:bg-[#16151A] bg-white dark:text-gray-200 text-slate-800">
+                  <option key={r.value} value={r.value} className="bg-bg-elevated dark:text-gray-200 text-slate-800">
                     {r.label}
                   </option>
                 ))}

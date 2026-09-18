@@ -37,7 +37,7 @@ export function SiteFooter() {
     const t = useTranslations("home");
 
     return (
-        <footer id="footer" className="border-t border-white/[0.08] bg-[#07070b] px-6 pt-16 pb-10 lg:px-12">
+        <footer id="footer" className="border-t border-white/[0.08] bg-bg-primary px-6 pt-16 pb-10 lg:px-12">
             <div className="mx-auto w-full max-w-[1280px]">
                 <div className="grid grid-cols-2 gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
                     <div className="col-span-2 lg:col-span-1">

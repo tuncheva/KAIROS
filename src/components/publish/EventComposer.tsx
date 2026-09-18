@@ -37,7 +37,7 @@ export function EventComposer({
 
   return (
     <div
-      className="dash-rise rounded-xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#0e0e14]"
+      className="dash-rise rounded-xl border border-slate-200 bg-bg-elevated p-4 dark:border-white/10"
       style={{ animationDelay: "80ms" }}
     >
       <div className="flex items-center gap-3">

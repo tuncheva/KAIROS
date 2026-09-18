@@ -249,11 +249,11 @@ export function UserDisplay() {
 
  {isOpen && (
  <div
- className="absolute right-0 mt-3 w-64 rounded-2xl dark:border-white/[0.06] border border-slate-200 shadow-2xl overflow-hidden z-50 dark:bg-[#16151A] bg-white"
+ className="absolute right-0 mt-3 w-64 rounded-2xl dark:border-white/[0.06] border border-slate-200 shadow-2xl overflow-hidden z-50 bg-bg-elevated"
  role="menu"
  aria-label={tSettings("title")}
  >
- <div className="p-4 border-b dark:border-white/10 border-slate-200 dark:bg-[#1A191E] bg-slate-50">
+ <div className="p-4 border-b dark:border-white/10 border-slate-200 bg-bg-secondary">
  <div className="flex items-center gap-3">
  {avatarSrc ? (
  <Image

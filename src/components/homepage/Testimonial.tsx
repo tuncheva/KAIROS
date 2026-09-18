@@ -28,7 +28,7 @@ export function Testimonial() {
                     {`\u201C${t("quoteBody")}\u201D`}
                 </ScrollReveal>
                 <footer data-reveal className="mt-7 flex items-center gap-3.5">
-                    <div className="k-ph h-11 w-11 rounded-full border border-white/[0.16] bg-[#12121a]" />
+                    <div className="k-ph h-11 w-11 rounded-full border border-white/[0.16] bg-bg-elevated" />
                     <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-[rgb(165,165,178)]">
                         {t("quoteAttribution")}
                     </div>

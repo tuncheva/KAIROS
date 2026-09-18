@@ -447,7 +447,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                   className="fixed inset-0 z-40"
                   onClick={() => setShowMenu(false)}
                 />
-                <div className="absolute right-0 top-full z-50 mt-1 min-w-[184px] rounded-xl border border-slate-200 bg-white py-1 shadow-xl dark:border-white/[0.06] dark:bg-[#16151A]">
+                <div className="absolute right-0 top-full z-50 mt-1 min-w-[184px] rounded-xl border border-slate-200 bg-bg-elevated py-1 shadow-xl dark:border-white/[0.06]">
                   <button
                     type="button"
                     onClick={() => {
@@ -839,7 +839,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl dark:border-white/5 dark:bg-[#1A191E]">
+            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-bg-overlay shadow-2xl dark:border-white/5">
               <EditEventForm
                 event={{
                   id: event.id,

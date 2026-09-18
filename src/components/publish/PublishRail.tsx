@@ -354,7 +354,7 @@ export function PublishRail({
 
         {filters}
 
-        <Panel className="flex flex-col gap-2 border-slate-200 bg-slate-50 dark:bg-[#0c0c11]">
+        <Panel className="flex flex-col gap-2 border-slate-200 bg-bg-surface">
           <Stamp className="tracking-[0.14em]">{t("messages")}</Stamp>
           <p className="text-xs leading-relaxed text-fg-tertiary">
             {t("messagesHint")}

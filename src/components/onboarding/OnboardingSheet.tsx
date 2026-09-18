@@ -136,7 +136,7 @@ export function OnboardingSheet() {
     /* A solid backdrop so the sheet reads as its own surface over either the
        light app or the dark landing — the sheet is dark regardless of theme. */
     <div
-      className={`onboarding-sheet-scrim fixed inset-0 z-[120] flex items-center justify-center overscroll-contain bg-[#050507]/92 p-4 backdrop-blur-sm ${
+      className={`onboarding-sheet-scrim fixed inset-0 z-[120] flex items-center justify-center overscroll-contain bg-black/92 p-4 backdrop-blur-sm ${
         closing ? "onboarding-sheet-scrim--out" : ""
       }`}
       onClick={(e) => {
@@ -148,7 +148,7 @@ export function OnboardingSheet() {
         role="dialog"
         aria-modal="true"
         aria-label={t("title")}
-        className={`onboarding-sheet-dialog dark relative flex max-h-[88dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#08080c] text-fg-primary shadow-2xl ${
+        className={`onboarding-sheet-dialog dark relative flex max-h-[88dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-bg-overlay text-fg-primary shadow-2xl ${
           closing ? "onboarding-sheet-dialog--out" : ""
         }`}
       >

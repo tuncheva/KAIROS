@@ -715,10 +715,10 @@ export function SignInModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="kairos-auth-title"
-        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl overflow-hidden rounded-[18px] border border-white/10 bg-[#08080c] lg:grid-cols-2"
+        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl overflow-hidden rounded-[18px] border border-white/10 bg-bg-overlay lg:grid-cols-2"
       >
         {/* ─── Left: brand panel (hidden on narrow screens) ─── */}
-        <div className="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.08] bg-[#0a0a10] p-11 lg:flex">
+        <div className="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.08] bg-bg-secondary p-11 lg:flex">
           <div
             aria-hidden="true"
             className="k-drift-slow pointer-events-none absolute -bottom-[180px] -left-[120px] h-[620px] w-[620px] rounded-full blur-[90px]"

@@ -111,7 +111,7 @@ function EventProgressDialog({ onClose }: { onClose: () => void }) {
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className="dash-rise flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:rounded-2xl dark:border-white/10 dark:bg-[#0e0e14]"
+        className="dash-rise flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-bg-overlay shadow-2xl sm:rounded-2xl dark:border-white/10"
       >
         <header className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]">
           <span className="flex flex-col">
