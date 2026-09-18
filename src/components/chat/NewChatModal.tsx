@@ -16,10 +16,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Briefcase, Loader2, MessageCircle, Search, Users, X } from "~/components/ui/icons";
+import { Briefcase, Loader2, MessageCircle, Search, Users } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { Avatar, displayName, type ChatUser } from "./chatUi";
+import { MODAL_SHELL, ModalHeader } from "~/components/ui/Modal";
 
 export function NewChatModal({
   onClose,
@@ -134,21 +135,14 @@ export function NewChatModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-chat-title"
-        className="w-full max-w-md max-h-[85dvh] flex flex-col rounded-xl bg-bg-elevated kairos-system-card-elevated overflow-hidden"
+        className={`${MODAL_SHELL} max-h-[85dvh] max-w-md`}
       >
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-border-light/40 flex-none">
-          <h2 id="new-chat-title" className="flex-1 text-lg font-bold text-fg-primary">
-            {t("startNewChat")}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t("cancel")}
-            className="kairos-tap p-1.5 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-secondary transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
+        <ModalHeader
+          id="new-chat-title"
+          title={t("startNewChat")}
+          onDismiss={onClose}
+          closeLabel={t("cancel")}
+        />
 
         <div className="px-5 py-3 flex-none">
           <div className="relative">

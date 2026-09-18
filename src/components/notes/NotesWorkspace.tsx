@@ -24,7 +24,7 @@ import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useDateFormat } from "~/hooks/useDateFormat";
 
-import { ConfirmDialog } from "./ConfirmDialog";
+import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { LockNoteDialog } from "./LockNoteDialog";
 import { NoteList } from "./NoteList";
 import { NotePage, type DraftInput } from "./NotePage";
@@ -799,7 +799,8 @@ export function NotesWorkspace() {
         <ConfirmDialog
           title={t("delete.title")}
           message={t("delete.confirmMessage")}
-          confirmLabel={t("actions.delete")}
+          confirmLabel={deleteNote.isPending ? t("common.working") : t("actions.delete")}
+          cancelLabel={t("common.cancel")}
           destructive
           isPending={deleteNote.isPending}
           onCancel={() => setConfirmDeleteNote(null)}
@@ -817,7 +818,8 @@ export function NotesWorkspace() {
              unfiled. The old `window.confirm` said as much; the dialog should
              not say less. */
           message={t("notebooks.deleteConfirm", { name: confirmDeleteNotebook.name })}
-          confirmLabel={t("actions.delete")}
+          confirmLabel={deleteNotebook.isPending ? t("common.working") : t("actions.delete")}
+          cancelLabel={t("common.cancel")}
           destructive
           isPending={deleteNotebook.isPending}
           onCancel={() => setConfirmDeleteNotebook(null)}

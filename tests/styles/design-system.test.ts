@@ -137,7 +137,7 @@ describe("Search inputs – one clear button, not two", () => {
       "src/components/publish/PublishWorkspace.tsx",
       "src/components/notes/NotesRail.tsx",
       "src/components/chat/ConversationRail.tsx",
-      "src/components/chat/ConversationsRail.tsx",
+      "src/components/chat/AiThreadRail.tsx",
     ];
 
     for (const file of files) {

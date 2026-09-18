@@ -22,7 +22,7 @@ import { useEntitlement } from "~/hooks/useEntitlements";
 import { api } from "~/trpc/react";
 
 import { ComposerMenu } from "./ComposerMenu";
-import { ConversationsRail } from "./ConversationsRail";
+import { AiThreadRail } from "./AiThreadRail";
 import { DocumentsPanel } from "./DocumentsPanel";
 import { TurnTrailPanel } from "./TurnTrailPanel";
 import type { TrailEvent } from "./trail";
@@ -247,7 +247,7 @@ export function AIChatPageClient() {
     <div className="flex h-full min-h-0 w-full">
       {railOpen && (
         <div className="hidden lg:flex">
-          <ConversationsRail
+          <AiThreadRail
             conversations={conversations}
             loading={conversationsQuery.isLoading}
             activeId={activeId}

@@ -48,7 +48,7 @@ import { MessageThread } from "./MessageThread";
 import { MessageBubble, type SendStatus, type ThreadMessage } from "./MessageBubble";
 import { Composer, type PendingAttachment } from "./Composer";
 import { NewChatModal } from "./NewChatModal";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 
 const PAGE_SIZE = 50;
 /** Debounce before a typed query is sent to the server. */
@@ -1072,7 +1072,8 @@ export function ChatShell({
         <ConfirmDialog
           title={t("clearHistory")}
           message={t("clearHistoryConfirm")}
-          confirmLabel={t("clearHistory")}
+          confirmLabel={clearHistory.isPending ? t("working") : t("clearHistory")}
+          cancelLabel={t("cancel")}
           isPending={clearHistory.isPending}
           onCancel={() => setConfirm(null)}
           onConfirm={() => clearHistory.mutate({ conversationId })}
@@ -1083,7 +1084,8 @@ export function ChatShell({
         <ConfirmDialog
           title={t("leaveConversation")}
           message={t("leaveConversationConfirm")}
-          confirmLabel={t("leaveConversation")}
+          confirmLabel={leaveConversation.isPending ? t("working") : t("leaveConversation")}
+          cancelLabel={t("cancel")}
           destructive
           isPending={leaveConversation.isPending}
           onCancel={() => setConfirm(null)}

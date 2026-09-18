@@ -177,3 +177,136 @@ export function Modal({
     document.body,
   );
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   The dialog shell.
+
+   `Modal` above is the behaviour; these are the chrome. Modals in this app used
+   to ship at four different radii (`rounded-2xl`, `rounded-3xl`, `[18px]`,
+   `[32px]`), on three different surfaces, with the close control drawn as a
+   glyph in whatever icon set the file happened to import and the actions
+   floating wherever the last paragraph ended.
+
+   One shell now: 16px radius on `bg-overlay`, a hairline header carrying a
+   serif title and a mono ESC affordance instead of a glyph, a body on the
+   dialog padding step, and a hairline footer with the actions right-aligned —
+   destructive in danger ink on a danger hairline, never a solid red fill.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/** The card itself. Callers add their own width and max-height. */
+export const MODAL_SHELL =
+  "flex flex-col overflow-hidden rounded-xl border border-border-light bg-bg-overlay shadow-2xl";
+
+/** The scrim under it. */
+export const MODAL_SCRIM = "bg-black/60 backdrop-blur-sm";
+
+export function ModalHeader({
+  id,
+  title,
+  eyebrow,
+  onDismiss,
+  /** Accessible name for the close control. Supply the translated "Close". */
+  closeLabel = "Close",
+}: {
+  id?: string;
+  title: ReactNode;
+  /** A mono stamp above the title — "STEP 2 OF 3", "ERROR · 500". */
+  eyebrow?: ReactNode;
+  onDismiss?: () => void;
+  closeLabel?: string;
+}) {
+  return (
+    <header className="flex flex-none items-start justify-between gap-3 border-b border-border-light px-pad-dialog py-4">
+      <div className="min-w-0">
+        {eyebrow ? (
+          <p className="mb-1.5 font-mono text-[10px] tracking-[0.16em] text-fg-quaternary uppercase">
+            {eyebrow}
+          </p>
+        ) : null}
+        <h2
+          id={id}
+          className="font-display text-[19px] leading-tight font-normal text-fg-primary"
+        >
+          {title}
+        </h2>
+      </div>
+      {onDismiss ? (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label={closeLabel}
+          /* A key name rather than a glyph: it says how to dismiss the dialog
+             from the keyboard, which the cross never did. */
+          className="kairos-tap -mr-1 flex h-control-sm flex-none items-center rounded-sm border border-border-light px-2 font-mono text-[10px] tracking-[0.14em] text-fg-tertiary transition-colors hover:border-border-strong hover:text-fg-primary"
+        >
+          ESC
+        </button>
+      ) : null}
+    </header>
+  );
+}
+
+export function ModalBody({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`min-h-0 flex-1 overflow-y-auto px-pad-dialog py-4 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/** The footer. Actions are right-aligned, in the order cancel-then-confirm. */
+export function ModalActions({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex flex-none items-center justify-end gap-2.5 border-t border-border-light bg-bg-surface px-pad-dialog py-3 ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+const ACTION_BASE =
+  "inline-flex h-control-md items-center justify-center rounded-md px-3.5 text-[13px] font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50";
+
+export const MODAL_ACTION_TONES = {
+  /** The one that closes without doing anything. */
+  quiet:
+    "border border-border-medium text-fg-secondary hover:bg-bg-secondary hover:text-fg-primary",
+  /** The one that does the thing. */
+  primary: "bg-accent-primary text-white hover:bg-accent-hover",
+  /** The one that destroys something: danger ink on a danger hairline. */
+  danger:
+    "border border-status-danger-border bg-status-danger-surface text-status-danger-ink hover:border-status-danger-ink",
+} as const;
+
+export function ModalAction({
+  tone = "quiet",
+  className = "",
+  ref,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  tone?: keyof typeof MODAL_ACTION_TONES;
+  /* React 19 passes `ref` as an ordinary prop, so no forwardRef needed. */
+  ref?: React.Ref<HTMLButtonElement>;
+}) {
+  return (
+    <button
+      type="button"
+      ref={ref}
+      {...props}
+      className={`${ACTION_BASE} ${MODAL_ACTION_TONES[tone]} ${className}`}
+    />
+  );
+}

@@ -2,6 +2,7 @@
 
 import { Download } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
+import { Stamp } from "./chatUi";
 
 import type { TrailEvent, TrailKind } from "./trail";
 
@@ -69,9 +70,9 @@ export function TurnTrailPanel({ events, running }: Props) {
                       "Turn 3" alone tells a user nothing about which question
                       the group belongs to. */}
                   <div className="flex items-baseline gap-2 pb-2.5">
-                    <span className="kairos-stamp shrink-0 text-[10px] text-fg-tertiary">
+                    <Stamp className="shrink-0">
                       {t("trailTurnHeading", { index: turn.index })}
-                    </span>
+                    </Stamp>
                     {turn.prompt && (
                       <span className="truncate text-[11px] text-fg-tertiary/80">
                         {turn.prompt}

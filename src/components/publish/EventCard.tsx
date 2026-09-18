@@ -700,7 +700,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                   disabled={updateRsvp.isPending || blocked}
                   aria-pressed={active}
                   title={blocked ? t("soldOut") : undefined}
-                  className={`h-9 flex-1 rounded-lg text-[12.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  className={`h-control-md flex-1 rounded-lg text-[12.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                     active
                       ? "bg-accent-primary text-white"
                       : "bg-bg-tertiary text-fg-secondary hover:text-fg-primary"

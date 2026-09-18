@@ -13,6 +13,13 @@ import Image from "next/image";
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useEffect } from "react";
 import { AlertCircle, Check, X } from "~/components/ui/icons";
+import { Panel, TitledPanel } from "~/components/ui/Panel";
+import { Stamp } from "~/components/ui/Stamp";
+
+/* `Panel`, `TitledPanel` and `Stamp` now live in `components/ui`; re-exported
+   here so the publish panes, which import their whole vocabulary from this
+   file, do not each grow a second import line. */
+export { Panel, TitledPanel, Stamp };
 
 export function initialOf(name: string | null | undefined): string {
   return (name ?? "").trim().charAt(0).toUpperCase() || "?";
@@ -60,65 +67,6 @@ export function PersonAvatar({
     >
       {initialOf(name)}
     </span>
-  );
-}
-
-/** An uppercase mono label: section headings, meta rows, status chips. */
-export function Stamp({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <span className={`kairos-stamp text-[10px] text-fg-tertiary ${className}`}>
-      {children}
-    </span>
-  );
-}
-
-/** A card shell — one border radius and one surface for the whole page. */
-export function Panel({
-  children,
-  className = "",
-  padded = true,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  padded?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-xl border border-border-medium bg-bg-elevated ${
-        padded ? "p-4" : ""
-      } ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
-
-/** A panel with its own titled header row. */
-export function TitledPanel({
-  title,
-  aside,
-  children,
-  className = "",
-}: {
-  title: string;
-  aside?: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <Panel padded={false} className={`overflow-hidden ${className}`}>
-      <div className="flex items-center justify-between gap-2 border-b border-border-light px-3.5 py-3">
-        <h2 className="text-[13px] font-semibold text-fg-primary">{title}</h2>
-        {aside}
-      </div>
-      {children}
-    </Panel>
   );
 }
 

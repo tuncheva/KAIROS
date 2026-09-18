@@ -11,7 +11,14 @@
 import Image from "next/image";
 
 import { avatarGradientStyle } from "~/lib/avatarGradient";
+import { Panel, TitledPanel } from "~/components/ui/Panel";
+import { Stamp } from "~/components/ui/Stamp";
 import { ProfileLink } from "~/components/profile/ProfileLink";
+
+/* The card shell and the mono stamp live in `components/ui`; re-exported
+   here so the chat panes read their whole vocabulary from one file, the same
+   way the publish panes read theirs from `publishUi`. */
+export { Panel, TitledPanel, Stamp };
 
 export interface ChatUser {
   id: string;

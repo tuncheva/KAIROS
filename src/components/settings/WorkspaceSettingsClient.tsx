@@ -7,7 +7,7 @@ import { useToast } from "~/components/providers/ToastProvider";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
 import { useSwitchOrganization } from "~/hooks/useSwitchOrganization";
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 
