@@ -124,6 +124,48 @@ export const PLAN_CATALOGUE: Record<PlanId, PlanDescriptor> = {
   },
 };
 
+/** Which of the two things that can hold a subscription is holding this one. */
+export type BillingOwnerKind = "user" | "organization";
+
+/**
+ * The plan an owner of this kind is allowed to hold, given what the price says.
+ *
+ * Checkout can only ever pair a Team price with an organization and a Pro price
+ * with a person. The billing portal and the Stripe dashboard cannot: both can
+ * move an existing subscription onto any price the portal exposes, and neither
+ * knows this application's ownership model. So the pairing is re-checked when a
+ * subscription is written, rather than assumed.
+ *
+ * The two mismatches are not symmetric:
+ *
+ * - **A personal price on an organization is a leak.** An organization's plan is
+ *   granted to *every* member, so one €12 Pro price bought against a
+ *   fifty-person organization would entitle fifty people. Refused — and refusing
+ *   costs nobody access they legitimately had, because checkout could not have
+ *   produced this.
+ * - **An org price on a person is merely wrong.** Team costs more than Pro and
+ *   the entitlement reaches exactly one account, so revoking would punish
+ *   somebody who has overpaid. Allowed through; the caller logs it.
+ */
+export function planForOwnerKind(kind: BillingOwnerKind, plan: PlanId): PlanId {
+  if (plan === "free") return "free";
+  if (kind === "organization" && !PLAN_CATALOGUE[plan].perOrganization) return "free";
+  return plan;
+}
+
+/**
+ * The smallest seat count an organization may buy or keep.
+ *
+ * The plan's advertised minimum, or the number of people already in the
+ * workspace, whichever is larger. The second half is what closes the obvious way
+ * around seat enforcement: grow to fifty on the free plan, then buy the
+ * three-seat minimum and hand Team to all fifty. Nobody may buy their way into a
+ * state the join gate would have refused.
+ */
+export function seatFloorFor(plan: PurchasablePlan, memberCount: number): number {
+  return Math.max(memberCount, PLAN_CATALOGUE[plan].minimumSeats);
+}
+
 /** The per-seat price of a plan on a given interval, in euro cents. */
 export function priceFor(plan: PurchasablePlan, interval: BillingInterval): number {
   const pricing = PLAN_CATALOGUE[plan].pricing!;

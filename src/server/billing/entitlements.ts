@@ -73,8 +73,13 @@ const PERIOD_END_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
  * decides that `past_due` keeps its tier and `incomplete` does not. This adds
  * only the time check, which is the one thing no webhook can tell us: that
  * nothing has arrived for longer than a paid period.
+ *
+ * Exported because the billing screen has to agree with it. Reading the `plan`
+ * column straight out of the row, as `billing.summary` used to, renders "Pro —
+ * renews on «a date last month»" to someone this resolver has already dropped to
+ * Free. One rule, both readers.
  */
-function livePlan(plan: PlanId, currentPeriodEnd: Date | null): PlanId {
+export function livePlan(plan: PlanId, currentPeriodEnd: Date | null): PlanId {
   if (plan === "free") return "free";
   if (
     currentPeriodEnd &&

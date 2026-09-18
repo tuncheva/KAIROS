@@ -24,14 +24,16 @@ import { users } from "~/server/db/schemas/users";
 import { organizations } from "~/server/db/schemas/organizations";
 import { createLogger } from "~/server/logger";
 import type { PlanId } from "~/lib/entitlements";
+import { PLAN_CATALOGUE, planForOwnerKind } from "~/lib/plans";
 import {
   accessEndsAt,
   isLiveSubscription,
+  paidThroughAt,
   planFromSubscription,
   willNotRenew,
   type SubscriptionStatus,
 } from "~/lib/subscription-status";
-import { planFromPriceId } from "./stripe";
+import { planFromPriceId, stripe } from "./stripe";
 
 const log = createLogger("billing:subscriptions");
 
@@ -69,7 +71,9 @@ export type BillingOwner =
  * stopped being entitled — keeping them distinct would add two values that every
  * future branch has to remember to handle identically to `canceled`.
  */
-function normaliseStatus(status: Stripe.Subscription.Status): SubscriptionStatus {
+export function normaliseStatus(
+  status: Stripe.Subscription.Status,
+): SubscriptionStatus {
   // Each arm names its own literal rather than falling through to `return
   // status`. Stripe types the status as a union *plus* an opaque string, so the
   // SDK can name a state this build has never heard of without a major version
@@ -118,6 +122,38 @@ function seatsOf(subscription: Stripe.Subscription): number {
 }
 
 /**
+ * {@link planForOwnerKind}, with the reporting that belongs on the server.
+ *
+ * The rule itself is pure and lives in `~/lib/plans`, for the same reason the
+ * status rules do — see that module's docblock. All this adds is saying so: both
+ * mismatches mean the Stripe portal is configured to offer a price this
+ * application's ownership model cannot express, which is a deployment problem
+ * that only shows up here.
+ */
+function planForOwner(
+  owner: BillingOwner,
+  plan: PlanId,
+  subscriptionId: string,
+): PlanId {
+  const allowed = planForOwnerKind(owner.kind, plan);
+
+  if (allowed !== plan) {
+    log.error(
+      "refusing a personal plan on an organization subscription; recording free",
+      { organizationId: owner.id, subscriptionId, plan },
+    );
+  } else if (owner.kind === "user" && plan !== "free" && PLAN_CATALOGUE[plan].perOrganization) {
+    log.warn("organization plan on a personal subscription; check the portal config", {
+      userId: owner.id,
+      subscriptionId,
+      plan,
+    });
+  }
+
+  return allowed;
+}
+
+/**
  * When access ends — the renewal date, or the cancellation date if sooner.
  *
  * Read from the subscription item rather than the subscription, because Stripe
@@ -128,15 +164,30 @@ function seatsOf(subscription: Stripe.Subscription): number {
  * `cancel_at` is folded in by {@link accessEndsAt} because a portal cancellation
  * can name any date, not only a period boundary, and the column feeds both the
  * date on the billing screen and the resolver's grace window.
+ *
+ * A `past_due` subscription does not get to advance the date — {@link paidThroughAt}
+ * explains why. The clamp is only applied against the *same* subscription: a
+ * replacement that arrives already `past_due` has nothing on file worth
+ * comparing to, which is what `onFile` being null means here.
  */
-function periodEndOf(subscription: Stripe.Subscription): Date | null {
+function periodEndOf(
+  subscription: Stripe.Subscription,
+  status: SubscriptionStatus,
+  onFile: { currentPeriodEnd: Date | null } | null,
+): Date | null {
   const seconds = subscription.items.data[0]?.current_period_end;
   const endsAt = accessEndsAt({
     current_period_end: typeof seconds === "number" ? seconds : null,
     cancel_at: subscription.cancel_at,
     cancel_at_period_end: subscription.cancel_at_period_end,
   });
-  return endsAt === null ? null : new Date(endsAt * 1000);
+
+  const lastPaidThrough = onFile?.currentPeriodEnd
+    ? Math.floor(onFile.currentPeriodEnd.getTime() / 1000)
+    : null;
+
+  const paidThrough = paidThroughAt(status, endsAt, lastPaidThrough);
+  return paidThrough === null ? null : new Date(paidThrough * 1000);
 }
 
 /** Stripe hands back either an id or an expanded object; we only ever want the id. */
@@ -217,11 +268,16 @@ export async function syncSubscription(
 
   const status = normaliseStatus(subscription.status);
 
+  // One read, used twice below: for the supersession check and for the
+  // `past_due` clamp. They used to be two round trips to the same row.
+  const existing = await billingStateOf(owner);
+  const isOnFile = existing.subscriptionId === subscription.id;
+
   // A dead subscription that is not the one on file is a late event about
   // something already replaced. Writing it would revoke the plan the owner is
   // currently paying for. A *live* one is allowed through even when the ids
   // differ, because that is exactly what a legitimate replacement looks like.
-  if (!isLiveSubscription(status) && (await supersedes(owner, subscription.id))) {
+  if (!isLiveSubscription(status) && existing.subscriptionId !== null && !isOnFile) {
     log.info("ignoring a stale event for a superseded subscription", {
       ownerKind: owner.kind,
       ownerId: String(owner.id),
@@ -231,14 +287,18 @@ export async function syncSubscription(
     return owner;
   }
 
-  const plan = planFromSubscription(status, planOf(subscription));
+  const plan = planForOwner(
+    owner,
+    planFromSubscription(status, planOf(subscription)),
+    subscription.id,
+  );
 
   const patch = {
     plan,
     stripeCustomerId: customerIdOf(subscription.customer),
     stripeSubscriptionId: subscription.id,
     subscriptionStatus: status,
-    currentPeriodEnd: periodEndOf(subscription),
+    currentPeriodEnd: periodEndOf(subscription, status, isOnFile ? existing : null),
     cancelAtPeriodEnd: willNotRenew(subscription),
     updatedAt: new Date(),
   };
@@ -297,21 +357,30 @@ async function ownerFromSubscriptionId(
 export async function billingStateOf(owner: BillingOwner): Promise<{
   subscriptionId: string | null;
   status: SubscriptionStatus | null;
+  /** The end of the last period known to be paid for — see {@link periodEndOf}. */
+  currentPeriodEnd: Date | null;
 }> {
+  const columns = {
+    stripeSubscriptionId: true,
+    subscriptionStatus: true,
+    currentPeriodEnd: true,
+  } as const;
+
   const row =
     owner.kind === "organization"
       ? await db.query.organizations.findFirst({
           where: eq(organizations.id, owner.id),
-          columns: { stripeSubscriptionId: true, subscriptionStatus: true },
+          columns,
         })
       : await db.query.users.findFirst({
           where: eq(users.id, owner.id),
-          columns: { stripeSubscriptionId: true, subscriptionStatus: true },
+          columns,
         });
 
   return {
     subscriptionId: row?.stripeSubscriptionId ?? null,
     status: row?.subscriptionStatus ?? null,
+    currentPeriodEnd: row?.currentPeriodEnd ?? null,
   };
 }
 
@@ -410,6 +479,105 @@ export async function clearSubscription(owner: BillingOwner): Promise<void> {
  * to the billing portal — reuses it. Without this, every attempt makes a new
  * Stripe customer and the account's payment history fragments across all of them.
  */
+/**
+ * Raised when a subscription could not be stopped at Stripe.
+ *
+ * Its own type so the callers that delete things — an organization, an account —
+ * can tell "there was nothing to cancel" from "we failed to cancel it" and
+ * refuse to proceed only in the second case.
+ */
+export class SubscriptionCancellationError extends Error {
+  constructor(message: string, readonly cause?: unknown) {
+    super(message);
+    this.name = "SubscriptionCancellationError";
+  }
+}
+
+/**
+ * Stop an owner's subscription at Stripe, then drop them to Free locally.
+ *
+ * Called before anything that destroys the row a subscription is anchored to.
+ * Deleting an organization or an account used to leave the subscription running:
+ * the card kept being charged, and every subsequent webhook for it fell through
+ * to `ownerFromSubscriptionId`, found nothing, and logged "no owner" forever.
+ * Nobody notices until the chargeback.
+ *
+ * **Throws rather than swallowing.** A caller that cannot cancel must not go on
+ * to delete the row — the whole point is that the row is the only remaining link
+ * to a live subscription, so losing it while Stripe is still collecting is the
+ * failure this exists to prevent. Refusing the delete is recoverable (try again,
+ * or cancel in the portal); proceeding is not.
+ *
+ * Cancels immediately rather than at period end, because the thing being paid
+ * for is about to stop existing.
+ */
+export async function cancelSubscriptionFor(
+  owner: BillingOwner,
+): Promise<"none" | "canceled"> {
+  const { subscriptionId } = await billingStateOf(owner);
+  if (!subscriptionId) return "none";
+
+  const client = stripe();
+  if (!client) {
+    // The row says there is a live subscription and we have no way to stop it.
+    // Deleting now would orphan it permanently, so this is fatal to the caller.
+    throw new SubscriptionCancellationError(
+      "Stripe is not configured, so the subscription on this account cannot be cancelled.",
+    );
+  }
+
+  try {
+    await client.subscriptions.cancel(subscriptionId);
+  } catch (err) {
+    // Already gone at Stripe — cancelled from the dashboard, or a `deleted`
+    // webhook we never received. Nothing is billing, so clearing locally is the
+    // correct and complete outcome rather than an error.
+    if (isResourceMissing(err)) {
+      log.warn("subscription already absent at Stripe; clearing locally", {
+        ownerKind: owner.kind,
+        ownerId: String(owner.id),
+        subscriptionId,
+      });
+      await clearSubscription(owner);
+      return "canceled";
+    }
+
+    log.error("could not cancel subscription at Stripe", {
+      ownerKind: owner.kind,
+      ownerId: String(owner.id),
+      subscriptionId,
+      err,
+    });
+    throw new SubscriptionCancellationError(
+      "The subscription could not be cancelled at Stripe. Nothing has been deleted; please try again.",
+      err,
+    );
+  }
+
+  // Cleared here rather than waiting for `customer.subscription.deleted`,
+  // because the row this would be written to is about to be deleted and the
+  // webhook would arrive to find nothing. The event is still handled when it
+  // lands; `clearSubscriptionIfCurrent` is a no-op by then.
+  await clearSubscription(owner);
+
+  log.info("subscription cancelled ahead of deletion", {
+    ownerKind: owner.kind,
+    ownerId: String(owner.id),
+    subscriptionId,
+  });
+
+  return "canceled";
+}
+
+/** Stripe's "this object does not exist" shape, without importing its error classes. */
+function isResourceMissing(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { code?: string }).code === "resource_missing"
+  );
+}
+
 export async function rememberCustomer(
   owner: BillingOwner,
   customerId: string,

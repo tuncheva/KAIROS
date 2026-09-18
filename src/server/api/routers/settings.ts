@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { isValidTimeZone } from "~/lib/timezone";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { users, accounts, sessions } from "~/server/db/schema";
+import { users, accounts, sessions, organizations } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import * as argon2 from "argon2";
 import { randomBytes } from "node:crypto";
@@ -18,6 +18,10 @@ import {
   createAuthRateLimitKey,
 } from "~/server/security/authRateLimit";
 import { createLogger } from "~/server/logger";
+import {
+  cancelSubscriptionFor,
+  SubscriptionCancellationError,
+} from "~/server/billing/subscriptions";
 
 const log = createLogger("settings.router");
 
@@ -446,9 +450,45 @@ export const settingsRouter = createTRPCRouter({
    */
 
  
+  /**
+   * Delete the account and everything hanging off it.
+   *
+   * **Every subscription this cascade would orphan is cancelled first.** There
+   * are two, and the second is easy to miss: the personal one on the user's own
+   * row, and one for each organization they created — `organizations.created_by_id`
+   * is `ON DELETE CASCADE`, so deleting the owner silently takes their
+   * workspaces with it, subscriptions included. Before this, both kept billing
+   * the card with nothing left in the database pointing at them, and the webhooks
+   * that followed resolved to no owner and were merely logged.
+   *
+   * A cancellation that fails aborts the deletion. Refusing is recoverable and
+   * says so; deleting is not, and leaves someone paying for an account that no
+   * longer exists.
+   */
   deleteAllData: protectedProcedure
     .mutation(async ({ ctx }) => {
       const userId = ctx.session.user.id;
+
+      const ownedOrgs = await ctx.db
+        .select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.createdById, userId));
+
+      try {
+        await cancelSubscriptionFor({ kind: "user", id: userId });
+        for (const org of ownedOrgs) {
+          await cancelSubscriptionFor({ kind: "organization", id: org.id });
+        }
+      } catch (error) {
+        if (error instanceof SubscriptionCancellationError) {
+          log.error("refusing to delete an account with a live subscription", {
+            userId,
+            err: error,
+          });
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: error.message });
+        }
+        throw error;
+      }
 
       // Explicitly delete sessions and accounts first to avoid FK issues
       // even with cascade (e.g. if migration hasn't run yet on old DBs)

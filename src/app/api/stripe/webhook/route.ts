@@ -89,10 +89,28 @@ export async function POST(req: Request): Promise<Response> {
   try {
     await handle(event, client);
   } catch (err) {
-    // 500 so Stripe retries. This is the one case where a retry genuinely helps:
-    // the signature was good and the event is real, so the failure is ours —
-    // usually the database — and the same event replayed later will land
-    // correctly. Every handler below is idempotent for exactly this reason.
+    // Not every failure is worth retrying, and the difference matters more here
+    // than it looks. Stripe retries a 500 with backoff for three days and then
+    // *disables the endpoint* — so one event that can never succeed does not
+    // fail one subscription, it eventually takes down billing for everybody.
+    // That is a strictly worse outcome than dropping the event, especially now
+    // that `~/server/billing/reconcile` re-reads Stripe hourly and repairs
+    // whatever a dropped event would have written.
+    const reason = permanentFailure(err, event);
+    if (reason) {
+      log.error("dropping a webhook event that cannot succeed on a retry", {
+        type: event.type,
+        eventId: event.id,
+        reason,
+        err,
+      });
+      return new Response(null, { status: 204 });
+    }
+
+    // 500 so Stripe retries. This is the case where a retry genuinely helps: the
+    // signature was good, the event is real, and the failure is ours and
+    // probably transient — a database that was briefly unreachable. Every
+    // handler below is idempotent for exactly this reason.
     log.error("webhook handler failed", {
       type: event.type,
       eventId: event.id,
@@ -102,6 +120,44 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   return new Response(null, { status: 204 });
+}
+
+/**
+ * How long an event is worth retrying before it is written off.
+ *
+ * Shorter than Stripe's own three days on purpose. Past this point the retries
+ * are no longer plausibly going to succeed, and the reconciliation sweep will
+ * have run two dozen times — so continuing to fail them only risks the endpoint
+ * being disabled for a repair that has already happened by another route.
+ */
+const MAX_EVENT_AGE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Whether a failure will still be a failure on the next delivery.
+ *
+ * Two kinds qualify. A constraint violation is a statement about the data, not
+ * about the moment — the unique indexes on `stripe_customer_id` and
+ * `stripe_subscription_id` will reject the same row just as firmly in an hour.
+ * And an event old enough to have exhausted a day of retries has demonstrated
+ * the point empirically, whatever the cause.
+ *
+ * Returns the reason rather than a boolean so the log says which it was; that is
+ * the difference between "we have a data problem" and "we had an outage".
+ */
+function permanentFailure(err: unknown, event: Stripe.Event): string | null {
+  // Postgres SQLSTATE classes that describe the data rather than the connection.
+  // The `postgres` driver surfaces them on `.code`.
+  const code = (err as { code?: unknown } | null)?.code;
+  if (typeof code === "string" && /^(23|22)/.test(code)) {
+    return `constraint violation ${code}`;
+  }
+
+  const ageMs = Date.now() - event.created * 1000;
+  if (ageMs > MAX_EVENT_AGE_MS) {
+    return `event is ${Math.round(ageMs / 3_600_000)}h old`;
+  }
+
+  return null;
 }
 
 /**

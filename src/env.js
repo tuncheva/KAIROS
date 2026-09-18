@@ -1,6 +1,26 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
+/**
+ * An optional string where a blank value means "unset" rather than "set to
+ * nothing".
+ *
+ * `z.string().optional()` accepts `""`, so `STRIPE_PRICE_TEAM_ANNUAL=` — a
+ * declared-but-empty line, which is how half of `.env` files record "we haven't
+ * filled this in yet" — parsed as a present value. Downstream that is worse than
+ * being unset: `priceIdFor` returned `""`, `isPlanPurchasable` saw a non-null
+ * value and rendered a buy button, and checkout then failed at Stripe.
+ *
+ * Collapsing to `undefined` rather than rejecting, because these variables are
+ * optional by design — the billing surface is built to degrade to "unavailable",
+ * and a blank line should not be the one thing that stops the app booting.
+ */
+const blankAsUnset = () =>
+  z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().min(1).optional(),
+  );
+
 export const env = createEnv({
 
   server: {
@@ -138,7 +158,7 @@ export const env = createEnv({
      * checkout disabled instead of crashing. `~/server/billing/stripe` logs a
      * warning at first use for exactly that reason.
      */
-    STRIPE_SECRET_KEY: z.string().optional(),
+    STRIPE_SECRET_KEY: blankAsUnset(),
     /**
      * The signing secret for the webhook endpoint, from the Stripe dashboard.
      *
@@ -147,14 +167,18 @@ export const env = createEnv({
      * purely on the strength of its payload, so an unverified POST to it is a
      * free Pro subscription for anyone who can reach the URL.
      */
-    STRIPE_WEBHOOK_SECRET: z.string().optional(),
+    STRIPE_WEBHOOK_SECRET: blankAsUnset(),
 
     // Price IDs, one per (plan × interval). Server-side so a test-mode id can
     // never be inlined into a client bundle and charge a real customer nothing.
-    STRIPE_PRICE_PRO_MONTHLY: z.string().optional(),
-    STRIPE_PRICE_PRO_ANNUAL: z.string().optional(),
-    STRIPE_PRICE_TEAM_MONTHLY: z.string().optional(),
-    STRIPE_PRICE_TEAM_ANNUAL: z.string().optional(),
+    //
+    // `blankAsUnset` rather than a bare optional string — see its docblock. A
+    // declared-but-empty line used to render a buy button that could not check
+    // out.
+    STRIPE_PRICE_PRO_MONTHLY: blankAsUnset(),
+    STRIPE_PRICE_PRO_ANNUAL: blankAsUnset(),
+    STRIPE_PRICE_TEAM_MONTHLY: blankAsUnset(),
+    STRIPE_PRICE_TEAM_ANNUAL: blankAsUnset(),
 
     NODE_ENV: z
       .enum(["development", "test", "production"])

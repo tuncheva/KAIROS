@@ -28,6 +28,10 @@ import crypto from "node:crypto";
 
 import { env } from "~/env";
 import { entitlementsForUser } from "~/server/billing/entitlements";
+import {
+  reconcileSubscriptions,
+  type ReconcileReport,
+} from "~/server/billing/reconcile";
 import { createLogger } from "~/server/logger";
 import {
   cullExpiredHistory,
@@ -143,6 +147,22 @@ export async function POST(request: Request) {
       calendars = { error: "Calendar sweep failed" };
     }
 
+    // Billing reconciliation rides this tick for the same reasons the cull and
+    // the calendar sweep do — and for one of its own: it is the only thing that
+    // repairs a lost Stripe webhook, and a repair nobody schedules is a repair
+    // that happens when someone complains. It throttles itself to hourly, so
+    // most of these calls return immediately; see `~/server/billing/reconcile`.
+    //
+    // It never throws, but it is wrapped anyway: this endpoint has already sent
+    // briefs by the time it runs, and a 500 here would make the caller retry them.
+    let billing: ReconcileReport | { error: string };
+    try {
+      billing = await reconcileSubscriptions();
+    } catch (err) {
+      log.error("billing reconciliation failed", { err });
+      billing = { error: "Billing reconciliation failed" };
+    }
+
     return Response.json({
       ok: true,
       ...report,
@@ -150,6 +170,7 @@ export async function POST(request: Request) {
       taskReminders,
       retention,
       calendars,
+      billing,
     });
   } catch (err) {
     log.error("scheduled sweep failed", { err });
