@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "next build",
-    "check": "pnpm run lint && tsc --noEmit && tsx scripts/fix-migration-journal.ts",
+    "check": "pnpm run lint && tsc --noEmit && tsx scripts/check-theme.ts && tsx scripts/fix-migration-journal.ts",
+    "check:theme": "tsx scripts/check-theme.ts",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts && tsx scripts/fix-migration-journal.ts",
     "db:migrate": "dotenv -e .env -- drizzle-kit migrate --config=drizzle.config.ts",
     "db:push": "dotenv -e .env -- drizzle-kit push --config=drizzle.config.ts",
