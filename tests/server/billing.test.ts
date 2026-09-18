@@ -33,8 +33,10 @@ import {
   priceFor,
 } from "~/lib/plans";
 import {
+  accessEndsAt,
   isLiveSubscription,
   planFromSubscription,
+  willNotRenew,
 } from "~/lib/subscription-status";
 
 describe("planFromSubscription", () => {
@@ -115,6 +117,72 @@ describe("isLiveSubscription", () => {
         expect(isLiveSubscription(status), status).toBe(true);
       }
     }
+  });
+});
+
+describe("willNotRenew", () => {
+  // Regression: a cancellation made in Stripe's billing portal sets `cancel_at`
+  // and leaves `cancel_at_period_end` false. Reading only the boolean showed a
+  // cancelled subscriber "Renews on <the date it ends>" — found by cancelling a
+  // real sandbox subscription, which is why it is pinned here.
+  it("sees a portal cancellation that only sets cancel_at", () => {
+    expect(willNotRenew({ cancel_at_period_end: false, cancel_at: 1792311321 })).toBe(
+      true,
+    );
+  });
+
+  it("still sees the legacy boolean", () => {
+    expect(willNotRenew({ cancel_at_period_end: true, cancel_at: null })).toBe(true);
+  });
+
+  it("leaves a renewing subscription alone", () => {
+    expect(willNotRenew({ cancel_at_period_end: false, cancel_at: null })).toBe(false);
+  });
+});
+
+describe("accessEndsAt", () => {
+  it("uses the period end while the subscription renews", () => {
+    expect(
+      accessEndsAt({
+        current_period_end: 2000,
+        cancel_at: null,
+        cancel_at_period_end: false,
+      }),
+    ).toBe(2000);
+  });
+
+  it("uses the cancellation date when it falls first", () => {
+    // `cancel_at` can name any date, not only a period boundary — a mid-period
+    // cancellation ends access before the period does.
+    expect(
+      accessEndsAt({
+        current_period_end: 2000,
+        cancel_at: 1500,
+        cancel_at_period_end: false,
+      }),
+    ).toBe(1500);
+  });
+
+  it("keeps the period end when the cancellation is later", () => {
+    expect(
+      accessEndsAt({
+        current_period_end: 2000,
+        cancel_at: 3000,
+        cancel_at_period_end: false,
+      }),
+    ).toBe(2000);
+  });
+
+  it("survives a subscription with neither", () => {
+    // Null means "no known end", which the resolver reads as "do not expire on
+    // time alone" — the webhooks remain the primary signal.
+    expect(
+      accessEndsAt({
+        current_period_end: null,
+        cancel_at: null,
+        cancel_at_period_end: false,
+      }),
+    ).toBeNull();
   });
 });
 

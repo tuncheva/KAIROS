@@ -48,6 +48,52 @@ export function planFromSubscription(
 }
 
 /**
+ * The two fields that say a subscription is on its way out.
+ *
+ * Structural rather than `Stripe.Subscription`, so this module stays free of the
+ * SDK and the rules below stay unit-testable.
+ */
+export interface CancellationFields {
+  /** Stripe's legacy flag: renew once more, then stop. */
+  cancel_at_period_end: boolean;
+  /** Stripe's newer scheduled-cancellation timestamp, in seconds. */
+  cancel_at: number | null;
+}
+
+/**
+ * Whether this subscription will stop rather than renew.
+ *
+ * **Both fields, because either one alone is wrong.** A cancellation made in the
+ * billing portal sets `cancel_at` to a timestamp and leaves
+ * `cancel_at_period_end` *false* — Stripe's newer cancellation model schedules a
+ * date rather than flipping the legacy boolean. Reading only the boolean means a
+ * subscriber who has cancelled is told their plan "renews on" the very date it
+ * ends, which is the one piece of copy on the billing screen that must never be
+ * wrong: it is the difference between a customer who knows to resubscribe and a
+ * customer who is surprised by losing access.
+ */
+export function willNotRenew(sub: CancellationFields): boolean {
+  return sub.cancel_at_period_end || sub.cancel_at !== null;
+}
+
+/**
+ * The second the subscriber actually stops being entitled.
+ *
+ * Normally the period end — that is when the next payment either renews the plan
+ * or does not. A scheduled cancellation overrides it when it falls first, since
+ * `cancel_at` can be set to any date, not only a period boundary. Whichever is
+ * earlier is when access stops, and that is both what the screen should show and
+ * what the entitlement resolver's grace window should count from.
+ */
+export function accessEndsAt(
+  sub: CancellationFields & { current_period_end: number | null },
+): number | null {
+  const { current_period_end: periodEnd, cancel_at: cancelAt } = sub;
+  if (periodEnd !== null && cancelAt !== null) return Math.min(periodEnd, cancelAt);
+  return cancelAt ?? periodEnd;
+}
+
+/**
  * Whether a status represents a subscription that is still on the hook for money.
  *
  * The same three statuses {@link planFromSubscription} grants on, named

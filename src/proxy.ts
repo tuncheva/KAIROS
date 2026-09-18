@@ -106,6 +106,14 @@ function isPublicPath(pathname: string): boolean {
   // `/`, which fetch followed to a 200 HTML page — so every tick logged
   // "could not reach the app" while the app was up and the sweep never ran.
   if (pathname.startsWith("/api/internal")) return true;
+  // The Stripe webhook. Stripe POSTs from its own servers with no cookie, so the
+  // session gate would bounce every delivery to `/` as a 307 — and Stripe does
+  // not follow redirects, it records a failed delivery, retries for three days
+  // and then disables the endpoint. Since the webhook is the *only* place a plan
+  // is granted, that failure is silent and total: checkout takes the money and
+  // nobody is ever upgraded. The signature check inside the route is the real
+  // gate here, and it is strictly stronger than a cookie.
+  if (pathname.startsWith("/api/stripe/webhook")) return true;
   if (pathname.startsWith("/_next")) return true;
   if (isStaticAsset(pathname)) return true;
   return false;

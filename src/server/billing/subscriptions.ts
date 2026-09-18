@@ -25,8 +25,10 @@ import { organizations } from "~/server/db/schemas/organizations";
 import { createLogger } from "~/server/logger";
 import type { PlanId } from "~/lib/entitlements";
 import {
+  accessEndsAt,
   isLiveSubscription,
   planFromSubscription,
+  willNotRenew,
   type SubscriptionStatus,
 } from "~/lib/subscription-status";
 import { planFromPriceId } from "./stripe";
@@ -39,6 +41,8 @@ const log = createLogger("billing:subscriptions");
 export {
   planFromSubscription,
   isLiveSubscription,
+  willNotRenew,
+  accessEndsAt,
   type SubscriptionStatus,
 } from "~/lib/subscription-status";
 
@@ -114,16 +118,25 @@ function seatsOf(subscription: Stripe.Subscription): number {
 }
 
 /**
- * When the current paid period ends.
+ * When access ends — the renewal date, or the cancellation date if sooner.
  *
  * Read from the subscription item rather than the subscription, because Stripe
  * moved `current_period_end` onto items — a subscription-level read returns
  * undefined on current API versions and would silently store `null`, which the
  * resolver reads as "never expires".
+ *
+ * `cancel_at` is folded in by {@link accessEndsAt} because a portal cancellation
+ * can name any date, not only a period boundary, and the column feeds both the
+ * date on the billing screen and the resolver's grace window.
  */
 function periodEndOf(subscription: Stripe.Subscription): Date | null {
   const seconds = subscription.items.data[0]?.current_period_end;
-  return typeof seconds === "number" ? new Date(seconds * 1000) : null;
+  const endsAt = accessEndsAt({
+    current_period_end: typeof seconds === "number" ? seconds : null,
+    cancel_at: subscription.cancel_at,
+    cancel_at_period_end: subscription.cancel_at_period_end,
+  });
+  return endsAt === null ? null : new Date(endsAt * 1000);
 }
 
 /** Stripe hands back either an id or an expanded object; we only ever want the id. */
@@ -226,7 +239,7 @@ export async function syncSubscription(
     stripeSubscriptionId: subscription.id,
     subscriptionStatus: status,
     currentPeriodEnd: periodEndOf(subscription),
-    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    cancelAtPeriodEnd: willNotRenew(subscription),
     updatedAt: new Date(),
   };
 
