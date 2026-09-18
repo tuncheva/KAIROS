@@ -4,6 +4,14 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
+import { AlertCircle } from "~/components/ui/icons";
+import { ErrorDigest } from "~/components/ui/ErrorDigest";
+import {
+  SYSTEM_ACTION_PRIMARY,
+  SYSTEM_ACTION_QUIET,
+  SystemScreen,
+} from "~/components/ui/SystemScreen";
+
 /**
  * The signed-in app's error boundary.
  *
@@ -15,6 +23,9 @@ import { useTranslations } from "next-intl";
  * Because this file lives inside `(app)`, the layout above it survives: the rail
  * stays mounted and navigable, and the error is confined to the page that threw.
  * `.rail-offset` is what keeps this message clear of that still-present rail.
+ *
+ * Same vocabulary as the root boundary — one screen drawn twice, not two
+ * designs.
  */
 export default function AppError({
   error,
@@ -24,43 +35,39 @@ export default function AppError({
   reset: () => void;
 }) {
   const t = useTranslations("errors.app");
+  const tErrors = useTranslations("errors");
 
   useEffect(() => {
     console.error("[app] unhandled error:", error);
   }, [error]);
 
   return (
-    <div className="rail-offset min-h-dvh bg-bg-primary">
-      <main id="main-content" className="flex min-h-dvh items-center justify-center px-4">
-        <div className="w-full max-w-md space-y-5 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-error/10 border border-error/20">
-            <span aria-hidden="true" className="text-2xl">
-              ⚠
-            </span>
-          </div>
-          <h1 className="text-xl font-bold text-fg-primary">{t("title")}</h1>
-          <p className="text-sm text-fg-secondary">{t("body")}</p>
-          {/* The digest is the only handle support has on a server-side error;
-              without it a report is "it broke on some page at some time". */}
-          {error.digest ? (
-            <p className="font-mono text-[11px] text-fg-quaternary">{error.digest}</p>
-          ) : null}
-          <div className="flex items-center justify-center gap-3">
-            <button
-              onClick={reset}
-              className="rounded-lg bg-accent-primary px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary"
-            >
+    <main id="main-content" className="rail-offset">
+      <SystemScreen
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        body={t("body")}
+        icon={<AlertCircle size={20} />}
+        actions={
+          <>
+            <button type="button" onClick={reset} className={SYSTEM_ACTION_PRIMARY}>
               {t("retry")}
             </button>
-            <Link
-              href="/dashboard"
-              className="rounded-lg border border-border-light px-5 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary"
-            >
+            <Link href="/dashboard" className={SYSTEM_ACTION_QUIET}>
               {t("dashboard")}
             </Link>
-          </div>
-        </div>
-      </main>
-    </div>
+          </>
+        }
+        footer={
+          error.digest ? (
+            <ErrorDigest
+              digest={error.digest}
+              copyLabel={tErrors("digestCopy", { digest: error.digest.slice(0, 8) })}
+              copiedLabel={tErrors("digestCopied", { digest: error.digest.slice(0, 8) })}
+            />
+          ) : null
+        }
+      />
+    </main>
   );
 }

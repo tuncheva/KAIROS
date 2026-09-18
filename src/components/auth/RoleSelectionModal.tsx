@@ -2,9 +2,10 @@
 
 import { useRef, useState } from "react";
 
-import { useModalBehavior } from "~/components/ui/Modal";
+import { MODAL_SCRIM, MODAL_SHELL, useModalBehavior } from "~/components/ui/Modal";
+import { KairosMark } from "~/components/layout/KairosMark";
 import { api } from "~/trpc/react";
-import { ChevronRight, X } from "~/components/ui/icons";
+import { Check, ChevronRight } from "~/components/ui/icons";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useTranslations } from "next-intl";
 import { JoinWithCodeForm } from "~/components/orgs/OrgEmptyState";
@@ -83,36 +84,33 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${MODAL_SCRIM}`}>
       <div
         ref={shellRef}
         role="dialog"
         aria-modal="true"
         aria-label={t("welcome.title")}
-        className="w-full max-w-lg bg-bg-elevated shadow-2xl rounded-xl border border-accent-primary/20 kairos-page-enter overflow-hidden"
+        className={`${MODAL_SHELL} kairos-page-enter max-w-lg`}
       >
-        {/* Purple gradient header */}
-        <div className="h-2 bg-gradient-to-r from-accent-primary via-accent-secondary to-accent-tertiary" />
-
-        <div className="flex justify-end px-4 pt-4 -mb-4">
+        <div className="flex justify-end px-pad-dialog pt-4 -mb-2">
           <button
             type="button"
             onClick={onComplete}
             aria-label={tCommon("close")}
-            className="p-2 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+            /* A key name rather than a glyph, the same affordance every other
+               dialog in the app now carries. */
+            className="kairos-tap inline-flex h-control-sm items-center rounded-sm border border-border-light px-2 font-mono text-[10px] tracking-[0.14em] text-fg-tertiary transition-colors hover:border-border-strong hover:text-fg-primary"
           >
-            <X size={18} />
+            ESC
           </button>
         </div>
-        
-        <div className="p-8">
+
+        <div className="px-pad-dialog pt-4 pb-8">
           {step === "choose" && (
             <>
               <div className="text-center mb-8">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-accent-primary to-accent-hover rounded-lg flex items-center justify-center shadow-lg">
-                  <span className="text-3xl font-bold text-white">K</span>
-                </div>
-                <h3 className="text-3xl font-bold text-fg-primary mb-2">
+                <KairosMark size={34} className="mx-auto mb-5" />
+                <h3 className="font-display text-[28px] leading-tight font-normal text-fg-primary mb-2">
                   {t("welcome.title")}
                 </h3>
                 <p className="text-fg-secondary">
@@ -123,7 +121,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
               <div className="space-y-4">
                 <button
                   onClick={() => setStep("admin-setup")}
-                  className="w-full p-6 bg-gradient-to-br from-accent-primary/10 to-accent-secondary/10 hover:from-accent-primary/20 hover:to-accent-secondary/20 rounded-lg transition-all duration-200 text-left group border-2 border-accent-primary/30 hover:border-accent-primary/60 hover:shadow-lg"
+                  className="w-full p-pad-card bg-bg-surface hover:bg-bg-tertiary rounded-lg transition-colors text-left group border border-accent-primary/40 hover:border-accent-primary"
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -137,7 +135,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
                 <button
                   onClick={() => setPersonalMode.mutate()}
                   disabled={setPersonalMode.isPending}
-                  className="w-full p-6 bg-bg-surface hover:bg-bg-tertiary rounded-lg transition-all duration-200 text-left group disabled:opacity-50 disabled:cursor-not-allowed border-2 border-border-medium hover:border-accent-primary/40"
+                  className="w-full p-pad-card bg-bg-surface hover:bg-bg-tertiary rounded-lg transition-colors text-left group disabled:opacity-50 disabled:cursor-not-allowed border border-border-medium hover:border-accent-primary/40"
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -153,7 +151,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
                     pick Personal and go hunting for the join field later. */}
                 <button
                   onClick={() => setStep("join")}
-                  className="w-full p-6 bg-bg-surface hover:bg-bg-tertiary rounded-lg transition-all duration-200 text-left group border-2 border-border-medium hover:border-accent-primary/40"
+                  className="w-full p-pad-card bg-bg-surface hover:bg-bg-tertiary rounded-lg transition-colors text-left group border border-border-medium hover:border-accent-primary/40"
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -177,7 +175,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
             </button>
 
             <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold text-fg-primary mb-2">{t("joinOrg.formTitle")}</h3>
+              <h3 className="font-display text-[24px] leading-tight font-normal text-fg-primary mb-2">{t("joinOrg.formTitle")}</h3>
               <p className="text-fg-secondary text-sm">{t("joinOrg.formSubtitle")}</p>
             </div>
 
@@ -196,7 +194,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
             </button>
 
             <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold text-fg-primary mb-2">{t("createOrg.formTitle")}</h3>
+              <h3 className="font-display text-[24px] leading-tight font-normal text-fg-primary mb-2">{t("createOrg.formTitle")}</h3>
               <p className="text-fg-secondary text-sm">{t("createOrg.formSubtitle")}</p>
             </div>
 
@@ -211,7 +209,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
                   onChange={(e) => setOrganizationName(e.target.value)}
                   onKeyDown={handleOrgNameKeyDown}
                   placeholder={t("createOrg.namePlaceholder")}
-                  className="w-full px-4 py-3 bg-bg-surface shadow-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-primary/50 focus:border-accent-primary text-fg-primary placeholder:text-fg-tertiary border-2 border-border-medium transition-all"
+                  className="w-full h-control-md px-4 bg-bg-surface rounded-md focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:border-accent-primary text-fg-primary placeholder:text-fg-tertiary border border-border-medium transition-colors"
                   autoFocus
                 />
               </div>
@@ -219,7 +217,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
               <button
                 onClick={handleCreateOrganization}
                 disabled={createOrganization.isPending}
-                className="w-full px-6 py-4 bg-gradient-to-r from-accent-primary to-accent-hover text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                className="w-full h-control-lg px-6 bg-accent-primary text-white font-semibold rounded-md hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {createOrganization.isPending ? t("createOrg.loading") : t("createOrg.submit")}
               </button>
@@ -230,23 +228,21 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
         {step === "admin-setup" && generatedCode && (
           <>
             <div className="text-center mb-6">
-              <div className="w-16 h-16 mx-auto mb-4 border border-status-success-border bg-status-success-surface rounded-lg flex items-center justify-center">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
+              <div className="w-control-lg h-control-lg mx-auto mb-4 border border-status-success-border bg-status-success-surface rounded-lg flex items-center justify-center text-status-success-ink">
+                <Check size={22} />
               </div>
-              <h3 className="text-2xl font-bold text-fg-primary mb-2">{t("createOrg.successTitle")}</h3>
+              <h3 className="font-display text-[24px] leading-tight font-normal text-fg-primary mb-2">{t("createOrg.successTitle")}</h3>
               <p className="text-fg-secondary">{t("createOrg.sharePrompt")}</p>
             </div>
 
-            <div className="bg-gradient-to-br from-accent-primary/10 to-accent-secondary/10 rounded-lg p-6 text-center mb-6 border-2 border-accent-primary/30">
-              <p className="text-xs text-fg-tertiary uppercase tracking-wider mb-3 font-semibold">{t("createOrg.codeLabel")}</p>
-              <p className="text-4xl font-bold text-accent-primary tracking-[0.3em] font-mono mb-4">
+            <div className="bg-bg-surface rounded-lg p-pad-card text-center mb-6 border border-accent-primary/40">
+              <p className="font-mono text-[10px] text-fg-quaternary uppercase tracking-[0.16em] mb-3">{t("createOrg.codeLabel")}</p>
+              <p className="text-[34px] text-accent-primary tracking-[0.3em] font-mono mb-4">
                 {generatedCode}
               </p>
               <button
                 onClick={handleCopyCode}
-                className="px-6 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-semibold shadow-md hover:shadow-lg"
+                className="h-control-md px-5 bg-accent-primary text-white rounded-md hover:bg-accent-hover transition-colors text-[13px] font-semibold"
               >
                 {t("createOrg.copyButton")}
               </button>
@@ -257,7 +253,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
                 void utils.user.checkOnboardingStatus.invalidate();
                 onComplete();
               }}
-              className="w-full px-6 py-4 bg-gradient-to-r from-accent-primary to-accent-hover text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-200"
+              className="w-full h-control-lg px-6 bg-accent-primary text-white font-semibold rounded-md hover:bg-accent-hover transition-colors"
             >
               {t("common.continueButton")}
             </button>

@@ -162,7 +162,7 @@ export function InviteQrDialog({
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border-light/40 px-5 py-4">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-fg-primary">
+            <h2 className="font-display text-[18px] leading-tight font-normal text-fg-primary">
               {t("inviteQrTitle")}
             </h2>
             {title ? (

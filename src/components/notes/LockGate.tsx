@@ -90,7 +90,7 @@ export function LockGate({
           <Lock size={22} />
         </div>
 
-        <h2 className="text-[15.5px] font-bold tracking-[-0.012em] text-fg-primary">
+        <h2 className="font-display text-[18px] leading-tight font-normal text-fg-primary">
           {t("password.gateTitle")}
         </h2>
         <p className="mt-2 mb-5 text-[13px] leading-relaxed text-fg-tertiary">{subtitle}</p>

@@ -583,7 +583,7 @@ export function NotificationSystem() {
               className="animate-in slide-in-from-top-2 absolute right-0 z-50 mt-2 w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border border-border-light bg-bg-elevated shadow-2xl duration-200 sm:w-[380px]"
             >
               <div className="flex items-baseline gap-2.5 px-[18px] pb-3 pt-4">
-                <h3 className="text-[15px] font-bold tracking-[-0.012em] text-fg-primary">
+                <h3 className="font-display text-[17px] leading-tight font-normal text-fg-primary">
                   {t("title")}
                 </h3>
                 {unreadCount > 0 && (

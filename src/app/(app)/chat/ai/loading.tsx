@@ -1,15 +1,17 @@
+import { Skeleton } from "~/components/ui/Skeleton";
+
 export default function KairosAILoading() {
   return (
     <div className="h-[100dvh] overflow-hidden bg-bg-primary">
-      <div className="rail-offset h-[100dvh] overflow-hidden flex flex-col">
-        <div className="flex-1 flex flex-col p-4 gap-4">
-          <div className="h-8 w-48 bg-bg-secondary rounded-sm animate-pulse" />
+      <div className="rail-offset flex h-[100dvh] flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col gap-4 p-4">
+          <Skeleton className="h-8 w-48" />
           <div className="flex-1 space-y-4">
-            <div className="h-12 w-3/4 bg-bg-secondary rounded-lg animate-pulse" />
-            <div className="h-12 w-1/2 bg-bg-secondary rounded-lg animate-pulse ml-auto" />
-            <div className="h-12 w-2/3 bg-bg-secondary rounded-lg animate-pulse" />
+            <Skeleton className="h-12 w-3/4" shape="lg" />
+            <Skeleton className="ml-auto h-12 w-1/2" shape="lg" />
+            <Skeleton className="h-12 w-2/3" shape="lg" />
           </div>
-          <div className="h-12 bg-bg-secondary rounded-xl animate-pulse" />
+          <Skeleton className="h-12" shape="md" />
         </div>
       </div>
     </div>

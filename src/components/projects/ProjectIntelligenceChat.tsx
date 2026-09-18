@@ -1824,7 +1824,7 @@ export function ProjectIntelligenceChat(props: {
               >
                 <Sparkles size={28} style={{ color: "rgb(var(--accent-primary))" }} />
               </div>
-              <h3 className="text-lg font-bold text-fg-primary">
+              <h3 className="font-display text-[19px] leading-tight font-normal text-fg-primary">
                 You&apos;ve reached your limit for messages to KAIROS
               </h3>
               <p className="text-sm text-fg-secondary leading-relaxed">

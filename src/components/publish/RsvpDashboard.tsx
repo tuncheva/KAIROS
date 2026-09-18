@@ -73,7 +73,7 @@ export function RsvpDashboard({
             <div className="grid h-10 w-10 place-items-center rounded-lg bg-accent-primary/20">
               <BarChart3 size={18} className="text-accent-primary" />
             </div>
-            <h2 className="text-lg font-bold text-fg-primary sm:text-xl">
+            <h2 className="font-display text-[19px] leading-tight font-normal text-fg-primary sm:text-[21px]">
               {t("responsesDashboard")}
             </h2>
           </div>

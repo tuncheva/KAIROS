@@ -242,7 +242,7 @@ export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolea
             }`}
           >
             <div className="flex items-center justify-between gap-4 border-b border-border-light/50 px-[26px] py-5">
-              <h2 id={titleId} className="m-0 text-[17px] font-semibold tracking-[-0.01em] text-fg-primary">
+              <h2 id={titleId} className="m-0 font-display text-[19px] leading-tight font-normal text-fg-primary">
                 {t("title")}
               </h2>
               <button

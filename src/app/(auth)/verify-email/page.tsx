@@ -89,7 +89,7 @@ function VerifyEmailContent() {
         {!token ? (
           <div className="space-y-3 text-center">
             <AlertCircle className="mx-auto text-status-warning-ink" size={32} />
-            <h1 className="text-xl font-semibold text-fg-primary">
+            <h1 className="font-display text-[22px] leading-tight font-normal text-fg-primary">
               Nothing to confirm
             </h1>
             <p className="text-sm text-fg-secondary">
@@ -101,14 +101,14 @@ function VerifyEmailContent() {
         ) : verify.isPending ? (
           <div className="space-y-3 text-center">
             <Mail className="mx-auto text-fg-secondary animate-pulse" size={32} />
-            <h1 className="text-xl font-semibold text-fg-primary">
+            <h1 className="font-display text-[22px] leading-tight font-normal text-fg-primary">
               Confirming your email…
             </h1>
           </div>
         ) : isVerified ? (
           <div className="space-y-4 text-center">
             <CheckCircle className="mx-auto text-status-success-ink" size={32} />
-            <h1 className="text-xl font-semibold text-fg-primary">
+            <h1 className="font-display text-[22px] leading-tight font-normal text-fg-primary">
               Email confirmed
             </h1>
             <p className="text-sm text-fg-secondary">
@@ -125,7 +125,7 @@ function VerifyEmailContent() {
           <div className="space-y-4">
             <div className="space-y-3 text-center">
               <AlertCircle className="mx-auto text-status-danger-ink" size={32} />
-              <h1 className="text-xl font-semibold text-fg-primary">
+              <h1 className="font-display text-[22px] leading-tight font-normal text-fg-primary">
                 This link didn&apos;t work
               </h1>
               <p className="text-sm text-fg-secondary">

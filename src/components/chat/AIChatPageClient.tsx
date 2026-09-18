@@ -387,7 +387,7 @@ export function AIChatPageClient() {
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
         >
           <div className="w-full max-w-md rounded-xl border border-border-medium bg-bg-primary p-6 shadow-2xl">
-            <h2 className="text-lg font-bold text-fg-primary">
+            <h2 className="font-display text-[19px] leading-tight font-normal text-fg-primary">
               {tChat("deleteChatTitle")}
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-fg-secondary">

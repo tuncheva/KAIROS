@@ -144,7 +144,7 @@ export function NotesDialog({
           {icon}
         </span>
         <span className="min-w-0 flex-1">
-          <h2 id={titleId} className="text-[15.5px] font-bold tracking-[-0.014em] text-fg-primary">
+          <h2 id={titleId} className="font-display text-[18px] leading-tight font-normal text-fg-primary">
             {title}
           </h2>
           {subtitle && <p className="mt-0.5 text-[12.5px] leading-relaxed text-fg-tertiary">{subtitle}</p>}
