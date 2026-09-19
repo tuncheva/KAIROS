@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-import { MODAL_SCRIM, MODAL_SHELL, useModalBehavior } from "~/components/ui/Modal";
+import { MODAL_SCRIM, MODAL_SHELL, ModalDismiss, useModalBehavior } from "~/components/ui/Modal";
 import { KairosMark } from "~/components/layout/KairosMark";
 import { api } from "~/trpc/react";
 import { Check, ChevronRight } from "~/components/ui/icons";
@@ -93,16 +93,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
         className={`${MODAL_SHELL} kairos-page-enter max-w-lg`}
       >
         <div className="flex justify-end px-pad-dialog pt-4 -mb-2">
-          <button
-            type="button"
-            onClick={onComplete}
-            aria-label={tCommon("close")}
-            /* A key name rather than a glyph, the same affordance every other
-               dialog in the app now carries. */
-            className="kairos-tap inline-flex h-control-sm items-center rounded-sm border border-border-light px-2 font-mono text-[10px] tracking-[0.14em] text-fg-tertiary transition-colors hover:border-border-strong hover:text-fg-primary"
-          >
-            ESC
-          </button>
+          <ModalDismiss onDismiss={onComplete} label={tCommon("close")} />
         </div>
 
         <div className="px-pad-dialog pt-4 pb-8">

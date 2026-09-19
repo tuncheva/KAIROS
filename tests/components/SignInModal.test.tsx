@@ -141,27 +141,23 @@ describe("SignInModal", () => {
     expect(screen.getByText(/Terms of Service/i)).toBeInTheDocument();
   });
 
-  it("has an X close button", () => {
+  /**
+   * The dialog dismisses with the mono ESC affordance from `ui/Modal`, not a
+   * glyph cross — a key name says how to close from the keyboard, which the
+   * cross never did. See docs/theme.md §6.
+   */
+  it("closes with the mono ESC affordance, not a glyph cross", () => {
     render(<SignInModal {...defaultProps} />);
-    // The X button is rendered as a button with an SVG X icon
-    const closeButtons = document.querySelectorAll("button");
-    const xButton = Array.from(closeButtons).find(
-      (btn) => btn.querySelector("svg") && btn.className.includes("absolute"),
-    );
-    expect(xButton).toBeTruthy();
+    const dismiss = screen.getByText("ESC");
+    expect(dismiss.tagName).toBe("BUTTON");
+    expect(dismiss.querySelector("svg")).toBeNull();
   });
 
-  it("X close button calls onClose when clicked", async () => {
+  it("the ESC affordance calls onClose when clicked", () => {
     const onClose = vi.fn();
     render(<SignInModal isOpen={true} onClose={onClose} />);
-    const closeButtons = document.querySelectorAll("button");
-    const xButton = Array.from(closeButtons).find(
-      (btn) => btn.querySelector("svg") && btn.className.includes("absolute"),
-    );
-    if (xButton) {
-      fireEvent.click(xButton);
-      expect(onClose).toHaveBeenCalled();
-    }
+    fireEvent.click(screen.getByText("ESC"));
+    expect(onClose).toHaveBeenCalled();
   });
 
   /**

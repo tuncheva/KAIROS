@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Plus, X } from "~/components/ui/icons";
+import { ModalDismiss } from "~/components/ui/Modal";
+import { Plus } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
@@ -245,14 +246,7 @@ export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolea
               <h2 id={titleId} className="m-0 font-display text-[19px] leading-tight font-normal text-fg-primary">
                 {t("title")}
               </h2>
-              <button
-                type="button"
-                onClick={close}
-                aria-label={t("close")}
-                className="flex h-[30px] w-[30px] items-center justify-center rounded-sm border border-border-light/70 text-fg-tertiary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
-              >
-                <X size={15} aria-hidden />
-              </button>
+              <ModalDismiss onDismiss={close} label={t("close")} />
             </div>
 
             <form

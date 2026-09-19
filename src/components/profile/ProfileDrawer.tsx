@@ -20,6 +20,7 @@
  */
 
 import Image from "next/image";
+import { ModalDismiss } from "~/components/ui/Modal";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
@@ -31,7 +32,6 @@ import {
   MessageCircle,
   UserMinus,
   UserPlus,
-  X,
 } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
@@ -247,14 +247,7 @@ export function ProfileDrawer({
         >
           <div className="flex items-center justify-between gap-4 border-b border-border-light/50 px-[26px] py-5">
             <span className={STAMP}>{t("title")}</span>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={t("close")}
-              className="flex h-[30px] w-[30px] items-center justify-center rounded-sm border border-border-light/70 text-fg-tertiary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
-            >
-              <X size={15} aria-hidden />
-            </button>
+            <ModalDismiss onDismiss={onClose} label={t("close")} />
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-auto">

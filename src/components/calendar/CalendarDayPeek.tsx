@@ -1,7 +1,8 @@
 "use client";
 
 import { useId, useRef } from "react";
-import { Plus, X } from "~/components/ui/icons";
+import { ModalDismiss } from "~/components/ui/Modal";
+import { Plus } from "~/components/ui/icons";
 import { cn } from "~/lib/utils";
 import { CalendarItemChip } from "./CalendarItemChip";
 import { useDismissOnOutside, useFocusTrap } from "./useCalendarA11y";
@@ -74,14 +75,7 @@ export function CalendarDayPeek({
           </h2>
           <span className="text-[11px] tabular-nums text-fg-tertiary">{countLabel}</span>
           <span className="flex-1" />
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={closeLabel}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
-          >
-            <X size={13} />
-          </button>
+          <ModalDismiss onDismiss={onClose} label={closeLabel} />
         </div>
 
         <div className={cn("kairos-scroll-area flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-3")}>

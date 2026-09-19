@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, Link2, Loader2, RefreshCw, ShieldOff, X } from "~/components/ui/icons";
+import { ModalDismiss } from "~/components/ui/Modal";
+import { Check, Copy, Link2, Loader2, RefreshCw, ShieldOff } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { useToast } from "~/components/providers/ToastProvider";
@@ -169,14 +170,7 @@ export function InviteQrDialog({
               <p className="mt-0.5 truncate text-xs text-fg-tertiary">{title}</p>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={tCommon("close")}
-            className="kairos-tap rounded-lg p-1.5 text-fg-tertiary transition-colors hover:bg-bg-elevated hover:text-fg-primary"
-          >
-            <X size={16} />
-          </button>
+          <ModalDismiss onDismiss={onClose} label={tCommon("close")} />
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">

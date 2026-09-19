@@ -4,11 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
-import { useModalBehavior } from "~/components/ui/Modal";
+import { useModalBehavior, ModalDismiss } from "~/components/ui/Modal";
 import { modalExitMs } from "~/components/ui/modalExit";
 import { KairosMark } from "~/components/layout/KairosMark";
 import {
-  X,
   ChevronDown,
   LayoutDashboard,
   Briefcase,
@@ -169,14 +168,7 @@ export function OnboardingSheet() {
               {t("eyebrow")}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={dismiss}
-            aria-label={t("close")}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-fg-tertiary transition-colors hover:bg-white/5 hover:text-fg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
-          >
-            <X size={18} />
-          </button>
+          <ModalDismiss onDismiss={dismiss} label={t("close")} />
         </header>
 
         <div className="relative flex-1 overflow-y-auto px-6 pt-8 pb-10 sm:px-10">

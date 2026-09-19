@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { FileText, Sparkles, X } from "~/components/ui/icons";
+import { ModalDismiss } from "~/components/ui/Modal";
+import { FileText, Sparkles } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { MAX_PDF_SIZE, MAX_PDF_SIZE_MB } from "~/lib/pdf";
@@ -389,14 +390,7 @@ export function TaskDrawer({
             >
               {editing ? t("editTitle") : t("title")}
             </h2>
-            <button
-              type="button"
-              onClick={close}
-              aria-label={t("close")}
-              className="flex h-[30px] w-[30px] items-center justify-center rounded-sm border border-border-light/70 text-fg-tertiary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
-            >
-              <X size={15} aria-hidden />
-            </button>
+            <ModalDismiss onDismiss={close} label={t("close")} />
           </div>
 
           <form

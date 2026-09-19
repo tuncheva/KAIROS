@@ -200,6 +200,39 @@ export const MODAL_SHELL =
 /** The scrim under it. */
 export const MODAL_SCRIM = "bg-black/60 backdrop-blur-sm";
 
+/**
+ * The one dismiss affordance. A key name rather than a glyph: it says how to
+ * close the dialog from the keyboard, which the cross never did.
+ *
+ * `className` positions it — most headers let it sit in the flow, drawers that
+ * float it over their own content pass the absolute placement.
+ */
+export function ModalDismiss({
+  onDismiss,
+  /** Accessible name. Supply the translated "Close". */
+  label = "Close",
+  className = "",
+  /** Marks this as the dialog's initial focus target. */
+  autoFocus = false,
+}: {
+  onDismiss: () => void;
+  label?: string;
+  className?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onDismiss}
+      aria-label={label}
+      {...(autoFocus ? { "data-autofocus": true } : {})}
+      className={`kairos-tap inline-flex h-control-sm flex-none items-center rounded-sm border border-border-light px-2 font-mono text-[10px] tracking-[0.14em] text-fg-tertiary transition-colors hover:border-border-strong hover:text-fg-primary ${className}`.trim()}
+    >
+      ESC
+    </button>
+  );
+}
+
 export function ModalHeader({
   id,
   title,
@@ -231,16 +264,7 @@ export function ModalHeader({
         </h2>
       </div>
       {onDismiss ? (
-        <button
-          type="button"
-          onClick={onDismiss}
-          aria-label={closeLabel}
-          /* A key name rather than a glyph: it says how to dismiss the dialog
-             from the keyboard, which the cross never did. */
-          className="kairos-tap -mr-1 flex h-control-sm flex-none items-center rounded-sm border border-border-light px-2 font-mono text-[10px] tracking-[0.14em] text-fg-tertiary transition-colors hover:border-border-strong hover:text-fg-primary"
-        >
-          ESC
-        </button>
+        <ModalDismiss onDismiss={onDismiss} label={closeLabel} className="-mr-1" />
       ) : null}
     </header>
   );

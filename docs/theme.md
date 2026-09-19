@@ -155,6 +155,7 @@ in whatever font the OS supplies and takes no colour from the theme.
 | `Modal`, `useModalBehavior` | `ui/Modal.tsx` | focus trap, Escape, scroll lock, portal |
 | `MODAL_SHELL`, `MODAL_SCRIM` | `ui/Modal.tsx` | 16px radius on `bg-overlay`, hairline, blurred scrim |
 | `ModalHeader` | `ui/Modal.tsx` | serif title, optional mono eyebrow, mono `ESC` affordance |
+| `ModalDismiss` | `ui/Modal.tsx` | the mono `ESC` button itself — the one copy; `ModalHeader` uses it, and dialogs with their own header layout import it directly |
 | `ModalBody`, `ModalActions`, `ModalAction` | `ui/Modal.tsx` | dialog padding; actions right-aligned; tones `quiet` / `primary` / `danger` |
 | `ConfirmDialog` | `ui/ConfirmDialog.tsx` | the one "are you sure" — there is no second copy |
 | `Panel`, `TitledPanel` | `ui/Panel.tsx` | the card shell; `publishUi` and `chatUi` re-export it |
@@ -164,7 +165,12 @@ in whatever font the OS supplies and takes no colour from the theme.
 | `Skeleton`, `SkeletonTopBar`, `SkeletonCards` | `ui/Skeleton.tsx` | every `loading.tsx` |
 
 A destructive action is **danger ink on a danger hairline**, never a solid red
-fill. A dialog closes with the mono `ESC` affordance, not a glyph cross.
+fill. A dialog closes with the mono `ESC` affordance, not a glyph cross — use
+`ModalDismiss` rather than hand-rolling the button, so there stays one copy.
+This binds anything modal: `role="dialog"`, `aria-modal`, or a consumer of
+`useModalBehavior` / `MODAL_SHELL`. A non-modal rail, panel or inline peek is
+not a dialog and keeps its icon close control. Enforced by
+`tests/styles/dialog-dismiss.test.ts`.
 
 ---
 

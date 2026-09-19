@@ -1,14 +1,14 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { X, Loader2, Eye, EyeOff, ArrowRight, ArrowLeft, KeyRound, Check } from "~/components/ui/icons";
+import { Loader2, Eye, EyeOff, ArrowRight, ArrowLeft, KeyRound, Check } from "~/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 
-import { useModalBehavior } from "~/components/ui/Modal";
+import { ModalDismiss, useModalBehavior } from "~/components/ui/Modal";
 
 /* ─── Types ─── */
 type ModalView =
@@ -771,13 +771,11 @@ export function SignInModal({
 
         {/* ─── Right: the flow ─── */}
         <div className="relative flex flex-col justify-center overflow-y-auto px-7 py-12 sm:px-14 sm:py-14">
-          <button
-            onClick={onClose}
-            className="k-auth-lnk absolute right-6 top-6 flex text-white/35"
-            aria-label={t("close")}
-          >
-            <X size={18} />
-          </button>
+          <ModalDismiss
+            onDismiss={onClose}
+            label={t("close")}
+            className="absolute right-6 top-6"
+          />
 
           <div className={eyebrowClass}>{step}</div>
           <h2

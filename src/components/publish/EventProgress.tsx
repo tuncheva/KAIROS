@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { ModalDismiss } from "~/components/ui/Modal";
 import { createPortal } from "react-dom";
 import { useLocale, useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
@@ -24,7 +25,6 @@ import {
   Heart,
   Loader2,
   MessageCircle,
-  X,
 } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
@@ -120,14 +120,7 @@ function EventProgressDialog({ onClose }: { onClose: () => void }) {
             </h2>
             <Stamp className="tracking-[0.14em]">{t("progressScope")}</Stamp>
           </span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t("close")}
-            className="rounded-full p-1.5 text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
-          >
-            <X size={16} />
-          </button>
+          <ModalDismiss onDismiss={onClose} label={t("close")} />
         </header>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">

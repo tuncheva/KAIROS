@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ModalDismiss } from "~/components/ui/Modal";
 import {
   CalendarDays,
   ChevronLeft,
@@ -1187,15 +1188,7 @@ function ShortcutSheet({
           <h2 className="text-[15px] font-semibold tracking-tight text-fg-primary">
             {t("shortcutsTitle")}
           </h2>
-          <button
-            type="button"
-            data-autofocus
-            onClick={onClose}
-            aria-label={t("close")}
-            className="flex h-7 w-7 items-center justify-center rounded-md border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
-          >
-            <X size={13} />
-          </button>
+          <ModalDismiss onDismiss={onClose} label={t("close")} autoFocus />
         </div>
         <dl className="kairos-scroll-area flex min-h-0 flex-1 flex-col overflow-y-auto">
           {SHORTCUTS.map((shortcut) => (
