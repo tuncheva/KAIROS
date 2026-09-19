@@ -51,6 +51,22 @@
   --color-info: rgb(var(--info));
   --color-dash-day: rgb(var(--dash-day));
 
+  /* Semantic status families — surface / border / ink, drawn from the brand
+     ramp (danger ← strawberry, warning ← caramel, success ← mint, info ← sky).
+     Every ink-on-surface pair clears WCAG AA in both modes; see docs/theme.md. */
+  --color-status-success-surface: rgb(var(--status-success-surface));
+  --color-status-success-border: rgb(var(--status-success-border));
+  --color-status-success-ink: rgb(var(--status-success-ink));
+  --color-status-warning-surface: rgb(var(--status-warning-surface));
+  --color-status-warning-border: rgb(var(--status-warning-border));
+  --color-status-warning-ink: rgb(var(--status-warning-ink));
+  --color-status-danger-surface: rgb(var(--status-danger-surface));
+  --color-status-danger-border: rgb(var(--status-danger-border));
+  --color-status-danger-ink: rgb(var(--status-danger-ink));
+  --color-status-info-surface: rgb(var(--status-info-surface));
+  --color-status-info-border: rgb(var(--status-info-border));
+  --color-status-info-ink: rgb(var(--status-info-ink));
+
   /* Semantic event colors */
   --color-event-active: rgb(var(--event-active));
   --color-event-upcoming: rgb(var(--event-upcoming));
@@ -63,6 +79,27 @@
   /* Font families */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif, "KairosEmoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-display: var(--font-display), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  /* ─── Radius scale ───
+     Four steps, tied to the element class rather than to taste:
+       sm  chips / inputs      md  buttons / fields
+       lg  cards / panels      xl  dialogs / drawers
+     `rounded-full` is reserved for the marketing pages. */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* ─── Control scale ───
+     Heights for the same four classes, plus the two container paddings.
+     Registered in the spacing namespace, so `h-control-md`, `min-h-control-lg`,
+     `p-pad-card` and `p-pad-dialog` all resolve. */
+  --spacing-control-sm: 32px;
+  --spacing-control-md: 40px;
+  --spacing-control-lg: 48px;
+  --spacing-control-xl: 56px;
+  --spacing-pad-card: 16px;
+  --spacing-pad-dialog: 22px;
 
 }
 
@@ -131,6 +168,30 @@
   --now-line: 255 45 58;
   --info: 59 130 246;
   --info-light: 219 234 254;
+
+  /* Semantic status families — Light.
+     Additive: the scalars above stay put, other code still reads them. */
+  --status-success-surface: 239 248 245;
+  --status-success-border: 81 154 133;
+  --status-success-ink: 65 122 106;
+  --status-warning-surface: 253 246 240;
+  --status-warning-border: 182 131 84;
+  --status-warning-ink: 144 104 67;
+  --status-danger-surface: 254 235 237;
+  --status-danger-border: 240 58 71;
+  --status-danger-ink: 203 49 60;
+  --status-info-surface: 233 241 249;
+  --status-info-border: 39 111 191;
+  --status-info-ink: 33 93 160;
+
+  /* Radius + control scale, also exposed as plain custom properties so hand-written
+     CSS further down this file can reach the same four steps. */
+  --control-h-sm: 32px;
+  --control-h-md: 40px;
+  --control-h-lg: 48px;
+  --control-h-xl: 56px;
+  --control-pad-card: 16px;
+  --control-pad-dialog: 22px;
 
   /* Dashboard: the cyan "day elapsed" arc, distinct from the accent so the
      workspace ring can carry two unrelated readings at once. */
@@ -262,6 +323,20 @@
   --now-line: 255 86 86;
   --info: 96 165 250;
   --info-light: 30 58 138;
+
+  /* Semantic status families — Dark. */
+  --status-success-surface: 29 41 41;
+  --status-success-border: 67 122 108;
+  --status-success-ink: 95 180 156;
+  --status-warning-surface: 48 39 34;
+  --status-warning-border: 144 106 72;
+  --status-warning-ink: 233 168 108;
+  --status-danger-surface: 49 24 29;
+  --status-danger-border: 196 50 61;
+  --status-danger-ink: 241 71 83;
+  --status-info-surface: 21 31 46;
+  --status-info-border: 38 106 182;
+  --status-info-ink: 78 137 203;
 
   /* Dashboard: cyan "day elapsed" arc — see the light-mode note above. */
   --dash-day: 34 211 238;
@@ -455,7 +530,7 @@ textarea::-moz-selection,
   );
   box-shadow: var(--shadow-md);
   border: 1px solid rgb(var(--border-light) / 0.7);
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -507,7 +582,7 @@ summary,
     textarea,
     select
   ) {
-    border-radius: 10px;
+    border-radius: var(--radius-md);
   }
 }
 
@@ -525,7 +600,7 @@ summary,
   top: 0.75rem;
   z-index: 1000;
   padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   background-color: rgb(var(--bg-secondary));
   color: rgb(var(--text-primary));
   border: 1px solid rgb(var(--border-light));
@@ -562,7 +637,7 @@ summary,
   background: linear-gradient(135deg, rgb(var(--accent-primary)) 0%, rgb(var(--accent-secondary)) 100%);
   color: #0f172a;
   font-weight: 600;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   border: none;
   box-shadow: var(--shadow-md);
   cursor: pointer;
@@ -611,7 +686,7 @@ summary,
   border: 2px solid rgb(var(--border-medium));
   color: rgb(var(--text-primary));
   font-weight: 600;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   box-shadow: var(--shadow-sm);
@@ -628,7 +703,7 @@ summary,
 .input-base {
   padding: 0.875rem 1rem;
   border: 2px solid rgb(var(--border-light));
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   background-color: rgb(var(--bg-surface));
   color: rgb(var(--text-primary));
   outline: none;
@@ -654,7 +729,7 @@ summary,
 .card-base {
   background-color: rgb(var(--bg-surface));
   border: 1px solid rgb(var(--border-light));
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -667,7 +742,7 @@ summary,
 .card-interactive {
   background-color: rgb(var(--bg-surface));
   border: 1px solid rgb(var(--border-light));
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -826,7 +901,7 @@ summary,
   left: -5px;
   right: -5px;
   bottom: -5px;
-  border-radius: 1rem; 
+  border-radius: var(--radius-xl); 
   background: transparent;
   transition: opacity 0.3s ease-in-out;
   pointer-events: none;
@@ -1056,7 +1131,7 @@ summary,
 /* Kairos Card System - System Settings Style */
 .kairos-system-card {
   background: rgb(var(--bg-surface) / 0.8);
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   box-shadow: 
     0 0 0 0.5px rgba(var(--border-light) / 0.5),
     0 2px 8px -2px rgba(0, 0, 0, 0.08),
@@ -1075,7 +1150,7 @@ summary,
 
 .kairos-system-card-elevated {
   background: rgb(var(--bg-elevated) / 0.9);
-  border-radius: 1rem;
+  border-radius: var(--radius-xl);
   box-shadow: 
     0 0 0 0.5px rgba(var(--border-light) / 0.6),
     0 4px 12px -2px rgba(0, 0, 0, 0.1),
@@ -1290,8 +1365,8 @@ summary,
   transform: scaleY(0);
   transform-origin: top;
 
-  /* neutral line color on hover (fallback-friendly) */
-  background-color: rgba(148, 163, 184, 0.9); /* slate-400-ish */
+  /* neutral line colour on hover — the hairline token, so it follows the theme */
+  background-color: rgb(var(--border-strong) / 0.9);
 
   /* Smooth animation for state changes */
   transition:
@@ -1402,7 +1477,7 @@ summary,
   align-items: center;
   gap: 0.375rem;
   padding: 0.375rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
@@ -1437,7 +1512,7 @@ summary,
 
 .kairos-system-dropdown {
   background-color: #ffffff;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   border-width: 0.5px;
@@ -1511,7 +1586,7 @@ summary,
 /* Kairos permission badge */
 .kairos-system-permission-badge {
   padding: 0.375rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 500;
   background-color: rgba(209, 209, 214, 0.2);
@@ -1566,11 +1641,11 @@ summary,
 
 /* Kairos corner radius */
 .kairos-system-rounded-lg {
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .kairos-system-rounded-xl {
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
 }
 
 /* Kairos scrolling */
@@ -1835,7 +1910,7 @@ summary,
 /* Futuristic card with subtle glow */
 .kairos-card {
   background: rgb(var(--bg-elevated));
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(var(--border-light), 0.5);
   transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   position: relative;
@@ -1898,7 +1973,7 @@ summary,
 .kairos-input {
   background: rgba(var(--bg-surface), 0.8);
   border: 1px solid rgba(var(--border-light), 0.5);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 10px 14px;
   font-size: 14px;
   color: rgb(var(--fg-primary));
@@ -1937,7 +2012,7 @@ summary,
 
 .kairos-modal-content {
   background: rgb(var(--bg-primary));
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(var(--border-light), 0.3);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
   animation: kairos-modal-enter 0.3s cubic-bezier(0.22, 1, 0.36, 1);
@@ -1985,7 +2060,7 @@ summary,
 
 .kairos-chat-response code {
   background: rgba(var(--bg-tertiary), 0.8);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 0.15em 0.4em;
   font-size: 0.9em;
   font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
@@ -1993,7 +2068,7 @@ summary,
 
 .kairos-chat-response pre {
   background: rgba(var(--bg-tertiary), 0.8);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 0.75em 1em;
   overflow-x: auto;
   margin: 0.5em 0;
@@ -2093,7 +2168,7 @@ summary,
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: rgb(var(--accent-primary) / 0.06);
   border: 1px solid rgb(var(--accent-primary) / 0.12);
   font-size: 12px;
@@ -3408,7 +3483,7 @@ input[type="search"]::-webkit-search-results-decoration {
   align-items: flex-start;
   gap: 0.5625rem;
   padding: 0.625rem 0.6875rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   background: rgb(var(--bg-elevated));
   color: rgb(var(--fg-primary));
   font-size: 0.8125rem;
@@ -3433,7 +3508,7 @@ input[type="search"]::-webkit-search-results-decoration {
   width: 1.125rem;
   height: 1.125rem;
   margin-top: 0.0625rem;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   display: grid;
   place-items: center;
   color: var(--toast-rule);
@@ -3799,7 +3874,7 @@ input[type="search"]::-webkit-search-results-decoration {
   transform: translateY(-50%);
   z-index: 50; /* above the rail (z-40), below modals */
   padding: 0.3125rem 0.5rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   background: rgb(var(--bg-elevated));
   color: rgb(var(--fg-primary));
   font-size: 0.75rem;

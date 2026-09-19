@@ -99,11 +99,11 @@ export function toEventDetailInput(
 }
 
 const FIELD =
-  "w-full bg-transparent border-none focus:ring-0 text-sm dark:placeholder-gray-500 placeholder-slate-400 dark:text-gray-200 text-slate-800";
+  "w-full bg-transparent border-none focus:ring-0 text-sm placeholder:text-fg-tertiary text-fg-primary";
 const SHELL =
-  "flex items-center gap-2.5 dark:bg-white/5 bg-slate-50 rounded-xl p-3 border dark:border-accent-primary/20 border-slate-200 focus-within:border-accent-primary focus-within:ring-1 focus-within:ring-accent-primary/40 transition-all";
+  "flex items-center gap-2.5 bg-bg-secondary rounded-xl p-3 border dark:border-accent-primary/20 border-border-medium focus-within:border-accent-primary focus-within:ring-1 focus-within:ring-accent-primary/40 transition-all";
 const LABEL =
-  "block text-[10px] font-bold dark:text-gray-500 text-slate-500 uppercase tracking-[0.15em] mb-1.5";
+  "block text-[10px] font-bold text-fg-tertiary uppercase tracking-[0.15em] mb-1.5";
 
 /** The co-host picker, over people you already share a workspace with. */
 function CoHostPicker({
@@ -159,7 +159,7 @@ function CoHostPicker({
         {chosen.map((person) => (
           <span
             key={person.id}
-            className="flex items-center gap-1.5 rounded-full bg-accent-primary/10 py-1 pl-1 pr-2 text-xs text-accent-primary"
+            className="flex items-center gap-1.5 rounded-sm bg-accent-primary/10 py-1 pl-1 pr-2 text-xs text-accent-primary"
           >
             <PersonAvatar name={person.name} image={person.image} size="sm" />
             <span className="max-w-[120px] truncate">{person.name}</span>
@@ -180,20 +180,20 @@ function CoHostPicker({
           onClick={() => setOpen((value) => !value)}
           disabled={disabled}
           aria-expanded={open}
-          className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-dashed border-slate-300 text-slate-400 transition-all hover:border-accent-primary hover:text-accent-primary dark:border-gray-700 dark:text-gray-500"
+          className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-dashed border-border-strong text-fg-quaternary transition-all hover:border-accent-primary hover:text-accent-primary"
         >
           <Plus size={18} />
         </button>
 
         {chosen.length === 0 && !open && (
-          <span className="text-xs font-medium text-slate-400 dark:text-gray-500">
+          <span className="text-xs font-medium text-fg-quaternary">
             {t("addGuestHosts")}
           </span>
         )}
       </div>
 
       {open && (
-        <div className="mt-2 max-h-44 overflow-y-auto rounded-xl border border-slate-200 dark:border-white/10">
+        <div className="mt-2 max-h-44 overflow-y-auto rounded-xl border border-border-medium">
           {people.length === 0 ? (
             <p className="p-3 text-xs text-fg-tertiary">{t("noCoHostOptions")}</p>
           ) : (
@@ -205,7 +205,7 @@ function CoHostPicker({
                     <button
                       type="button"
                       onClick={() => toggle(person.id)}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/5"
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-bg-secondary"
                     >
                       <PersonAvatar
                         name={person.name}
@@ -346,7 +346,7 @@ export function EventDetailFields({
                 className={`kairos-mono rounded-lg px-2.5 py-1.5 text-[11px] transition-colors ${
                   active
                     ? "bg-accent-primary/15 font-semibold text-accent-primary ring-1 ring-inset ring-accent-primary/30"
-                    : "bg-slate-100 text-fg-secondary hover:text-fg-primary dark:bg-white/5"
+                    : "bg-bg-tertiary text-fg-secondary hover:text-fg-primary"
                 }`}
               >
                 {t(`topics.${candidate}`)}
@@ -374,10 +374,10 @@ export function EventDetailFields({
             disabled={disabled}
             aria-pressed={values.coverTheme === null}
             title={t("coverAuto")}
-            className={`kairos-mono h-9 rounded-lg px-3 text-[11px] transition-colors ${
+            className={`kairos-mono h-control-md rounded-lg px-3 text-[11px] transition-colors ${
               values.coverTheme === null
                 ? "bg-accent-primary/15 font-semibold text-accent-primary ring-1 ring-inset ring-accent-primary/30"
-                : "bg-slate-100 text-fg-secondary hover:text-fg-primary dark:bg-white/5"
+                : "bg-bg-tertiary text-fg-secondary hover:text-fg-primary"
             }`}
           >
             {t("coverAuto")}

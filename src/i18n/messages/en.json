@@ -2702,22 +2702,31 @@
   },
   "errors": {
     "app": {
-      "title": "This page ran into a problem",
-      "body": "The rest of the app is fine — your navigation is still there. Try again, or head back to the dashboard.",
+      "title": "Something broke on our side.",
+      "body": "Nothing you did. Retry the page, or head back to your workspace.",
       "retry": "Try again",
-      "dashboard": "Back to dashboard"
+      "dashboard": "Back to workspace",
+      "eyebrow": "Error · 500"
     },
     "root": {
-      "title": "Something went wrong",
-      "body": "An unexpected error occurred. Try again, or go back to the home page.",
+      "title": "Something broke on our side.",
+      "body": "Nothing you did. Retry the page, or head back to your workspace.",
       "retry": "Try again",
-      "home": "Go home"
+      "home": "Back to workspace",
+      "eyebrow": "Error · 500"
     },
     "notFound": {
       "title": "Page not found",
       "body": "Sorry, the page you are looking for does not exist.",
-      "home": "Go home"
-    }
+      "home": "Go home",
+      "eyebrow": "404 · Not found"
+    },
+    "loading": {
+      "eyebrow": "Loading",
+      "title": "One moment."
+    },
+    "digestCopy": "Digest {digest} · Copy for support",
+    "digestCopied": "Digest {digest} · Copied for support"
   },
   "notifications": {
     "title": "Notifications",

@@ -151,7 +151,7 @@ export function RecoverClient({ noteId }: { noteId: string }) {
             {error && (
               <div
                 role="alert"
-                className="calendar-pop mb-4 flex items-start gap-2 rounded-[10px] border border-error/30 bg-error/[0.06] p-3.5"
+                className="calendar-pop mb-4 flex items-start gap-2 rounded-md border border-error/30 bg-error/[0.06] p-3.5"
               >
                 <AlertCircle size={14} className="mt-0.5 flex-shrink-0 text-error" />
                 <p className="text-[12.5px] leading-relaxed text-fg-secondary">{error}</p>
@@ -233,7 +233,7 @@ export function RecoverClient({ noteId }: { noteId: string }) {
 
             {/* The tip, without the emoji, on the same calm block the dialogs
                 use for a fact worth reading before the button. */}
-            <div className="mt-4 rounded-[10px] border border-border-light/70 bg-bg-secondary p-3.5">
+            <div className="mt-4 rounded-md border border-border-light/70 bg-bg-secondary p-3.5">
               <p className="text-[12.5px] font-bold tracking-[-0.005em] text-fg-secondary">
                 {t("tipLabel")}
               </p>

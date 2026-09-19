@@ -385,7 +385,7 @@ export function A1ChatWidgetOverlay(props: {
        * animation and the collapse/expand height transition. Both live in
        * globals.css, where the reduced-motion override can reach them.
        */
-      className="kairos-menu-surface kairos-ai-widget fixed z-50 flex flex-col overflow-hidden rounded-2xl"
+      className="kairos-menu-surface kairos-ai-widget fixed z-50 flex flex-col overflow-hidden rounded-xl"
       data-interacting={interacting}
       style={panelStyle}
       onPointerDown={handlePointerDown}
@@ -432,7 +432,7 @@ export function A1ChatWidgetOverlay(props: {
                   setClearKey((k) => k + 1);
                   setConfirmClear(false);
                 }}
-                className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-red-400 transition-colors hover:bg-red-500/15"
+                className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-status-danger-ink transition-colors hover:bg-status-danger-surface"
                 aria-label={tChat("deleteAndStartOver")}
                 title={tChat("deleteAndStartOver")}
               >
@@ -473,7 +473,7 @@ export function A1ChatWidgetOverlay(props: {
                   type="button"
                   data-testid="widget-clear"
                   onClick={() => setConfirmClear(true)}
-                  className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-red-500/15 hover:text-red-400"
+                  className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-status-danger-surface hover:text-status-danger-ink"
                   aria-label={tChat("newChatTooltip")}
                   title={tChat("newChatTooltip")}
                 >
@@ -515,7 +515,7 @@ export function A1ChatWidgetOverlay(props: {
                   setOpen(false);
                   setMinimised(false);
                 }}
-                className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-red-500/15 hover:text-red-400"
+                className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-status-danger-surface hover:text-status-danger-ink"
                 aria-label={tCommon("close")}
               >
                 <X className="h-3.5 w-3.5" />

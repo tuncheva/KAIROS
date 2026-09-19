@@ -39,7 +39,7 @@ export function ToolInspector({ agent, used, canAddCustomTools }: Props) {
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       {used.length > 0 && (
-        <section className="border-b border-slate-200 p-3 dark:border-white/[0.06]">
+        <section className="border-b border-border-medium p-3">
           <h4 className="pb-2 text-xs font-semibold uppercase tracking-wide text-fg-tertiary">
             {t("usedThisTurn", { count: used.length })}
           </h4>
@@ -52,7 +52,7 @@ export function ToolInspector({ agent, used, canAddCustomTools }: Props) {
                 <span className="w-4 shrink-0 text-right text-fg-tertiary">
                   {i + 1}
                 </span>
-                <code className="rounded bg-bg-secondary px-1.5 py-0.5 font-mono">
+                <code className="rounded-sm bg-bg-secondary px-1.5 py-0.5 font-mono">
                   {name}
                 </code>
               </li>
@@ -128,11 +128,11 @@ export function ToolInspector({ agent, used, canAddCustomTools }: Props) {
         that, where an absent control just looks like the feature was never
         considered.
       */}
-      <section className="mt-auto border-t border-slate-200 p-3 dark:border-white/[0.06]">
+      <section className="mt-auto border-t border-border-medium p-3">
         <button
           type="button"
           disabled
-          className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-xs font-medium text-fg-tertiary dark:border-white/[0.12]"
+          className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-dashed border-border-strong px-3 py-2 text-xs font-medium text-fg-tertiary"
         >
           {canAddCustomTools ? (
             <Plus className="h-3.5 w-3.5" />

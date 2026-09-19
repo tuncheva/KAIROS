@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Plus, X } from "~/components/ui/icons";
+import { ModalDismiss } from "~/components/ui/Modal";
+import { Plus } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
@@ -62,7 +63,7 @@ function PillGroup<T extends string>({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(option.key)}
-            className={`rounded-[9px] border px-2.5 py-[11px] text-[13px] font-medium transition-colors duration-300 ${
+            className={`rounded-sm border px-2.5 py-[11px] text-[13px] font-medium transition-colors duration-300 ${
               active
                 ? "border-accent-primary/55 bg-accent-primary/[0.14] text-fg-primary"
                 : "border-border-light/60 bg-transparent text-fg-tertiary hover:border-border-strong/60 hover:text-fg-secondary"
@@ -77,7 +78,7 @@ function PillGroup<T extends string>({
 }
 
 const FIELD =
-  "rounded-[9px] border border-border-light/60 bg-bg-tertiary px-3.5 text-fg-primary outline-none transition-colors duration-300 placeholder:text-fg-quaternary focus:border-accent-primary/60";
+  "rounded-sm border border-border-light/60 bg-bg-tertiary px-3.5 text-fg-primary outline-none transition-colors duration-300 placeholder:text-fg-quaternary focus:border-accent-primary/60";
 
 /**
  * The "New project" affordance: a button in the topbar and the drawer it opens.
@@ -242,17 +243,10 @@ export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolea
             }`}
           >
             <div className="flex items-center justify-between gap-4 border-b border-border-light/50 px-[26px] py-5">
-              <h2 id={titleId} className="m-0 text-[17px] font-semibold tracking-[-0.01em] text-fg-primary">
+              <h2 id={titleId} className="m-0 font-display text-[19px] leading-tight font-normal text-fg-primary">
                 {t("title")}
               </h2>
-              <button
-                type="button"
-                onClick={close}
-                aria-label={t("close")}
-                className="flex h-[30px] w-[30px] items-center justify-center rounded-[7px] border border-border-light/70 text-fg-tertiary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
-              >
-                <X size={15} aria-hidden />
-              </button>
+              <ModalDismiss onDismiss={close} label={t("close")} />
             </div>
 
             <form
@@ -336,14 +330,14 @@ export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolea
                 <button
                   type="button"
                   onClick={close}
-                  className="rounded-[9px] border border-border-light/70 px-[18px] py-3 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
+                  className="rounded-sm border border-border-light/70 px-[18px] py-3 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
                 >
                   {t("cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={!canSubmit}
-                  className="flex-1 rounded-[9px] bg-accent-primary px-[18px] py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-px hover:bg-accent-hover disabled:pointer-events-none disabled:opacity-50"
+                  className="flex-1 rounded-sm bg-accent-primary px-[18px] py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-px hover:bg-accent-hover disabled:pointer-events-none disabled:opacity-50"
                 >
                   {pending ? t("creating") : t("submit")}
                 </button>

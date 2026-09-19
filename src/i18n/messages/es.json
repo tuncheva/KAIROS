@@ -1295,11 +1295,14 @@
   },
   "errors": {
     "app": {
-      "title": "Esta página tuvo un problema",
-      "body": "El resto de la aplicación está bien: tu navegación sigue ahí. Inténtalo de nuevo o vuelve al panel.",
+      "title": "Algo se rompió de nuestro lado.",
+      "body": "No fue culpa tuya. Vuelve a intentarlo o regresa a tu espacio de trabajo.",
       "retry": "Inténtalo de nuevo",
-      "dashboard": "Volver al panel"
-    }
+      "dashboard": "Volver al espacio de trabajo",
+      "eyebrow": "Error · 500"
+    },
+    "digestCopy": "Resumen {digest} · Copiar para soporte",
+    "digestCopied": "Resumen {digest} · Copiado para soporte"
   },
   "onboardingSheet": {
     "eyebrow": "Kairos · Ayuda",

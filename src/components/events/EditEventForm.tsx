@@ -229,8 +229,8 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col max-h-[90dvh]">
       {/* Modal Header */}
-      <div className="px-6 py-4 border-b dark:border-white/5 border-slate-200 flex items-center justify-between shrink-0">
-        <h2 className="text-lg font-display font-bold dark:text-white text-slate-900 tracking-tight">{t("edit.title")}</h2>
+      <div className="px-6 py-4 border-b border-border-medium flex items-center justify-between shrink-0">
+        <h2 className="text-lg font-display font-bold text-fg-primary tracking-tight">{t("edit.title")}</h2>
         {onClose && (
           <button
             type="button"
@@ -251,7 +251,7 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
           onChange={(e) => setTitle(e.target.value)}
           placeholder={t("titlePlaceholder")}
           maxLength={256}
-          className="w-full text-xl sm:text-2xl font-bold font-display dark:text-white text-slate-900 dark:placeholder-gray-600 placeholder-slate-300 border-none focus:ring-0 px-0 bg-transparent"
+          className="w-full text-xl sm:text-2xl font-bold font-display text-fg-primary placeholder:text-fg-quaternary border-none focus:ring-0 px-0 bg-transparent"
           disabled={updateEvent.isPending || isUploading}
           required
         />
@@ -260,7 +260,7 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
         <div className="space-y-3">
           {/* Region */}
           <div>
-            <label className="block text-[10px] font-bold dark:text-gray-500 text-slate-500 uppercase tracking-[0.15em] mb-1.5">
+            <label className="block text-[10px] font-bold text-fg-tertiary uppercase tracking-[0.15em] mb-1.5">
               <MapPin className="inline mr-1 text-accent-primary" size={10} />
               {t("region")}
             </label>
@@ -272,12 +272,12 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
               <select
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
-                className="w-full pl-8 pr-8 py-2.5 dark:bg-white/5 bg-slate-50 rounded-xl text-sm dark:text-gray-200 text-slate-800 dark:border-accent-primary/20 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-accent-primary/40 focus:border-accent-primary appearance-none cursor-pointer transition-all"
+                className="w-full pl-8 pr-8 py-2.5 bg-bg-secondary rounded-xl text-sm text-fg-primary dark:border-accent-primary/20 border border-border-medium focus:outline-none focus:ring-1 focus:ring-accent-primary/40 focus:border-accent-primary appearance-none cursor-pointer transition-all"
                 disabled={updateEvent.isPending || isUploading}
                 required
               >
                 {REGIONS.map((r) => (
-                  <option key={r.value} value={r.value} className="dark:bg-[#16151A] bg-white dark:text-gray-200 text-slate-800">
+                  <option key={r.value} value={r.value} className="bg-bg-elevated text-fg-primary">
                     {r.label}
                   </option>
                 ))}
@@ -291,37 +291,37 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
 
           {/* Date & Time grid */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-2.5 dark:bg-white/5 bg-slate-50 rounded-xl p-3 border dark:border-accent-primary/20 border-slate-200 focus-within:border-accent-primary focus-within:ring-1 focus-within:ring-accent-primary/40 transition-all">
+            <div className="flex items-center gap-2.5 bg-bg-secondary rounded-xl p-3 border dark:border-accent-primary/20 border-border-medium focus-within:border-accent-primary focus-within:ring-1 focus-within:ring-accent-primary/40 transition-all">
               <Calendar size={16} className="text-accent-primary shrink-0" />
               <input
                 type="date"
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
-                className="w-full bg-transparent border-none focus:ring-0 text-sm dark:placeholder-gray-500 placeholder-slate-400 dark:text-gray-200 text-slate-800 dark:[color-scheme:dark]"
+                className="w-full bg-transparent border-none focus:ring-0 text-sm placeholder:text-fg-tertiary text-fg-primary dark:[color-scheme:dark]"
                 disabled={updateEvent.isPending || isUploading}
                 required
               />
             </div>
-            <div className="flex items-center gap-2.5 dark:bg-white/5 bg-slate-50 rounded-xl p-3 border dark:border-accent-primary/20 border-slate-200 focus-within:border-accent-primary focus-within:ring-1 focus-within:ring-accent-primary/40 transition-all">
+            <div className="flex items-center gap-2.5 bg-bg-secondary rounded-xl p-3 border dark:border-accent-primary/20 border-border-medium focus-within:border-accent-primary focus-within:ring-1 focus-within:ring-accent-primary/40 transition-all">
               <Clock size={16} className="text-accent-primary shrink-0" />
               <input
                 type="time"
                 value={eventTime}
                 onChange={(e) => setEventTime(e.target.value)}
-                className="w-full bg-transparent border-none focus:ring-0 text-sm dark:placeholder-gray-500 placeholder-slate-400 dark:text-gray-200 text-slate-800 dark:[color-scheme:dark]"
+                className="w-full bg-transparent border-none focus:ring-0 text-sm placeholder:text-fg-tertiary text-fg-primary dark:[color-scheme:dark]"
                 disabled={updateEvent.isPending || isUploading}
               />
             </div>
           </div>
 
           {/* Description */}
-          <div className="dark:bg-white/5 bg-slate-50 rounded-xl p-3 border dark:border-accent-primary/20 border-slate-200 focus-within:border-accent-primary focus-within:ring-1 focus-within:ring-accent-primary/40 transition-all">
+          <div className="bg-bg-secondary rounded-xl p-3 border dark:border-accent-primary/20 border-border-medium focus-within:border-accent-primary focus-within:ring-1 focus-within:ring-accent-primary/40 transition-all">
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t("descriptionPlaceholder")}
               rows={3}
-              className="w-full bg-transparent border-none focus:ring-0 text-sm resize-none dark:placeholder-gray-500 placeholder-slate-400 dark:text-gray-200 text-slate-800 leading-relaxed"
+              className="w-full bg-transparent border-none focus:ring-0 text-sm resize-none placeholder:text-fg-tertiary text-fg-primary leading-relaxed"
               disabled={updateEvent.isPending || isUploading}
               required
             />
@@ -362,9 +362,9 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
               type="checkbox"
               checked={enableRsvp}
               onChange={(e) => setEnableRsvp(e.target.checked)}
-              className="w-3.5 h-3.5 rounded dark:bg-white/5 bg-slate-100 text-accent-primary focus:ring-accent-primary/30 cursor-pointer border-accent-primary/20"
+              className="w-3.5 h-3.5 rounded-sm bg-bg-tertiary text-accent-primary focus:ring-accent-primary/30 cursor-pointer border-accent-primary/20"
             />
-            <span className="text-xs dark:text-gray-400 text-slate-600">{t("enableRsvp")}</span>
+            <span className="text-xs text-fg-secondary">{t("enableRsvp")}</span>
           </label>
           {enableRsvp && (
             <label className="flex items-center gap-2 cursor-pointer">
@@ -372,16 +372,16 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
                 type="checkbox"
                 checked={sendReminders}
                 onChange={(e) => setSendReminders(e.target.checked)}
-                className="w-3.5 h-3.5 rounded dark:bg-white/5 bg-slate-100 text-accent-primary focus:ring-accent-primary/30 cursor-pointer border-accent-primary/20"
+                className="w-3.5 h-3.5 rounded-sm bg-bg-tertiary text-accent-primary focus:ring-accent-primary/30 cursor-pointer border-accent-primary/20"
               />
-              <span className="text-xs dark:text-gray-400 text-slate-600">{t("sendReminders")}</span>
+              <span className="text-xs text-fg-secondary">{t("sendReminders")}</span>
             </label>
           )}
         </div>
       </div>
 
       {/* Modal Footer */}
-      <div className="px-6 py-4 dark:bg-white/[0.02] bg-accent-primary/[0.02] border-t dark:border-white/5 border-slate-200 flex items-center justify-between shrink-0">
+      <div className="px-6 py-4 dark:bg-white/[0.02] bg-accent-primary/[0.02] border-t border-border-medium flex items-center justify-between shrink-0">
         <div className="flex gap-2">
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-accent-primary dark:hover:bg-white/5 hover:bg-accent-primary/5 transition-all cursor-pointer group">
             <ImagePlus size={16} className="text-accent-primary" />

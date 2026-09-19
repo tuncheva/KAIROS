@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { ModalDismiss } from "~/components/ui/Modal";
 import { createPortal } from "react-dom";
 import { useLocale, useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
@@ -24,7 +25,6 @@ import {
   Heart,
   Loader2,
   MessageCircle,
-  X,
 } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
@@ -48,7 +48,7 @@ export function EventProgressButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary dark:border-white/10 dark:bg-white/5"
+        className="flex h-control-md shrink-0 items-center gap-2 rounded-lg border border-border-medium bg-bg-elevated px-3 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
       >
         <BarChart3 size={14} className="text-accent-primary" />
         <span className="hidden sm:inline">{t("eventProgress")}</span>
@@ -111,23 +111,16 @@ function EventProgressDialog({ onClose }: { onClose: () => void }) {
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className="dash-rise flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:rounded-2xl dark:border-white/10 dark:bg-[#0e0e14]"
+        className="dash-rise flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-xl border border-border-medium bg-bg-overlay shadow-2xl sm:rounded-lg"
       >
-        <header className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-white/[0.06]">
+        <header className="flex items-center justify-between gap-3 border-b border-border-light px-5 py-4">
           <span className="flex flex-col">
             <h2 className="text-[15px] font-semibold text-fg-primary">
               {t("eventProgress")}
             </h2>
             <Stamp className="tracking-[0.14em]">{t("progressScope")}</Stamp>
           </span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t("close")}
-            className="rounded-full p-1.5 text-fg-tertiary transition-colors hover:bg-slate-100 hover:text-fg-primary dark:hover:bg-white/10"
-          >
-            <X size={16} />
-          </button>
+          <ModalDismiss onDismiss={onClose} label={t("close")} />
         </header>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
@@ -202,7 +195,7 @@ function EventProgressDialog({ onClose }: { onClose: () => void }) {
                             </span>
                           )}
                         </div>
-                        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
+                        <div className="h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
                           <div
                             className="h-full rounded-full bg-accent-primary transition-all duration-500"
                             style={{ width: `${percent}%` }}

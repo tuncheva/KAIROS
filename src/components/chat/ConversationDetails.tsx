@@ -67,7 +67,7 @@ export function ConversationDetails({
       aria-label={t("details")}
     >
       <div className="flex items-center gap-2 px-4 py-3.5 border-b border-border-light/40 flex-none">
-        <h2 className="flex-1 text-base font-bold text-fg-primary">{t("details")}</h2>
+        <h2 className="flex-1 font-display text-[18px] leading-tight font-normal text-fg-primary">{t("details")}</h2>
         <button
           type="button"
           onClick={onClose}
@@ -93,7 +93,7 @@ export function ConversationDetails({
 
         {isLoading ? (
           <div className="px-4 py-5 space-y-3" aria-hidden="true">
-            <div className="h-3 w-1/3 rounded bg-bg-secondary animate-pulse" />
+            <div className="h-3 w-1/3 rounded-sm bg-bg-secondary animate-pulse" />
             <div className="h-10 rounded-lg bg-bg-secondary animate-pulse" />
             <div className="h-10 rounded-lg bg-bg-secondary animate-pulse" />
           </div>

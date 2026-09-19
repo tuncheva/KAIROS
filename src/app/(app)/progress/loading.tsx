@@ -1,24 +1,20 @@
+import { Skeleton, SkeletonCards, SkeletonTopBar } from "~/components/ui/Skeleton";
+
 export default function ProgressLoading() {
   return (
     <div className="min-h-dvh bg-bg-primary">
-      <div className="rail-offset min-h-dvh flex flex-col kairos-topbar-gap">
-        <header className="sticky top-16 lg:top-0 z-30 topbar-solid">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="h-7 w-28 bg-bg-secondary rounded animate-pulse" />
-              <div className="h-8 w-32 bg-bg-secondary rounded-lg animate-pulse" />
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-bg-secondary rounded-full animate-pulse" />
-              <div className="h-8 w-8 bg-bg-secondary rounded-full animate-pulse" />
-            </div>
-          </div>
+      <div className="rail-offset kairos-topbar-gap flex min-h-dvh flex-col">
+        <header className="topbar-solid sticky top-16 z-30 lg:top-0">
+          <SkeletonTopBar
+            className="mx-auto max-w-7xl px-4 py-3 sm:px-6 sm:py-4 md:px-8"
+            titleClassName="h-7 w-28"
+          >
+            <Skeleton className="h-8 w-32" shape="md" />
+          </SkeletonTopBar>
         </header>
-        <main className="flex-1 w-full overflow-auto p-6">
-          <div className="max-w-7xl mx-auto space-y-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-24 bg-bg-secondary rounded-xl animate-pulse" />
-            ))}
+        <main className="w-full flex-1 overflow-auto p-6">
+          <div className="mx-auto max-w-7xl space-y-4">
+            <SkeletonCards count={5} className="h-24" />
           </div>
         </main>
       </div>

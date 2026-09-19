@@ -1,31 +1,29 @@
+import { Skeleton, SkeletonCards } from "~/components/ui/Skeleton";
+
 export default function SettingsLoading() {
   return (
     <div className="min-h-dvh bg-bg-primary">
-      <div className="rail-offset min-h-dvh flex flex-col">
-        <header className="sticky top-0 z-30 bg-bg-primary/95 backdrop-blur-md border-b border-border-light px-4 sm:px-6 py-4">
-          <div className="flex justify-between items-center">
+      <div className="rail-offset flex min-h-dvh flex-col">
+        <header className="sticky top-0 z-30 border-b border-border-light bg-bg-primary/95 px-4 py-4 backdrop-blur-md sm:px-6">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-bg-secondary rounded-lg animate-pulse" />
+              <Skeleton className="h-8 w-8" shape="md" />
               <div className="space-y-1">
-                <div className="h-6 w-24 bg-bg-secondary rounded animate-pulse" />
-                <div className="h-3 w-40 bg-bg-secondary rounded animate-pulse" />
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-3 w-40" />
               </div>
             </div>
-            <div className="h-8 w-8 bg-bg-secondary rounded-full animate-pulse" />
+            <Skeleton className="h-8 w-8" shape="circle" />
           </div>
         </header>
-        <div className="flex-1 flex overflow-hidden">
-          <aside className="hidden md:block w-64 border-r border-border-light p-4 space-y-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-9 bg-bg-secondary rounded-lg animate-pulse" />
-            ))}
+        <div className="flex flex-1 overflow-hidden">
+          <aside className="hidden w-64 space-y-2 border-r border-border-light p-4 md:block">
+            <SkeletonCards count={6} className="h-control-md" />
           </aside>
-          <main className="flex-1 p-6 space-y-6">
-            <div className="h-8 w-48 bg-bg-secondary rounded animate-pulse" />
+          <main className="flex-1 space-y-6 p-6">
+            <Skeleton className="h-8 w-48" />
             <div className="space-y-4">
-              <div className="h-12 bg-bg-secondary rounded-lg animate-pulse" />
-              <div className="h-12 bg-bg-secondary rounded-lg animate-pulse" />
-              <div className="h-12 bg-bg-secondary rounded-lg animate-pulse" />
+              <SkeletonCards count={3} className="h-12" />
             </div>
           </main>
         </div>

@@ -2,6 +2,7 @@
 
 import { Download } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
+import { Stamp } from "./chatUi";
 
 import type { TrailEvent, TrailKind } from "./trail";
 
@@ -36,9 +37,9 @@ export function TurnTrailPanel({ events, running }: Props) {
     start: "bg-accent-primary",
     tool: "bg-fg-tertiary/60",
     handoff: "bg-accent-secondary",
-    draft: "bg-cyan-400 shadow-[0_0_0_4px_rgb(34_211_238/0.14)]",
-    done: "bg-emerald-400",
-    error: "bg-red-400",
+    draft: "bg-accent-primary shadow-[0_0_0_4px_rgb(var(--accent-primary)/0.14)]",
+    done: "bg-status-success-ink",
+    error: "bg-status-danger-ink",
   };
 
   const turns = groupByTurn(events);
@@ -69,9 +70,9 @@ export function TurnTrailPanel({ events, running }: Props) {
                       "Turn 3" alone tells a user nothing about which question
                       the group belongs to. */}
                   <div className="flex items-baseline gap-2 pb-2.5">
-                    <span className="kairos-stamp shrink-0 text-[10px] text-fg-tertiary">
+                    <Stamp className="shrink-0">
                       {t("trailTurnHeading", { index: turn.index })}
-                    </span>
+                    </Stamp>
                     {turn.prompt && (
                       <span className="truncate text-[11px] text-fg-tertiary/80">
                         {turn.prompt}
@@ -108,9 +109,9 @@ export function TurnTrailPanel({ events, running }: Props) {
                               <span
                                 className={`text-[13px] font-semibold ${
                                   event.kind === "draft"
-                                    ? "text-cyan-300"
+                                    ? "text-accent-primary"
                                     : event.kind === "error"
-                                      ? "text-red-400"
+                                      ? "text-status-danger-ink"
                                       : "text-fg-primary"
                                 }`}
                               >

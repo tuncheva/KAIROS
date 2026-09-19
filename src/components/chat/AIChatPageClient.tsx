@@ -22,7 +22,7 @@ import { useEntitlement } from "~/hooks/useEntitlements";
 import { api } from "~/trpc/react";
 
 import { ComposerMenu } from "./ComposerMenu";
-import { ConversationsRail } from "./ConversationsRail";
+import { AiThreadRail } from "./AiThreadRail";
 import { DocumentsPanel } from "./DocumentsPanel";
 import { TurnTrailPanel } from "./TurnTrailPanel";
 import type { TrailEvent } from "./trail";
@@ -247,7 +247,7 @@ export function AIChatPageClient() {
     <div className="flex h-full min-h-0 w-full">
       {railOpen && (
         <div className="hidden lg:flex">
-          <ConversationsRail
+          <AiThreadRail
             conversations={conversations}
             loading={conversationsQuery.isLoading}
             activeId={activeId}
@@ -268,7 +268,7 @@ export function AIChatPageClient() {
                 onClick={() => setRailOpen(true)}
                 title={t("showConversations")}
                 aria-label={t("showConversations")}
-                className="hidden items-center gap-2 rounded-[7px] border border-border-medium/70 px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-bg-tertiary lg:flex"
+                className="hidden items-center gap-2 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-bg-tertiary lg:flex"
               >
                 <PanelLeftOpen className="h-[15px] w-[15px]" />
                 <span className="kairos-stamp text-[10px]">
@@ -282,7 +282,7 @@ export function AIChatPageClient() {
             </h1>
 
             {scopeProject && (
-              <span className="kairos-stamp hidden shrink-0 rounded-[5px] border border-border-medium/70 px-2 py-1 text-[10px] text-fg-tertiary sm:inline">
+              <span className="kairos-stamp hidden shrink-0 rounded-sm border border-border-medium/70 px-2 py-1 text-[10px] text-fg-tertiary sm:inline">
                 {scopeProject.title}
               </span>
             )}
@@ -297,7 +297,7 @@ export function AIChatPageClient() {
                 setConfirmDelete(true);
               }}
               disabled={!activeId}
-              className="kairos-stamp flex items-center gap-1.5 rounded-[7px] border border-border-medium/70 px-2.5 py-1.5 text-[10px] text-fg-secondary transition-colors hover:border-red-400/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
+              className="kairos-stamp flex items-center gap-1.5 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-[10px] text-fg-secondary transition-colors hover:border-status-danger-border hover:text-status-danger-ink disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Trash2 className="h-3 w-3" />
               <span className="hidden sm:inline">{t("delete")}</span>
@@ -386,8 +386,8 @@ export function AIChatPageClient() {
           aria-modal="true"
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
         >
-          <div className="w-full max-w-md rounded-2xl border border-border-medium bg-bg-primary p-6 shadow-2xl">
-            <h2 className="text-lg font-bold text-fg-primary">
+          <div className="w-full max-w-md rounded-xl border border-border-medium bg-bg-primary p-6 shadow-2xl">
+            <h2 className="font-display text-[19px] leading-tight font-normal text-fg-primary">
               {tChat("deleteChatTitle")}
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-fg-secondary">
@@ -395,7 +395,7 @@ export function AIChatPageClient() {
             </p>
 
             {deleteError && (
-              <p className="mt-3 text-sm text-red-400">
+              <p className="mt-3 text-sm text-status-danger-ink">
                 {tChat("deleteChatFailed")} {deleteError}
               </p>
             )}
@@ -416,7 +416,7 @@ export function AIChatPageClient() {
                 data-testid="delete-conversation-confirm"
                 onClick={() => void deleteActiveThread()}
                 disabled={deleteConversation.isPending}
-                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                className="rounded-lg border border-status-danger-border bg-status-danger-surface px-4 py-2 text-sm font-medium text-status-danger-ink transition-colors hover:border-status-danger-ink disabled:opacity-50"
               >
                 {deleteConversation.isPending
                   ? tChat("deleting")

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { ModalDismiss } from "~/components/ui/Modal";
 import Link from "next/link";
 import {
   Check,
@@ -9,7 +10,6 @@ import {
   Pencil,
   SquareArrowOutUpRight,
   Trash2,
-  X,
 } from "~/components/ui/icons";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
@@ -110,14 +110,7 @@ export function CalendarDrawer({ state, onClose, onCreated, onChanged, onDeleted
             >
               {state.mode === "detail" ? t(KIND_LABEL_KEYS[state.item.kind]) : t("newTitle")}
             </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={t("close")}
-              className="flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
-            >
-              <X size={14} />
-            </button>
+            <ModalDismiss onDismiss={onClose} label={t("close")} />
           </div>
 
           {state.mode === "detail" ? (
@@ -515,14 +508,14 @@ function DetailPanel({
                         type="button"
                         onClick={remove}
                         disabled={busy}
-                        className="h-7 flex-1 rounded-md bg-error px-2 text-[11px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                        className="h-control-sm flex-1 rounded-md bg-error px-2 text-[11px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                       >
                         {t("deleteYes")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmDelete(false)}
-                        className="h-7 rounded-md border border-border-medium px-2 text-[11px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary"
+                        className="h-control-sm rounded-md border border-border-medium px-2 text-[11px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary"
                       >
                         {t("cancel")}
                       </button>

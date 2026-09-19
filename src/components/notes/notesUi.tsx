@@ -42,17 +42,17 @@ export const STAMP = "font-mono text-[9.5px] uppercase tracking-[0.1em] tabular-
    `DashboardClient` uses for its first-run action, which is the one primary
    button shape in the app that is not legacy. */
 export const BTN_ACCENT =
-  "inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] bg-accent-primary px-3.5 text-[13px] font-bold tracking-[-0.005em] text-white transition-all duration-[350ms] hover:-translate-y-[1.5px] hover:bg-accent-hover active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-accent-primary px-3.5 text-[13px] font-bold tracking-[-0.005em] text-white transition-all duration-[350ms] hover:-translate-y-[1.5px] hover:bg-accent-hover active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
 export const BTN_ACCENT_SQUARE =
-  "inline-grid h-8 w-8 place-items-center rounded-[10px] bg-accent-primary text-white transition-all duration-[350ms] hover:-translate-y-[1.5px] hover:bg-accent-hover active:translate-y-0";
+  "inline-grid h-8 w-8 place-items-center rounded-md bg-accent-primary text-white transition-all duration-[350ms] hover:-translate-y-[1.5px] hover:bg-accent-hover active:translate-y-0";
 export const BTN_GHOST =
-  "inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] border border-border-medium px-3.5 text-[13px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-border-medium px-3.5 text-[13px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary disabled:pointer-events-none disabled:opacity-50";
 export const BTN_DANGER =
-  "inline-flex h-8 items-center justify-center gap-1.5 rounded-[10px] bg-error px-3.5 text-[13px] font-bold text-white transition-all duration-[350ms] hover:-translate-y-[1.5px] hover:brightness-110 active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-error px-3.5 text-[13px] font-bold text-white transition-all duration-[350ms] hover:-translate-y-[1.5px] hover:brightness-110 active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
 
 /** `CalendarClient`'s 30px bordered square, for every icon-only control. */
 export const ICON_BTN =
-  "kairos-tap grid h-[30px] w-[30px] flex-none place-items-center rounded-[10px] border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary active:scale-95";
+  "kairos-tap grid h-[30px] w-[30px] flex-none place-items-center rounded-md border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary active:scale-95";
 /** The same shape without the border, for icon buttons packed into a header. */
 export const ICON_BTN_BARE =
   "kairos-tap grid h-7 w-7 flex-none place-items-center rounded-lg text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary active:scale-95";
@@ -74,9 +74,9 @@ export const CHIP_ON = "border-accent-primary/45 bg-accent-primary/10 text-accen
    Replaces `bg-bg-secondary rounded-lg focus:ring-2 focus:ring-accent-primary/35`,
    which had no border and therefore no shape when empty. */
 export const FIELD =
-  "flex h-[38px] items-center gap-2 rounded-[10px] border border-border-medium bg-bg-surface px-3 transition-colors focus-within:border-accent-primary/60 focus-within:bg-bg-elevated focus-within:ring-[3px] focus-within:ring-accent-primary/10";
+  "flex h-[38px] items-center gap-2 rounded-md border border-border-medium bg-bg-surface px-3 transition-colors focus-within:border-accent-primary/60 focus-within:bg-bg-elevated focus-within:ring-[3px] focus-within:ring-accent-primary/10";
 export const FIELD_TALL =
-  "flex items-start gap-2 rounded-[10px] border border-border-medium bg-bg-surface px-3 py-2.5 transition-colors focus-within:border-accent-primary/60 focus-within:bg-bg-elevated focus-within:ring-[3px] focus-within:ring-accent-primary/10";
+  "flex items-start gap-2 rounded-md border border-border-medium bg-bg-surface px-3 py-2.5 transition-colors focus-within:border-accent-primary/60 focus-within:bg-bg-elevated focus-within:ring-[3px] focus-within:ring-accent-primary/10";
 /** The input itself, inside a `FIELD`. */
 export const FIELD_INPUT =
   "min-w-0 flex-1 border-0 bg-transparent text-[13.5px] text-fg-primary outline-none placeholder:text-fg-quaternary";
@@ -224,7 +224,7 @@ export function Badge({
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-1 rounded border px-1.5 py-[1.5px] font-mono text-[9.5px] tracking-[0.12em] whitespace-nowrap uppercase ${tones[tone]}`}
+      className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-[1.5px] font-mono text-[9.5px] tracking-[0.12em] whitespace-nowrap uppercase ${tones[tone]}`}
     >
       {icon}
       {children}

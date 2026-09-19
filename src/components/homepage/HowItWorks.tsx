@@ -25,7 +25,7 @@ export function HowItWorks() {
                 {STEPS.map((step) => (
                     <div
                         key={step.n}
-                        className="k-block flex min-h-[300px] flex-col justify-between bg-[#0c0c12] px-8 pt-9 pb-9"
+                        className="k-block flex min-h-[300px] flex-col justify-between bg-bg-surface px-8 pt-9 pb-9"
                     >
                         <div className="flex items-start justify-between gap-4">
                             <div className="k-step-num font-display text-[72px] leading-none text-white/30">

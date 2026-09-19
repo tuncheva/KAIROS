@@ -265,7 +265,7 @@ export function CalendarTimeGrid({
 
             {showNowPill && (
               <span
-                className="absolute right-1.5 -translate-y-1/2 rounded-full bg-now-line px-[7px] py-[3.5px] text-[10px] font-semibold leading-none tabular-nums text-white ring-1 ring-bg-elevated shadow-[0_1px_4px_rgb(var(--now-line)/0.4)]"
+                className="absolute right-1.5 -translate-y-1/2 rounded-sm bg-now-line px-[7px] py-[3.5px] text-[10px] font-semibold leading-none tabular-nums text-white ring-1 ring-bg-elevated shadow-[0_1px_4px_rgb(var(--now-line)/0.4)]"
                 style={{ top: nowTop }}
               >
                 {toHm(now)}

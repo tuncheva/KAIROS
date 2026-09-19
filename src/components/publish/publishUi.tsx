@@ -13,6 +13,13 @@ import Image from "next/image";
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useEffect } from "react";
 import { AlertCircle, Check, X } from "~/components/ui/icons";
+import { Panel, TitledPanel } from "~/components/ui/Panel";
+import { Stamp } from "~/components/ui/Stamp";
+
+/* `Panel`, `TitledPanel` and `Stamp` now live in `components/ui`; re-exported
+   here so the publish panes, which import their whole vocabulary from this
+   file, do not each grow a second import line. */
+export { Panel, TitledPanel, Stamp };
 
 export function initialOf(name: string | null | undefined): string {
   return (name ?? "").trim().charAt(0).toUpperCase() || "?";
@@ -63,65 +70,6 @@ export function PersonAvatar({
   );
 }
 
-/** An uppercase mono label: section headings, meta rows, status chips. */
-export function Stamp({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <span className={`kairos-stamp text-[10px] text-fg-tertiary ${className}`}>
-      {children}
-    </span>
-  );
-}
-
-/** A card shell — one border radius and one surface for the whole page. */
-export function Panel({
-  children,
-  className = "",
-  padded = true,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  padded?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-xl border border-slate-200 bg-white dark:border-white/5 dark:bg-[#0e0e14] ${
-        padded ? "p-4" : ""
-      } ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
-
-/** A panel with its own titled header row. */
-export function TitledPanel({
-  title,
-  aside,
-  children,
-  className = "",
-}: {
-  title: string;
-  aside?: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <Panel padded={false} className={`overflow-hidden ${className}`}>
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3.5 py-3 dark:border-white/[0.06]">
-        <h2 className="text-[13px] font-semibold text-fg-primary">{title}</h2>
-        {aside}
-      </div>
-      {children}
-    </Panel>
-  );
-}
-
 /**
  * The rule between feed bands. `accent` marks the band you are meant to read
  * first; the other fades to a plain hairline so the two do not compete.
@@ -147,7 +95,7 @@ export function BandDivider({
         className={`h-px flex-1 ${
           accent
             ? "bg-gradient-to-r from-accent-primary/45 to-transparent"
-            : "bg-slate-200 dark:bg-white/10"
+            : "bg-border-medium"
         }`}
       />
     </div>
@@ -170,8 +118,8 @@ export function MetaChip({
 }) {
   const shell = `flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs ${
     dashed
-      ? "border border-dashed border-slate-300 text-fg-tertiary dark:border-white/15"
-      : "border border-slate-200 bg-slate-50 text-fg-secondary dark:border-white/10 dark:bg-white/5"
+      ? "border border-dashed border-border-strong text-fg-tertiary"
+      : "border border-border-medium bg-bg-secondary text-fg-secondary"
   }`;
 
   if (!onClick) {
@@ -219,8 +167,8 @@ export function InfoToast({
 
   const tone =
     info.type === "error"
-      ? "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
-      : "border-slate-200 bg-white text-fg-primary dark:border-white/10 dark:bg-[#16151A]";
+      ? "border-status-danger-border bg-status-danger-surface text-status-danger-ink"
+      : "border-border-medium bg-bg-elevated text-fg-primary";
   const Icon = info.type === "error" ? AlertCircle : Check;
 
   return (

@@ -125,7 +125,7 @@ export function ProgressGrid({
                       aria-label={labels.dayCount(formatDay(day.date), day.count)}
                       aria-pressed={selected}
                       className={cn(
-                        "rounded-[3px] border transition-transform duration-200",
+                        "rounded-sm border transition-transform duration-200",
                         "hover:scale-[1.35] focus-visible:scale-[1.35] focus-visible:outline-none",
                         heatClass(day.level),
                         selected
@@ -153,7 +153,7 @@ export function ProgressGrid({
           {HEAT_LEGEND.map((level) => (
             <span
               key={level}
-              className={cn("h-[11px] w-[11px] rounded-[3px]", heatClass(level))}
+              className={cn("h-[11px] w-[11px] rounded-sm", heatClass(level))}
             />
           ))}
           <span className="text-[10px] text-fg-quaternary">{labels.more}</span>

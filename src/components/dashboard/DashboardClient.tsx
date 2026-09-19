@@ -635,7 +635,7 @@ function FirstRun({
         <div className="dash-rise flex flex-wrap items-center gap-3.5" style={rise(0.18)}>
           <Link
             href="/projects?new=1"
-            className="flex items-center gap-2.5 rounded-[10px] bg-accent-primary px-[22px] py-[15px] text-[15px] font-semibold text-white transition-all duration-[350ms] hover:-translate-y-0.5 hover:bg-accent-hover"
+            className="flex items-center gap-2.5 rounded-md bg-accent-primary px-[22px] py-[15px] text-[15px] font-semibold text-white transition-all duration-[350ms] hover:-translate-y-0.5 hover:bg-accent-hover"
           >
             <Plus size={17} />
             {t("firstRun.createProject")}
@@ -651,7 +651,7 @@ function FirstRun({
               const trimmed = code.trim();
               if (trimmed) join.mutate({ code: trimmed });
             }}
-            className="flex items-stretch overflow-hidden rounded-[10px] border border-border-medium/70 transition-colors duration-[350ms] focus-within:border-dash-day/60 hover:border-dash-day/60"
+            className="flex items-stretch overflow-hidden rounded-md border border-border-medium/70 transition-colors duration-[350ms] focus-within:border-dash-day/60 hover:border-dash-day/60"
           >
             <input
               value={code}
@@ -800,7 +800,7 @@ function StatGrid({
   progress: number;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[11px] border border-border-light/60 bg-border-light/60 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border-light/60 bg-border-light/60 sm:grid-cols-4">
       {items.map((item) => (
         <StatCell key={item.label} item={item} progress={progress} />
       ))}
@@ -914,7 +914,7 @@ function ProjectStatusTable({
     return (
       <Link
         href="/projects?new=1"
-        className="flex items-center gap-2 rounded-[10px] border border-dashed border-border-light/70 px-4 py-5 text-sm text-fg-tertiary transition-colors hover:border-accent-primary/50 hover:text-fg-primary"
+        className="flex items-center gap-2 rounded-md border border-dashed border-border-light/70 px-4 py-5 text-sm text-fg-tertiary transition-colors hover:border-accent-primary/50 hover:text-fg-primary"
       >
         <Plus size={16} />
         {t("projects.empty")}
@@ -1108,7 +1108,7 @@ function SkeletonRows({ rows }: { rows: number }) {
     <div className="flex flex-col">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="border-b border-border-light/40 px-1 py-4">
-          <div className="h-4 w-2/3 animate-pulse rounded bg-bg-tertiary" />
+          <div className="h-4 w-2/3 animate-pulse rounded-sm bg-bg-tertiary" />
         </div>
       ))}
     </div>

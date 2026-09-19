@@ -43,7 +43,7 @@ export function PricingTable({ signedIn }: { signedIn: boolean }) {
         ))}
       </div>
 
-      <p className="text-[13px] leading-[1.7] text-[rgb(150,150,162)]">
+      <p className="text-[13px] leading-[1.7] text-fg-tertiary">
         Prices are per seat and exclude VAT. Paid plans can be cancelled at any
         time; access runs to the end of the period already paid for.
       </p>
@@ -62,7 +62,7 @@ function IntervalToggle({
     <div
       role="radiogroup"
       aria-label="Billing interval"
-      className="inline-flex w-fit gap-1 rounded-full border border-white/[0.14] p-1"
+      className="inline-flex w-fit gap-1 rounded-full border border-border-light p-1"
     >
       {(["month", "year"] as const).map((option) => (
         <button
@@ -73,8 +73,8 @@ function IntervalToggle({
           onClick={() => onChange(option)}
           className={`rounded-full px-4 py-1.5 text-[13px] transition-colors ${
             value === option
-              ? "bg-white/[0.10] font-medium text-fg-primary"
-              : "text-[rgb(150,150,162)] hover:text-fg-primary"
+              ? "bg-bg-tertiary font-medium text-fg-primary"
+              : "text-fg-tertiary hover:text-fg-primary"
           }`}
         >
           {option === "year"
@@ -106,10 +106,10 @@ function PlanColumn({
 
   return (
     <div
-      className={`flex flex-col gap-5 rounded-2xl border p-6 ${
+      className={`flex flex-col gap-5 rounded-lg border p-6 ${
         featured
-          ? "border-accent-primary/40 bg-white/[0.04]"
-          : "border-white/[0.12] bg-transparent"
+          ? "border-accent-primary/40 bg-bg-elevated"
+          : "border-border-light bg-transparent"
       }`}
     >
       <div>
@@ -119,7 +119,7 @@ function PlanColumn({
         <h2 className="mt-3 font-display text-[28px] leading-[1.1] font-normal text-fg-primary">
           {descriptor.name}
         </h2>
-        <p className="mt-2 text-[14px] leading-[1.6] text-[rgb(178,178,190)]">
+        <p className="mt-2 text-[14px] leading-[1.6] text-fg-secondary">
           {descriptor.tagline}
         </p>
       </div>
@@ -130,7 +130,7 @@ function PlanColumn({
             <span className="font-display text-[40px] leading-none">
               {formatEuro(priceFor(plan as "pro" | "team", interval))}
             </span>
-            <span className="ml-2 text-[13px] text-[rgb(150,150,162)]">
+            <span className="ml-2 text-[13px] text-fg-tertiary">
               per seat / {interval === "year" ? "year" : "month"}
             </span>
           </>
@@ -143,7 +143,7 @@ function PlanColumn({
         {descriptor.highlights.map((line) => (
           <li
             key={line}
-            className="flex gap-2.5 text-[13.5px] leading-[1.55] text-[rgb(178,178,190)]"
+            className="flex gap-2.5 text-[13.5px] leading-[1.55] text-fg-secondary"
           >
             <span aria-hidden className="mt-[2px] text-accent-primary">
               ·
@@ -163,7 +163,7 @@ function PlanColumn({
         className={`mt-auto rounded-lg px-4 py-2.5 text-center text-[13.5px] font-medium transition-colors ${
           featured
             ? "bg-accent-primary text-white hover:opacity-90"
-            : "border border-white/[0.16] text-fg-primary hover:bg-white/[0.06]"
+            : "border border-border-medium text-fg-primary hover:bg-bg-tertiary"
         }`}
       >
         {!signedIn

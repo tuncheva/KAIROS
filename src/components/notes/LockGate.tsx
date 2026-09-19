@@ -84,13 +84,13 @@ export function LockGate({
         }}
       >
         {/* An outlined disc, the same shape every empty state and dialog icon
-            tile on this surface now uses — rather than a filled `rounded-2xl`
+            tile on this surface now uses — rather than a filled `rounded-lg`
             tile that appeared nowhere else. */}
         <div className="mx-auto mb-4 grid h-[54px] w-[54px] place-items-center rounded-full border border-error/35 text-error">
           <Lock size={22} />
         </div>
 
-        <h2 className="text-[15.5px] font-bold tracking-[-0.012em] text-fg-primary">
+        <h2 className="font-display text-[18px] leading-tight font-normal text-fg-primary">
           {t("password.gateTitle")}
         </h2>
         <p className="mt-2 mb-5 text-[13px] leading-relaxed text-fg-tertiary">{subtitle}</p>

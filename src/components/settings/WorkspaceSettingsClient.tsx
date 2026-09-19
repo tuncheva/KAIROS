@@ -7,7 +7,7 @@ import { useToast } from "~/components/providers/ToastProvider";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
 import { useSwitchOrganization } from "~/hooks/useSwitchOrganization";
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 
@@ -106,7 +106,7 @@ function PermissionGrid({
       {PERMISSION_KEYS.map((key) => (
         <span key={key} className="flex items-center gap-2 text-xs text-fg-secondary">
           <span
-            className={`flex h-4 w-4 items-center justify-center rounded border ${
+            className={`flex h-4 w-4 items-center justify-center rounded-sm border ${
               perms[key]
                 ? "border-accent-primary/50 bg-accent-primary/20"
                 : "border-border-light bg-bg-tertiary"
@@ -163,7 +163,7 @@ function OrgLogoCell({
         type="button"
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}
-        className="rounded-[7px] border border-border-medium px-[13px] py-1.5 text-[12.5px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-sm border border-border-medium px-[13px] py-1.5 text-[12.5px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:cursor-not-allowed disabled:opacity-50"
       >
         {uploadLabel}
       </button>
@@ -769,7 +769,7 @@ export function WorkspaceSettingsClient() {
             onChange={(e) => setBulkInviteInput(e.target.value)}
             aria-label={t("members.bulkInviteLabel")}
             placeholder={t("members.bulkInvitePlaceholder")}
-            className="min-h-[64px] w-full max-w-[420px] resize-y rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
+            className="min-h-[64px] w-full max-w-[420px] resize-y rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
           />
           <LedgerAction
             disabled={inviteMember.isPending || !bulkInviteInput.trim()}
@@ -934,7 +934,7 @@ export function WorkspaceSettingsClient() {
                   name: member.name ?? member.email,
                 })
               }
-              className="rounded p-1.5 text-fg-tertiary transition hover:text-error disabled:opacity-50"
+              className="rounded-sm p-1.5 text-fg-tertiary transition hover:text-error disabled:opacity-50"
             >
               <Trash2 size={14} />
             </button>
@@ -964,7 +964,7 @@ export function WorkspaceSettingsClient() {
                       setInviteEmail(m.email);
                       setEmailLookupDebouncedEmail(m.email);
                     }}
-                    className="rounded-full border border-border-light px-3 py-1.5 text-xs text-fg-secondary transition hover:border-accent-primary/35 hover:text-fg-primary"
+                    className="rounded-sm border border-border-light px-3 py-1.5 text-xs text-fg-secondary transition hover:border-accent-primary/35 hover:text-fg-primary"
                   >
                     {m.name ?? m.email}
                   </button>
@@ -1010,7 +1010,7 @@ export function WorkspaceSettingsClient() {
                         }),
                       )
                     }
-                    className="rounded p-1 text-fg-tertiary transition hover:text-error disabled:opacity-50"
+                    className="rounded-sm p-1 text-fg-tertiary transition hover:text-error disabled:opacity-50"
                   >
                     <X size={14} />
                   </button>
@@ -1073,7 +1073,7 @@ export function WorkspaceSettingsClient() {
             onChange={(e) => setNewRoleName(e.target.value)}
             placeholder={t("roles.namePlaceholder")}
             aria-label={t("roles.namePlaceholder")}
-            className="mb-3 w-full rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
+            className="mb-3 w-full rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
             autoFocus
           />
           <div className="mb-3 grid grid-cols-2 gap-2">
@@ -1091,7 +1091,7 @@ export function WorkspaceSettingsClient() {
                   className="sr-only"
                 />
                 <span
-                  className={`flex h-4 w-4 items-center justify-center rounded border transition ${
+                  className={`flex h-4 w-4 items-center justify-center rounded-sm border transition ${
                     newRolePerms[key]
                       ? "border-accent-primary/50 bg-accent-primary/20"
                       : "border-border-light bg-bg-tertiary"
@@ -1159,7 +1159,7 @@ export function WorkspaceSettingsClient() {
             <h4 className="text-[13.5px] font-semibold text-fg-primary">
               {t(`roles.${name.toLowerCase()}`)}
             </h4>
-            <span className="rounded-full bg-bg-tertiary px-2 py-0.5 text-[10px] font-medium text-fg-tertiary">
+            <span className="rounded-sm bg-bg-tertiary px-2 py-0.5 text-[10px] font-medium text-fg-tertiary">
               {t("roles.template")}
             </span>
           </div>
@@ -1178,7 +1178,7 @@ export function WorkspaceSettingsClient() {
           <div className="flex items-center justify-between gap-2">
             <h4 className="text-[13.5px] font-semibold text-fg-primary">{role.name}</h4>
             <div className="flex items-center gap-2">
-              <span className="rounded-full bg-accent-primary/10 px-2 py-0.5 text-[10px] font-medium text-accent-primary">
+              <span className="rounded-sm bg-accent-primary/10 px-2 py-0.5 text-[10px] font-medium text-accent-primary">
                 {t("roles.custom")}
               </span>
               {isAdmin && activeOrgId ? (
@@ -1187,7 +1187,7 @@ export function WorkspaceSettingsClient() {
                   aria-label={t("roles.deleteConfirm", { name: role.name })}
                   disabled={deleteRole.isPending}
                   onClick={() => setRoleDeleteTarget({ id: role.id, name: role.name })}
-                  className="rounded p-1 text-fg-tertiary transition hover:text-error disabled:opacity-50"
+                  className="rounded-sm p-1 text-fg-tertiary transition hover:text-error disabled:opacity-50"
                 >
                   <Trash2 size={13} />
                 </button>

@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 
 import { useDateFormat } from "~/hooks/useDateFormat";
 import { api } from "~/trpc/react";
+import { Stamp } from "./chatUi";
 
 export interface ConversationRow {
   id: string;
@@ -27,7 +28,15 @@ interface Props {
 }
 
 /**
- * The thread list.
+ * The AI console's thread list.
+ *
+ * Named `AiThreadRail` rather than `ConversationsRail`, which sat one letter
+ * away from `ConversationRail` — the direct-message list — and read as a
+ * duplicate of it. They are not: that rail lists people-to-people threads from
+ * `chat.listAllConversations` with avatars, presence, drafts and typing state;
+ * this one lists AI console threads keyed by string id, grouped by day, with
+ * server-side message search. Merging them would mean merging two data models,
+ * so the names were made to say which is which instead.
  *
  * Grouped by day rather than shown as one flat run: a conversation is looked up
  * by roughly when it happened ("the rebrand one from yesterday"), not by its
@@ -52,7 +61,7 @@ interface Props {
  * This is also the half of unlimited history that a Pro user can actually feel:
  * keeping every message earns nothing if the only route back is scrolling.
  */
-export function ConversationsRail({
+export function AiThreadRail({
   conversations,
   loading,
   activeId,
@@ -115,9 +124,7 @@ export function ConversationsRail({
     <aside className="kairos-console-rail flex h-full w-[284px] shrink-0 flex-col border-r border-border-medium/60 bg-bg-surface">
       <div className="flex flex-col gap-3.5 border-b border-border-medium/60 px-[18px] pt-5 pb-3.5">
         <div className="flex items-center justify-between gap-2.5">
-          <span className="kairos-stamp text-[10px] text-fg-tertiary">
-            {t("conversations")}
-          </span>
+          <Stamp>{t("conversations")}</Stamp>
           <span className="flex items-center gap-2.5">
             <span className="kairos-mono text-[10px] text-fg-tertiary">
               {conversations.length}
@@ -161,7 +168,7 @@ export function ConversationsRail({
               type="button"
               onClick={() => setQuery("")}
               aria-label={t("clearSearch")}
-              className="shrink-0 rounded p-0.5 text-fg-tertiary transition-colors hover:text-fg-primary"
+              className="shrink-0 rounded-sm p-0.5 text-fg-tertiary transition-colors hover:text-fg-primary"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -179,13 +186,13 @@ export function ConversationsRail({
         ) : (
           groups.map((group) => (
             <section key={group.key} className="contents">
-              <span className="kairos-stamp px-2 pt-3 pb-1.5 text-[10px] text-fg-tertiary first:pt-1.5">
+              <Stamp className="px-2 pt-3 pb-1.5 first:pt-1.5">
                 {group.key === "today"
                   ? t("today")
                   : group.key === "yesterday"
                     ? t("yesterday")
                     : t("earlier")}
-              </span>
+              </Stamp>
 
               {group.rows.map((row) => {
                 const active = row.id === activeId;
@@ -195,7 +202,7 @@ export function ConversationsRail({
                     type="button"
                     onClick={() => onSelect(row.id)}
                     aria-current={active ? "true" : undefined}
-                    className={`flex flex-col gap-1.5 rounded-[9px] px-2.5 py-2.5 text-left transition-colors ${
+                    className={`flex flex-col gap-1.5 rounded-sm px-2.5 py-2.5 text-left transition-colors ${
                       active
                         ? "border-l-2 border-accent-primary bg-accent-primary/10"
                         : "border-l-2 border-transparent hover:bg-bg-tertiary/70"
@@ -231,15 +238,13 @@ export function ConversationsRail({
         */}
         {inMessages.length > 0 ? (
           <section className="contents">
-            <span className="kairos-stamp px-2 pt-4 pb-1.5 text-[10px] text-fg-tertiary">
-              {t("inMessages")}
-            </span>
+            <Stamp className="px-2 pt-4 pb-1.5">{t("inMessages")}</Stamp>
             {inMessages.map((hit) => (
               <button
                 key={`${hit.conversationId}-${hit.createdAt.toISOString()}`}
                 type="button"
                 onClick={() => onSelect(hit.conversationId)}
-                className="flex flex-col gap-1 rounded-[9px] border-l-2 border-transparent px-2.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary/70"
+                className="flex flex-col gap-1 rounded-sm border-l-2 border-transparent px-2.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary/70"
               >
                 <span className="line-clamp-1 text-[12.5px] font-medium text-fg-secondary">
                   {hit.conversationTitle?.trim() ?? t("untitledConversation")}

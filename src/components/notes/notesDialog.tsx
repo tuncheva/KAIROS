@@ -28,12 +28,12 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { AlertCircle, Eye, EyeOff, X } from "~/components/ui/icons";
+import { AlertCircle, Eye, EyeOff } from "~/components/ui/icons";
 
-import { Modal } from "~/components/ui/Modal";
+import { Modal, ModalDismiss } from "~/components/ui/Modal";
 
 import { DIALOG_EXIT_MS, exitMs } from "./notesMotion";
-import { DIALOG_SURFACE, FIELD, FIELD_INPUT, FIELD_LABEL, FIELD_TALL, ICON_BTN_BARE } from "./notesUi";
+import { DIALOG_SURFACE, FIELD, FIELD_INPUT, FIELD_LABEL, FIELD_TALL } from "./notesUi";
 
 /**
  * Keeps a dialog mounted while it animates out.
@@ -139,24 +139,17 @@ export function NotesDialog({
       <div className="flex items-start gap-3 px-4 pt-4">
         <span
           aria-hidden="true"
-          className={`grid h-8 w-8 flex-none place-items-center rounded-[9px] border ${tones[tone]}`}
+          className={`grid h-8 w-8 flex-none place-items-center rounded-sm border ${tones[tone]}`}
         >
           {icon}
         </span>
         <span className="min-w-0 flex-1">
-          <h2 id={titleId} className="text-[15.5px] font-bold tracking-[-0.014em] text-fg-primary">
+          <h2 id={titleId} className="font-display text-[18px] leading-tight font-normal text-fg-primary">
             {title}
           </h2>
           {subtitle && <p className="mt-0.5 text-[12.5px] leading-relaxed text-fg-tertiary">{subtitle}</p>}
         </span>
-        <button
-          type="button"
-          onClick={requestClose}
-          aria-label={t("common.close")}
-          className={ICON_BTN_BARE}
-        >
-          <X size={15} />
-        </button>
+        <ModalDismiss onDismiss={requestClose} label={t("common.close")} />
       </div>
 
       <div className="px-4 py-4">{children}</div>
@@ -337,7 +330,7 @@ export function DialogBlock({
 
   return (
     <div
-      className={`mt-4 rounded-[10px] border p-3.5 ${tones[tone]} ${reveal ? "notes-strip" : ""}`}
+      className={`mt-4 rounded-md border p-3.5 ${tones[tone]} ${reveal ? "notes-strip" : ""}`}
     >
       {title && (
         <p className={`text-[12.5px] font-bold tracking-[-0.005em] ${heads[tone]}`}>{title}</p>

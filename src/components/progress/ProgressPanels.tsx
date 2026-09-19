@@ -356,7 +356,7 @@ export function FinishedLog({ groups, selectedYmd, onClearDay, variant, today }:
           <button
             type="button"
             onClick={onClearDay}
-            className="h-7 rounded-md border border-border-medium px-2.5 text-[11px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary"
+            className="h-control-sm rounded-md border border-border-medium px-2.5 text-[11px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary"
           >
             {t("logShowRecent")}
           </button>

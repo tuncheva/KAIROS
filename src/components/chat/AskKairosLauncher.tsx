@@ -28,10 +28,10 @@ const CORNER_CLASSES: Record<Corner, string> = {
 /* The flattened corner of the nudge bubble points at the pill, so it moves
  * with it: below the bubble in the bottom corners, above it in the top ones. */
 const NUDGE_TAIL_CLASSES: Record<Corner, string> = {
-  "bottom-right": "rounded-br-[3px]",
-  "bottom-left": "rounded-bl-[3px]",
-  "top-right": "rounded-tr-[3px]",
-  "top-left": "rounded-tl-[3px]",
+  "bottom-right": "rounded-br-sm",
+  "bottom-left": "rounded-bl-sm",
+  "top-right": "rounded-tr-sm",
+  "top-left": "rounded-tl-sm",
 };
 
 function isCorner(value: string | null): value is Corner {
@@ -158,7 +158,7 @@ export function AskKairosLauncher({ onOpen }: Props) {
     >
       {nudge && !dragPos && (
         <div
-          className={`kairos-console-rail flex max-w-[240px] items-start gap-2 rounded-[11px] border border-border-medium/70 bg-bg-secondary px-3 py-2.5 shadow-lg ${NUDGE_TAIL_CLASSES[corner]}`}
+          className={`kairos-console-rail flex max-w-[240px] items-start gap-2 rounded-md border border-border-medium/70 bg-bg-secondary px-3 py-2.5 shadow-lg ${NUDGE_TAIL_CLASSES[corner]}`}
         >
           <button
             type="button"
@@ -174,7 +174,7 @@ export function AskKairosLauncher({ onOpen }: Props) {
             type="button"
             onClick={() => setNudgeHidden(true)}
             aria-label={t("dismissNudge")}
-            className="-mt-0.5 -mr-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-fg-tertiary transition-colors hover:text-fg-primary"
+            className="-mt-0.5 -mr-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-sm text-fg-tertiary transition-colors hover:text-fg-primary"
           >
             <X className="h-3 w-3" />
           </button>
@@ -201,7 +201,7 @@ export function AskKairosLauncher({ onOpen }: Props) {
          * dot, so opening it reads as the pill growing rather than as one
          * control being swapped for another.
          */
-        className="kairos-menu-surface flex touch-none items-center gap-2.5 rounded-full px-4 py-2.5 text-[13.5px] font-semibold text-fg-primary transition-colors select-none hover:bg-bg-tertiary"
+        className="kairos-menu-surface flex touch-none items-center gap-2.5 rounded-md px-4 py-2.5 text-[13.5px] font-semibold text-fg-primary transition-colors select-none hover:bg-bg-tertiary"
       >
         <span
           className="h-[7px] w-[7px] rounded-full bg-accent-primary shadow-[0_0_0_3px_rgb(var(--accent-primary)/0.14)]"

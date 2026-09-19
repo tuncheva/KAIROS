@@ -54,7 +54,7 @@ export function LanguageSwitcher({ variant = "compact", className = "" }: Langua
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm font-medium text-fg-secondary hover:text-fg-primary hover:bg-slate-100 dark:hover:bg-white/10 backdrop-blur-sm transition-all duration-200 border border-slate-200 dark:border-white/10"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm font-medium text-fg-secondary hover:text-fg-primary hover:bg-bg-tertiary backdrop-blur-sm transition-all duration-200 border border-border-medium"
         aria-label="Switch language"
       >
         <Globe size={15} className="opacity-70" />
@@ -73,7 +73,7 @@ export function LanguageSwitcher({ variant = "compact", className = "" }: Langua
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-44 rounded-xl overflow-hidden border border-slate-200 dark:border-white/15 bg-bg-primary shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute right-0 top-full mt-2 w-44 rounded-xl overflow-hidden border border-border-medium bg-bg-primary shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
           {languages.map((lang) => (
             <button
               key={lang.code}
@@ -82,7 +82,7 @@ export function LanguageSwitcher({ variant = "compact", className = "" }: Langua
               className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors duration-150 ${
                 lang.code === currentLocale
                   ? "bg-accent-primary/10 text-accent-primary font-medium"
-                  : "text-fg-secondary hover:bg-slate-50 dark:hover:bg-white/5 hover:text-fg-primary"
+                  : "text-fg-secondary hover:bg-bg-secondary hover:text-fg-primary"
               }`}
             >
               <span className="text-base">{lang.flag}</span>

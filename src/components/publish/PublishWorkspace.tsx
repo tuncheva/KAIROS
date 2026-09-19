@@ -301,7 +301,7 @@ export function PublishWorkspace() {
               <button
                 type="button"
                 onClick={() => setFilter({ source: "discover" })}
-                className="h-9 rounded-lg bg-accent-primary px-4 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
+                className="h-control-md rounded-lg bg-accent-primary px-4 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
               >
                 {t("sources.discover")}
               </button>
@@ -310,7 +310,7 @@ export function PublishWorkspace() {
               <button
                 type="button"
                 onClick={() => setFilter({ view: "past" })}
-                className="h-9 rounded-lg border border-slate-200 px-4 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary dark:border-white/10"
+                className="h-control-md rounded-lg border border-border-medium px-4 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
               >
                 {t("browsePast", { count: counts.past })}
               </button>
@@ -377,7 +377,7 @@ export function PublishWorkspace() {
             <button
               type="button"
               onClick={() => setDraft({ title: "", focus: "title" })}
-              className="flex h-9 items-center gap-2 rounded-lg bg-accent-primary px-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="flex h-control-md items-center gap-2 rounded-lg bg-accent-primary px-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
             >
               <CalendarPlus size={15} />
               <span className="hidden sm:inline">{t("publishEvent")}</span>
@@ -417,7 +417,7 @@ export function PublishWorkspace() {
               <div
                 role="group"
                 aria-label={t("feedSource")}
-                className="flex shrink-0 gap-0.5 rounded-lg bg-slate-100 p-0.5 dark:bg-white/5"
+                className="flex shrink-0 gap-0.5 rounded-lg bg-bg-tertiary p-0.5"
               >
                 {(["following", "discover"] as const).map((candidate) => (
                   <button
@@ -449,14 +449,14 @@ export function PublishWorkspace() {
                 onChange={(event) => setSearchText(event.target.value)}
                 placeholder={t("searchPlaceholder")}
                 aria-label={t("searchPlaceholder")}
-                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-8 text-[13px] text-fg-primary placeholder:text-fg-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary/40 dark:border-white/10 dark:bg-white/5"
+                className="h-control-md w-full rounded-lg border border-border-medium bg-bg-secondary pl-8 pr-8 text-[13px] text-fg-primary placeholder:text-fg-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary/40"
               />
               {searchText && (
                 <button
                   type="button"
                   onClick={() => setSearchText("")}
                   aria-label={t("clearSearch")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-fg-quaternary transition-colors hover:text-fg-primary"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-fg-quaternary transition-colors hover:text-fg-primary"
                 >
                   <X size={13} />
                 </button>
@@ -476,7 +476,7 @@ export function PublishWorkspace() {
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl dark:border-white/5 dark:bg-[#1A191E]">
+            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border-medium bg-bg-overlay shadow-2xl">
               <CreateEventForm
                 initialTitle={draft.title}
                 focusField={draft.focus}

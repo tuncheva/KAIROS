@@ -282,7 +282,7 @@ export function ProjectTasksPanel({
         {projectQuery.isLoading ? (
           Array.from({ length: 3 }).map((_, index) => (
             <div key={index} className="border-b border-border-light/50 px-1 py-4">
-              <div className="h-4 w-2/5 animate-pulse rounded bg-bg-tertiary" />
+              <div className="h-4 w-2/5 animate-pulse rounded-sm bg-bg-tertiary" />
             </div>
           ))
         ) : shown.length === 0 ? (
@@ -407,7 +407,7 @@ export function ProjectTasksPanel({
                           autoFocus
                           onChange={(event) => setNoteDraft(event.target.value)}
                           placeholder={t("notePlaceholder")}
-                          className="resize-none rounded-[9px] border border-border-light/60 bg-bg-tertiary px-3.5 py-2.5 text-[13px] leading-[1.5] text-fg-primary outline-none transition-colors duration-300 placeholder:text-fg-quaternary focus:border-accent-primary/60"
+                          className="resize-none rounded-sm border border-border-light/60 bg-bg-tertiary px-3.5 py-2.5 text-[13px] leading-[1.5] text-fg-primary outline-none transition-colors duration-300 placeholder:text-fg-quaternary focus:border-accent-primary/60"
                         />
                         <div className="flex gap-2">
                           <button
@@ -652,7 +652,7 @@ export function ProjectTeamPanel({
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder={t("invitePlaceholder")}
-            className="h-10 min-w-0 flex-1 rounded-[9px] border border-border-light/60 bg-bg-tertiary px-3.5 text-sm text-fg-primary outline-none transition-colors duration-300 placeholder:text-fg-quaternary focus:border-accent-primary/60 sm:max-w-[280px]"
+            className="h-10 min-w-0 flex-1 rounded-sm border border-border-light/60 bg-bg-tertiary px-3.5 text-sm text-fg-primary outline-none transition-colors duration-300 placeholder:text-fg-quaternary focus:border-accent-primary/60 sm:max-w-[280px]"
           />
           <div className="flex overflow-hidden rounded-lg border border-border-light/60">
             {(["read", "write"] as const).map((key) => (
@@ -674,7 +674,7 @@ export function ProjectTeamPanel({
           <button
             type="submit"
             disabled={addCollaborator.isPending || email.trim().length === 0}
-            className="flex h-10 items-center gap-2 rounded-[9px] border border-border-light/60 px-3.5 text-[13px] font-medium text-fg-secondary transition-colors duration-300 hover:border-accent-primary/40 hover:text-fg-primary disabled:opacity-50"
+            className="flex h-10 items-center gap-2 rounded-sm border border-border-light/60 px-3.5 text-[13px] font-medium text-fg-secondary transition-colors duration-300 hover:border-accent-primary/40 hover:text-fg-primary disabled:opacity-50"
           >
             <UserPlus size={15} aria-hidden />
             {t("invite")}

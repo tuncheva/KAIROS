@@ -1,19 +1,15 @@
+import { Skeleton, SkeletonTopBar } from "~/components/ui/Skeleton";
+
 export default function CalendarLoading() {
   return (
     <div className="min-h-dvh bg-bg-primary">
-      <div className="rail-offset min-h-dvh flex flex-col kairos-topbar-gap">
-        <header className="sticky top-16 lg:top-0 z-30 topbar-solid">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 flex justify-between items-center">
-            <div className="h-7 w-32 bg-bg-secondary rounded animate-pulse" />
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-bg-secondary rounded-full animate-pulse" />
-              <div className="h-8 w-8 bg-bg-secondary rounded-full animate-pulse" />
-            </div>
-          </div>
+      <div className="rail-offset kairos-topbar-gap flex min-h-dvh flex-col">
+        <header className="topbar-solid sticky top-16 z-30 lg:top-0">
+          <SkeletonTopBar className="mx-auto max-w-7xl px-4 py-3 sm:px-6 sm:py-4 md:px-8" />
         </header>
-        <main className="flex-1 w-full p-6">
-          <div className="max-w-7xl mx-auto space-y-4">
-            <div className="h-96 bg-bg-secondary rounded-xl animate-pulse" />
+        <main className="w-full flex-1 p-6">
+          <div className="mx-auto max-w-7xl space-y-4">
+            <Skeleton className="h-96" shape="lg" />
           </div>
         </main>
       </div>

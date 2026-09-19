@@ -308,7 +308,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
         <span
           className={`kairos-stamp flex items-center gap-1 rounded-md px-2 py-1 text-[9.5px] tracking-[0.12em] ${
             countdown.kind === "now" || countdown.kind === "soon"
-              ? "bg-red-500/85 text-white"
+              ? "bg-status-danger-ink/85 text-white"
               : "bg-accent-primary/85 text-white"
           }`}
         >
@@ -371,7 +371,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
       <article
         id={`event-${event.id}`}
         data-testid="event-card"
-        className="dash-rise overflow-hidden rounded-2xl bg-bg-elevated shadow-[0_0_0_0.5px_rgba(200,200,200,0.55),0_2px_8px_-2px_rgba(0,0,0,0.08),0_4px_16px_-4px_rgba(0,0,0,0.06)] target:ring-2 target:ring-accent-primary/50 dark:shadow-[0_0_0_0.5px_rgba(60,60,60,0.9),0_2px_12px_-2px_rgba(0,0,0,0.4),0_6px_24px_-6px_rgba(0,0,0,0.3)]"
+        className="dash-rise overflow-hidden rounded-lg bg-bg-elevated shadow-[0_0_0_0.5px_rgba(200,200,200,0.55),0_2px_8px_-2px_rgba(0,0,0,0.08),0_4px_16px_-4px_rgba(0,0,0,0.06)] target:ring-2 target:ring-accent-primary/50 dark:shadow-[0_0_0_0.5px_rgba(60,60,60,0.9),0_2px_12px_-2px_rgba(0,0,0,0.4),0_6px_24px_-6px_rgba(0,0,0,0.3)]"
       >
         {/* Who posted it, and why you are seeing it. */}
         <div className="flex items-center gap-2.5 px-3.5 pb-2.5 pt-3">
@@ -419,9 +419,9 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
               onClick={handleFollow}
               disabled={follow.isPending || unfollow.isPending}
               aria-pressed={event.viewerFollowsAuthor}
-              className={`kairos-stamp hidden h-7 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[9.5px] tracking-[0.12em] transition-colors sm:flex ${
+              className={`kairos-stamp hidden h-control-sm shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[9.5px] tracking-[0.12em] transition-colors sm:flex ${
                 event.viewerFollowsAuthor
-                  ? "bg-slate-100 text-fg-tertiary hover:text-fg-secondary dark:bg-white/5"
+                  ? "bg-bg-tertiary text-fg-tertiary hover:text-fg-secondary"
                   : "bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20"
               }`}
             >
@@ -436,7 +436,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
               onClick={() => setShowMenu((open) => !open)}
               aria-label={t("moreActions")}
               aria-expanded={showMenu}
-              className="rounded-lg p-1.5 text-fg-quaternary transition-colors hover:bg-slate-100 hover:text-accent-primary dark:hover:bg-white/5"
+              className="rounded-lg p-1.5 text-fg-quaternary transition-colors hover:bg-bg-tertiary hover:text-accent-primary"
             >
               <MoreHorizontal size={18} />
             </button>
@@ -447,14 +447,14 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                   className="fixed inset-0 z-40"
                   onClick={() => setShowMenu(false)}
                 />
-                <div className="absolute right-0 top-full z-50 mt-1 min-w-[184px] rounded-xl border border-slate-200 bg-white py-1 shadow-xl dark:border-white/[0.06] dark:bg-[#16151A]">
+                <div className="absolute right-0 top-full z-50 mt-1 min-w-[184px] rounded-xl border border-border-medium bg-bg-elevated py-1 shadow-xl">
                   <button
                     type="button"
                     onClick={() => {
                       void handleShare();
                       setShowMenu(false);
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:bg-slate-50 dark:hover:bg-white/5"
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-secondary"
                   >
                     <Share2 size={15} />
                     {t("share")}
@@ -468,7 +468,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                         handleFollow();
                       }}
                       disabled={follow.isPending || unfollow.isPending}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:bg-slate-50 sm:hidden dark:hover:bg-white/5"
+                      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-secondary sm:hidden"
                     >
                       <UserPlus size={15} />
                       {event.viewerFollowsAuthor ? t("following") : t("follow")}
@@ -484,7 +484,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                         startDirectChat.mutate({ otherUserId: event.createdById });
                       }}
                       disabled={startDirectChat.isPending}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:bg-slate-50 dark:hover:bg-white/5"
+                      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-secondary"
                     >
                       <MessageCircle size={15} />
                       {startDirectChat.isPending
@@ -502,7 +502,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                             setShowDashboard(true);
                             setShowMenu(false);
                           }}
-                          className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:bg-slate-50 dark:hover:bg-white/5"
+                          className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-secondary"
                         >
                           <BarChart3 size={15} />
                           {t("responsesDashboard")}
@@ -514,7 +514,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                           setShowEditForm(true);
                           setShowMenu(false);
                         }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:bg-slate-50 dark:hover:bg-white/5"
+                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-secondary"
                       >
                         <Pencil size={15} />
                         {t("edit.title")}
@@ -532,8 +532,8 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                         disabled={deleteEvent.isPending}
                         className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium transition-colors ${
                           deleteArmed
-                            ? "bg-red-500/5 text-red-600 hover:bg-red-500/10 dark:text-red-400"
-                            : "text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+                            ? "bg-status-danger-surface text-status-danger-ink"
+                            : "text-status-danger-ink hover:bg-status-danger-surface"
                         }`}
                       >
                         <Trash2 size={15} />
@@ -587,7 +587,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
           <div
             className={`flex w-[58px] shrink-0 flex-col items-center gap-px rounded-xl border py-2 ${
               past
-                ? "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.04]"
+                ? "border-border-medium bg-bg-secondary"
                 : "border-accent-primary/30 bg-accent-primary/[0.09]"
             }`}
           >
@@ -621,22 +621,22 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
 
             {/* The facts a person needs before they can decide. */}
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="flex h-7 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 text-[11px] text-fg-secondary dark:border-white/10 dark:bg-white/5">
+              <span className="flex h-control-sm items-center gap-1.5 rounded-lg border border-border-medium bg-bg-secondary px-2 text-[11px] text-fg-secondary">
                 <MapPin size={11} className="text-accent-primary" />
                 <span className="max-w-[220px] truncate">{placeLine(event)}</span>
               </span>
-              <span className="flex h-7 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 text-[11px] text-fg-secondary dark:border-white/10 dark:bg-white/5">
+              <span className="flex h-control-sm items-center gap-1.5 rounded-lg border border-border-medium bg-bg-secondary px-2 text-[11px] text-fg-secondary">
                 <Clock size={11} className="text-accent-primary" />
                 {formatTimeRange(event, locale)}
               </span>
               {!past && left !== null && (
                 <span
-                  className={`flex h-7 items-center gap-1.5 rounded-lg px-2 text-[11px] ${
+                  className={`flex h-control-sm items-center gap-1.5 rounded-lg px-2 text-[11px] ${
                     full
-                      ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                      ? "bg-status-danger-surface text-status-danger-ink"
                       : left <= NEARLY_FULL
-                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                        : "border border-slate-200 bg-slate-50 text-fg-secondary dark:border-white/10 dark:bg-white/5"
+                        ? "bg-status-warning-surface text-status-warning-ink"
+                        : "border border-border-medium bg-bg-secondary text-fg-secondary"
                   }`}
                 >
                   <Users size={11} />
@@ -644,7 +644,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                 </span>
               )}
               {past && (
-                <span className="flex h-7 items-center rounded-lg bg-slate-100 px-2 text-[11px] text-fg-tertiary dark:bg-white/5">
+                <span className="flex h-control-sm items-center rounded-lg bg-bg-tertiary px-2 text-[11px] text-fg-tertiary">
                   {t("past")}
                 </span>
               )}
@@ -700,10 +700,10 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                   disabled={updateRsvp.isPending || blocked}
                   aria-pressed={active}
                   title={blocked ? t("soldOut") : undefined}
-                  className={`h-9 flex-1 rounded-lg text-[12.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  className={`h-control-md flex-1 rounded-lg text-[12.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                     active
                       ? "bg-accent-primary text-white"
-                      : "bg-slate-100 text-fg-secondary hover:text-fg-primary dark:bg-white/5"
+                      : "bg-bg-tertiary text-fg-secondary hover:text-fg-primary"
                   }`}
                 >
                   {t(option.key)}
@@ -714,7 +714,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
         )}
 
         {/* Everyone else's reaction, on a hairline of its own. */}
-        <div className="mt-3 flex items-center gap-0.5 border-t border-slate-100 px-2.5 py-2 dark:border-white/[0.06]">
+        <div className="mt-3 flex items-center gap-0.5 border-t border-border-light px-2.5 py-2">
 
           <button
             type="button"
@@ -727,8 +727,8 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
             aria-label={t("likes")}
             className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] transition-colors ${
               event.hasLiked
-                ? "text-red-500 dark:text-red-400"
-                : "text-fg-tertiary hover:bg-slate-100 hover:text-fg-secondary dark:hover:bg-white/5"
+                ? "text-status-danger-ink"
+                : "text-fg-tertiary hover:bg-bg-tertiary hover:text-fg-secondary"
             }`}
           >
             <Heart size={15} className={event.hasLiked ? "fill-current" : ""} />
@@ -739,7 +739,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
           <Link
             href={`/events/${event.id}#discussion`}
             aria-label={t("comments")}
-            className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] text-fg-tertiary transition-colors hover:bg-slate-100 hover:text-fg-secondary dark:hover:bg-white/5"
+            className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-secondary"
           >
             <MessageCircle size={15} />
             <span className="kairos-mono">{event.commentCount}</span>
@@ -758,7 +758,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
             className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${
               event.hasSaved
                 ? "text-accent-primary"
-                : "text-fg-tertiary hover:bg-slate-100 hover:text-fg-secondary dark:hover:bg-white/5"
+                : "text-fg-tertiary hover:bg-bg-tertiary hover:text-fg-secondary"
             }`}
           >
             <Bookmark size={15} className={event.hasSaved ? "fill-current" : ""} />
@@ -774,7 +774,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
             className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] transition-colors ${
               showReminderPicker
                 ? "text-accent-primary"
-                : "text-fg-tertiary hover:bg-slate-100 hover:text-fg-secondary dark:hover:bg-white/5"
+                : "text-fg-tertiary hover:bg-bg-tertiary hover:text-fg-secondary"
             }`}
           >
             <Bell size={15} className={showReminderPicker ? "fill-current" : ""} />
@@ -784,7 +784,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
 
         {/* Reminder choice, offered right after you say you are coming. */}
         {showReminderPicker && attending && !past && (
-          <div className="mx-3.5 mb-3.5 rounded-lg bg-slate-50 p-2.5 dark:bg-white/[0.03]">
+          <div className="mx-3.5 mb-3.5 rounded-lg bg-bg-secondary p-2.5">
             <div className="mb-2 flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs font-medium text-accent-primary">
                 <Bell size={12} />
@@ -817,7 +817,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
               <button
                 type="button"
                 onClick={() => handleReminder(null)}
-                className="rounded-md px-2.5 py-1 text-xs font-medium text-fg-tertiary transition-colors hover:bg-slate-100 dark:hover:bg-white/5"
+                className="rounded-md px-2.5 py-1 text-xs font-medium text-fg-tertiary transition-colors hover:bg-bg-tertiary"
               >
                 {t("noThanks")}
               </button>
@@ -839,7 +839,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl dark:border-white/5 dark:bg-[#1A191E]">
+            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border-medium bg-bg-overlay shadow-2xl">
               <EditEventForm
                 event={{
                   id: event.id,

@@ -165,7 +165,7 @@ export function OrgDashboardClient() {
                   <div className="flex items-center gap-2">
                     <div className="text-lg font-semibold text-fg-primary truncate">{org.name}</div>
                     {isActive ? (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-accent-primary/10 text-accent-primary shadow-sm">
+                      <span className="px-2 py-0.5 rounded-sm text-xs font-semibold bg-accent-primary/10 text-accent-primary shadow-sm">
                         {tOrg("active")}
                       </span>
                     ) : null}

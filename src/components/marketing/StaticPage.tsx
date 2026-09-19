@@ -27,7 +27,7 @@ export async function StaticPage({
             <div className="mx-auto w-full max-w-[720px]">
                 <Link
                     href="/"
-                    className="k-nav inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[rgb(150,150,162)]"
+                    className="k-nav inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-fg-tertiary"
                 >
                     <ArrowLeft size={14} />
                     {t("backHome")}
@@ -35,8 +35,8 @@ export async function StaticPage({
                 <h1 className="mt-10 font-display text-[clamp(2.5rem,6vw,4rem)] leading-[1.05] font-normal">
                     {t(titleKey)}
                 </h1>
-                <div className="my-8 h-px bg-white/[0.12]" />
-                <p className="text-[19px] leading-[1.7] text-[rgb(178,178,190)]">{t(bodyKey)}</p>
+                <div className="my-8 h-px bg-border-light" />
+                <p className="text-[19px] leading-[1.7] text-fg-secondary">{t(bodyKey)}</p>
             </div>
         </main>
     );

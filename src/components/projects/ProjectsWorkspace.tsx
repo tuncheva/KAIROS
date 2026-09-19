@@ -325,7 +325,7 @@ export function ProjectsWorkspace({
             className="dash-rise flex flex-wrap items-center gap-3"
             style={rise(0.1)}
           >
-            <label className="border-border-light/60 bg-bg-secondary flex h-9 w-full items-center gap-2.5 rounded-lg border px-3 sm:w-[260px]">
+            <label className="border-border-light/60 bg-bg-secondary flex h-control-md w-full items-center gap-2.5 rounded-lg border px-3 sm:w-[260px]">
               <Search
                 size={15}
                 className="text-fg-quaternary flex-none"
@@ -464,7 +464,7 @@ function Toggle({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex h-9 items-center gap-[7px] rounded-lg border px-3 text-[13px] font-medium transition-colors duration-300 ${
+      className={`flex h-control-md items-center gap-[7px] rounded-lg border px-3 text-[13px] font-medium transition-colors duration-300 ${
         active
           ? "border-accent-primary/55 bg-accent-primary/[0.14] text-fg-primary"
           : "border-border-light/60 text-fg-tertiary hover:border-border-strong/60 hover:text-fg-secondary"
@@ -658,7 +658,7 @@ function HealthBadge({ health }: { health: Health }) {
   const t = useTranslations("projects");
   return (
     <span
-      className={`kairos-stamp rounded border px-2 py-1 text-[10px] tracking-[0.12em] ${HEALTH_BORDER[health]} ${HEALTH_TEXT[health]}`}
+      className={`kairos-stamp rounded-sm border px-2 py-1 text-[10px] tracking-[0.12em] ${HEALTH_BORDER[health]} ${HEALTH_TEXT[health]}`}
     >
       {t(`health.${health}`)}
     </span>
@@ -672,7 +672,7 @@ function StatStrip({
 }) {
   return (
     <div
-      className="dash-rise border-border-light/60 bg-border-light/60 grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border sm:grid-cols-4"
+      className="dash-rise border-border-light/60 bg-border-light/60 grid grid-cols-2 gap-px overflow-hidden rounded-md border sm:grid-cols-4"
       style={rise(0.3)}
     >
       {items.map((item) => (
@@ -1209,7 +1209,7 @@ function TimelineSkeleton() {
     <div className="flex flex-col">
       {Array.from({ length: 4 }).map((_, index) => (
         <div key={index} className="border-border-light/50 border-b px-1 py-4">
-          <div className="bg-bg-tertiary h-4 w-2/3 animate-pulse rounded" />
+          <div className="bg-bg-tertiary h-4 w-2/3 animate-pulse rounded-sm" />
         </div>
       ))}
     </div>
@@ -1221,15 +1221,15 @@ function TimelineSkeleton() {
 function LoadingState() {
   return (
     <div className="flex flex-col gap-[26px] px-4 pt-9 pb-14 sm:px-10">
-      <div className="bg-bg-tertiary h-9 w-64 animate-pulse rounded" />
-      <div className="bg-bg-tertiary h-9 w-full max-w-xl animate-pulse rounded" />
+      <div className="bg-bg-tertiary h-9 w-64 animate-pulse rounded-sm" />
+      <div className="bg-bg-tertiary h-control-md w-full max-w-xl animate-pulse rounded-sm" />
       <div className="border-border-light/60 border-t">
         {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={index}
             className="border-border-light/50 border-b px-1 py-5"
           >
-            <div className="bg-bg-tertiary h-4 w-1/3 animate-pulse rounded" />
+            <div className="bg-bg-tertiary h-4 w-1/3 animate-pulse rounded-sm" />
           </div>
         ))}
       </div>

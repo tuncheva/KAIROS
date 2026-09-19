@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { FileText, Sparkles, X } from "~/components/ui/icons";
+import { ModalDismiss } from "~/components/ui/Modal";
+import { FileText, Sparkles } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { MAX_PDF_SIZE, MAX_PDF_SIZE_MB } from "~/lib/pdf";
@@ -50,7 +51,7 @@ export const PRIORITY_DOT: Record<TaskPriority, string> = {
 };
 
 const FIELD =
-  "rounded-[9px] border border-border-light/60 bg-bg-tertiary px-3.5 text-fg-primary outline-none transition-colors duration-300 placeholder:text-fg-quaternary focus:border-accent-primary/60";
+  "rounded-sm border border-border-light/60 bg-bg-tertiary px-3.5 text-fg-primary outline-none transition-colors duration-300 placeholder:text-fg-quaternary focus:border-accent-primary/60";
 
 const STAMP = "kairos-stamp text-[10px] tracking-[0.14em] text-fg-tertiary";
 
@@ -91,7 +92,7 @@ function Pills<T extends string>({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(option)}
-            className={`flex items-center justify-center gap-1.5 rounded-[9px] border px-2.5 py-[11px] text-[13px] font-medium transition-colors duration-300 ${
+            className={`flex items-center justify-center gap-1.5 rounded-sm border px-2.5 py-[11px] text-[13px] font-medium transition-colors duration-300 ${
               active
                 ? "border-accent-primary/55 bg-accent-primary/[0.14] text-fg-primary"
                 : "border-border-light/60 bg-transparent text-fg-tertiary hover:border-border-strong/60 hover:text-fg-secondary"
@@ -389,14 +390,7 @@ export function TaskDrawer({
             >
               {editing ? t("editTitle") : t("title")}
             </h2>
-            <button
-              type="button"
-              onClick={close}
-              aria-label={t("close")}
-              className="flex h-[30px] w-[30px] items-center justify-center rounded-[7px] border border-border-light/70 text-fg-tertiary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
-            >
-              <X size={15} aria-hidden />
-            </button>
+            <ModalDismiss onDismiss={close} label={t("close")} />
           </div>
 
           <form
@@ -525,7 +519,7 @@ export function TaskDrawer({
                         message: description.trim() || title.trim() || undefined,
                       })
                     }
-                    className="flex h-11 items-center justify-center gap-2 rounded-[9px] border border-border-light/60 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:border-accent-primary/40 hover:text-fg-primary disabled:opacity-50"
+                    className="flex h-11 items-center justify-center gap-2 rounded-sm border border-border-light/60 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:border-accent-primary/40 hover:text-fg-primary disabled:opacity-50"
                   >
                     <Sparkles size={15} aria-hidden />
                     {generateDrafts.isPending ? t("ai.working") : t("ai.suggest")}
@@ -535,7 +529,7 @@ export function TaskDrawer({
                     type="button"
                     disabled={drafting}
                     onClick={() => pdfRef.current?.click()}
-                    className="flex h-11 items-center justify-center gap-2 rounded-[9px] border border-border-light/60 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:border-accent-primary/40 hover:text-fg-primary disabled:opacity-50"
+                    className="flex h-11 items-center justify-center gap-2 rounded-sm border border-border-light/60 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:border-accent-primary/40 hover:text-fg-primary disabled:opacity-50"
                   >
                     <FileText size={15} aria-hidden />
                     {extractFromPdf.isPending
@@ -596,7 +590,7 @@ export function TaskDrawer({
                         type="button"
                         disabled={pending}
                         onClick={() => void acceptAllDrafts()}
-                        className="mt-3 flex h-10 items-center justify-center rounded-[9px] border border-accent-primary/55 bg-accent-primary/[0.14] text-[13px] font-semibold text-fg-primary transition-colors duration-300 hover:bg-accent-primary/25 disabled:opacity-50"
+                        className="mt-3 flex h-10 items-center justify-center rounded-sm border border-accent-primary/55 bg-accent-primary/[0.14] text-[13px] font-semibold text-fg-primary transition-colors duration-300 hover:bg-accent-primary/25 disabled:opacity-50"
                       >
                         {t("ai.addAll", { count: drafts.length })}
                       </button>
@@ -611,14 +605,14 @@ export function TaskDrawer({
               <button
                 type="button"
                 onClick={close}
-                className="rounded-[9px] border border-border-light/70 px-[18px] py-3 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
+                className="rounded-sm border border-border-light/70 px-[18px] py-3 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
               >
                 {t("cancel")}
               </button>
               <button
                 type="submit"
                 disabled={!canSubmit}
-                className="flex-1 rounded-[9px] bg-accent-primary px-[18px] py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-px hover:bg-accent-hover disabled:pointer-events-none disabled:opacity-50"
+                className="flex-1 rounded-sm bg-accent-primary px-[18px] py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-px hover:bg-accent-hover disabled:pointer-events-none disabled:opacity-50"
               >
                 {pending ? t("saving") : editing ? t("save") : t("submit")}
               </button>

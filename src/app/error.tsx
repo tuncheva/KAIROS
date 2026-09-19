@@ -4,12 +4,24 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
+import { AlertCircle } from "~/components/ui/icons";
+import { ErrorDigest } from "~/components/ui/ErrorDigest";
+import {
+  SYSTEM_ACTION_PRIMARY,
+  SYSTEM_ACTION_QUIET,
+  SystemScreen,
+} from "~/components/ui/SystemScreen";
+
 /**
  * The last boundary. Reached only when an error escapes every nested one — a
  * root layout failure, or a page outside `(app)`.
  *
- * Translated like everything else. These four strings were the app's only
- * hardcoded English left in a shipped surface, and they were on the page shown
+ * Wears the brand vocabulary rather than a bold sans heading and a warning
+ * character in whatever emoji font the OS supplies: a mono eyebrow, the Kairos
+ * mark, a display-serif headline, and the digest on a mono line that copies
+ * itself. The icon comes from `ui/icons`, so it is drawn rather than typed.
+ *
+ * Translated like everything else. These strings are on the page shown
  * precisely when something has gone wrong: the worst possible moment to also
  * switch language on someone.
  */
@@ -21,36 +33,42 @@ export default function GlobalError({
   reset: () => void;
 }) {
   const t = useTranslations("errors.root");
+  const tErrors = useTranslations("errors");
 
   useEffect(() => {
     console.error("Unhandled error:", error);
   }, [error]);
 
   return (
-    <div className="min-h-dvh flex items-center justify-center bg-bg-primary px-4">
-      <div className="max-w-md w-full text-center space-y-6">
-        <div className="w-16 h-16 mx-auto rounded-2xl bg-red-500/10 flex items-center justify-center">
-          <span className="text-3xl">⚠</span>
-        </div>
-        <h1 className="text-2xl font-bold text-fg-primary">{t("title")}</h1>
-        <p className="text-fg-secondary text-sm">
-          {t("body")}
-        </p>
-        <div className="flex items-center justify-center gap-3">
-          <button
-            onClick={reset}
-            className="px-5 py-2.5 bg-accent-primary text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
-          >
+    <SystemScreen
+      eyebrow={t("eyebrow")}
+      title={t("title")}
+      body={t("body")}
+      icon={<AlertCircle size={20} />}
+      actions={
+        <>
+          <button type="button" onClick={reset} className={SYSTEM_ACTION_PRIMARY}>
             {t("retry")}
           </button>
-          <Link
-            href="/"
-            className="px-5 py-2.5 border border-slate-200 dark:border-white/10 text-fg-secondary text-sm font-medium rounded-lg hover:bg-bg-secondary transition-colors"
-          >
+          <Link href="/" className={SYSTEM_ACTION_QUIET}>
             {t("home")}
           </Link>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+      footer={
+        error.digest ? (
+          <ErrorDigest
+            digest={error.digest}
+            copyLabel={tErrors("digestCopy", { digest: shortDigest(error.digest) })}
+            copiedLabel={tErrors("digestCopied", { digest: shortDigest(error.digest) })}
+          />
+        ) : null
+      }
+    />
   );
+}
+
+/** Enough of the digest to match a log line, short enough to read aloud. */
+function shortDigest(digest: string): string {
+  return digest.slice(0, 8);
 }

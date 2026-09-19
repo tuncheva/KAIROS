@@ -1,14 +1,14 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { X, Loader2, Eye, EyeOff, ArrowRight, ArrowLeft, KeyRound, Check } from "~/components/ui/icons";
+import { Loader2, Eye, EyeOff, ArrowRight, ArrowLeft, KeyRound, Check } from "~/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 
-import { useModalBehavior } from "~/components/ui/Modal";
+import { ModalDismiss, useModalBehavior } from "~/components/ui/Modal";
 
 /* ─── Types ─── */
 type ModalView =
@@ -520,7 +520,7 @@ export function SignInModal({
         />
         <span
           aria-hidden="true"
-          className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border transition-colors duration-200 ${
+          className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm border transition-colors duration-200 ${
             agreeTerms
               ? "border-accent-primary bg-accent-primary"
               : "border-white/20 group-hover:border-white/40"
@@ -715,10 +715,10 @@ export function SignInModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="kairos-auth-title"
-        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl overflow-hidden rounded-[18px] border border-white/10 bg-[#08080c] lg:grid-cols-2"
+        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl overflow-hidden rounded-xl border border-white/10 bg-bg-overlay lg:grid-cols-2"
       >
         {/* ─── Left: brand panel (hidden on narrow screens) ─── */}
-        <div className="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.08] bg-[#0a0a10] p-11 lg:flex">
+        <div className="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.08] bg-bg-secondary p-11 lg:flex">
           <div
             aria-hidden="true"
             className="k-drift-slow pointer-events-none absolute -bottom-[180px] -left-[120px] h-[620px] w-[620px] rounded-full blur-[90px]"
@@ -730,7 +730,7 @@ export function SignInModal({
 
           <div className="relative flex items-center gap-3">
             <div
-              className="flex h-[30px] w-[30px] items-center justify-center rounded-[9px]"
+              className="flex h-[30px] w-[30px] items-center justify-center rounded-sm"
               style={{
                 background:
                   "linear-gradient(140deg, rgb(var(--accent-primary)), rgb(var(--accent-secondary)))",
@@ -771,13 +771,11 @@ export function SignInModal({
 
         {/* ─── Right: the flow ─── */}
         <div className="relative flex flex-col justify-center overflow-y-auto px-7 py-12 sm:px-14 sm:py-14">
-          <button
-            onClick={onClose}
-            className="k-auth-lnk absolute right-6 top-6 flex text-white/35"
-            aria-label={t("close")}
-          >
-            <X size={18} />
-          </button>
+          <ModalDismiss
+            onDismiss={onClose}
+            label={t("close")}
+            className="absolute right-6 top-6"
+          />
 
           <div className={eyebrowClass}>{step}</div>
           <h2
@@ -795,7 +793,7 @@ export function SignInModal({
           {sessionExpired ? (
             <p
               role="status"
-              className="mt-4 max-w-[380px] rounded-xl border border-amber-400/25 bg-amber-400/10 px-3.5 py-2.5 text-sm leading-[1.5] text-amber-200"
+              className="mt-4 max-w-[380px] rounded-xl border border-status-warning-border bg-status-warning-surface px-3.5 py-2.5 text-sm leading-[1.5] text-status-warning-ink"
             >
               {t("sessionExpired")}
             </p>
@@ -832,7 +830,7 @@ export function SignInModal({
           {(error || loadingMessage) && (
             <div className="mt-6 flex flex-col gap-2">
               {error && (
-                <p className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                <p className="rounded-xl border border-status-danger-border bg-status-danger-surface px-4 py-3 text-sm text-status-danger-ink">
                   {error}
                 </p>
               )}

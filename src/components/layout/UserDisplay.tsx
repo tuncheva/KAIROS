@@ -195,8 +195,8 @@ export function UserDisplay() {
  return (
  <div className="flex items-center gap-3 animate-pulse">
  <div className="hidden sm:flex flex-col items-end gap-1">
- <div className="h-4 bg-bg-tertiary/60 rounded w-24" />
- <div className="h-3 bg-bg-tertiary/60 rounded w-32" />
+ <div className="h-4 bg-bg-tertiary/60 rounded-sm w-24" />
+ <div className="h-3 bg-bg-tertiary/60 rounded-sm w-32" />
  </div>
  <div className="w-8 h-8 bg-bg-tertiary/60 rounded-full" />
  </div>
@@ -249,11 +249,11 @@ export function UserDisplay() {
 
  {isOpen && (
  <div
- className="absolute right-0 mt-3 w-64 rounded-2xl dark:border-white/[0.06] border border-slate-200 shadow-2xl overflow-hidden z-50 dark:bg-[#16151A] bg-white"
+ className="absolute right-0 mt-3 w-64 rounded-lg border border-border-medium shadow-2xl overflow-hidden z-50 bg-bg-elevated"
  role="menu"
  aria-label={tSettings("title")}
  >
- <div className="p-4 border-b dark:border-white/10 border-slate-200 dark:bg-[#1A191E] bg-slate-50">
+ <div className="p-4 border-b border-border-medium bg-bg-secondary">
  <div className="flex items-center gap-3">
  {avatarSrc ? (
  <Image
@@ -336,7 +336,7 @@ export function UserDisplay() {
  className="w-full px-2.5 py-1.5 text-sm rounded-lg bg-bg-secondary/60 text-fg-primary border border-border-light/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary"
  />
  {switchError ? (
- <div className="text-xs text-red-500">{switchError}</div>
+ <div className="text-xs text-status-danger-ink">{switchError}</div>
  ) : null}
  <div className="flex items-center gap-2">
  <button

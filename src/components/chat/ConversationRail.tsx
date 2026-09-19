@@ -166,8 +166,8 @@ export function ConversationRail({
               <div key={i} className="flex items-center gap-3 p-2.5">
                 <div className="w-[38px] h-[38px] rounded-full bg-bg-secondary animate-pulse" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-3 w-1/2 rounded bg-bg-secondary animate-pulse" />
-                  <div className="h-2.5 w-3/4 rounded bg-bg-secondary animate-pulse" />
+                  <div className="h-3 w-1/2 rounded-sm bg-bg-secondary animate-pulse" />
+                  <div className="h-2.5 w-3/4 rounded-sm bg-bg-secondary animate-pulse" />
                 </div>
               </div>
             ))}
@@ -247,7 +247,7 @@ export function ConversationRail({
                             )}
                           </span>
                           {convo.projectTitle && (
-                            <span className="inline-flex mt-1.5 px-1.5 py-0.5 rounded text-[9.5px] font-semibold uppercase tracking-wide bg-info/12 text-info">
+                            <span className="inline-flex mt-1.5 px-1.5 py-0.5 rounded-sm text-[9.5px] font-semibold uppercase tracking-wide bg-info/12 text-info">
                               {convo.projectTitle}
                             </span>
                           )}

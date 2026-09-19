@@ -1295,11 +1295,14 @@
   },
   "errors": {
     "app": {
-      "title": "Auf dieser Seite ist ein Fehler aufgetreten",
-      "body": "Der Rest der App funktioniert — Ihre Navigation ist noch da. Versuchen Sie es erneut oder kehren Sie zum Dashboard zurück.",
+      "title": "Auf unserer Seite ist etwas kaputtgegangen.",
+      "body": "Es lag nicht an Ihnen. Versuchen Sie die Seite erneut oder kehren Sie zu Ihrem Arbeitsbereich zurück.",
       "retry": "Erneut versuchen",
-      "dashboard": "Zurück zum Dashboard"
-    }
+      "dashboard": "Zurück zum Arbeitsbereich",
+      "eyebrow": "Fehler · 500"
+    },
+    "digestCopy": "Digest {digest} · Für Support kopieren",
+    "digestCopied": "Digest {digest} · Für Support kopiert"
   },
   "onboardingSheet": {
     "eyebrow": "Kairos · Hilfe",

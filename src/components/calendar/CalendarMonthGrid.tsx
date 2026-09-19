@@ -182,7 +182,7 @@ export function CalendarMonthGrid({
                       type="button"
                       tabIndex={-1}
                       onClick={() => onOpenDay(day)}
-                      className="self-start rounded border border-dashed border-accent-primary/40 px-1.5 py-[1px] text-[10px] font-semibold text-accent-primary transition-colors hover:bg-accent-primary/10"
+                      className="self-start rounded-sm border border-dashed border-accent-primary/40 px-1.5 py-[1px] text-[10px] font-semibold text-accent-primary transition-colors hover:bg-accent-primary/10"
                     >
                       {moreLabel(hidden)}
                     </button>

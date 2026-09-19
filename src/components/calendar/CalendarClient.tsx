@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ModalDismiss } from "~/components/ui/Modal";
 import {
   CalendarDays,
   ChevronLeft,
@@ -72,7 +73,7 @@ const VIEW_LABEL_KEYS: Record<ViewMode, string> = {
 };
 
 const SMALL_CHIP =
-  "flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-semibold transition-colors";
+  "flex h-control-sm items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-semibold transition-colors";
 const IDLE_CHIP = "border-border-medium text-fg-tertiary hover:bg-bg-secondary";
 const MICRO_LABEL = "text-[11px] uppercase tracking-[0.12em] text-fg-tertiary";
 const BAR_BTN =
@@ -100,7 +101,7 @@ function CalendarSkeleton() {
   return (
     <div className="flex h-full flex-col gap-4 px-4 py-5 sm:px-6 md:px-8">
       <div className="h-[46px] w-full animate-pulse rounded-lg bg-bg-secondary" />
-      <div className="h-5 w-64 animate-pulse rounded bg-bg-secondary" />
+      <div className="h-5 w-64 animate-pulse rounded-sm bg-bg-secondary" />
       <div className="min-h-0 flex-1 rounded-xl border border-border-light bg-bg-elevated" />
     </div>
   );
@@ -813,7 +814,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
                   <button
                     type="button"
                     onClick={closeFilters}
-                    className="h-7 rounded-md border border-border-medium px-2.5 text-[11px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
+                    className="h-control-sm rounded-md border border-border-medium px-2.5 text-[11px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
                   >
                     {t("done")}
                   </button>
@@ -877,7 +878,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
                   <button
                     type="button"
                     onClick={token.clear}
-                    className="flex h-6 items-center gap-1.5 rounded-full border border-accent-primary/30 bg-accent-primary/10 pr-1.5 pl-2.5 text-[11px] font-semibold text-accent-primary transition-colors hover:bg-accent-primary/20"
+                    className="flex h-6 items-center gap-1.5 rounded-sm border border-accent-primary/30 bg-accent-primary/10 pr-1.5 pl-2.5 text-[11px] font-semibold text-accent-primary transition-colors hover:bg-accent-primary/20"
                   >
                     {token.label}
                     <X size={11} aria-hidden="true" />
@@ -1078,7 +1079,7 @@ function EmptyState({
       <button
         type="button"
         onClick={onAction}
-        className="mt-1 h-9 rounded-lg bg-accent-primary px-4 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+        className="mt-1 h-control-md rounded-lg bg-accent-primary px-4 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
       >
         {actionLabel}
       </button>
@@ -1138,7 +1139,7 @@ function ZeroNotice({
       <button
         type="button"
         onClick={filtered ? onClear : onCreate}
-        className="h-7 rounded-md border border-accent-primary/30 bg-accent-primary/10 px-2.5 text-[11px] font-semibold text-accent-primary transition-colors hover:bg-accent-primary/20"
+        className="h-control-sm rounded-md border border-accent-primary/30 bg-accent-primary/10 px-2.5 text-[11px] font-semibold text-accent-primary transition-colors hover:bg-accent-primary/20"
       >
         {filtered ? t("clearAll") : t("addSomething")}
       </button>
@@ -1187,15 +1188,7 @@ function ShortcutSheet({
           <h2 className="text-[15px] font-semibold tracking-tight text-fg-primary">
             {t("shortcutsTitle")}
           </h2>
-          <button
-            type="button"
-            data-autofocus
-            onClick={onClose}
-            aria-label={t("close")}
-            className="flex h-7 w-7 items-center justify-center rounded-md border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
-          >
-            <X size={13} />
-          </button>
+          <ModalDismiss onDismiss={onClose} label={t("close")} autoFocus />
         </div>
         <dl className="kairos-scroll-area flex min-h-0 flex-1 flex-col overflow-y-auto">
           {SHORTCUTS.map((shortcut) => (
@@ -1207,7 +1200,7 @@ function ShortcutSheet({
                 {shortcut.keys.map((k) => (
                   <kbd
                     key={k}
-                    className="min-w-[1.6em] rounded border border-border-medium border-b-2 bg-bg-secondary px-1.5 py-0.5 text-center text-[11px] font-semibold text-fg-primary"
+                    className="min-w-[1.6em] rounded-sm border border-border-medium border-b-2 bg-bg-secondary px-1.5 py-0.5 text-center text-[11px] font-semibold text-fg-primary"
                   >
                     {k}
                   </kbd>

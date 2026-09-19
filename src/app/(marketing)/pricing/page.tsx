@@ -32,7 +32,7 @@ export default async function PricingPage() {
       <div className="mx-auto w-full max-w-[1120px]">
         <Link
           href="/"
-          className="k-nav inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[rgb(150,150,162)]"
+          className="k-nav inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-fg-tertiary"
         >
           <ArrowLeft size={14} />
           Back home
@@ -42,14 +42,14 @@ export default async function PricingPage() {
           Sell anticipation, not allowance
         </h1>
 
-        <p className="mt-6 max-w-[62ch] text-[19px] leading-[1.7] text-[rgb(178,178,190)]">
+        <p className="mt-6 max-w-[62ch] text-[19px] leading-[1.7] text-fg-secondary">
           Five agents answer when you speak to them, and every plan includes all
           of them. Two more — the Daily Brief and the Risk Radar — run on a
           schedule with no one in the loop. That is the line: Free gives you the
           whole tool, paid plans give you the thing that works while you sleep.
         </p>
 
-        <div className="my-12 h-px bg-white/[0.12]" />
+        <div className="my-12 h-px bg-border-light" />
 
         <PricingTable signedIn={Boolean(session?.user)} />
       </div>
