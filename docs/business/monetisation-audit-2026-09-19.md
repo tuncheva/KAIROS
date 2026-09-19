@@ -62,8 +62,23 @@ deliberately unenforced.
 
 Sandbox is not live. Re-check all three against the live account before launch.
 
-Still open: **A3** (adopt the policy), **B5** (enable plan switching in the
-portal), **A5**, **B2**, **B3**, **B4**, **B6**, **C2**, **C3**.
+### Found while testing the fixes
+
+- **The pricing page was not public at all.** `/pricing` was the only marketing
+  route missing from `PUBLIC_PATHS` in `src/proxy.ts`, so it answered a
+  signed-out visitor with a 307 to sign-in. Nobody could read the prices without
+  first creating an account — which makes B3 moot and is a larger conversion
+  hole than B3 itself. Fixed. It was found by loading the page, not by reading
+  the code; the audit above had read `PricingTable` and assumed the route
+  worked.
+
+**B2**, **B3** and **B4** are also fixed: Team can be bought by creating an
+organization from the card, the chosen plan and interval survive sign-up through
+`callbackUrl`, and both surfaces default to annual and describe it as two months
+free with a per-month equivalent.
+
+Still open: **A3** (adopt the policy before the first code exists), **B5**
+(enable plan switching in the portal), **A5**, **B6**, **C2**, **C3**.
 
 ---
 
