@@ -531,7 +531,9 @@
       "successTitle": "You are subscribed",
       "successBody": "Your plan is being applied — it may take a few seconds to appear.",
       "cancelledTitle": "Checkout cancelled",
-      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready."
+      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready.",
+      "startTrial": "Commencer vos {days} jours gratuits",
+      "trialNote": "{days} jours gratuits, sans carte. Se termine sauf si vous en ajoutez une."
     }
   },
   "create": {

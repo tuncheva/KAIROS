@@ -34,17 +34,36 @@ Ranked by euros:
 ## Status
 
 Fixed in `fix/monetisation-audit-batch-1`: **A1** (seats enforced at all three
-admission paths), **A2** (`automatic_tax`), **A4** (gates on `undoApply`,
-`agentPinning`, `perAgentMemory`, `standingInstructions`), **C1** (`planToRecord`
-keeps the plan on file rather than downgrading on an unrecognised price).
+admission paths), **A2** (`automatic_tax`, behind `STRIPE_AUTOMATIC_TAX`), **A4**
+(gates on `undoApply`, `agentPinning`, `perAgentMemory`, `standingInstructions`),
+**B1** (30-day trial, no card), **C1** (`planToRecord` keeps the plan on file
+rather than downgrading on an unrecognised price).
 
 `tests/server/entitlementEnforcement.test.ts` now fails the build if a paid flag
 loses its server-side gate, and its allowlist is the record of which flags are
 deliberately unenforced.
 
-Everything else below is open. **A3** and **B5** are Stripe dashboard work with
-no code to write; **B1**, **B2**, **B3**, **B4** are product decisions rather
-than defects.
+### Checked against the Stripe account (sandbox, `acct_…fE0b`, BG/EUR)
+
+- **A3 — no action needed yet.** The account has **zero coupons and zero
+  promotion codes**. `allow_promotion_codes: true` is therefore a policy gap
+  rather than a live leak: the rules in A3 should be adopted before the first
+  code is created, not retroactively.
+- **B5 — confirmed broken.** The default portal configuration has
+  `subscription_update.enabled = false`, so the portal offers **no plan
+  switching at all**. The checkout mutation's "change it from the billing
+  portal" is currently false: a Pro subscriber cannot reach Team without
+  cancelling and waiting out the period. Cancellation is correctly
+  `at_period_end`, and card update and invoice history are both on.
+- **A2 — the prerequisite is not met.** Stripe Tax reports `status: pending`
+  with **zero registrations**, which is why `automatic_tax` ships behind an env
+  flag defaulting to off. Enabling it before Tax is active would reject every
+  checkout session.
+
+Sandbox is not live. Re-check all three against the live account before launch.
+
+Still open: **A3** (adopt the policy), **B5** (enable plan switching in the
+portal), **A5**, **B2**, **B3**, **B4**, **B6**, **C2**, **C3**.
 
 ---
 

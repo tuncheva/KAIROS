@@ -355,6 +355,14 @@ function PlansGroup({ t, data }: { t: Translator; data: Summary | undefined }) {
                 current={current}
                 purchasable={data?.purchasable[plan] ?? false}
                 organization={data?.organization ?? null}
+                // The trial is per owner, so Pro reads the personal flag and
+                // Team the organization's — a buyer who has used one may still
+                // have the other.
+                trialDays={
+                  (plan === "team" ? data?.trial.organization : data?.trial.personal)
+                    ? (data?.trial.days ?? 0)
+                    : 0
+                }
                 pending={checkout.isPending}
                 onBuy={() => {
                   setError(null);
@@ -418,6 +426,7 @@ function PlanCard({
   current,
   purchasable,
   organization,
+  trialDays,
   pending,
   onBuy,
 }: {
@@ -427,6 +436,8 @@ function PlanCard({
   current: PlanId;
   purchasable: boolean;
   organization: Summary["organization"];
+  /** Days of free trial on offer, or 0 when this buyer has had theirs. */
+  trialDays: number;
   pending: boolean;
   onBuy: () => void;
 }) {
@@ -481,10 +492,24 @@ function PlanCard({
 
       <div className="mt-auto flex flex-col gap-1.5 pt-1">
         <LedgerAction onClick={onBuy} disabled={pending || blocker !== null}>
-          {pending ? t("opening") : t("choose", { plan: t(`planName.${plan}`) })}
+          {pending
+            ? t("opening")
+            : // The offer goes on the button, not beside it. "Start your free
+              // month" is a different decision from "Choose Pro" — the second
+              // asks for a commitment the first does not.
+              trialDays > 0 && blocker === null
+              ? t("startTrial", { days: trialDays })
+              : t("choose", { plan: t(`planName.${plan}`) })}
         </LedgerAction>
         {blocker ? (
           <p className="text-[11.5px] text-fg-quaternary">{blocker}</p>
+        ) : trialDays > 0 ? (
+          // What happens at the end, said before the decision rather than in a
+          // renewal email. A trial that collects no card and does not say so
+          // reads as a subscription the buyer has forgotten the terms of.
+          <p className="text-[11.5px] text-fg-quaternary">
+            {t("trialNote", { days: trialDays })}
+          </p>
         ) : null}
       </div>
     </div>

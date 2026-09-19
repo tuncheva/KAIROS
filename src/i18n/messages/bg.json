@@ -1217,7 +1217,9 @@
       "successTitle": "You are subscribed",
       "successBody": "Your plan is being applied — it may take a few seconds to appear.",
       "cancelledTitle": "Checkout cancelled",
-      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready."
+      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready.",
+      "startTrial": "Започнете {days} безплатни дни",
+      "trialNote": "{days} дни безплатно, без карта. Спира, освен ако не добавите карта."
     }
   },
   "create": {
