@@ -108,7 +108,7 @@ export async function POST(request: Request) {
   // an older client should degrade to the default rather than break the chat.
   // `isPinnable` is what guarantees the value reaching `runHandoff`'s exhaustive
   // switch is one that switch handles.
-  const pinnedAgent =
+  const requestedAgent =
     typeof body.agentId === "string" && isPinnable(body.agentId)
       ? (body.agentId as TargetAgent)
       : undefined;
@@ -122,6 +122,19 @@ export async function POST(request: Request) {
     apiKeyId: null,
     headers: request.headers,
   };
+
+  // Addressing a specialist directly is a Pro line on the pricing page, so the
+  // pin is honoured only for a plan that bought it. Dropped to Auto rather than
+  // refused, for the same reason an unrecognised id is: the pin is a routing
+  // preference, and a free user's message should be answered by A1 rather than
+  // rejected. The picker is already hidden client-side; this is the half that
+  // holds when the request does not come from the picker.
+  //
+  // `entitlementsFor` is memoised against `ctx`, so this and the ceiling below
+  // are one query between them.
+  const pinnedAgent = (await entitlementsFor(ctx)).agentPinning
+    ? requestedAgent
+    : undefined;
 
   // Same door as the tRPC procedures: one AI request off the caller's daily
   // budget, refused before any model call.

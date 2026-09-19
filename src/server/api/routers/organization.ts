@@ -6,6 +6,7 @@ import { organizations, organizationMembers, organizationRoles, organizationInvi
 import { flagsForRole } from "~/lib/permissions";
 import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/security/authRateLimit";
 import { getClientIp } from "~/server/http/clientIp";
+import { assertSeatAvailable } from "~/server/billing/seats";
 import {
   JOIN_CODE_TTL_MS,
   buildJoinUrl,
@@ -486,7 +487,11 @@ export const organizationRouter = createTRPCRouter({
           });
         }
 
-        
+        // After the membership check, so someone already inside a full
+        // organization is told they are already a member rather than that there
+        // is no room for them.
+        await assertSeatAvailable(organization.id);
+
         // This used to insert every flag as false regardless of role, which is
         // why nothing could safely read the columns: a "worker" joining by access
         // code arrived with no capabilities at all. Derive them from the role.
@@ -1466,6 +1471,11 @@ export const organizationRouter = createTRPCRouter({
         return { success: true, alreadyMember: true };
       }
 
+      // An invitation is not a reservation: it can be issued while a seat is
+      // free and accepted after it has been taken, so the seat is checked at
+      // acceptance rather than at send.
+      await assertSeatAvailable(invite.organizationId);
+
       // Add as member
       const invitedRole = invite.role ?? "member";
       await ctx.db.insert(organizationMembers).values({
@@ -1982,6 +1992,12 @@ export const organizationRouter = createTRPCRouter({
           message: "You are already a member of this organization.",
         });
       }
+
+      // Before the claim below, deliberately: a full organization should not
+      // burn a use off a single-use QR code that was never going to admit
+      // anyone. The rollback in the catch handles a failed *insert*; refusing
+      // here means there is nothing to roll back.
+      await assertSeatAvailable(candidate.organizationId);
 
       // Claim a use with a conditional update rather than a read-then-write, so
       // two people scanning the same single-use QR at once cannot both win.

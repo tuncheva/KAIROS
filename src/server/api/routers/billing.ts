@@ -239,8 +239,19 @@ export const billingRouter = createTRPCRouter({
         // An existing customer is reused; otherwise Stripe makes one and we
         // record it from the webhook. Passing both `customer` and
         // `customer_email` is an error, hence the branch.
+        //
+        // `customer_update` rides along with the existing-customer arm because
+        // `automatic_tax` below needs a billing address to pick a rate, and for
+        // a customer Stripe already knows it will not overwrite one from the
+        // session unless told it may. Without it, the session is rejected
+        // outright: "automatic_tax requires customer_update.address when
+        // customer is set". The new-customer arm needs nothing — there is no
+        // record to update.
         ...(customerId
-          ? { customer: customerId }
+          ? {
+              customer: customerId,
+              customer_update: { address: "auto" as const, name: "auto" as const },
+            }
           : { customer_email: ctx.session.user.email ?? undefined }),
 
         // Stamped on the subscription, not just the session. The session's
@@ -266,6 +277,18 @@ export const billingRouter = createTRPCRouter({
         // Required for EU VAT on a euro-priced subscription sold to businesses.
         billing_address_collection: "required",
         tax_id_collection: { enabled: true },
+
+        // The address and VAT number collected above are inputs to a tax
+        // calculation, not filing paperwork — without this they are two fields
+        // nobody reads. The prices in `~/lib/plans` are exclusive of VAT, which
+        // is what the pricing page's footer promises; leaving this off does not
+        // make the sale tax-free, it makes the €12 tax-inclusive after the fact
+        // and takes the VAT out of margin.
+        //
+        // Requires Stripe Tax to be active on the account with an origin
+        // registration. If it is not, Stripe rejects the session rather than
+        // quietly selling untaxed — which is the failure direction to want.
+        automatic_tax: { enabled: true },
       });
 
       if (!session.url) {
