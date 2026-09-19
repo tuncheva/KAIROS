@@ -53,6 +53,13 @@ const PUBLIC_PATHS = new Set([
   "/about",
   "/contact",
   "/careers",
+  // The one marketing page that was missing, and the expensive one to miss: a
+  // visitor with no account was bounced to sign-in, so nobody could read the
+  // prices without first becoming a user. `PricingPage` reads the session and
+  // `PricingTable` takes a `signedIn` prop precisely because it expects to be
+  // rendered for someone who is not — the page was written to be public and
+  // only this list disagreed.
+  "/pricing",
 ]);
 
 /**

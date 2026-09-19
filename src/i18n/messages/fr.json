@@ -533,7 +533,12 @@
       "cancelledTitle": "Checkout cancelled",
       "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready.",
       "startTrial": "Commencer vos {days} jours gratuits",
-      "trialNote": "{days} jours gratuits, sans carte. Se termine sauf si vous en ajoutez une."
+      "trialNote": "{days} jours gratuits, sans carte. Se termine sauf si vous en ajoutez une.",
+      "createOrg": "Créer une organisation",
+      "createOrgConfirm": "Créer et continuer",
+      "creatingOrg": "Création…",
+      "orgNamePlaceholder": "Nom de l'organisation",
+      "orgNameLabel": "Nom de l'organisation à créer"
     }
   },
   "create": {

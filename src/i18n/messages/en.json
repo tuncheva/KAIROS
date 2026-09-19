@@ -1219,7 +1219,12 @@
       "cancelledTitle": "Checkout cancelled",
       "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready.",
       "startTrial": "Start {days} days free",
-      "trialNote": "{days} days free, no card needed. It stops unless you add one."
+      "trialNote": "{days} days free, no card needed. It stops unless you add one.",
+      "createOrg": "Create an organization",
+      "createOrgConfirm": "Create and continue",
+      "creatingOrg": "Creating…",
+      "orgNamePlaceholder": "Organization name",
+      "orgNameLabel": "Name of the organization to create"
     }
   },
   "create": {

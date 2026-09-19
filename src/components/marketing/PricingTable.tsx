@@ -5,8 +5,9 @@ import Link from "next/link";
 
 import {
   PLAN_CATALOGUE,
-  annualSavingPercent,
+  annualMonthlyEquivalent,
   formatEuro,
+  monthsFreeOnAnnual,
   priceFor,
   type BillingInterval,
 } from "~/lib/plans";
@@ -26,7 +27,12 @@ import type { PlanId } from "~/lib/entitlements";
  * visitor is quoted here and the price they are charged there cannot drift.
  */
 export function PricingTable({ signedIn }: { signedIn: boolean }) {
-  const [interval, setInterval] = useState<BillingInterval>("month");
+  // Annual by default. Monthly-by-default asks every visitor to opt *into* the
+  // cheaper commitment, which means most never see it — the toggle is the only
+  // place the discount is mentioned. Starting here shows the better price first
+  // and lets someone who wants monthly say so, which is the direction that costs
+  // nothing if they do.
+  const [interval, setInterval] = useState<BillingInterval>("year");
 
   return (
     <div className="flex flex-col gap-10">
@@ -78,14 +84,29 @@ function IntervalToggle({
           }`}
         >
           {option === "year"
-            ? // Derived from the two prices rather than written as "17%", so the
-              // claim cannot outlive the numbers that justify it.
-              `Yearly · save ${annualSavingPercent("pro")}%`
+            ? // Derived from the two prices rather than written as "2", so the
+              // claim cannot outlive the numbers that justify it. Months rather
+              // than the equivalent percentage because it is the unit the
+              // subscription is already measured in — see `monthsFreeOnAnnual`.
+              `Yearly · ${monthsFreeOnAnnual("pro")} months free`
             : "Monthly"}
         </button>
       ))}
     </div>
   );
+}
+
+/**
+ * The billing screen, told which plan the visitor already chose.
+ *
+ * `section=billing` is what opens the right settings panel; `plan` and
+ * `interval` are read by `BillingSettingsClient` to preselect rather than to
+ * buy. Deliberately not a link that starts a checkout: the visitor has not
+ * signed in yet at the point this is built, and a URL that charges someone on
+ * arrival is not a URL to hand out.
+ */
+function billingHref(plan: "pro" | "team", interval: BillingInterval): string {
+  return `/settings?section=billing&plan=${plan}&interval=${interval}`;
 }
 
 function PlanColumn({
@@ -124,20 +145,31 @@ function PlanColumn({
         </p>
       </div>
 
-      <p className="text-fg-primary">
+      <div className="text-fg-primary">
         {descriptor.pricing ? (
           <>
-            <span className="font-display text-[40px] leading-none">
-              {formatEuro(priceFor(plan as "pro" | "team", interval))}
-            </span>
-            <span className="ml-2 text-[13px] text-fg-tertiary">
-              per seat / {interval === "year" ? "year" : "month"}
-            </span>
+            <p>
+              <span className="font-display text-[40px] leading-none">
+                {formatEuro(priceFor(plan as "pro" | "team", interval))}
+              </span>
+              <span className="ml-2 text-[13px] text-fg-tertiary">
+                per seat / {interval === "year" ? "year" : "month"}
+              </span>
+            </p>
+            {interval === "year" ? (
+              // The figure that makes the two intervals comparable. Without it a
+              // visitor toggling to yearly watches €12 become €120 and has to do
+              // the division themselves to find out it is cheaper.
+              <p className="mt-1.5 text-[13px] text-fg-tertiary">
+                {formatEuro(annualMonthlyEquivalent(plan as "pro" | "team"))} per
+                seat / month, billed yearly
+              </p>
+            ) : null}
           </>
         ) : (
           <span className="font-display text-[40px] leading-none">Free</span>
         )}
-      </p>
+      </div>
 
       <ul className="flex flex-col gap-2">
         {descriptor.highlights.map((line) => (
@@ -158,8 +190,24 @@ function PlanColumn({
            app's sign-in lives — not to `signInHref`, whose `reason=expired`
            would tell a first-time visitor their session had run out. Once signed
            in, every paid CTA goes straight to the screen that can actually
-           start a checkout. */
-        href={!signedIn ? "/" : plan === "free" ? "/dashboard" : "/settings?section=billing"}
+           start a checkout.
+
+           The plan and interval ride along either way. Clicking "yearly Pro"
+           and arriving at a billing screen defaulted to something else means
+           choosing twice, and the second choice happens after the enthusiasm
+           that produced the first one. For a signed-out visitor it goes through
+           `callbackUrl`, which the sign-in modal already honours for same-site
+           paths — the mechanism exists because a scanned invite QR had the same
+           problem. */
+        href={
+          !signedIn
+            ? plan === "free"
+              ? "/"
+              : `/?callbackUrl=${encodeURIComponent(billingHref(plan, interval))}`
+            : plan === "free"
+              ? "/dashboard"
+              : billingHref(plan, interval)
+        }
         className={`mt-auto rounded-lg px-4 py-2.5 text-center text-[13.5px] font-medium transition-colors ${
           featured
             ? "bg-accent-primary text-white hover:opacity-90"

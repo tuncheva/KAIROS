@@ -153,3 +153,34 @@ export function annualSavingPercent(plan: PurchasablePlan): number {
   const { monthly, annual } = PLAN_CATALOGUE[plan].pricing!;
   return Math.round((1 - annual / (monthly * 12)) * 100);
 }
+
+/**
+ * The same discount said the way the pricing memo says it: months, not percent.
+ *
+ * "Two months free" and "save 17%" describe one number, and the first one sells.
+ * A percentage is an abstraction the reader has to convert into something they
+ * recognise; months are already the unit the subscription is measured in, and
+ * the memo argues the annual plan in exactly these terms.
+ *
+ * Derived from the two prices for the same reason {@link annualSavingPercent}
+ * is — a hardcoded "2" would survive a price change and start lying, and this is
+ * a claim made on a public page.
+ */
+export function monthsFreeOnAnnual(plan: PurchasablePlan): number {
+  const { monthly, annual } = PLAN_CATALOGUE[plan].pricing!;
+  return Math.round(12 - annual / monthly);
+}
+
+/**
+ * What an annual subscription works out to per month, in euro cents.
+ *
+ * The number that makes the two intervals comparable. A reader toggling to
+ * yearly sees €12 become €120 and has to divide before they know whether that is
+ * a good deal; "€10 per seat / month, billed yearly" answers it for them.
+ *
+ * Rounded to whole cents because it is a derived display figure, not a price
+ * anyone is charged — the actual charge is {@link priceFor} on the year.
+ */
+export function annualMonthlyEquivalent(plan: PurchasablePlan): number {
+  return Math.round(PLAN_CATALOGUE[plan].pricing!.annual / 12);
+}
