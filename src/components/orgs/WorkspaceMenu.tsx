@@ -123,14 +123,17 @@ export function WorkspaceMenu() {
 
   return (
     <>
-      <div className="relative" ref={containerRef}>
+      {/* `min-w-0` so the switcher is what gives way in a 320px top bar: it
+          was the one item that could not shrink, and pushed the bell and the
+          avatar off the right edge instead of truncating its own name. */}
+      <div className="relative min-w-0" ref={containerRef}>
         <button
           ref={triggerRef}
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-haspopup="menu"
           aria-expanded={open}
-          className={`group flex max-w-[15rem] items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors sm:max-w-[20rem] ${
+          className={`group flex min-w-0 max-w-[min(15rem,100%)] items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors sm:max-w-[20rem] ${
             open ? "bg-bg-elevated" : "hover:bg-bg-elevated"
           }`}
         >
@@ -169,7 +172,7 @@ export function WorkspaceMenu() {
           <div
             ref={menuRef}
             role="menu"
-            className="absolute left-0 z-50 mt-2 w-72 overflow-hidden rounded-lg border border-border-light/60 bg-bg-surface shadow-2xl"
+            className="absolute left-0 z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border border-border-light/60 bg-bg-surface shadow-2xl"
           >
             <div className="px-3 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wider text-fg-tertiary">
               {t("switchWorkspace")}

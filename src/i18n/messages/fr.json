@@ -1312,6 +1312,19 @@
     }
   },
   "agents": {
+    "effort": {
+      "title": "À quel point l'assistant réfléchit",
+      "auto": "Auto",
+      "autoDescription": "Équilibré : routage rapide, réflexion plus poussée après les recherches.",
+      "low": "Rapide",
+      "lowDescription": "Réponses les plus rapides. Idéal pour les questions et recherches simples.",
+      "medium": "Équilibré",
+      "mediumDescription": "Une réflexion modérée à chaque étape.",
+      "high": "Approfondi",
+      "highDescription": "Réponses plus lentes et plus soignées pour la planification et l'analyse.",
+      "max": "Maximum",
+      "maxDescription": "Toute la réflexion que le modèle propose. Nettement plus lent."
+    },
     "chooseAgent": "Choisir un agent",
     "auto": "Automatique",
     "autoDescription": "Dirige votre message vers le bon spécialiste et peut en solliciter plusieurs à la fois.",

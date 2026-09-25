@@ -17,6 +17,10 @@ import { useTranslations } from "next-intl";
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
 import { AUTO_AGENT } from "~/components/agents/AgentPicker";
 import { ComposerMenu } from "~/components/chat/ComposerMenu";
+import {
+  EffortMenu,
+  useReasoningEffort,
+} from "~/components/chat/EffortMenu";
 import { api } from "~/trpc/react";
 
 const ALL_PROJECTS = "__all__";
@@ -139,6 +143,20 @@ export function A1ChatWidgetOverlay(props: {
    * plus a per-frame height change means the resized edge trails the cursor.
    */
   const [interacting, setInteracting] = useState(false);
+  /*
+   * Below `sm` the panel is a sheet, not a window. A 340px-minimum floating
+   * panel on a 375px phone is a full-screen panel with a 16px sliver of page
+   * around it that the fixed top and bottom bars then paint over — and there
+   * is no pointer precise enough to drag or resize it by an 8px edge anyway.
+   */
+  const [isPhone, setIsPhone] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639.98px)");
+    const sync = () => setIsPhone(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   const router = useRouter();
   const t = useTranslations("aiConsole");
@@ -167,6 +185,7 @@ export function A1ChatWidgetOverlay(props: {
    */
   const [selectedAgent, setSelectedAgent] = useState<string>(AUTO_AGENT);
   const [scope, setScope] = useState<string>(ALL_PROJECTS);
+  const reasoning = useReasoningEffort();
 
   const agentsQuery = api.agent.agents.useQuery(undefined, {
     enabled: open,
@@ -242,7 +261,7 @@ export function A1ChatWidgetOverlay(props: {
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       const el = panelRef.current;
-      if (!el) return;
+      if (!el || isPhone) return;
       // Never intercept clicks on interactive elements
       if ((e.target as HTMLElement).closest("button, input, textarea, a, select")) return;
 
@@ -255,20 +274,20 @@ export function A1ChatWidgetOverlay(props: {
         e.preventDefault();
       }
     },
-    [rect],
+    [rect, isPhone],
   );
 
   const handleHeaderPointerDown = useCallback(
     (e: React.PointerEvent) => {
       /* don't start drag if clicking a button */
-      if ((e.target as HTMLElement).closest("button")) return;
+      if (isPhone || (e.target as HTMLElement).closest("button")) return;
       dragging.current = true;
       setInteracting(true);
       origin.current = { mx: e.clientX, my: e.clientY, rect: { ...rect } };
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       e.preventDefault();
     },
-    [rect],
+    [rect, isPhone],
   );
 
   const handlePointerMove = useCallback(
@@ -351,11 +370,14 @@ export function A1ChatWidgetOverlay(props: {
 
   /* ─── panel styles ─── */
   const panelStyle: React.CSSProperties = {
-    left: rect.x,
-    top: rect.y,
-    width: rect.w,
-    /* Collapsed, the panel is exactly its title bar. */
-    height: minimised ? 44 : rect.h,
+    /* On a phone the sheet is placed by its classes instead (see `isPhone`). */
+    ...(!isPhone && {
+      left: rect.x,
+      top: rect.y,
+      width: rect.w,
+      /* Collapsed, the panel is exactly its title bar. */
+      height: minimised ? 44 : rect.h,
+    }),
     /*
      * Hidden between open/close rather than unmounted.
      *
@@ -385,7 +407,18 @@ export function A1ChatWidgetOverlay(props: {
        * animation and the collapse/expand height transition. Both live in
        * globals.css, where the reduced-motion override can reach them.
        */
-      className="kairos-menu-surface kairos-ai-widget fixed z-50 flex flex-col overflow-hidden rounded-xl"
+      /*
+       * On a phone: open, it covers the screen and keeps its bar and composer
+       * inside the notch and the home indicator; collapsed, it is a bar parked
+       * just above the bottom nav rather than on top of it.
+       */
+      className={`kairos-menu-surface kairos-ai-widget fixed z-50 flex flex-col overflow-hidden ${
+        !isPhone
+          ? "rounded-xl"
+          : minimised
+            ? "inset-x-2 bottom-[calc(var(--kairos-bottomnav-h)+var(--kairos-safe-bottom)+0.5rem)] h-11 rounded-xl"
+            : "inset-0 rounded-none pt-[var(--kairos-safe-top)] pb-[var(--kairos-safe-bottom)]"
+      }`}
       data-interacting={interacting}
       style={panelStyle}
       onPointerDown={handlePointerDown}
@@ -550,6 +583,7 @@ export function A1ChatWidgetOverlay(props: {
           prefill={props.prefill}
           projectId={scopeProjectId}
           pinnedAgentId={pinnedAgentId}
+          effort={reasoning.effort}
           composerControls={
             <>
               <ComposerMenu
@@ -606,6 +640,12 @@ export function A1ChatWidgetOverlay(props: {
                   ]}
                 />
               )}
+
+              <EffortMenu
+                selected={reasoning.selected}
+                onSelect={reasoning.select}
+                iconClassName="h-3 w-3 shrink-0"
+              />
             </>
           }
           emptyStateFooter={

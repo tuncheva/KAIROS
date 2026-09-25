@@ -30,6 +30,7 @@ import "server-only";
 
 import { env } from "~/env";
 import { createLogger } from "~/server/logger";
+import { currentUserReasoningEffort } from "./effortScope";
 import { resolveLlmConfig } from "./providers";
 
 const log = createLogger("llm");
@@ -114,9 +115,20 @@ const CHAT_TEMPLATE_KWARGS: ReadonlyArray<
  */
 const FAST_TIER_REASONING_EFFORT = "low";
 
-function strongTierReasoningEffort(): string {
-  return env.LLM_REASONING_EFFORT ?? "medium";
+/**
+ * The strong tier's configured effort: the user's pick for this turn, then
+ * `LLM_REASONING_EFFORT`. Undefined means neither was set.
+ */
+function configuredStrongEffort(): string | undefined {
+  return currentUserReasoningEffort() ?? env.LLM_REASONING_EFFORT;
 }
+
+function strongTierReasoningEffort(): string {
+  return configuredStrongEffort() ?? "medium";
+}
+
+/** The ladder `chat_template_kwargs.reasoning_effort` accepts. */
+const TEMPLATE_EFFORT_LADDER = ["low", "medium", "high"] as const;
 
 /**
  * Models that take reasoning effort as a **top-level** `reasoning_effort` field.
@@ -160,7 +172,8 @@ const REASONING_EFFORT_MODELS: ReadonlyArray<
  * Unsupported values resolve *downwards* — `medium` on a `low`/`high`/`max`
  * model becomes `low`. This dial exists to buy latency back, so the ambiguous
  * case should not silently cost more than was asked for. Only reached when
- * `LLM_REASONING_EFFORT` is set; an unset dial takes the family's own default
+ * an effort was asked for — `LLM_REASONING_EFFORT`, the user's pick, or a
+ * per-call override; an unset dial takes the family's own default
  * rather than being resolved from the global one.
  */
 function nearestSupportedEffort(
@@ -196,7 +209,7 @@ function reasoningEffortFor(
   if (tier === "fast") {
     return nearestSupportedEffort(FAST_TIER_REASONING_EFFORT, spec.supported);
   }
-  const configured = env.LLM_REASONING_EFFORT;
+  const configured = configuredStrongEffort();
   return configured
     ? nearestSupportedEffort(configured, spec.supported)
     : spec.strongDefault;
@@ -221,13 +234,17 @@ function chatTemplateKwargsFor(
   )?.[1];
   if (!kwargs) return undefined;
   if (!("thinking" in kwargs)) return kwargs;
+  // Resolved onto the template's ladder: the user can ask for "max", which no
+  // template-flag model offers, and an unknown value is silently ignored there.
   return {
     ...kwargs,
-    reasoning_effort:
+    reasoning_effort: nearestSupportedEffort(
       override ??
-      (tier === "fast"
-        ? FAST_TIER_REASONING_EFFORT
-        : strongTierReasoningEffort()),
+        (tier === "fast"
+          ? FAST_TIER_REASONING_EFFORT
+          : strongTierReasoningEffort()),
+      TEMPLATE_EFFORT_LADDER,
+    ),
   };
 }
 
@@ -318,8 +335,8 @@ export interface ChatRequest {
    */
   tier?: "fast" | "strong";
   /**
-   * Chain-of-thought budget for this one call, overriding the tier and
-   * `LLM_REASONING_EFFORT`.
+   * Chain-of-thought budget for this one call, overriding the tier, the user's
+   * pick for the turn (`effortScope.ts`) and `LLM_REASONING_EFFORT`.
    *
    * For callers that know a particular call does not need the depth the tier
    * implies — picking which tools to fetch is not the same work as reasoning

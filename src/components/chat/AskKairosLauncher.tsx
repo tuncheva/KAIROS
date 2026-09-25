@@ -8,6 +8,8 @@ import { api } from "~/trpc/react";
 
 interface Props {
   onOpen: (prefill?: string) => void;
+  /** Hide below `lg`, where a bottom corner lands on a page's own composer. */
+  hideBelowLg?: boolean;
 }
 
 type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
@@ -15,14 +17,22 @@ type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 const CORNER_STORAGE_KEY = "kairos:launcher-corner";
 
 const CORNER_CLASSES: Record<Corner, string> = {
-  /* `bottom-24` on small screens, not `bottom-4`: the mobile bottom nav is
-     fixed at `bottom-0`, and at the old offset the pill sat on top of it and
-     covered whichever item was in that corner. The nav also now outranks this
-     at z-50, so a regression here is visible rather than silently winning. */
-  "bottom-right": "right-4 bottom-24 flex-col items-end lg:right-6 lg:bottom-6",
-  "bottom-left": "left-4 bottom-24 flex-col items-start lg:left-6 lg:bottom-6",
-  "top-right": "top-4 right-4 flex-col-reverse items-end lg:top-6 lg:right-6",
-  "top-left": "top-4 left-4 flex-col-reverse items-start lg:top-6 lg:left-6",
+  /* Clear of the bars on small screens, not `bottom-4`/`top-4`: the mobile
+     bottom nav is fixed at `bottom-0`, and at the old offset the pill sat on
+     top of it and covered whichever item was in that corner. The nav also now
+     outranks this at z-50, so a regression here is visible rather than
+     silently winning. The offsets read the bars' own heights plus the
+     safe-area inset — a flat `bottom-24` left 2px above the nav on a phone
+     with a home indicator, and `top-4` put a top-corner pill under the top
+     bar entirely. */
+  "bottom-right":
+    "right-4 bottom-[calc(var(--kairos-bottomnav-h)+var(--kairos-safe-bottom)+1rem)] flex-col items-end lg:right-6 lg:bottom-6",
+  "bottom-left":
+    "left-4 bottom-[calc(var(--kairos-bottomnav-h)+var(--kairos-safe-bottom)+1rem)] flex-col items-start lg:left-6 lg:bottom-6",
+  "top-right":
+    "top-[calc(var(--kairos-topbar-h)+var(--kairos-safe-top)+1rem)] right-4 flex-col-reverse items-end lg:top-6 lg:right-6",
+  "top-left":
+    "top-[calc(var(--kairos-topbar-h)+var(--kairos-safe-top)+1rem)] left-4 flex-col-reverse items-start lg:top-6 lg:left-6",
 };
 
 /* The flattened corner of the nudge bubble points at the pill, so it moves
@@ -62,7 +72,7 @@ function isCorner(value: string | null): value is Corner {
  * sit on top of page content, and snapping means there is no state where the
  * pill half-overlaps something and has to be nudged pixel by pixel.
  */
-export function AskKairosLauncher({ onOpen }: Props) {
+export function AskKairosLauncher({ onOpen, hideBelowLg = false }: Props) {
   const t = useTranslations("aiConsole");
   const [nudgeHidden, setNudgeHidden] = useState(false);
   const [corner, setCorner] = useState<Corner>("bottom-right");
@@ -139,7 +149,7 @@ export function AskKairosLauncher({ onOpen }: Props) {
 
   return (
     <div
-      className={`fixed z-40 flex gap-2.5 ${CORNER_CLASSES[corner]}`}
+      className={`fixed z-40 flex gap-2.5 ${CORNER_CLASSES[corner]} ${hideBelowLg ? "max-lg:hidden" : ""}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -174,7 +184,7 @@ export function AskKairosLauncher({ onOpen }: Props) {
             type="button"
             onClick={() => setNudgeHidden(true)}
             aria-label={t("dismissNudge")}
-            className="-mt-0.5 -mr-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-sm text-fg-tertiary transition-colors hover:text-fg-primary"
+            className="kairos-tap -mt-0.5 -mr-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-sm text-fg-tertiary transition-colors hover:text-fg-primary"
           >
             <X className="h-3 w-3" />
           </button>

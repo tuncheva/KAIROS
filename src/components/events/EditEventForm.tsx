@@ -289,8 +289,10 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
             </div>
           </div>
 
-          {/* Date & Time grid */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Date & Time grid. Stacked on a phone: a column of a 320–375px
+              dialog left a native date field ~80px, less than it needs to
+              show a date at the 16px touch screens are raised to. */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex items-center gap-2.5 bg-bg-secondary rounded-xl p-3 border dark:border-accent-primary/20 border-border-medium focus-within:border-accent-primary focus-within:ring-1 focus-within:ring-accent-primary/40 transition-all">
               <Calendar size={16} className="text-accent-primary shrink-0" />
               <input
@@ -356,7 +358,7 @@ export const EditEventForm: React.FC<EditEventFormProps> = ({ event, onSuccess, 
         )}
 
         {/* Toggles */}
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"

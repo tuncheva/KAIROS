@@ -21,6 +21,9 @@ const {
   LlmHttpError,
   isLlmConfigured,
 } = await import("~/server/llm/core/modelClient");
+const { withUserReasoningEffort } = await import(
+  "~/server/llm/core/effortScope"
+);
 
 /** A minimal OpenAI-shaped completion response. */
 function completion(
@@ -235,6 +238,50 @@ describe("modelClient — responses", () => {
     // The whole point of a separate tier: titles and JSON repair should never
     // pay the reasoning budget that planning a backlog does.
     expect(requestBody(0).reasoning_effort).toBe("low");
+  });
+
+  /**
+   * The effort the user picked in the composer replaces the configured default
+   * for the whole turn — but only on the strong tier. Titles and JSON repair
+   * stay cheap whatever they asked for.
+   */
+  it("applies the user's effort to strong-tier calls in the turn", async () => {
+    fetchMock.mockResolvedValue(completion({ role: "assistant", content: "ok" }));
+
+    await withUserReasoningEffort("max", () =>
+      chatCompletion({ messages: USER, model: "moonshotai/kimi-k3" }),
+    );
+
+    expect(requestBody(0).reasoning_effort).toBe("max");
+  });
+
+  it("keeps the fast tier cheap whatever the user picked", async () => {
+    fetchMock.mockResolvedValue(completion({ role: "assistant", content: "ok" }));
+
+    await withUserReasoningEffort("max", () =>
+      chatCompletion({
+        messages: USER,
+        model: "moonshotai/kimi-k3",
+        tier: "fast",
+      }),
+    );
+
+    expect(requestBody(0).reasoning_effort).toBe("low");
+  });
+
+  it("resolves the user's effort onto a template ladder without max", async () => {
+    fetchMock.mockResolvedValue(completion({ role: "assistant", content: "ok" }));
+
+    await withUserReasoningEffort("max", () =>
+      chatCompletion({ messages: USER, model: "deepseek/deepseek-v4-flash" }),
+    );
+
+    // "max" is not a rung the template accepts; an unknown value is silently
+    // ignored there, so it lands on the nearest cheaper one instead.
+    expect(requestBody(0).chat_template_kwargs).toEqual({
+      thinking: true,
+      reasoning_effort: "high",
+    });
   });
 
   it("sends no reasoning_effort for a model without that dial", async () => {

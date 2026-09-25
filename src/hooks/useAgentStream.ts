@@ -113,6 +113,11 @@ interface SendOptions {
    * stale pin degrades rather than failing the turn.
    */
   agentId?: string;
+  /**
+   * How hard the model thinks this turn. Omitted means the server's default,
+   * which also keeps the cheap first routing pass.
+   */
+  effort?: "low" | "medium" | "high" | "max";
 }
 
 /** Split an SSE buffer into complete `event:`/`data:` frames. */
@@ -170,6 +175,7 @@ export function useAgentStream(handlers: AgentStreamHandlers) {
           conversationId: opts.conversationId,
           priorTaskDraftId: opts.priorTaskDraftId,
           agentId: opts.agentId,
+          effort: opts.effort,
         }),
         signal: controller.signal,
       });

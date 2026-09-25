@@ -880,7 +880,7 @@ export function ChatShell({
                 type="button"
                 onClick={() => router.push("/chat")}
                 aria-label={t("backToConversations")}
-                className="lg:hidden p-1.5 rounded-lg text-fg-secondary hover:bg-bg-secondary transition-colors flex-shrink-0"
+                className="kairos-tap lg:hidden p-1.5 rounded-lg text-fg-secondary hover:bg-bg-secondary transition-colors flex-shrink-0"
               >
                 <ArrowLeft size={18} />
               </button>
@@ -924,7 +924,7 @@ export function ChatShell({
                 onClick={() => setShowDetails((v) => !v)}
                 aria-label={t("details")}
                 aria-pressed={showDetails}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`kairos-tap flex-shrink-0 p-2 rounded-lg transition-colors ${
                   showDetails
                     ? "text-accent-primary bg-accent-primary/10"
                     : "text-fg-tertiary hover:text-accent-primary hover:bg-bg-secondary"

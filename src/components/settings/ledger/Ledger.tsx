@@ -381,8 +381,10 @@ function LedgerRowView({ row }: { row: LedgerRow }) {
     >
       <div className="flex w-full items-center gap-3 sm:w-[300px] sm:flex-none">
         {row.leading}
+        {/* Breakable: a member with no name is titled by their e-mail, and an
+            unbroken address was wider than a phone's column. */}
         <span
-          className={`text-[14px] font-medium tracking-[-0.01em] ${
+          className={`kairos-break-anywhere min-w-0 text-[14px] font-medium tracking-[-0.01em] ${
             row.danger ? "text-error" : row.dim ? "text-fg-tertiary" : "text-fg-primary"
           }`}
         >
@@ -395,7 +397,7 @@ function LedgerRowView({ row }: { row: LedgerRow }) {
           <div className="flex flex-wrap items-center gap-3">{row.control}</div>
         ) : null}
         {row.desc ? (
-          <span className="max-w-[620px] text-[12.5px] leading-[1.45] text-fg-tertiary">
+          <span className="kairos-break-anywhere max-w-[620px] text-[12.5px] leading-[1.45] text-fg-tertiary">
             {row.desc}
           </span>
         ) : null}

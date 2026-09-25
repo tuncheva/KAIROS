@@ -103,7 +103,7 @@ export function CalendarDrawer({ state, onClose, onCreated, onChanged, onDeleted
           aria-labelledby={headingId}
           className="relative flex h-full w-full max-w-[420px] flex-col border-l border-border-light bg-bg-elevated shadow-2xl calendar-drawer"
         >
-          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border-light px-6 py-5">
+          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border-light px-6 py-5 pt-[calc(1.25rem+var(--kairos-safe-top))]">
             <h2
               id={headingId}
               className="text-[17px] font-semibold tracking-tight text-fg-primary"
@@ -421,13 +421,13 @@ function DetailPanel({
           Delete one slip away from Complete; this keeps every control one
           click away without any of them competing for the eye. */}
       {tab === "view" && readOnly && (
-        <div className="shrink-0 border-t border-border-light bg-bg-surface px-5 py-4">
+        <div className="shrink-0 border-t border-border-light bg-bg-surface px-5 py-4 pb-[calc(1rem+var(--kairos-safe-bottom))]">
           <p className="text-[12px] leading-snug text-fg-tertiary">{t("externalReadOnly")}</p>
         </div>
       )}
 
       {tab === "view" && !readOnly && (
-        <div className="flex shrink-0 items-center gap-2 border-t border-border-light bg-bg-surface px-5 py-4">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border-light bg-bg-surface px-5 py-4 pb-[calc(1rem+var(--kairos-safe-bottom))]">
           {item.kind === "task" ? (
             <button
               type="button"
@@ -565,7 +565,7 @@ function RescheduleForm({
   return (
     <div className="flex flex-col gap-4 calendar-field">
       <div className="flex gap-3">
-        <label className="flex flex-1 flex-col gap-2">
+        <label className="flex min-w-0 flex-1 flex-col gap-2">
           <span className={MICRO_LABEL}>{t("dateFieldLabel")}</span>
           <input
             data-autofocus
@@ -929,7 +929,7 @@ function NewItemPanel({
         </label>
 
         <div className="flex gap-3 calendar-field" style={{ animationDelay: "100ms" }}>
-          <label className="flex flex-1 flex-col gap-2">
+          <label className="flex min-w-0 flex-1 flex-col gap-2">
             <span className={MICRO_LABEL}>{t("dateFieldLabel")}</span>
             <input
               type="date"
@@ -1027,7 +1027,7 @@ function NewItemPanel({
         </label>
       </div>
 
-      <div className="flex shrink-0 gap-2.5 border-t border-border-light p-5">
+      <div className="flex shrink-0 gap-2.5 border-t border-border-light p-5 pb-[calc(1.25rem+var(--kairos-safe-bottom))]">
         <button
           type="button"
           onClick={onCancel}

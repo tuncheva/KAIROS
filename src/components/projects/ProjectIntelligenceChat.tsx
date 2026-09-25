@@ -773,6 +773,8 @@ export function ProjectIntelligenceChat(props: {
    * outside the expanded workspace passes and what this chat has always done.
    */
   pinnedAgentId?: string;
+  /** The effort picked in the composer. Undefined is the server's default. */
+  effort?: "low" | "medium" | "high" | "max";
   /** Tools the last turn called, so the workspace can render an audit trail. */
   onToolsUsed?: (names: string[]) => void;
   /**
@@ -841,7 +843,7 @@ export function ProjectIntelligenceChat(props: {
    */
   onCanClearChange?: (canClear: boolean) => void;
 }) {
-  const { projectId, pinnedAgentId } = props;
+  const { projectId, pinnedAgentId, effort } = props;
   const isConsole = props.variant === "console";
   /** The two designed surfaces. See `variant`. */
   const isPanel = isConsole || props.variant === "widget";
@@ -1763,10 +1765,11 @@ export function ProjectIntelligenceChat(props: {
         projectId,
         conversationId: conversationIdRef.current,
         agentId: pinnedAgentId,
+        effort,
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [projectId, pinnedAgentId, pushTrail, sendTurn, tc],
+    [projectId, pinnedAgentId, effort, pushTrail, sendTurn, tc],
   );
 
   /**
@@ -2264,7 +2267,7 @@ export function ProjectIntelligenceChat(props: {
                               className={
                                 m.role === "agent"
                                   ? "kairos-chat-response text-sm leading-relaxed"
-                                  : "whitespace-pre-wrap text-sm leading-relaxed"
+                                  : "whitespace-pre-wrap break-words text-sm leading-relaxed"
                               }
                             >
                               {m.text}
@@ -3535,7 +3538,7 @@ export function ProjectIntelligenceChat(props: {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={t("placeholder")}
-              className="kairos-field-bare flex-1 bg-transparent px-2 py-2 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus-visible:outline-none"
+              className="kairos-field-bare min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus-visible:outline-none"
             />
             <button
               type="submit"

@@ -40,6 +40,10 @@ import {
   type AgentTurnResult,
 } from "~/server/llm/orchestrator/handoff";
 import { isPinnable } from "~/server/llm/agents/registry";
+import {
+  isUserReasoningEffort,
+  withUserReasoningEffort,
+} from "~/server/llm/core/effortScope";
 import type { TargetAgent } from "~/server/llm/schemas/a1WorkspaceConciergeSchemas";
 import {
   appendMessage,
@@ -65,6 +69,8 @@ interface ChatRequestBody {
   priorTaskDraftId?: unknown;
   /** A sub-agent the user pinned in the picker. Omit for Auto. */
   agentId?: unknown;
+  /** How hard the model thinks: low/medium/high/max. Omit for the default. */
+  effort?: unknown;
 }
 
 function sse(event: string, data: unknown): string {
@@ -112,6 +118,9 @@ export async function POST(request: Request) {
     typeof body.agentId === "string" && isPinnable(body.agentId)
       ? (body.agentId as TargetAgent)
       : undefined;
+
+  // Same leniency as the agent id: an unknown value is the default, not a 400.
+  const effort = isUserReasoningEffort(body.effort) ? body.effort : undefined;
 
   // Built before the rate-limit gate rather than after: the ceiling is now the
   // caller's plan ceiling, and resolving entitlements needs a context.
@@ -229,22 +238,24 @@ export async function POST(request: Request) {
       try {
         send("start", { conversationId });
 
-        const result = await runAgentTurn({
-          ctx,
-          message,
-          scope: projectId ? { projectId } : undefined,
-          conversationHistory: history,
-          conversationSummary: summary,
-          priorTaskDraftId,
-          pinnedAgent,
-          signal: request.signal,
-          onToolCall: (name) => send("tool_call", { name }),
-          onSubAgent: (agent) => send("sub_agent", { agent }),
-          // G-1: the answer arrives as text while the rest of the object is
-          // still being generated. The `result` event still carries the whole
-          // validated object — this is the same bytes, seen earlier.
-          onAnswerDelta: (text) => send("answer_delta", { text }),
-        });
+        const result = await withUserReasoningEffort(effort, () =>
+          runAgentTurn({
+            ctx,
+            message,
+            scope: projectId ? { projectId } : undefined,
+            conversationHistory: history,
+            conversationSummary: summary,
+            priorTaskDraftId,
+            pinnedAgent,
+            signal: request.signal,
+            onToolCall: (name) => send("tool_call", { name }),
+            onSubAgent: (agent) => send("sub_agent", { agent }),
+            // G-1: the answer arrives as text while the rest of the object is
+            // still being generated. The `result` event still carries the whole
+            // validated object — this is the same bytes, seen earlier.
+            onAnswerDelta: (text) => send("answer_delta", { text }),
+          }),
+        );
 
         const latencyMs = Date.now() - startedAt;
         turn = { result, latencyMs };

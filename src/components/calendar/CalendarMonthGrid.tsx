@@ -89,7 +89,7 @@ export function CalendarMonthGrid({
             key={label}
             role="columnheader"
             aria-colindex={i + 1}
-            className="px-3 py-2.5 text-[11px] uppercase tracking-[0.12em] text-fg-tertiary"
+            className="min-w-0 truncate px-1.5 py-2.5 text-[11px] uppercase tracking-[0.12em] text-fg-tertiary sm:px-3"
           >
             {/* Short label on screen, full weekday for anything reading it. */}
             <span aria-hidden="true">{label}</span>
@@ -125,7 +125,7 @@ export function CalendarMonthGrid({
                     if (event.target === event.currentTarget) onOpenDay(day);
                   }}
                   className={cn(
-                    "group relative flex min-h-0 min-w-0 flex-col gap-1 overflow-hidden border-r border-b border-border-light/60 p-2 transition-colors outline-none",
+                    "group relative flex min-h-0 min-w-0 flex-col gap-1 overflow-hidden border-r border-b border-border-light/60 p-1 transition-colors outline-none sm:p-2",
                     // Dimming lives on the fill, not on opacity. `opacity-40`
                     // multiplied against already-tertiary text and put the
                     // leading and trailing weeks under 3:1 in both themes.
@@ -135,7 +135,10 @@ export function CalendarMonthGrid({
                     "focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-inset",
                   )}
                 >
-                  <div className="flex items-center justify-between gap-1">
+                  {/* Click-through below `sm`, where the add button is hidden:
+                      the cell only opens on a press on itself, and this row is
+                      most of the free space a busy phone-sized cell has left. */}
+                  <div className="pointer-events-none flex items-center justify-between gap-1 sm:pointer-events-auto">
                     <span
                       aria-hidden="true"
                       className={cn(
@@ -154,14 +157,17 @@ export function CalendarMonthGrid({
                         which meant it never appeared at all on touch — where
                         there is no hover — while still sitting in the tab
                         order at all forty-two cells. Keyboard route is `n`,
-                        or "Add here" inside the day peek. */}
+                        or "Add here" inside the day peek. Below `sm` a cell is
+                        ~46px wide, too narrow for the date and this both, so
+                        the cell's own tap (the day peek, with "Add here") is
+                        the route there. */}
                     <button
                       type="button"
                       tabIndex={-1}
                       onClick={() => onCreate(day)}
                       aria-label={addLabel}
                       title={addLabel}
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-border-medium bg-bg-secondary/80 text-fg-tertiary transition-colors hover:text-fg-primary group-hover:border-border-strong"
+                      className="hidden h-5 w-5 shrink-0 items-center justify-center rounded-md border border-border-medium bg-bg-secondary/80 text-fg-tertiary transition-colors hover:text-fg-primary group-hover:border-border-strong sm:flex"
                     >
                       <Plus size={11} />
                     </button>
@@ -174,6 +180,9 @@ export function CalendarMonthGrid({
                       label={describeItem(item)}
                       tabIndex={-1}
                       onSelect={() => onSelectItem(item)}
+                      /* Tighter on a phone, where the chip is ~38px wide and
+                         the default gaps left the title no room at all. */
+                      className="gap-1 px-1 sm:gap-1.5 sm:px-1.5"
                     />
                   ))}
 

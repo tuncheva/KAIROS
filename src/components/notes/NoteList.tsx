@@ -184,7 +184,7 @@ export function NoteList({
           type="button"
           onClick={onOpenRail}
           aria-label={t("common.openLibrary")}
-          className={`${ICON_BTN_BARE} -ml-1 md:hidden`}
+          className={`${ICON_BTN_BARE} -ml-1 lg:hidden`}
         >
           <MenuIcon size={18} />
         </button>
@@ -232,7 +232,7 @@ export function NoteList({
           type="button"
           onClick={onNewNote}
           aria-label={t("actions.create")}
-          className={`${ICON_BTN_BARE} text-accent-primary md:hidden`}
+          className={`${ICON_BTN_BARE} text-accent-primary lg:hidden`}
         >
           <Plus size={18} />
         </button>
@@ -627,7 +627,7 @@ function NoteRow({
           {preview}
         </span>
 
-        <span className="mt-2 flex items-center gap-1.5">
+        <span className="mt-2 flex flex-wrap items-center gap-1.5">
           {/* Lock and share are independent facts. The old card put them in one
             ternary, so a shared note that was also encrypted showed neither
             lock nor key — only "Shared". */}

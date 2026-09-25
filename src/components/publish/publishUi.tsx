@@ -172,12 +172,15 @@ export function InfoToast({
   const Icon = info.type === "error" ? AlertCircle : Check;
 
   return (
+    /* Below `lg` it spans the screen and lifts clear of the bottom tab bar
+       (and the event page's pinned RSVP bar) — the same 6rem clearance the
+       toast region uses. At `bottom-4` it landed on top of the tab bar. */
     <div
       role="status"
-      className={`fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-xl border p-4 shadow-lg ${tone}`}
+      className={`fixed inset-x-4 bottom-[calc(6rem+var(--kairos-safe-bottom))] z-50 flex items-center gap-3 rounded-xl border p-4 shadow-lg sm:inset-x-auto sm:right-4 lg:bottom-4 ${tone}`}
     >
       <Icon size={18} className="shrink-0" />
-      <p className="text-sm font-medium">{info.message}</p>
+      <p className="min-w-0 flex-1 text-sm font-medium">{info.message}</p>
       <button
         type="button"
         onClick={onClose}

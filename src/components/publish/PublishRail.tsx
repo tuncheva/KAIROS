@@ -322,13 +322,15 @@ export function PublishRail({
           aria-expanded={showMobileFilters}
           className="flex h-control-md items-center justify-between gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary"
         >
-          <span className="flex items-center gap-2">
+          <span className="flex shrink-0 items-center gap-2">
             <SlidersHorizontal size={14} className="text-accent-primary" />
             {t("filters")}
           </span>
-          <span className="flex items-center gap-2">
+          {/* The summary truncates rather than pushing the chevron out: a
+              long town and a topic together outran a 320px button. */}
+          <span className="flex min-w-0 items-center gap-2">
             {(region || topic) && (
-              <span className="kairos-mono text-[11px] text-accent-primary">
+              <span className="kairos-mono min-w-0 truncate text-[11px] text-accent-primary">
                 {[region ? regionLabel(region) : null, topic ? t(`topics.${topic}`) : null]
                   .filter(Boolean)
                   .join(" · ")}
@@ -337,7 +339,7 @@ export function PublishRail({
             <ChevronDown
               size={13}
               aria-hidden="true"
-              className={showMobileFilters ? "rotate-180" : ""}
+              className={`shrink-0 ${showMobileFilters ? "rotate-180" : ""}`}
             />
           </span>
         </button>

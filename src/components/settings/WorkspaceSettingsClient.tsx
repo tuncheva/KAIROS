@@ -774,7 +774,9 @@ export function WorkspaceSettingsClient() {
                     index > 0 ? "border-t border-border-light" : ""
                   }`}
                 >
-                  <span className="text-[13.5px] text-fg-secondary">{inv.email}</span>
+                  <span className="kairos-break-anywhere min-w-0 text-[13.5px] text-fg-secondary">
+                    {inv.email}
+                  </span>
                   <span className="text-xs text-fg-tertiary">
                     {translateRoleLabel(inv.displayRole ?? inv.role)}
                   </span>
@@ -840,11 +842,15 @@ export function WorkspaceSettingsClient() {
               {inviteHistory.slice(0, 8).map((inv, index) => (
                 <li
                   key={`history-${inv.id}`}
-                  className={`flex items-center justify-between gap-3 py-2 ${
+                  // Wraps like the pending list above: an address, a status
+                  // and a full timestamp do not fit one line of a phone.
+                  className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 py-2 ${
                     index > 0 ? "border-t border-border-light" : ""
                   }`}
                 >
-                  <span className="text-[13.5px] text-fg-secondary">{inv.email}</span>
+                  <span className="kairos-break-anywhere min-w-0 text-[13.5px] text-fg-secondary">
+                    {inv.email}
+                  </span>
                   <span className="text-xs text-fg-tertiary">
                     {translateInviteStatus(inv.status)}
                   </span>

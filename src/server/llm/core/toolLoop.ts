@@ -41,6 +41,7 @@ import {
   type ToolDefinition,
 } from "./modelClient";
 import { createPlainTextFilter } from "~/server/llm/core/plainText";
+import { currentUserReasoningEffort } from "./effortScope";
 import { createSummaryStream } from "./summaryStream";
 
 const log = createLogger("llm.toolLoop");
@@ -297,8 +298,13 @@ export async function runToolLoop(
 ): Promise<ToolLoopResult> {
   const maxIterations = opts.maxIterations ?? DEFAULT_MAX_ITERATIONS;
   const deadline = Date.now() + (opts.wallClockMs ?? DEFAULT_WALL_CLOCK_MS);
-  const firstPassEffort =
-    "firstPassReasoningEffort" in opts
+  // A user who picked an effort gets it on every call. The cheap first pass is
+  // a latency optimisation made on their behalf, and a turn that needs no tool
+  // is answered on that pass — so keeping it would make "think harder" do
+  // nothing for exactly the questions answered without a lookup.
+  const firstPassEffort = currentUserReasoningEffort()
+    ? undefined
+    : "firstPassReasoningEffort" in opts
       ? opts.firstPassReasoningEffort
       : DEFAULT_FIRST_PASS_REASONING_EFFORT;
 

@@ -131,7 +131,7 @@ export function ConversationRail({
               type="button"
               onClick={() => onQueryChange("")}
               aria-label={t("clearSearch")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-fg-tertiary hover:text-fg-primary transition-colors"
+              className="kairos-tap absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-fg-tertiary hover:text-fg-primary transition-colors"
             >
               <X size={14} />
             </button>

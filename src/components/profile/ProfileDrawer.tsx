@@ -240,8 +240,12 @@ export function ProfileDrawer({
           }`}
         />
 
+        {/* Full height edge to edge, so the notch and the home indicator are
+            the sheet's to clear: the header's ESC sat under the status bar
+            and the last shared project under the home indicator. The
+            insets are 0 wherever there is no safe area. */}
         <aside
-          className={`relative flex h-full w-full max-w-[440px] flex-col border-l border-border-light/60 bg-bg-secondary shadow-[-28px_0_60px_rgba(0,0,0,0.5)] ${
+          className={`kairos-sheet-right relative flex h-full w-full max-w-[440px] flex-col pt-[var(--kairos-safe-top)] pb-[var(--kairos-safe-bottom)] border-l border-border-light/60 bg-bg-secondary shadow-[-28px_0_60px_rgba(0,0,0,0.5)] ${
             closing ? "projects-drawer-out" : "projects-drawer"
           }`}
         >

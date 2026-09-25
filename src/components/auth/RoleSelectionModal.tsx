@@ -90,13 +90,16 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
         role="dialog"
         aria-modal="true"
         aria-label={t("welcome.title")}
-        className={`${MODAL_SHELL} kairos-page-enter max-w-lg`}
+        className={`${MODAL_SHELL} kairos-page-enter max-h-[calc(100dvh-2rem)] w-full max-w-lg`}
       >
-        <div className="flex justify-end px-pad-dialog pt-4 -mb-2">
+        <div className="flex flex-none justify-end px-pad-dialog pt-4 -mb-2">
           <ModalDismiss onDismiss={onComplete} label={tCommon("close")} />
         </div>
 
-        <div className="px-pad-dialog pt-4 pb-8">
+        {/* The body scrolls inside the capped shell. The shell clips its overflow,
+            so on a short phone the setup form's submit button used to sit
+            below the fold with nothing to scroll. */}
+        <div className="min-h-0 overflow-y-auto px-pad-dialog pt-4 pb-8">
           {step === "choose" && (
             <>
               <div className="text-center mb-8">
