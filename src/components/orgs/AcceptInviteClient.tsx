@@ -2,52 +2,58 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Building2, CheckCircle2, Loader2 } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
+import { AlertCircle, Building2, CheckCircle2, Loader2 } from "~/components/ui/icons";
 import { useToast } from "~/components/providers/ToastProvider";
 import { PermissionGrid } from "~/components/orgs/PermissionGrid";
 import { api } from "~/trpc/react";
 
-/**
- * The landing screen for a scanned invite QR.
- *
- * Split from the page so the token can be checked against the live table on the
- * client: the code may well have rotated in the seconds between the camera
- * seeing it and the browser opening, and this screen should say so rather than
- * failing at the moment somebody presses join.
- */
-export function JoinWithQrClient({ code }: { code: string }) {
+/** The landing screen for an emailed invitation. */
+export function AcceptInviteClient({ token }: { token: string }) {
   const t = useTranslations("org");
+  const tRoles = useTranslations("settings.workspace.roles");
   const router = useRouter();
   const toast = useToast();
   const utils = api.useUtils();
 
   const [joined, setJoined] = useState<string | null>(null);
 
-  const peek = api.organization.peekJoinQr.useQuery(
-    { code },
+  const peek = api.organization.peekInvite.useQuery(
+    { token },
     { retry: false, refetchOnWindowFocus: false },
   );
 
-  const join = api.organization.joinWithQr.useMutation({
+  const refreshShell = async () => {
+    await Promise.all([
+      utils.organization.getActive.invalidate(),
+      utils.organization.listMine.invalidate(),
+      utils.organization.getMyInvites.invalidate(),
+      utils.user.getProfile.invalidate(),
+    ]);
+  };
+
+  const accept = api.organization.acceptInviteByToken.useMutation({
     onSuccess: async (result) => {
       setJoined(result.organizationName);
       toast.success(t("joinedOrg", { name: result.organizationName }));
-      await Promise.all([
-        utils.organization.getActive.invalidate(),
-        utils.organization.listMine.invalidate(),
-        utils.user.getProfile.invalidate(),
-      ]);
+      await refreshShell();
       router.replace("/dashboard");
       router.refresh();
     },
     onError: (error) => {
       toast.error(error.message);
-      // The token died between the peek and the press; re-read so the screen
-      // stops offering a button that cannot work.
       void peek.refetch();
     },
+  });
+
+  const decline = api.organization.declineInvite.useMutation({
+    onSuccess: async () => {
+      toast.success(t("inviteDeclined"));
+      await refreshShell();
+      router.replace("/dashboard");
+    },
+    onError: (error) => toast.error(error.message),
   });
 
   const goToDashboard = useCallback(() => {
@@ -74,14 +80,27 @@ export function JoinWithQrClient({ code }: { code: string }) {
     );
   }
 
-  const result = peek.data;
-
   if (joined) {
     return (
       <Card>
         <CheckCircle2 size={28} className="text-status-success-ink" />
-        <p className="text-sm font-medium text-fg-primary">
-          {t("joinedOrg", { name: joined })}
+        <p className="text-sm font-medium text-fg-primary">{t("joinedOrg", { name: joined })}</p>
+        <SecondaryButton onClick={goToDashboard} label={t("joinGoToDashboard")} />
+      </Card>
+    );
+  }
+
+  const result = peek.data;
+
+  if (result?.status === "wrongAccount") {
+    return (
+      <Card>
+        <AlertCircle size={28} className="text-status-warning-ink" />
+        <p className="text-sm text-fg-secondary">
+          {t("inviteWrongAccount", {
+            invited: result.invitedEmail,
+            current: result.signedInEmail ?? "—",
+          })}
         </p>
         <SecondaryButton onClick={goToDashboard} label={t("joinGoToDashboard")} />
       </Card>
@@ -89,23 +108,20 @@ export function JoinWithQrClient({ code }: { code: string }) {
   }
 
   if (result?.status !== "valid") {
-    // Every dead-token reason gets its own line — "expired" and "already used"
-    // both mean "ask for a fresh QR", but only one of them means the person did
-    // nothing wrong.
     const reason =
       result?.status === "expired"
-        ? t("joinExpired")
+        ? t("inviteExpired")
         : result?.status === "used"
-          ? t("joinUsed")
+          ? t("inviteUsed")
           : result?.status === "revoked"
-            ? t("joinRevoked")
-            : t("joinInvalid");
+            ? t("inviteRevoked")
+            : t("inviteInvalid");
 
     return (
       <Card>
         <AlertCircle size={28} className="text-status-warning-ink" />
         <p className="text-sm text-fg-secondary">{reason}</p>
-        <p className="text-xs text-fg-tertiary">{t("joinAskForFresh")}</p>
+        <p className="text-xs text-fg-tertiary">{t("inviteAskForNew")}</p>
         <SecondaryButton onClick={goToDashboard} label={t("joinGoToDashboard")} />
       </Card>
     );
@@ -124,14 +140,7 @@ export function JoinWithQrClient({ code }: { code: string }) {
   }
 
   const roleLabel =
-    result.displayRole ??
-    (result.role === "mentor"
-      ? t("roleMentor")
-      : result.role === "admin"
-        ? t("roleAdmin")
-        : result.role === "guest"
-          ? t("roleGuest")
-          : t("roleWorker"));
+    result.displayRole ?? tRoles(result.role === "worker" ? "member" : result.role);
 
   return (
     <Card>
@@ -139,11 +148,11 @@ export function JoinWithQrClient({ code }: { code: string }) {
         <Building2 size={24} className="text-accent-primary" />
       </div>
       <div className="space-y-1">
-        <p className="text-lg font-semibold text-fg-primary">
-          {result.organizationName}
-        </p>
+        <p className="text-lg font-semibold text-fg-primary">{result.organizationName}</p>
         <p className="text-sm text-fg-secondary">
-          {t("joinAsRole", { role: roleLabel })}
+          {result.inviterName
+            ? t("inviteFrom", { name: result.inviterName, role: roleLabel })
+            : t("joinAsRole", { role: roleLabel })}
         </p>
       </div>
 
@@ -154,13 +163,16 @@ export function JoinWithQrClient({ code }: { code: string }) {
 
       <button
         type="button"
-        onClick={() => join.mutate({ code })}
-        disabled={join.isPending}
+        onClick={() => accept.mutate({ token })}
+        disabled={accept.isPending || decline.isPending}
         className="w-full rounded-xl bg-accent-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
       >
-        {join.isPending ? t("joining") : t("joinCta")}
+        {accept.isPending ? t("joining") : t("inviteAccept")}
       </button>
-      <SecondaryButton onClick={goToDashboard} label={t("joinDecline")} />
+      <SecondaryButton
+        onClick={() => decline.mutate({ inviteId: result.inviteId })}
+        label={t("inviteDecline")}
+      />
     </Card>
   );
 }
@@ -173,13 +185,7 @@ function Card({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SecondaryButton({
-  onClick,
-  label,
-}: {
-  onClick: () => void;
-  label: string;
-}) {
+function SecondaryButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
       type="button"

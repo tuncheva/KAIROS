@@ -1,5 +1,6 @@
 import { type InferInsertModel, type InferSelectModel, sql } from "drizzle-orm";
-import { index, timestamp, varchar, integer, boolean, text, uniqueIndex } from "drizzle-orm/pg-core";
+import { index, timestamp, varchar, integer, boolean, text, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
+import type { MemberPermissionFlags } from "~/lib/permissions";
 import { createTable, orgRoleEnum, planEnum, subscriptionStatusEnum } from "./enums";
 import { users } from "./users";
 
@@ -70,6 +71,9 @@ export const organizationMembers = createTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: orgRoleEnum("role").notNull(),
+    // The custom role's name when the member was given one. A label only: the
+    // flags below were copied from the role at the time and are what authorize.
+    displayRole: varchar("display_role", { length: 100 }),
     canAddMembers: boolean("can_add_members").default(false).notNull(),
     canAssignTasks: boolean("can_assign_tasks").default(false).notNull(),
     canCreateProjects: boolean("can_create_projects").default(false).notNull(),
@@ -129,6 +133,13 @@ export const organizationInvites = createTable(
     email: varchar("email", { length: 255 }).notNull(),
     role: orgRoleEnum("role").notNull().default("member"),
     displayRole: varchar("display_role", { length: 100 }),
+    // The exact flags the inviter ticked, written verbatim into the membership
+    // on acceptance. Null only on invites issued before this column existed,
+    // which fall back to the role's template.
+    permissions: jsonb("permissions").$type<MemberPermissionFlags>(),
+    // SHA-256 of the token in the emailed link. The token itself is never
+    // stored, so a read of this table does not yield working links.
+    acceptTokenHash: varchar("accept_token_hash", { length: 64 }).unique(),
     invitedById: varchar("invited_by_id", { length: 255 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -161,7 +172,15 @@ export const organizationJoinCodes = createTable(
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
     code: varchar("code", { length: 64 }).notNull().unique(),
+    // "qr" is the short-lived code shown on screen; "link" is an invite link an
+    // admin shares by hand, with a hand-picked flag set and a longer life.
+    // Rotating the QR only ever retires "qr" rows.
+    kind: varchar("kind", { length: 10 }).notNull().default("qr"),
     role: orgRoleEnum("role").notNull().default("worker"),
+    displayRole: varchar("display_role", { length: 100 }),
+    // As on invites: the exact flags a redeemer gets. Null means the role's
+    // template, which is what every QR minted before this column got.
+    permissions: jsonb("permissions").$type<MemberPermissionFlags>(),
     createdById: varchar("created_by_id", { length: 255 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -184,6 +203,7 @@ export const organizationJoinCodes = createTable(
 
 export type Organization = InferSelectModel<typeof organizations>;
 export type OrganizationJoinCode = InferSelectModel<typeof organizationJoinCodes>;
+export type OrganizationInvite = InferSelectModel<typeof organizationInvites>;
 export type NewOrganization = InferInsertModel<typeof organizations>;
 export type OrganizationMember = InferSelectModel<typeof organizationMembers>;
 export type NewOrganizationMember = InferInsertModel<typeof organizationMembers>;

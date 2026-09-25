@@ -51,6 +51,23 @@
   --color-info: rgb(var(--info));
   --color-dash-day: rgb(var(--dash-day));
 
+  /* ─── Terminal edition (dashboard) ───
+     A warm charcoal + lavender palette scoped to the terminal-styled dashboard,
+     carried as its own tokens so the page keeps its distinct look while still
+     following the app's light/dark switch. Hairlines are drawn from `--tui-ink`
+     with an opacity modifier (e.g. `border-tui-ink/12`). See docs/theme.md. */
+  --color-tui-bg: rgb(var(--tui-bg));
+  --color-tui-pane: rgb(var(--tui-pane));
+  --color-tui-ink: rgb(var(--tui-ink));
+  --color-tui-ink2: rgb(var(--tui-ink2));
+  --color-tui-ink3: rgb(var(--tui-ink3));
+  --color-tui-accent: rgb(var(--tui-accent));
+  --color-tui-on-accent: rgb(var(--tui-on-accent));
+  --color-tui-danger: rgb(var(--tui-danger));
+  --color-tui-warn: rgb(var(--tui-warn));
+  --color-tui-ok: rgb(var(--tui-ok));
+  --color-tui-day: rgb(var(--tui-day));
+
   /* Semantic status families — surface / border / ink, drawn from the brand
      ramp (danger ← strawberry, warning ← caramel, success ← mint, info ← sky).
      Every ink-on-surface pair clears WCAG AA in both modes; see docs/theme.md. */
@@ -77,8 +94,12 @@
   --color-event-critical: rgb(var(--event-critical));
 
   /* Font families */
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif, "KairosEmoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-display: var(--font-display), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif, "KairosEmoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display:
+    var(--font-display), var(--font-geist-sans), ui-sans-serif, system-ui,
+    sans-serif;
 
   /* ─── Radius scale ───
      Four steps, tied to the element class rather than to taste:
@@ -100,7 +121,6 @@
   --spacing-control-xl: 56px;
   --spacing-pad-card: 16px;
   --spacing-pad-dialog: 22px;
-
 }
 
 :root {
@@ -111,13 +131,14 @@
   /* Keep this aligned with the `--font-sans` registered in `@theme inline` above.
      Tailwind v4 is configured entirely from this file — there is no
      tailwind.config.js, and v4 would not load one without an `@config` directive. */
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
-    "KairosEmoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif, "KairosEmoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
   /* Ensure plain elements (inputs/selects/buttons) inherit the same font everywhere,
      including Create Project flow + any 3rd-party component styling. */
   font-family: var(--font-sans);
-  
+
   /* Backgrounds - Light */
   --bg-primary: 252 253 255;
   --bg-secondary: 248 250 252;
@@ -125,24 +146,24 @@
   --bg-elevated: 253 254 255;
   --bg-surface: 250 251 253;
   --bg-overlay: 253 254 255;
-  
+
   /* Text - Light (original naming) */
   --text-primary: 15 23 42;
   --text-secondary: 71 85 105;
   --text-tertiary: 100 116 139;
   --text-quaternary: 148 163 184;
-  
+
   /* FG aliases - FOR TAILWIND CLASSES (text-fg-primary, etc.) */
   --fg-primary: 15 23 42;
   --fg-secondary: 71 85 105;
   --fg-tertiary: 100 116 139;
   --fg-quaternary: 148 163 184;
-  
+
   /* Borders - Light */
   --border-light: 200 200 200;
   --border-medium: 203 213 225;
   --border-strong: 148 163 184;
-  
+
   /* Accents - driven by selected accent (see [data-accent] variants below) */
   --accent-primary: 168 85 247;
   --accent-secondary: 192 132 252;
@@ -157,7 +178,7 @@
   --brand-mint: 95 180 156; /* #5FB49C */
   --brand-sky: 39 111 191; /* #276FBF */
   --brand-strawberry: 240 58 71; /* #F03A47 */
-  
+
   /* Status Colors */
   --success: 34 197 94;
   --success-light: 220 252 231;
@@ -196,7 +217,24 @@
   /* Dashboard: the cyan "day elapsed" arc, distinct from the accent so the
      workspace ring can carry two unrelated readings at once. */
   --dash-day: 8 145 178;
-  
+
+  /* Terminal edition — Light. A warm paper palette; the accent is a deep
+     lavender-violet that reads as ink rather than neon. */
+  --tui-bg: 246 245 241;
+  --tui-pane: 251 250 247;
+  --tui-ink: 26 25 23;
+  --tui-ink2: 87 85 79;
+  --tui-ink3: 133 131 124;
+  --tui-accent: 91 72 145;
+  --tui-on-accent: 246 245 241;
+  --tui-danger: 164 71 58;
+  --tui-warn: 138 103 42;
+  --tui-ok: 63 115 85;
+  --tui-day: 77 116 136;
+  --tui-pane-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 18px 36px -26px rgba(26, 25, 23, 0.28);
+
   /* Semantic Event Colors */
   --event-active: var(--brand-purple);
   --event-upcoming: var(--brand-sky);
@@ -205,13 +243,15 @@
   --event-positive: 34 197 94;
   --event-pending: 251 146 60;
   --event-critical: 239 68 68;
-  
+
   /* Shadow Tokens */
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl:
+    0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
 }
 
@@ -280,24 +320,24 @@
   --bg-elevated: 18 18 22;
   --bg-surface: 12 12 16;
   --bg-overlay: 16 16 20;
-  
+
   /* Text - Dark (brighter whites for contrast) */
   --text-primary: 255 255 255;
   --text-secondary: 220 220 228;
   --text-tertiary: 170 170 180;
   --text-quaternary: 120 120 132;
-  
+
   /* FG aliases - FOR TAILWIND CLASSES (text-fg-primary, etc.) */
   --fg-primary: 255 255 255;
   --fg-secondary: 220 220 228;
   --fg-tertiary: 170 170 180;
   --fg-quaternary: 120 120 132;
-  
+
   /* Borders - Dark (Softer, more elegant) */
   --border-light: 60 60 60;
   --border-medium: 60 60 68;
   --border-strong: 80 80 88;
-  
+
   /* Accents - driven by selected accent (see [data-accent] variants below) */
   --accent-primary: 168 85 247;
   --accent-secondary: 192 132 252;
@@ -312,7 +352,7 @@
   --brand-mint: 95 180 156; /* #5FB49C */
   --brand-sky: 39 111 191; /* #276FBF */
   --brand-strawberry: 240 58 71; /* #F03A47 */
-  
+
   /* Status Colors - Dark */
   --success: 74 222 128;
   --success-light: 20 83 45;
@@ -340,7 +380,24 @@
 
   /* Dashboard: cyan "day elapsed" arc — see the light-mode note above. */
   --dash-day: 34 211 238;
-  
+
+  /* Terminal edition — Dark. Warm near-black panes, bone-white ink, a soft
+     lavender accent. */
+  --tui-bg: 13 13 15;
+  --tui-pane: 17 17 20;
+  --tui-ink: 237 235 230;
+  --tui-ink2: 169 167 161;
+  --tui-ink3: 122 120 115;
+  --tui-accent: 168 150 216;
+  --tui-on-accent: 13 13 15;
+  --tui-danger: 214 139 125;
+  --tui-warn: 207 174 116;
+  --tui-ok: 146 184 156;
+  --tui-day: 143 179 196;
+  --tui-pane-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 24px 48px -28px rgba(0, 0, 0, 0.75);
+
   /* Semantic Event Colors - Dark */
   --event-active: var(--brand-purple);
   --event-upcoming: var(--brand-sky);
@@ -349,13 +406,15 @@
   --event-positive: 74 222 128;
   --event-pending: 251 191 36;
   --event-critical: 248 113 113;
-  
+
   /* Shadow Tokens - Dark (more prominent) */
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --shadow-xl:
+    0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.5);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.7);
 }
 
@@ -570,7 +629,9 @@ textarea,
 select,
 summary,
 [role="button"] {
-  transition-property: color, background-color, border-color, opacity, box-shadow, transform, filter;
+  transition-property:
+    color, background-color, border-color, opacity, box-shadow, transform,
+    filter;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 180ms;
 }
@@ -578,7 +639,9 @@ summary,
 /* Text fields default to soft corners; any `rounded-*` utility still overrides. */
 @layer base {
   :where(
-    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+        [type="color"]
+      ):not([type="file"]),
     textarea,
     select
   ) {
@@ -620,21 +683,74 @@ summary,
   transition: all 0.3s ease-in-out;
 }
 
+/* ─── Terminal edition (dashboard) ───
+   The screen the panes sit on: the warm bg with a faint diagonal hatch that
+   only shows in the gutters, since the panes paint solid `tui-pane` over it. */
+.tui-screen {
+  background-color: rgb(var(--tui-bg));
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgb(var(--tui-ink) / 0.06) 0 1px,
+    transparent 1px 7px
+  );
+}
+
+/* A pane's title chip straddles the top border: the top half sits over the
+   screen, the bottom half over the pane, so the fill is split to match and the
+   label reads as set *into* the frame rather than floating on it. */
+.tui-label {
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--tui-bg)) 50%,
+    rgb(var(--tui-pane)) 50%
+  );
+}
+
+/* The briefing's blinking block cursor. Steps, not a fade, so it reads as a
+   terminal caret; reduced-motion users get a steady block via the global rule. */
+@keyframes tui-blink {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.tui-cursor {
+  animation: tui-blink 1.1s steps(1) infinite;
+}
+
 /* Sticky note popup animation */
 @keyframes popIn {
-  0% { opacity: 0; transform: scale(0.85); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes fadeIn {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 /* Professional Button System */
 .btn-primary {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, rgb(var(--accent-primary)) 0%, rgb(var(--accent-secondary)) 100%);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--accent-primary)) 0%,
+    rgb(var(--accent-secondary)) 100%
+  );
   color: #0f172a;
   font-weight: 600;
   border-radius: var(--radius-lg);
@@ -647,10 +763,14 @@ summary,
 }
 
 .btn-primary::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgb(var(--accent-secondary)) 0%, rgb(var(--accent-tertiary)) 100%);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--accent-secondary)) 0%,
+    rgb(var(--accent-tertiary)) 100%
+  );
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -717,7 +837,9 @@ summary,
 
 .input-base:focus {
   border-color: rgb(var(--accent-primary));
-  box-shadow: var(--shadow-sm), 0 0 0 3px rgb(var(--accent-primary) / 0.1);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 3px rgb(var(--accent-primary) / 0.1);
   background-color: rgb(var(--bg-elevated));
 }
 
@@ -760,9 +882,12 @@ summary,
 }
 
 .modal-gradient {
-  background: radial-gradient(circle at top right, rgb(var(--accent-primary) / 0.08), transparent);
+  background: radial-gradient(
+    circle at top right,
+    rgb(var(--accent-primary) / 0.08),
+    transparent
+  );
 }
-
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
@@ -895,13 +1020,13 @@ summary,
 }
 
 .magic-bento-card:before {
-  content: '';
+  content: "";
   position: absolute;
   top: -5px;
   left: -5px;
   right: -5px;
   bottom: -5px;
-  border-radius: var(--radius-xl); 
+  border-radius: var(--radius-xl);
   background: transparent;
   transition: opacity 0.3s ease-in-out;
   pointer-events: none;
@@ -911,15 +1036,21 @@ summary,
 
 .magic-bento-card:hover:before {
   opacity: 1;
-  box-shadow: 
+  box-shadow:
     0 0 10px rgba(var(--hover-color), 0.5),
     0 0 20px rgba(var(--hover-color), 0.3),
     0 0 30px rgba(var(--hover-color), 0.1);
 }
 
-.card-org:hover:before { --hover-color: 148 72 242; }
-.card-team:hover:before { --hover-color: 128 196 155; }
-.card-personal:hover:before { --hover-color: 255 197 61; }
+.card-org:hover:before {
+  --hover-color: 148 72 242;
+}
+.card-team:hover:before {
+  --hover-color: 128 196 155;
+}
+.card-personal:hover:before {
+  --hover-color: 255 197 61;
+}
 
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
@@ -945,24 +1076,60 @@ summary,
 }
 
 /* Custom delay utility classes */
-.pop-up-delay-1 { animation-delay: 0.1s; }
-.pop-up-delay-2 { animation-delay: 0.2s; }
-.pop-up-delay-3 { animation-delay: 0.3s; }
-.pop-up-delay-4 { animation-delay: 0.4s; }
-.pop-up-delay-5 { animation-delay: 0.5s; }
-.pop-up-delay-6 { animation-delay: 0.6s; }
-.pop-up-delay-7 { animation-delay: 0.7s; }
-.pop-up-delay-8 { animation-delay: 0.8s; }
-.pop-up-delay-9 { animation-delay: 0.9s; }
-.pop-up-delay-10 { animation-delay: 1.0s; }
-.pop-up-delay-11 { animation-delay: 1.1s; }
-.pop-up-delay-12 { animation-delay: 1.2s; }
-.pop-up-delay-13 { animation-delay: 1.3s; }
-.pop-up-delay-14 { animation-delay: 1.4s; }
-.pop-up-delay-15 { animation-delay: 1.5s; }
-.pop-up-delay-16 { animation-delay: 1.6s; }
-.pop-up-delay-17 { animation-delay: 1.7s; }
-.pop-up-delay-18 { animation-delay: 1.8s; }
+.pop-up-delay-1 {
+  animation-delay: 0.1s;
+}
+.pop-up-delay-2 {
+  animation-delay: 0.2s;
+}
+.pop-up-delay-3 {
+  animation-delay: 0.3s;
+}
+.pop-up-delay-4 {
+  animation-delay: 0.4s;
+}
+.pop-up-delay-5 {
+  animation-delay: 0.5s;
+}
+.pop-up-delay-6 {
+  animation-delay: 0.6s;
+}
+.pop-up-delay-7 {
+  animation-delay: 0.7s;
+}
+.pop-up-delay-8 {
+  animation-delay: 0.8s;
+}
+.pop-up-delay-9 {
+  animation-delay: 0.9s;
+}
+.pop-up-delay-10 {
+  animation-delay: 1s;
+}
+.pop-up-delay-11 {
+  animation-delay: 1.1s;
+}
+.pop-up-delay-12 {
+  animation-delay: 1.2s;
+}
+.pop-up-delay-13 {
+  animation-delay: 1.3s;
+}
+.pop-up-delay-14 {
+  animation-delay: 1.4s;
+}
+.pop-up-delay-15 {
+  animation-delay: 1.5s;
+}
+.pop-up-delay-16 {
+  animation-delay: 1.6s;
+}
+.pop-up-delay-17 {
+  animation-delay: 1.7s;
+}
+.pop-up-delay-18 {
+  animation-delay: 1.8s;
+}
 
 ::selection {
   background-color: rgba(var(--accent-primary), 0.45);
@@ -1036,7 +1203,8 @@ summary,
 }
 
 @keyframes float-slow {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate(0, 0) scale(1);
   }
   33% {
@@ -1048,7 +1216,8 @@ summary,
 }
 
 @keyframes float-medium {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate(0, 0) scale(1);
   }
   33% {
@@ -1060,7 +1229,8 @@ summary,
 }
 
 @keyframes float-fast {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate(0, 0) scale(1);
   }
   33% {
@@ -1072,8 +1242,8 @@ summary,
 }
 
 @font-face {
-  font-family: 'Zalando Sans Expanded';
-  src: url('/fonts/ZalandoSansExpanded-Regular.woff2') format('woff2');
+  font-family: "Zalando Sans Expanded";
+  src: url("/fonts/ZalandoSansExpanded-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
 }
@@ -1086,7 +1256,7 @@ summary,
   width: var(--size, 5rem);
   height: var(--size, 5rem);
   border-radius: 50%;
-  transition: --value 2s ease-out; 
+  transition: --value 2s ease-out;
 }
 
 .radial-progress::before {
@@ -1132,7 +1302,7 @@ summary,
 .kairos-system-card {
   background: rgb(var(--bg-surface) / 0.8);
   border-radius: var(--radius-xl);
-  box-shadow: 
+  box-shadow:
     0 0 0 0.5px rgba(var(--border-light) / 0.5),
     0 2px 8px -2px rgba(0, 0, 0, 0.08),
     0 4px 16px -4px rgba(0, 0, 0, 0.06);
@@ -1142,7 +1312,7 @@ summary,
 
 .dark .kairos-system-card {
   background: rgb(var(--bg-surface) / 0.7);
-  box-shadow: 
+  box-shadow:
     0 0 0 0.5px rgba(var(--border-light) / 0.8),
     0 2px 12px -2px rgba(0, 0, 0, 0.4),
     0 6px 24px -6px rgba(0, 0, 0, 0.3);
@@ -1151,7 +1321,7 @@ summary,
 .kairos-system-card-elevated {
   background: rgb(var(--bg-elevated) / 0.9);
   border-radius: var(--radius-xl);
-  box-shadow: 
+  box-shadow:
     0 0 0 0.5px rgba(var(--border-light) / 0.6),
     0 4px 12px -2px rgba(0, 0, 0, 0.1),
     0 8px 24px -4px rgba(0, 0, 0, 0.08);
@@ -1161,7 +1331,7 @@ summary,
 
 .dark .kairos-system-card-elevated {
   background: rgb(var(--bg-elevated) / 0.8);
-  box-shadow: 
+  box-shadow:
     0 0 0 0.5px rgba(var(--border-light) / 0.9),
     0 4px 16px -2px rgba(0, 0, 0, 0.5),
     0 10px 32px -6px rgba(0, 0, 0, 0.4);
@@ -1208,24 +1378,30 @@ summary,
 
 /* Kairos Font Stack - Elegant, clean, modern */
 .kairos-font-display {
-  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
-  font-feature-settings: 'ss01', 'ss02', 'cv01', 'cv02';
+  font-family:
+    "Inter", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif;
+  font-feature-settings: "ss01", "ss02", "cv01", "cv02";
   font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 .kairos-font-body {
-  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
-  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+  font-family:
+    "Inter", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif;
+  font-feature-settings:
+    "kern" 1,
+    "liga" 1,
+    "calt" 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
 .kairos-font-caption {
-  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
-  font-feature-settings: 'kern' 1;
+  font-family:
+    "Inter", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif;
+  font-feature-settings: "kern" 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -1332,7 +1508,9 @@ summary,
 .settingsNavItem {
   position: relative;
   /* Smooth transitions for background and text color changes */
-  transition: background-color 300ms ease, color 300ms ease;
+  transition:
+    background-color 300ms ease,
+    color 300ms ease;
 }
 
 /* Focus visible styling for keyboard navigation */
@@ -1394,7 +1572,9 @@ summary,
   transform: scaleY(1);
 
   /* Use your CSS var if present, otherwise fallback */
-  background-color: rgb(var(--accent-primary, 59 130 246)); /* fallback: blue-500 */
+  background-color: rgb(
+    var(--accent-primary, 59 130 246)
+  ); /* fallback: blue-500 */
 }
 
 /* Ensure indicator doesn't interfere with content */
@@ -1514,7 +1694,9 @@ summary,
   background-color: #ffffff;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  box-shadow:
+    0 20px 25px -5px rgb(0 0 0 / 0.1),
+    0 8px 10px -6px rgb(0 0 0 / 0.1);
   border-width: 0.5px;
   border-color: #c6c6c8;
   min-width: 160px;
@@ -1569,7 +1751,11 @@ summary,
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 9999px;
-  background-image: linear-gradient(to bottom right, rgb(var(--accent-primary)), rgb(var(--accent-secondary)));
+  background-image: linear-gradient(
+    to bottom right,
+    rgb(var(--accent-primary)),
+    rgb(var(--accent-secondary))
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1719,7 +1905,6 @@ summary,
    End of Settings Navigation Indicator
    ============================================================================ */
 
-
 /* ============================================================================
    KAIROS Futuristic Design System – Global Enhancements
    ============================================================================ */
@@ -1806,7 +1991,8 @@ summary,
 }
 
 .progress-person-card {
-  animation: progress-person-card-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation: progress-person-card-in 0.34s cubic-bezier(0.22, 1, 0.36, 1)
+    backwards;
   transition: opacity 0.2s ease;
   overflow: hidden;
 }
@@ -1878,14 +2064,30 @@ summary,
   transform: translateY(16px);
   animation: kairos-stagger-child 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
-.kairos-stagger > *:nth-child(1) { animation-delay: 0.05s; }
-.kairos-stagger > *:nth-child(2) { animation-delay: 0.1s; }
-.kairos-stagger > *:nth-child(3) { animation-delay: 0.15s; }
-.kairos-stagger > *:nth-child(4) { animation-delay: 0.2s; }
-.kairos-stagger > *:nth-child(5) { animation-delay: 0.25s; }
-.kairos-stagger > *:nth-child(6) { animation-delay: 0.3s; }
-.kairos-stagger > *:nth-child(7) { animation-delay: 0.35s; }
-.kairos-stagger > *:nth-child(8) { animation-delay: 0.4s; }
+.kairos-stagger > *:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.kairos-stagger > *:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.kairos-stagger > *:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.kairos-stagger > *:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.kairos-stagger > *:nth-child(5) {
+  animation-delay: 0.25s;
+}
+.kairos-stagger > *:nth-child(6) {
+  animation-delay: 0.3s;
+}
+.kairos-stagger > *:nth-child(7) {
+  animation-delay: 0.35s;
+}
+.kairos-stagger > *:nth-child(8) {
+  animation-delay: 0.4s;
+}
 
 @keyframes kairos-stagger-child {
   to {
@@ -1924,7 +2126,7 @@ summary,
 }
 
 .kairos-card::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(
@@ -1956,7 +2158,11 @@ summary,
 
 /* Neon purple gradient button – used on HomeClient, SignIn, ForgotPassword */
 .kairos-neon-btn {
-  background: linear-gradient(135deg, rgb(var(--accent-primary)), rgb(var(--accent-secondary)));
+  background: linear-gradient(
+    135deg,
+    rgb(var(--accent-primary)),
+    rgb(var(--accent-secondary))
+  );
   position: relative;
   overflow: hidden;
   transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
@@ -2006,8 +2212,12 @@ summary,
 }
 
 @keyframes kairos-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .kairos-modal-content {
@@ -2063,7 +2273,7 @@ summary,
   border-radius: var(--radius-sm);
   padding: 0.15em 0.4em;
   font-size: 0.9em;
-  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  font-family: "SF Mono", "Fira Code", "JetBrains Mono", monospace;
 }
 
 .kairos-chat-response pre {
@@ -2093,8 +2303,16 @@ summary,
 
 /* Thinking dots animation for chat */
 @keyframes kairos-thinking-bounce {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-  30% { transform: translateY(-6px); opacity: 1; }
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
 }
 .kairos-thinking-dots {
   display: inline-flex;
@@ -2118,12 +2336,21 @@ summary,
 
 /* Sub-agent working indicator */
 @keyframes kairos-subagent-pulse {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 @keyframes kairos-subagent-bar {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(200%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
 }
 .kairos-subagent-working {
   display: flex;
@@ -2189,8 +2416,14 @@ summary,
 
 /* Chat message slide-in */
 @keyframes kairos-msg-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .kairos-msg-enter {
   animation: kairos-msg-in 0.25s ease-out;
@@ -2208,53 +2441,87 @@ summary,
 /* ─── Task Timeline Page ─── */
 .timeline-page {
   background:
-    radial-gradient(ellipse 60% 40% at 80% 20%, rgb(var(--accent-primary) / 0.04), transparent 60%),
+    radial-gradient(
+      ellipse 60% 40% at 80% 20%,
+      rgb(var(--accent-primary) / 0.04),
+      transparent 60%
+    ),
     rgb(var(--bg-primary));
 }
 .dark .timeline-page {
   background:
-    radial-gradient(ellipse 60% 40% at 80% 20%, rgb(var(--accent-primary) / 0.06), transparent 60%),
+    radial-gradient(
+      ellipse 60% 40% at 80% 20%,
+      rgb(var(--accent-primary) / 0.06),
+      transparent 60%
+    ),
     rgb(var(--bg-primary));
 }
 
 /* Create Entry Card */
 .create-entry-card {
   background: rgb(255 255 255);
-  box-shadow: var(--shadow-md), 0 0 0 1px rgb(var(--border-light) / 0.6);
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  box-shadow:
+    var(--shadow-md),
+    0 0 0 1px rgb(var(--border-light) / 0.6);
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
 }
 .create-entry-card:hover {
-  box-shadow: var(--shadow-lg), 0 0 0 1px rgb(var(--accent-primary) / 0.15), 0 8px 32px rgb(var(--accent-primary) / 0.08);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px rgb(var(--accent-primary) / 0.15),
+    0 8px 32px rgb(var(--accent-primary) / 0.08);
 }
 .dark .create-entry-card {
   background: rgb(14 14 18);
-  box-shadow: 0 2px 12px 0 rgb(0 0 0 / 0.3), 0 0 0 1px rgb(var(--accent-primary) / 0.06);
+  box-shadow:
+    0 2px 12px 0 rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(var(--accent-primary) / 0.06);
 }
 .dark .create-entry-card:hover {
-  box-shadow: 0 4px 24px 0 rgb(0 0 0 / 0.4), 0 0 0 1px rgb(var(--accent-primary) / 0.12), 0 0 40px rgb(var(--accent-primary) / 0.04);
+  box-shadow:
+    0 4px 24px 0 rgb(0 0 0 / 0.4),
+    0 0 0 1px rgb(var(--accent-primary) / 0.12),
+    0 0 40px rgb(var(--accent-primary) / 0.04);
 }
 
 /* Timeline Entry Cards */
 .timeline-card {
   background: rgb(255 255 255);
-  box-shadow: var(--shadow-sm), 0 0 0 1px rgb(var(--border-light) / 0.5);
-  transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px rgb(var(--border-light) / 0.5);
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    border-color 0.3s ease;
 }
 .timeline-card:hover {
-  box-shadow: var(--shadow-md), 0 0 0 1px rgb(var(--accent-primary) / 0.12);
+  box-shadow:
+    var(--shadow-md),
+    0 0 0 1px rgb(var(--accent-primary) / 0.12);
 }
 .dark .timeline-card {
   background: rgb(14 14 18);
-  box-shadow: 0 1px 6px 0 rgb(0 0 0 / 0.2), 0 0 0 1px rgb(255 255 255 / 0.03);
+  box-shadow:
+    0 1px 6px 0 rgb(0 0 0 / 0.2),
+    0 0 0 1px rgb(255 255 255 / 0.03);
 }
 .dark .timeline-card:hover {
-  box-shadow: 0 4px 20px 0 rgb(0 0 0 / 0.35), 0 0 0 1px rgb(var(--accent-primary) / 0.1);
+  box-shadow:
+    0 4px 20px 0 rgb(0 0 0 / 0.35),
+    0 0 0 1px rgb(var(--accent-primary) / 0.1);
 }
 
 /* File Upload Zone */
 .timeline-upload-zone {
   background: rgb(var(--bg-tertiary) / 0.3);
-  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    background 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 .timeline-upload-zone:hover {
   background: rgb(var(--accent-primary) / 0.04);
@@ -2305,11 +2572,16 @@ summary,
   background: rgb(var(--bg-tertiary) / 0.5);
   border: 1px solid rgb(var(--border-medium) / 0.4);
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
 .timeline-input:focus {
   border-color: rgb(var(--accent-primary) / 0.6);
-  box-shadow: 0 0 0 3px rgb(var(--accent-primary) / 0.08), 0 2px 8px rgb(var(--accent-primary) / 0.06);
+  box-shadow:
+    0 0 0 3px rgb(var(--accent-primary) / 0.08),
+    0 2px 8px rgb(var(--accent-primary) / 0.06);
   background: rgb(var(--bg-tertiary) / 0.7);
 }
 .dark .timeline-input {
@@ -2318,7 +2590,9 @@ summary,
 }
 .dark .timeline-input:focus {
   border-color: rgb(var(--accent-primary) / 0.5);
-  box-shadow: 0 0 0 3px rgb(var(--accent-primary) / 0.12), 0 2px 12px rgb(var(--accent-primary) / 0.08);
+  box-shadow:
+    0 0 0 3px rgb(var(--accent-primary) / 0.12),
+    0 2px 12px rgb(var(--accent-primary) / 0.08);
   background: rgb(255 255 255 / 0.06);
 }
 
@@ -2372,8 +2646,12 @@ summary,
    ───────────────────────────────────────────────────────────── */
 
 @keyframes k-marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 /* Two identical halves, so landing on -50% puts the seam back at the start. */
@@ -2383,16 +2661,27 @@ summary,
   animation: k-marquee 30s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .k-marquee-track { animation: none; }
+  .k-marquee-track {
+    animation: none;
+  }
 }
 
 @keyframes k-drift {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(30px, -24px) scale(1.05); }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(30px, -24px) scale(1.05);
+  }
 }
 
-.k-drift-slow { animation: k-drift 16s ease-in-out infinite; }
-.k-drift-slower { animation: k-drift 22s ease-in-out infinite; }
+.k-drift-slow {
+  animation: k-drift 16s ease-in-out infinite;
+}
+.k-drift-slower {
+  animation: k-drift 22s ease-in-out infinite;
+}
 
 /* Pill buttons. No white: the solid button warms to the lighter accent, the
    ghost picks up an accent border and a faint accent wash. No fill wipe, no
@@ -2401,7 +2690,10 @@ summary,
   transition: background-color 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .k-ghost {
-  transition: border-color 0.35s, color 0.35s, background-color 0.35s;
+  transition:
+    border-color 0.35s,
+    color 0.35s,
+    background-color 0.35s;
 }
 .k-btn svg,
 .k-ghost svg {
@@ -2425,7 +2717,10 @@ summary,
 }
 
 /* Nav links — a hairline draws in from the left and retracts to the right. */
-.k-nav { position: relative; transition: color 0.3s; }
+.k-nav {
+  position: relative;
+  transition: color 0.3s;
+}
 .k-nav::after {
   content: "";
   position: absolute;
@@ -2438,17 +2733,34 @@ summary,
   transform-origin: right center;
   transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.k-nav:hover { color: #fff; }
-.k-nav:hover::after { transform: scaleX(1); transform-origin: left center; }
+.k-nav:hover {
+  color: #fff;
+}
+.k-nav:hover::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
 
 /* "Why teams stay" rows — the row slides right as the arrow arrives */
-.k-row { transition: background-color 0.4s, padding-left 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-.k-row:hover { background: rgb(var(--accent-primary) / 0.05); padding-left: 28px; }
-.k-row:hover .k-arrow { transform: translateX(0); opacity: 1; }
+.k-row {
+  transition:
+    background-color 0.4s,
+    padding-left 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.k-row:hover {
+  background: rgb(var(--accent-primary) / 0.05);
+  padding-left: 28px;
+}
+.k-row:hover .k-arrow {
+  transform: translateX(0);
+  opacity: 1;
+}
 .k-arrow {
   transform: translateX(-10px);
   opacity: 0;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s;
+  transition:
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.4s;
 }
 
 /* Striped stand-in for product screenshots */
@@ -2467,10 +2779,14 @@ summary,
 .k-block {
   position: relative;
   overflow: hidden;
-  transition: background-color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+  transition:
+    background-color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
     transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.k-block > * { position: relative; z-index: 1; }
+.k-block > * {
+  position: relative;
+  z-index: 1;
+}
 .k-block::before {
   content: "";
   position: absolute;
@@ -2481,8 +2797,12 @@ summary,
   transform: translateY(101%);
   transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.k-block:hover::before { transform: translateY(0); }
-.k-block:hover { transform: translateY(-6px); }
+.k-block:hover::before {
+  transform: translateY(0);
+}
+.k-block:hover {
+  transform: translateY(-6px);
+}
 
 /* The arrow shares the card's top-right slot with the tag rather than being
    absolutely positioned over it — the two cross-fade on hover, so they can
@@ -2491,25 +2811,40 @@ summary,
   color: rgb(var(--accent-secondary));
   opacity: 0;
   transform: translate(-8px, 8px);
-  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s;
+  transition:
+    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.5s;
 }
-.k-block:hover .k-card-arrow { transform: translate(0, 0); opacity: 1; }
+.k-block:hover .k-card-arrow {
+  transform: translate(0, 0);
+  opacity: 1;
+}
 
 .k-block .k-card-num,
 .k-block .k-step-num {
-  transition: color 0.8s, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    color 0.8s,
+    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.k-block .k-card-tag { transition: opacity 0.5s; }
+.k-block .k-card-tag {
+  transition: opacity 0.5s;
+}
 .k-block .k-card-body,
-.k-block .k-step-body { transition: color 0.8s; }
+.k-block .k-step-body {
+  transition: color 0.8s;
+}
 .k-block:hover .k-card-num,
 .k-block:hover .k-step-num {
   color: rgb(var(--accent-secondary) / 0.85);
   transform: translateY(-4px);
 }
-.k-block:hover .k-card-tag { opacity: 0; }
+.k-block:hover .k-card-tag {
+  opacity: 0;
+}
 .k-block:hover .k-card-body,
-.k-block:hover .k-step-body { color: rgb(255 255 255 / 0.82); }
+.k-block:hover .k-step-body {
+  color: rgb(255 255 255 / 0.82);
+}
 
 /* Workspace cards — resting colours; everything that lifts them is hover-only
    (see .k-block above), so nothing stays highlighted once the cursor leaves. */
@@ -2518,9 +2853,15 @@ summary,
   color: #fff;
 }
 
-.k-card .k-card-num { color: rgb(255 255 255 / 0.3); }
-.k-card .k-card-tag { color: rgb(255 255 255 / 0.35); }
-.k-card .k-card-body { color: rgb(168 168 182); }
+.k-card .k-card-num {
+  color: rgb(255 255 255 / 0.3);
+}
+.k-card .k-card-tag {
+  color: rgb(255 255 255 / 0.35);
+}
+.k-card .k-card-body {
+  color: rgb(168 168 182);
+}
 
 /* Read-progress rail on the bottom edge of the sticky header */
 .k-prog {
@@ -2539,23 +2880,37 @@ summary,
 /* ─── Intro curtain (wordmark on first load) ─── */
 
 @keyframes k-intro-blur-in {
-  to { opacity: 1; filter: blur(0); }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
 }
 @keyframes k-intro-load {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 @keyframes k-intro-word-out {
-  to { opacity: 0; transform: translateY(-24px); }
+  to {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
 }
 @keyframes k-intro-lift {
-  to { transform: translateY(-100%); }
+  to {
+    transform: translateY(-100%);
+  }
 }
 
 /* Decided before first paint by the theme init script in `layout.tsx`, which
    only marks the intro "seen" under a reduced-motion preference. This keeps the
    server-rendered curtain from flashing before the component unmounts it. */
-html[data-kairos-intro="seen"] .k-intro { display: none; }
+html[data-kairos-intro="seen"] .k-intro {
+  display: none;
+}
 
 .k-intro {
   position: fixed;
@@ -2587,12 +2942,24 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
   filter: blur(12px);
   animation: k-intro-blur-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.k-intro-ch:nth-child(1) { animation-delay: 0.1s; }
-.k-intro-ch:nth-child(2) { animation-delay: 0.22s; }
-.k-intro-ch:nth-child(3) { animation-delay: 0.34s; }
-.k-intro-ch:nth-child(4) { animation-delay: 0.46s; }
-.k-intro-ch:nth-child(5) { animation-delay: 0.58s; }
-.k-intro-ch:nth-child(6) { animation-delay: 0.7s; }
+.k-intro-ch:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.k-intro-ch:nth-child(2) {
+  animation-delay: 0.22s;
+}
+.k-intro-ch:nth-child(3) {
+  animation-delay: 0.34s;
+}
+.k-intro-ch:nth-child(4) {
+  animation-delay: 0.46s;
+}
+.k-intro-ch:nth-child(5) {
+  animation-delay: 0.58s;
+}
+.k-intro-ch:nth-child(6) {
+  animation-delay: 0.7s;
+}
 
 .k-intro-track {
   width: 200px;
@@ -2615,10 +2982,14 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
 .k-intro.k-intro-skip * {
   animation: none !important;
 }
-.k-intro.k-intro-skip { transform: translateY(-100%); }
+.k-intro.k-intro-skip {
+  transform: translateY(-100%);
+}
 
 @media (max-width: 640px) {
-  .k-intro-word { font-size: 52px; }
+  .k-intro-word {
+    font-size: 52px;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -2630,38 +3001,88 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
    ───────────────────────────────────────────────────────────── */
 
 @keyframes k-auth-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 @keyframes k-auth-pop {
-  from { opacity: 0; transform: scale(0.86); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 @keyframes k-auth-slide-l {
-  from { opacity: 0; transform: translateX(-26px); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateX(-26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 @keyframes k-auth-slide-r {
-  from { opacity: 0; transform: translateX(26px); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateX(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-.k-auth-from-left { animation: k-auth-slide-l 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.k-auth-from-right { animation: k-auth-slide-r 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.k-auth-from-left {
+  animation: k-auth-slide-l 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.k-auth-from-right {
+  animation: k-auth-slide-r 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
 /* The view body fades up, then staggers its own children in behind it. */
-.k-auth-body { animation: k-auth-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.k-auth-body > * { animation: k-auth-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.k-auth-body > *:nth-child(1) { animation-delay: 0.02s; }
-.k-auth-body > *:nth-child(2) { animation-delay: 0.06s; }
-.k-auth-body > *:nth-child(3) { animation-delay: 0.1s; }
-.k-auth-body > *:nth-child(4) { animation-delay: 0.14s; }
-.k-auth-body > *:nth-child(5) { animation-delay: 0.18s; }
-.k-auth-body > *:nth-child(6) { animation-delay: 0.22s; }
-.k-auth-body > *:nth-child(7) { animation-delay: 0.26s; }
-.k-auth-body > *:nth-child(8) { animation-delay: 0.3s; }
+.k-auth-body {
+  animation: k-auth-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.k-auth-body > * {
+  animation: k-auth-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.k-auth-body > *:nth-child(1) {
+  animation-delay: 0.02s;
+}
+.k-auth-body > *:nth-child(2) {
+  animation-delay: 0.06s;
+}
+.k-auth-body > *:nth-child(3) {
+  animation-delay: 0.1s;
+}
+.k-auth-body > *:nth-child(4) {
+  animation-delay: 0.14s;
+}
+.k-auth-body > *:nth-child(5) {
+  animation-delay: 0.18s;
+}
+.k-auth-body > *:nth-child(6) {
+  animation-delay: 0.22s;
+}
+.k-auth-body > *:nth-child(7) {
+  animation-delay: 0.26s;
+}
+.k-auth-body > *:nth-child(8) {
+  animation-delay: 0.3s;
+}
 
-.k-auth-pop { animation: k-auth-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.k-auth-pop {
+  animation: k-auth-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
 /* Underline field */
 .k-auth-fld {
@@ -2678,10 +3099,19 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
   outline: none;
   transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.k-auth-fld::placeholder { color: rgb(255 255 255 / 0.3); }
-.k-auth-fld:focus { border-bottom-color: rgb(var(--accent-primary)); }
-.k-auth-fld:focus::placeholder { color: rgb(255 255 255 / 0.18); }
-.k-auth-fld:disabled { opacity: 0.5; cursor: not-allowed; }
+.k-auth-fld::placeholder {
+  color: rgb(255 255 255 / 0.3);
+}
+.k-auth-fld:focus {
+  border-bottom-color: rgb(var(--accent-primary));
+}
+.k-auth-fld:focus::placeholder {
+  color: rgb(255 255 255 / 0.18);
+}
+.k-auth-fld:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* Wrapper that owns the underline when a field sits next to the eye toggle. */
 .k-auth-fld-row {
@@ -2691,8 +3121,12 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
   border-bottom: 1px solid rgb(255 255 255 / 0.14);
   transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.k-auth-fld-row:focus-within { border-bottom-color: rgb(var(--accent-primary)); }
-.k-auth-fld-row .k-auth-fld { border-bottom: none; }
+.k-auth-fld-row:focus-within {
+  border-bottom-color: rgb(var(--accent-primary));
+}
+.k-auth-fld-row .k-auth-fld {
+  border-bottom: none;
+}
 
 /* One digit of the reset code */
 .k-auth-box {
@@ -2711,7 +3145,9 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
   outline: none;
   transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.k-auth-box:focus { border-bottom-color: rgb(var(--accent-primary)); }
+.k-auth-box:focus {
+  border-bottom-color: rgb(var(--accent-primary));
+}
 
 .k-auth-eye {
   background: none;
@@ -2721,7 +3157,9 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
   color: rgb(255 255 255 / 0.35);
   transition: color 0.25s;
 }
-.k-auth-eye:hover { color: #fff; }
+.k-auth-eye:hover {
+  color: #fff;
+}
 
 .k-auth-lnk {
   background: none;
@@ -2731,8 +3169,13 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
   cursor: pointer;
   transition: color 0.25s;
 }
-.k-auth-lnk:hover { color: #fff; }
-.k-auth-lnk:disabled { opacity: 0.5; cursor: not-allowed; }
+.k-auth-lnk:hover {
+  color: #fff;
+}
+.k-auth-lnk:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* Sign in / sign up tabs and the dot that travels between them */
 .k-auth-tab {
@@ -2747,7 +3190,9 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
   cursor: pointer;
   transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.k-auth-tab[data-on="true"] { color: #fff; }
+.k-auth-tab[data-on="true"] {
+  color: #fff;
+}
 
 .k-auth-rail {
   position: absolute;
@@ -2758,7 +3203,9 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
   justify-content: center;
   transition: transform 0.45s cubic-bezier(0.34, 1.4, 0.5, 1);
 }
-[data-auth-pos="signUp"] .k-auth-rail { transform: translateX(100%); }
+[data-auth-pos="signUp"] .k-auth-rail {
+  transform: translateX(100%);
+}
 .k-auth-dot {
   width: 6px;
   height: 6px;
@@ -2778,15 +3225,23 @@ html[data-kairos-intro="seen"] .k-intro { display: none; }
 
 /* The split panel itself — enter animation only; the layout is Tailwind. */
 @keyframes k-auth-shell-in {
-  from { opacity: 0; transform: translateY(16px) scale(0.97); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 .k-auth-shell {
   animation: k-auth-shell-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.55);
 }
 @media (prefers-reduced-motion: reduce) {
-  .k-auth-shell { animation: none; }
+  .k-auth-shell {
+    animation: none;
+  }
 }
 
 /* ==========================================================================
@@ -3023,17 +3478,47 @@ input[type="search"]::-webkit-search-results-decoration {
   --cover-b: var(--brand-sky);
   background-color: rgb(var(--bg-tertiary));
   background-image:
-    radial-gradient(120% 140% at 12% 8%, rgb(var(--cover-a) / 0.42), transparent 62%),
-    radial-gradient(120% 140% at 88% 92%, rgb(var(--cover-b) / 0.38), transparent 60%),
-    linear-gradient(135deg, rgb(var(--cover-a) / 0.16), rgb(var(--cover-b) / 0.16));
+    radial-gradient(
+      120% 140% at 12% 8%,
+      rgb(var(--cover-a) / 0.42),
+      transparent 62%
+    ),
+    radial-gradient(
+      120% 140% at 88% 92%,
+      rgb(var(--cover-b) / 0.38),
+      transparent 60%
+    ),
+    linear-gradient(
+      135deg,
+      rgb(var(--cover-a) / 0.16),
+      rgb(var(--cover-b) / 0.16)
+    );
 }
 
-.kairos-cover-dusk    { --cover-a: var(--brand-purple);     --cover-b: var(--brand-sky); }
-.kairos-cover-ember   { --cover-a: var(--brand-caramel);    --cover-b: var(--brand-strawberry); }
-.kairos-cover-meadow  { --cover-a: var(--brand-mint);       --cover-b: var(--brand-sky); }
-.kairos-cover-blush   { --cover-a: var(--brand-pink);       --cover-b: var(--brand-purple); }
-.kairos-cover-sand    { --cover-a: var(--brand-caramel);    --cover-b: var(--brand-mint); }
-.kairos-cover-tide    { --cover-a: var(--brand-sky);        --cover-b: var(--brand-mint); }
+.kairos-cover-dusk {
+  --cover-a: var(--brand-purple);
+  --cover-b: var(--brand-sky);
+}
+.kairos-cover-ember {
+  --cover-a: var(--brand-caramel);
+  --cover-b: var(--brand-strawberry);
+}
+.kairos-cover-meadow {
+  --cover-a: var(--brand-mint);
+  --cover-b: var(--brand-sky);
+}
+.kairos-cover-blush {
+  --cover-a: var(--brand-pink);
+  --cover-b: var(--brand-purple);
+}
+.kairos-cover-sand {
+  --cover-a: var(--brand-caramel);
+  --cover-b: var(--brand-mint);
+}
+.kairos-cover-tide {
+  --cover-a: var(--brand-sky);
+  --cover-b: var(--brand-mint);
+}
 
 /* The swatch in the picker is the same wash at the size of a button, so what
    you choose is what you get rather than an approximation of it. */
@@ -3488,7 +3973,9 @@ input[type="search"]::-webkit-search-results-decoration {
   color: rgb(var(--fg-primary));
   font-size: 0.8125rem;
   line-height: 1.45;
-  box-shadow: var(--shadow-lg), inset 2px 0 0 var(--toast-rule, rgb(var(--info))),
+  box-shadow:
+    var(--shadow-lg),
+    inset 2px 0 0 var(--toast-rule, rgb(var(--info))),
     inset 0 0 0 0.5px rgb(var(--border-light) / 0.6);
   animation: toast-in 0.22s cubic-bezier(0.2, 0.8, 0.25, 1) both;
 }
@@ -3604,7 +4091,9 @@ input[type="search"]::-webkit-search-results-decoration {
 }
 
 .kairos-bottomnav-gap {
-  padding-bottom: calc(var(--kairos-bottomnav-h) + var(--kairos-safe-bottom) + 1rem);
+  padding-bottom: calc(
+    var(--kairos-bottomnav-h) + var(--kairos-safe-bottom) + 1rem
+  );
 }
 
 /* The bars themselves are `lg:hidden`, so their gaps have to go with them. */
@@ -3882,7 +4371,9 @@ input[type="search"]::-webkit-search-results-decoration {
   line-height: 1;
   white-space: nowrap;
   pointer-events: none;
-  box-shadow: var(--shadow-lg), inset 0 0 0 0.5px rgb(var(--border-light) / 0.6);
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 0 0 0.5px rgb(var(--border-light) / 0.6);
   animation: kairos-rail-tip 1.4s ease forwards;
 }
 
@@ -3954,7 +4445,8 @@ input[type="search"]::-webkit-search-results-decoration {
 }
 
 .command-palette-panel {
-  animation: command-palette-panel-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation: command-palette-panel-in 0.2s cubic-bezier(0.22, 1, 0.36, 1)
+    backwards;
   transform-origin: top center;
 }
 
@@ -3966,7 +4458,8 @@ input[type="search"]::-webkit-search-results-decoration {
 }
 
 .command-palette-panel--out {
-  animation: command-palette-panel-in 0.15s cubic-bezier(0.4, 0, 1, 1) reverse forwards;
+  animation: command-palette-panel-in 0.15s cubic-bezier(0.4, 0, 1, 1) reverse
+    forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -4073,17 +4566,34 @@ input[type="search"]::-webkit-search-results-decoration {
 }
 
 @keyframes notes-shake {
-  0%, 100% { transform: none; }
-  15% { transform: translateX(-4px); }
-  35% { transform: translateX(4px); }
-  55% { transform: translateX(-3px); }
-  75% { transform: translateX(2px); }
+  0%,
+  100% {
+    transform: none;
+  }
+  15% {
+    transform: translateX(-4px);
+  }
+  35% {
+    transform: translateX(4px);
+  }
+  55% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
 }
 
 @keyframes notes-badge-morph {
-  0% { transform: scale(1); }
-  45% { transform: scale(0.86); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(0.86);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes notes-strip-in {
@@ -4111,8 +4621,12 @@ input[type="search"]::-webkit-search-results-decoration {
 }
 
 @keyframes kairos-shimmer {
-  from { background-position: -160% 0; }
-  to { background-position: 260% 0; }
+  from {
+    background-position: -160% 0;
+  }
+  to {
+    background-position: 260% 0;
+  }
 }
 
 /* ── Dialogs ─────────────────────────────────────────────────────────────

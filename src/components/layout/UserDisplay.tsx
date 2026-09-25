@@ -173,6 +173,13 @@ export function UserDisplay() {
  redirect: false,
  });
 
+ // The password was right, but the account has two-step sign-in on, and the
+ // switcher is a password-only door. The full sign-in asks for the code.
+ if (result?.code === "FULL_SIGN_IN_REQUIRED") {
+ await switchViaFullSignIn(account);
+ return;
+ }
+
  if (result?.error) {
  // The server cannot distinguish "wrong password" from "no password on this
  // account" without telling an attacker which accounts are OAuth-only, so the

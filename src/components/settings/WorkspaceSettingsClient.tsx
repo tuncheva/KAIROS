@@ -1,12 +1,23 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Check, Loader2, QrCode, Trash2, X } from "~/components/ui/icons";
+import { Loader2, Pencil, QrCode, RefreshCw, Trash2, X } from "~/components/ui/icons";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
 import { useSwitchOrganization } from "~/hooks/useSwitchOrganization";
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
+import { InviteBuilder } from "~/components/orgs/InviteBuilder";
+import {
+  PermissionGrid,
+  usePermissionSummary,
+} from "~/components/orgs/PermissionGrid";
+import {
+  ROLE_TEMPLATES,
+  TEMPLATE_ROLE_ORDER,
+  pickPermissionFlags,
+  type MemberPermissionFlags,
+} from "~/lib/permissions";
 import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
@@ -31,94 +42,13 @@ import {
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
 // ---------------------------------------------------------------------------
-// Permission labels
+// Permissions
 // ---------------------------------------------------------------------------
-const PERMISSION_KEYS = [
-  "canCreateProjects",
-  "canEditProjects",
-  "canAssignTasks",
-  "canDeleteTasks",
-  "canAddMembers",
-  "canKickMembers",
-  "canManageRoles",
-  "canViewAnalytics",
-] as const;
+const EMPTY_FLAGS = pickPermissionFlags({});
 
-type PermissionKey = (typeof PERMISSION_KEYS)[number];
-
-const PERMISSION_LABEL_KEYS: Record<PermissionKey, string> = {
-  canCreateProjects: "createProjects",
-  canEditProjects: "editProjects",
-  canAssignTasks: "assignTasks",
-  canDeleteTasks: "deleteTasks",
-  canAddMembers: "inviteMembers",
-  canKickMembers: "removeMembers",
-  canManageRoles: "manageRoles",
-  canViewAnalytics: "viewAnalytics",
-};
-
-// ---------------------------------------------------------------------------
-// Template role defaults (shown in the roles group as read-only templates)
-// ---------------------------------------------------------------------------
-const TEMPLATE_ROLES: Record<string, Record<PermissionKey, boolean>> = {
-  Admin: {
-    canCreateProjects: true,
-    canEditProjects: true,
-    canAssignTasks: true,
-    canDeleteTasks: true,
-    canAddMembers: true,
-    canKickMembers: true,
-    canManageRoles: true,
-    canViewAnalytics: true,
-  },
-  Member: {
-    canCreateProjects: true,
-    canEditProjects: true,
-    canAssignTasks: true,
-    canDeleteTasks: false,
-    canAddMembers: false,
-    canKickMembers: false,
-    canManageRoles: false,
-    canViewAnalytics: true,
-  },
-  Guest: {
-    canCreateProjects: false,
-    canEditProjects: false,
-    canAssignTasks: false,
-    canDeleteTasks: false,
-    canAddMembers: false,
-    canKickMembers: false,
-    canManageRoles: false,
-    canViewAnalytics: false,
-  },
-};
-
-/** A permission tick, read-only. Used by both template and custom role cards. */
-function PermissionGrid({
-  perms,
-  t,
-}: {
-  perms: Record<PermissionKey, boolean>;
-  t: Translator;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {PERMISSION_KEYS.map((key) => (
-        <span key={key} className="flex items-center gap-2 text-xs text-fg-secondary">
-          <span
-            className={`flex h-4 w-4 items-center justify-center rounded-sm border ${
-              perms[key]
-                ? "border-accent-primary/50 bg-accent-primary/20"
-                : "border-border-light bg-bg-tertiary"
-            }`}
-          >
-            {perms[key] ? <Check size={10} className="text-accent-primary" /> : null}
-          </span>
-          {t(`permissions.${PERMISSION_LABEL_KEYS[key]}`)}
-        </span>
-      ))}
-    </div>
-  );
+/** Member-row select values: a built-in role, or `custom:<id>`. */
+function customRoleValue(id: number): string {
+  return `custom:${id}`;
 }
 
 /**
@@ -195,9 +125,8 @@ export function WorkspaceSettingsClient() {
   const [joinCode, setJoinCode] = useState("");
 
   // ---- Invite state ----
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("member");
-  const [bulkInviteInput, setBulkInviteInput] = useState("");
+  // Bumped with a counter so picking the same person twice still re-fills.
+  const [invitePrefill, setInvitePrefill] = useState<{ email: string; n: number } | null>(null);
   const [inviteQrForOrgId, setInviteQrForOrgId] = useState<number | null>(null);
 
   // ---- Leave-organization confirmation ----
@@ -232,38 +161,13 @@ export function WorkspaceSettingsClient() {
     step: "warn" | "type";
   } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [emailLookupDebouncedEmail, setEmailLookupDebouncedEmail] = useState("");
 
-  // ---- Custom role creation state ----
+  // ---- Custom role create/edit state ----
+  // `editingRoleId` null with the form open means "creating".
   const [showCreateRole, setShowCreateRole] = useState(false);
+  const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
   const [newRoleName, setNewRoleName] = useState("");
-  const [newRolePerms, setNewRolePerms] = useState<Record<PermissionKey, boolean>>(
-    Object.fromEntries(PERMISSION_KEYS.map((k) => [k, false])) as Record<
-      PermissionKey,
-      boolean
-    >,
-  );
-  const [pendingRoles, setPendingRoles] = useState<
-    Array<{ id: number; name: string } & Record<PermissionKey, boolean>>
-  >([]);
-
-  // ---- Email lookup debounce ----
-  const inviteEmailTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (inviteEmailTimerRef.current) clearTimeout(inviteEmailTimerRef.current);
-    const trimmed = inviteEmail.trim();
-    if (trimmed && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      inviteEmailTimerRef.current = setTimeout(
-        () => setEmailLookupDebouncedEmail(trimmed),
-        400,
-      );
-    } else {
-      setEmailLookupDebouncedEmail("");
-    }
-    return () => {
-      if (inviteEmailTimerRef.current) clearTimeout(inviteEmailTimerRef.current);
-    };
-  }, [inviteEmail]);
+  const [newRolePerms, setNewRolePerms] = useState<MemberPermissionFlags>(EMPTY_FLAGS);
 
   // A join link drops people here with the code already in the URL.
   useEffect(() => {
@@ -349,22 +253,6 @@ export function WorkspaceSettingsClient() {
         refetchOnWindowFocus: false,
       },
     );
-  const { data: inviteEmailLookup, isFetching: isLookingUpEmail } =
-    api.user.searchByEmail.useQuery(
-      { email: emailLookupDebouncedEmail },
-      { enabled: !!emailLookupDebouncedEmail, retry: false, refetchOnWindowFocus: false },
-    );
-
-  // ---- Clean up pendingRoles once they're fetched from server ----
-  useEffect(() => {
-    if (roles && pendingRoles.length > 0) {
-      const allPendingExistInRoles = pendingRoles.every((pr) =>
-        roles.some((r) => r.id === pr.id),
-      );
-      if (allPendingExistInRoles) setPendingRoles([]);
-    }
-  }, [roles, pendingRoles]);
-
   // Real-time: refresh members and invites when notifications about invites/joins arrive
   const handleInviteNotification = useCallback(
     (data: { title?: string }) => {
@@ -378,6 +266,7 @@ export function WorkspaceSettingsClient() {
         void utils.organization.getInviteHistory.invalidate();
         void utils.organization.getMembers.invalidate();
         void utils.organization.getProjectInviteCandidates.invalidate();
+        void utils.organization.listInviteLinks.invalidate();
       }
     },
     [
@@ -385,6 +274,7 @@ export function WorkspaceSettingsClient() {
       utils.organization.getInviteHistory,
       utils.organization.getMembers,
       utils.organization.getProjectInviteCandidates,
+      utils.organization.listInviteLinks,
     ],
   );
   useSocketEvent("notification:new", handleInviteNotification);
@@ -490,36 +380,14 @@ export function WorkspaceSettingsClient() {
     onError: (e) => toast.error(e.message),
   });
 
-  const inviteMember = api.organization.inviteMember.useMutation({
-    onSuccess: () => {
-      toast.success(t("messages.inviteSent"));
-      setInviteEmail("");
+  const resendInvite = api.organization.resendInvite.useMutation({
+    onSuccess: (result) => {
+      if (result.emailSent) toast.success(t("inviteBuilder.emailSent", { email: result.email }));
+      else toast.error(t("inviteBuilder.emailFailed", { email: result.email }));
       void utils.organization.getInvites.invalidate();
-      void utils.organization.getInviteHistory.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
-
-  const parseBulkEmails = (input: string): string[] => {
-    const normalized = input.replace(/\r\n/g, "\n");
-    const csvRows = normalized
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => line.split(",").map((cell) => cell.trim()));
-    const maybeHeader = csvRows[0]?.[0]?.toLowerCase();
-    const csvEmails = csvRows
-      .slice(maybeHeader === "email" ? 1 : 0)
-      .map((row) => row[0] ?? "")
-      .filter(Boolean);
-    const parts = input
-      .split(/[\n,;]/)
-      .map((v) => v.trim().toLowerCase())
-      .filter(Boolean);
-    const unique = Array.from(new Set([...parts, ...csvEmails]));
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return unique.filter((v) => emailRegex.test(v));
-  };
 
   const cancelInvite = api.organization.cancelInvite.useMutation({
     onSuccess: () => {
@@ -531,6 +399,7 @@ export function WorkspaceSettingsClient() {
   });
 
   const createRole = api.organization.createRole.useMutation();
+  const updateRole = api.organization.updateRole.useMutation();
 
   const deleteRole = api.organization.deleteRole.useMutation({
     onSuccess: () => {
@@ -547,7 +416,14 @@ export function WorkspaceSettingsClient() {
   const translateRoleLabel = (role: string | null | undefined) => {
     if (!role) return "";
     const normalized = role.toLowerCase();
-    if (normalized === "admin" || normalized === "member" || normalized === "guest") {
+    // `worker` is `member` under its older name.
+    if (normalized === "worker") return t("roles.member");
+    if (
+      normalized === "admin" ||
+      normalized === "member" ||
+      normalized === "guest" ||
+      normalized === "mentor"
+    ) {
       return t(`roles.${normalized}`);
     }
     return role;
@@ -567,14 +443,28 @@ export function WorkspaceSettingsClient() {
     return status;
   };
 
-  /** Both selects offer the three built-ins and then this workspace's own roles. */
+  const customRoles = roles ?? [];
+
+  /** The member-row select: the built-in templates, then this workspace's own roles. */
   const roleOptions = [
-    { value: "admin", label: t("roles.admin") },
-    { value: "member", label: t("roles.member") },
-    { value: "guest", label: t("roles.guest") },
-    ...(roles?.length ? [{ value: "__sep", label: "──────────", disabled: true }] : []),
-    ...(roles ?? []).map((role) => ({ value: role.name, label: role.name })),
+    ...TEMPLATE_ROLE_ORDER.map((r) => ({ value: r as string, label: t(`roles.${r}`) })),
+    ...(customRoles.length ? [{ value: "__sep", label: "──────────", disabled: true }] : []),
+    ...customRoles.map((role) => ({ value: customRoleValue(role.id), label: role.name })),
   ];
+
+  /** Which option a member's row should show as selected. */
+  const memberRoleValue = (member: { role: string; displayRole: string | null }) => {
+    const custom = member.displayRole
+      ? customRoles.find((r) => r.name === member.displayRole)
+      : undefined;
+    if (custom) return customRoleValue(custom.id);
+    return member.role === "worker" ? "member" : member.role;
+  };
+
+  const me = members?.find((m) => m.id === currentUser.data?.id);
+  const myFlags = me ? pickPermissionFlags(me) : EMPTY_FLAGS;
+  const iManageRoles = isAdmin && myFlags.canManageRoles;
+  const summarizePermissions = usePermissionSummary();
 
   // ---- Organizations ------------------------------------------------------
   const orgRows: LedgerRow[] = (myOrgs ?? []).map((org) => ({
@@ -700,123 +590,7 @@ export function WorkspaceSettingsClient() {
   );
 
   // ---- Members ------------------------------------------------------------
-  const lookupNote = !emailLookupDebouncedEmail
-    ? undefined
-    : isLookingUpEmail
-      ? t("members.lookingUpEmail")
-      : inviteEmailLookup
-        ? `${inviteEmailLookup.name ?? t("members.noName")} · ${inviteEmailLookup.email}`
-        : t("members.noExistingAccount");
-
-  const sendInvite = (email: string) => {
-    if (!email.trim() || !activeOrgId) return;
-    void save.run(() =>
-      inviteMember.mutateAsync({
-        organizationId: activeOrgId,
-        email,
-        role: inviteRole,
-      }),
-    );
-  };
-
   const memberRows: LedgerRow[] = [];
-
-  if (isAdmin) {
-    memberRows.push({
-      id: "invite",
-      title: t("members.inviteMember"),
-      desc: lookupNote,
-      descText: "",
-      control: (
-        <>
-          <LedgerInput
-            type="email"
-            inputMode="email"
-            value={inviteEmail}
-            onChange={setInviteEmail}
-            ariaLabel={t("members.inviteMember")}
-            placeholder={t("members.emailPlaceholder")}
-            width="w-[240px]"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") sendInvite(inviteEmail);
-            }}
-          />
-          <LedgerSelect
-            width="w-[120px]"
-            value={inviteRole}
-            ariaLabel={t("members.invite")}
-            options={roleOptions}
-            onChange={setInviteRole}
-          />
-          <LedgerAction
-            disabled={!inviteEmail.trim() || inviteMember.isPending}
-            onClick={() => sendInvite(inviteEmail)}
-          >
-            {inviteMember.isPending ? "…" : t("members.invite")}
-          </LedgerAction>
-        </>
-      ),
-    });
-
-    memberRows.push({
-      id: "bulkInvite",
-      title: t("members.bulkInviteLabel"),
-      desc: t("members.bulkInviteHint"),
-      control: (
-        <>
-          <textarea
-            value={bulkInviteInput}
-            onChange={(e) => setBulkInviteInput(e.target.value)}
-            aria-label={t("members.bulkInviteLabel")}
-            placeholder={t("members.bulkInvitePlaceholder")}
-            className="min-h-[64px] w-full max-w-[420px] resize-y rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
-          />
-          <LedgerAction
-            disabled={inviteMember.isPending || !bulkInviteInput.trim()}
-            onClick={async () => {
-              if (!activeOrgId || inviteMember.isPending) return;
-              const emails = parseBulkEmails(bulkInviteInput);
-              if (emails.length === 0) {
-                toast.error(t("members.bulkInviteNoValidEmails"));
-                return;
-              }
-
-              await save.run(async () => {
-                let sent = 0;
-                let failed = 0;
-                for (const email of emails) {
-                  try {
-                    await inviteMember.mutateAsync({
-                      organizationId: activeOrgId,
-                      email,
-                      role: inviteRole,
-                    });
-                    sent += 1;
-                  } catch {
-                    failed += 1;
-                  }
-                }
-
-                if (sent > 0) {
-                  setBulkInviteInput("");
-                  void utils.organization.getInvites.invalidate();
-                  toast.success(t("members.bulkInviteSent", { count: sent }));
-                  if (failed > 0) {
-                    toast.error(t("members.bulkInvitePartial", { count: failed }));
-                  }
-                } else {
-                  toast.error(t("members.bulkInviteFailed"));
-                  throw new Error("bulk invite failed");
-                }
-              });
-            }}
-          >
-            {inviteMember.isPending ? "…" : t("members.bulkInviteAction")}
-          </LedgerAction>
-        </>
-      ),
-    });
-  }
 
   for (const member of members ?? []) {
     memberRows.push({
@@ -855,22 +629,30 @@ export function WorkspaceSettingsClient() {
           {isAdmin && activeOrgId ? (
             <LedgerSelect
               width="w-[130px]"
-              value={member.role}
+              value={memberRoleValue(member)}
               ariaLabel={t("roles.title")}
-              disabled={updateMemberRole.isPending}
+              disabled={updateMemberRole.isPending || member.id === currentUser.data?.id}
               options={roleOptions}
               onChange={(next) =>
                 void save.run(() =>
-                  updateMemberRole.mutateAsync({
-                    organizationId: activeOrgId,
-                    userId: member.id,
-                    role: next as "admin" | "member" | "guest",
-                  }),
+                  updateMemberRole.mutateAsync(
+                    next.startsWith("custom:")
+                      ? {
+                          organizationId: activeOrgId,
+                          userId: member.id,
+                          customRoleId: Number(next.slice("custom:".length)),
+                        }
+                      : {
+                          organizationId: activeOrgId,
+                          userId: member.id,
+                          role: next as (typeof TEMPLATE_ROLE_ORDER)[number],
+                        },
+                  ),
                 )
               }
             />
           ) : (
-            <LedgerValue>{translateRoleLabel(member.role)}</LedgerValue>
+            <LedgerValue>{member.displayRole ?? translateRoleLabel(member.role)}</LedgerValue>
           )}
           {isAdmin && activeOrgId && member.id !== currentUser.data?.id
             ? /*
@@ -878,9 +660,8 @@ export function WorkspaceSettingsClient() {
                *
                * `updateMemberPermissions` takes `canAddMembers` and
                * `canAssignTasks` and nothing else, so the roster offers exactly
-               * those. The other six in `PERMISSION_KEYS` are role-derived and
-               * shown read-only in the roles group above; putting toggles here
-               * for flags the server ignores would be a lie.
+               * those. The other six come from the role or invite; putting
+               * toggles here for flags the server ignores would be a lie.
                */
               (
                 [
@@ -915,7 +696,7 @@ export function WorkspaceSettingsClient() {
                         )
                       }
                     />
-                    {t(`permissions.${PERMISSION_LABEL_KEYS[flag]}`)}
+                    {t(`permissions.${flag === "canAddMembers" ? "inviteMembers" : "assignTasks"}`)}
                   </label>
                 ))
               )
@@ -947,6 +728,14 @@ export function WorkspaceSettingsClient() {
   const membersBlock =
     isAdmin && activeOrgId ? (
       <div className="flex flex-col gap-6">
+        <InviteBuilder
+          organizationId={activeOrgId}
+          customRoles={customRoles}
+          callerFlags={myFlags}
+          callerIsRoleManager={iManageRoles}
+          prefill={invitePrefill ?? undefined}
+        />
+
         {inviteCandidates?.length ? (
           <div>
             <p className="mb-2 text-xs font-medium text-fg-tertiary">
@@ -960,10 +749,9 @@ export function WorkspaceSettingsClient() {
                   <button
                     key={m.id}
                     type="button"
-                    onClick={() => {
-                      setInviteEmail(m.email);
-                      setEmailLookupDebouncedEmail(m.email);
-                    }}
+                    onClick={() =>
+                      setInvitePrefill((prev) => ({ email: m.email, n: (prev?.n ?? 0) + 1 }))
+                    }
                     className="rounded-sm border border-border-light px-3 py-1.5 text-xs text-fg-secondary transition hover:border-accent-primary/35 hover:text-fg-primary"
                   >
                     {m.name ?? m.email}
@@ -990,6 +778,12 @@ export function WorkspaceSettingsClient() {
                   <span className="text-xs text-fg-tertiary">
                     {translateRoleLabel(inv.displayRole ?? inv.role)}
                   </span>
+                  <span
+                    className="text-xs text-fg-tertiary"
+                    title={t("inviteBuilder.permissions")}
+                  >
+                    {summarizePermissions(inv.permissions, t("inviteBuilder.viewOnly"))}
+                  </span>
                   <span className="text-[11px] text-fg-quaternary">
                     {inv.expiresAt
                       ? t("members.expiresOn", {
@@ -998,6 +792,23 @@ export function WorkspaceSettingsClient() {
                       : t("members.noExpiry")}
                   </span>
                   <span className="flex-1" />
+                  <button
+                    type="button"
+                    aria-label={t("inviteBuilder.resend")}
+                    title={t("inviteBuilder.resend")}
+                    disabled={resendInvite.isPending}
+                    onClick={() =>
+                      void save.run(() =>
+                        resendInvite.mutateAsync({
+                          organizationId: activeOrgId,
+                          inviteId: inv.id,
+                        }),
+                      )
+                    }
+                    className="rounded-sm p-1 text-fg-tertiary transition hover:text-fg-primary disabled:opacity-50"
+                  >
+                    <RefreshCw size={14} />
+                  </button>
                   <button
                     type="button"
                     aria-label={t("common.cancel")}
@@ -1049,103 +860,98 @@ export function WorkspaceSettingsClient() {
     ) : undefined;
 
   // ---- Roles --------------------------------------------------------------
+  const closeRoleForm = () => {
+    setShowCreateRole(false);
+    setEditingRoleId(null);
+    setNewRoleName("");
+    setNewRolePerms(EMPTY_FLAGS);
+  };
+
+  const openRoleForm = (
+    from?: { id?: number; name: string } & MemberPermissionFlags,
+  ) => {
+    setShowCreateRole(true);
+    setEditingRoleId(from?.id ?? null);
+    setNewRoleName(from?.id ? from.name : "");
+    setNewRolePerms(from ? pickPermissionFlags(from) : EMPTY_FLAGS);
+  };
+
+  const submitRoleForm = async () => {
+    if (!newRoleName.trim() || !activeOrgId) return;
+    await save.run(async () => {
+      try {
+        if (editingRoleId !== null) {
+          await updateRole.mutateAsync({
+            organizationId: activeOrgId,
+            roleId: editingRoleId,
+            name: newRoleName,
+            permissions: newRolePerms,
+          });
+          toast.success(t("messages.roleUpdatedSaved"));
+        } else {
+          await createRole.mutateAsync({
+            organizationId: activeOrgId,
+            name: newRoleName,
+            ...newRolePerms,
+          });
+          toast.success(t("messages.roleCreated"));
+        }
+        await utils.organization.getRoles.invalidate();
+        closeRoleForm();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : t("messages.roleCreateFailed"));
+        throw e;
+      }
+    });
+  };
+
   const roleRows: LedgerRow[] = [];
 
-  if (isAdmin) {
+  if (iManageRoles) {
     roleRows.push({
       id: "newRole",
       title: t("roles.newRole"),
       control: (
-        <LedgerAction onClick={() => setShowCreateRole((v) => !v)}>
+        <LedgerAction onClick={() => (showCreateRole ? closeRoleForm() : openRoleForm())}>
           {showCreateRole ? t("common.cancel") : t("roles.newRole")}
         </LedgerAction>
       ),
     });
   }
 
+  const roleFormPending = createRole.isPending || updateRole.isPending;
+
   const rolesBlock = (
     <div className="flex flex-col gap-5">
-      {showCreateRole && isAdmin && activeOrgId ? (
+      {showCreateRole && iManageRoles && activeOrgId ? (
         <div className="rounded-xl border border-accent-primary/20 p-4">
           <input
             type="text"
             value={newRoleName}
             onChange={(e) => setNewRoleName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void submitRoleForm();
+            }}
             placeholder={t("roles.namePlaceholder")}
             aria-label={t("roles.namePlaceholder")}
+            maxLength={100}
             className="mb-3 w-full rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
             autoFocus
           />
-          <div className="mb-3 grid grid-cols-2 gap-2">
-            {PERMISSION_KEYS.map((key) => (
-              <label
-                key={key}
-                className="flex cursor-pointer items-center gap-2 text-xs text-fg-secondary transition hover:text-fg-primary"
-              >
-                <input
-                  type="checkbox"
-                  checked={newRolePerms[key]}
-                  onChange={(e) =>
-                    setNewRolePerms((prev) => ({ ...prev, [key]: e.target.checked }))
-                  }
-                  className="sr-only"
-                />
-                <span
-                  className={`flex h-4 w-4 items-center justify-center rounded-sm border transition ${
-                    newRolePerms[key]
-                      ? "border-accent-primary/50 bg-accent-primary/20"
-                      : "border-border-light bg-bg-tertiary"
-                  }`}
-                >
-                  {newRolePerms[key] ? (
-                    <Check size={10} className="text-accent-primary" />
-                  ) : null}
-                </span>
-                {t(`permissions.${PERMISSION_LABEL_KEYS[key]}`)}
-              </label>
-            ))}
+          <div className="mb-3">
+            <PermissionGrid value={newRolePerms} onChange={setNewRolePerms} />
           </div>
+          {editingRoleId !== null ? (
+            <p className="mb-3 text-[11.5px] text-fg-tertiary">{t("roles.editNote")}</p>
+          ) : null}
           <LedgerAction
-            disabled={!newRoleName.trim() || createRole.isPending}
-            onClick={async () => {
-              if (!newRoleName.trim() || !activeOrgId) return;
-              await save.run(async () => {
-                try {
-                  const created = await createRole.mutateAsync({
-                    organizationId: activeOrgId,
-                    name: newRoleName,
-                    ...newRolePerms,
-                  });
-                  if (created) {
-                    setPendingRoles((prev) => [
-                      ...prev,
-                      created as { id: number; name: string } & Record<
-                        PermissionKey,
-                        boolean
-                      >,
-                    ]);
-                  }
-                  await utils.organization.getRoles.invalidate();
-                  toast.success(t("messages.roleCreated"));
-                  setNewRoleName("");
-                  setNewRolePerms(
-                    Object.fromEntries(PERMISSION_KEYS.map((k) => [k, false])) as Record<
-                      PermissionKey,
-                      boolean
-                    >,
-                  );
-                  setShowCreateRole(false);
-                } catch (e) {
-                  toast.error(
-                    e instanceof Error ? e.message : t("messages.roleCreateFailed"),
-                  );
-                  throw e;
-                }
-              });
-            }}
+            disabled={!newRoleName.trim() || roleFormPending}
+            onClick={() => void submitRoleForm()}
           >
-            {createRole.isPending ? (
+            {roleFormPending ? (
               <Loader2 size={13} className="animate-spin" />
+            ) : editingRoleId !== null ? (
+              t("roles.saveRole")
             ) : (
               t("roles.createRole")
             )}
@@ -1153,24 +959,34 @@ export function WorkspaceSettingsClient() {
         </div>
       ) : null}
 
-      {Object.entries(TEMPLATE_ROLES).map(([name, perms]) => (
-        <div key={name} className="flex flex-col gap-2 border-t border-border-light pt-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-[13.5px] font-semibold text-fg-primary">
-              {t(`roles.${name.toLowerCase()}`)}
-            </h4>
-            <span className="rounded-sm bg-bg-tertiary px-2 py-0.5 text-[10px] font-medium text-fg-tertiary">
-              {t("roles.template")}
-            </span>
+      {/* The built-in templates, straight from `~/lib/permissions` — the same
+          flags the server applies, so this list cannot disagree with it. */}
+      {TEMPLATE_ROLE_ORDER.map((role) => (
+        <div key={role} className="flex flex-col gap-2 border-t border-border-light pt-4">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-[13.5px] font-semibold text-fg-primary">{t(`roles.${role}`)}</h4>
+            <div className="flex items-center gap-2">
+              <span className="rounded-sm bg-bg-tertiary px-2 py-0.5 text-[10px] font-medium text-fg-tertiary">
+                {t("roles.template")}
+              </span>
+              {iManageRoles && activeOrgId ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    openRoleForm({ name: t(`roles.${role}`), ...ROLE_TEMPLATES[role] })
+                  }
+                  className="rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-fg-tertiary transition hover:text-fg-primary"
+                >
+                  {t("roles.duplicate")}
+                </button>
+              ) : null}
+            </div>
           </div>
-          <PermissionGrid perms={perms} t={t} />
+          <PermissionGrid value={ROLE_TEMPLATES[role]} />
         </div>
       ))}
 
-      {[
-        ...(roles ?? []),
-        ...pendingRoles.filter((pr) => !(roles ?? []).some((r) => r.id === pr.id)),
-      ].map((role) => (
+      {customRoles.map((role) => (
         <div
           key={role.id}
           className="flex flex-col gap-2 border-t border-border-light pt-4"
@@ -1181,20 +997,31 @@ export function WorkspaceSettingsClient() {
               <span className="rounded-sm bg-accent-primary/10 px-2 py-0.5 text-[10px] font-medium text-accent-primary">
                 {t("roles.custom")}
               </span>
-              {isAdmin && activeOrgId ? (
-                <button
-                  type="button"
-                  aria-label={t("roles.deleteConfirm", { name: role.name })}
-                  disabled={deleteRole.isPending}
-                  onClick={() => setRoleDeleteTarget({ id: role.id, name: role.name })}
-                  className="rounded-sm p-1 text-fg-tertiary transition hover:text-error disabled:opacity-50"
-                >
-                  <Trash2 size={13} />
-                </button>
+              {iManageRoles && activeOrgId ? (
+                <>
+                  <button
+                    type="button"
+                    aria-label={t("roles.edit", { name: role.name })}
+                    title={t("roles.edit", { name: role.name })}
+                    onClick={() => openRoleForm(role)}
+                    className="rounded-sm p-1 text-fg-tertiary transition hover:text-fg-primary"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t("roles.deleteConfirm", { name: role.name })}
+                    disabled={deleteRole.isPending}
+                    onClick={() => setRoleDeleteTarget({ id: role.id, name: role.name })}
+                    className="rounded-sm p-1 text-fg-tertiary transition hover:text-error disabled:opacity-50"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </>
               ) : null}
             </div>
           </div>
-          <PermissionGrid perms={role as unknown as Record<PermissionKey, boolean>} t={t} />
+          <PermissionGrid value={pickPermissionFlags(role)} />
         </div>
       ))}
     </div>

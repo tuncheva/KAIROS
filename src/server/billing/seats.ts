@@ -28,6 +28,7 @@ import {
   organizationMembers,
 } from "~/server/db/schemas/organizations";
 import { createLogger } from "~/server/logger";
+import { livePlan } from "./entitlements";
 
 const log = createLogger("billing:seats");
 
@@ -60,15 +61,21 @@ const log = createLogger("billing:seats");
 export async function assertSeatAvailable(organizationId: number): Promise<void> {
   const org = await db.query.organizations.findFirst({
     where: eq(organizations.id, organizationId),
-    columns: { plan: true, seats: true },
+    columns: { plan: true, seats: true, currentPeriodEnd: true },
   });
 
-  if (!org || org.plan === "free") return;
+  if (!org) return;
+
+  // Through `livePlan`, as the billing screen does: an organization whose
+  // renewal webhook never arrived is back on the uncapped free tier as far as
+  // entitlements are concerned, and must not be held to the seats it lapsed on.
+  const plan = livePlan(org.plan, org.currentPeriodEnd);
+  if (plan === "free") return;
 
   if (org.seats <= 0) {
     log.error("paid organization has no seats on file; admitting anyway", {
       organizationId,
-      plan: org.plan,
+      plan,
     });
     return;
   }

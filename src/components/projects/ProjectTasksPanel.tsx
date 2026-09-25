@@ -1,17 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 
-import { avatarGradientStyle } from "~/lib/avatarGradient";
-import { Check, Pencil, Plus, StickyNote, Trash2, UserPlus, X } from "~/components/ui/icons";
+import {
+  Check,
+  Pencil,
+  Plus,
+  StickyNote,
+  Trash2,
+  UserPlus,
+  X,
+} from "~/components/ui/icons";
 import { useLocale, useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
 import { ProfileLink } from "~/components/profile/ProfileLink";
 import { useToast } from "~/components/providers/ToastProvider";
 import {
-  PRIORITY_DOT,
   TaskDrawer,
   type EditableTask,
   type TaskMember,
@@ -29,18 +34,36 @@ type ProjectTask = {
   completedAt: Date | string | null;
   completionNote: string | null;
   assignedTo: { id: string; name: string | null; image: string | null } | null;
-  completedBy?: { id: string; name: string | null; image: string | null } | null;
+  completedBy?: {
+    id: string;
+    name: string | null;
+    image: string | null;
+  } | null;
 };
 
 type StatusFilter = "all" | TaskStatus;
 
-const STATUS_FILTERS: StatusFilter[] = ["all", "pending", "in_progress", "completed", "blocked"];
+const STATUS_FILTERS: StatusFilter[] = [
+  "all",
+  "pending",
+  "in_progress",
+  "completed",
+  "blocked",
+];
 
 const STATUS_TEXT: Record<TaskStatus, string> = {
-  pending: "text-fg-tertiary",
-  in_progress: "text-warning",
-  completed: "text-success",
-  blocked: "text-error",
+  pending: "text-tui-ink3",
+  in_progress: "text-tui-warn",
+  completed: "text-tui-ok",
+  blocked: "text-tui-danger",
+};
+
+/** Priority as a dot, in the terminal-refined palette. */
+const PRIORITY_DOT: Record<TaskPriority, string> = {
+  low: "bg-tui-ink3",
+  medium: "bg-tui-ok",
+  high: "bg-tui-warn",
+  urgent: "bg-tui-danger",
 };
 
 /** Clicking the marker walks the common path; `blocked` is set in the drawer. */
@@ -51,7 +74,50 @@ const NEXT_STATUS: Record<TaskStatus, TaskStatus> = {
   blocked: "in_progress",
 };
 
-const STAMP = "kairos-stamp text-[10px] tracking-[0.14em] text-fg-quaternary";
+const STAMP =
+  "text-[11px] font-medium uppercase tracking-[0.14em] text-tui-ink3";
+
+/** The card shell shared with the rest of the refined edition. */
+const CARD =
+  "overflow-hidden rounded-lg border border-tui-ink/12 bg-tui-pane shadow-[var(--tui-pane-shadow)]";
+
+/** A refined filter pill. */
+function FilterPill({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex h-8 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-colors ${
+        active
+          ? "border-tui-accent/55 bg-tui-accent/[0.14] text-tui-ink"
+          : "border-tui-ink/16 text-tui-ink3 hover:text-tui-ink2"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** A serif monogram in a bordered circle. */
+function Initial({ label, size = 26 }: { label: string; size?: number }) {
+  return (
+    <span
+      className="border-tui-ink/16 bg-tui-pane font-display text-tui-ink2 flex flex-none items-center justify-center rounded-full border"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.46) }}
+    >
+      {label.trim().charAt(0).toUpperCase() || "?"}
+    </span>
+  );
+}
 
 function asDate(value: Date | string | null | undefined): Date | null {
   if (!value) return null;
@@ -86,7 +152,10 @@ export function ProjectTasksPanel({
   const [noteDraft, setNoteDraft] = useState("");
   const [confirmDiscard, setConfirmDiscard] = useState<number | null>(null);
 
-  const projectQuery = api.project.getById.useQuery({ id: projectId }, { staleTime: 1000 * 30 });
+  const projectQuery = api.project.getById.useQuery(
+    { id: projectId },
+    { staleTime: 1000 * 30 },
+  );
 
   const isOwner = projectQuery.data?.createdById === userId;
   const canWrite = isOwner || (projectQuery.data?.userHasWriteAccess ?? false);
@@ -105,7 +174,7 @@ export function ProjectTasksPanel({
   const canRemoveTasks = canDeleteTasks || canDiscardTasks;
 
   const tasks = useMemo(
-    () => ((projectQuery.data?.tasks ?? []) as ProjectTask[]),
+    () => (projectQuery.data?.tasks ?? []) as ProjectTask[],
     [projectQuery.data],
   );
 
@@ -156,7 +225,8 @@ export function ProjectTasksPanel({
                       ...task,
                       status,
                       completedAt: status === "completed" ? new Date() : null,
-                      completionNote: status === "completed" ? task.completionNote : null,
+                      completionNote:
+                        status === "completed" ? task.completionNote : null,
                     }
                   : task,
               ),
@@ -166,7 +236,8 @@ export function ProjectTasksPanel({
       return { previous };
     },
     onError: (error, _input, context) => {
-      if (context?.previous) utils.project.getById.setData({ id: projectId }, context.previous);
+      if (context?.previous)
+        utils.project.getById.setData({ id: projectId }, context.previous);
       toast.error(error.message);
     },
     onSettled: () => void invalidate(),
@@ -214,7 +285,8 @@ export function ProjectTasksPanel({
 
   const removing = deleteTask.isPending || discardTask.isPending;
 
-  const shown = filter === "all" ? tasks : tasks.filter((task) => task.status === filter);
+  const shown =
+    filter === "all" ? tasks : tasks.filter((task) => task.status === filter);
 
   const openCreate = () => {
     setEditing(null);
@@ -238,27 +310,21 @@ export function ProjectTasksPanel({
     canWrite || isOwner || (task.completedBy?.id ?? null) === userId;
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-3">
-        <span className={STAMP}>{t("label")}</span>
-
         {STATUS_FILTERS.map((key) => (
-          <button
+          <FilterPill
             key={key}
-            type="button"
+            active={filter === key}
             onClick={() => setFilter(key)}
-            aria-pressed={filter === key}
-            className={`h-8 rounded-lg border px-3 text-[13px] font-medium transition-colors duration-300 ${
-              filter === key
-                ? "border-accent-primary/55 bg-accent-primary/[0.14] text-fg-primary"
-                : "border-border-light/60 text-fg-tertiary hover:border-border-strong/60 hover:text-fg-secondary"
-            }`}
           >
             {t(`filters.${key}`)}
-            <span className="ml-1.5 font-mono text-[11px] text-fg-quaternary">
-              {key === "all" ? tasks.length : tasks.filter((task) => task.status === key).length}
+            <span className="text-tui-ink3 text-[11.5px] tabular-nums">
+              {key === "all"
+                ? tasks.length
+                : tasks.filter((task) => task.status === key).length}
             </span>
-          </button>
+          </FilterPill>
         ))}
 
         <span className="hidden flex-1 sm:block" />
@@ -267,10 +333,7 @@ export function ProjectTasksPanel({
           <button
             type="button"
             onClick={openCreate}
-            /* Colour only on hover. The lift-and-brighten this used to do made
-               the one button in a panel of quiet filter pills twitch under the
-               cursor, and `transition-all` animated its layout with it. */
-            className="flex items-center gap-2 rounded-lg bg-accent-primary px-[15px] py-[9px] text-[13px] font-semibold text-white transition-colors duration-200 hover:bg-accent-hover"
+            className="bg-tui-accent text-tui-on-accent flex h-9 items-center gap-2 rounded-full px-4 text-[13px] font-semibold transition-opacity hover:opacity-90"
           >
             <Plus size={15} aria-hidden />
             {t("new")}
@@ -278,49 +341,61 @@ export function ProjectTasksPanel({
         )}
       </div>
 
-      <div className="border-t border-border-light/60">
+      <div className={CARD}>
         {projectQuery.isLoading ? (
           Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="border-b border-border-light/50 px-1 py-4">
-              <div className="h-4 w-2/5 animate-pulse rounded-sm bg-bg-tertiary" />
+            <div
+              key={index}
+              className="border-tui-ink/8 border-b px-7 py-4 last:border-b-0"
+            >
+              <div className="bg-tui-ink/8 h-4 w-2/5 animate-pulse rounded-sm" />
             </div>
           ))
         ) : shown.length === 0 ? (
-          <p className="px-1 py-8 text-sm text-fg-tertiary">
+          <p className="text-tui-ink2 px-7 py-8 text-[14px]">
             {tasks.length === 0 ? t("empty") : t("noneInFilter")}
           </p>
         ) : (
           shown.map((task) => {
             const due = asDate(task.dueDate);
-            const overdue = due !== null && task.status !== "completed" && due.getTime() < Date.now();
+            const overdue =
+              due !== null &&
+              task.status !== "completed" &&
+              due.getTime() < Date.now();
 
             return (
               <div
                 key={task.id}
-                className="group grid grid-cols-[22px_minmax(0,1fr)_auto] items-start gap-3.5 border-b border-border-light/50 px-1 py-4 transition-colors duration-[350ms] hover:bg-accent-primary/[0.06]"
+                className="group border-tui-ink/8 hover:bg-tui-accent/[0.05] grid grid-cols-[22px_minmax(0,1fr)_auto] items-start gap-3.5 border-b px-7 py-4 transition-colors last:border-b-0"
               >
                 <button
                   type="button"
                   disabled={!canWrite || updateStatus.isPending}
                   onClick={() =>
-                    updateStatus.mutate({ taskId: task.id, status: NEXT_STATUS[task.status] })
+                    updateStatus.mutate({
+                      taskId: task.id,
+                      status: NEXT_STATUS[task.status],
+                    })
                   }
                   aria-label={t("advance")}
                   title={t(`statuses.${task.status}`)}
-                  className={`mt-[3px] flex h-[18px] w-[18px] items-center justify-center rounded-full border transition-colors duration-300 disabled:cursor-default ${
+                  className={`mt-[3px] flex h-[18px] w-[18px] items-center justify-center rounded-full border transition-colors disabled:cursor-default ${
                     task.status === "completed"
-                      ? "border-success/60 bg-success/20 text-success"
+                      ? "border-tui-ok/60 bg-tui-ok/20 text-tui-ok"
                       : task.status === "blocked"
-                        ? "border-error/60 text-error"
+                        ? "border-tui-danger/60 text-tui-danger"
                         : task.status === "in_progress"
-                          ? "border-warning/70 text-warning"
-                          : "border-border-medium/70 text-transparent hover:border-accent-primary/60"
+                          ? "border-tui-warn/70 text-tui-warn"
+                          : "border-tui-ink/25 hover:border-tui-accent/60 text-transparent"
                   }`}
                 >
                   {task.status === "completed" ? (
                     <Check size={11} strokeWidth={3} aria-hidden />
                   ) : task.status === "in_progress" ? (
-                    <span className="h-[7px] w-[7px] rounded-full bg-warning" aria-hidden />
+                    <span
+                      className="bg-tui-warn h-[7px] w-[7px] rounded-full"
+                      aria-hidden
+                    />
                   ) : task.status === "blocked" ? (
                     <X size={11} strokeWidth={3} aria-hidden />
                   ) : null}
@@ -331,8 +406,8 @@ export function ProjectTasksPanel({
                     <span
                       className={`text-[15px] font-medium tracking-[-0.01em] ${
                         task.status === "completed"
-                          ? "text-fg-quaternary line-through"
-                          : "text-fg-primary"
+                          ? "text-tui-ink3 line-through"
+                          : "text-tui-ink"
                       }`}
                     >
                       {task.title}
@@ -342,7 +417,9 @@ export function ProjectTasksPanel({
                         aria-hidden
                         className={`h-[7px] w-[7px] rounded-full ${PRIORITY_DOT[task.priority]}`}
                       />
-                      <span className={STAMP}>{t(`priorities.${task.priority}`)}</span>
+                      <span className={STAMP}>
+                        {t(`priorities.${task.priority}`)}
+                      </span>
                     </span>
                     <span className={`${STAMP} ${STATUS_TEXT[task.status]}`}>
                       {t(`statuses.${task.status}`)}
@@ -350,50 +427,36 @@ export function ProjectTasksPanel({
                   </div>
 
                   {task.description && (
-                    <span className="text-[13px] leading-[1.45] text-fg-tertiary">
+                    <span className="text-tui-ink2 text-[13px] leading-[1.45]">
                       {task.description}
                     </span>
                   )}
 
                   <div className="flex flex-wrap items-center gap-3 pt-0.5">
                     {task.assignedTo ? (
-                      <span className="flex items-center gap-1.5 text-[12px] text-fg-tertiary">
-                        {task.assignedTo.image ? (
-                          <Image
-                            src={task.assignedTo.image}
-                            alt=""
-                            width={18}
-                            height={18}
-                            className="h-[18px] w-[18px] rounded-full object-cover"
-                          />
-                        ) : (
-                          <span
-                            style={avatarGradientStyle(
-                              task.assignedTo.id ?? task.assignedTo.name,
-                            )}
-                            className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] font-bold text-white"
-                          >
-                            {(task.assignedTo.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
-                          </span>
-                        )}
+                      <span className="text-tui-ink2 flex items-center gap-2 text-[12px]">
+                        <Initial
+                          label={task.assignedTo.name ?? "?"}
+                          size={18}
+                        />
                         {task.assignedTo.name ?? t("someone")}
                       </span>
                     ) : (
-                      <span className="text-[12px] text-fg-quaternary">{t("unassigned")}</span>
+                      <span className="text-tui-ink3 text-[12px]">
+                        {t("unassigned")}
+                      </span>
                     )}
 
                     {due && (
                       <span
-                        className={`font-mono text-[11px] ${overdue ? "text-error" : "text-fg-quaternary"}`}
+                        className={`text-[11.5px] ${overdue ? "text-tui-danger" : "text-tui-ink3"}`}
                       >
                         {new Intl.DateTimeFormat(locale, {
                           day: "numeric",
                           month: "short",
                           hour: "2-digit",
                           minute: "2-digit",
-                        })
-                          .format(due)
-                          .toUpperCase()}
+                        }).format(due)}
                       </span>
                     )}
                   </div>
@@ -407,7 +470,7 @@ export function ProjectTasksPanel({
                           autoFocus
                           onChange={(event) => setNoteDraft(event.target.value)}
                           placeholder={t("notePlaceholder")}
-                          className="resize-none rounded-sm border border-border-light/60 bg-bg-tertiary px-3.5 py-2.5 text-[13px] leading-[1.5] text-fg-primary outline-none transition-colors duration-300 placeholder:text-fg-quaternary focus:border-accent-primary/60"
+                          className="border-tui-ink/16 bg-tui-bg text-tui-ink placeholder:text-tui-ink3 focus:border-tui-accent/60 resize-none rounded-md border px-3.5 py-2.5 text-[13px] leading-[1.5] transition-colors outline-none"
                         />
                         <div className="flex gap-2">
                           <button
@@ -419,14 +482,14 @@ export function ProjectTasksPanel({
                                 completionNote: noteDraft.trim() || null,
                               })
                             }
-                            className="rounded-lg bg-accent-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-colors duration-300 hover:bg-accent-hover disabled:opacity-50"
+                            className="bg-tui-accent text-tui-on-accent rounded-full px-4 py-2 text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
                           >
                             {t("saveNote")}
                           </button>
                           <button
                             type="button"
                             onClick={() => setNoteFor(null)}
-                            className="rounded-lg border border-border-light/70 px-3.5 py-2 text-[13px] font-medium text-fg-secondary transition-colors duration-300 hover:text-fg-primary"
+                            className="border-tui-ink/16 text-tui-ink2 hover:text-tui-ink rounded-full border px-4 py-2 text-[13px] font-medium transition-colors"
                           >
                             {t("cancel")}
                           </button>
@@ -440,11 +503,11 @@ export function ProjectTasksPanel({
                           setNoteDraft(task.completionNote ?? "");
                           setNoteFor(task.id);
                         }}
-                        className="mt-1 flex items-start gap-2 text-left text-[13px] text-fg-tertiary transition-colors duration-300 hover:text-fg-secondary disabled:pointer-events-none"
+                        className="text-tui-ink2 hover:text-tui-ink mt-1 flex items-start gap-2 text-left text-[13px] transition-colors disabled:pointer-events-none"
                       >
                         <StickyNote
                           size={13}
-                          className="mt-[3px] flex-none text-accent-secondary"
+                          className="text-tui-accent mt-[3px] flex-none"
                           aria-hidden
                         />
                         {task.completionNote ?? t("addNote")}
@@ -459,7 +522,7 @@ export function ProjectTasksPanel({
                       onClick={() => openEdit(task)}
                       aria-label={t("edit")}
                       title={t("edit")}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-fg-quaternary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
+                      className="text-tui-ink3 hover:bg-tui-ink/[0.06] hover:text-tui-ink flex h-8 w-8 items-center justify-center rounded-full transition-colors"
                     >
                       <Pencil size={15} strokeWidth={1.6} aria-hidden />
                     </button>
@@ -471,14 +534,22 @@ export function ProjectTasksPanel({
                             ? removeTask(task.id)
                             : setConfirmDiscard(task.id)
                         }
-                        onBlur={() => setConfirmDiscard((id) => (id === task.id ? null : id))}
+                        onBlur={() =>
+                          setConfirmDiscard((id) =>
+                            id === task.id ? null : id,
+                          )
+                        }
                         disabled={removing}
                         aria-label={t("discard")}
-                        title={confirmDiscard === task.id ? t("discardConfirm") : t("discard")}
-                        className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 ${
+                        title={
                           confirmDiscard === task.id
-                            ? "bg-error/10 text-error"
-                            : "text-fg-quaternary hover:bg-bg-tertiary hover:text-error"
+                            ? t("discardConfirm")
+                            : t("discard")
+                        }
+                        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+                          confirmDiscard === task.id
+                            ? "bg-tui-danger/10 text-tui-danger"
+                            : "text-tui-ink3 hover:bg-tui-ink/[0.06] hover:text-tui-danger"
                         }`}
                       >
                         <Trash2 size={15} strokeWidth={1.6} aria-hidden />
@@ -526,7 +597,10 @@ export function ProjectTeamPanel({
   const [email, setEmail] = useState("");
   const [permission, setPermission] = useState<"read" | "write">("read");
 
-  const projectQuery = api.project.getById.useQuery({ id: projectId }, { staleTime: 1000 * 30 });
+  const projectQuery = api.project.getById.useQuery(
+    { id: projectId },
+    { staleTime: 1000 * 30 },
+  );
 
   const refresh = () => utils.project.getById.invalidate({ id: projectId });
 
@@ -547,25 +621,33 @@ export function ProjectTeamPanel({
     onError: (error) => toast.error(error.message),
   });
 
-  const updatePermission = api.project.updateCollaboratorPermission.useMutation({
-    onSuccess: () => void refresh(),
-    onError: (error) => toast.error(error.message),
-  });
+  const updatePermission = api.project.updateCollaboratorPermission.useMutation(
+    {
+      onSuccess: () => void refresh(),
+      onError: (error) => toast.error(error.message),
+    },
+  );
 
   const project = projectQuery.data;
   const isOwner = project?.createdById === userId;
   const collaborators = project?.collaborators ?? [];
 
   return (
-    <div className="flex flex-col gap-3.5">
-      <span className={STAMP}>{t("label")}</span>
+    <div className="flex flex-col gap-6">
+      <section className={CARD}>
+        <div className="border-tui-ink/8 flex items-baseline gap-3 border-b px-7 pt-5 pb-4">
+          <h2 className="font-display m-0 text-[22px] leading-none">
+            {t("label")}
+          </h2>
+          <span className="text-tui-ink3 text-[12.5px]">
+            {collaborators.length + (project?.createdBy ? 1 : 0)}
+          </span>
+        </div>
 
-      <div className="border-t border-border-light/60">
         {project?.createdBy && (
-          <div className="flex items-center gap-3 border-b border-border-light/50 px-1 py-3.5">
+          <div className="border-tui-ink/8 flex items-center gap-3 border-b px-7 py-3.5">
             <Member
               name={project.createdBy.name ?? project.createdBy.email ?? ""}
-              image={project.createdBy.image ?? null}
               email={project.createdBy.email ?? ""}
               userId={project.createdById}
             />
@@ -577,11 +659,10 @@ export function ProjectTeamPanel({
         {collaborators.map((row) => (
           <div
             key={row.collaboratorId}
-            className="flex flex-wrap items-center gap-3 border-b border-border-light/50 px-1 py-3.5"
+            className="border-tui-ink/8 flex flex-wrap items-center gap-3 border-b px-7 py-3.5 last:border-b-0"
           >
             <Member
               name={row.collaborator?.name ?? row.collaborator?.email ?? ""}
-              image={row.collaborator?.image ?? null}
               email={row.collaborator?.email ?? ""}
               userId={row.collaboratorId}
             />
@@ -589,7 +670,7 @@ export function ProjectTeamPanel({
 
             {isOwner ? (
               <>
-                <div className="flex overflow-hidden rounded-lg border border-border-light/60">
+                <div className="border-tui-ink/12 flex gap-1 rounded-full border p-1">
                   {(["read", "write"] as const).map((key) => (
                     <button
                       key={key}
@@ -602,10 +683,10 @@ export function ProjectTeamPanel({
                         })
                       }
                       aria-pressed={row.permission === key}
-                      className={`h-[30px] px-3 text-[12px] font-medium transition-colors duration-300 ${
+                      className={`h-7 rounded-full px-3 text-[12px] font-medium transition-colors ${
                         row.permission === key
-                          ? "bg-accent-primary/[0.16] text-fg-primary"
-                          : "text-fg-tertiary hover:text-fg-secondary"
+                          ? "bg-tui-accent/[0.16] text-tui-ink"
+                          : "text-tui-ink3 hover:text-tui-ink2"
                       }`}
                     >
                       {t(key)}
@@ -622,7 +703,7 @@ export function ProjectTeamPanel({
                   }
                   aria-label={t("remove")}
                   title={t("remove")}
-                  className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-fg-quaternary transition-colors duration-300 hover:bg-bg-tertiary hover:text-error"
+                  className="text-tui-ink3 hover:bg-tui-ink/[0.06] hover:text-tui-danger flex h-8 w-8 items-center justify-center rounded-full transition-colors"
                 >
                   <X size={15} aria-hidden />
                 </button>
@@ -633,17 +714,21 @@ export function ProjectTeamPanel({
           </div>
         ))}
 
-        {collaborators.length === 0 && (
-          <p className="px-1 py-4 text-sm text-fg-tertiary">{t("empty")}</p>
+        {collaborators.length === 0 && !project?.createdBy && (
+          <p className="text-tui-ink2 px-7 py-4 text-[14px]">{t("empty")}</p>
         )}
-      </div>
+      </section>
 
       {isOwner && (
         <form
           onSubmit={(event) => {
             event.preventDefault();
             if (!email.trim()) return;
-            addCollaborator.mutate({ projectId, email: email.trim(), permission });
+            addCollaborator.mutate({
+              projectId,
+              email: email.trim(),
+              permission,
+            });
           }}
           className="flex flex-wrap items-center gap-2"
         >
@@ -652,19 +737,19 @@ export function ProjectTeamPanel({
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder={t("invitePlaceholder")}
-            className="h-10 min-w-0 flex-1 rounded-sm border border-border-light/60 bg-bg-tertiary px-3.5 text-sm text-fg-primary outline-none transition-colors duration-300 placeholder:text-fg-quaternary focus:border-accent-primary/60 sm:max-w-[280px]"
+            className="border-tui-ink/12 bg-tui-pane text-tui-ink placeholder:text-tui-ink3 focus:border-tui-accent/60 h-10 min-w-0 flex-1 rounded-full border px-4 text-sm shadow-[var(--tui-pane-shadow)] transition-colors outline-none sm:max-w-[280px]"
           />
-          <div className="flex overflow-hidden rounded-lg border border-border-light/60">
+          <div className="border-tui-ink/12 bg-tui-pane flex gap-1 rounded-full border p-1 shadow-[var(--tui-pane-shadow)]">
             {(["read", "write"] as const).map((key) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setPermission(key)}
                 aria-pressed={permission === key}
-                className={`h-10 px-3 text-[12px] font-medium transition-colors duration-300 ${
+                className={`h-8 rounded-full px-3 text-[12px] font-medium transition-colors ${
                   permission === key
-                    ? "bg-accent-primary/[0.16] text-fg-primary"
-                    : "text-fg-tertiary hover:text-fg-secondary"
+                    ? "bg-tui-accent/[0.16] text-tui-ink"
+                    : "text-tui-ink3 hover:text-tui-ink2"
                 }`}
               >
                 {t(key)}
@@ -674,7 +759,7 @@ export function ProjectTeamPanel({
           <button
             type="submit"
             disabled={addCollaborator.isPending || email.trim().length === 0}
-            className="flex h-10 items-center gap-2 rounded-sm border border-border-light/60 px-3.5 text-[13px] font-medium text-fg-secondary transition-colors duration-300 hover:border-accent-primary/40 hover:text-fg-primary disabled:opacity-50"
+            className="border-tui-ink/16 text-tui-ink2 hover:border-tui-accent/40 hover:text-tui-ink flex h-10 items-center gap-2 rounded-full border px-4 text-[13px] font-medium transition-colors disabled:opacity-50"
           >
             <UserPlus size={15} aria-hidden />
             {t("invite")}
@@ -694,37 +779,24 @@ export function ProjectTeamPanel({
  */
 function Member({
   name,
-  image,
   email,
   userId,
 }: {
   name: string;
-  image: string | null;
   email: string;
   userId?: string | null;
 }) {
   const body = (
     <span className="flex min-w-0 items-center gap-2.5">
-      {image ? (
-        <Image
-          src={image}
-          alt=""
-          width={26}
-          height={26}
-          className="h-[26px] w-[26px] flex-none rounded-full object-cover"
-        />
-      ) : (
-        <span
-          style={avatarGradientStyle(userId ?? email)}
-          className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full text-[11px] font-bold text-white"
-        >
-          {(name || "?").trim().charAt(0).toUpperCase() || "?"}
-        </span>
-      )}
+      <Initial label={name || email || "?"} size={30} />
       <span className="min-w-0">
-        <span className="block truncate text-sm font-medium text-fg-primary">{name || email}</span>
+        <span className="font-display text-tui-ink block truncate text-[17px]">
+          {name || email}
+        </span>
         {email && name !== email && (
-          <span className="block truncate text-[12px] text-fg-quaternary">{email}</span>
+          <span className="text-tui-ink3 block truncate text-[12px]">
+            {email}
+          </span>
         )}
       </span>
     </span>

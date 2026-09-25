@@ -40,6 +40,9 @@ const PUBLIC_PATHS = new Set([
   "/",
   "/api/auth",
   "/verify-email",
+  // Same reason: the two-step sign-in link is opened by someone who is, by
+  // definition, not signed in yet — often on a different device.
+  "/verify-login",
   // A failed sign-in has, by definition, no session cookie. Gating the page that
   // explains the failure sent it back to `/` with the error code buried in a
   // query string nothing reads — the dead end this page exists to end.

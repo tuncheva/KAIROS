@@ -15,6 +15,7 @@ type ModalView =
   | "signIn"
   | "signUp"
   | "verifyEmailSent"
+  | "twoFactor"
   | "forgotPassword"
   | "resetCode"
   | "newPassword"
@@ -72,7 +73,14 @@ export function SignInModal({
   const [slide, setSlide] = useState<"from-left" | "from-right">("from-left");
   const [hoveredTab, setHoveredTab] = useState<"signIn" | "signUp" | null>(null);
 
-  /* Forgot password state */
+  /* Two-step sign-in. `challenge` is the secret the server hands back once the
+     password is right; only this browser holds it, and it is what lets this
+     screen — not whichever device opens the emailed link — finish signing in.
+     See `~/server/auth/twoFactor`. */
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const finishingTwoFactor = useRef(false);
+
+  /* Forgot password state (the code boxes are shared with two-step sign-in) */
   const [enteredCode, setEnteredCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -87,6 +95,19 @@ export function SignInModal({
   const requestResetMutation = api.auth.requestPasswordReset.useMutation();
   const verifyCodeMutation = api.auth.verifyResetCode.useMutation();
   const resetPasswordMutation = api.auth.resetPassword.useMutation();
+
+  /* Watches for the emailed link being approved. Polling rather than a socket:
+     it runs for at most the challenge's ten minutes, only while this view is
+     open, and the endpoint is a single indexed read. */
+  const twoFactorStatus = api.auth.twoFactorStatus.useQuery(
+    { challenge: challenge ?? "" },
+    {
+      enabled: isOpen && view === "twoFactor" && !!challenge,
+      refetchInterval: 3000,
+      refetchOnWindowFocus: true,
+      retry: false,
+    },
+  );
 
   /* Handle code input (8 separate boxes) */
   const handleCodeInput = useCallback((index: number, value: string) => {
@@ -141,6 +162,7 @@ export function SignInModal({
         setView("signIn");
         setSlide("from-left");
         setHoveredTab(null);
+        setChallenge(null);
       }, 200);
       return () => clearTimeout(t);
     }
@@ -152,11 +174,82 @@ export function SignInModal({
      the newer surfaces already had; see `~/components/ui/Modal`. */
   useModalBehavior({ containerRef: shellRef, onDismiss: onClose, enabled: isOpen });
 
+  /**
+   * Finish a two-step sign-in, with the typed code or — when `code` is null —
+   * on the strength of the emailed link having been approved.
+   */
+  const finishTwoFactor = async (code: string | null) => {
+    if (!challenge || finishingTwoFactor.current) return;
+    finishingTwoFactor.current = true;
+    setIsLoading(true);
+    setError("");
+    setLoadingMessage(t("twoFactor.signingIn"));
+
+    try {
+      const result = await signIn("two-factor", {
+        challenge,
+        code: code ?? "",
+        redirect: false,
+      });
+
+      if (result?.error) {
+        const [, reason] = (result.code ?? "").split(":");
+        if (reason === "expired" || (reason === "invalid" && code === null)) {
+          setChallenge(null);
+          setError(t("twoFactor.expired"));
+        } else if (reason === "denied") {
+          setChallenge(null);
+          setError(t("twoFactor.denied"));
+        } else if (reason === "too_many_attempts") {
+          setChallenge(null);
+          setError(t("twoFactor.tooManyAttempts"));
+        } else {
+          setEnteredCode("");
+          setError(t("twoFactor.invalidCode"));
+        }
+        return;
+      }
+
+      onClose();
+      router.push(callbackUrl);
+      router.refresh();
+    } catch (err) {
+      console.error("Two-step sign in error:", err);
+      setError(t("signIn.error"));
+    } finally {
+      finishingTwoFactor.current = false;
+      setIsLoading(false);
+      setLoadingMessage("");
+    }
+  };
+
+  /* React to the link being answered while this screen waits. */
+  const linkStatus = twoFactorStatus.data?.status;
+  useEffect(() => {
+    if (view !== "twoFactor" || !linkStatus) return;
+    if (linkStatus === "approved") {
+      void finishTwoFactor(null);
+    } else if (linkStatus === "denied") {
+      setChallenge(null);
+      setError(t("twoFactor.denied"));
+    } else if (linkStatus === "expired") {
+      setChallenge(null);
+      setError(t("twoFactor.expired"));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- react to the status only
+  }, [linkStatus, view]);
+
   /* ─── Early return AFTER all hooks ─── */
   if (!isOpen) return null;
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    await submitCredentials();
+  };
+
+  /* Shared by the sign-in form and "send a new code" on the two-step screen:
+     a fresh code is a fresh challenge, and only the password can open one. */
+  const submitCredentials = async () => {
     setIsLoading(true);
     setError("");
     setNeedsVerification(false);
@@ -176,7 +269,16 @@ export function SignInModal({
            `SIGN_IN_UNVERIFIED` in `~/server/auth/config`. */
         const [code, detail] = (result.code ?? "").split(":");
 
-        if (code === "EMAIL_UNVERIFIED") {
+        if (code === "TWO_FACTOR_REQUIRED" && detail) {
+          setChallenge(detail);
+          setEnteredCode("");
+          setView("twoFactor");
+          setError("");
+        } else if (code === "TWO_FACTOR_UNSENT") {
+          setError(t("twoFactor.sendFailed"));
+        } else if (code === "TWO_FACTOR_THROTTLED") {
+          setError(t("twoFactor.throttled"));
+        } else if (code === "EMAIL_UNVERIFIED") {
           setNeedsVerification(true);
           setError(t("signIn.emailUnverified"));
         } else if (code === "ACCOUNT_LOCKED") {
@@ -346,7 +448,14 @@ export function SignInModal({
 
   const handleBackToSignIn = () => {
     resetForm();
+    setChallenge(null);
     goTo("signIn");
+  };
+
+  const handleVerifyTwoFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (enteredCode.length < 8) return;
+    await finishTwoFactor(enteredCode);
   };
 
   /* ─── Shared bits ─── */
@@ -373,6 +482,11 @@ export function SignInModal({
   const copy: Record<ModalView, { step: string; title: string; sub: string }> = {
     signIn: { step: t("steps.signIn"), title: t("signIn.title"), sub: t("signIn.subtitle") },
     signUp: { step: t("steps.signUp"), title: t("signUp.title"), sub: t("signUp.subtitle") },
+    twoFactor: {
+      step: t("steps.twoFactor"),
+      title: t("twoFactor.title"),
+      sub: t("twoFactor.subtitle", { email }),
+    },
     verifyEmailSent: {
       step: t("steps.verifyEmail"),
       title: t("verifyEmail.title"),
@@ -562,6 +676,62 @@ export function SignInModal({
     </div>
   );
 
+  const renderTwoFactor = () => (
+    <div className="k-auth-body mt-9 flex flex-col gap-7">
+      <div className="grid grid-cols-8 gap-1.5 sm:gap-2.5" onPaste={handleCodePaste}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <input
+            key={i}
+            ref={(el) => { codeInputsRef.current[i] = el; }}
+            className="k-auth-box"
+            type="text"
+            inputMode="numeric"
+            autoComplete={i === 0 ? "one-time-code" : "off"}
+            maxLength={1}
+            value={enteredCode[i] ?? ""}
+            onChange={(e) => handleCodeInput(i, e.target.value)}
+            onKeyDown={(e) => handleCodeKeyDown(i, e)}
+            aria-label={`${t("twoFactor.label")} ${i + 1}`}
+            disabled={isLoading}
+          />
+        ))}
+      </div>
+
+      {challenge ? (
+        <p role="status" className="flex items-center gap-2 text-sm text-white/55">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-accent-primary" aria-hidden="true" />
+          {t("twoFactor.waitingForLink")}
+        </p>
+      ) : null}
+
+      <p className="font-mono text-[11px] tracking-[0.12em] text-white/45">{t("twoFactor.expiry")}</p>
+
+      <div className="flex items-center gap-4">
+        <button
+          type="submit"
+          disabled={isLoading || !challenge || enteredCode.length < 8}
+          className={`${primaryBtnClass} flex-1`}
+        >
+          {isLoading ? (
+            <Loader2 className="animate-spin" size={18} />
+          ) : (
+            <>{t("twoFactor.submit")}<KeyRound size={17} /></>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => void submitCredentials()}
+          disabled={isLoading}
+          className="k-auth-lnk whitespace-nowrap text-sm text-accent-primary"
+        >
+          {t("twoFactor.resend")}
+        </button>
+      </div>
+
+      {backToSignIn()}
+    </div>
+  );
+
   const renderResetCode = () => (
     <div className="k-auth-body mt-9 flex flex-col gap-7">
       <div className="grid grid-cols-8 gap-1.5 sm:gap-2.5" onPaste={handleCodePaste}>
@@ -698,6 +868,7 @@ export function SignInModal({
     signUp: (e) => void handleSignUp(e),
     forgotPassword: (e) => void handleSendResetCode(e),
     resetCode: (e) => void handleVerifyCode(e),
+    twoFactor: (e) => void handleVerifyTwoFactor(e),
     newPassword: (e) => void handleResetPassword(e),
     verifyEmailSent: (e) => e.preventDefault(),
     done: (e) => e.preventDefault(),
@@ -864,6 +1035,7 @@ export function SignInModal({
             {view === "signIn" && renderSignIn()}
             {view === "signUp" && renderSignUp()}
             {view === "verifyEmailSent" && renderVerifyEmailSent()}
+            {view === "twoFactor" && renderTwoFactor()}
             {view === "forgotPassword" && renderForgotPassword()}
             {view === "resetCode" && renderResetCode()}
             {view === "newPassword" && renderNewPassword()}

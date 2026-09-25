@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
+import { twoFactorChallenges, users } from "~/server/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
 import * as argon2 from "argon2";
 import { TRPCError } from "@trpc/server";
 import { sendWelcomeEmail, sendPasswordResetCode, sendEmailVerification } from "~/server/email/email";
@@ -15,6 +15,11 @@ import {
   issueVerificationCode,
   normalizeEmail,
 } from "~/server/email/verificationCodes";
+import {
+  decideTwoFactorLink,
+  getTwoFactorStatus,
+  reviewTwoFactorLink,
+} from "~/server/auth/twoFactor";
 import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/security/authRateLimit";
 import { getClientIp } from "~/server/http/clientIp";
 import { createLogger } from "~/server/logger";
@@ -201,6 +206,49 @@ export const authRouter = createTRPCRouter({
       return { success: true };
     }),
 
+  /**
+   * Polled by the sign-in screen while it waits on the emailed link.
+   *
+   * Not rate-limited: it is called every few seconds for the life of the
+   * challenge, and the secret it takes carries 256 bits, so there is nothing to
+   * guess. Read-only — finishing the sign-in is the `two-factor` provider's job.
+   */
+  twoFactorStatus: publicProcedure
+    .input(z.object({ challenge: z.string().min(1).max(128) }))
+    .query(async ({ ctx, input }) => {
+      return { status: await getTwoFactorStatus(ctx.db, input.challenge) };
+    }),
+
+  /**
+   * What the approval page shows on load. Changes nothing, so a mail scanner
+   * fetching the link approves nothing.
+   */
+  reviewTwoFactorLink: publicProcedure
+    .input(z.object({ token: z.string().min(1).max(128) }))
+    .query(async ({ ctx, input }) => {
+      return reviewTwoFactorLink(ctx.db, input.token);
+    }),
+
+  /** Approve or refuse a waiting sign-in from the emailed link. */
+  decideTwoFactorLink: publicProcedure
+    .input(
+      z.object({
+        token: z.string().min(1).max(128),
+        decision: z.enum(["approve", "deny"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("two_factor_link_ip", getClientIp(ctx.headers)),
+      );
+
+      const status = await decideTwoFactorLink(ctx.db, input.token, input.decision);
+      if (input.decision === "deny" && status === "denied") {
+        log.warn("two-factor sign-in refused from emailed link");
+      }
+      return { status };
+    }),
+
   requestPasswordReset: publicProcedure
     .input(
       z.object({
@@ -356,6 +404,17 @@ export const authRouter = createTRPCRouter({
         .update(users)
         .set({ password: hashedPassword, updatedAt: new Date() })
         .where(eq(users.id, user.id));
+
+      // A sign-in half-finished with the old password must not survive it.
+      await ctx.db
+        .update(twoFactorChallenges)
+        .set({ consumedAt: new Date() })
+        .where(
+          and(
+            eq(twoFactorChallenges.userId, user.id),
+            isNull(twoFactorChallenges.consumedAt),
+          ),
+        );
 
       return { success: true };
     }),

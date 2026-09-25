@@ -2,8 +2,26 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, type TRPCContext } from "~/server/api/trpc";
-import { organizations, organizationMembers, organizationRoles, organizationInvites, organizationJoinCodes, users, type OrganizationJoinCode } from "~/server/db/schema";
-import { flagsForRole } from "~/lib/permissions";
+import { organizations, organizationMembers, organizationRoles, organizationInvites, organizationJoinCodes, users, type OrganizationInvite, type OrganizationJoinCode } from "~/server/db/schema";
+import {
+  ORG_ROLES,
+  baseRoleForFlags,
+  flagsForRole,
+  isOrgRole,
+  pickPermissionFlags,
+  type OrgRole,
+} from "~/lib/permissions";
+import {
+  generateInviteToken,
+  grantedLabelsEn,
+  hashInviteToken,
+  inviteGrantSchema,
+  permissionFlagsSchema,
+  resolveGrant,
+  roleLabelEn,
+  storedGrantFlags,
+} from "~/server/orgs/inviteGrants";
+import { sendOrganizationInvite } from "~/server/email/email";
 import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/security/authRateLimit";
 import { getClientIp } from "~/server/http/clientIp";
 import { assertSeatAvailable } from "~/server/billing/seats";
@@ -29,32 +47,9 @@ function canInvite(membership: {
   return membership.role === "admin" || membership.canAddMembers === true;
 }
 
-/**
- * Refuse to add a member to an organization that has no seat for them.
- *
- * Applied at every entrance — access code, QR code and invitation — because a
- * member added by any of them is entitled by `planForUser` exactly as much as
- * one added by the others, and a limit with three ways around it is not a limit.
- * See `~/server/billing/seats` for why free organizations are uncapped and why
- * nobody is ever removed to make room.
- *
- * PRECONDITION_FAILED rather than FORBIDDEN: the caller is not being denied a
- * permission, the workspace is in a state that has to change first, and the
- * person who can change it is not the one reading the message.
- */
-async function assertSeatAvailable(organizationId: number): Promise<void> {
-  const availability = await seatAvailability(organizationId);
-  if (!availability || availability.hasRoom) return;
-
-  throw new TRPCError({
-    code: "PRECONDITION_FAILED",
-    message: `This workspace has used all ${availability.seats} of its seats. An admin needs to add one before anyone else can join.`,
-  });
-}
 import { eq, and, or, isNull, gt, lte, desc, sql } from "drizzle-orm";
 import { notify } from "~/server/notifications/dispatch";
 import { createLogger } from "~/server/logger";
-import { seatAvailability } from "~/server/billing/seats";
 import {
   cancelSubscriptionFor,
   SubscriptionCancellationError,
@@ -180,6 +175,398 @@ async function describeJoinCode(
     organizationName,
   };
 }
+
+function describeInviteLink(headers: Headers | undefined, link: OrganizationJoinCode) {
+  const grant = joinCodeGrant(link);
+  return {
+    id: link.id,
+    code: link.code,
+    url: buildJoinUrl(resolveOrigin(headers), link.code),
+    expiresAt: link.expiresAt,
+    maxUses: link.maxUses,
+    usedCount: link.usedCount,
+    createdAt: link.createdAt,
+    ...grant,
+  };
+}
+
+type AuthedContext = TRPCContext & { session: { user: { id: string } } };
+
+/** Invite links live longer than the on-screen QR, but not indefinitely. */
+const INVITE_LINK_DEFAULT_DAYS = 7;
+const INVITE_LINK_MAX_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Addresses are compared case-insensitively everywhere.
+ *
+ * `inviteMember` used to store the address as typed while `acceptInvite`
+ * compared it exactly against `users.email`, so "Ana@Gmail.com" invited
+ * "ana@gmail.com" to nothing.
+ */
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function inviteEmailIs(email: string) {
+  return sql`lower(${organizationInvites.email}) = ${normalizeEmail(email)}`;
+}
+
+/** An invite row as it may leave the server: never with its token hash. */
+function publicInvite(invite: OrganizationInvite) {
+  const { acceptTokenHash: _hash, ...rest } = invite;
+  return {
+    ...rest,
+    permissions: storedGrantFlags(invite.permissions, flagsForRole(invite.role)),
+  };
+}
+
+/** The flags a join code grants, and the role it admits as. */
+function joinCodeGrant(code: OrganizationJoinCode) {
+  // A QR only ever admitted worker or mentor; a hand-made link carries whatever
+  // role its creator was allowed to pick.
+  const role: OrgRole =
+    code.kind === "link" ? code.role : code.role === "mentor" ? "mentor" : "worker";
+  return {
+    role,
+    displayRole: code.displayRole ?? null,
+    permissions: storedGrantFlags(code.permissions, flagsForRole(role)),
+  };
+}
+
+/**
+ * Turn a pending invite into a membership with exactly the flags it carries.
+ *
+ * Shared by accepting from the inbox and accepting from the emailed link, so
+ * the two cannot drift into granting different things.
+ */
+async function admitInvite(ctx: AuthedContext, invite: OrganizationInvite) {
+  const [existingMember] = await ctx.db
+    .select({ userId: organizationMembers.userId })
+    .from(organizationMembers)
+    .where(
+      and(
+        eq(organizationMembers.organizationId, invite.organizationId),
+        eq(organizationMembers.userId, ctx.session.user.id),
+      ),
+    )
+    .limit(1);
+
+  const [org] = await ctx.db
+    .select({ name: organizations.name })
+    .from(organizations)
+    .where(eq(organizations.id, invite.organizationId))
+    .limit(1);
+  const orgName = org?.name ?? "Workspace";
+
+  if (existingMember) {
+    await ctx.db
+      .update(organizationInvites)
+      .set({ status: "accepted" })
+      .where(eq(organizationInvites.id, invite.id));
+    return { success: true, alreadyMember: true, organizationName: orgName };
+  }
+
+  // An invitation is not a reservation: it can be issued while a seat is
+  // free and accepted after it has been taken, so the seat is checked at
+  // acceptance rather than at send.
+  await assertSeatAvailable(invite.organizationId);
+
+  const role = invite.role ?? "member";
+  await ctx.db.insert(organizationMembers).values({
+    organizationId: invite.organizationId,
+    userId: ctx.session.user.id,
+    role,
+    displayRole: invite.displayRole,
+    // Exactly what the inviter ticked — not the role's template, which is what
+    // this used to apply, silently discarding every hand-picked flag.
+    ...storedGrantFlags(invite.permissions, flagsForRole(role)),
+  });
+
+  await ctx.db
+    .update(organizationInvites)
+    .set({ status: "accepted" })
+    .where(eq(organizationInvites.id, invite.id));
+
+  await ctx.db
+    .update(users)
+    .set({ usageMode: "organization", activeOrganizationId: invite.organizationId })
+    .where(eq(users.id, ctx.session.user.id));
+
+  const [acceptingUser] = await ctx.db
+    .select({ name: users.name })
+    .from(users)
+    .where(eq(users.id, ctx.session.user.id))
+    .limit(1);
+  const acceptorName = acceptingUser?.name ?? "Someone";
+
+  if (invite.invitedById) {
+    await notify({
+      db: ctx.db,
+      userId: invite.invitedById,
+      actorId: ctx.session.user.id,
+      category: "workspace",
+      type: "system",
+      title: "Invite Accepted",
+      message: `${acceptorName} accepted your invitation to join "${orgName}"`,
+      link: "/settings",
+    });
+  }
+
+  return { success: true, alreadyMember: false, organizationName: orgName };
+}
+
+/**
+ * Redeem a join code — a scanned QR, a shared invite link, or the same code
+ * typed into the join box. The caller is responsible for rate limiting.
+ */
+async function redeemJoinCode(ctx: AuthedContext, rawCode: string) {
+  const code = rawCode.trim().toUpperCase();
+
+  const [candidate] = await ctx.db
+    .select()
+    .from(organizationJoinCodes)
+    .where(eq(organizationJoinCodes.code, code))
+    .limit(1);
+
+  if (
+    !candidate ||
+    candidate.revokedAt ||
+    candidate.expiresAt.getTime() <= Date.now() ||
+    candidate.usedCount >= candidate.maxUses
+  ) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "This invite code is no longer valid. Ask for a fresh one.",
+    });
+  }
+
+  const [existingMember] = await ctx.db
+    .select({ id: organizationMembers.id })
+    .from(organizationMembers)
+    .where(
+      and(
+        eq(organizationMembers.organizationId, candidate.organizationId),
+        eq(organizationMembers.userId, ctx.session.user.id),
+      ),
+    )
+    .limit(1);
+
+  if (existingMember) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "You are already a member of this organization.",
+    });
+  }
+
+  // Before the claim below, deliberately: a full organization should not
+  // burn a use off a single-use code that was never going to admit anyone.
+  // The rollback in the catch handles a failed *insert*; refusing here means
+  // there is nothing to roll back.
+  await assertSeatAvailable(candidate.organizationId);
+
+  // Claim a use with a conditional update rather than a read-then-write, so
+  // two people redeeming the same single-use code at once cannot both win.
+  const claimed = await ctx.db
+    .update(organizationJoinCodes)
+    .set({ usedCount: sql`${organizationJoinCodes.usedCount} + 1` })
+    .where(
+      and(
+        eq(organizationJoinCodes.id, candidate.id),
+        isNull(organizationJoinCodes.revokedAt),
+        gt(organizationJoinCodes.expiresAt, new Date()),
+        sql`${organizationJoinCodes.usedCount} < ${organizationJoinCodes.maxUses}`,
+      ),
+    )
+    .returning({ id: organizationJoinCodes.id });
+
+  if (claimed.length === 0) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "This invite code is no longer valid. Ask for a fresh one.",
+    });
+  }
+
+  const [organization] = await ctx.db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, candidate.organizationId))
+    .limit(1);
+
+  if (!organization) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Organization not found",
+    });
+  }
+
+  const grant = joinCodeGrant(candidate);
+
+  try {
+    await ctx.db.insert(organizationMembers).values({
+      organizationId: organization.id,
+      userId: ctx.session.user.id,
+      role: grant.role,
+      displayRole: grant.displayRole,
+      ...grant.permissions,
+    });
+  } catch (error) {
+    // Hand the use back so a failed insert does not burn a single-use code.
+    await ctx.db
+      .update(organizationJoinCodes)
+      .set({ usedCount: sql`greatest(${organizationJoinCodes.usedCount} - 1, 0)` })
+      .where(eq(organizationJoinCodes.id, candidate.id));
+    throw error;
+  }
+
+  await ctx.db
+    .update(users)
+    .set({ usageMode: "organization", activeOrganizationId: organization.id })
+    .where(eq(users.id, ctx.session.user.id));
+
+  const [joiner] = await ctx.db
+    .select({ name: users.name })
+    .from(users)
+    .where(eq(users.id, ctx.session.user.id))
+    .limit(1);
+  const joinerName = joiner?.name ?? "Someone";
+
+  const orgAdmins = await ctx.db
+    .select({ userId: organizationMembers.userId })
+    .from(organizationMembers)
+    .where(
+      and(
+        eq(organizationMembers.organizationId, organization.id),
+        eq(organizationMembers.role, "admin"),
+      ),
+    );
+
+  const how = candidate.kind === "link" ? "using an invite link" : "by scanning an invite QR";
+  for (const admin of orgAdmins) {
+    if (admin.userId === ctx.session.user.id) continue;
+    await notify({
+      db: ctx.db,
+      userId: admin.userId,
+      actorId: ctx.session.user.id,
+      category: "workspace",
+      type: "system",
+      title: "New Member Joined",
+      message: `${joinerName} joined "${organization.name}" ${how}`,
+      link: "/settings?section=workspace",
+    });
+  }
+
+  return {
+    success: true,
+    organizationId: organization.id,
+    organizationName: organization.name,
+    role: grant.role,
+  };
+}
+
+/**
+ * Role names are unique per organization, case-insensitively, and may not
+ * shadow a built-in role — two "Designer" cards, or a custom "Admin" that is
+ * not an admin, would make the role picker ambiguous.
+ */
+async function assertRoleNameFree(
+  ctx: AuthedContext,
+  organizationId: number,
+  name: string,
+  exceptRoleId?: number,
+) {
+  const normalized = name.trim().toLowerCase();
+  if (isOrgRole(normalized)) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: `"${name.trim()}" is a built-in role. Pick another name.`,
+    });
+  }
+  const [clash] = await ctx.db
+    .select({ id: organizationRoles.id })
+    .from(organizationRoles)
+    .where(
+      and(
+        eq(organizationRoles.organizationId, organizationId),
+        sql`lower(${organizationRoles.name}) = ${normalized}`,
+        exceptRoleId === undefined ? undefined : sql`${organizationRoles.id} <> ${exceptRoleId}`,
+      ),
+    )
+    .limit(1);
+  if (clash) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: `A role named "${name.trim()}" already exists.`,
+    });
+  }
+}
+
+/**
+ * Tell the invitee: by email always, and in-app when they already have an
+ * account.
+ *
+ * A failed email does not undo the invite — the admin is told instead, and can
+ * resend or share a link — because the invite is still valid and an invitee
+ * who already has an account will see it in the app.
+ */
+async function deliverInvite(
+  ctx: AuthedContext,
+  invite: OrganizationInvite,
+  token: string,
+  existingUserId: string | null,
+): Promise<{ emailSent: boolean; emailError: string | null }> {
+  const [org] = await ctx.db
+    .select({ name: organizations.name })
+    .from(organizations)
+    .where(eq(organizations.id, invite.organizationId))
+    .limit(1);
+  const [inviter] = await ctx.db
+    .select({ name: users.name, email: users.email })
+    .from(users)
+    .where(eq(users.id, ctx.session.user.id))
+    .limit(1);
+
+  const inviterName = inviter?.name ?? inviter?.email ?? "Someone";
+  const orgName = org?.name ?? "a workspace";
+  const roleLabel = roleLabelEn(invite.role, invite.displayRole);
+  const flags = storedGrantFlags(invite.permissions, flagsForRole(invite.role));
+
+  let emailSent = false;
+  let emailError: string | null = null;
+  try {
+    await sendOrganizationInvite({
+      email: invite.email,
+      inviterName,
+      organizationName: orgName,
+      roleLabel,
+      permissionLabels: grantedLabelsEn(flags),
+      token,
+      expiresAt: invite.expiresAt ?? new Date(Date.now() + INVITE_TTL_MS),
+    });
+    emailSent = true;
+  } catch (error) {
+    emailError = error instanceof Error ? error.message : "Email could not be sent";
+    log.error("invite email failed", { err: error, inviteId: invite.id });
+  }
+
+  if (existingUserId) {
+    await notify({
+      db: ctx.db,
+      userId: existingUserId,
+      actorId: ctx.session.user.id,
+      category: "invite",
+      type: "system",
+      title: "Workspace Invitation",
+      message: `${inviterName} invited you to join "${orgName}" as ${roleLabel}`,
+      link: `/invite/${encodeURIComponent(token)}`,
+    });
+  }
+
+  return { emailSent, emailError };
+}
+
+/** The shape of every join code: 26 characters of the token alphabet. */
+const JOIN_TOKEN_PATTERN = /^[ABCDEFGHJKMNPQRSTVWXYZ0-9]{26}$/;
 
 export const organizationRouter = createTRPCRouter({
   listMine: protectedProcedure.query(async ({ ctx }) => {
@@ -488,7 +875,13 @@ export const organizationRouter = createTRPCRouter({
         const [organization] = await ctx.db
           .select()
           .from(organizations)
-          .where(eq(organizations.accessCode, input.code.toUpperCase()));
+          .where(eq(organizations.accessCode, input.code.trim().toUpperCase()));
+
+        // The same box accepts an invite code an admin shared by hand. Those
+        // carry their own role and flags, so `input.role` does not apply.
+        if (!organization && JOIN_TOKEN_PATTERN.test(input.code.trim().toUpperCase())) {
+          return await redeemJoinCode(ctx, input.code);
+        }
 
         if (!organization) {
           throw new TRPCError({
@@ -615,12 +1008,18 @@ export const organizationRouter = createTRPCRouter({
           email: users.email,
           image: users.image,
           role: organizationMembers.role,
+          displayRole: organizationMembers.displayRole,
           joinedAt: organizationMembers.joinedAt,
-          // The two flags `updateMemberPermissions` can change. Returned so the
-          // roster can show their current state rather than a toggle that
-          // starts from a guess.
+          // All eight, so the roster shows what someone can actually do rather
+          // than what their role's template would have given them.
           canAddMembers: organizationMembers.canAddMembers,
           canAssignTasks: organizationMembers.canAssignTasks,
+          canCreateProjects: organizationMembers.canCreateProjects,
+          canDeleteTasks: organizationMembers.canDeleteTasks,
+          canKickMembers: organizationMembers.canKickMembers,
+          canManageRoles: organizationMembers.canManageRoles,
+          canEditProjects: organizationMembers.canEditProjects,
+          canViewAnalytics: organizationMembers.canViewAnalytics,
         })
         .from(organizationMembers)
         .innerJoin(users, eq(organizationMembers.userId, users.id))
@@ -942,7 +1341,12 @@ export const organizationRouter = createTRPCRouter({
         // for `member` and `mentor` is the view-only role the UI surfaces; both
         // were previously unassignable through role management even though the
         // join flow could produce them.
-        role: z.enum(["admin", "member", "guest", "worker", "mentor"]),
+        role: z.enum(ORG_ROLES).optional(),
+        // A custom role of this organization. Its flags are read from the row
+        // here rather than trusted from the client.
+        customRoleId: z.number().int().optional(),
+      }).refine((v) => (v.role === undefined) !== (v.customRoleId === undefined), {
+        message: "Pass exactly one of role or customRoleId",
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -996,12 +1400,36 @@ export const organizationRouter = createTRPCRouter({
       // the server actually authorizes on. This local copy of the templates was
       // one of three definitions in the codebase; `~/lib/permissions` is now the
       // only one.
-      const permissions = flagsForRole(input.role);
+      let role: OrgRole;
+      let displayRole: string | null = null;
+      let permissions;
+      if (input.customRoleId !== undefined) {
+        const [customRole] = await ctx.db
+          .select()
+          .from(organizationRoles)
+          .where(
+            and(
+              eq(organizationRoles.id, input.customRoleId),
+              eq(organizationRoles.organizationId, input.organizationId),
+            ),
+          )
+          .limit(1);
+        if (!customRole) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Role not found in this organization" });
+        }
+        permissions = pickPermissionFlags(customRole);
+        role = baseRoleForFlags("member", permissions);
+        displayRole = customRole.name;
+      } else {
+        role = input.role!;
+        permissions = flagsForRole(role);
+      }
 
       await ctx.db
         .update(organizationMembers)
         .set({
-          role: input.role,
+          role,
+          displayRole,
           ...permissions,
         })
         .where(
@@ -1199,11 +1627,13 @@ export const organizationRouter = createTRPCRouter({
         });
       }
 
+      await assertRoleNameFree(ctx, input.organizationId, input.name);
+
       const [role] = await ctx.db
         .insert(organizationRoles)
         .values({
           organizationId: input.organizationId,
-          name: input.name,
+          name: input.name.trim(),
           canAddMembers: input.canAddMembers,
           canAssignTasks: input.canAssignTasks,
           canCreateProjects: input.canCreateProjects,
@@ -1214,6 +1644,61 @@ export const organizationRouter = createTRPCRouter({
           canViewAnalytics: input.canViewAnalytics,
         })
         .returning();
+
+      return role;
+    }),
+
+  /**
+   * Edit a custom role.
+   *
+   * Members who were given the role keep the flags they were given: a role is a
+   * template stamped onto a membership, not a live link to it. Re-assign the
+   * role to someone to give them the edited flags.
+   */
+  updateRole: protectedProcedure
+    .input(
+      z.object({
+        organizationId: z.number(),
+        roleId: z.number(),
+        name: z.string().trim().min(1).max(100),
+        permissions: permissionFlagsSchema,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [caller] = await ctx.db
+        .select()
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, input.organizationId),
+            eq(organizationMembers.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (caller?.role !== "admin" || !caller.canManageRoles) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins with role management permission can edit roles",
+        });
+      }
+
+      await assertRoleNameFree(ctx, input.organizationId, input.name, input.roleId);
+
+      const [role] = await ctx.db
+        .update(organizationRoles)
+        .set({ name: input.name, ...pickPermissionFlags(input.permissions) })
+        .where(
+          and(
+            eq(organizationRoles.id, input.roleId),
+            eq(organizationRoles.organizationId, input.organizationId),
+          ),
+        )
+        .returning();
+
+      if (!role) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Role not found in this organization" });
+      }
 
       return role;
     }),
@@ -1271,15 +1756,24 @@ export const organizationRouter = createTRPCRouter({
       return { success: true };
     }),
 
+  /**
+   * Invite an address with exactly the permissions the inviter ticked.
+   *
+   * The grant is stored on the invite and written verbatim into the membership
+   * when it is accepted. The invitee hears about it twice: an email with a
+   * single-use link (sent through Resend, so it reaches Gmail or any other
+   * inbox), and an in-app notification if they already have an account.
+   */
   inviteMember: protectedProcedure
     .input(
-      z.object({
+      inviteGrantSchema.extend({
         organizationId: z.number(),
-        email: z.string().email(),
-        role: z.string().min(1).default("member"),
+        email: z.string().trim().email(),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const email = normalizeEmail(input.email);
+
       // Verify the caller is an admin or has canAddMembers permission
       const [caller] = await ctx.db
         .select()
@@ -1292,18 +1786,22 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (!caller || (caller.role !== "admin" && !caller.canAddMembers)) {
+      if (!caller || !canInvite(caller)) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "You do not have permission to invite members",
         });
       }
 
+      // Refuses admin invites and flags beyond the caller's own — see
+      // `resolveGrant` for why each one is an escalation.
+      const grant = resolveGrant(caller, input);
+
       // Check if the email belongs to someone already in the organization
       const [existingUser] = await ctx.db
         .select({ id: users.id })
         .from(users)
-        .where(eq(users.email, input.email))
+        .where(sql`lower(${users.email}) = ${email}`)
         .limit(1);
 
       if (existingUser) {
@@ -1333,7 +1831,7 @@ export const organizationRouter = createTRPCRouter({
         .where(
           and(
             eq(organizationInvites.organizationId, input.organizationId),
-            eq(organizationInvites.email, input.email),
+            inviteEmailIs(email),
             eq(organizationInvites.status, "pending"),
             or(
               isNull(organizationInvites.expiresAt),
@@ -1350,8 +1848,8 @@ export const organizationRouter = createTRPCRouter({
         });
       }
 
-      // Checked here as well as at `acceptInvite`, which is the one that
-      // actually guarantees the limit. This one exists so the admin who can do
+      // Checked here as well as at acceptance, which is the one that actually
+      // guarantees the limit. This one exists so the admin who can do
       // something about it hears about it, at the moment they act, rather than
       // the invitee hitting a wall days later with no idea who to ask.
       //
@@ -1360,66 +1858,86 @@ export const organizationRouter = createTRPCRouter({
       // forgotten invitation from last month block a real colleague today.
       await assertSeatAvailable(input.organizationId);
 
-      // Map custom role names to a valid DB enum value
-      const validRoles = ["admin", "member", "guest", "worker", "mentor"] as const;
-      type ValidRole = typeof validRoles[number];
-      const dbRole: ValidRole = validRoles.includes(input.role as ValidRole)
-        ? (input.role as ValidRole)
-        : "member";
-
-      // SECURITY: inviting an admin is role management, not member management.
-      // The caller check above admits any member holding `canAddMembers`, so
-      // without this a delegated inviter could invite an address they control as
-      // "admin" and escalate to full org control. Mirrors the guard in
-      // `updateMemberRole`.
-      if (dbRole === "admin" && !(caller.role === "admin" && caller.canManageRoles)) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Only admins with role management permission can invite admins",
-        });
-      }
-
+      const token = generateInviteToken();
       const [invite] = await ctx.db
         .insert(organizationInvites)
         .values({
           organizationId: input.organizationId,
-          email: input.email,
-          role: dbRole,
-          displayRole: input.role !== dbRole ? input.role : null,
+          email,
+          role: grant.role,
+          displayRole: grant.displayRole,
+          permissions: grant.permissions,
+          acceptTokenHash: hashInviteToken(token),
           invitedById: ctx.session.user.id,
           status: "pending",
           expiresAt: new Date(Date.now() + INVITE_TTL_MS),
         })
         .returning();
 
-      // Notify the invited user (if they have an account)
-      if (existingUser) {
-        const [org] = await ctx.db
-          .select({ name: organizations.name })
-          .from(organizations)
-          .where(eq(organizations.id, input.organizationId))
-          .limit(1);
+      if (!invite) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create invite" });
+      }
 
-        const inviterUser = await ctx.db.query.users.findFirst({
-          where: eq(users.id, ctx.session.user.id),
-          columns: { name: true },
-        });
-        const inviterName = inviterUser?.name ?? "Someone";
-        const orgName = org?.name ?? "a workspace";
+      const delivery = await deliverInvite(ctx, invite, token, existingUser?.id ?? null);
+      return { ...publicInvite(invite), ...delivery };
+    }),
 
-        await notify({
-          db: ctx.db,
-          userId: existingUser.id,
-          actorId: ctx.session.user.id,
-          category: "invite",
-          type: "system",
-          title: "Workspace Invitation",
-          message: `${inviterName} invited you to join "${orgName}" as ${input.role}`,
-          link: "/orgs",
+  /**
+   * Send a pending invite again, with a fresh link.
+   *
+   * The token is only ever known at the moment it is minted, so "resend" has to
+   * mint a new one — which also retires the old link, should the first email
+   * have gone somewhere it should not.
+   */
+  resendInvite: protectedProcedure
+    .input(z.object({ organizationId: z.number(), inviteId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const [caller] = await ctx.db
+        .select()
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, input.organizationId),
+            eq(organizationMembers.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!caller || !canInvite(caller)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have permission to invite members",
         });
       }
 
-      return invite;
+      const token = generateInviteToken();
+      const [invite] = await ctx.db
+        .update(organizationInvites)
+        .set({
+          acceptTokenHash: hashInviteToken(token),
+          expiresAt: new Date(Date.now() + INVITE_TTL_MS),
+        })
+        .where(
+          and(
+            eq(organizationInvites.id, input.inviteId),
+            eq(organizationInvites.organizationId, input.organizationId),
+            eq(organizationInvites.status, "pending"),
+          ),
+        )
+        .returning();
+
+      if (!invite) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invite not found or already processed" });
+      }
+
+      const [existingUser] = await ctx.db
+        .select({ id: users.id })
+        .from(users)
+        .where(sql`lower(${users.email}) = ${normalizeEmail(invite.email)}`)
+        .limit(1);
+
+      const delivery = await deliverInvite(ctx, invite, token, existingUser?.id ?? null);
+      return { ...publicInvite(invite), ...delivery };
     }),
 
   getMyInvites: protectedProcedure.query(async ({ ctx }) => {
@@ -1438,6 +1956,7 @@ export const organizationRouter = createTRPCRouter({
         organizationId: organizationInvites.organizationId,
         role: organizationInvites.role,
         displayRole: organizationInvites.displayRole,
+        permissions: organizationInvites.permissions,
         status: organizationInvites.status,
         createdAt: organizationInvites.createdAt,
         orgName: organizations.name,
@@ -1446,7 +1965,7 @@ export const organizationRouter = createTRPCRouter({
       .innerJoin(organizations, eq(organizations.id, organizationInvites.organizationId))
       .where(
         and(
-          eq(organizationInvites.email, currentUser.email),
+          inviteEmailIs(currentUser.email),
           eq(organizationInvites.status, "pending"),
           or(
             isNull(organizationInvites.expiresAt),
@@ -1455,7 +1974,10 @@ export const organizationRouter = createTRPCRouter({
         ),
       );
 
-    return invites;
+    return invites.map((invite) => ({
+      ...invite,
+      permissions: storedGrantFlags(invite.permissions, flagsForRole(invite.role)),
+    }));
   }),
 
   acceptInvite: protectedProcedure
@@ -1477,44 +1999,78 @@ export const organizationRouter = createTRPCRouter({
         .where(
           and(
             eq(organizationInvites.id, input.inviteId),
-            eq(organizationInvites.email, currentUser.email),
+            inviteEmailIs(currentUser.email),
             eq(organizationInvites.status, "pending"),
-            or(
-              isNull(organizationInvites.expiresAt),
-              gt(organizationInvites.expiresAt, new Date()),
-            ),
           ),
         )
         .limit(1);
 
       if (!invite) {
-        const [expiredInvite] = await ctx.db
-          .select({ id: organizationInvites.id })
-          .from(organizationInvites)
-          .where(
-            and(
-              eq(organizationInvites.id, input.inviteId),
-              eq(organizationInvites.email, currentUser.email),
-              eq(organizationInvites.status, "pending"),
-              lte(organizationInvites.expiresAt, new Date()),
-            ),
-          )
-          .limit(1);
-
-        if (expiredInvite) {
-          await ctx.db
-            .update(organizationInvites)
-            .set({ status: "expired" })
-            .where(eq(organizationInvites.id, expiredInvite.id));
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Invite has expired" });
-        }
-
         throw new TRPCError({ code: "NOT_FOUND", message: "Invite not found or already processed" });
       }
 
-      // Check not already a member
+      if (invite.expiresAt && invite.expiresAt.getTime() <= Date.now()) {
+        await ctx.db
+          .update(organizationInvites)
+          .set({ status: "expired" })
+          .where(eq(organizationInvites.id, invite.id));
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invite has expired" });
+      }
+
+      return admitInvite(ctx, invite);
+    }),
+
+  /**
+   * What an emailed invite link points at, before the invitee commits.
+   *
+   * The token is the credential, but it is bound to the invited address: the
+   * page says whose invite this is so someone signed in as the wrong account
+   * knows to switch, and the details stay hidden from them.
+   */
+  peekInvite: protectedProcedure
+    .input(z.object({ token: z.string().min(16).max(128) }))
+    .query(async ({ ctx, input }) => {
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("org_invite_peek", ctx.session.user.id),
+      );
+
+      const [row] = await ctx.db
+        .select({
+          invite: organizationInvites,
+          organizationName: organizations.name,
+          inviterName: users.name,
+        })
+        .from(organizationInvites)
+        .innerJoin(organizations, eq(organizations.id, organizationInvites.organizationId))
+        .leftJoin(users, eq(users.id, organizationInvites.invitedById))
+        .where(eq(organizationInvites.acceptTokenHash, hashInviteToken(input.token)))
+        .limit(1);
+
+      if (!row) return { status: "invalid" as const };
+
+      const { invite } = row;
+      if (invite.status === "accepted") return { status: "used" as const };
+      if (invite.status !== "pending") return { status: "revoked" as const };
+      if (invite.expiresAt && invite.expiresAt.getTime() <= Date.now()) {
+        return { status: "expired" as const };
+      }
+
+      const [currentUser] = await ctx.db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, ctx.session.user.id))
+        .limit(1);
+
+      if (normalizeEmail(currentUser?.email ?? "") !== normalizeEmail(invite.email)) {
+        return {
+          status: "wrongAccount" as const,
+          invitedEmail: invite.email,
+          signedInEmail: currentUser?.email ?? null,
+        };
+      }
+
       const [existingMember] = await ctx.db
-        .select({ userId: organizationMembers.userId })
+        .select({ id: organizationMembers.id })
         .from(organizationMembers)
         .where(
           and(
@@ -1524,72 +2080,71 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (existingMember) {
-        // Mark invite as accepted and return
-        await ctx.db
-          .update(organizationInvites)
-          .set({ status: "accepted" })
-          .where(eq(organizationInvites.id, input.inviteId));
-        return { success: true, alreadyMember: true };
-      }
+      return {
+        status: "valid" as const,
+        inviteId: invite.id,
+        organizationName: row.organizationName,
+        inviterName: row.inviterName,
+        role: invite.role,
+        displayRole: invite.displayRole,
+        permissions: storedGrantFlags(invite.permissions, flagsForRole(invite.role)),
+        expiresAt: invite.expiresAt,
+        alreadyMember: !!existingMember,
+      };
+    }),
 
-      // An invitation is not a reservation: it can be issued while a seat is
-      // free and accepted after it has been taken, so the seat is checked at
-      // acceptance rather than at send.
-      await assertSeatAvailable(invite.organizationId);
+  /** Accept an invite from its emailed link. Only the invited address may. */
+  acceptInviteByToken: protectedProcedure
+    .input(z.object({ token: z.string().min(16).max(128) }))
+    .mutation(async ({ ctx, input }) => {
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("org_join", ctx.session.user.id),
+      );
 
-      // Add as member
-      const invitedRole = invite.role ?? "member";
-      await ctx.db.insert(organizationMembers).values({
-        organizationId: invite.organizationId,
-        userId: ctx.session.user.id,
-        role: invitedRole,
-        ...flagsForRole(invitedRole),
-      });
-
-      // Mark invite as accepted
-      await ctx.db
-        .update(organizationInvites)
-        .set({ status: "accepted" })
-        .where(eq(organizationInvites.id, input.inviteId));
-
-      // Switch to this org
-      await ctx.db
-        .update(users)
-        .set({ usageMode: "organization", activeOrganizationId: invite.organizationId })
-        .where(eq(users.id, ctx.session.user.id));
-
-      const [org] = await ctx.db
-        .select({ name: organizations.name })
-        .from(organizations)
-        .where(eq(organizations.id, invite.organizationId))
-        .limit(1);
-
-      const orgName = org?.name ?? "Workspace";
-
-      // Get the current user's name for the notification
-      const [acceptingUser] = await ctx.db
-        .select({ name: users.name })
+      const [currentUser] = await ctx.db
+        .select({ email: users.email })
         .from(users)
         .where(eq(users.id, ctx.session.user.id))
         .limit(1);
-      const acceptorName = acceptingUser?.name ?? "Someone";
 
-      // Notify the person who sent the invite
-      if (invite.invitedById) {
-        await notify({
-          db: ctx.db,
-          userId: invite.invitedById,
-          actorId: ctx.session.user.id,
-          category: "workspace",
-          type: "system",
-          title: "Invite Accepted",
-          message: `${acceptorName} accepted your invitation to join "${orgName}"`,
-          link: "/settings",
+      if (!currentUser?.email) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No email on account" });
+      }
+
+      const [invite] = await ctx.db
+        .select()
+        .from(organizationInvites)
+        .where(
+          and(
+            eq(organizationInvites.acceptTokenHash, hashInviteToken(input.token)),
+            eq(organizationInvites.status, "pending"),
+          ),
+        )
+        .limit(1);
+
+      if (!invite) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "This invitation is no longer valid." });
+      }
+
+      // Bound to the address it was sent to: a forwarded link, or one read over
+      // someone's shoulder, does not admit whoever happens to open it.
+      if (normalizeEmail(invite.email) !== normalizeEmail(currentUser.email)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "This invitation was sent to a different email address. Sign in with that account to accept it.",
         });
       }
 
-      return { success: true, organizationName: orgName };
+      if (invite.expiresAt && invite.expiresAt.getTime() <= Date.now()) {
+        await ctx.db
+          .update(organizationInvites)
+          .set({ status: "expired" })
+          .where(eq(organizationInvites.id, invite.id));
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invite has expired" });
+      }
+
+      return admitInvite(ctx, invite);
     }),
 
   declineInvite: protectedProcedure
@@ -1611,7 +2166,7 @@ export const organizationRouter = createTRPCRouter({
         .where(
           and(
             eq(organizationInvites.id, input.inviteId),
-            eq(organizationInvites.email, currentUser.email),
+            inviteEmailIs(currentUser.email),
             eq(organizationInvites.status, "pending"),
             or(
               isNull(organizationInvites.expiresAt),
@@ -1628,7 +2183,7 @@ export const organizationRouter = createTRPCRouter({
           .where(
             and(
               eq(organizationInvites.id, input.inviteId),
-              eq(organizationInvites.email, currentUser.email),
+              inviteEmailIs(currentUser.email),
               eq(organizationInvites.status, "pending"),
               lte(organizationInvites.expiresAt, new Date()),
             ),
@@ -1718,7 +2273,7 @@ export const organizationRouter = createTRPCRouter({
           ),
         );
 
-      return invites;
+      return invites.map(publicInvite);
     }),
 
   getInviteHistory: protectedProcedure
@@ -1742,12 +2297,13 @@ export const organizationRouter = createTRPCRouter({
         });
       }
 
-      return await ctx.db
+      const history = await ctx.db
         .select()
         .from(organizationInvites)
         .where(eq(organizationInvites.organizationId, input.organizationId))
         .orderBy(desc(organizationInvites.createdAt))
         .limit(50);
+      return history.map(publicInvite);
     }),
 
   cancelInvite: protectedProcedure
@@ -1854,6 +2410,7 @@ export const organizationRouter = createTRPCRouter({
         .where(
           and(
             eq(organizationJoinCodes.organizationId, membership.organizationId),
+            eq(organizationJoinCodes.kind, "qr"),
             isNull(organizationJoinCodes.revokedAt),
             gt(organizationJoinCodes.expiresAt, new Date()),
             sql`${organizationJoinCodes.usedCount} < ${organizationJoinCodes.maxUses}`,
@@ -1871,7 +2428,8 @@ export const organizationRouter = createTRPCRouter({
    * Mint a fresh QR, retiring whatever was outstanding.
    *
    * Rotation revokes rather than reuses, so "show the code again" and "let the
-   * old scan still work" can never be the same action by accident.
+   * old scan still work" can never be the same action by accident. It only ever
+   * touches QR codes: invite links an admin shared by hand live on.
    */
   rotateJoinQr: protectedProcedure
     .input(
@@ -1895,6 +2453,7 @@ export const organizationRouter = createTRPCRouter({
         .where(
           and(
             eq(organizationJoinCodes.organizationId, membership.organizationId),
+            eq(organizationJoinCodes.kind, "qr"),
             isNull(organizationJoinCodes.revokedAt),
           ),
         );
@@ -1905,6 +2464,7 @@ export const organizationRouter = createTRPCRouter({
         .values({
           organizationId: membership.organizationId,
           code: token,
+          kind: "qr",
           role: input?.role ?? "worker",
           createdById: ctx.session.user.id,
           expiresAt: new Date(Date.now() + JOIN_CODE_TTL_MS),
@@ -1937,6 +2497,7 @@ export const organizationRouter = createTRPCRouter({
         .where(
           and(
             eq(organizationJoinCodes.organizationId, membership.organizationId),
+            eq(organizationJoinCodes.kind, "qr"),
             isNull(organizationJoinCodes.revokedAt),
           ),
         );
@@ -1944,12 +2505,127 @@ export const organizationRouter = createTRPCRouter({
       return { success: true };
     }),
 
+  // ---------------------------------------------------------------------------
+  // Invite links
+  //
+  // A link (and the code inside it) that an admin configures by hand — which
+  // role, which of the eight flags, how many people, for how long — and shares
+  // however they like. Whoever redeems it gets exactly that grant.
+  // ---------------------------------------------------------------------------
+
+  createInviteLink: protectedProcedure
+    .input(
+      inviteGrantSchema.extend({
+        organizationId: z.number(),
+        maxUses: z.number().int().min(1).max(100).default(1),
+        expiresInDays: z
+          .number()
+          .int()
+          .min(1)
+          .max(INVITE_LINK_MAX_DAYS)
+          .default(INVITE_LINK_DEFAULT_DAYS),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const membership = await requireInviteRights(ctx, input.organizationId);
+
+      const [caller] = await ctx.db
+        .select()
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, input.organizationId),
+            eq(organizationMembers.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!caller) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this organization" });
+      }
+
+      const grant = resolveGrant(caller, input);
+
+      const [created] = await ctx.db
+        .insert(organizationJoinCodes)
+        .values({
+          organizationId: membership.organizationId,
+          code: generateJoinToken(),
+          kind: "link",
+          role: grant.role,
+          displayRole: grant.displayRole,
+          permissions: grant.permissions,
+          createdById: ctx.session.user.id,
+          expiresAt: new Date(Date.now() + input.expiresInDays * DAY_MS),
+          maxUses: input.maxUses,
+        })
+        .returning();
+
+      if (!created) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create invite link",
+        });
+      }
+
+      return describeInviteLink(ctx.headers, created);
+    }),
+
+  /** Invite links that can still be redeemed. */
+  listInviteLinks: protectedProcedure
+    .input(z.object({ organizationId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await requireInviteRights(ctx, input.organizationId);
+
+      const links = await ctx.db
+        .select()
+        .from(organizationJoinCodes)
+        .where(
+          and(
+            eq(organizationJoinCodes.organizationId, input.organizationId),
+            eq(organizationJoinCodes.kind, "link"),
+            isNull(organizationJoinCodes.revokedAt),
+            gt(organizationJoinCodes.expiresAt, new Date()),
+            sql`${organizationJoinCodes.usedCount} < ${organizationJoinCodes.maxUses}`,
+          ),
+        )
+        .orderBy(desc(organizationJoinCodes.createdAt));
+
+      return links.map((link) => describeInviteLink(ctx.headers, link));
+    }),
+
+  revokeInviteLink: protectedProcedure
+    .input(z.object({ organizationId: z.number(), linkId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await requireInviteRights(ctx, input.organizationId);
+
+      const revoked = await ctx.db
+        .update(organizationJoinCodes)
+        .set({ revokedAt: new Date() })
+        .where(
+          and(
+            eq(organizationJoinCodes.id, input.linkId),
+            eq(organizationJoinCodes.organizationId, input.organizationId),
+            eq(organizationJoinCodes.kind, "link"),
+            isNull(organizationJoinCodes.revokedAt),
+          ),
+        )
+        .returning({ id: organizationJoinCodes.id });
+
+      if (revoked.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invite link not found or already revoked" });
+      }
+
+      return { success: true };
+    }),
+
   /**
-   * What a scanned token points at, before the scanner commits to joining.
+   * What a scanned or shared token points at, before the holder commits to
+   * joining.
    *
    * Deliberately says only whether the token is usable and, if so, which
-   * organisation it opens — never why a bad token is bad beyond a coarse reason,
-   * so this cannot be used to probe which tokens once existed.
+   * organisation it opens and with what — never why a bad token is bad beyond a
+   * coarse reason, so this cannot be used to probe which tokens once existed.
    */
   peekJoinQr: protectedProcedure
     .input(z.object({ code: z.string().min(1).max(64) }))
@@ -1968,7 +2644,7 @@ export const organizationRouter = createTRPCRouter({
           organizations,
           eq(organizationJoinCodes.organizationId, organizations.id),
         )
-        .where(eq(organizationJoinCodes.code, input.code.toUpperCase()))
+        .where(eq(organizationJoinCodes.code, input.code.trim().toUpperCase()))
         .limit(1);
 
       if (!row) return { status: "invalid" as const };
@@ -1993,17 +2669,21 @@ export const organizationRouter = createTRPCRouter({
         )
         .limit(1);
 
+      const grant = joinCodeGrant(joinCode);
       return {
         status: "valid" as const,
+        kind: joinCode.kind,
         organizationId: joinCode.organizationId,
         organizationName: row.organizationName,
-        role: joinCode.role,
+        role: grant.role,
+        displayRole: grant.displayRole,
+        permissions: grant.permissions,
         expiresAt: joinCode.expiresAt,
         alreadyMember: !!existingMember,
       };
     }),
 
-  /** Redeem a scanned token. */
+  /** Redeem a scanned QR or a shared invite link. */
   joinWithQr: protectedProcedure
     .input(z.object({ code: z.string().min(1).max(64) }))
     .mutation(async ({ ctx, input }) => {
@@ -2017,145 +2697,6 @@ export const organizationRouter = createTRPCRouter({
         createAuthRateLimitKey("org_join_ip", getClientIp(ctx.headers)),
       );
 
-      const code = input.code.toUpperCase();
-
-      const [candidate] = await ctx.db
-        .select()
-        .from(organizationJoinCodes)
-        .where(eq(organizationJoinCodes.code, code))
-        .limit(1);
-
-      if (
-        !candidate ||
-        candidate.revokedAt ||
-        candidate.expiresAt.getTime() <= Date.now() ||
-        candidate.usedCount >= candidate.maxUses
-      ) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "This invite code is no longer valid. Ask for a fresh QR code.",
-        });
-      }
-
-      const [existingMember] = await ctx.db
-        .select({ id: organizationMembers.id })
-        .from(organizationMembers)
-        .where(
-          and(
-            eq(organizationMembers.organizationId, candidate.organizationId),
-            eq(organizationMembers.userId, ctx.session.user.id),
-          ),
-        )
-        .limit(1);
-
-      if (existingMember) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "You are already a member of this organization.",
-        });
-      }
-
-      // Before the claim below, deliberately: a full organization should not
-      // burn a use off a single-use QR code that was never going to admit
-      // anyone. The rollback in the catch handles a failed *insert*; refusing
-      // here means there is nothing to roll back.
-      await assertSeatAvailable(candidate.organizationId);
-
-      // Claim a use with a conditional update rather than a read-then-write, so
-      // two people scanning the same single-use QR at once cannot both win.
-      const claimed = await ctx.db
-        .update(organizationJoinCodes)
-        .set({ usedCount: sql`${organizationJoinCodes.usedCount} + 1` })
-        .where(
-          and(
-            eq(organizationJoinCodes.id, candidate.id),
-            isNull(organizationJoinCodes.revokedAt),
-            gt(organizationJoinCodes.expiresAt, new Date()),
-            sql`${organizationJoinCodes.usedCount} < ${organizationJoinCodes.maxUses}`,
-          ),
-        )
-        .returning({ id: organizationJoinCodes.id });
-
-      if (claimed.length === 0) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "This invite code is no longer valid. Ask for a fresh QR code.",
-        });
-      }
-
-      const [organization] = await ctx.db
-        .select()
-        .from(organizations)
-        .where(eq(organizations.id, candidate.organizationId))
-        .limit(1);
-
-      if (!organization) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Organization not found",
-        });
-      }
-
-      const joinRole = candidate.role === "mentor" ? "mentor" : "worker";
-
-      try {
-        await ctx.db.insert(organizationMembers).values({
-          organizationId: organization.id,
-          userId: ctx.session.user.id,
-          role: joinRole,
-          ...flagsForRole(joinRole),
-        });
-      } catch (error) {
-        // Hand the use back so a failed insert does not burn a single-use QR.
-        await ctx.db
-          .update(organizationJoinCodes)
-          .set({ usedCount: sql`greatest(${organizationJoinCodes.usedCount} - 1, 0)` })
-          .where(eq(organizationJoinCodes.id, candidate.id));
-        throw error;
-      }
-
-      await ctx.db
-        .update(users)
-        .set({ usageMode: "organization", activeOrganizationId: organization.id })
-        .where(eq(users.id, ctx.session.user.id));
-
-      const [joiner] = await ctx.db
-        .select({ name: users.name })
-        .from(users)
-        .where(eq(users.id, ctx.session.user.id))
-        .limit(1);
-      const joinerName = joiner?.name ?? "Someone";
-
-      const orgAdmins = await ctx.db
-        .select({ userId: organizationMembers.userId })
-        .from(organizationMembers)
-        .where(
-          and(
-            eq(organizationMembers.organizationId, organization.id),
-            eq(organizationMembers.role, "admin"),
-          ),
-        );
-
-      for (const admin of orgAdmins) {
-        if (admin.userId === ctx.session.user.id) continue;
-        const message = `${joinerName} joined "${organization.name}" by scanning an invite QR`;
-        await notify({
-          db: ctx.db,
-          userId: admin.userId,
-          actorId: ctx.session.user.id,
-          category: "workspace",
-          type: "system",
-          title: "New Member Joined",
-          message,
-          link: "/settings?section=workspace",
-        });
-      }
-
-      return {
-        success: true,
-        organizationId: organization.id,
-        organizationName: organization.name,
-        role: joinRole,
-      };
+      return redeemJoinCode(ctx, input.code);
     }),
 });

@@ -1,30 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
-import {
-  Archive,
-  ArchiveRestore,
-  ArrowLeft,
-  CalendarClock,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Flag,
-  LayoutGrid,
-  List,
-  Search,
-  StickyNote,
-  Trash2,
-} from "~/components/ui/icons";
+import { Search } from "~/components/ui/icons";
 import { useLocale, useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { NewProjectDrawer } from "./NewProjectDrawer";
-import { ProfileLink } from "~/components/profile/ProfileLink";
-import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { ProjectTasksPanel, ProjectTeamPanel } from "./ProjectTasksPanel";
 import {
   DETAIL_TABS,
@@ -56,6 +39,10 @@ import {
 /** Blocks stage in on the shared dashboard curve; the delay separates them. */
 const rise = (delay: number) => ({ animationDelay: `${delay}s` });
 
+/** The card shell shared by every panel on the page. */
+const CARD =
+  "overflow-hidden rounded-lg border border-tui-ink/12 bg-tui-pane shadow-[var(--tui-pane-shadow)]";
+
 const FILTERS: FilterKey[] = ["all", "track", "risk", "done"];
 const SORTS: SortKey[] = ["updated", "progress", "name"];
 const TIMELINE_FILTERS: TimelineFilter[] = [
@@ -66,52 +53,29 @@ const TIMELINE_FILTERS: TimelineFilter[] = [
   "due",
 ];
 
-/**
- * Health only ever paints text and a rule, never a fill. A project one task
- * behind should not look like an error state, which is what a red card did.
- */
-const HEALTH_TEXT: Record<Health, string> = {
-  empty: "text-fg-quaternary",
-  complete: "text-success",
-  onTrack: "text-success",
-  inProgress: "text-warning",
-  atRisk: "text-error",
+/** Health only ever paints text and a dot, never a fill. */
+const HEALTH_TONE: Record<Health, string> = {
+  empty: "text-tui-ink3",
+  complete: "text-tui-ok",
+  onTrack: "text-tui-ok",
+  inProgress: "text-tui-warn",
+  atRisk: "text-tui-danger",
 };
 
-const HEALTH_BAR: Record<Health, string> = {
-  empty: "bg-border-light/70",
-  complete: "bg-success",
-  onTrack: "bg-success",
-  inProgress: "bg-warning",
-  atRisk: "bg-error",
+const HEALTH_DOT: Record<Health, string> = {
+  empty: "bg-tui-ink/30",
+  complete: "bg-tui-ok",
+  onTrack: "bg-tui-ok",
+  inProgress: "bg-tui-warn",
+  atRisk: "bg-tui-danger",
 };
 
-const HEALTH_BORDER: Record<Health, string> = {
-  empty: "border-border-medium/60",
-  complete: "border-success/40",
-  onTrack: "border-success/40",
-  inProgress: "border-warning/40",
-  atRisk: "border-error/40",
-};
-
-/**
- * Identity colours for the avatar stack. These are deliberately not theme
- * tokens: they distinguish people from each other, so an accent switch must not
- * collapse four collaborators into one colour.
- */
-
-const EVENT_ICON: Record<EventKind, typeof Check> = {
-  task: Check,
-  status: Flag,
-  note: StickyNote,
-  due: CalendarClock,
-};
-
+/** Timeline nodes are a bordered dot, tinted by the kind of event. */
 const EVENT_TINT: Record<EventKind, string> = {
-  task: "text-success",
-  status: "text-warning",
-  note: "text-accent-secondary",
-  due: "text-fg-tertiary",
+  task: "border-tui-ok",
+  status: "border-tui-warn",
+  note: "border-tui-accent",
+  due: "border-tui-ink3",
 };
 
 export function ProjectsWorkspace({
@@ -120,9 +84,7 @@ export function ProjectsWorkspace({
   initialTab = "tasks",
 }: {
   userId: string;
-  /** `/projects?projectId=` opens straight into one project. */
   initialProjectId?: number | null;
-  /** `&tab=` opens that project on its board, team or timeline. */
   initialTab?: DetailTab;
 }) {
   const t = useTranslations("projects");
@@ -140,16 +102,6 @@ export function ProjectsWorkspace({
   const [confirmArchiveId, setConfirmArchiveId] = useState<number | null>(null);
   const [showArchive, setShowArchive] = useState(false);
 
-  /* A project opened in place used to leave the URL on `/projects`, so the one
-     thing people do with a project they are looking at — send it to someone —
-     was impossible, and Back skipped past the whole detail view to whatever
-     came before the page.
-
-     History API rather than `router.push`: the detail is already rendered on
-     the client from a list this page has in cache, so a real navigation would
-     re-run the server component to arrive at the state we are already in.
-     Opening pushes (Back should close the project); switching tabs replaces
-     (a tab is a refinement, not a step of its own). */
   const projectUrl = useCallback(
     (id: number | null, detailTab: DetailTab) =>
       id === null ? "/projects" : `/projects?projectId=${id}&tab=${detailTab}`,
@@ -168,13 +120,12 @@ export function ProjectsWorkspace({
   const selectTab = useCallback(
     (next: DetailTab) => {
       setTab(next);
-      if (openId !== null) window.history.replaceState(null, "", projectUrl(openId, next));
+      if (openId !== null)
+        window.history.replaceState(null, "", projectUrl(openId, next));
     },
     [openId, projectUrl],
   );
 
-  /* Back and Forward move between the list and the open project, so the state
-     has to follow the URL rather than the other way round. */
   useEffect(() => {
     const onPopState = () => {
       const params = new URLSearchParams(window.location.search);
@@ -197,12 +148,6 @@ export function ProjectsWorkspace({
     staleTime: 1000 * 60 * 5,
   });
 
-  /*
-   * Fetched even while the archive is closed, because its count is what decides
-   * whether the entry point exists at all — including on the empty state, where
-   * a user who archived their only project would otherwise be shown "create
-   * your first project" with no route back to the one they still have.
-   */
   const archivedQuery = api.project.getArchivedProjects.useQuery(undefined, {
     staleTime: 1000 * 60 * 5,
   });
@@ -242,8 +187,6 @@ export function ProjectsWorkspace({
     onError: (error) => toast.error(error.message),
   });
 
-  // One clock for the whole page, so a row cannot say "today" while the
-  // timeline below it files the same event under yesterday.
   const now = useMemo(() => new Date(), []);
 
   const rows = useMemo(
@@ -267,190 +210,236 @@ export function ProjectsWorkspace({
 
   const archivedRows = (archivedQuery.data ?? []) as RawProject[];
 
-  // Only genuinely-empty workspaces get the first-run pitch. One with an
-  // archive has projects; they are just not in flight.
   if (rows.length === 0 && archivedRows.length === 0) {
     return <FirstRun />;
   }
 
   return (
-    <div className="flex flex-col gap-[26px] px-4 pt-9 pb-14 sm:px-10">
-      {confirmDeleteId !== null && (
-        <DeleteDialog
-          pending={deleteProject.isPending}
-          onCancel={() => setConfirmDeleteId(null)}
-          onConfirm={() => deleteProject.mutate({ id: confirmDeleteId })}
-        />
-      )}
+    <div className="tui-screen text-tui-ink min-h-full">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-4 pt-10 pb-12 sm:px-8">
+        {confirmDeleteId !== null && (
+          <DeleteDialog
+            pending={deleteProject.isPending}
+            onCancel={() => setConfirmDeleteId(null)}
+            onConfirm={() => deleteProject.mutate({ id: confirmDeleteId })}
+          />
+        )}
 
-      {confirmArchiveId !== null && (
-        <ArchiveDialog
-          pending={archiveProject.isPending}
-          onCancel={() => setConfirmArchiveId(null)}
-          onConfirm={() =>
-            archiveProject.mutate({ projectId: confirmArchiveId })
-          }
-        />
-      )}
+        {confirmArchiveId !== null && (
+          <ArchiveDialog
+            pending={archiveProject.isPending}
+            onCancel={() => setConfirmArchiveId(null)}
+            onConfirm={() =>
+              archiveProject.mutate({ projectId: confirmArchiveId })
+            }
+          />
+        )}
 
-      {opened ? (
-        <ProjectDetail
-          project={opened}
-          tab={tab}
-          onTabChange={selectTab}
-          userId={userId}
-          locale={locale}
-          now={now}
-          onBack={closeProject}
-          onDelete={() => setConfirmDeleteId(opened.id)}
-          onArchive={() => setConfirmArchiveId(opened.id)}
-        />
-      ) : (
-        <>
-          <header className="dash-rise" style={rise(0.05)}>
-            <h1 className="text-fg-primary m-0 text-[34px] leading-[1.1] font-semibold tracking-[-0.025em]">
-              {t("title")}
-            </h1>
-            <p className="text-fg-tertiary mt-2.5 text-[15px]">
-              {t("summary", {
-                shown: shown.length,
-                projects: rows.length,
-                done: totals.completed,
-                tasks: totals.tasks,
-              })}
-            </p>
-          </header>
-
-          <div
-            className="dash-rise flex flex-wrap items-center gap-3"
-            style={rise(0.1)}
-          >
-            <label className="border-border-light/60 bg-bg-secondary flex h-control-md w-full items-center gap-2.5 rounded-lg border px-3 sm:w-[260px]">
-              <Search
-                size={15}
-                className="text-fg-quaternary flex-none"
-                aria-hidden
-              />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("searchPlaceholder")}
-                aria-label={t("searchPlaceholder")}
-                className="text-fg-primary placeholder:text-fg-quaternary min-w-0 flex-1 bg-transparent text-sm outline-none"
-              />
-            </label>
-
-            <div className="flex gap-1.5">
-              {FILTERS.map((key) => (
-                <Toggle
-                  key={key}
-                  active={filter === key}
-                  onClick={() => setFilter(key)}
-                >
-                  {t(`filters.${key}`)}
-                  <span className="text-fg-quaternary font-mono text-[11px]">
-                    {rows.filter((row) => matchesFilter(row, key)).length}
+        {opened ? (
+          <ProjectDetail
+            project={opened}
+            tab={tab}
+            onTabChange={selectTab}
+            userId={userId}
+            locale={locale}
+            now={now}
+            onBack={closeProject}
+            onDelete={() => setConfirmDeleteId(opened.id)}
+            onArchive={() => setConfirmArchiveId(opened.id)}
+          />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+              <div className={`dash-rise ${CARD}`} style={rise(0.05)}>
+                <div className="flex flex-col gap-3.5 px-8 py-9 sm:px-10">
+                  <span className="text-tui-ink3 text-[11px] font-medium tracking-[0.18em] uppercase">
+                    {t("summary", {
+                      shown: shown.length,
+                      projects: rows.length,
+                      done: totals.completed,
+                      tasks: totals.tasks,
+                    })}
                   </span>
-                </Toggle>
-              ))}
-            </div>
+                  <h1 className="font-display m-0 text-[52px] leading-none font-light tracking-[-0.02em] sm:text-[64px]">
+                    {t("title")}
+                  </h1>
+                </div>
+              </div>
 
-            <span className="hidden flex-1 lg:block" />
-
-            <div className="flex items-center gap-2">
-              <span className="kairos-stamp text-fg-quaternary text-[10px] tracking-[0.14em]">
-                {t("sortLabel")}
-              </span>
-              <div className="border-border-light/60 flex overflow-hidden rounded-lg border">
-                {SORTS.map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setSort(key)}
-                    aria-pressed={sort === key}
-                    className={`h-[34px] px-3 text-[13px] font-medium transition-colors duration-300 ${
-                      sort === key
-                        ? "bg-accent-primary/[0.16] text-fg-primary"
-                        : "text-fg-tertiary hover:text-fg-secondary"
-                    }`}
-                  >
-                    {t(`sorts.${key}`)}
-                  </button>
-                ))}
+              <div className={`dash-rise ${CARD}`} style={rise(0.1)}>
+                <div className="flex flex-col gap-3.5 px-7 py-6">
+                  <span className="font-display text-[21px]">
+                    {t("tui.workspace")}
+                  </span>
+                  <StatLeader
+                    label={t("stats.active")}
+                    value={String(totals.active)}
+                  />
+                  <StatLeader
+                    label={t("stats.tasks")}
+                    value={String(totals.tasks)}
+                  />
+                  <StatLeader
+                    label={t("stats.completed")}
+                    value={String(totals.completed)}
+                    tone="ok"
+                  />
+                  <StatLeader
+                    label={t("stats.overall")}
+                    value={`${totals.percent}%`}
+                    tone="accent"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="border-border-light/60 flex overflow-hidden rounded-lg border">
-              {[
-                { key: "list" as ViewMode, Icon: List },
-                { key: "grid" as ViewMode, Icon: LayoutGrid },
-              ].map(({ key, Icon }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setView(key)}
-                  aria-pressed={view === key}
-                  aria-label={t(`views.${key}`)}
-                  title={t(`views.${key}`)}
-                  className={`flex h-[34px] w-9 items-center justify-center transition-colors duration-300 ${
-                    view === key
-                      ? "bg-accent-primary/[0.16] text-fg-primary"
-                      : "text-fg-quaternary hover:text-fg-secondary"
-                  }`}
-                >
-                  <Icon size={16} aria-hidden />
-                </button>
-              ))}
+            {/* Controls */}
+            <div
+              className="dash-rise flex flex-wrap items-center gap-3"
+              style={rise(0.14)}
+            >
+              <label
+                className={`border-tui-ink/12 bg-tui-pane flex h-10 w-full items-center gap-2.5 rounded-full border px-4 shadow-[var(--tui-pane-shadow)] sm:w-[300px]`}
+              >
+                <Search
+                  size={15}
+                  className="text-tui-ink3 flex-none"
+                  aria-hidden
+                />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={t("searchPlaceholder")}
+                  aria-label={t("searchPlaceholder")}
+                  className="text-tui-ink placeholder:text-tui-ink3 min-w-0 flex-1 bg-transparent text-[13.5px] outline-none"
+                />
+              </label>
+
+              <PillGroup>
+                {FILTERS.map((key) => (
+                  <Pill
+                    key={key}
+                    active={filter === key}
+                    onClick={() => setFilter(key)}
+                  >
+                    {t(`filters.${key}`)}
+                    <span className="text-tui-ink3 text-[11.5px] tabular-nums">
+                      {rows.filter((row) => matchesFilter(row, key)).length}
+                    </span>
+                  </Pill>
+                ))}
+              </PillGroup>
+
+              <span className="hidden flex-1 lg:block" />
+
+              <span className="text-tui-ink3 text-[12.5px]">
+                {t("sortLabel")}
+              </span>
+              <PillGroup>
+                {SORTS.map((key) => (
+                  <Pill
+                    key={key}
+                    active={sort === key}
+                    onClick={() => setSort(key)}
+                  >
+                    {t(`sorts.${key}`)}
+                  </Pill>
+                ))}
+              </PillGroup>
+              <PillGroup>
+                {(["list", "grid"] as ViewMode[]).map((key) => (
+                  <Pill
+                    key={key}
+                    active={view === key}
+                    onClick={() => setView(key)}
+                  >
+                    {t(`views.${key}`)}
+                  </Pill>
+                ))}
+              </PillGroup>
             </div>
-          </div>
 
-          {shown.length === 0 ? (
-            <div className="dash-fade text-fg-tertiary px-1 py-9 text-sm">
-              {query.trim()
-                ? t("noMatch", { query: query.trim() })
-                : t("noneInFilter")}
-            </div>
-          ) : view === "list" ? (
-            <ProjectTable rows={shown} locale={locale} onOpen={openProject} />
-          ) : (
-            <ProjectGrid rows={shown} locale={locale} onOpen={openProject} />
-          )}
+            {view === "list" ? (
+              <ProjectTable
+                rows={shown}
+                locale={locale}
+                onOpen={openProject}
+                caption={t("listCaption", {
+                  count: shown.length,
+                  sort: t(`sorts.${sort}`),
+                })}
+                query={query}
+                onClearSearch={() => setQuery("")}
+                onShowAll={() => {
+                  setQuery("");
+                  setFilter("all");
+                }}
+              />
+            ) : shown.length === 0 ? (
+              <p className="text-tui-ink2 px-1 py-9 text-[13px]">
+                {query.trim()
+                  ? t("noMatch", { query: query.trim() })
+                  : t("noneInFilter")}
+              </p>
+            ) : (
+              <ProjectGrid rows={shown} locale={locale} onOpen={openProject} />
+            )}
 
-          {archivedRows.length > 0 && (
-            <ArchivePanel
-              rows={archivedRows}
-              open={showArchive}
-              onToggle={() => setShowArchive((was) => !was)}
-              onReopen={(projectId) => reopenProject.mutate({ projectId })}
-              pending={reopenProject.isPending}
-            />
-          )}
-
-          <StatStrip
-            items={[
-              { label: t("stats.active"), value: String(totals.active) },
-              { label: t("stats.tasks"), value: String(totals.tasks) },
-              {
-                label: t("stats.completed"),
-                value: String(totals.completed),
-                tone: "text-success",
-              },
-              {
-                label: t("stats.overall"),
-                value: `${totals.percent}%`,
-                tone: "text-accent-secondary",
-              },
-            ]}
-          />
-        </>
-      )}
+            {archivedRows.length > 0 && (
+              <ArchivePanel
+                rows={archivedRows}
+                open={showArchive}
+                onToggle={() => setShowArchive((was) => !was)}
+                onReopen={(projectId) => reopenProject.mutate({ projectId })}
+                pending={reopenProject.isPending}
+              />
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
-/* -------------------------------------------------------------------- browse */
+/* ------------------------------------------------------------- shared pieces */
 
-function Toggle({
+function StatLeader({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "ok" | "accent";
+}) {
+  const toneClass =
+    tone === "ok"
+      ? "text-tui-ok"
+      : tone === "accent"
+        ? "text-tui-accent"
+        : "text-tui-ink";
+  return (
+    <div className="flex items-baseline gap-2.5 text-[14px]">
+      <span className="text-tui-ink2">{label}</span>
+      <span className="border-tui-ink/16 flex-1 -translate-y-1 border-b border-dotted" />
+      <span
+        className={`font-display text-[26px] leading-none tabular-nums ${toneClass}`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function PillGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border-tui-ink/12 bg-tui-pane flex gap-1 rounded-full border p-1 shadow-[var(--tui-pane-shadow)]">
+      {children}
+    </div>
+  );
+}
+
+function Pill({
   active,
   onClick,
   children,
@@ -464,10 +453,10 @@ function Toggle({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex h-control-md items-center gap-[7px] rounded-lg border px-3 text-[13px] font-medium transition-colors duration-300 ${
+      className={`flex h-8 items-center gap-2 rounded-full px-3.5 text-[13px] font-medium transition-colors ${
         active
-          ? "border-accent-primary/55 bg-accent-primary/[0.14] text-fg-primary"
-          : "border-border-light/60 text-fg-tertiary hover:border-border-strong/60 hover:text-fg-secondary"
+          ? "bg-tui-accent/[0.14] text-tui-ink"
+          : "text-tui-ink3 hover:text-tui-ink2"
       }`}
     >
       {children}
@@ -475,228 +464,70 @@ function Toggle({
   );
 }
 
-/**
- * The list view. A row is one project's whole reading: name and purpose, the
- * completion rule, the team and when it last moved. The rule is the width of
- * the progress, not a bar in a box — at this density a boxed bar was louder
- * than the name above it.
- */
-function ProjectTable({
-  rows,
-  locale,
-  onOpen,
-}: {
-  rows: ProjectRow[];
-  locale: string;
-  onOpen: (id: number) => void;
-}) {
-  const t = useTranslations("projects");
-
-  return (
-    <div className="dash-fade border-border-light/60 border-t">
-      <div className="border-border-light/50 hidden grid-cols-[minmax(0,1fr)_190px_52px_96px_116px_16px] items-center gap-5 border-b px-1 py-3 lg:grid">
-        {(
-          [
-            "colProject",
-            "colProgress",
-            "",
-            "colTeam",
-            "colUpdated",
-            "",
-          ] as const
-        ).map((key, index) => (
-          <span
-            key={index}
-            className="kairos-stamp text-fg-quaternary text-[10px] tracking-[0.14em]"
-          >
-            {key ? t(key) : ""}
-          </span>
-        ))}
-      </div>
-
-      {rows.map((row, index) => (
-        /* The row is a div with a full-bleed button laid over it rather than
-           one big button, because the collaborator faces inside it have to be
-           buttons of their own and a button cannot nest. The overlay carries
-           the click, the focus ring and the accessible name; anything that
-           needs to sit above it says so with `relative z-10`. */
-        <div
-          key={row.id}
-          style={rise(0.14 + index * 0.05)}
-          className="dash-rise border-border-light/50 hover:bg-accent-primary/[0.07] relative grid w-full grid-cols-[minmax(0,1fr)_52px] items-center gap-5 border-b px-1 py-4 text-left transition-colors duration-[350ms] lg:grid-cols-[minmax(0,1fr)_190px_52px_96px_116px_16px]"
-        >
-          <button
-            type="button"
-            onClick={() => onOpen(row.id)}
-            aria-label={row.title || t("untitled")}
-            className="focus-visible:ring-accent-primary absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-inset"
-          />
-
-          <span className="min-w-0">
-            <span className="text-fg-primary block truncate text-base font-medium tracking-[-0.01em]">
-              {row.title || t("untitled")}
-            </span>
-            <span className="text-fg-tertiary mt-1 block truncate text-[13px]">
-              {row.description || t("noDescription")}
-            </span>
-          </span>
-
-          <span className="bg-border-light/70 hidden h-[3px] overflow-hidden rounded-sm lg:block">
-            <span
-              className={`dash-grow block h-full rounded-sm ${HEALTH_BAR[row.health]}`}
-              style={{
-                width: `${row.percent}%`,
-                animationDelay: `${0.14 + index * 0.05}s`,
-              }}
-            />
-          </span>
-
-          <span
-            className={`text-right text-sm font-medium tabular-nums lg:text-left ${HEALTH_TEXT[row.health]}`}
-          >
-            {row.total > 0 ? `${row.percent}%` : "—"}
-          </span>
-
-          <span className="relative z-10 hidden lg:block">
-            <AvatarStack
-              people={row.people}
-              ringClass="border-bg-primary"
-              interactive
-            />
-          </span>
-
-          <span className="text-fg-quaternary hidden font-mono text-[11px] lg:block">
-            <UpdatedStamp row={row} locale={locale} />
-          </span>
-
-          <ChevronRight
-            size={16}
-            className="text-fg-quaternary hidden lg:block"
-            aria-hidden
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** The grid view leads with the number, because at card size that is the row. */
-function ProjectGrid({
-  rows,
-  locale,
-  onOpen,
-}: {
-  rows: ProjectRow[];
-  locale: string;
-  onOpen: (id: number) => void;
-}) {
-  const t = useTranslations("projects");
-
-  return (
-    <div className="dash-fade grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {rows.map((row, index) => (
-        /* Overlay-button row, for the same reason as the table above. */
-        <div
-          key={row.id}
-          style={rise(0.14 + index * 0.05)}
-          className="dash-rise border-border-light/60 bg-bg-elevated hover:border-accent-primary/40 hover:bg-bg-tertiary relative flex flex-col gap-[18px] rounded-xl border p-[22px] pb-[18px] text-left transition-colors duration-[350ms]"
-        >
-          <button
-            type="button"
-            onClick={() => onOpen(row.id)}
-            aria-label={row.title || t("untitled")}
-            className="focus-visible:ring-accent-primary absolute inset-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-inset"
-          />
-
-          <span>
-            <span className="text-fg-primary block truncate text-base font-semibold tracking-[-0.01em]">
-              {row.title || t("untitled")}
-            </span>
-            <span className="text-fg-tertiary mt-1.5 block text-[13px] leading-[1.45]">
-              {row.description || t("noDescription")}
-            </span>
-          </span>
-
-          <span className="flex items-end justify-between gap-3">
-            <span
-              className={`text-[38px] leading-none font-semibold tracking-[-0.03em] tabular-nums ${HEALTH_TEXT[row.health]}`}
-            >
-              {row.total > 0 ? `${row.percent}%` : "—"}
-            </span>
-            <HealthBadge health={row.health} />
-          </span>
-
-          <span className="bg-border-light/70 h-1 overflow-hidden rounded-sm">
-            <span
-              className={`dash-grow block h-full rounded-sm ${HEALTH_BAR[row.health]}`}
-              style={{
-                width: `${row.percent}%`,
-                animationDelay: `${0.14 + index * 0.05}s`,
-              }}
-            />
-          </span>
-
-          <span className="border-border-light/50 flex items-center justify-between gap-3 border-t pt-3.5">
-            <span className="relative z-10">
-              <AvatarStack
-                people={row.people}
-                ringClass="border-bg-elevated"
-                interactive
-              />
-            </span>
-            <span className="text-fg-quaternary font-mono text-[11px]">
-              <UpdatedStamp row={row} locale={locale} />
-            </span>
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function HealthBadge({ health }: { health: Health }) {
-  const t = useTranslations("projects");
+/** A serif monogram in a bordered circle. */
+function Initial({ label, size = 26 }: { label: string; size?: number }) {
   return (
     <span
-      className={`kairos-stamp rounded-sm border px-2 py-1 text-[10px] tracking-[0.12em] ${HEALTH_BORDER[health]} ${HEALTH_TEXT[health]}`}
+      className="border-tui-ink/16 bg-tui-pane font-display text-tui-ink2 flex items-center justify-center rounded-full border"
+      style={{ width: size, height: size, fontSize: size * 0.5 }}
     >
+      {label.trim().charAt(0).toUpperCase() || "?"}
+    </span>
+  );
+}
+
+function AvatarStack({ people }: { people: Person[] }) {
+  const shown = people.slice(0, 4);
+  const overflow = people.length - shown.length;
+  if (people.length === 0) return <Initial label="—" />;
+  return (
+    <span className="flex">
+      {shown.map((person) => (
+        <span key={person.id} className="-mr-1.5">
+          <Initial label={person.name ?? "?"} />
+        </span>
+      ))}
+      {overflow > 0 && (
+        <span className="-mr-1.5">
+          <span
+            className="border-tui-ink/16 bg-tui-pane text-tui-ink3 flex items-center justify-center rounded-full border text-[10px]"
+            style={{ width: 26, height: 26 }}
+          >
+            +{overflow}
+          </span>
+        </span>
+      )}
+    </span>
+  );
+}
+
+function CompletionBar({ percent }: { percent: number }) {
+  return (
+    <span className="bg-tui-ink/12 relative block h-[3px] overflow-hidden rounded-sm">
+      <span
+        className="dash-grow bg-tui-accent absolute inset-y-0 left-0 rounded-sm"
+        style={{ width: `${percent}%` }}
+      />
+    </span>
+  );
+}
+
+function HealthDot({ health }: { health: Health }) {
+  const t = useTranslations("projects");
+  return (
+    <span className="text-tui-ink2 flex items-center gap-2 text-[13px]">
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${HEALTH_DOT[health]}`}
+        aria-hidden
+      />
       {t(`health.${health}`)}
     </span>
   );
 }
 
-function StatStrip({
-  items,
-}: {
-  items: { label: string; value: string; tone?: string }[];
-}) {
-  return (
-    <div
-      className="dash-rise border-border-light/60 bg-border-light/60 grid grid-cols-2 gap-px overflow-hidden rounded-md border sm:grid-cols-4"
-      style={rise(0.3)}
-    >
-      {items.map((item) => (
-        <div
-          key={item.label}
-          className="bg-bg-elevated hover:bg-bg-tertiary px-5 py-[18px] transition-colors duration-[350ms]"
-        >
-          <div className="kairos-stamp text-fg-tertiary text-[10px] tracking-[0.14em]">
-            {item.label}
-          </div>
-          <div
-            className={`mt-2 text-[26px] font-semibold tracking-[-0.02em] tabular-nums ${item.tone ?? "text-fg-primary"}`}
-          >
-            {item.value}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /**
  * Compact age stamp. `formatDistanceToNow` returned "about 1 month" here, which
- * does not fit a 116px column and reads as prose next to mono numerals.
+ * reads as prose rather than a stamp.
  */
 function UpdatedStamp({ row, locale }: { row: ProjectRow; locale: string }) {
   const t = useTranslations("projects");
@@ -709,101 +540,214 @@ function UpdatedStamp({ row, locale }: { row: ProjectRow; locale: string }) {
     return <>{t("updated.weeks", { count: Math.round(days / 7) })}</>;
   return (
     <>
-      {new Intl.DateTimeFormat(locale, { month: "short", year: "numeric" })
-        .format(row.updatedAt)
-        .toUpperCase()}
+      {new Intl.DateTimeFormat(locale, {
+        month: "short",
+        year: "numeric",
+      }).format(row.updatedAt)}
     </>
   );
 }
 
-/**
- * The face pile.
- *
- * `interactive` is off by default and that is not laziness: two of the three
- * call sites sit inside a `<button>` row, where a nested button is invalid
- * markup and where the row's own tap — open the project — is the action the
- * viewer wants anyway. Only the project header, which is not inside a button,
- * turns faces into profile links.
- */
-function AvatarStack({
-  people,
-  ringClass,
-  interactive = false,
+/* -------------------------------------------------------------------- browse */
+
+const LIST_GRID =
+  "grid grid-cols-[minmax(0,1fr)_220px_52px_110px_96px_110px_12px] items-center gap-5";
+
+function ProjectTable({
+  rows,
+  locale,
+  onOpen,
+  caption,
+  query,
+  onClearSearch,
+  onShowAll,
 }: {
-  people: Person[];
-  ringClass: string;
-  interactive?: boolean;
+  rows: ProjectRow[];
+  locale: string;
+  onOpen: (id: number) => void;
+  caption: string;
+  query: string;
+  onClearSearch: () => void;
+  onShowAll: () => void;
 }) {
-  const shown = people.slice(0, 4);
-  const overflow = people.length - shown.length;
-
-  if (people.length === 0) {
-    return (
-      <span
-        className={`bg-bg-tertiary text-fg-quaternary flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 text-[11px] font-bold ${ringClass}`}
-      >
-        —
-      </span>
-    );
-  }
-
-  const face = (person: Person) =>
-    person.image ? (
-      <Image
-        src={person.image}
-        alt={person.name ?? ""}
-        width={26}
-        height={26}
-        className={`h-[26px] w-[26px] rounded-full border-2 object-cover ${ringClass}`}
-      />
-    ) : (
-      <span
-        title={person.name ?? undefined}
-        style={avatarGradientStyle(person.id)}
-        className={`flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 text-[11px] font-bold text-white ${ringClass}`}
-      >
-        {(person.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
-      </span>
-    );
+  const t = useTranslations("projects");
 
   return (
-    <span className="flex">
-      {shown.map((person) =>
-        interactive ? (
-          <ProfileLink
-            key={person.id}
-            userId={person.id}
-            name={person.name}
-            className="-mr-[7px]"
+    <section className={`dash-fade ${CARD}`} style={rise(0.18)}>
+      <div className="border-tui-ink/8 flex items-baseline gap-3 border-b px-7 pt-5 pb-4">
+        <h2 className="font-display m-0 text-[22px] leading-none">
+          {t("title")}
+        </h2>
+        <span className="text-tui-ink3 text-[12.5px]">{caption}</span>
+      </div>
+
+      <div className="overflow-x-auto">
+        <div className="min-w-[840px]">
+          <div
+            className={`${LIST_GRID} border-tui-ink/8 text-tui-ink3 border-b px-7 py-3 text-[11px] font-medium tracking-[0.14em] uppercase`}
           >
-            {face(person)}
-          </ProfileLink>
-        ) : (
-          <span key={person.id} className="-mr-[7px]">
-            {face(person)}
-          </span>
-        ),
-      )}
-      {overflow > 0 && (
-        <span
-          className={`bg-bg-tertiary text-fg-tertiary -mr-[7px] flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 text-[10px] font-bold ${ringClass}`}
+            <span>{t("colProject")}</span>
+            <span>{t("colProgress")}</span>
+            <span className="text-right">%</span>
+            <span>{t("colTeam")}</span>
+            <span>{t("colUpdated")}</span>
+            <span className="text-right">{t("colHealth")}</span>
+            <span />
+          </div>
+
+          {rows.length === 0 ? (
+            <div className="flex flex-col items-center gap-3.5 px-7 pt-16 pb-20 text-center">
+              <span className="font-display text-tui-ink/25 text-[44px] leading-none italic">
+                —
+              </span>
+              <span className="font-display max-w-[520px] text-[26px] leading-[1.2]">
+                {query.trim()
+                  ? t("noMatch", { query: query.trim() })
+                  : t("noneInFilter")}
+              </span>
+              {query.trim() && (
+                <div className="mt-2 flex gap-2.5">
+                  <button
+                    type="button"
+                    onClick={onClearSearch}
+                    className="border-tui-ink/16 text-tui-ink hover:bg-tui-ink/[0.04] h-9 rounded-full border px-4 text-[13.5px] font-medium transition-colors"
+                  >
+                    {t("clearSearch")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onShowAll}
+                    className="bg-tui-accent/[0.16] text-tui-ink hover:bg-tui-accent/[0.22] h-9 rounded-full px-4 text-[13.5px] font-medium transition-colors"
+                  >
+                    {t("showAll")}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            rows.map((row) => (
+              <div
+                key={row.id}
+                className={`group relative ${LIST_GRID} border-tui-ink/8 hover:bg-tui-accent/[0.05] border-b px-7 py-[18px] text-[14px] transition-colors last:border-b-0`}
+              >
+                <span className="flex min-w-0 flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onOpen(row.id)}
+                    aria-label={row.title || t("untitled")}
+                    className="font-display focus-visible:ring-tui-accent truncate text-left text-[20px] outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-inset"
+                  >
+                    {row.title || t("untitled")}
+                  </button>
+                  <span className="text-tui-ink3 truncate text-[13px]">
+                    {row.description || t("noDescription")}
+                  </span>
+                </span>
+                <CompletionBar percent={row.percent} />
+                <span
+                  className={`text-right font-semibold tabular-nums ${HEALTH_TONE[row.health]}`}
+                >
+                  {row.total > 0 ? `${row.percent}%` : "—"}
+                </span>
+                <span className="relative z-10">
+                  <AvatarStack people={row.people} />
+                </span>
+                <span className="text-tui-ink3 text-[13px]">
+                  <UpdatedStamp row={row} locale={locale} />
+                </span>
+                <span className="justify-self-end">
+                  <HealthDot health={row.health} />
+                </span>
+                <span className="text-tui-ink3">›</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProjectGrid({
+  rows,
+  locale,
+  onOpen,
+}: {
+  rows: ProjectRow[];
+  locale: string;
+  onOpen: (id: number) => void;
+}) {
+  const t = useTranslations("projects");
+
+  return (
+    <div className="dash-fade grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+      {rows.map((row) => (
+        <div
+          key={row.id}
+          className={`group relative flex flex-col gap-[18px] ${CARD} hover:border-tui-accent/40 p-6 transition-colors`}
         >
-          +{overflow}
-        </span>
-      )}
-    </span>
+          <div className="text-tui-ink2 flex items-center gap-2 text-[12.5px]">
+            <HealthDot health={row.health} />
+            <span className="flex-1" />
+            <span className="text-tui-ink3">
+              <UpdatedStamp row={row} locale={locale} />
+            </span>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={() => onOpen(row.id)}
+              aria-label={row.title || t("untitled")}
+              className="font-display focus-visible:ring-tui-accent truncate text-left text-[25px] outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:ring-2 focus-visible:ring-inset"
+            >
+              {row.title || t("untitled")}
+            </button>
+            <span className="text-tui-ink3 min-h-[40px] text-[13px] leading-[1.55]">
+              {row.description || t("noDescription")}
+            </span>
+          </div>
+          <span
+            className={`font-display text-[56px] leading-none font-light tracking-[-0.02em] tabular-nums ${
+              row.total > 0 ? HEALTH_TONE[row.health] : "text-tui-ink3"
+            }`}
+          >
+            {row.total > 0 ? `${row.percent}%` : "—"}
+          </span>
+          <CompletionBar percent={row.percent} />
+          <div className="border-tui-ink/8 relative z-10 flex items-center border-t pt-3.5">
+            <AvatarStack people={row.people} />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
 /* -------------------------------------------------------------------- detail */
 
-/**
- * One project, opened in place.
- *
- * The reading is a single timeline: what is still coming above a "now" marker,
- * then what has happened below it, most recent first. Splitting those into two
- * panels made the same project's future and past look like unrelated lists.
- */
+function StatStrip({
+  items,
+}: {
+  items: { label: string; value: string; tone?: string }[];
+}) {
+  return (
+    <div className="border-tui-ink/12 bg-tui-ink/12 grid grid-cols-2 gap-px overflow-hidden rounded-lg border sm:grid-cols-4">
+      {items.map((item) => (
+        <div key={item.label} className="bg-tui-pane px-5 py-4">
+          <div className="text-tui-ink3 text-[11px] font-medium tracking-[0.14em] uppercase">
+            {item.label}
+          </div>
+          <div
+            className={`font-display mt-1.5 text-[26px] leading-none tabular-nums ${item.tone ?? "text-tui-ink"}`}
+          >
+            {item.value}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ProjectDetail({
   project,
   userId,
@@ -819,7 +763,6 @@ function ProjectDetail({
   userId: string;
   locale: string;
   now: Date;
-  /* Lifted to the workspace, because the tab is part of the URL now. */
   tab: DetailTab;
   onTabChange: (tab: DetailTab) => void;
   onBack: () => void;
@@ -864,108 +807,95 @@ function ProjectDetail({
   const loading = activityQuery.isLoading || tasksQuery.isLoading;
 
   return (
-    <div className="dash-fade flex flex-col gap-[26px]">
-      <div className="flex items-center justify-between gap-4">
+    <div className="dash-fade flex flex-col gap-6">
+      <div className="flex items-center gap-3 text-[13.5px]">
         <button
           type="button"
           onClick={onBack}
-          className="text-fg-tertiary hover:text-fg-primary flex items-center gap-2 text-[13px] font-medium transition-colors"
+          className="text-tui-ink2 hover:text-tui-ink transition-colors"
         >
-          <ArrowLeft size={15} aria-hidden />
-          {t("back")}
+          ← {t("back")}
         </button>
-
-        <div className="flex items-center gap-2">
-          {/*
-            Owner-only, because `archiveProject` is: the server refuses anyone
-            else, and a button that always fails is worse than no button.
-            Archive sits before delete so the recoverable action is the one
-            under the cursor first.
-          */}
-          {project.createdById === userId && (
-            <button
-              type="button"
-              onClick={onArchive}
-              aria-label={t("archive.title")}
-              title={t("archive.title")}
-              className="border-border-light/60 text-fg-quaternary hover:border-accent-primary/40 hover:text-fg-primary flex h-[34px] w-[34px] items-center justify-center rounded-lg border transition-colors duration-300"
-            >
-              <Archive size={16} strokeWidth={1.5} aria-hidden />
-            </button>
-          )}
-          {project.createdById === userId && (
-            <button
-              type="button"
-              onClick={onDelete}
-              aria-label={t("delete.title")}
-              title={t("delete.title")}
-              className="border-border-light/60 text-fg-quaternary hover:border-error/40 hover:text-error flex h-[34px] w-[34px] items-center justify-center rounded-lg border transition-colors duration-300"
-            >
-              <Trash2 size={16} strokeWidth={1.5} aria-hidden />
-            </button>
-          )}
-        </div>
+        <span className="flex-1" />
+        {project.createdById === userId && (
+          <button
+            type="button"
+            onClick={onArchive}
+            className="border-tui-ink/16 bg-tui-pane text-tui-ink hover:bg-tui-ink/[0.04] h-9 rounded-full border px-4 text-[13px] font-medium transition-colors"
+          >
+            {t("archive.title")}
+          </button>
+        )}
+        {project.createdById === userId && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="border-tui-danger/40 bg-tui-pane text-tui-danger hover:bg-tui-danger/[0.08] h-9 rounded-full border px-4 text-[13px] font-medium transition-colors"
+          >
+            {t("delete.title")}
+          </button>
+        )}
       </div>
 
-      <div className="dash-rise flex flex-col gap-[18px]" style={rise(0.05)}>
-        <div className="flex flex-wrap items-center gap-3.5">
-          <h1 className="text-fg-primary m-0 text-[32px] leading-[1.1] font-semibold tracking-[-0.025em]">
-            {project.title || t("untitled")}
-          </h1>
-          <HealthBadge health={project.health} />
-          <span className="hidden flex-1 sm:block" />
-          <AvatarStack
-            people={project.people}
-            ringClass="border-bg-primary"
-            interactive
+      <div className={`dash-rise ${CARD}`} style={rise(0.05)}>
+        <div className="flex flex-col gap-4 px-8 py-9 sm:px-10">
+          <div className="flex flex-wrap items-center gap-4">
+            <h1 className="font-display m-0 text-[40px] leading-none font-light tracking-[-0.02em] sm:text-[52px]">
+              {project.title || t("untitled")}
+            </h1>
+            <span
+              className={`flex h-7 items-center gap-2 rounded-full border px-3 text-[12.5px] font-medium ${HEALTH_TONE[project.health]}`}
+              style={{ borderColor: "rgb(var(--tui-ink) / 0.16)" }}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${HEALTH_DOT[project.health]}`}
+                aria-hidden
+              />
+              {t(`health.${project.health}`)}
+            </span>
+            <span className="hidden flex-1 sm:block" />
+            <span className="relative z-10">
+              <AvatarStack people={project.people} />
+            </span>
+          </div>
+          <p className="text-tui-ink2 m-0 max-w-[680px] text-[16px] leading-[1.6]">
+            {project.description || t("noDescription")}
+          </p>
+          <StatStrip
+            items={[
+              {
+                label: t("stats.progress"),
+                value: project.total > 0 ? `${project.percent}%` : "—",
+                tone: HEALTH_TONE[project.health],
+              },
+              {
+                label: t("stats.done"),
+                value: String(project.done),
+                tone: "text-tui-ok",
+              },
+              {
+                label: t("stats.inProgress"),
+                value: String(project.inProgress),
+                tone: "text-tui-warn",
+              },
+              { label: t("stats.todo"), value: String(project.todo) },
+            ]}
           />
         </div>
-
-        <p className="text-fg-tertiary m-0 text-[15px]">
-          {project.description || t("noDescription")}
-        </p>
-
-        <StatStrip
-          items={[
-            {
-              label: t("stats.progress"),
-              value: project.total > 0 ? `${project.percent}%` : "—",
-              tone: HEALTH_TEXT[project.health],
-            },
-            {
-              label: t("stats.done"),
-              value: String(project.done),
-              tone: "text-success",
-            },
-            {
-              label: t("stats.inProgress"),
-              value: String(project.inProgress),
-              tone: "text-warning",
-            },
-            { label: t("stats.todo"), value: String(project.todo) },
-          ]}
-        />
       </div>
 
-      <div
-        className="dash-rise border-border-light/60 flex self-start overflow-hidden rounded-lg border"
-        style={rise(0.08)}
-      >
-        {DETAIL_TABS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onTabChange(key)}
-            aria-pressed={tab === key}
-            className={`h-[34px] px-4 text-[13px] font-medium transition-colors duration-300 ${
-              tab === key
-                ? "bg-accent-primary/[0.16] text-fg-primary"
-                : "text-fg-tertiary hover:text-fg-secondary"
-            }`}
-          >
-            {t(`tabs.${key}`)}
-          </button>
-        ))}
+      <div className="dash-rise self-start" style={rise(0.08)}>
+        <PillGroup>
+          {DETAIL_TABS.map((key) => (
+            <Pill
+              key={key}
+              active={tab === key}
+              onClick={() => onTabChange(key)}
+            >
+              {t(`tabs.${key}`)}
+            </Pill>
+          ))}
+        </PillGroup>
       </div>
 
       {tab === "tasks" && (
@@ -977,40 +907,37 @@ function ProjectDetail({
       )}
 
       {tab === "timeline" && (
-        <>
-          <div
-            className="dash-rise flex flex-wrap items-center gap-3"
-            style={rise(0.1)}
-          >
-            <span className="kairos-stamp text-fg-quaternary text-[10px] tracking-[0.14em]">
+        <section className={`${CARD}`}>
+          <div className="border-tui-ink/8 flex flex-wrap items-center gap-3 border-b px-7 pt-5 pb-4">
+            <h2 className="font-display m-0 text-[22px] leading-none">
               {t("timeline.label")}
+            </h2>
+            <span className="text-tui-ink3 text-[12.5px]">
+              {t("timeline.count", { count: future.length + past.length })}
             </span>
+            <span className="hidden flex-1 sm:block" />
             {TIMELINE_FILTERS.map((key) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setKind(key)}
                 aria-pressed={kind === key}
-                className={`h-8 rounded-lg border px-3 text-[13px] font-medium transition-colors duration-300 ${
+                className={`h-[30px] rounded-full border px-3 text-[12.5px] font-medium transition-colors ${
                   kind === key
-                    ? "border-accent-primary/55 bg-accent-primary/[0.14] text-fg-primary"
-                    : "border-border-light/60 text-fg-tertiary hover:border-border-strong/60 hover:text-fg-secondary"
+                    ? "border-tui-accent/55 bg-tui-accent/[0.14] text-tui-ink"
+                    : "border-tui-ink/16 text-tui-ink3 hover:text-tui-ink2"
                 }`}
               >
                 {t(`timeline.kinds.${key}`)}
               </button>
             ))}
-            <span className="hidden flex-1 sm:block" />
-            <span className="text-fg-quaternary font-mono text-[11px]">
-              {t("timeline.count", { count: future.length + past.length })}
-            </span>
           </div>
 
-          <div className="flex flex-col">
+          <div className="px-7 py-4">
             {loading ? (
               <TimelineSkeleton />
             ) : future.length + past.length === 0 ? (
-              <p className="text-fg-tertiary px-1 py-8 text-sm">
+              <p className="text-tui-ink2 py-6 text-[14px]">
                 {t("timeline.empty")}
               </p>
             ) : (
@@ -1022,7 +949,6 @@ function ProjectDetail({
                     locale={locale}
                     now={now}
                     previous={future[index - 1]}
-                    index={index}
                   />
                 ))}
 
@@ -1035,42 +961,29 @@ function ProjectDetail({
                     locale={locale}
                     now={now}
                     previous={shownPast[index - 1]}
-                    index={index}
                   />
                 ))}
 
                 {earlier > 0 && (
-                  <div className="grid grid-cols-[52px_26px_minmax(0,1fr)] items-center gap-3.5 px-1 pt-1.5 sm:grid-cols-[62px_26px_minmax(0,1fr)]">
-                    <span />
-                    <span className="relative flex min-h-[28px] justify-center self-stretch">
-                      <span
-                        className="bg-accent-primary/40 absolute -top-3.5 bottom-3.5 w-0.5"
-                        aria-hidden
-                      />
-                    </span>
+                  <div className="pt-3 pl-[68px]">
                     <button
                       type="button"
                       onClick={() => setShowEarlier((value) => !value)}
-                      className="border-border-light/60 bg-bg-secondary text-fg-secondary hover:border-accent-primary/40 hover:text-fg-primary flex h-[34px] items-center gap-2.5 justify-self-start rounded-lg border px-3.5 text-[13px] font-medium transition-colors duration-300"
+                      className="border-tui-ink/16 text-tui-ink2 hover:border-tui-accent/40 hover:text-tui-ink h-[34px] rounded-full border px-4 text-[13px] font-medium transition-colors"
                     >
                       {showEarlier
                         ? t("timeline.hideEarlier")
                         : t("timeline.showEarlier")}
-                      <span className="text-fg-quaternary font-mono text-[11px]">
+                      <span className="text-tui-ink3 ml-2 text-[11.5px]">
                         {earlier}
                       </span>
-                      <ChevronDown
-                        size={14}
-                        aria-hidden
-                        className={`transition-transform duration-[350ms] ${showEarlier ? "rotate-180" : ""}`}
-                      />
                     </button>
                   </div>
                 )}
               </>
             )}
           </div>
-        </>
+        </section>
       )}
     </div>
   );
@@ -1088,9 +1001,10 @@ function dayHeading(
   if (isSameDay(event.at, now)) return labels.today;
   if (isSameDay(event.at, new Date(now.getTime() - 86_400_000)))
     return labels.yesterday;
-  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" })
-    .format(event.at)
-    .toUpperCase();
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+  }).format(event.at);
 }
 
 function TimelineRow({
@@ -1098,16 +1012,13 @@ function TimelineRow({
   locale,
   now,
   previous,
-  index,
 }: {
   event: TimelineEvent;
   locale: string;
   now: Date;
   previous: TimelineEvent | undefined;
-  index: number;
 }) {
   const t = useTranslations("projects");
-  const Icon = EVENT_ICON[event.kind];
 
   const heading = dayHeading(event, previous, now, locale, {
     today: t("timeline.today"),
@@ -1120,55 +1031,39 @@ function TimelineRow({
   }).format(event.at);
 
   return (
-    <div
-      className={`dash-rise ${event.future ? "opacity-60" : ""}`}
-      style={rise(0.1 + index * 0.04)}
-    >
+    <div className={event.future ? "opacity-60" : ""}>
       {heading && (
-        <div className="kairos-stamp text-fg-quaternary px-1 pt-4 pb-2.5 text-[10px] tracking-[0.16em]">
+        <div className="text-tui-ink3 pt-4 pb-1.5 pl-[68px] text-[11px] font-medium tracking-[0.16em] uppercase">
           {heading}
         </div>
       )}
-      <div className="hover:bg-accent-primary/[0.06] grid grid-cols-[52px_26px_minmax(0,1fr)] items-start gap-3.5 px-1 py-3.5 transition-colors duration-[350ms] sm:grid-cols-[62px_26px_minmax(0,1fr)]">
-        <span className="text-fg-quaternary pt-[3px] font-mono text-[11px]">
+      <div className="grid grid-cols-[56px_28px_minmax(0,1fr)] items-start gap-3 py-3">
+        <span className="text-tui-ink3 pt-0.5 text-[12.5px] tabular-nums">
           {time}
         </span>
-
         <span className="relative flex justify-center self-stretch">
           <span
             aria-hidden
-            className={`absolute -top-3.5 -bottom-3.5 w-0.5 ${
-              event.future ? "bg-border-light/70" : "bg-accent-primary/40"
+            className={`absolute -top-3 -bottom-3 w-px ${
+              event.future ? "bg-tui-ink/16" : "bg-tui-accent/40"
             }`}
           />
           <span
-            className={`bg-bg-primary relative mt-1 flex h-[15px] w-[15px] items-center justify-center rounded-full border ${
-              event.future
-                ? "border-border-medium/70"
-                : "border-accent-primary/50"
-            }`}
-          >
-            <Icon
-              size={8}
-              strokeWidth={3}
-              className={EVENT_TINT[event.kind]}
-              aria-hidden
-            />
-          </span>
+            className={`bg-tui-pane relative mt-[5px] h-[9px] w-[9px] rounded-full border-[1.5px] ${EVENT_TINT[event.kind]}`}
+          />
         </span>
-
         <span className="flex min-w-0 flex-col gap-1">
-          <span className="text-fg-secondary text-[15px] leading-[1.4]">
-            <span className="text-fg-primary font-semibold">{event.actor}</span>{" "}
+          <span className="text-tui-ink2 text-[14.5px] leading-[1.4]">
+            <span className="text-tui-ink font-semibold">{event.actor}</span>{" "}
             {t(`timeline.verbs.${event.verb}`)}{" "}
             {event.target && (
-              <span className="text-fg-primary font-medium">
+              <span className="font-display text-tui-ink text-[17px]">
                 {event.target}
               </span>
             )}
           </span>
           {event.detail && (
-            <span className="text-fg-quaternary truncate text-[13px]">
+            <span className="text-tui-ink3 truncate text-[13px]">
               {event.detail}
             </span>
           )}
@@ -1178,7 +1073,6 @@ function TimelineRow({
   );
 }
 
-/** The hinge between what is coming and what has happened. */
 function NowMarker({ now, locale }: { now: Date; locale: string }) {
   const t = useTranslations("projects");
   const time = new Intl.DateTimeFormat(locale, {
@@ -1187,18 +1081,18 @@ function NowMarker({ now, locale }: { now: Date; locale: string }) {
   }).format(now);
 
   return (
-    <div className="grid grid-cols-[52px_26px_minmax(0,1fr)] items-center gap-3.5 px-1 py-2 sm:grid-cols-[62px_26px_minmax(0,1fr)]">
-      <span className="text-accent-secondary font-mono text-[11px]">
+    <div className="grid grid-cols-[56px_28px_minmax(0,1fr)] items-center gap-3 py-3">
+      <span className="text-tui-accent text-[12.5px] font-semibold">
         {time}
       </span>
       <span className="flex justify-center">
-        <span className="bg-accent-primary h-[11px] w-[11px] rounded-full shadow-[0_0_0_4px_rgb(var(--accent-primary)/0.18)]" />
+        <span className="bg-tui-accent h-[11px] w-[11px] rounded-full shadow-[0_0_0_4px_rgb(var(--tui-accent)/0.18)]" />
       </span>
       <span className="flex items-center gap-3">
-        <span className="kairos-stamp text-accent-secondary text-[10px] tracking-[0.18em]">
+        <span className="text-tui-accent text-[11px] font-semibold tracking-[0.18em] uppercase">
           {t("timeline.now")}
         </span>
-        <span className="from-accent-primary/50 h-px flex-1 bg-gradient-to-r to-transparent" />
+        <span className="bg-tui-accent/40 h-px flex-1" />
       </span>
     </div>
   );
@@ -1208,8 +1102,11 @@ function TimelineSkeleton() {
   return (
     <div className="flex flex-col">
       {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className="border-border-light/50 border-b px-1 py-4">
-          <div className="bg-bg-tertiary h-4 w-2/3 animate-pulse rounded-sm" />
+        <div
+          key={index}
+          className="border-tui-ink/8 border-b py-4 last:border-b-0"
+        >
+          <div className="bg-tui-ink/8 h-4 w-2/3 animate-pulse rounded-sm" />
         </div>
       ))}
     </div>
@@ -1220,58 +1117,98 @@ function TimelineSkeleton() {
 
 function LoadingState() {
   return (
-    <div className="flex flex-col gap-[26px] px-4 pt-9 pb-14 sm:px-10">
-      <div className="bg-bg-tertiary h-9 w-64 animate-pulse rounded-sm" />
-      <div className="bg-bg-tertiary h-control-md w-full max-w-xl animate-pulse rounded-sm" />
-      <div className="border-border-light/60 border-t">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <div
-            key={index}
-            className="border-border-light/50 border-b px-1 py-5"
-          >
-            <div className="bg-bg-tertiary h-4 w-1/3 animate-pulse rounded-sm" />
+    <div className="tui-screen min-h-full">
+      <div className="mx-auto max-w-[1440px] px-4 pt-10 pb-12 sm:px-8">
+        <div className={CARD}>
+          <div className="flex flex-col gap-3 px-8 py-9">
+            {[64, 44, 72, 52, 60].map((w, i) => (
+              <div
+                key={i}
+                className="bg-tui-ink/8 h-5 animate-pulse rounded"
+                style={{ width: `${w}%`, animationDelay: `${i * 0.08}s` }}
+              />
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );
 }
 
 /**
- * No projects at all. The populated page is a filterable list of nothing, so
- * this says what to do instead.
+ * No projects at all. The welcome — how to start, and what a project will hold.
  */
 function FirstRun() {
   const t = useTranslations("projects");
+  const holds = [
+    {
+      n: "i",
+      title: t("empty.holds.tasksTitle"),
+      body: t("empty.holds.tasksBody"),
+    },
+    {
+      n: "ii",
+      title: t("empty.holds.teamTitle"),
+      body: t("empty.holds.teamBody"),
+    },
+    {
+      n: "iii",
+      title: t("empty.holds.timelineTitle"),
+      body: t("empty.holds.timelineBody"),
+    },
+  ];
 
   return (
-    <div className="flex min-h-[420px] flex-col justify-center gap-6 px-4 py-16 sm:px-10">
-      <div className="dash-rise" style={rise(0.05)}>
-        <div className="kairos-stamp text-accent-secondary text-[11px] tracking-[0.16em]">
-          {t("empty.tag")}
+    <div className="tui-screen text-tui-ink min-h-full">
+      <div className="mx-auto flex max-w-[1000px] flex-col gap-6 px-4 pt-12 pb-14 sm:px-8">
+        <div className={`dash-rise ${CARD}`} style={rise(0.05)}>
+          <div className="flex flex-col gap-5 px-8 py-10 sm:px-12">
+            <span className="text-tui-ink3 text-[11px] font-medium tracking-[0.18em] uppercase">
+              {t("empty.newWorkspace")}
+            </span>
+            <h1 className="font-display m-0 max-w-[620px] text-[44px] leading-[1.05] font-light tracking-[-0.02em] text-pretty sm:text-[54px]">
+              {t("empty.title")}
+            </h1>
+            <p className="text-tui-ink2 m-0 max-w-[560px] text-[16px] leading-[1.65] text-pretty">
+              {t("empty.body")}
+            </p>
+            <div className="w-fit">
+              <NewProjectDrawer />
+            </div>
+          </div>
         </div>
-        <h1 className="text-fg-primary mt-3.5 max-w-[620px] text-[34px] leading-[1.08] font-semibold tracking-[-0.03em]">
-          {t("empty.title")}
-        </h1>
-        <p className="text-fg-tertiary mt-3 max-w-[520px] text-[17px] leading-[1.6]">
-          {t("empty.body")}
-        </p>
-      </div>
-      <div className="dash-rise w-fit" style={rise(0.15)}>
-        <NewProjectDrawer />
+
+        <div
+          className={`dash-rise ${CARD} grid grid-cols-1 sm:grid-cols-3`}
+          style={rise(0.12)}
+        >
+          {holds.map((hold, index) => (
+            <div
+              key={hold.n}
+              className={`flex flex-col gap-2.5 px-7 py-7 ${
+                index > 0
+                  ? "border-tui-ink/8 border-t sm:border-t-0 sm:border-l"
+                  : ""
+              }`}
+            >
+              <span className="font-display text-tui-accent text-[24px] leading-none italic">
+                {hold.n}
+              </span>
+              <span className="font-display text-[21px]">{hold.title}</span>
+              <span className="text-tui-ink2 text-[14px] leading-[1.6]">
+                {hold.body}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
 /**
- * The archive: closed projects, and the way back out of them.
- *
- * Collapsed by default and rendered below the live list, because an archive is
- * a place you go looking for something rather than something you read every
- * day. It deliberately skips the health buckets, progress bars and sorting the
- * live workspace has — those describe work in flight, and none of them mean
- * anything about a project nobody is working on.
+ * Archiving is reversible, so this is not a destructive dialog — but it is still
+ * a confirmation, because the project leaves everyone else's list too.
  */
 function ArchivePanel({
   rows,
@@ -1289,51 +1226,46 @@ function ArchivePanel({
   const t = useTranslations("projects");
 
   return (
-    <section className="border-border-light/60 rounded-xl border">
+    <section className={CARD}>
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="text-fg-secondary hover:text-fg-primary flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] font-medium transition-colors"
+        className="hover:bg-tui-accent/[0.04] flex w-full items-baseline gap-3 px-7 py-4 text-left transition-colors"
       >
-        <Archive size={15} className="text-fg-quaternary" aria-hidden />
-        {t("archive.sectionTitle")}
-        <span className="text-fg-quaternary font-mono text-[11px]">
-          {rows.length}
+        <span className="font-display text-[19px]">
+          {t("archive.sectionTitle")}
         </span>
+        <span className="text-tui-ink3 text-[12.5px]">{rows.length}</span>
         <span className="flex-1" />
-        <ChevronDown
-          size={15}
-          aria-hidden
-          className={`text-fg-quaternary transition-transform duration-300 ${open ? "rotate-180" : ""}`}
-        />
+        <span className="text-tui-ink2 text-[13px]">
+          {t("archive.subtitle")}
+        </span>
       </button>
 
       {open && (
-        <ul className="border-border-light/60 m-0 list-none border-t p-0">
+        <ul className="border-tui-ink/8 m-0 list-none border-t p-0">
           {rows.map((row) => (
             <li
               key={row.id}
-              className="border-border-light/50 flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
+              className="border-tui-ink/8 flex items-center gap-4 border-b px-7 py-3.5 last:border-b-0"
             >
-              <span className="min-w-0 flex-1">
-                <span className="text-fg-secondary block truncate text-sm">
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="font-display text-tui-ink2 truncate text-[17px]">
                   {row.title || t("untitled")}
                 </span>
                 {row.description && (
-                  <span className="text-fg-quaternary mt-0.5 block truncate text-[12px]">
+                  <span className="text-tui-ink3 truncate text-[12.5px]">
                     {row.description}
                   </span>
                 )}
               </span>
-
               <button
                 type="button"
                 disabled={pending}
                 onClick={() => onReopen(row.id)}
-                className="border-border-light/60 text-fg-secondary hover:border-accent-primary/40 hover:text-fg-primary flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-medium transition-colors duration-300 disabled:opacity-50"
+                className="border-tui-ink/16 text-tui-ink hover:border-tui-accent/40 h-8 rounded-full border px-3.5 text-[12.5px] font-medium transition-colors disabled:opacity-50"
               >
-                <ArchiveRestore size={14} strokeWidth={1.5} aria-hidden />
                 {t("archive.reopen")}
               </button>
             </li>
@@ -1344,10 +1276,6 @@ function ArchivePanel({
   );
 }
 
-/**
- * Archiving is reversible, so this is not a destructive dialog — but it is
- * still a confirmation, because the project leaves everyone else's list too.
- */
 function ArchiveDialog({
   pending,
   onCancel,
@@ -1383,10 +1311,6 @@ function DeleteDialog({
 }) {
   const t = useTranslations("projects");
 
-  /* This used to be a hand-rolled overlay with `role="dialog"` and nothing
-     else: no focus trap, no Escape, no focus restore, and a full-bleed
-     invisible button for the backdrop. Deleting a project is one of the five
-     destructive actions the app asked about five different ways. */
   return (
     <ConfirmDialog
       destructive
