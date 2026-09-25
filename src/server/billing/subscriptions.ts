@@ -28,8 +28,7 @@ import { PLAN_CATALOGUE, planForOwnerKind } from "~/lib/plans";
 import {
   accessEndsAt,
   isLiveSubscription,
-  paidThroughAt,
-  planFromSubscription,
+  planToRecord,
   willNotRenew,
   type SubscriptionStatus,
 } from "~/lib/subscription-status";
@@ -42,6 +41,7 @@ const log = createLogger("billing:subscriptions");
 // pure and this file is not — see that file's docblock.
 export {
   planFromSubscription,
+  planToRecord,
   isLiveSubscription,
   willNotRenew,
   accessEndsAt,
@@ -287,11 +287,7 @@ export async function syncSubscription(
     return owner;
   }
 
-  const plan = planForOwner(
-    owner,
-    planFromSubscription(status, planOf(subscription)),
-    subscription.id,
-  );
+  const plan = await resolvePlan(owner, subscription, status);
 
   const patch = {
     plan,
@@ -320,6 +316,41 @@ export async function syncSubscription(
   });
 
   return owner;
+}
+
+/**
+ * {@link planToRecord}, plus the database read and the alarm it needs.
+ *
+ * The rule itself is pure and lives in `~/lib/subscription-status` with the rest
+ * of them. What stays here is the part that cannot be: reading the plan already
+ * on file to fall back to, and shouting when it is used. The log is `error`
+ * rather than `warn` on purpose — it is the same class of event as the missing
+ * owner above, money moving with nobody correctly credited, and it wants the
+ * same attention.
+ */
+async function resolvePlan(
+  owner: BillingOwner,
+  subscription: Stripe.Subscription,
+  status: SubscriptionStatus,
+): Promise<PlanId> {
+  const priced = planOf(subscription);
+
+  if (priced !== null || !isLiveSubscription(status)) {
+    return planToRecord(status, priced, null);
+  }
+
+  const { plan: onFile } = await billingStateOf(owner);
+
+  log.error("live subscription priced at an unknown plan", {
+    ownerKind: owner.kind,
+    ownerId: String(owner.id),
+    subscriptionId: subscription.id,
+    status,
+    priceId: subscription.items.data[0]?.price.id ?? null,
+    keeping: onFile,
+  });
+
+  return planToRecord(status, priced, onFile);
 }
 
 /**
@@ -357,13 +388,13 @@ async function ownerFromSubscriptionId(
 export async function billingStateOf(owner: BillingOwner): Promise<{
   subscriptionId: string | null;
   status: SubscriptionStatus | null;
-  /** The end of the last period known to be paid for — see {@link periodEndOf}. */
-  currentPeriodEnd: Date | null;
+  /** The tier on file, for {@link planToRecord}'s unmappable-price fallback. */
+  plan: PlanId | null;
 }> {
   const columns = {
     stripeSubscriptionId: true,
     subscriptionStatus: true,
-    currentPeriodEnd: true,
+    plan: true,
   } as const;
 
   const row =
@@ -380,7 +411,7 @@ export async function billingStateOf(owner: BillingOwner): Promise<{
   return {
     subscriptionId: row?.stripeSubscriptionId ?? null,
     status: row?.subscriptionStatus ?? null,
-    currentPeriodEnd: row?.currentPeriodEnd ?? null,
+    plan: row?.plan ?? null,
   };
 }
 

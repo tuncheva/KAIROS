@@ -3,17 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Plus, Zap } from "~/components/ui/icons";
+import { Plus } from "~/components/ui/icons";
 
-import { ProfileLink } from "~/components/profile/ProfileLink";
-import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { RadarFindings } from "./RadarFindings";
 import {
-  RING_DAY,
-  RING_TASKS,
-  dashOffset,
   dayFraction,
   headlineStats,
   momentum,
@@ -22,12 +17,15 @@ import {
   startOfDay,
   type CalendarTask,
   type Momentum,
-  type ProjectOwner,
   type ProjectStatusRow,
 } from "./dashboardData";
 
 /** Project detail lives behind the create flow — see `ProjectsWorkspace`. */
 const projectHref = (id: number) => `/projects?projectId=${id}`;
+
+/** The card shell shared by every panel on the page. */
+const CARD =
+  "overflow-hidden rounded-lg border border-tui-ink/12 bg-tui-pane shadow-[var(--tui-pane-shadow)]";
 
 type ActivityRow = {
   id: number;
@@ -78,8 +76,7 @@ function useEntrance(active: boolean): number {
 
 /**
  * Tweens a number toward its latest target. The entrance handles first paint,
- * so this starts settled and only animates the *changes* — finishing a task
- * sweeps the ring and counts the percent across instead of snapping.
+ * so this starts settled and only animates the *changes*.
  */
 function useTween(target: number, duration = 700): number {
   const [value, setValue] = useState(target);
@@ -121,18 +118,77 @@ function useTween(target: number, duration = 700): number {
 /** Blocks stage in on a shared curve; the delay is what separates them. */
 const rise = (delay: number) => ({ animationDelay: `${delay}s` });
 
+/** Health is a tone; it paints text and a dot, never a fill. */
+const HEALTH_TONE = {
+  onTrack: "text-tui-ok",
+  inProgress: "text-tui-warn",
+  atRisk: "text-tui-danger",
+  empty: "text-tui-ink3",
+} as const;
+
+const HEALTH_DOT = {
+  onTrack: "bg-tui-ok",
+  inProgress: "bg-tui-warn",
+  atRisk: "bg-tui-danger",
+  empty: "bg-tui-ink/30",
+} as const;
+
+/** A serif monogram in a bordered circle — the refined edition's avatar. */
+function Initial({ label, size = 26 }: { label: string; size?: number }) {
+  return (
+    <span
+      className="border-tui-ink/16 bg-tui-pane font-display text-tui-ink2 flex items-center justify-center rounded-full border"
+      style={{ width: size, height: size, fontSize: size * 0.5 }}
+    >
+      {label.trim().charAt(0).toUpperCase() || "?"}
+    </span>
+  );
+}
+
+/** The header row a card wears: a serif title, a caption, and an optional link. */
+function CardHead({
+  title,
+  meta,
+  actionLabel,
+  actionHref,
+}: {
+  title: string;
+  meta?: string;
+  actionLabel?: string;
+  actionHref?: string;
+}) {
+  return (
+    <div className="border-tui-ink/8 flex items-baseline gap-3 border-b px-7 pt-5 pb-4">
+      <h2 className="font-display text-tui-ink m-0 text-[22px] leading-none">
+        {title}
+      </h2>
+      {meta && <span className="text-tui-ink3 text-[12.5px]">{meta}</span>}
+      <span className="flex-1" />
+      {actionLabel && actionHref && (
+        <Link
+          href={actionHref}
+          className="text-tui-ink2 hover:text-tui-ink text-[13px] transition-colors"
+        >
+          {actionLabel} →
+        </Link>
+      )}
+    </div>
+  );
+}
+
 export function DashboardClient({ userName }: { userName: string | null }) {
   const t = useTranslations("dashboard");
   const locale = useLocale();
 
   const projectsQuery = api.project.getMyProjects.useQuery();
-  const activityQuery = api.task.getOrgActivity.useQuery({ limit: 6, scope: "all" });
+  const activityQuery = api.task.getOrgActivity.useQuery({
+    limit: 6,
+    scope: "all",
+  });
   const pulseQuery = api.progress.getPulse.useQuery(undefined, {
     refetchOnWindowFocus: false,
   });
 
-  // Wide enough to date the overdue pile — the stat line says how old the
-  // oldest one is, and a fortnight of slack keeps that honest.
   const range = useMemo(() => {
     const from = startOfDay(new Date());
     from.setDate(from.getDate() - 60);
@@ -144,7 +200,10 @@ export function DashboardClient({ userName }: { userName: string | null }) {
   const calendarQuery = api.task.getForCalendar.useQuery(range);
 
   const now = useMemo(() => new Date(), []);
-  const projects = useMemo(() => projectsQuery.data ?? [], [projectsQuery.data]);
+  const projects = useMemo(
+    () => projectsQuery.data ?? [],
+    [projectsQuery.data],
+  );
   const calendarTasks = useMemo<CalendarTask[]>(
     () => calendarQuery.data?.tasks ?? [],
     [calendarQuery.data],
@@ -159,8 +218,6 @@ export function DashboardClient({ userName }: { userName: string | null }) {
   );
   const team = pulseQuery.data?.team ?? [];
 
-  /* The two stat footnotes that are facts rather than restatements: how old the
-     oldest overdue task is, and how much of today is already ticked off. */
   const oldestOverdueDays = useMemo(() => {
     const today = startOfDay(now).getTime();
     let oldest = 0;
@@ -184,16 +241,17 @@ export function DashboardClient({ userName }: { userName: string | null }) {
   }, [calendarTasks, now]);
 
   const projectTitles = useMemo(
-    () => new Map(projects.map((project) => [project.id, project.title] as const)),
+    () =>
+      new Map(projects.map((project) => [project.id, project.title] as const)),
     [projects],
   );
 
-  const activity = ((activityQuery.data?.rows ?? []) as ActivityRow[]).slice(0, 5);
+  const activity = ((activityQuery.data?.rows ?? []) as ActivityRow[]).slice(
+    0,
+    5,
+  );
 
   const isLoading = projectsQuery.isLoading || calendarQuery.isLoading;
-
-  // First run is the state where there is nothing to lay out at all: no projects
-  // to summarise, so the populated grid would render as a page of zeroes.
   const isFirstRun = !isLoading && projects.length === 0;
 
   const p = useEntrance(!isLoading);
@@ -208,24 +266,40 @@ export function DashboardClient({ userName }: { userName: string | null }) {
   const greeting = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
   const firstName = (userName ?? "").trim().split(" ")[0] ?? "";
 
+  if (isLoading) return <BootScreen />;
   if (isFirstRun) {
-    return <FirstRun dayGone={dayGone} now={now} locale={locale} />;
+    return (
+      <div className="tui-screen min-h-full">
+        <FirstRun
+          dayGone={dayGone}
+          now={now}
+          locale={locale}
+          userName={userName}
+        />
+      </div>
+    );
   }
 
   return (
-    <div className="grid grid-cols-1 items-start xl:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="flex flex-col gap-8 px-4 pt-8 pb-11 sm:px-[34px] xl:border-r xl:border-border-light/60">
-        <div className="dash-rise flex flex-col gap-5" style={rise(0.05)}>
-          <header className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-quaternary">
+    <div className="tui-screen text-tui-ink min-h-full">
+      <div className="mx-auto grid max-w-[1440px] grid-cols-1 gap-6 px-4 pt-10 pb-12 sm:px-8 xl:grid-cols-[minmax(0,1fr)_380px]">
+        {/* Hero */}
+        <div className={`dash-rise ${CARD} xl:order-1`} style={rise(0.05)}>
+          <div className="flex flex-col gap-4 px-8 py-9 sm:px-10">
+            <span className="text-tui-ink3 text-[11px] font-medium tracking-[0.18em] uppercase">
               {dateLine}
             </span>
-            <h1 className="text-[28px] font-semibold leading-none tracking-[-0.028em] text-fg-primary sm:text-[34px]">
-              {firstName
-                ? t(`greeting.${greeting}`, { name: firstName })
-                : t(`greetingPlain.${greeting}`)}
+            <h1 className="font-display m-0 text-[40px] leading-[1.02] font-light tracking-[-0.02em] sm:text-[58px]">
+              {firstName ? (
+                <>
+                  {t(`greetingPlain.${greeting}`)},{" "}
+                  <span className="text-tui-accent italic">{firstName}.</span>
+                </>
+              ) : (
+                t(`greetingPlain.${greeting}`)
+              )}
             </h1>
-            <p className="max-w-3xl text-[15px] leading-[1.5] text-fg-tertiary">
+            <p className="text-tui-ink2 m-0 max-w-[640px] text-[16px] leading-[1.6] text-pretty">
               {stats.totalTasks === 0
                 ? t("summaryEmpty")
                 : t("summary", {
@@ -234,103 +308,157 @@ export function DashboardClient({ userName }: { userName: string | null }) {
                     projects: stats.projectCount,
                   })}
             </p>
-          </header>
-
-          <StatGrid
-            progress={p}
-            items={[
-              {
-                label: t("stats.dueToday"),
-                value: stats.dueToday,
-                note: doneToday > 0 ? t("stats.notes.doneToday", { count: doneToday }) : "",
-              },
-              {
-                label: t("stats.overdue"),
-                value: stats.overdue,
-                tone: "danger",
-                note:
-                  oldestOverdueDays > 0
-                    ? t("stats.notes.oldest", { days: oldestOverdueDays })
-                    : "",
-              },
-              {
-                label: t("stats.openThisWeek"),
-                value: stats.openThisWeek,
-                note: t("stats.notes.across", { count: stats.projectCount }),
-              },
-              {
-                label: t("stats.completed"),
-                value: stats.completed,
-                tone: "success",
-                note: t("stats.notes.allTime"),
-              },
-            ]}
-          />
+          </div>
         </div>
 
-        {/*
-          B-2/B-3. The radar sits directly under the headline, where the design
-          puts it: a finding that arrives with its fix already drafted is worth
-          reading before the work itself, which is the whole argument for
-          letting the assistant speak unprompted.
-        */}
-        <RadarFindings
-          className="dash-rise"
-          style={rise(0.12)}
-          now={now}
-          projectTitles={projectTitles}
-        />
-
-        <section className="dash-rise flex flex-col gap-3" style={rise(0.19)}>
-          <SectionHead
-            title={t("projectStatus.title")}
-            note={t("projectStatus.count", { count: rows.length })}
-            actionLabel={t("projectStatus.action")}
-            actionHref="/projects"
-          />
-          <ProjectStatusTable rows={rows} loading={isLoading} progress={p} locale={locale} />
-        </section>
-
-        {activity.length > 0 && (
-          <section className="dash-rise flex flex-col gap-3" style={rise(0.26)}>
-            <SectionHead
-              title={t("activity.title")}
-              actionLabel={t("activity.action")}
-              actionHref="/progress"
+        {/* Today */}
+        <div className={`dash-rise ${CARD} xl:order-2`} style={rise(0.1)}>
+          <div className="flex flex-col gap-3.5 px-7 py-6">
+            <span className="font-display text-[21px] capitalize">
+              {t("tui.today")}
+            </span>
+            <TodayStat
+              label={t("stats.dueToday")}
+              value={stats.dueToday}
+              note={
+                doneToday > 0
+                  ? t("stats.notes.doneToday", { count: doneToday })
+                  : ""
+              }
+              progress={p}
             />
-            <div className="flex flex-col">
+            <TodayStat
+              label={t("stats.overdue")}
+              value={stats.overdue}
+              tone="danger"
+              note={
+                oldestOverdueDays > 0
+                  ? t("stats.notes.oldest", { days: oldestOverdueDays })
+                  : ""
+              }
+              progress={p}
+            />
+            <TodayStat
+              label={t("stats.openThisWeek")}
+              value={stats.openThisWeek}
+              note={t("stats.notes.across", { count: stats.projectCount })}
+              progress={p}
+            />
+            <TodayStat
+              label={t("stats.completed")}
+              value={stats.completed}
+              tone="ok"
+              note={t("stats.notes.allTime")}
+              progress={p}
+            />
+          </div>
+        </div>
+
+        {/* Left column */}
+        <div className="flex min-w-0 flex-col gap-6 xl:order-3">
+          <RadarFindings
+            className="dash-rise"
+            style={rise(0.16)}
+            now={now}
+            projectTitles={projectTitles}
+          />
+
+          <section className={`dash-rise ${CARD}`} style={rise(0.22)}>
+            <CardHead
+              title={t("projectStatus.title")}
+              meta={t("projectStatus.count", { count: rows.length })}
+              actionLabel={t("projectStatus.action")}
+              actionHref="/projects"
+            />
+            <ProjectStatusTable rows={rows} progress={p} locale={locale} />
+          </section>
+
+          {activity.length > 0 && (
+            <section className={`dash-rise ${CARD}`} style={rise(0.28)}>
+              <CardHead
+                title={t("activity.title")}
+                actionLabel={t("activity.action")}
+                actionHref="/progress"
+              />
               {activity.map((row) => (
                 <ActivityItem key={row.id} row={row} now={now} />
               ))}
-            </div>
-          </section>
-        )}
+            </section>
+          )}
+        </div>
+
+        {/* Right column */}
+        <div className="flex flex-col gap-6 xl:order-4">
+          <WorkspaceRing
+            progress={p}
+            percent={stats.percent}
+            completed={stats.completed}
+            total={stats.totalTasks}
+            inProgress={stats.inProgress}
+            todo={stats.todo}
+            dayGone={dayGone}
+          />
+          <MomentumCard momentum={pace} locale={locale} />
+          <TeamToday members={team} now={now} />
+        </div>
       </div>
-
-      <aside className="dash-fade flex flex-col gap-[30px] px-4 pt-8 pb-11 sm:px-[26px]" style={rise(0.1)}>
-        <WorkspaceRing
-          progress={p}
-          percent={stats.percent}
-          completed={stats.completed}
-          total={stats.totalTasks}
-          inProgress={stats.inProgress}
-          todo={stats.todo}
-          dayGone={dayGone}
-        />
-
-        <MomentumCard momentum={pace} />
-
-        <TeamToday members={team} loading={pulseQuery.isLoading} now={now} />
-      </aside>
     </div>
   );
 }
 
-/**
- * The workspace ring: completion on the outer arc, the day itself on the thin
- * inner one. Two unrelated readings share the space because they answer the
- * same question — how much is left.
- */
+/** One dotted-leader stat: label · note · big serif number. */
+function TodayStat({
+  label,
+  value,
+  note,
+  tone,
+  progress,
+}: {
+  label: string;
+  value: number;
+  note: string;
+  tone?: "danger" | "ok";
+  progress: number;
+}) {
+  const shown = useTween(value);
+  const toneClass =
+    tone === "danger"
+      ? "text-tui-danger"
+      : tone === "ok"
+        ? "text-tui-ok"
+        : "text-tui-ink";
+
+  return (
+    <div className="flex items-baseline gap-2.5 text-[14px]">
+      <span className="text-tui-ink2">{label}</span>
+      <span className="border-tui-ink/16 flex-1 -translate-y-1 border-b border-dotted" />
+      {note && <span className="text-tui-ink3 text-[12px]">{note}</span>}
+      <span
+        className={`font-display min-w-[34px] text-right text-[26px] leading-none tabular-nums ${toneClass}`}
+      >
+        {Math.round(shown * progress)}
+      </span>
+    </div>
+  );
+}
+
+const RING_CX = 120;
+type Seg = { x1: number; y1: number; x2: number; y2: number; lit: boolean };
+
+function ringSegments(n: number, r1: number, r2: number, frac: number): Seg[] {
+  return Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+    return {
+      x1: RING_CX + Math.cos(a) * r1,
+      y1: RING_CX + Math.sin(a) * r1,
+      x2: RING_CX + Math.cos(a) * r2,
+      y2: RING_CX + Math.sin(a) * r2,
+      lit: (i + 0.5) / n < frac,
+    };
+  });
+}
+
+/** Completion on the outer ring, the day on the thin inner one — fine segments. */
 function WorkspaceRing({
   progress,
   percent,
@@ -349,122 +477,138 @@ function WorkspaceRing({
   dayGone: number;
 }) {
   const t = useTranslations("dashboard");
-  // The entrance sweeps from zero via `progress`; afterwards the tween is what
-  // carries the ring and the number to a new completion figure.
   const shown = useTween(percent);
+  const outer = ringSegments(120, 102, 114, (shown / 100) * progress);
+  const inner = total > 0 ? ringSegments(60, 88, 93, dayGone * progress) : [];
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex items-baseline justify-between">
-        <span className="text-[13px] font-semibold text-fg-secondary">{t("workspace.title")}</span>
-        <span className="font-mono text-[11px] text-fg-quaternary">
-          {completed} / {total}
-        </span>
-      </div>
-
-      <div className="relative h-[196px] w-[196px] self-center">
-        <svg viewBox="0 0 196 196" className="block h-[196px] w-[196px]">
-          <circle
-            cx="98"
-            cy="98"
-            r="82"
-            fill="none"
-            strokeWidth="12"
-            className="stroke-border-light/70"
-          />
-          <circle
-            cx="98"
-            cy="98"
-            r="82"
-            fill="none"
-            strokeWidth="12"
-            strokeLinecap="round"
-            strokeDasharray={RING_TASKS}
-            strokeDashoffset={dashOffset(RING_TASKS, shown / 100, progress)}
-            transform="rotate(-90 98 98)"
-            className="stroke-accent-primary"
-          />
-          {/* The day ring is only legible next to the task ring. With no tasks
-              the outer arc is empty, and this inner one — which tracks the
-              clock, not the work — became the only arc on the card, reading as
-              though the workspace were three-quarters done at 0%. Drop both it
-              and its track in that case. */}
-          {total > 0 && (
-            <>
-              <circle
-                cx="98"
-                cy="98"
-                r="62"
-                fill="none"
-                strokeWidth="4"
-                className="stroke-border-light/50"
-              />
-              <circle
-                cx="98"
-                cy="98"
-                r="62"
-                fill="none"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeDasharray={RING_DAY}
-                strokeDashoffset={dashOffset(RING_DAY, dayGone, progress)}
-                transform="rotate(-90 98 98)"
-                className="stroke-dash-day"
-              />
-            </>
-          )}
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
-          <span className="text-[42px] font-semibold tabular-nums tracking-[-0.03em] text-fg-primary">
-            {Math.round(shown * progress)}%
+    <section className={`dash-fade ${CARD}`} style={rise(0.12)}>
+      <div className="flex flex-col gap-[18px] px-7 pt-6 pb-6">
+        <div className="flex items-baseline">
+          <span className="font-display text-[21px]">
+            {t("workspace.title")}
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary">
-            {t("workspace.ofTasksDone")}
+          <span className="flex-1" />
+          <span className="text-tui-ink3 text-[12.5px]">
+            {completed} / {total}
           </span>
         </div>
-      </div>
 
-      <div className="flex flex-wrap gap-3.5 font-mono text-[10px] uppercase tracking-[0.1em] text-fg-quaternary">
-        <span className="flex items-center gap-[7px] text-fg-tertiary">
-          <span className="h-2 w-2 rounded-full bg-dash-day" aria-hidden />
-          {t("workspace.dayGone", { percent: Math.round(dayGone * 100) })}
-        </span>
-        <span className="text-success">{t("workspace.done", { count: completed })}</span>
-        <span className="text-warning">{t("workspace.active", { count: inProgress })}</span>
-        <span>{t("workspace.todo", { count: todo })}</span>
+        <div className="relative mx-auto h-[240px] w-[240px]">
+          <svg viewBox="0 0 240 240" width="240" height="240" className="block">
+            {outer.map((s, i) => (
+              <line
+                key={`o${i}`}
+                x1={s.x1}
+                y1={s.y1}
+                x2={s.x2}
+                y2={s.y2}
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                className={s.lit ? "stroke-tui-accent" : "stroke-tui-ink/16"}
+              />
+            ))}
+            {inner.map((s, i) => (
+              <line
+                key={`i${i}`}
+                x1={s.x1}
+                y1={s.y1}
+                x2={s.x2}
+                y2={s.y2}
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                className={s.lit ? "stroke-tui-day" : "stroke-tui-ink/12"}
+              />
+            ))}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+            <span className="font-display text-tui-ok text-[60px] leading-none font-light tracking-[-0.03em] tabular-nums">
+              {Math.round(shown * progress)}
+              <span className="text-[26px]">%</span>
+            </span>
+            <span className="text-tui-ink3 text-[12.5px]">
+              {t("workspace.ofTasksDone")}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2.5 text-[14px]">
+          <RingLegend
+            dot="bg-tui-accent"
+            label={t("workspace.doneLabel")}
+            value={completed}
+          />
+          <RingLegend
+            dot="bg-tui-warn"
+            label={t("workspace.activeLabel")}
+            value={inProgress}
+          />
+          <RingLegend
+            dot="bg-tui-ink/25"
+            label={t("workspace.todoLabel")}
+            value={todo}
+          />
+          <RingLegend
+            dot="bg-tui-day"
+            label={t("workspace.dayGoneLabel")}
+            value={`${Math.round(dayGone * 100)}%`}
+          />
+        </div>
       </div>
     </section>
   );
 }
 
-/**
- * Your momentum: a fortnight of finished work as bars, the streak that runs
- * through it, and the week-on-week pace.
- *
- * It answers a question the rest of the page cannot: the rings and the tables
- * are all about what is left, and none of them ever say that you are getting
- * through it.
- */
-function MomentumCard({ momentum: data }: { momentum: Momentum }) {
+function RingLegend({
+  dot,
+  label,
+  value,
+}: {
+  dot: string;
+  label: string;
+  value: number | string;
+}) {
+  return (
+    <div className="flex items-baseline gap-2.5">
+      <span
+        className={`h-2 w-2 -translate-y-px rounded-full ${dot}`}
+        aria-hidden
+      />
+      <span className="text-tui-ink2">{label}</span>
+      <span className="border-tui-ink/16 flex-1 -translate-y-1 border-b border-dotted" />
+      <span className="font-display text-[19px] tabular-nums">{value}</span>
+    </div>
+  );
+}
+
+/** A fortnight of finished work as soft bars, the streak, and the pace. */
+function MomentumCard({
+  momentum: data,
+  locale,
+}: {
+  momentum: Momentum;
+  locale: string;
+}) {
   const t = useTranslations("dashboard");
   const max = Math.max(1, ...data.bars.map((day) => day.count));
   const last = data.bars.length - 1;
+  const dayMonth = (d: Date) =>
+    new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(
+      d,
+    );
 
   return (
-    <section className="flex flex-col gap-3">
-      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-quaternary">
-        {t("momentum.title")}
-      </span>
-      <div className="flex flex-col gap-3.5 rounded-xl border border-border-light/60 bg-bg-elevated p-[18px]">
-        <div className="flex items-center gap-2.5">
-          <Zap size={16} className="text-warning" aria-hidden />
-          <span className="text-sm font-semibold text-fg-primary">
-            {data.streak > 0 ? t("momentum.streak", { count: data.streak }) : t("momentum.noStreak")}
+    <section className={`dash-fade ${CARD}`} style={rise(0.18)}>
+      <div className="flex flex-col gap-4 px-7 py-6">
+        <div className="flex items-baseline">
+          <span className="font-display text-[21px]">
+            {t("momentum.title")}
           </span>
+          <span className="flex-1" />
           {data.pace !== null && (
             <span
-              className={`ml-auto font-mono text-[11px] ${
-                data.pace < 0 ? "text-fg-quaternary" : "text-success"
+              className={`text-[12.5px] font-semibold ${
+                data.pace < 0 ? "text-tui-ink3" : "text-tui-ok"
               }`}
             >
               {data.pace > 0 ? "+" : ""}
@@ -473,23 +617,31 @@ function MomentumCard({ momentum: data }: { momentum: Momentum }) {
           )}
         </div>
 
-        <div className="flex h-11 items-end gap-1.5" aria-hidden>
+        <span className="font-display text-[34px] leading-none font-light">
+          {data.streak > 0
+            ? t("momentum.streak", { count: data.streak })
+            : t("momentum.noStreak")}
+        </span>
+
+        <div className="flex h-16 items-end gap-[7px]" aria-hidden>
           {data.bars.map((day, index) => (
             <span
               key={day.date.toISOString()}
-              className={`flex-1 rounded-sm ${
-                day.count === 0
-                  ? "bg-border-light/60"
-                  : index >= last - 1
-                    ? "bg-accent-primary"
-                    : "bg-accent-primary/35"
+              className={`flex-1 rounded-[3px] ${
+                index >= last - 1 ? "bg-tui-accent" : "bg-tui-accent/[0.32]"
               }`}
-              style={{ height: `${Math.max(4, Math.round((day.count / max) * 40))}px` }}
+              style={{
+                height: `${Math.max(4, Math.round((day.count / max) * 64))}px`,
+              }}
             />
           ))}
         </div>
 
-        <span className="text-xs leading-[1.5] text-fg-tertiary">
+        <div className="text-tui-ink3 flex justify-between text-[12px]">
+          <span>{data.bars[0] ? dayMonth(data.bars[0].date) : ""}</span>
+          <span className="capitalize">{t("tui.today")}</span>
+        </div>
+        <span className="text-tui-ink2 text-[13.5px] leading-[1.6]">
           {t("momentum.line", { total: data.total, today: data.today })}
         </span>
       </div>
@@ -508,436 +660,124 @@ type TeamMember = {
 };
 
 /** Who is carrying what, right now. Heaviest load first. */
-function TeamToday({
-  members,
-  loading,
-  now,
-}: {
-  members: TeamMember[];
-  loading: boolean;
-  now: Date;
-}) {
+function TeamToday({ members, now }: { members: TeamMember[]; now: Date }) {
   const t = useTranslations("dashboard");
   const shown = members.slice(0, 5);
 
   return (
-    <section className="flex flex-col gap-3">
-      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-quaternary">
-        {t("teamToday.title")}
-      </span>
-      {loading ? (
-        <SkeletonRows rows={3} />
-      ) : shown.length === 0 ? (
-        <p className="text-[13px] text-fg-tertiary">{t("teamToday.empty")}</p>
-      ) : (
-        <div className="flex flex-col">
-          {shown.map((member) => {
-            const who = member.name ?? member.email ?? t("activity.someone");
-            const ago = relativeShort(member.lastActiveAt, now);
+    <section className={`dash-fade ${CARD}`} style={rise(0.24)}>
+      <div className="px-7 pt-6 pb-3">
+        <span className="font-display text-[21px]">{t("teamToday.title")}</span>
+        {shown.length === 0 ? (
+          <p className="text-tui-ink2 pt-3 text-[13px]">
+            {t("teamToday.empty")}
+          </p>
+        ) : (
+          <div className="mt-2 flex flex-col">
+            {shown.map((member) => {
+              const who = member.name ?? member.email ?? t("activity.someone");
+              const ago = relativeShort(member.lastActiveAt, now);
+              const active = ago === "now" || (!!ago && ago.endsWith("m"));
+              const dot =
+                member.overdue > 0
+                  ? "bg-tui-danger"
+                  : active
+                    ? "bg-tui-ok"
+                    : "bg-tui-warn";
 
-            return (
-              <div
-                key={member.id}
-                className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3 border-b border-border-light/50 px-0.5 py-[11px]"
-              >
-                <ProfileLink userId={member.id} name={member.name}>
-                  <span
-                    style={avatarGradientStyle(member.id)}
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold text-white"
-                  >
-                    {who.trim().charAt(0).toUpperCase() || "?"}
-                  </span>
-                </ProfileLink>
-                <span className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate text-[13px] font-medium text-fg-primary">
-                    {member.isSelf ? t("teamToday.you", { name: who }) : who}
-                  </span>
-                  <span className="font-mono text-[10px] text-fg-quaternary">
-                    {ago ? t("teamToday.active", { ago }) : t("teamToday.neverActive")}
-                  </span>
-                </span>
-                <span
-                  className={`font-mono text-[11px] ${
-                    member.overdue > 0
-                      ? "text-error"
-                      : member.open === 0
-                        ? "text-fg-quaternary"
-                        : "text-fg-secondary"
-                  }`}
+              return (
+                <div
+                  key={member.id}
+                  className="border-tui-ink/8 grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 border-t py-[11px] first:border-t-0"
                 >
-                  {t("teamToday.open", { count: member.open })}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                  <Initial label={who} size={32} />
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-tui-ink truncate text-[14px] font-medium">
+                      {member.isSelf ? t("teamToday.you", { name: who }) : who}
+                    </span>
+                    <span className="text-tui-ink3 flex items-center gap-1.5 text-[12.5px]">
+                      <span
+                        className={`h-[5px] w-[5px] rounded-full ${dot}`}
+                        aria-hidden
+                      />
+                      {ago
+                        ? t("teamToday.active", { ago })
+                        : t("teamToday.neverActive")}
+                    </span>
+                  </span>
+                  <span
+                    className={`text-[13.5px] font-semibold ${
+                      member.overdue > 0 ? "text-tui-danger" : "text-tui-ink"
+                    }`}
+                  >
+                    {t("teamToday.open", { count: member.open })}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
 
-/**
- * First run: no projects at all. The populated grid would be a page of zeroes,
- * so this says what to do instead — and the day arc still runs, which is the
- * point the design makes about an empty dashboard.
- */
-const TAU = Math.PI * 2;
-/** One tick per hour of the day, drawn round the outer ring. */
-const HOUR_TICKS = Array.from({ length: 24 }, (_, hour) => hour);
+const TABLE_GRID =
+  "grid grid-cols-[minmax(0,1fr)_90px_50px_64px_minmax(0,190px)_52px_110px] items-center gap-4";
 
-function FirstRun({
-  dayGone,
-  now,
-  locale,
-}: {
-  dayGone: number;
-  now: Date;
-  locale: string;
-}) {
-  const t = useTranslations("dashboard");
-  const toast = useToast();
-  const utils = api.useUtils();
-  const [code, setCode] = useState("");
-  const p = useEntrance(true);
-
-  const join = api.organization.join.useMutation({
-    onSuccess: async () => {
-      setCode("");
-      toast.success(t("firstRun.joined"));
-      await Promise.all([
-        utils.organization.invalidate(),
-        utils.project.getMyProjects.invalidate(),
-      ]);
-    },
-    onError: (error) => toast.error(error.message),
-  });
-
-  const timeLeft = new Intl.DateTimeFormat(locale, {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(now);
-
-  return (
-    <div className="grid min-h-[760px] grid-cols-1 items-stretch xl:grid-cols-[minmax(0,1fr)_392px]">
-      <div className="flex flex-col justify-center gap-9 px-6 py-16 sm:px-16 sm:py-24 xl:border-r xl:border-border-light/60">
-        <div className="dash-rise" style={rise(0.08)}>
-          <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-dash-day">
-            {t("firstRun.tag")}
-          </div>
-          <h1 className="mt-4 max-w-[620px] text-[34px] font-semibold leading-[1.08] tracking-[-0.03em] text-fg-primary sm:text-[46px]">
-            {t("firstRun.title")}
-          </h1>
-          <p className="mt-3.5 max-w-[520px] text-[17px] leading-[1.6] text-fg-tertiary">
-            {t("firstRun.body")}
-          </p>
-        </div>
-
-        <div className="dash-rise flex flex-wrap items-center gap-3.5" style={rise(0.18)}>
-          <Link
-            href="/projects?new=1"
-            className="flex items-center gap-2.5 rounded-md bg-accent-primary px-[22px] py-[15px] text-[15px] font-semibold text-white transition-all duration-[350ms] hover:-translate-y-0.5 hover:bg-accent-hover"
-          >
-            <Plus size={17} />
-            {t("firstRun.createProject")}
-          </Link>
-
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-quaternary">
-            {t("firstRun.or")}
-          </span>
-
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              const trimmed = code.trim();
-              if (trimmed) join.mutate({ code: trimmed });
-            }}
-            className="flex items-stretch overflow-hidden rounded-md border border-border-medium/70 transition-colors duration-[350ms] focus-within:border-dash-day/60 hover:border-dash-day/60"
-          >
-            <input
-              value={code}
-              onChange={(event) => setCode(event.target.value.toUpperCase())}
-              aria-label={t("firstRun.codeLabel")}
-              placeholder={t("firstRun.codePlaceholder")}
-              className="w-[150px] bg-transparent px-4 py-3.5 font-mono text-[13px] tracking-[0.22em] text-fg-primary outline-none placeholder:text-fg-quaternary"
-            />
-            <span className="w-px self-stretch bg-border-medium/70" aria-hidden />
-            <button
-              type="submit"
-              disabled={join.isPending || code.trim().length === 0}
-              className="px-[18px] py-3.5 text-sm font-semibold text-dash-day transition-opacity disabled:opacity-50"
-            >
-              {t("firstRun.joinCode")}
-            </button>
-          </form>
-        </div>
-
-        <div className="dash-rise flex flex-wrap gap-[34px]" style={rise(0.28)}>
-          {(["step1", "step2", "step3"] as const).map((step, index) => (
-            <div key={step} className="max-w-[210px]">
-              <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary">
-                {String(index + 1).padStart(2, "0")}
-              </div>
-              <div className="mt-2 text-sm leading-[1.55] text-fg-tertiary">
-                {t(`firstRun.${step}`)}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Weighted upward rather than centred on the column: the caption hangs
-          below the dial, so a block centred on its own bounding box reads as
-          sitting low. The extra bottom padding lifts the optical centre. */}
-      <aside className="flex flex-col items-center justify-center gap-[22px] px-8 pt-12 pb-28 sm:pt-16 sm:pb-40">
-        <div className="dash-fade relative h-[200px] w-[200px]" style={rise(0.3)}>
-          <svg viewBox="0 0 200 200" className="block h-[200px] w-[200px]">
-            {/* Twenty-four ticks, one per hour, with the quarters of the day
-                drawn longer. The ring used to be a `stroke-dasharray` of no
-                particular count — decorative hatching that happened to look
-                like a dial. Hours cost the same to draw and make the caption
-                ("the inner arc tracks the day itself") true of the outer ring
-                as well: the hours behind you are tinted, the ones ahead are
-                not, so the dial can be read at a glance without the number.
-
-                Tinted from `dayGone` rather than the entrance tween, so the
-                ticks state a fact while only the arc animates in. */}
-            {HOUR_TICKS.map((hour) => {
-              const angle = (hour / 24) * TAU - Math.PI / 2;
-              const quarter = hour % 6 === 0;
-              const inner = quarter ? 76 : 80;
-              return (
-                <line
-                  key={hour}
-                  x1={100 + Math.cos(angle) * inner}
-                  y1={100 + Math.sin(angle) * inner}
-                  x2={100 + Math.cos(angle) * 88}
-                  y2={100 + Math.sin(angle) * 88}
-                  strokeWidth={quarter ? 2 : 1.5}
-                  strokeLinecap="round"
-                  className={
-                    hour / 24 < dayGone ? "stroke-dash-day/45" : "stroke-border-light/50"
-                  }
-                />
-              );
-            })}
-
-            {/* The track the arc runs on. Without it the arc was a crescent
-                floating in the middle of the dial, with nothing to say how far
-                round it had left to go. */}
-            <circle
-              cx="100"
-              cy="100"
-              r="62"
-              fill="none"
-              strokeWidth="4"
-              className="stroke-border-light/30"
-            />
-            <circle
-              cx="100"
-              cy="100"
-              r="62"
-              fill="none"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeDasharray={RING_DAY}
-              strokeDashoffset={dashOffset(RING_DAY, dayGone, p)}
-              transform="rotate(-90 100 100)"
-              className="stroke-dash-day"
-            />
-            {/* The head of the arc — where "now" actually is. */}
-            <circle
-              cx={100 + Math.cos(dayGone * p * TAU - Math.PI / 2) * 62}
-              cy={100 + Math.sin(dayGone * p * TAU - Math.PI / 2) * 62}
-              r="3.5"
-              className="fill-dash-day"
-            />
-          </svg>
-          {/* Number over caption, the same shape as `WorkspaceRing` above.
-
-              As one line it did not fit the dial it sits in: "47% OF TODAY
-              GONE" at 11px with 0.14em tracking measures ~150px, against an
-              inner arc of 124px across and a tick ring whose inner edge is at
-              152px. So the label spilled out of the arc and collided with the
-              ticks at both ends. Split, the widest line is the caption at
-              ~95px, which clears the arc with room on either side. */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
-            <span
-              aria-hidden="true"
-              className="text-[34px] leading-none font-semibold tabular-nums tracking-[-0.03em] text-fg-primary"
-            >
-              {Math.round(dayGone * 100)}%
-            </span>
-            <span
-              aria-hidden="true"
-              className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary"
-            >
-              {t("workspace.ofTodayGone")}
-            </span>
-            {/* Split for layout, read back whole: the two spans above are one
-                sentence, and announcing "47 percent" and "of today gone" as
-                separate stops is worse than either. */}
-            <span className="sr-only">
-              {t("workspace.dayGone", { percent: Math.round(dayGone * 100) })}
-            </span>
-            <span className="mt-1.5 text-[13px] font-semibold tabular-nums text-fg-tertiary">
-              {timeLeft}
-            </span>
-          </div>
-        </div>
-        <p className="max-w-[250px] text-center text-sm leading-[1.6] text-fg-quaternary">
-          {t("firstRun.aside")}
-        </p>
-      </aside>
-    </div>
-  );
-}
-
-function StatGrid({
-  items,
-  progress,
-}: {
-  items: { label: string; value: number; note: string; tone?: "danger" | "success" }[];
-  progress: number;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border-light/60 bg-border-light/60 sm:grid-cols-4">
-      {items.map((item) => (
-        <StatCell key={item.label} item={item} progress={progress} />
-      ))}
-    </div>
-  );
-}
-
-function StatCell({
-  item,
-  progress,
-}: {
-  item: { label: string; value: number; note: string; tone?: "danger" | "success" };
-  progress: number;
-}) {
-  const shown = useTween(item.value);
-
-  return (
-    <div className="flex flex-col gap-2 bg-bg-elevated px-[18px] py-4 transition-colors duration-[350ms] hover:bg-bg-tertiary">
-      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary">
-        {item.label}
-      </span>
-      <div className="flex items-baseline gap-[9px]">
-        <span
-          className={`text-[27px] font-semibold tabular-nums tracking-[-0.02em] ${
-            item.value === 0
-              ? "text-fg-primary"
-              : item.tone === "danger"
-                ? "text-error"
-                : item.tone === "success"
-                  ? "text-success"
-                  : "text-fg-primary"
-          }`}
-        >
-          {Math.round(shown * progress)}
-        </span>
-        {item.note && (
-          <span className="truncate font-mono text-[11px] text-fg-quaternary">{item.note}</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function SectionHead({
-  title,
-  note,
-  actionLabel,
-  actionHref,
-}: {
-  title: string;
-  note?: string;
-  actionLabel: string;
-  actionHref: string;
-}) {
-  return (
-    <div className="flex items-baseline gap-3">
-      <h2 className="m-0 min-w-0 truncate text-base font-semibold tracking-[-0.012em] text-fg-primary">{title}</h2>
-      {note && <span className="shrink-0 font-mono text-[11px] text-fg-quaternary">{note}</span>}
-      <span className="flex-1" />
-      <Link
-        href={actionHref}
-        className="shrink-0 whitespace-nowrap text-[13px] text-fg-tertiary transition-colors hover:text-fg-primary"
-      >
-        {actionLabel}
-      </Link>
-    </div>
-  );
-}
-
-/** Health is a text reading only — no fill, so a late project is not an alarm. */
-const HEALTH_TEXT = {
-  onTrack: "text-success",
-  inProgress: "text-warning",
-  atRisk: "text-error",
-  empty: "text-fg-quaternary",
-} as const;
-
-/** The completion bar takes the same reading, because it is the same fact. */
-const HEALTH_BAR = {
-  onTrack: "bg-accent-primary",
-  inProgress: "bg-warning",
-  atRisk: "bg-error",
-  empty: "bg-border-light",
-} as const;
-
-/**
- * Project status: six readings of every project in one row.
- *
- * The rail of cards this replaces could only show two of them, so "which
- * project is late, and who is on it" meant opening each one in turn.
- */
-const TABLE_COLUMNS =
-  "grid-cols-[minmax(0,1fr)_78px_56px] sm:grid-cols-[minmax(0,1fr)_96px_78px_78px] lg:grid-cols-[minmax(0,1fr)_96px_78px_78px_190px_56px]";
-
+/** Project status: eight readings of every project in one row. */
 function ProjectStatusTable({
   rows,
-  loading,
   progress,
   locale,
 }: {
   rows: ProjectStatusRow[];
-  loading: boolean;
   progress: number;
   locale: string;
 }) {
   const t = useTranslations("dashboard");
 
-  if (loading) return <SkeletonRows rows={4} />;
-
   if (rows.length === 0) {
     return (
-      <Link
-        href="/projects?new=1"
-        className="flex items-center gap-2 rounded-md border border-dashed border-border-light/70 px-4 py-5 text-sm text-fg-tertiary transition-colors hover:border-accent-primary/50 hover:text-fg-primary"
-      >
-        <Plus size={16} />
-        {t("projects.empty")}
-      </Link>
+      <div className="px-7 py-6">
+        <Link
+          href="/projects?new=1"
+          className="border-tui-ink/16 text-tui-ink2 hover:border-tui-accent/50 hover:text-tui-ink flex items-center gap-2 rounded-lg border border-dashed px-4 py-5 text-[13px] transition-colors"
+        >
+          <Plus size={16} />
+          {t("projects.empty")}
+        </Link>
+      </div>
     );
   }
 
   return (
-    <div className="flex flex-col">
-      <div
-        className={`grid ${TABLE_COLUMNS} items-center gap-4 border-b border-border-light/60 px-1 pb-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-fg-quaternary`}
-      >
-        <span>{t("projectStatus.columns.project")}</span>
-        <span className="hidden sm:block">{t("projectStatus.columns.team")}</span>
-        <span className="text-right">{t("projectStatus.columns.open")}</span>
-        <span className="hidden text-right sm:block">{t("projectStatus.columns.overdue")}</span>
-        <span className="hidden lg:block">{t("projectStatus.columns.completion")}</span>
-        <span className="text-right">{t("projectStatus.columns.health")}</span>
+    <div className="overflow-x-auto">
+      <div className="min-w-[720px]">
+        <div
+          className={`${TABLE_GRID} border-tui-ink/8 text-tui-ink3 border-b px-7 py-3 text-[11px] font-medium tracking-[0.14em] uppercase`}
+        >
+          <span>{t("projectStatus.columns.project")}</span>
+          <span>{t("projectStatus.columns.team")}</span>
+          <span className="text-right">{t("projectStatus.columns.open")}</span>
+          <span className="text-right">
+            {t("projectStatus.columns.overdue")}
+          </span>
+          <span>{t("projectStatus.columns.completion")}</span>
+          <span className="text-right">%</span>
+          <span className="text-right">
+            {t("projectStatus.columns.health")}
+          </span>
+        </div>
+        {rows.map((row) => (
+          <ProjectStatusRowView
+            key={row.id}
+            row={row}
+            progress={progress}
+            locale={locale}
+          />
+        ))}
       </div>
-
-      {rows.map((row) => (
-        <ProjectStatusRowView key={row.id} row={row} progress={progress} locale={locale} />
-      ))}
     </div>
   );
 }
@@ -956,104 +796,66 @@ function ProjectStatusRowView({
   const percent = Math.round(shown * progress);
 
   return (
-    /* The row is a plain grid with the title carrying the link, stretched over
-       the whole row by its own overlay. Wrapping the row in the anchor instead
-       would have put the avatars' profile buttons inside it, which is invalid
-       HTML — and the avatars have their own job to do on a click. */
     <div
-      className={`group relative grid ${TABLE_COLUMNS} items-center gap-4 border-b border-border-light/40 px-1 py-3.5 transition-colors duration-[350ms] hover:bg-accent-primary/[0.06]`}
+      className={`group relative ${TABLE_GRID} border-tui-ink/8 hover:bg-tui-accent/[0.05] border-b px-7 py-4 text-[14px] transition-colors last:border-b-0`}
     >
-      <span className="flex min-w-0 flex-col gap-1">
+      <span className="flex min-w-0 flex-col gap-0.5">
         <Link
           href={projectHref(row.id)}
-          className="truncate text-sm font-semibold text-fg-primary after:absolute after:inset-0 after:content-['']"
+          className="font-display truncate text-[19px] after:absolute after:inset-0 after:content-['']"
         >
           {(row.title?.trim() ?? "") || t("projects.untitled")}
         </Link>
-        <span className="font-mono text-[10px] text-fg-quaternary">
+        <span className="text-tui-ink3 truncate text-[12.5px]">
           {row.endsAt
             ? t("projectStatus.ends", {
-                date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(
-                  row.endsAt,
-                ),
+                date: new Intl.DateTimeFormat(locale, {
+                  day: "numeric",
+                  month: "short",
+                }).format(row.endsAt),
               })
             : t("projectStatus.noDate")}
         </span>
       </span>
-
-      {/* Above the row overlay, so a face opens the person and not the project. */}
-      <span className="relative z-10 hidden items-center sm:flex">
-        <OwnerStack owners={row.owners} />
+      <span className="relative z-10 flex">
+        {row.owners.slice(0, 3).map((owner) => (
+          <span key={owner.id} className="-mr-1.5">
+            <Initial label={owner.name ?? "?"} />
+          </span>
+        ))}
+        {row.owners.length === 0 && <Initial label="—" />}
       </span>
-
-      <span className="text-right font-mono text-[13px] tabular-nums text-fg-secondary">
-        {row.open}
-      </span>
-
+      <span className="text-tui-ink2 text-right tabular-nums">{row.open}</span>
       <span
-        className={`hidden text-right font-mono text-[13px] tabular-nums sm:block ${
-          row.overdue > 0 ? "text-error" : "text-fg-quaternary"
-        }`}
+        className={`text-right tabular-nums ${row.overdue > 0 ? "text-tui-danger" : "text-tui-ink3"}`}
       >
         {row.overdue}
       </span>
-
-      <span className="hidden items-center gap-[11px] lg:flex">
-        <span className="h-1.5 flex-1 overflow-hidden rounded-sm bg-border-light/70">
-          <span
-            className={`block h-full rounded-sm ${HEALTH_BAR[row.health]}`}
-            style={{ width: `${percent}%` }}
-          />
-        </span>
-        <span className="w-8 text-right font-mono text-[11px] tabular-nums text-fg-tertiary">
-          {percent}%
-        </span>
+      <span className="bg-tui-ink/12 relative h-[3px] overflow-hidden rounded-sm">
+        <span
+          className="bg-tui-accent absolute inset-y-0 left-0 rounded-sm"
+          style={{ width: `${percent}%` }}
+        />
       </span>
-
       <span
-        className={`text-right font-mono text-[10px] uppercase tracking-[0.1em] ${HEALTH_TEXT[row.health]}`}
+        className={`text-right font-semibold tabular-nums ${HEALTH_TONE[row.health]}`}
       >
+        {percent}%
+      </span>
+      <span className="text-tui-ink2 flex items-center justify-end gap-2 text-[13px]">
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${HEALTH_DOT[row.health]}`}
+          aria-hidden
+        />
         {t(`projects.health.${row.health}`)}
       </span>
     </div>
   );
 }
 
-/**
- * Up to three overlapping avatars, then a count for the rest.
- *
- * Each face opens that person's profile in the app-wide drawer rather than
- * following the row's link to the project — `ProfileLink` stops the click from
- * doing both.
- */
-function OwnerStack({ owners }: { owners: ProjectOwner[] }) {
-  const shown = owners.slice(0, 3);
-  const rest = owners.length - shown.length;
-
-  return (
-    <>
-      {shown.map((owner) => (
-        <ProfileLink key={owner.id} userId={owner.id} name={owner.name} className="-mr-[7px]">
-          <span
-            style={avatarGradientStyle(owner.id)}
-            title={owner.name ?? undefined}
-            className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-bg-primary text-[10px] font-semibold text-white"
-          >
-            {(owner.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
-          </span>
-        </ProfileLink>
-      ))}
-      {rest > 0 && (
-        <span className="ml-3 font-mono text-[10px] text-fg-quaternary">+{rest}</span>
-      )}
-    </>
-  );
-}
-
 function ActivityItem({ row, now }: { row: ActivityRow; now: Date }) {
   const t = useTranslations("dashboard");
   const who = row.user?.name ?? row.user?.email ?? t("activity.someone");
-  const initial = who.trim().charAt(0).toUpperCase() || "?";
 
   const kind =
     row.action === "status_changed" && row.newValue === "completed"
@@ -1071,46 +873,277 @@ function ActivityItem({ row, now }: { row: ActivityRow; now: Date }) {
   });
 
   return (
-    /* Same shape as a project row: the sentence is the link, stretched across
-       the row, and the avatar sits above it so tapping a face opens the person
-       rather than the project they touched. */
-    <div className="relative grid grid-cols-[26px_minmax(0,1fr)_52px] items-center gap-3.5 border-b border-border-light/40 px-1 py-3 transition-colors duration-[350ms] hover:bg-dash-day/[0.06] sm:grid-cols-[26px_minmax(0,1fr)_130px_52px]">
-      <ProfileLink userId={row.user?.id} name={who} className="relative z-10">
-        <span
-          style={avatarGradientStyle(row.user?.id ?? row.user?.email ?? who)}
-          className="flex h-[26px] w-[26px] items-center justify-center rounded-full text-[11px] font-semibold text-white"
-        >
-          {initial}
-        </span>
-      </ProfileLink>
+    <div className="border-tui-ink/8 relative grid grid-cols-[30px_minmax(0,1fr)_auto] items-center gap-4 border-b px-7 py-3.5 last:border-b-0">
+      <Initial label={who} size={30} />
       {row.projectId ? (
         <Link
           href={projectHref(row.projectId)}
-          className="truncate text-sm text-fg-secondary after:absolute after:inset-0 after:content-['']"
+          className="text-tui-ink2 truncate text-[14.5px] after:absolute after:inset-0 after:content-['']"
         >
           {message}
         </Link>
       ) : (
-        <span className="truncate text-sm text-fg-secondary">{message}</span>
+        <span className="text-tui-ink2 truncate text-[14.5px]">{message}</span>
       )}
-      <span className="hidden truncate text-xs text-fg-quaternary sm:block">
-        {row.projectTitle}
-      </span>
-      <span className="justify-self-end font-mono text-[11px] text-fg-quaternary">
-        {relativeShort(row.createdAt, now).toUpperCase()}
+      <span className="text-tui-ink3 text-right text-[12.5px]">
+        {relativeShort(row.createdAt, now)}
       </span>
     </div>
   );
 }
 
-function SkeletonRows({ rows }: { rows: number }) {
+/** Warming the queries — a shimmer of the page to come. */
+function BootScreen() {
   return (
-    <div className="flex flex-col">
-      {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="border-b border-border-light/40 px-1 py-4">
-          <div className="h-4 w-2/3 animate-pulse rounded-sm bg-bg-tertiary" />
+    <div className="tui-screen min-h-full">
+      <div className="mx-auto max-w-[1440px] px-4 pt-10 pb-12 sm:px-8">
+        <div className={CARD}>
+          <div className="flex flex-col gap-3 px-8 py-9">
+            {[62, 44, 70, 52, 66].map((w, i) => (
+              <div
+                key={i}
+                className="bg-tui-ink/8 h-5 animate-pulse rounded"
+                style={{ width: `${w}%`, animationDelay: `${i * 0.08}s` }}
+              />
+            ))}
+          </div>
         </div>
-      ))}
+      </div>
+    </div>
+  );
+}
+
+const TAU = Math.PI * 2;
+
+/**
+ * First run: no projects at all. The welcome — how the page fills in, and the
+ * day dial, which runs and carries the screen until there is work.
+ */
+function FirstRun({
+  dayGone,
+  now,
+  locale,
+  userName,
+}: {
+  dayGone: number;
+  now: Date;
+  locale: string;
+  userName?: string | null;
+}) {
+  const t = useTranslations("dashboard");
+  const toast = useToast();
+  const [code, setCode] = useState("");
+  const p = useEntrance(true);
+  const utils = api.useUtils();
+
+  const join = api.organization.join.useMutation({
+    onSuccess: async () => {
+      setCode("");
+      toast.success(t("firstRun.joined"));
+      await Promise.all([
+        utils.organization.invalidate(),
+        utils.project.getMyProjects.invalidate(),
+      ]);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const clockShort = new Intl.DateTimeFormat(locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(now);
+  const dateLine = new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(now);
+
+  const hours = Array.from({ length: 24 }, (_, i) => {
+    const a = (i / 24) * TAU - Math.PI / 2;
+    return {
+      x1: 150 + Math.cos(a) * 132,
+      y1: 150 + Math.sin(a) * 132,
+      x2: 150 + Math.cos(a) * 140,
+      y2: 150 + Math.sin(a) * 140,
+      quarter: i % 6 === 0,
+    };
+  });
+  const fine = Array.from({ length: 144 }, (_, i) => {
+    const a = (i / 144) * TAU - Math.PI / 2;
+    return {
+      x1: 150 + Math.cos(a) * 112,
+      y1: 150 + Math.sin(a) * 112,
+      x2: 150 + Math.cos(a) * 124,
+      y2: 150 + Math.sin(a) * 124,
+      lit: (i + 0.5) / 144 < dayGone * p,
+    };
+  });
+  const nowAngle = dayGone * p * TAU - Math.PI / 2;
+
+  const STEPS = [
+    { n: "i", title: t("firstRun.stepCreateTitle"), body: t("firstRun.step1") },
+    { n: "ii", title: t("firstRun.stepTeamTitle"), body: t("firstRun.step2") },
+    {
+      n: "iii",
+      title: t("firstRun.stepRadarTitle"),
+      body: t("firstRun.step3"),
+    },
+  ];
+
+  return (
+    <div className="text-tui-ink mx-auto grid max-w-[1440px] grid-cols-1 items-start gap-6 px-4 pt-12 pb-14 sm:px-8 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="flex flex-col gap-6">
+        <div className={`dash-rise ${CARD}`} style={rise(0.05)}>
+          <div className="flex flex-col gap-5 px-8 py-10 sm:px-12">
+            <span className="text-tui-ink3 text-[11px] font-medium tracking-[0.18em] uppercase">
+              {t("firstRun.newWorkspace")}
+            </span>
+            <h1 className="font-display m-0 max-w-[720px] text-[40px] leading-[1.03] font-light tracking-[-0.02em] text-pretty sm:text-[58px]">
+              {t("firstRun.headline")}
+              {userName?.trim() ? (
+                <>
+                  ,{" "}
+                  <span className="text-tui-accent italic">
+                    {userName.trim().split(" ")[0]}.
+                  </span>
+                </>
+              ) : (
+                "."
+              )}
+            </h1>
+            <p className="text-tui-ink2 m-0 max-w-[580px] text-[16px] leading-[1.65] text-pretty">
+              {t("firstRun.body")}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-4">
+              <Link
+                href="/projects?new=1"
+                className="bg-tui-accent text-tui-on-accent flex h-12 items-center gap-2.5 rounded-full px-[22px] text-[14.5px] font-semibold transition-transform hover:-translate-y-0.5"
+              >
+                <Plus size={16} />
+                {t("firstRun.createProject")}
+              </Link>
+              <span className="text-tui-ink3 text-[13px]">
+                {t("firstRun.or")}
+              </span>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const trimmed = code.trim();
+                  if (trimmed) join.mutate({ code: trimmed });
+                }}
+                className="border-tui-ink/16 bg-tui-bg flex h-12 items-center overflow-hidden rounded-full border"
+              >
+                <input
+                  value={code}
+                  onChange={(event) =>
+                    setCode(event.target.value.toUpperCase())
+                  }
+                  aria-label={t("firstRun.codeLabel")}
+                  placeholder={t("firstRun.codePlaceholder")}
+                  className="text-tui-ink placeholder:text-tui-ink3 h-full w-[170px] bg-transparent px-5 text-[14px] tracking-[0.12em] outline-none"
+                />
+                <span className="bg-tui-ink/16 h-6 w-px" aria-hidden />
+                <button
+                  type="submit"
+                  disabled={join.isPending || code.trim().length === 0}
+                  className="text-tui-ink h-full px-5 text-[14px] font-medium transition-opacity disabled:opacity-50"
+                >
+                  {t("firstRun.joinCode")}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className={`dash-rise ${CARD} grid grid-cols-1 sm:grid-cols-3`}
+          style={rise(0.12)}
+        >
+          {STEPS.map((step, index) => (
+            <div
+              key={step.n}
+              className={`flex flex-col gap-2.5 px-7 py-7 ${
+                index > 0
+                  ? "border-tui-ink/8 border-t sm:border-t-0 sm:border-l"
+                  : ""
+              }`}
+            >
+              <span className="font-display text-tui-accent text-[24px] leading-none italic">
+                {step.n}
+              </span>
+              <span className="font-display text-[21px]">{step.title}</span>
+              <span className="text-tui-ink2 text-[14px] leading-[1.6]">
+                {step.body}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className={`dash-fade ${CARD}`} style={rise(0.16)}>
+        <div className="flex flex-col gap-[22px] px-8 py-7">
+          <div className="flex items-baseline">
+            <span className="font-display text-[21px] capitalize">
+              {t("tui.today")}
+            </span>
+            <span className="flex-1" />
+            <span className="text-tui-ink3 text-[12.5px]">{dateLine}</span>
+          </div>
+          <div className="relative mx-auto h-[300px] w-[300px]">
+            <svg
+              viewBox="0 0 300 300"
+              width="300"
+              height="300"
+              className="block"
+            >
+              {hours.map((h, i) => (
+                <line
+                  key={`h${i}`}
+                  x1={h.x1}
+                  y1={h.y1}
+                  x2={h.x2}
+                  y2={h.y2}
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  className={
+                    h.quarter ? "stroke-tui-ink3" : "stroke-tui-ink/16"
+                  }
+                />
+              ))}
+              {fine.map((f, i) => (
+                <line
+                  key={`f${i}`}
+                  x1={f.x1}
+                  y1={f.y1}
+                  x2={f.x2}
+                  y2={f.y2}
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  className={f.lit ? "stroke-tui-accent" : "stroke-tui-ink/10"}
+                />
+              ))}
+              <circle
+                cx={150 + Math.cos(nowAngle) * 104}
+                cy={150 + Math.sin(nowAngle) * 104}
+                r="4"
+                className="fill-tui-accent"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+              <span className="font-display text-[58px] leading-none font-light tracking-[-0.02em] tabular-nums">
+                {clockShort}
+              </span>
+              <span className="text-tui-ink3 text-[13px]">
+                {t("workspace.dayGone", { percent: Math.round(dayGone * 100) })}
+              </span>
+            </div>
+          </div>
+          <p className="text-tui-ink3 m-0 text-center text-[13.5px] leading-[1.65] text-pretty">
+            {t("firstRun.dayCaption")}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

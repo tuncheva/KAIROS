@@ -180,6 +180,26 @@ export const env = createEnv({
     STRIPE_PRICE_TEAM_MONTHLY: blankAsUnset(),
     STRIPE_PRICE_TEAM_ANNUAL: blankAsUnset(),
 
+    /**
+     * Whether checkout asks Stripe to calculate VAT.
+     *
+     * Off by default, and the default is the awkward one: selling without it
+     * takes the VAT out of margin on every euro-priced subscription, so this
+     * wants to be `true` in production. It defaults to `false` anyway because
+     * Stripe **rejects the checkout session outright** when `automatic_tax` is
+     * on and Stripe Tax is not yet active on the account — and "nobody can buy
+     * anything" is a worse first day than "the tax is wrong".
+     *
+     * Turn it on once Stripe Tax reports `active` with an origin registration,
+     * which is a dashboard step this code cannot perform or detect cheaply. The
+     * checkout mutation logs a warning while it is off, so the reminder lives
+     * somewhere other than a comment.
+     */
+    STRIPE_AUTOMATIC_TAX: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
+
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -240,6 +260,7 @@ export const env = createEnv({
     STRIPE_PRICE_PRO_ANNUAL: process.env.STRIPE_PRICE_PRO_ANNUAL,
     STRIPE_PRICE_TEAM_MONTHLY: process.env.STRIPE_PRICE_TEAM_MONTHLY,
     STRIPE_PRICE_TEAM_ANNUAL: process.env.STRIPE_PRICE_TEAM_ANNUAL,
+    STRIPE_AUTOMATIC_TAX: process.env.STRIPE_AUTOMATIC_TAX,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

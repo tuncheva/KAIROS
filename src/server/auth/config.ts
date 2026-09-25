@@ -30,6 +30,11 @@ import {
 
 import { getClientIp } from "~/server/http/clientIp";
 import { createLogger } from "~/server/logger";
+import {
+  issueTwoFactorChallenge,
+  redeemTwoFactorChallenge,
+} from "~/server/auth/twoFactor";
+import { sendTwoFactorSignIn } from "~/server/email/email";
 
 const log = createLogger("auth");
 import { db } from "~/server/db";
@@ -65,6 +70,29 @@ import {
  */
 export const SIGN_IN_UNVERIFIED = "EMAIL_UNVERIFIED";
 export const SIGN_IN_LOCKED = "ACCOUNT_LOCKED";
+
+/**
+ * The password was right and the account has two-step sign-in on.
+ *
+ * Carries the challenge secret after the colon: the browser needs it to finish
+ * with the `two-factor` provider, and the only party that receives it is the
+ * one that just proved the password.
+ */
+export const SIGN_IN_TWO_FACTOR = "TWO_FACTOR_REQUIRED";
+/** The password was right but the sign-in email could not be sent. */
+export const SIGN_IN_TWO_FACTOR_UNSENT = "TWO_FACTOR_UNSENT";
+/** The password was right, but too many sign-in emails were asked for. */
+export const SIGN_IN_TWO_FACTOR_THROTTLED = "TWO_FACTOR_THROTTLED";
+/**
+ * The second step failed. The reason follows the colon; the caller holds the
+ * challenge secret, so it already knows the account and the password.
+ */
+export const SIGN_IN_TWO_FACTOR_FAILED = "TWO_FACTOR_FAILED";
+/**
+ * Account switch refused because the target needs its second factor. The
+ * switcher answers by sending the user through the full sign-in.
+ */
+export const SIGN_IN_FULL_SIGN_IN = "FULL_SIGN_IN_REQUIRED";
 
 class SignInRefused extends CredentialsSignin {
   constructor(public code: string) {
@@ -211,6 +239,13 @@ export const authConfig = {
           clearAuthAttempts(ipKey),
         ]);
 
+        // A password alone must not open an account that asked for two steps,
+        // and this provider is a password-only door. Refused *after* the
+        // password check, so the answer only reaches someone who knows it.
+        if (user.twoFactorEnabled) {
+          throw new SignInRefused(SIGN_IN_FULL_SIGN_IN);
+        }
+
         return {
           id: user.id,
           email: user.email,
@@ -353,6 +388,93 @@ export const authConfig = {
                 .where(eq(users.id, user.id))
             : Promise.resolve(),
         ]);
+
+        // Two-step sign-in: the password is proven, the mailbox is not yet.
+        // No session is returned here — the browser gets a challenge secret and
+        // finishes through the `two-factor` provider below.
+        if (user.twoFactorEnabled) {
+          // Each attempt sends an email, so cap them per account. Someone who
+          // holds the password could otherwise fill the owner's inbox.
+          const issueKey = createAuthRateLimitKey("two_factor_issue", user.id);
+          const issueBudget = await checkAuthRateLimit(issueKey);
+          if (!issueBudget.allowed) {
+            throw new SignInRefused(SIGN_IN_TWO_FACTOR_THROTTLED);
+          }
+          await recordAuthFailure(issueKey);
+
+          const challenge = await issueTwoFactorChallenge(db, user.id);
+          try {
+            await sendTwoFactorSignIn({
+              email: user.email,
+              userName: user.name ?? user.email,
+              code: challenge.code,
+              approveToken: challenge.linkToken,
+            });
+          } catch (err) {
+            log.error("failed to send two-factor sign-in email", { err });
+            throw new SignInRefused(SIGN_IN_TWO_FACTOR_UNSENT);
+          }
+
+          throw new SignInRefused(`${SIGN_IN_TWO_FACTOR}:${challenge.secret}`);
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+        };
+      },
+    }),
+    Credentials({
+      id: "two-factor",
+      name: "two-factor",
+      credentials: {
+        challenge: { label: "Challenge", type: "text" },
+        code: { label: "Code", type: "text" },
+      },
+      /**
+       * Second step of a password sign-in.
+       *
+       * `challenge` is the secret the `credentials` provider handed this
+       * browser. With `code` it is checked against the emailed digits; without
+       * one it succeeds only if the emailed link has been approved. See
+       * `~/server/auth/twoFactor`.
+       */
+      async authorize(credentials, request) {
+        const secret = credentials?.challenge;
+        const rawCode = credentials?.code;
+        if (typeof secret !== "string" || secret.length === 0 || secret.length > 128) {
+          return null;
+        }
+        const code =
+          typeof rawCode === "string" && rawCode.length > 0 ? rawCode : null;
+        if (code !== null && !/^\d{8}$/.test(code)) {
+          throw new SignInRefused(`${SIGN_IN_TWO_FACTOR_FAILED}:invalid`);
+        }
+
+        // The row's attempt cap is what defends the code; this bounds how many
+        // rows one source can grind through.
+        const ipKey = createAuthRateLimitKey(
+          "two_factor_ip",
+          getClientIp(request),
+        );
+        if (!(await checkAuthRateLimit(ipKey)).allowed) return null;
+
+        const result = await redeemTwoFactorChallenge(db, secret, code);
+        if (!result.ok) {
+          if (result.reason !== "not_approved") await recordAuthFailure(ipKey);
+          throw new SignInRefused(`${SIGN_IN_TWO_FACTOR_FAILED}:${result.reason}`);
+        }
+
+        const user = await db.query.users.findFirst({
+          where: eq(users.id, result.userId),
+        });
+        // Re-checked, not assumed: the account could have been deleted or its
+        // address un-confirmed in the minutes the challenge was open.
+        if (!user?.emailVerified) return null;
+
+        await clearAuthAttempts(ipKey);
 
         return {
           id: user.id,

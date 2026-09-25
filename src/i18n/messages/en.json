@@ -768,8 +768,8 @@
     "security": {
       "title": "Security Settings",
       "subtitle": "Manage your security preferences",
-      "twoFactor": "Two-Factor Authentication",
-      "twoFactorDesc": "Add an extra layer of security to your account",
+      "twoFactor": "Two-step sign-in",
+      "twoFactorDesc": "When on, signing in with your password also needs a code or link we email to you.",
       "notesKeepUnlocked": "Keep Notes Unlocked",
       "notesKeepUnlockedDesc": "Encrypted notes stay unlocked until app is closed",
       "resetPin": "Reset PIN",
@@ -786,8 +786,8 @@
       "deleteAccountDesc": "Permanently delete your account and all data",
       "confirm": "Confirm",
       "cancel": "Cancel",
-      "enableTwoFactor": "Enable 2FA",
-      "disableTwoFactor": "Disable 2FA",
+      "enableTwoFactor": "Turn on",
+      "disableTwoFactor": "Turn off",
       "session": "Session",
       "sessionDesc": "Sign out from your current session",
       "switchAccount": "Switch Account",
@@ -834,7 +834,15 @@
       "calendarFeedCreate": "Create link",
       "calendarFeedCopy": "Copy link",
       "calendarFeedRotate": "Rotate",
-      "calendarFeedRevoke": "Turn off"
+      "calendarFeedRevoke": "Turn off",
+      "twoFactorOnDesc": "Signing in with your password also needs a code or link we email to you.",
+      "twoFactorNoPasswordDesc": "Applies when you sign in with a password. Google and Microsoft sign-ins are protected by that provider.",
+      "twoFactorOn": "On",
+      "twoFactorOff": "Off",
+      "twoFactorNeedsEmail": "Confirm your email address above first — the codes are sent there.",
+      "twoFactorSendDesc": "We'll email you a code to confirm the change.",
+      "groupTwoFactor": "Two-step sign-in",
+      "groupTwoFactorHint": "A second check, by email, after your password"
     },
     "language": {
       "title": "Language & Region",
@@ -963,7 +971,12 @@
         "custom": "Custom",
         "deleteConfirm": "Delete the role \"{name}\"?",
         "delete": "Delete role",
-        "deleteBody": "Members holding this role keep their membership, but lose the permissions it granted."
+        "deleteBody": "Members holding this role keep their membership, but lose the permissions it granted.",
+        "mentor": "Mentor",
+        "duplicate": "Copy as new role",
+        "edit": "Edit {name}",
+        "saveRole": "Save role",
+        "editNote": "People who already hold this role keep the permissions they were given. Assign the role again to give them the edited set."
       },
       "permissions": {
         "createProjects": "Create projects",
@@ -991,13 +1004,56 @@
         "accessCodeCopied": "Access code copied",
         "joinLinkCopied": "Join link copied",
         "copyFailed": "Failed to copy",
-        "permissionsUpdated": "Member permissions updated."
+        "permissionsUpdated": "Member permissions updated.",
+        "roleUpdatedSaved": "Role saved"
       },
       "common": {
         "create": "Create",
         "cancel": "Cancel",
         "join": "Join",
         "working": "Working…"
+      },
+      "inviteBuilder": {
+        "title": "Invite people",
+        "subtitle": "Tick exactly what they can do. They get these permissions — no more, no less — when they join.",
+        "startFrom": "Start from a template",
+        "permissions": "Permissions",
+        "joinsAs": "Joins as {role} · {count} of 8 permissions",
+        "edited": "edited",
+        "lockedHint": "You can't grant a permission you don't have.",
+        "adminNote": "Admins can also see and manage invites regardless of the ticks above.",
+        "byEmail": "Email invitation",
+        "byLink": "Link or code",
+        "sendInvitation": "Send invitation",
+        "emailHint": "They get an email with a link that only works for this address, plus an in-app notification if they already have an account.",
+        "showBulk": "Invite several addresses at once",
+        "hideBulk": "Hide bulk invite",
+        "invalidEmail": "Enter a valid email address.",
+        "emailSent": "Invitation emailed to {email}",
+        "emailFailed": "Invite created for {email}, but the email could not be sent. Resend it, or share a link instead.",
+        "sendFailed": "Could not send the invitation.",
+        "bulkUndelivered": "{count, plural, one {# invite was} other {# invites were}} created but not emailed.",
+        "uses": "Uses",
+        "usesOption": "{count, plural, one {# person} other {# people}}",
+        "expires": "Expires in",
+        "daysOption": "{count, plural, one {# day} other {# days}}",
+        "createLink": "Create link",
+        "linkHint": "Anyone with the link or code can join with these permissions until it runs out of uses or expires.",
+        "link": "Link",
+        "code": "Code",
+        "codeHint": "The code can be typed into Settings → Workspace → Join.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copyFailed": "Couldn't copy to the clipboard.",
+        "activeLinks": "Active invite links",
+        "viewOnly": "View only",
+        "usedOf": "{used}/{max} used",
+        "copyLink": "Copy link",
+        "revoke": "Revoke",
+        "linkRevoked": "Invite link revoked",
+        "linkCreated": "Invite link created",
+        "linkFailed": "Could not create the invite link.",
+        "resend": "Resend email"
       }
     },
     "ai": {
@@ -1217,7 +1273,14 @@
       "successTitle": "You are subscribed",
       "successBody": "Your plan is being applied — it may take a few seconds to appear.",
       "cancelledTitle": "Checkout cancelled",
-      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready."
+      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready.",
+      "startTrial": "Start {days} days free",
+      "trialNote": "{days} days free, no card needed. It stops unless you add one.",
+      "createOrg": "Create an organization",
+      "createOrgConfirm": "Create and continue",
+      "creatingOrg": "Creating…",
+      "orgNamePlaceholder": "Organization name",
+      "orgNameLabel": "Name of the organization to create"
     }
   },
   "create": {
@@ -1780,7 +1843,8 @@
         "forgotPassword": "Step 1 of 3",
         "resetCode": "Step 2 of 3",
         "newPassword": "Step 3 of 3",
-        "done": "All set"
+        "done": "All set",
+        "twoFactor": "Two-step sign-in"
       },
       "tabs": {
         "signIn": "Sign in",
@@ -1798,7 +1862,41 @@
       "backToSignIn": "Back to Sign In",
       "google": "Google",
       "orContinueWith": "Or continue with",
-      "sessionExpired": "Your session expired. Sign in again and we'll take you back to where you were."
+      "sessionExpired": "Your session expired. Sign in again and we'll take you back to where you were.",
+      "twoFactor": {
+        "title": "Check your email",
+        "subtitle": "We sent a sign-in code and a link to {email}. Enter the code, or open the link and approve — this screen will continue on its own.",
+        "label": "Sign-in code digit",
+        "waitingForLink": "Waiting for you to approve the link…",
+        "expiry": "The code and link expire in 10 minutes",
+        "submit": "Verify",
+        "resend": "Send a new code",
+        "signingIn": "Signing you in…",
+        "expired": "That sign-in request has expired. Sign in again to get a new code.",
+        "denied": "This sign-in was refused from the emailed link. If that wasn't you, reset your password.",
+        "tooManyAttempts": "Too many incorrect codes. Sign in again to get a new one.",
+        "invalidCode": "That code is not valid. Check the email and try again.",
+        "sendFailed": "We couldn't send your sign-in code. Try again in a moment.",
+        "throttled": "Too many sign-in codes were requested. Wait a few minutes and try again."
+      }
+    },
+    "verifyLogin": {
+      "loading": "Checking this sign-in…",
+      "invalidTitle": "This link doesn't work",
+      "invalidBody": "It may already have been used, or a newer sign-in email replaced it. Sign in again to get a fresh one.",
+      "expiredTitle": "This link has expired",
+      "expiredBody": "Sign-in links last 10 minutes. Sign in again to get a new one.",
+      "approvedTitle": "Sign-in approved",
+      "approvedBody": "Go back to the screen where you were signing in — it will continue on its own. You can close this page.",
+      "deniedTitle": "Sign-in refused",
+      "deniedBody": "Nobody was signed in. Someone knows your password, so reset it now.",
+      "resetPassword": "Reset your password",
+      "pendingTitle": "Is this you signing in?",
+      "pendingBody": "Someone entered your password to sign in to KAIROS.",
+      "pendingBodyAt": "Someone entered your password to sign in to KAIROS at {time}.",
+      "pendingNote": "Approving continues the sign-in on the screen that asked for it, not on this device.",
+      "approve": "Yes, it's me",
+      "deny": "This wasn't me"
     }
   },
   "common": {
@@ -1877,7 +1975,17 @@
     "createNamePlaceholder": "e.g. Design Team",
     "creating": "Creating…",
     "createdOrg": "Created {name}.",
-    "namePlaceholder": "Organization name…"
+    "namePlaceholder": "Organization name…",
+    "inviteWrongAccount": "This invitation was sent to {invited}, but you're signed in as {current}. Sign in with the invited address to accept it.",
+    "inviteExpired": "This invitation has expired.",
+    "inviteUsed": "This invitation has already been accepted.",
+    "inviteRevoked": "This invitation was cancelled or replaced by a newer one.",
+    "inviteInvalid": "This invitation link isn't valid.",
+    "inviteAskForNew": "Ask the person who invited you to send a new one.",
+    "inviteFrom": "{name} invited you to join as {role}.",
+    "inviteYouWillBeAbleTo": "You'll be able to",
+    "inviteAccept": "Accept invitation",
+    "inviteDecline": "Decline"
   },
   "ai": {
     "title": "AI Task Generator",
@@ -2242,7 +2350,11 @@
       "todo": "{count} to do",
       "dayGone": "{percent}% of today gone",
       "ofTasksDone": "of tasks done",
-      "ofTodayGone": "of today gone"
+      "ofTodayGone": "of today gone",
+      "doneLabel": "done",
+      "activeLabel": "active",
+      "todoLabel": "to do",
+      "dayGoneLabel": "day gone"
     },
     "projects": {
       "untitled": "Untitled project",
@@ -2267,7 +2379,33 @@
       "step1": "Name the project and set its first deadline.",
       "step2": "Invite people with one access code.",
       "step3": "Tasks, notes and progress land on this dashboard.",
-      "aside": "The inner arc tracks the day itself, so an empty dashboard still tells you how much time is left."
+      "aside": "The inner arc tracks the day itself, so an empty dashboard still tells you how much time is left.",
+      "welcomeLabel": "welcome",
+      "newWorkspace": "a new workspace",
+      "headline": "Nothing on the board yet",
+      "howItFills": "how it fills in",
+      "steps3": "3 steps",
+      "stepCreateTitle": "Create a project",
+      "stepTeamTitle": "Bring the team in",
+      "stepRadarTitle": "Let the radar watch",
+      "zeroActive": "0 active",
+      "noProjects": "no projects in this workspace",
+      "pressToCreate": {
+        "before": "press",
+        "after": "to create the first one"
+      },
+      "theDay": "the day",
+      "localTime": "local time",
+      "dayCaption": "The inner arc tracks the day itself. Once there is work, the outer ring shows how much of it is done.",
+      "keysLabel": "keys",
+      "pressForAll": "press ? for all",
+      "keyNew": "new project",
+      "keyJoin": "join with a code",
+      "keySearch": "search everything",
+      "keyTheme": "switch theme",
+      "keyAll": "all shortcuts",
+      "radarIdle": "idle",
+      "radarIdleBody": "Nothing to watch yet. The radar starts reading due dates and workload as soon as the first task exists."
     },
     "radar": {
       "title": "What the radar found",
@@ -2312,6 +2450,30 @@
       "neverActive": "No activity yet",
       "you": "{name} (you)",
       "empty": "Nobody else is on these projects yet."
+    },
+    "tui": {
+      "briefing": "briefing",
+      "panes": {
+        "today": "today",
+        "radar": "radar",
+        "projects": "projects",
+        "activity": "activity log",
+        "workspace": "workspace",
+        "momentum": "momentum",
+        "team": "team"
+      },
+      "sortedByRisk": "sorted by risk",
+      "byLoad": "by load",
+      "scanning": "scanning workspace",
+      "tail": "tail -5",
+      "keys": {
+        "move": "move",
+        "open": "open",
+        "filter": "filter"
+      },
+      "booting": "booting dashboard",
+      "waitingCounts": "waiting on task counts",
+      "today": "today"
     }
   },
   "agents": {
@@ -2511,7 +2673,17 @@
       "tag": "First project",
       "title": "Nothing to show yet",
       "body": "A project is where tasks, notes and deadlines live together. Create one and the list fills in from there.",
-      "cta": "Create a project"
+      "cta": "Create a project",
+      "newWorkspace": "a new workspace",
+      "holdsLabel": "what a project holds",
+      "holds": {
+        "tasksTitle": "Tasks",
+        "tasksBody": "A board of to do, in progress and done. Due dates and priority feed the dashboard radar.",
+        "teamTitle": "Team",
+        "teamBody": "Who owns it and who collaborates, with open work per person so load stays visible.",
+        "timelineTitle": "Timeline",
+        "timelineBody": "Everything that happened, below a now marker, with what is still due above it."
+      }
     },
     "drawer": {
       "open": "New project",
@@ -2532,7 +2704,20 @@
       "creating": "Creating…",
       "created": "Created {title}.",
       "close": "Close",
-      "permission": "Their permission"
+      "permission": "Their permission",
+      "nameHint": "Only a name is needed. Tasks, people and dates can follow.",
+      "whoCanSee": "Who can see it",
+      "inviteSomeone": "Invite someone",
+      "inviteHint": "Sent once the project exists, so a mistyped address never costs you the project.",
+      "howItAppears": "How it will appear",
+      "noTasksYet": "No tasks yet · updated today",
+      "toCreate": "to create",
+      "untitled": "Untitled project",
+      "visHint": {
+        "private": "Only you, until you invite someone",
+        "canView": "Everyone in your workspace can read it",
+        "canEdit": "Everyone in your workspace can add and change tasks"
+      }
     },
     "tabs": {
       "tasks": "Tasks",
@@ -2643,8 +2828,23 @@
       "archived": "Project archived.",
       "reopened": "Project reopened.",
       "reopen": "Reopen",
-      "sectionTitle": "Archived"
-    }
+      "sectionTitle": "Archived",
+      "subtitle": "projects no one is working on"
+    },
+    "listCaption": "{count} shown · by {sort}",
+    "statusLine": "{projects} projects · {risk} need attention · {archived} archived",
+    "synced": "synced",
+    "colHealth": "health",
+    "createdBy": "created by {name}",
+    "overview": "overview",
+    "tui": {
+      "workspace": "workspace",
+      "move": "move",
+      "open": "open",
+      "search": "search"
+    },
+    "clearSearch": "Clear search",
+    "showAll": "Show all projects"
   },
   "documents": {
     "tabShort": "Files",

@@ -35,6 +35,12 @@ export function SecuritySettingsClient() {
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [codeSent, setCodeSent] = useState(false);
 
+  // Two-step sign-in form state. Turning it either way takes an emailed code,
+  // so the form is the same shape in both directions.
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorError, setTwoFactorError] = useState<string | null>(null);
+  const [twoFactorCodeSent, setTwoFactorCodeSent] = useState(false);
+
   // Reset PIN form state.
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
@@ -110,6 +116,24 @@ export function SecuritySettingsClient() {
     onError: (e) => setVerifyError(e.message),
   });
 
+  const sendTwoFactorCode = api.settings.sendTwoFactorCode.useMutation({
+    onSuccess: () => {
+      setTwoFactorCodeSent(true);
+      setTwoFactorError(null);
+    },
+    onError: (e) => setTwoFactorError(e.message),
+  });
+
+  const setTwoFactor = api.settings.setTwoFactor.useMutation({
+    onSuccess: async () => {
+      await utils.settings.get.invalidate();
+      setTwoFactorCode("");
+      setTwoFactorCodeSent(false);
+      setTwoFactorError(null);
+    },
+    onError: (e) => setTwoFactorError(e.message),
+  });
+
   const deleteAllData = api.settings.deleteAllData.useMutation();
 
   // Which formats this plan includes. The server refuses the rest with a 403, so
@@ -123,6 +147,8 @@ export function SecuritySettingsClient() {
 
   const notesKeepUnlockedUntilClose = data?.notesKeepUnlockedUntilClose ?? false;
   const hasResetPin = data?.hasResetPin ?? false;
+  const twoFactorEnabled = data?.twoFactorEnabled ?? false;
+  const hasPassword = data?.hasPassword ?? false;
 
   const isBusy =
     isLoading ||
@@ -130,6 +156,8 @@ export function SecuritySettingsClient() {
     updateResetPin.isPending ||
     sendVerificationCode.isPending ||
     confirmVerificationCode.isPending ||
+    sendTwoFactorCode.isPending ||
+    setTwoFactor.isPending ||
     deleteAllData.isPending;
 
   const onSignOut = async () => {
@@ -236,6 +264,118 @@ export function SecuritySettingsClient() {
           ),
         },
       ];
+
+  const submitTwoFactorCode = () => {
+    if (!/^\d{8}$/.test(twoFactorCode)) {
+      setTwoFactorError(t("errors.codeFormat"));
+      return;
+    }
+    void save.run(() =>
+      setTwoFactor.mutateAsync({ enable: !twoFactorEnabled, code: twoFactorCode }),
+    );
+  };
+
+  /**
+   * Two-step sign-in. The factor is the mailbox, so it cannot be turned on
+   * until the address is confirmed; and either direction takes a code from that
+   * mailbox, so a stolen session cannot switch it off.
+   */
+  const twoFactorStatusDesc = twoFactorEnabled
+    ? t("twoFactorOnDesc")
+    : hasPassword
+      ? t("twoFactorDesc")
+      : t("twoFactorNoPasswordDesc");
+
+  const twoFactorRows: LedgerRow[] = [
+    {
+      id: "twoFactorStatus",
+      title: t("twoFactor"),
+      desc: twoFactorStatusDesc,
+      descText: twoFactorStatusDesc,
+      keywords: "2fa two factor two-step mfa sign in code",
+      control: (
+        <LedgerValue tone={twoFactorEnabled ? "good" : "dim"}>
+          {twoFactorEnabled ? t("twoFactorOn") : t("twoFactorOff")}
+        </LedgerValue>
+      ),
+    },
+    ...(!twoFactorEnabled && !emailVerified
+      ? [
+          {
+            id: "twoFactorNeedsEmail",
+            title: t("enableTwoFactor"),
+            desc: t("twoFactorNeedsEmail"),
+            descText: t("twoFactorNeedsEmail"),
+            control: <LedgerValue tone="dim">{t("emailUnverified")}</LedgerValue>,
+          },
+        ]
+      : [
+          {
+            id: "twoFactorSend",
+            title: twoFactorEnabled ? t("disableTwoFactor") : t("enableTwoFactor"),
+            desc: twoFactorCodeSent
+              ? t("codeSentTo", { email: accountEmail })
+              : t("twoFactorSendDesc"),
+            descText: twoFactorCodeSent
+              ? t("codeSentTo", { email: accountEmail })
+              : t("twoFactorSendDesc"),
+            control: (
+              <LedgerAction
+                danger={twoFactorEnabled}
+                disabled={isBusy}
+                onClick={() =>
+                  void sendTwoFactorCode
+                    .mutateAsync({ enable: !twoFactorEnabled })
+                    .catch(() => undefined)
+                }
+              >
+                {sendTwoFactorCode.isPending
+                  ? t("sending")
+                  : twoFactorCodeSent
+                    ? t("resendCode")
+                    : t("sendCode")}
+              </LedgerAction>
+            ),
+          },
+          ...(twoFactorCodeSent || twoFactorError
+            ? [
+                {
+                  id: "twoFactorCode",
+                  title: t("enterCode"),
+                  desc: twoFactorError ? <LedgerError>{twoFactorError}</LedgerError> : undefined,
+                  descText: twoFactorError ?? "",
+                  control: (
+                    <>
+                      <LedgerInput
+                        inputMode="numeric"
+                        value={twoFactorCode}
+                        maxLength={8}
+                        disabled={isBusy}
+                        ariaLabel={t("enterCode")}
+                        placeholder={t("codePlaceholder")}
+                        onChange={(next) => {
+                          setTwoFactorCode(next.replace(/\D/g, "").slice(0, 8));
+                          setTwoFactorError(null);
+                        }}
+                      />
+                      <LedgerAction
+                        danger={twoFactorEnabled}
+                        disabled={isBusy || !twoFactorCode}
+                        onClick={submitTwoFactorCode}
+                      >
+                        {setTwoFactor.isPending
+                          ? t("verifying")
+                          : twoFactorEnabled
+                            ? t("disableTwoFactor")
+                            : t("enableTwoFactor")}
+                      </LedgerAction>
+                    </>
+                  ),
+                },
+              ]
+            : []),
+        ]),
+  ];
 
   const pinRows: LedgerRow[] = [
     {
@@ -417,6 +557,12 @@ export function SecuritySettingsClient() {
       subtitle={t("subtitle")}
     >
       <LedgerGroup label={t("groupEmail")} hint={t("groupEmailHint")} rows={emailRows} />
+
+      <LedgerGroup
+        label={t("groupTwoFactor")}
+        hint={t("groupTwoFactorHint")}
+        rows={twoFactorRows}
+      />
 
       <LedgerGroup
         label={t("groupNotes")}

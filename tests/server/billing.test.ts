@@ -27,10 +27,11 @@ import { describe, expect, it } from "vitest";
 import {
   PLAN_CATALOGUE,
   PURCHASABLE_PLANS,
+  annualMonthlyEquivalent,
   annualSavingPercent,
   formatEuro,
   isPurchasablePlan,
-  planForOwnerKind,
+  monthsFreeOnAnnual,
   priceFor,
   seatFloorFor,
 } from "~/lib/plans";
@@ -39,6 +40,7 @@ import {
   isLiveSubscription,
   paidThroughAt,
   planFromSubscription,
+  planToRecord,
   willNotRenew,
 } from "~/lib/subscription-status";
 
@@ -75,6 +77,48 @@ describe("planFromSubscription", () => {
     // price, say. Falling back to free is the only safe direction: the
     // alternative is guessing a tier from an id we cannot interpret.
     expect(planFromSubscription("active", null)).toBe("free");
+  });
+});
+
+/**
+ * The case where Stripe's price no longer maps to a plan we know.
+ *
+ * Its own describe because the composition it replaces was the dangerous one:
+ * `planFromSubscription(status, planFromPriceId(id))` reads as obviously correct
+ * and silently downgrades every paying customer at once the moment a price id
+ * stops resolving — an archived price, a missing env var, test ids against a
+ * live key. The whole point of the rule is that a live subscription is the one
+ * case where `free` is not an acceptable answer.
+ */
+describe("planToRecord", () => {
+  it("passes a recognised price straight through", () => {
+    expect(planToRecord("active", "pro", null)).toBe("pro");
+    expect(planToRecord("active", "team", "pro")).toBe("team");
+    expect(planToRecord("canceled", "pro", "pro")).toBe("free");
+  });
+
+  it("keeps the plan on file when a live subscription prices at nothing", () => {
+    // The regression this exists for: every one of these used to return "free".
+    expect(planToRecord("active", null, "pro")).toBe("pro");
+    expect(planToRecord("trialing", null, "team")).toBe("team");
+    expect(planToRecord("past_due", null, "pro")).toBe("pro");
+  });
+
+  it("still revokes when the subscription is actually dead", () => {
+    // An unmappable price is only a reason for doubt while Stripe is still
+    // collecting. A cancellation is not in doubt.
+    expect(planToRecord("canceled", null, "pro")).toBe("free");
+    expect(planToRecord("incomplete", null, "pro")).toBe("free");
+  });
+
+  it("has nothing to preserve on a first sync", () => {
+    expect(planToRecord("active", null, null)).toBe("free");
+  });
+
+  it("never grants more than what is on file", () => {
+    // The fallback preserves; it must not promote. A free row with an
+    // unreadable price stays free rather than becoming whatever was last seen.
+    expect(planToRecord("active", null, "free")).toBe("free");
   });
 });
 
@@ -345,5 +389,52 @@ describe("the price catalogue", () => {
     expect(formatEuro(1200)).toBe("€12");
     expect(formatEuro(1250)).toBe("€12.50");
     expect(formatEuro(0)).toBe("€0");
+  });
+});
+
+/**
+ * The two figures the annual plan is sold with.
+ *
+ * Both are claims made on a public page and derived from the prices rather than
+ * written down, so what these actually assert is that the derivation still
+ * agrees with the catalogue — a price change that made "2 months free" false
+ * should fail here rather than ship.
+ */
+describe("how the annual discount is described", () => {
+  it("is two months free on both plans, as the pricing memo says", () => {
+    for (const plan of PURCHASABLE_PLANS) {
+      expect(monthsFreeOnAnnual(plan)).toBe(2);
+    }
+  });
+
+  it("agrees with the percentage it replaced", () => {
+    // Same discount, two vocabularies. If these ever disagree, one of the two
+    // numbers on the pricing page is wrong and it is not obvious which.
+    for (const plan of PURCHASABLE_PLANS) {
+      const fromMonths = Math.round((monthsFreeOnAnnual(plan) / 12) * 100);
+      expect(Math.abs(fromMonths - annualSavingPercent(plan))).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("quotes a monthly equivalent that is cheaper than paying monthly", () => {
+    // The whole reason the figure is shown: it has to make the annual plan
+    // look like the better deal, because it is one.
+    for (const plan of PURCHASABLE_PLANS) {
+      expect(annualMonthlyEquivalent(plan)).toBeLessThan(priceFor(plan, "month"));
+    }
+  });
+
+  it("multiplies back up to roughly the annual price", () => {
+    for (const plan of PURCHASABLE_PLANS) {
+      const annual = priceFor(plan, "year");
+      // Within twelve cents, which is all rounding to whole cents can lose.
+      expect(Math.abs(annualMonthlyEquivalent(plan) * 12 - annual)).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it("renders as a round euro figure for Pro", () => {
+    // €10 rather than €10.00 or €9.99 — the number a visitor compares against
+    // the €12 monthly price at a glance.
+    expect(formatEuro(annualMonthlyEquivalent("pro"))).toBe("€10");
   });
 });

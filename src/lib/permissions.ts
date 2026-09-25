@@ -119,13 +119,21 @@ const CONTRIBUTOR_PERMISSIONS: MemberPermissionFlags = {
  * (see `ViewOnlyBanner`); with these flags it is finally read-only on the server
  * too, not just in the browser.
  */
-const ROLE_TEMPLATES: Record<OrgRole, MemberPermissionFlags> = {
+export const ROLE_TEMPLATES: Readonly<Record<OrgRole, Readonly<MemberPermissionFlags>>> = {
   admin: ALL_PERMISSIONS,
   member: CONTRIBUTOR_PERMISSIONS,
   worker: CONTRIBUTOR_PERMISSIONS,
   guest: NO_PERMISSIONS,
   mentor: NO_PERMISSIONS,
 };
+
+/**
+ * The built-in templates the UI offers, in display order.
+ *
+ * `worker` is left out on purpose: it is `member` under its older name, with
+ * identical flags, and listing both would offer the same template twice.
+ */
+export const TEMPLATE_ROLE_ORDER = ["admin", "member", "mentor", "guest"] as const satisfies readonly OrgRole[];
 
 export function isOrgRole(role: unknown): role is OrgRole {
   return typeof role === "string" && (ORG_ROLES as readonly string[]).includes(role);
@@ -142,6 +150,51 @@ export function isOrgRole(role: unknown): role is OrgRole {
 export function flagsForRole(role: unknown): MemberPermissionFlags {
   if (!isOrgRole(role)) return { ...NO_PERMISSIONS };
   return { ...ROLE_TEMPLATES[role] };
+}
+
+/**
+ * Exactly the eight flags from `source`, each coerced to a strict boolean.
+ *
+ * Invites and custom roles carry a hand-picked flag set that is later spread
+ * into a membership insert. Picking the keys one by one means a stored blob with
+ * an extra key cannot smuggle a column into that insert, and a missing key reads
+ * as "not granted" rather than as `undefined` falling through to a default.
+ */
+export function pickPermissionFlags(source: unknown): MemberPermissionFlags {
+  const record = (source ?? {}) as Partial<Record<PermissionFlag, unknown>>;
+  const flags = { ...NO_PERMISSIONS };
+  for (const key of PERMISSION_FLAG_KEYS) flags[key] = record[key] === true;
+  return flags;
+}
+
+export function sameFlags(a: MemberPermissionFlags, b: MemberPermissionFlags): boolean {
+  return PERMISSION_FLAG_KEYS.every((key) => a[key] === b[key]);
+}
+
+/** The flags `requested` grants that `holder` does not have. */
+export function flagsBeyond(
+  requested: MemberPermissionFlags,
+  holder: MemberPermissionFlags,
+): PermissionFlag[] {
+  return PERMISSION_FLAG_KEYS.filter((key) => requested[key] && !holder[key]);
+}
+
+/**
+ * The `org_role` to store alongside a hand-picked flag set.
+ *
+ * The role still matters beside the flags: some checks gate on `role === "admin"`
+ * and the view-only roles drive the UI's banner. So a template that has been
+ * edited has to stay coherent with its ticks — a "guest" who was ticked into
+ * creating projects is a member, and a "member" with every tick cleared is a
+ * guest. `admin` is only ever an explicit choice and is kept as picked.
+ */
+export function baseRoleForFlags(template: OrgRole, flags: MemberPermissionFlags): OrgRole {
+  if (template === "admin") return "admin";
+  const grantsAnything = PERMISSION_FLAG_KEYS.some((key) => flags[key]);
+  const viewOnlyTemplate = template === "guest" || template === "mentor";
+  if (grantsAnything && viewOnlyTemplate) return "member";
+  if (!grantsAnything && !viewOnlyTemplate) return "guest";
+  return template;
 }
 
 /**

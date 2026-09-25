@@ -14,6 +14,7 @@
     "db:verify": "dotenv -e .env -- tsx scripts/verify-schema.ts",
     "dev": "tsx watch server.ts",
     "dev:next": "next dev --turbo",
+    "eval:live": "dotenv -e .env -- vitest run --config vitest.eval.config.ts",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "lint": "eslint .",

@@ -13,10 +13,11 @@
  *   logic moved from the client to `handoff.ts`, changed shape twice, and was
  *   only ever verified by hand.
  *
- * Offline by default. The `response` on each case is a hand-written correct
- * output, so this run measures *our* half of the contract — schema, transform,
- * dispatch — with no API key and no network. Set `EVAL_LIVE=1` to send the real
- * messages to the configured model and measure the model's half too.
+ * Offline. The `response` on each case is a hand-written correct output, so this
+ * run measures *our* half of the contract — schema, transform, dispatch — with
+ * no API key and no network, and scores 100% by construction. The model's half
+ * is measured by `routing.live.test.ts` (`pnpm eval:live`), which sends the same
+ * cases to the configured model.
  */
 
 import { describe, expect, it } from "vitest";
@@ -154,6 +155,7 @@ describe("eval coverage", () => {
       "notes_vault",
       "events_publisher",
       "org_admin",
+      "project_manager",
     ]) {
       expect(covered.has(agent as TargetAgent), `no case routes to ${agent}`).toBe(
         true,

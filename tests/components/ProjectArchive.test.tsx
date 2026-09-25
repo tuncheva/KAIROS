@@ -28,7 +28,12 @@ const LIVE = [
     organizationId: null,
     status: "active",
     shareStatus: "private",
-    createdByUser: { id: OWNER, name: "Teodora", email: "t@x.test", image: null },
+    createdByUser: {
+      id: OWNER,
+      name: "Teodora",
+      email: "t@x.test",
+      image: null,
+    },
     tasks: [],
     collaborators: [],
   },
@@ -45,7 +50,12 @@ const ARCHIVED = [
     organizationId: null,
     status: "archived",
     shareStatus: "private",
-    createdByUser: { id: OWNER, name: "Teodora", email: "t@x.test", image: null },
+    createdByUser: {
+      id: OWNER,
+      name: "Teodora",
+      email: "t@x.test",
+      image: null,
+    },
     tasks: [],
     collaborators: [],
   },
@@ -69,7 +79,13 @@ vi.mock("~/trpc/react", () => {
       get: () => invalidate(),
       apply: () => Promise.resolve(),
     });
-  const noop = { useMutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }) };
+  const noop = {
+    useMutation: () => ({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn(),
+      isPending: false,
+    }),
+  };
 
   return {
     api: {
@@ -132,7 +148,7 @@ describe("the project archive", () => {
     const user = userEvent.setup();
     setup();
 
-    const toggle = screen.getByRole("button", { name: /Archived/ });
+    const toggle = screen.getByRole("button", { name: /archived/i });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
 
     await user.click(toggle);
@@ -145,8 +161,8 @@ describe("the project archive", () => {
     const user = userEvent.setup();
     setup();
 
-    await user.click(screen.getByRole("button", { name: /Archived/ }));
-    await user.click(await screen.findByRole("button", { name: "Reopen" }));
+    await user.click(screen.getByRole("button", { name: /archived/i }));
+    await user.click(await screen.findByRole("button", { name: /reopen/i }));
 
     expect(reopenMutate).toHaveBeenCalledWith({ projectId: 2 });
   });
@@ -157,7 +173,7 @@ describe("the project archive", () => {
     setup();
 
     expect(
-      screen.getByRole("button", { name: /Archived/ }),
+      screen.getByRole("button", { name: /archived/i }),
     ).toBeInTheDocument();
   });
 
@@ -167,7 +183,7 @@ describe("the project archive", () => {
     setup();
 
     expect(
-      screen.queryByRole("button", { name: /Archived/ }),
+      screen.queryByRole("button", { name: /archived/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -178,7 +194,7 @@ describe("the project archive", () => {
     // The title span is inert; the overlay button carries the click.
     await user.click(screen.getByRole("button", { name: "Autumn Festival" }));
     await user.click(
-      await screen.findByRole("button", { name: "Archive project" }),
+      await screen.findByRole("button", { name: /archive project/i }),
     );
 
     // The dialog stands between the button and the write.

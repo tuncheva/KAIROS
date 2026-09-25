@@ -320,7 +320,20 @@ function OrganizationGroup({
 // ---------------------------------------------------------------------------
 
 function PlansGroup({ t, data }: { t: Translator; data: Summary | undefined }) {
-  const [interval, setInterval] = useState<BillingInterval>("month");
+  const params = useSearchParams();
+
+  // `?plan=&interval=` are what the public pricing page sends when someone has
+  // already chosen — see `billingHref` there. They preselect; they never buy.
+  const requestedPlan = params.get("plan");
+  const requestedInterval = params.get("interval");
+
+  // Annual by default, for the same reason the public table is: monthly-first
+  // asks every buyer to opt into the cheaper commitment, and most never do
+  // because they never look. A request from the pricing page wins over the
+  // default, including when it asks for monthly.
+  const [interval, setInterval] = useState<BillingInterval>(
+    requestedInterval === "month" ? "month" : "year",
+  );
   const [error, setError] = useState<string | null>(null);
 
   const checkout = api.billing.createCheckoutSession.useMutation({
@@ -355,6 +368,18 @@ function PlansGroup({ t, data }: { t: Translator; data: Summary | undefined }) {
                 current={current}
                 purchasable={data?.purchasable[plan] ?? false}
                 organization={data?.organization ?? null}
+                // The trial is per owner, so Pro reads the personal flag and
+                // Team the organization's — a buyer who has used one may still
+                // have the other.
+                trialDays={
+                  (plan === "team" ? data?.trial.organization : data?.trial.personal)
+                    ? (data?.trial.days ?? 0)
+                    : 0
+                }
+                // Marks the card the visitor asked for on the pricing page, so
+                // the screen they land on visibly answers the click that got
+                // them here rather than presenting the same choice again.
+                requested={plan === requestedPlan}
                 pending={checkout.isPending}
                 onBuy={() => {
                   setError(null);
@@ -411,6 +436,81 @@ function IntervalToggle({
   );
 }
 
+/**
+ * Create the organization Team is bought for, without leaving the card.
+ *
+ * Two steps rather than one button, because an organization has a name and
+ * guessing it is worse than asking: the name is what colleagues will see, and a
+ * workspace called "My organization" is a thing people then have to find the
+ * settings to rename. Two steps is still one screen and no navigation.
+ *
+ * Creating one makes the caller its admin and sets it active (see
+ * `organization.create`), which is exactly the state the Team card needs —
+ * so invalidating the summary is enough to turn this back into a buy button.
+ */
+function CreateOrgToBuy({ t }: { t: Translator }) {
+  const utils = api.useUtils();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const create = api.organization.create.useMutation({
+    onSuccess: async () => {
+      // Both, and in this order: the summary is what re-renders this card into
+      // a purchasable one, and the organization queries feed the rest of the
+      // app's chrome, which would otherwise still believe there is no org.
+      await utils.billing.summary.invalidate();
+      await utils.organization.invalidate();
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  if (!open) {
+    return (
+      <>
+        <LedgerAction onClick={() => setOpen(true)}>{t("createOrg")}</LedgerAction>
+        <p className="text-[11.5px] text-fg-quaternary">{t("teamNeedsOrg")}</p>
+      </>
+    );
+  }
+
+  const trimmed = name.trim();
+  const submit = () => {
+    if (!trimmed || create.isPending) return;
+    setError(null);
+    create.mutate({ name: trimmed });
+  };
+
+  return (
+    // Not a <form>: `LedgerAction` renders a plain button with no `type`, and
+    // the settings primitives were deliberately consolidated into one copy each
+    // — adding a prop to every action in the app to submit one input here is the
+    // wrong way round. Enter is wired to the input instead, which is the only
+    // behaviour a form would have bought.
+    <div className="flex flex-col gap-1.5">
+      <input
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        maxLength={256}
+        placeholder={t("orgNamePlaceholder")}
+        aria-label={t("orgNameLabel")}
+        className="rounded-md border border-border-medium bg-bg-primary px-2.5 py-1.5 text-[12.5px] text-fg-primary placeholder:text-fg-quaternary focus:border-accent-primary focus:outline-none"
+      />
+      <LedgerAction onClick={submit} disabled={!trimmed || create.isPending}>
+        {create.isPending ? t("creatingOrg") : t("createOrgConfirm")}
+      </LedgerAction>
+      {error ? <LedgerError>{error}</LedgerError> : null}
+    </div>
+  );
+}
+
 function PlanCard({
   t,
   plan,
@@ -418,6 +518,8 @@ function PlanCard({
   current,
   purchasable,
   organization,
+  trialDays,
+  requested,
   pending,
   onBuy,
 }: {
@@ -427,6 +529,10 @@ function PlanCard({
   current: PlanId;
   purchasable: boolean;
   organization: Summary["organization"];
+  /** Days of free trial on offer, or 0 when this buyer has had theirs. */
+  trialDays: number;
+  /** Whether the visitor arrived here having already picked this plan. */
+  requested: boolean;
   pending: boolean;
   onBuy: () => void;
 }) {
@@ -440,18 +546,35 @@ function PlanCard({
    * explanation must never disagree — a disabled button beside "Upgrade now" is
    * the state this collapses out of existence.
    */
+  /**
+   * Team with no organization to buy it for — an offer, not an obstacle.
+   *
+   * Kept out of {@link blocker} because it is the one case that is *fixable
+   * from here*. It used to fall through to a disabled button and the sentence
+   * "Team is bought for an organization", which is a dead end at the moment of
+   * highest purchase intent in the product: the reader has decided to buy and
+   * is told, with no link, that they cannot.
+   */
+  const needsOrg = plan === "team" && !owned && purchasable && !organization;
+
   const blocker: string | null = owned
     ? t("alreadyOn")
     : !purchasable
       ? t("notConfigured")
-      : plan === "team" && !organization
-        ? t("teamNeedsOrg")
+      : needsOrg
+        ? null
         : plan === "team" && !organization?.canManage
           ? t("teamNeedsAdmin")
           : null;
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border-medium p-4">
+    <div
+      className={`flex flex-col gap-3 rounded-lg border p-4 ${
+        // The card the visitor asked for on the pricing page is marked, so the
+        // screen answers the click that brought them here.
+        requested ? "border-accent-primary/50 bg-accent-primary/[0.04]" : "border-border-medium"
+      }`}
+    >
       <div>
         <p className="text-[13px] font-semibold text-fg-primary">
           {t(`planName.${plan}`)}
@@ -480,11 +603,29 @@ function PlanCard({
       </ul>
 
       <div className="mt-auto flex flex-col gap-1.5 pt-1">
+        {needsOrg ? (
+          <CreateOrgToBuy t={t} />
+        ) : (
         <LedgerAction onClick={onBuy} disabled={pending || blocker !== null}>
-          {pending ? t("opening") : t("choose", { plan: t(`planName.${plan}`) })}
+          {pending
+            ? t("opening")
+            : // The offer goes on the button, not beside it. "Start your free
+              // month" is a different decision from "Choose Pro" — the second
+              // asks for a commitment the first does not.
+              trialDays > 0 && blocker === null
+              ? t("startTrial", { days: trialDays })
+              : t("choose", { plan: t(`planName.${plan}`) })}
         </LedgerAction>
+        )}
         {blocker ? (
           <p className="text-[11.5px] text-fg-quaternary">{blocker}</p>
+        ) : trialDays > 0 ? (
+          // What happens at the end, said before the decision rather than in a
+          // renewal email. A trial that collects no card and does not say so
+          // reads as a subscription the buyer has forgotten the terms of.
+          <p className="text-[11.5px] text-fg-quaternary">
+            {t("trialNote", { days: trialDays })}
+          </p>
         ) : null}
       </div>
     </div>

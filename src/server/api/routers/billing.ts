@@ -39,11 +39,30 @@ import {
   type PurchasablePlan,
 } from "~/lib/plans";
 import { createLogger } from "~/server/logger";
+import { env } from "~/env";
 
 const log = createLogger("billing:router");
 
 const planInput = z.enum(PURCHASABLE_PLANS);
 const intervalInput = z.enum(["month", "year"]).default("month");
+
+/**
+ * How long a first subscription runs before it is charged.
+ *
+ * A month rather than the conventional fortnight, because of what this product
+ * has to demonstrate. Pro is sold as the half that works without being asked —
+ * the Daily Brief, the Risk Radar, the weekly retrospective — and a free user
+ * has never seen any of it. Two weeks shows roughly ten briefs and one
+ * retrospective; a month shows enough of both to be a habit rather than a demo,
+ * and the weekly agents get four turns to be right about something.
+ *
+ * No card is collected (`payment_method_collection: "if_required"`), so nothing
+ * is charged when it ends unless the subscriber has come back and added one.
+ * That converts worse than a card-up-front trial and is the deliberate trade:
+ * the friction it removes is at the point where someone is still deciding
+ * whether the product does anything for them.
+ */
+const TRIAL_PERIOD_DAYS = 30;
 
 /**
  * Where Stripe sends the customer back to.
@@ -159,6 +178,22 @@ export const billingRouter = createTRPCRouter({
       purchasable: Object.fromEntries(
         PURCHASABLE_PLANS.map((plan) => [plan, isPlanPurchasable(plan)]),
       ) as Record<(typeof PURCHASABLE_PLANS)[number], boolean>,
+
+      /**
+       * The free month, if this buyer still has one — the same rule the
+       * checkout mutation applies, surfaced so the button can say so.
+       *
+       * A trial nobody is told about converts nobody: it would arrive as a
+       * surprise on the Stripe page after the decision it was supposed to
+       * influence had already been made. Reported per owner because the two
+       * subscriptions are independent — someone who has already used their
+       * personal trial may still bring a first-time organization.
+       */
+      trial: {
+        days: TRIAL_PERIOD_DAYS,
+        personal: !user?.stripeCustomerId,
+        organization: org ? !org.stripeCustomerId : false,
+      },
     };
   }),
 
@@ -225,6 +260,32 @@ export const billingRouter = createTRPCRouter({
         });
       }
 
+      // First subscription gets the trial; a returning customer does not.
+      //
+      // `customerId` is the test because it is only ever written by
+      // `rememberCustomer`, from `checkout.session.completed` — so a non-null
+      // value means this owner has completed a checkout before, and a null one
+      // means they have not. Without a check of some kind, a card-less trial
+      // renews forever: cancel, check out again, another free month, and the
+      // subscription that never charges anything is indistinguishable from the
+      // one that does.
+      //
+      // It is a deliberately loose rule. Someone determined to keep trialling
+      // can make a second account, and catching that needs identity checks
+      // worth more than the month they would take. This stops the accidental
+      // version, which is the common one.
+      const trialDays = customerId === null ? TRIAL_PERIOD_DAYS : 0;
+
+      if (!env.STRIPE_AUTOMATIC_TAX) {
+        // Warned per checkout rather than once at boot: this is a money leak
+        // that looks like nothing, and the reminder belongs next to the sale it
+        // is untaxing.
+        log.warn("checkout created without automatic tax", {
+          plan: input.plan,
+          interval: input.interval,
+        });
+      }
+
       const session = await client.checkout.sessions.create({
         mode: "subscription",
 
@@ -252,9 +313,26 @@ export const billingRouter = createTRPCRouter({
         // An existing customer is reused; otherwise Stripe makes one and we
         // record it from the webhook. Passing both `customer` and
         // `customer_email` is an error, hence the branch.
+        //
+        // `customer_update` rides along with the existing-customer arm because
+        // `automatic_tax` below needs a billing address to pick a rate, and for
+        // a customer Stripe already knows it will not overwrite one from the
+        // session unless told it may. Without it, the session is rejected
+        // outright: "automatic_tax requires customer_update.address when
+        // customer is set". The new-customer arm needs nothing — there is no
+        // record to update.
         ...(customerId
-          ? { customer: customerId }
+          ? {
+              customer: customerId,
+              customer_update: { address: "auto" as const, name: "auto" as const },
+            }
           : { customer_email: ctx.session.user.email ?? undefined }),
+
+        // A trial is offered without asking for a card, so the card form has to
+        // be optional too — `if_required` shows it only when something is due
+        // today, which for a trialling subscription is nothing. Left at Stripe's
+        // default (always) when no trial applies.
+        ...(trialDays ? { payment_method_collection: "if_required" as const } : {}),
 
         // Stamped on the subscription, not just the session. The session's
         // metadata is not copied onto the subscription automatically, and the
@@ -266,6 +344,22 @@ export const billingRouter = createTRPCRouter({
             kairosOwnerKind: owner.kind,
             kairosOwnerId: String(owner.id),
           },
+
+          ...(trialDays
+            ? {
+                trial_period_days: trialDays,
+                trial_settings: {
+                  // No card was collected, so there is usually nothing to charge
+                  // when the trial ends. Cancelling is the honest outcome: the
+                  // alternative, `create_invoice`, sends a bill to someone who
+                  // never agreed to pay and then chases them for it.
+                  //
+                  // Cancellation arrives as a webhook like any other and drops
+                  // the owner to Free through the path that already exists.
+                  end_behavior: { missing_payment_method: "cancel" as const },
+                },
+              }
+            : {}),
         },
         metadata: {
           kairosOwnerKind: owner.kind,
@@ -279,6 +373,20 @@ export const billingRouter = createTRPCRouter({
         // Required for EU VAT on a euro-priced subscription sold to businesses.
         billing_address_collection: "required",
         tax_id_collection: { enabled: true },
+
+        // The address and VAT number collected above are inputs to a tax
+        // calculation, not filing paperwork — without this they are two fields
+        // nobody reads. The prices in `~/lib/plans` are exclusive of VAT, which
+        // is what the pricing page's footer promises; leaving this off does not
+        // make the sale tax-free, it makes the €12 tax-inclusive after the fact
+        // and takes the VAT out of margin.
+        //
+        // Requires Stripe Tax to be active on the account with an origin
+        // registration, which is why it is a flag rather than a constant — see
+        // `env.STRIPE_AUTOMATIC_TAX`. Stripe rejects the session outright when
+        // this is on and Tax is not ready, so the flag is the difference
+        // between "the tax is wrong" and "nobody can buy anything".
+        automatic_tax: { enabled: env.STRIPE_AUTOMATIC_TAX },
       });
 
       if (!session.url) {
@@ -298,6 +406,7 @@ export const billingRouter = createTRPCRouter({
         plan: input.plan,
         interval: input.interval,
         quantity,
+        trialDays,
       });
 
       return { url: session.url };

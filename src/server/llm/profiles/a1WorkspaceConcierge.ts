@@ -62,5 +62,6 @@ export const a1WorkspaceConciergeProfile: AgentProfile = {
     notes_ops: "notes_vault",
     events_ops: "events_publisher",
     membership_ops: "org_admin",
+    project_ops: "project_manager",
   },
 };

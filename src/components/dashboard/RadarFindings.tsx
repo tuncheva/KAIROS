@@ -3,7 +3,6 @@
 import type { CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Radar } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { relativeShort } from "./dashboardData";
@@ -12,43 +11,33 @@ import { relativeShort } from "./dashboardData";
  * B-2 / B-3 — what the Risk Radar found, and the one-click fix for it.
  *
  * The whole argument for proactive AI lives or dies here. A panel that only says
- * "6 tasks are overdue" is a nag: the user already knows, and telling them again
- * every morning is how a feature gets switched off. What makes it worth the
+ * "6 tasks are overdue" is a nag: the user already knows. What makes it worth the
  * interruption is that each finding arrives with the fix already drafted — one
- * click seeds the chat with a request the planner can act on, instead of making
- * the user retype the problem back to the assistant that just reported it.
+ * click seeds the chat with a request the planner can act on.
  *
- * Dismiss is given equal weight to the fix, deliberately. A finding the user
- * does not care about must be cheap to make go away, and the dismissal rate is
- * the number that tells us whether the thresholds in `riskRadar.ts` are right.
- *
- * The design puts this directly under the headline as a row of cards rather
- * than in a panel below the fold: severity paints the left edge and the label
- * only, so three findings read as three things to look at rather than as an
- * alarm going off.
+ * Dismiss is given equal weight to the fix, deliberately: a finding the user does
+ * not care about must be cheap to make go away, and the dismissal rate is what
+ * tells us whether the thresholds in `riskRadar.ts` are right.
  */
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
-/** Severity is an edge, a wash and a label — never a fill. */
+/** Severity is a dot, a label tone and — on the lead card — a filled fix pill. */
 const SEVERITY = {
   critical: {
-    edge: "border-l-error",
-    wash: "bg-error/5",
-    label: "text-error",
-    button: "border-error/40 bg-error/[0.16]",
+    tone: "text-tui-danger",
+    dot: "bg-tui-danger",
+    pill: "border-tui-danger/50 bg-tui-danger/10",
   },
   warning: {
-    edge: "border-l-warning",
-    wash: "bg-warning/5",
-    label: "text-warning",
-    button: "border-warning/40 bg-warning/[0.16]",
+    tone: "text-tui-warn",
+    dot: "bg-tui-warn",
+    pill: "border-tui-warn/50 bg-tui-warn/10",
   },
   info: {
-    edge: "border-l-info",
-    wash: "bg-info/5",
-    label: "text-info",
-    button: "border-info/40 bg-info/[0.16]",
+    tone: "text-tui-day",
+    dot: "bg-tui-day",
+    pill: "border-tui-day/50 bg-tui-day/10",
   },
 } as const;
 
@@ -70,7 +59,7 @@ export function RadarFindings({
   projectTitles: Map<number, string | null>;
 }) {
   const useT = useTranslations as unknown as (ns: string) => Translator;
-  const t = useT("dashboard.radar");
+  const t = useT("dashboard");
   const router = useRouter();
 
   const utils = api.useUtils();
@@ -85,9 +74,6 @@ export function RadarFindings({
 
   const rows = findings.data ?? [];
 
-  /* When the radar last had something to say. There is no "last run" column —
-     findings are written as they are raised, so the newest one is the honest
-     answer to "is this current?". */
   const checked = rows.reduce<Date | null>((latest, row) => {
     const at = row.createdAt ? new Date(row.createdAt) : null;
     if (!at || Number.isNaN(at.getTime())) return latest;
@@ -95,32 +81,35 @@ export function RadarFindings({
   }, null);
 
   return (
-    <section className={`flex flex-col gap-3 ${className}`} style={style}>
-      <div className="flex items-baseline gap-3">
-        <Radar size={15} className="self-center text-accent-primary" aria-hidden />
-        <h2 className="m-0 text-base font-semibold tracking-[-0.012em] text-fg-primary">
-          {t("title")}
+    <section
+      className={`border-tui-ink/12 bg-tui-pane overflow-hidden rounded-lg border shadow-[var(--tui-pane-shadow)] ${className}`}
+      style={style}
+    >
+      <div className="border-tui-ink/8 flex items-baseline gap-3 border-b px-7 pt-5 pb-4">
+        <h2 className="font-display text-tui-ink m-0 text-[22px] leading-none">
+          {t("radar.title")}
         </h2>
-        <span className="font-mono text-[11px] text-fg-quaternary">
-          {findings.isLoading ? t("loading") : t("count", { count: rows.length })}
+        <span className="text-tui-ink3 text-[12.5px]">
+          {findings.isLoading
+            ? t("radar.loading")
+            : t("radar.count", { count: rows.length })}
         </span>
         <span className="flex-1" />
         {checked && (
-          <span className="hidden font-mono text-[11px] text-fg-quaternary sm:block">
-            {t("checked", { ago: relativeShort(checked, now) })}
+          <span className="text-tui-ink3 hidden text-[12.5px] sm:block">
+            {t("radar.checked", { ago: relativeShort(checked, now) })}
           </span>
         )}
       </div>
 
-      {/* Nothing found is the good case, and it should look like it rather than
-          like an empty state that suggests something failed to load. */}
+      {/* Nothing found is the good case; it should look calm rather than empty. */}
       {rows.length === 0 ? (
-        <p className="rounded-md border border-border-light/60 bg-bg-elevated px-[19px] py-4 text-[13px] text-fg-tertiary">
-          {findings.isLoading ? t("loading") : t("allClear")}
+        <p className="text-tui-ink2 px-7 py-6 text-[14px]">
+          {findings.isLoading ? t("radar.loading") : t("radar.allClear")}
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 xl:grid-cols-3">
-          {rows.slice(0, 3).map((finding) => {
+        <div className="grid grid-cols-1 md:grid-cols-3">
+          {rows.slice(0, 3).map((finding, index) => {
             const tone = SEVERITY[severityOf(finding.severity)];
             const project = finding.projectId
               ? (projectTitles.get(finding.projectId) ?? null)
@@ -129,64 +118,67 @@ export function RadarFindings({
             return (
               <article
                 key={finding.id}
-                className={`flex min-h-[172px] flex-col gap-2.5 rounded-md border border-l-[3px] border-border-light/60 px-[19px] pb-[15px] pt-[17px] ${tone.edge} ${tone.wash}`}
+                className={`flex flex-col gap-3 px-7 py-6 ${
+                  index > 0
+                    ? "border-tui-ink/8 border-t md:border-t-0 md:border-l"
+                    : ""
+                }`}
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2 text-[12.5px] font-medium">
                   <span
-                    className={`shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] ${tone.label}`}
-                  >
-                    {t(`severity.${severityOf(finding.severity)}`)}
+                    className={`h-1.5 w-1.5 rounded-full ${tone.dot}`}
+                    aria-hidden
+                  />
+                  <span className={tone.tone}>
+                    {t(`radar.severity.${severityOf(finding.severity)}`)}
                   </span>
                   <span className="flex-1" />
-                  <span className="min-w-0 truncate font-mono text-[10px] text-fg-quaternary">
-                    {project ?? t("workspaceWide")}
+                  <span className="font-display text-tui-ink3 truncate text-[14px] italic">
+                    {project ?? t("radar.workspaceWide")}
                   </span>
                 </div>
 
-                <h3 className="m-0 text-[15px] font-semibold leading-[1.3] tracking-[-0.01em] text-fg-primary">
+                <h3 className="font-display text-tui-ink m-0 text-[21px] leading-[1.25] font-normal text-pretty">
                   {finding.title}
                 </h3>
-                <p className="text-[13px] leading-[1.5] text-fg-tertiary">{finding.detail}</p>
+                <p className="text-tui-ink2 m-0 text-[14px] leading-[1.6] text-pretty">
+                  {finding.detail}
+                </p>
 
-                <span className="flex-1" />
-
-                <div className="flex items-center gap-2.5">
+                <div className="mt-1.5 flex items-center gap-4 text-[13px]">
                   {finding.suggestedFix ? (
                     <button
                       type="button"
                       onClick={() =>
-                        // Seed the chat rather than acting directly: this is
-                        // still a write, and a write still goes through draft →
-                        // confirm → apply. The saving is the typing, never the
-                        // review.
                         router.push(
                           `/chat/ai?prefill=${encodeURIComponent(finding.suggestedFix!.prompt)}`,
                         )
                       }
-                      className={`flex items-center gap-[7px] rounded-sm border px-[11px] py-[7px] text-xs font-semibold text-fg-primary transition-opacity hover:opacity-80 ${tone.button}`}
+                      className={`text-tui-ink flex h-[34px] items-center rounded-full border px-3.5 font-medium transition-opacity hover:opacity-80 ${
+                        index === 0 ? tone.pill : "border-tui-ink/16"
+                      }`}
                     >
-                      {finding.suggestedFix.label}
-                      <ArrowRight size={13} aria-hidden />
+                      {finding.suggestedFix.label} →
                     </button>
                   ) : finding.projectId ? (
                     <button
                       type="button"
-                      onClick={() => router.push(`/projects?projectId=${finding.projectId}`)}
-                      className="rounded-sm border border-border-medium px-[11px] py-[7px] text-xs font-semibold text-fg-primary transition-colors hover:bg-bg-tertiary"
+                      onClick={() =>
+                        router.push(`/projects?projectId=${finding.projectId}`)
+                      }
+                      className="border-tui-ink/16 text-tui-ink hover:bg-tui-ink/[0.04] flex h-[34px] items-center rounded-full border px-3.5 font-medium transition-colors"
                     >
-                      {t("openProject")}
+                      {t("radar.openProject")}
                     </button>
                   ) : null}
-
-                  <span className="flex-1" />
 
                   <button
                     type="button"
                     onClick={() => dismiss.mutate({ findingId: finding.id })}
                     disabled={dismiss.isPending}
-                    className="text-xs text-fg-quaternary transition-colors hover:text-fg-secondary disabled:opacity-50"
+                    className="text-tui-ink3 hover:text-tui-ink2 transition-colors disabled:opacity-50"
                   >
-                    {t("dismiss")}
+                    {t("radar.dismiss")}
                   </button>
                 </div>
               </article>

@@ -39,7 +39,28 @@ export interface EvalCase {
   };
   /** A correct model response for this message. */
   response: Record<string, unknown>;
+  /**
+   * What the live run must set up for the message to mean what `why` says.
+   *
+   * Ignored offline, where the response is fixed. Live, "How's it going?" is
+   * only a negative clarify case if a project is actually in view, and "yes, do
+   * it" is only a confirmation if a plan was just proposed.
+   */
+  live?: {
+    scopedProjectId?: number;
+    history?: Array<{ role: "user" | "assistant"; content: string }>;
+  };
 }
+
+/** The turn before every refinement case: a plan the user is looking at. */
+const PLAN_ON_SCREEN: NonNullable<EvalCase["live"]>["history"] = [
+  { role: "user", content: "Break Project Alpha down into tasks" },
+  {
+    role: "assistant",
+    content:
+      "I drafted 8 tasks for Project Alpha: 1. Define scope, 2. Design the data model, 3. Build the API, 4. Build the UI, 5. Write tests, 6. Set up CI, 7. Write the docs, 8. Release. Review them and press Apply when ready.",
+  },
+];
 
 const answer = (summary: string, extra: Record<string, unknown> = {}) => ({
   intent: { type: "answer", scope: {} },
@@ -299,6 +320,23 @@ const OTHER_DOMAIN_CASES: EvalCase[] = [
     expect: { intent: "handoff", agents: ["org_admin"] },
     response: handoff("org_admin", "Grant Ivan the ability to assign tasks, without changing his role"),
   },
+  {
+    id: "projects.create",
+    message: "Create a new project called Mobile App",
+    why: "A6 shipped without a routing rule in A1's prompt, so it was reachable only by pinning.",
+    expect: { intent: "handoff", agents: ["project_manager"] },
+    response: handoff("project_manager", "Create a project named Mobile App"),
+  },
+  {
+    id: "projects.archive-bulgarian",
+    message: "Архивирай проекта Website",
+    why: "Archiving a project is the project manager's, not the task planner's — and in Bulgarian.",
+    expect: { intent: "handoff", agents: ["project_manager"] },
+    response: handoff("project_manager", "Архивирай проекта Website", {
+      projectId: 2,
+      projectName: "Website",
+    }),
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -323,6 +361,7 @@ const MULTI_CASES: EvalCase[] = [
     id: "multi.three-domains",
     message: "Break this down, note the risks, and schedule the kickoff",
     why: "The full three-agent case, at the cap.",
+    live: { scopedProjectId: 1 },
     expect: {
       intent: "handoff",
       agents: ["task_planner", "notes_vault", "events_publisher"],
@@ -409,6 +448,7 @@ const CLARIFY_CASES: EvalCase[] = [
     id: "clarify.not-when-scoped",
     message: "How's it going?",
     why: "NEGATIVE case: a project is in view, so there is nothing to clarify.",
+    live: { scopedProjectId: 1 },
     expect: { intent: "answer" },
     response: answer("Project Alpha is 62% complete, with three tasks overdue."),
   },
@@ -486,6 +526,7 @@ const REFINEMENT_CASES: EvalCase[] = [
     id: "refine.change-one-item",
     message: "Change the third task's due date to Friday and drop the seventh",
     why: "A refinement of a live draft must re-enter the planner, not start a new plan.",
+    live: { history: PLAN_ON_SCREEN },
     expect: { intent: "handoff", agents: ["task_planner"] },
     response: handoff(
       "task_planner",
@@ -496,6 +537,7 @@ const REFINEMENT_CASES: EvalCase[] = [
     id: "refine.confirmation-language",
     message: "yes, do it",
     why: "A bare confirmation must not be re-routed as a fresh write request.",
+    live: { history: PLAN_ON_SCREEN },
     expect: { intent: "answer" },
     response: answer("Use the Apply button on the plan above and I'll run it."),
   },
@@ -503,6 +545,7 @@ const REFINEMENT_CASES: EvalCase[] = [
     id: "refine.add-to-plan",
     message: "Also add one for the error states",
     why: "'Also' continues the previous plan; still the planner's domain.",
+    live: { history: PLAN_ON_SCREEN },
     expect: { intent: "handoff", agents: ["task_planner"] },
     response: handoff("task_planner", "Add a task covering the error states"),
   },

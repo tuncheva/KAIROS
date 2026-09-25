@@ -6,6 +6,7 @@ import { AlertCircle, Building2, CheckCircle2, Loader2 } from "~/components/ui/i
 import { useTranslations } from "next-intl";
 
 import { useToast } from "~/components/providers/ToastProvider";
+import { PermissionGrid } from "~/components/orgs/PermissionGrid";
 import { api } from "~/trpc/react";
 
 /**
@@ -123,11 +124,14 @@ export function JoinWithQrClient({ code }: { code: string }) {
   }
 
   const roleLabel =
-    result.role === "mentor"
+    result.displayRole ??
+    (result.role === "mentor"
       ? t("roleMentor")
       : result.role === "admin"
         ? t("roleAdmin")
-        : t("roleWorker");
+        : result.role === "guest"
+          ? t("roleGuest")
+          : t("roleWorker"));
 
   return (
     <Card>
@@ -141,6 +145,11 @@ export function JoinWithQrClient({ code }: { code: string }) {
         <p className="text-sm text-fg-secondary">
           {t("joinAsRole", { role: roleLabel })}
         </p>
+      </div>
+
+      <div className="w-full rounded-lg border border-border-light p-4 text-left">
+        <p className="mb-3 text-xs font-medium text-fg-tertiary">{t("inviteYouWillBeAbleTo")}</p>
+        <PermissionGrid value={result.permissions} />
       </div>
 
       <button

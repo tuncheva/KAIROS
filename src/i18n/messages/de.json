@@ -531,7 +531,68 @@
       "successTitle": "You are subscribed",
       "successBody": "Your plan is being applied — it may take a few seconds to appear.",
       "cancelledTitle": "Checkout cancelled",
-      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready."
+      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready.",
+      "startTrial": "{days} Tage kostenlos starten",
+      "trialNote": "{days} Tage gratis, ohne Karte. Endet automatisch, wenn Sie keine hinterlegen.",
+      "createOrg": "Organisation erstellen",
+      "createOrgConfirm": "Erstellen und fortfahren",
+      "creatingOrg": "Wird erstellt…",
+      "orgNamePlaceholder": "Name der Organisation",
+      "orgNameLabel": "Name der zu erstellenden Organisation"
+    },
+    "workspace": {
+      "roles": {
+        "mentor": "Mentor",
+        "duplicate": "Als neue Rolle kopieren",
+        "edit": "{name} bearbeiten",
+        "saveRole": "Rolle speichern",
+        "editNote": "Wer diese Rolle bereits hat, behält die erteilten Berechtigungen. Weisen Sie die Rolle erneut zu, um die geänderten zu vergeben."
+      },
+      "messages": {
+        "roleUpdatedSaved": "Rolle gespeichert"
+      },
+      "inviteBuilder": {
+        "title": "Personen einladen",
+        "subtitle": "Wählen Sie genau aus, was sie tun dürfen. Beim Beitritt erhalten sie genau diese Berechtigungen.",
+        "startFrom": "Mit einer Vorlage beginnen",
+        "permissions": "Berechtigungen",
+        "joinsAs": "Tritt bei als {role} · {count} von 8 Berechtigungen",
+        "edited": "geändert",
+        "lockedHint": "Sie können keine Berechtigung vergeben, die Sie selbst nicht haben.",
+        "adminNote": "Admins können Einladungen unabhängig von diesen Häkchen sehen und verwalten.",
+        "byEmail": "Einladung per E-Mail",
+        "byLink": "Link oder Code",
+        "sendInvitation": "Einladung senden",
+        "emailHint": "Sie erhalten eine E-Mail mit einem Link, der nur für diese Adresse gilt, und eine Benachrichtigung in der App, falls sie schon ein Konto haben.",
+        "showBulk": "Mehrere Adressen auf einmal einladen",
+        "hideBulk": "Sammeleinladung ausblenden",
+        "invalidEmail": "Geben Sie eine gültige E-Mail-Adresse ein.",
+        "emailSent": "Einladung an {email} gesendet",
+        "emailFailed": "Einladung für {email} erstellt, aber die E-Mail konnte nicht gesendet werden. Erneut senden oder einen Link teilen.",
+        "sendFailed": "Die Einladung konnte nicht gesendet werden.",
+        "bulkUndelivered": "{count, plural, one {# Einladung wurde} other {# Einladungen wurden}} erstellt, aber nicht per E-Mail gesendet.",
+        "uses": "Verwendungen",
+        "usesOption": "{count, plural, one {# Person} other {# Personen}}",
+        "expires": "Läuft ab in",
+        "daysOption": "{count, plural, one {# Tag} other {# Tagen}}",
+        "createLink": "Link erstellen",
+        "linkHint": "Jeder mit dem Link oder Code kann mit diesen Berechtigungen beitreten, bis er aufgebraucht oder abgelaufen ist.",
+        "link": "Link",
+        "code": "Code",
+        "codeHint": "Der Code kann unter Einstellungen → Arbeitsbereich → Beitreten eingegeben werden.",
+        "copy": "Kopieren",
+        "copied": "Kopiert",
+        "copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen.",
+        "activeLinks": "Aktive Einladungslinks",
+        "viewOnly": "Nur ansehen",
+        "usedOf": "{used}/{max} verwendet",
+        "copyLink": "Link kopieren",
+        "revoke": "Widerrufen",
+        "linkRevoked": "Einladungslink widerrufen",
+        "linkCreated": "Einladungslink erstellt",
+        "linkFailed": "Der Einladungslink konnte nicht erstellt werden.",
+        "resend": "E-Mail erneut senden"
+      }
     }
   },
   "create": {
@@ -856,7 +917,17 @@
     "createNamePlaceholder": "z. B. Designteam",
     "creating": "Wird erstellt…",
     "createdOrg": "{name} erstellt.",
-    "namePlaceholder": "Name der Organisation…"
+    "namePlaceholder": "Name der Organisation…",
+    "inviteWrongAccount": "Diese Einladung wurde an {invited} gesendet, Sie sind aber als {current} angemeldet. Melden Sie sich mit der eingeladenen Adresse an.",
+    "inviteExpired": "Diese Einladung ist abgelaufen.",
+    "inviteUsed": "Diese Einladung wurde bereits angenommen.",
+    "inviteRevoked": "Diese Einladung wurde storniert oder ersetzt.",
+    "inviteInvalid": "Dieser Einladungslink ist ungültig.",
+    "inviteAskForNew": "Bitten Sie die einladende Person um eine neue Einladung.",
+    "inviteFrom": "{name} hat Sie als {role} eingeladen.",
+    "inviteYouWillBeAbleTo": "Sie können",
+    "inviteAccept": "Einladung annehmen",
+    "inviteDecline": "Ablehnen"
   },
   "ai": {
     "title": "KI-Aufgabengenerator",
@@ -1114,7 +1185,11 @@
       "todo": "{count} offen",
       "dayGone": "{percent}% des Tages vorbei",
       "ofTasksDone": "der Aufgaben erledigt",
-      "ofTodayGone": "des Tages vorbei"
+      "ofTodayGone": "des Tages vorbei",
+      "doneLabel": "",
+      "activeLabel": "",
+      "todoLabel": "",
+      "dayGoneLabel": ""
     },
     "projects": {
       "untitled": "Unbenanntes Projekt",
@@ -1139,7 +1214,33 @@
       "step1": "Benenne das Projekt und setze die erste Frist.",
       "step2": "Lade Leute mit einem einzigen Zugangscode ein.",
       "step3": "Aufgaben, Notizen und Fortschritt landen auf diesem Dashboard.",
-      "aside": "Der innere Bogen verfolgt den Tag selbst — ein leeres Dashboard zeigt also trotzdem, wie viel Zeit bleibt."
+      "aside": "Der innere Bogen verfolgt den Tag selbst — ein leeres Dashboard zeigt also trotzdem, wie viel Zeit bleibt.",
+      "welcomeLabel": "",
+      "newWorkspace": "",
+      "headline": "",
+      "howItFills": "",
+      "steps3": "",
+      "stepCreateTitle": "",
+      "stepTeamTitle": "",
+      "stepRadarTitle": "",
+      "zeroActive": "",
+      "noProjects": "",
+      "pressToCreate": {
+        "before": "",
+        "after": ""
+      },
+      "theDay": "",
+      "localTime": "",
+      "dayCaption": "",
+      "keysLabel": "",
+      "pressForAll": "",
+      "keyNew": "",
+      "keyJoin": "",
+      "keySearch": "",
+      "keyTheme": "",
+      "keyAll": "",
+      "radarIdle": "",
+      "radarIdleBody": ""
     },
     "radar": {
       "title": "Was das Radar gefunden hat",
@@ -1184,6 +1285,30 @@
       "neverActive": "Noch keine Aktivität",
       "you": "{name} (du)",
       "empty": "Noch ist niemand sonst in diesen Projekten."
+    },
+    "tui": {
+      "briefing": "",
+      "panes": {
+        "today": "",
+        "radar": "",
+        "projects": "",
+        "activity": "",
+        "workspace": "",
+        "momentum": "",
+        "team": ""
+      },
+      "sortedByRisk": "",
+      "byLoad": "",
+      "scanning": "",
+      "tail": "",
+      "keys": {
+        "move": "",
+        "open": "",
+        "filter": ""
+      },
+      "booting": "",
+      "waitingCounts": "",
+      "today": ""
     }
   },
   "agents": {

@@ -40,6 +40,9 @@ const PUBLIC_PATHS = new Set([
   "/",
   "/api/auth",
   "/verify-email",
+  // Same reason: the two-step sign-in link is opened by someone who is, by
+  // definition, not signed in yet — often on a different device.
+  "/verify-login",
   // A failed sign-in has, by definition, no session cookie. Gating the page that
   // explains the failure sent it back to `/` with the error code buried in a
   // query string nothing reads — the dead end this page exists to end.
@@ -53,6 +56,13 @@ const PUBLIC_PATHS = new Set([
   "/about",
   "/contact",
   "/careers",
+  // The one marketing page that was missing, and the expensive one to miss: a
+  // visitor with no account was bounced to sign-in, so nobody could read the
+  // prices without first becoming a user. `PricingPage` reads the session and
+  // `PricingTable` takes a `signedIn` prop precisely because it expects to be
+  // rendered for someone who is not — the page was written to be public and
+  // only this list disagreed.
+  "/pricing",
 ]);
 
 /**

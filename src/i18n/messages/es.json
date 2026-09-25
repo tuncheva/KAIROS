@@ -531,7 +531,68 @@
       "successTitle": "You are subscribed",
       "successBody": "Your plan is being applied — it may take a few seconds to appear.",
       "cancelledTitle": "Checkout cancelled",
-      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready."
+      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready.",
+      "startTrial": "Empieza tus {days} días gratis",
+      "trialNote": "{days} días gratis, sin tarjeta. Se detiene salvo que añadas una.",
+      "createOrg": "Crear una organización",
+      "createOrgConfirm": "Crear y continuar",
+      "creatingOrg": "Creando…",
+      "orgNamePlaceholder": "Nombre de la organización",
+      "orgNameLabel": "Nombre de la organización que vas a crear"
+    },
+    "workspace": {
+      "roles": {
+        "mentor": "Mentor",
+        "duplicate": "Copiar como rol nuevo",
+        "edit": "Editar {name}",
+        "saveRole": "Guardar rol",
+        "editNote": "Quienes ya tienen este rol conservan los permisos que recibieron. Vuelve a asignar el rol para darles los editados."
+      },
+      "messages": {
+        "roleUpdatedSaved": "Rol guardado"
+      },
+      "inviteBuilder": {
+        "title": "Invitar personas",
+        "subtitle": "Marca exactamente lo que pueden hacer. Al unirse reciben estos permisos, ni más ni menos.",
+        "startFrom": "Empezar desde una plantilla",
+        "permissions": "Permisos",
+        "joinsAs": "Se une como {role} · {count} de 8 permisos",
+        "edited": "editado",
+        "lockedHint": "No puedes otorgar un permiso que no tienes.",
+        "adminNote": "Los administradores pueden ver y gestionar invitaciones sin importar estas casillas.",
+        "byEmail": "Invitación por correo",
+        "byLink": "Enlace o código",
+        "sendInvitation": "Enviar invitación",
+        "emailHint": "Recibirán un correo con un enlace que solo funciona para esta dirección, y una notificación en la app si ya tienen cuenta.",
+        "showBulk": "Invitar varias direcciones a la vez",
+        "hideBulk": "Ocultar invitación masiva",
+        "invalidEmail": "Introduce un correo válido.",
+        "emailSent": "Invitación enviada a {email}",
+        "emailFailed": "Invitación creada para {email}, pero el correo no se pudo enviar. Reenvíalo o comparte un enlace.",
+        "sendFailed": "No se pudo enviar la invitación.",
+        "bulkUndelivered": "{count, plural, one {# invitación se creó} other {# invitaciones se crearon}} pero no se enviaron por correo.",
+        "uses": "Usos",
+        "usesOption": "{count, plural, one {# persona} other {# personas}}",
+        "expires": "Caduca en",
+        "daysOption": "{count, plural, one {# día} other {# días}}",
+        "createLink": "Crear enlace",
+        "linkHint": "Cualquiera con el enlace o código puede unirse con estos permisos hasta que se agoten los usos o caduque.",
+        "link": "Enlace",
+        "code": "Código",
+        "codeHint": "El código se puede escribir en Ajustes → Espacio de trabajo → Unirse.",
+        "copy": "Copiar",
+        "copied": "Copiado",
+        "copyFailed": "No se pudo copiar al portapapeles.",
+        "activeLinks": "Enlaces de invitación activos",
+        "viewOnly": "Solo lectura",
+        "usedOf": "{used}/{max} usados",
+        "copyLink": "Copiar enlace",
+        "revoke": "Revocar",
+        "linkRevoked": "Enlace de invitación revocado",
+        "linkCreated": "Enlace de invitación creado",
+        "linkFailed": "No se pudo crear el enlace de invitación.",
+        "resend": "Reenviar correo"
+      }
     }
   },
   "create": {
@@ -856,7 +917,17 @@
     "createNamePlaceholder": "p. ej. Equipo de diseño",
     "creating": "Creando…",
     "createdOrg": "{name} creada.",
-    "namePlaceholder": "Nombre de la organización…"
+    "namePlaceholder": "Nombre de la organización…",
+    "inviteWrongAccount": "Esta invitación se envió a {invited}, pero has iniciado sesión como {current}. Inicia sesión con la dirección invitada para aceptarla.",
+    "inviteExpired": "Esta invitación ha caducado.",
+    "inviteUsed": "Esta invitación ya fue aceptada.",
+    "inviteRevoked": "Esta invitación fue cancelada o sustituida.",
+    "inviteInvalid": "Este enlace de invitación no es válido.",
+    "inviteAskForNew": "Pide a quien te invitó que envíe una nueva.",
+    "inviteFrom": "{name} te invitó a unirte como {role}.",
+    "inviteYouWillBeAbleTo": "Podrás",
+    "inviteAccept": "Aceptar invitación",
+    "inviteDecline": "Rechazar"
   },
   "ai": {
     "title": "Generador de tareas con IA",
@@ -1114,7 +1185,11 @@
       "todo": "{count} pendientes",
       "dayGone": "{percent}% del día transcurrido",
       "ofTasksDone": "de las tareas hechas",
-      "ofTodayGone": "del día transcurrido"
+      "ofTodayGone": "del día transcurrido",
+      "doneLabel": "",
+      "activeLabel": "",
+      "todoLabel": "",
+      "dayGoneLabel": ""
     },
     "projects": {
       "untitled": "Proyecto sin título",
@@ -1139,7 +1214,33 @@
       "step1": "Nombra el proyecto y fija su primera fecha límite.",
       "step2": "Invita a personas con un único código de acceso.",
       "step3": "Las tareas, notas y el progreso llegan a este panel.",
-      "aside": "El arco interior sigue el propio día, así que un panel vacío aún te dice cuánto tiempo queda."
+      "aside": "El arco interior sigue el propio día, así que un panel vacío aún te dice cuánto tiempo queda.",
+      "welcomeLabel": "",
+      "newWorkspace": "",
+      "headline": "",
+      "howItFills": "",
+      "steps3": "",
+      "stepCreateTitle": "",
+      "stepTeamTitle": "",
+      "stepRadarTitle": "",
+      "zeroActive": "",
+      "noProjects": "",
+      "pressToCreate": {
+        "before": "",
+        "after": ""
+      },
+      "theDay": "",
+      "localTime": "",
+      "dayCaption": "",
+      "keysLabel": "",
+      "pressForAll": "",
+      "keyNew": "",
+      "keyJoin": "",
+      "keySearch": "",
+      "keyTheme": "",
+      "keyAll": "",
+      "radarIdle": "",
+      "radarIdleBody": ""
     },
     "radar": {
       "title": "Lo que encontró el radar",
@@ -1184,6 +1285,30 @@
       "neverActive": "Sin actividad aún",
       "you": "{name} (tú)",
       "empty": "Aún no hay nadie más en estos proyectos."
+    },
+    "tui": {
+      "briefing": "",
+      "panes": {
+        "today": "",
+        "radar": "",
+        "projects": "",
+        "activity": "",
+        "workspace": "",
+        "momentum": "",
+        "team": ""
+      },
+      "sortedByRisk": "",
+      "byLoad": "",
+      "scanning": "",
+      "tail": "",
+      "keys": {
+        "move": "",
+        "open": "",
+        "filter": ""
+      },
+      "booting": "",
+      "waitingCounts": "",
+      "today": ""
     }
   },
   "agents": {

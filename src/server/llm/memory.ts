@@ -29,6 +29,7 @@
 
 import "server-only";
 
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 
@@ -211,6 +212,56 @@ export interface UpsertResult {
 }
 
 /**
+ * The scope a write is actually allowed to land in, given the caller's plan.
+ *
+ * Both non-global scopes are sold: `PLAN_CATALOGUE` lists "Per-agent memory" and
+ * "Standing instructions" as Pro lines, and until this existed neither was
+ * checked anywhere — the limit was chosen by scope name and the scope name came
+ * from the caller, so a Free user could write agent-scoped facts and standing
+ * rules by naming them.
+ *
+ * The two are handled differently on purpose, because the wrong answer differs:
+ *
+ * - **An agent scope degrades to global.** It is the same kind of thing at a
+ *   coarser resolution, so storing it globally gives the user what they asked
+ *   for in the form their plan includes. Refusing would fail an AI turn over a
+ *   routing detail the user never named — the same reasoning that makes an
+ *   unrecognised scope inert rather than an error.
+ * - **An instruction scope refuses.** Rows there are injected into every later
+ *   system prompt as rules that override the model's defaults; quietly filing
+ *   one as an ordinary fact would silently not do the thing the user asked for.
+ *   And it is only ever reached from the settings editor — a deliberate user
+ *   action, where an explicit "this is a Pro feature" is the honest answer.
+ */
+async function scopeAllowedBy(ctx: TRPCContext, scope: string): Promise<string> {
+  if (scope === GLOBAL_SCOPE) return scope;
+
+  // Imported here rather than at the top of the file, and the global-scope
+  // return above is what makes that affordable — the common write never reaches
+  // this line.
+  //
+  // `~/server/billing/entitlements` pulls in `~/server/db`, which reads
+  // `env.DATABASE_URL` at import time and throws under the jsdom environment the
+  // unit suite runs in. A static import here does not fail those tests; it stops
+  // eleven files from *collecting*, so their assertions report as a file-level
+  // error while the run still says every test passed. That is the same trap
+  // `~/lib/subscription-status` was split out to escape, and the same one the
+  // billing spec fell into before it.
+  const { entitlementsFor } = await import("~/server/billing/entitlements");
+  const entitlements = await entitlementsFor(ctx);
+
+  if (scope === INSTRUCTION_SCOPE) {
+    if (entitlements.standingInstructions) return scope;
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Standing instructions are a Pro feature.",
+    });
+  }
+
+  return entitlements.perAgentMemory ? scope : GLOBAL_SCOPE;
+}
+
+/**
  * Write one fact, creating or correcting it.
  *
  * The single write path, shared by the `rememberFact` tool and the settings
@@ -226,7 +277,7 @@ export async function upsertFact(
   userId: string,
   input: { key: string; value: string; scope?: string },
 ): Promise<UpsertResult> {
-  const scope = input.scope?.trim() ?? GLOBAL_SCOPE;
+  const scope = await scopeAllowedBy(ctx, input.scope?.trim() ?? GLOBAL_SCOPE);
   const isGlobal = scope === GLOBAL_SCOPE;
   const limit =
     scope === INSTRUCTION_SCOPE

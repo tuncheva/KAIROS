@@ -29,6 +29,22 @@ export interface EmailVerificationParams {
   verifyToken: string;
 }
 
+export interface TwoFactorSignInParams {
+  email: string;
+  userName: string;
+  code: string;
+  /** The approval-link token. Only the page it opens can spend it. */
+  approveToken: string;
+}
+
+export interface TwoFactorToggleCodeParams {
+  email: string;
+  userName: string;
+  code: string;
+  /** Which way the switch is being flipped, so the email can say so. */
+  enabling: boolean;
+}
+
 export interface BriefEmailParams {
   email: string;
   userName: string;
@@ -37,6 +53,23 @@ export interface BriefEmailParams {
   /** The agent's prose, already written in the user's language. */
   body: string;
 }
+
+export interface OrganizationInviteEmailParams {
+  email: string;
+  inviterName: string;
+  organizationName: string;
+  /** "Admin", "Member", or a custom role's name. */
+  roleLabel: string;
+  /** Human-readable names of every permission granted, in display order. */
+  permissionLabels: string[];
+  /** The raw invite token; the link is built from `appUrl`. */
+  token: string;
+  expiresAt: Date;
+}
+
+type OrganizationInviteTemplateInput = Omit<OrganizationInviteEmailParams, "email" | "token"> & {
+  acceptUrl: string;
+};
 
 type EmailVerificationTemplateInput = {
   userName: string;
@@ -272,6 +305,55 @@ ${SIGN_OFF}`,
 } as const;
 
 // ---------------------------------------------------------------------------
+// Organization invitation
+// ---------------------------------------------------------------------------
+
+function permissionList(labels: string[]): string {
+  if (labels.length === 0) {
+    return paragraph("View-only access: you'll be able to see the workspace, but not change anything in it.");
+  }
+  const items = labels
+    .map(
+      (label) =>
+        `<li style="margin:0 0 6px;color:${BRAND.ink};font-size:15px;line-height:1.5;">${escapeHtml(label)}</li>`,
+    )
+    .join("");
+  return `              <p style="margin:0 0 8px;color:${BRAND.inkMuted};font-size:14px;font-weight:600;">You'll be able to:</p>
+              <ul style="margin:0 0 24px;padding-left:20px;">${items}</ul>`;
+}
+
+const OrganizationInviteTemplate = {
+  subject: ({ inviterName, organizationName }: OrganizationInviteTemplateInput) =>
+    `${inviterName} invited you to ${organizationName} on ${BRAND_NAME}`,
+  renderHtml: (input: OrganizationInviteTemplateInput) =>
+    emailWrapper(`
+${logoBlock(`Join ${input.organizationName}`)}
+${card(`${paragraph(`<strong style="color:${BRAND.ink};">${escapeHtml(input.inviterName)}</strong> invited you to join <strong style="color:${BRAND.ink};">${escapeHtml(input.organizationName)}</strong> as <strong style="color:${BRAND.ink};">${escapeHtml(input.roleLabel)}</strong>.`)}
+${permissionList(input.permissionLabels)}
+${button(input.acceptUrl, "Accept invitation")}
+${notice(
+  "Sign in with this address",
+  `The invitation only works for the account that uses this email address. If you don't have one yet, create it with this address first. The link expires on <strong>${escapeHtml(input.expiresAt.toUTCString())}</strong>.`,
+)}`)}`),
+  renderText: (input: OrganizationInviteTemplateInput) =>
+    `${input.inviterName} invited you to join ${input.organizationName} on ${BRAND_NAME} as ${input.roleLabel}.
+
+${
+  input.permissionLabels.length
+    ? `You'll be able to:\n${input.permissionLabels.map((l) => `- ${l}`).join("\n")}`
+    : "View-only access: you'll be able to see the workspace, but not change anything in it."
+}
+
+Accept the invitation: ${input.acceptUrl}
+
+The invitation only works for the account that uses this email address. It expires on ${input.expiresAt.toUTCString()}.
+
+If you weren't expecting this, ignore this email.
+
+${SIGN_OFF}`,
+} as const;
+
+// ---------------------------------------------------------------------------
 // Password reset code
 // ---------------------------------------------------------------------------
 
@@ -362,6 +444,82 @@ ${verifyUrl}
 This link expires in 24 hours. You won't be able to sign in until the address is confirmed.
 
 If you didn't sign up, ignore this email.
+
+${SIGN_OFF}`,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Two-step sign-in
+// ---------------------------------------------------------------------------
+
+/**
+ * The second step of a password sign-in.
+ *
+ * Code and link in the same message, because they suit different moments: the
+ * code is quicker when the mail is open on the same screen, the link when it
+ * arrived on a phone. The link approves the browser that is waiting — it does
+ * not sign in whatever device opens it — and the copy says so, because "click
+ * to sign in" is exactly the phrasing phishing mail uses.
+ *
+ * Arriving unasked means somebody has the password, so the notice says that
+ * plainly rather than "someone may have typed your address by mistake".
+ */
+const TwoFactorSignInTemplate = {
+  subject: `Your sign-in code — ${BRAND_NAME}`,
+  renderHtml: ({ userName, code, approveUrl }: CodeTemplateInput & { approveUrl: string }) =>
+    emailWrapper(`
+${logoBlock("Confirm it's you")}
+${card(`${greeting(userName)}
+${paragraph(`Someone just entered your password to sign in to ${BRAND_NAME}. If that was you, enter this code on the sign-in screen:`)}
+${codePlate(code)}
+${paragraph("Or approve the sign-in from here — the screen that is waiting will continue on its own:")}
+${button(approveUrl, "Review sign-in")}
+${notice(
+  "If this wasn't you",
+  `Your password is known to someone else. Don't enter the code or approve the sign-in — open the link and choose <strong>This wasn't me</strong>, then reset your password. The code and link expire in <strong>10 minutes</strong>. ${BRAND_NAME} will never ask you for them.`,
+)}`)}`),
+  renderText: ({ userName, code, approveUrl }: CodeTemplateInput & { approveUrl: string }) =>
+    `Hi ${userName},
+
+Someone just entered your password to sign in to ${BRAND_NAME}.
+
+If that was you, enter this code on the sign-in screen: ${code}
+
+Or review and approve the sign-in here:
+${approveUrl}
+
+Both expire in 10 minutes.
+
+If this wasn't you, your password is known to someone else. Don't use the code — open the link, choose "This wasn't me", and reset your password. ${BRAND_NAME} will never ask you for this code.
+
+${SIGN_OFF}`,
+} as const;
+
+const TwoFactorToggleCodeTemplate = {
+  subject: ({ enabling }: { enabling: boolean }) =>
+    `${enabling ? "Turn on" : "Turn off"} two-step sign-in — ${BRAND_NAME}`,
+  renderHtml: ({ userName, code, enabling }: CodeTemplateInput & { enabling: boolean }) =>
+    emailWrapper(`
+${logoBlock(enabling ? "Turn on two-step sign-in" : "Turn off two-step sign-in")}
+${card(`${greeting(userName)}
+${paragraph(
+  enabling
+    ? `Enter this code in ${BRAND_NAME} Settings to turn on two-step sign-in. After that, signing in with your password will also need a code sent to this address.`
+    : `Enter this code in ${BRAND_NAME} Settings to turn off two-step sign-in. After that, your password alone will be enough to sign in.`,
+)}
+${codePlate(code)}
+${notice(
+  "If this wasn't you",
+  `Someone signed in to your account asked for this. Ignore this email and nothing changes. The code expires in <strong>15 minutes</strong>.`,
+)}`)}`),
+  renderText: ({ userName, code, enabling }: CodeTemplateInput & { enabling: boolean }) =>
+    `Hi ${userName},
+
+Your code to turn ${enabling ? "on" : "off"} two-step sign-in is: ${code}
+
+Enter it in ${BRAND_NAME} Settings. It expires in 15 minutes.
+
+If you didn't ask for this, ignore this email and nothing changes.
 
 ${SIGN_OFF}`,
 } as const;
@@ -466,6 +624,87 @@ export class EmailService {
     if (error) {
       log.error('verification code send failed', { err: error });
       throw new Error(`Failed to send confirmation code: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  /**
+   * Send the second step of a password sign-in.
+   *
+   * Throws, because the person is on the sign-in screen waiting for it.
+   */
+  async sendTwoFactorSignIn({
+    email,
+    userName,
+    code,
+    approveToken,
+  }: TwoFactorSignInParams): Promise<{ id: string } | null> {
+    const approveUrl = `${this.options.appUrl}/verify-login?token=${encodeURIComponent(approveToken)}`;
+
+    const { data, error } = await this.resend.emails.send({
+      from: this.options.fromEmail,
+      to: [email],
+      subject: TwoFactorSignInTemplate.subject,
+      html: TwoFactorSignInTemplate.renderHtml({ userName, code, approveUrl }),
+      text: TwoFactorSignInTemplate.renderText({ userName, code, approveUrl }),
+    });
+
+    if (error) {
+      log.error('two-factor sign-in send failed', { err: error });
+      throw new Error(`Failed to send sign-in code: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  async sendTwoFactorToggleCode({
+    email,
+    userName,
+    code,
+    enabling,
+  }: TwoFactorToggleCodeParams): Promise<{ id: string } | null> {
+    const { data, error } = await this.resend.emails.send({
+      from: this.options.fromEmail,
+      to: [email],
+      subject: TwoFactorToggleCodeTemplate.subject({ enabling }),
+      html: TwoFactorToggleCodeTemplate.renderHtml({ userName, code, enabling }),
+      text: TwoFactorToggleCodeTemplate.renderText({ userName, code, enabling }),
+    });
+
+    if (error) {
+      log.error('two-factor toggle code send failed', { err: error });
+      throw new Error(`Failed to send code: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  /**
+   * Invite someone into an organization.
+   *
+   * Throws on failure like the other transactional sends: the admin pressing
+   * "Send invitation" is watching and needs to hear that it didn't go out.
+   */
+  async sendOrganizationInvite({
+    email,
+    token,
+    ...rest
+  }: OrganizationInviteEmailParams): Promise<{ id: string } | null> {
+    const acceptUrl = `${this.options.appUrl.replace(/\/$/, "")}/invite/${encodeURIComponent(token)}`;
+    const input = { ...rest, acceptUrl };
+
+    const { data, error } = await this.resend.emails.send({
+      from: this.options.fromEmail,
+      to: [email],
+      subject: OrganizationInviteTemplate.subject(input),
+      html: OrganizationInviteTemplate.renderHtml(input),
+      text: OrganizationInviteTemplate.renderText(input),
+    });
+
+    if (error) {
+      log.error('organization invite send failed', { err: error });
+      throw new Error(`Failed to send invitation email: ${error.message}`);
     }
 
     return data;
@@ -605,6 +844,16 @@ ${SIGN_OFF}`,
  * dressed up as a general-purpose renderer: nothing in the application should
  * call this.
  */
+export function renderOrganizationInviteEmailForTest(
+  input: OrganizationInviteTemplateInput,
+): { subject: string; html: string; text: string } {
+  return {
+    subject: OrganizationInviteTemplate.subject(input),
+    html: OrganizationInviteTemplate.renderHtml(input),
+    text: OrganizationInviteTemplate.renderText(input),
+  };
+}
+
 export function renderBriefEmailForTest(input: {
   userName: string;
   heading: string;
@@ -665,6 +914,36 @@ export async function sendEmailVerificationCode(
   params: EmailVerificationCodeParams
 ): Promise<{ id: string } | null> {
   return getEmailService().sendEmailVerificationCode(params);
+}
+
+export async function sendTwoFactorSignIn(
+  params: TwoFactorSignInParams
+): Promise<{ id: string } | null> {
+  return getEmailService().sendTwoFactorSignIn(params);
+}
+
+export async function sendTwoFactorToggleCode(
+  params: TwoFactorToggleCodeParams
+): Promise<{ id: string } | null> {
+  return getEmailService().sendTwoFactorToggleCode(params);
+}
+
+/**
+ * Render the two-step sign-in email body, for tests. Same reason as
+ * `renderBriefEmailForTest`: the link and the escaping are worth pinning.
+ */
+export function renderTwoFactorSignInForTest(input: {
+  userName: string;
+  code: string;
+  approveUrl: string;
+}): string {
+  return TwoFactorSignInTemplate.renderHtml(input);
+}
+
+export async function sendOrganizationInvite(
+  params: OrganizationInviteEmailParams
+): Promise<{ id: string } | null> {
+  return getEmailService().sendOrganizationInvite(params);
 }
 
 export async function sendEmailVerification(

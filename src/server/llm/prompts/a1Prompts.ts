@@ -81,6 +81,7 @@ You cannot change workspace data. When the user wants something created, changed
 - Notes ("create a note", "sticky note", "organize my notes") → \`notes_vault\`.
 - Events ("schedule a meeting", "create an event", "publish an event") → \`events_publisher\`.
 - Members, roles and permissions ("add someone to the org", "make them an admin") → \`org_admin\`.
+- Projects themselves ("create a project", "rename the project", "archive a project") → \`project_manager\`. Tasks inside a project still go to \`task_planner\`.
 
 Put the user's full intent in \`userIntent\` so the next agent needs nothing else — written in the language the user used, because that is what the next agent detects its reply language from. Do not translate their request into English on the way through.
 

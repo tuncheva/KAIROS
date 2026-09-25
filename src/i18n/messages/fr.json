@@ -531,7 +531,68 @@
       "successTitle": "You are subscribed",
       "successBody": "Your plan is being applied — it may take a few seconds to appear.",
       "cancelledTitle": "Checkout cancelled",
-      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready."
+      "cancelledBody": "Nothing was charged. You can pick a plan whenever you are ready.",
+      "startTrial": "Commencer vos {days} jours gratuits",
+      "trialNote": "{days} jours gratuits, sans carte. Se termine sauf si vous en ajoutez une.",
+      "createOrg": "Créer une organisation",
+      "createOrgConfirm": "Créer et continuer",
+      "creatingOrg": "Création…",
+      "orgNamePlaceholder": "Nom de l'organisation",
+      "orgNameLabel": "Nom de l'organisation à créer"
+    },
+    "workspace": {
+      "roles": {
+        "mentor": "Mentor",
+        "duplicate": "Copier comme nouveau rôle",
+        "edit": "Modifier {name}",
+        "saveRole": "Enregistrer le rôle",
+        "editNote": "Les personnes qui ont déjà ce rôle gardent les permissions reçues. Réattribuez le rôle pour leur donner les nouvelles."
+      },
+      "messages": {
+        "roleUpdatedSaved": "Rôle enregistré"
+      },
+      "inviteBuilder": {
+        "title": "Inviter des personnes",
+        "subtitle": "Cochez exactement ce qu'elles peuvent faire. Elles reçoivent ces permissions, ni plus ni moins, en rejoignant.",
+        "startFrom": "Partir d'un modèle",
+        "permissions": "Permissions",
+        "joinsAs": "Rejoint en tant que {role} · {count} permissions sur 8",
+        "edited": "modifié",
+        "lockedHint": "Vous ne pouvez pas accorder une permission que vous n'avez pas.",
+        "adminNote": "Les admins peuvent voir et gérer les invitations quelles que soient ces cases.",
+        "byEmail": "Invitation par e-mail",
+        "byLink": "Lien ou code",
+        "sendInvitation": "Envoyer l'invitation",
+        "emailHint": "Ils reçoivent un e-mail avec un lien valable uniquement pour cette adresse, et une notification dans l'app s'ils ont déjà un compte.",
+        "showBulk": "Inviter plusieurs adresses à la fois",
+        "hideBulk": "Masquer l'invitation groupée",
+        "invalidEmail": "Saisissez une adresse e-mail valide.",
+        "emailSent": "Invitation envoyée à {email}",
+        "emailFailed": "Invitation créée pour {email}, mais l'e-mail n'a pas pu être envoyé. Renvoyez-le ou partagez un lien.",
+        "sendFailed": "Impossible d'envoyer l'invitation.",
+        "bulkUndelivered": "{count, plural, one {# invitation a été créée} other {# invitations ont été créées}} sans être envoyées par e-mail.",
+        "uses": "Utilisations",
+        "usesOption": "{count, plural, one {# personne} other {# personnes}}",
+        "expires": "Expire dans",
+        "daysOption": "{count, plural, one {# jour} other {# jours}}",
+        "createLink": "Créer un lien",
+        "linkHint": "Toute personne ayant le lien ou le code peut rejoindre avec ces permissions jusqu'à épuisement ou expiration.",
+        "link": "Lien",
+        "code": "Code",
+        "codeHint": "Le code peut être saisi dans Paramètres → Espace de travail → Rejoindre.",
+        "copy": "Copier",
+        "copied": "Copié",
+        "copyFailed": "Impossible de copier dans le presse-papiers.",
+        "activeLinks": "Liens d'invitation actifs",
+        "viewOnly": "Lecture seule",
+        "usedOf": "{used}/{max} utilisés",
+        "copyLink": "Copier le lien",
+        "revoke": "Révoquer",
+        "linkRevoked": "Lien d'invitation révoqué",
+        "linkCreated": "Lien d'invitation créé",
+        "linkFailed": "Impossible de créer le lien d'invitation.",
+        "resend": "Renvoyer l'e-mail"
+      }
     }
   },
   "create": {
@@ -856,7 +917,17 @@
     "createNamePlaceholder": "ex. Équipe design",
     "creating": "Création…",
     "createdOrg": "{name} créée.",
-    "namePlaceholder": "Nom de l'organisation…"
+    "namePlaceholder": "Nom de l'organisation…",
+    "inviteWrongAccount": "Cette invitation a été envoyée à {invited}, mais vous êtes connecté en tant que {current}. Connectez-vous avec l'adresse invitée pour l'accepter.",
+    "inviteExpired": "Cette invitation a expiré.",
+    "inviteUsed": "Cette invitation a déjà été acceptée.",
+    "inviteRevoked": "Cette invitation a été annulée ou remplacée.",
+    "inviteInvalid": "Ce lien d'invitation n'est pas valide.",
+    "inviteAskForNew": "Demandez à la personne qui vous a invité d'en envoyer une nouvelle.",
+    "inviteFrom": "{name} vous a invité à rejoindre en tant que {role}.",
+    "inviteYouWillBeAbleTo": "Vous pourrez",
+    "inviteAccept": "Accepter l'invitation",
+    "inviteDecline": "Refuser"
   },
   "ai": {
     "title": "Générateur de tâches IA",
@@ -1114,7 +1185,11 @@
       "todo": "{count} à faire",
       "dayGone": "{percent}% de la journée écoulée",
       "ofTasksDone": "des tâches faites",
-      "ofTodayGone": "de la journée écoulée"
+      "ofTodayGone": "de la journée écoulée",
+      "doneLabel": "",
+      "activeLabel": "",
+      "todoLabel": "",
+      "dayGoneLabel": ""
     },
     "projects": {
       "untitled": "Projet sans titre",
@@ -1139,7 +1214,33 @@
       "step1": "Nommez le projet et fixez sa première échéance.",
       "step2": "Invitez des personnes avec un seul code d'accès.",
       "step3": "Tâches, notes et progression arrivent sur ce tableau de bord.",
-      "aside": "L'arc intérieur suit la journée elle-même : un tableau de bord vide indique encore le temps restant."
+      "aside": "L'arc intérieur suit la journée elle-même : un tableau de bord vide indique encore le temps restant.",
+      "welcomeLabel": "",
+      "newWorkspace": "",
+      "headline": "",
+      "howItFills": "",
+      "steps3": "",
+      "stepCreateTitle": "",
+      "stepTeamTitle": "",
+      "stepRadarTitle": "",
+      "zeroActive": "",
+      "noProjects": "",
+      "pressToCreate": {
+        "before": "",
+        "after": ""
+      },
+      "theDay": "",
+      "localTime": "",
+      "dayCaption": "",
+      "keysLabel": "",
+      "pressForAll": "",
+      "keyNew": "",
+      "keyJoin": "",
+      "keySearch": "",
+      "keyTheme": "",
+      "keyAll": "",
+      "radarIdle": "",
+      "radarIdleBody": ""
     },
     "radar": {
       "title": "Ce que le radar a trouvé",
@@ -1184,6 +1285,30 @@
       "neverActive": "Aucune activité encore",
       "you": "{name} (vous)",
       "empty": "Personne d'autre sur ces projets pour l'instant."
+    },
+    "tui": {
+      "briefing": "",
+      "panes": {
+        "today": "",
+        "radar": "",
+        "projects": "",
+        "activity": "",
+        "workspace": "",
+        "momentum": "",
+        "team": ""
+      },
+      "sortedByRisk": "",
+      "byLoad": "",
+      "scanning": "",
+      "tail": "",
+      "keys": {
+        "move": "",
+        "open": "",
+        "filter": ""
+      },
+      "booting": "",
+      "waitingCounts": "",
+      "today": ""
     }
   },
   "agents": {

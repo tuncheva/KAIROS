@@ -267,6 +267,20 @@
       "when": 1788938940000,
       "tag": "0045_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1788939000000,
+      "tag": "0046_invite_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1788939060000,
+      "tag": "0047_two_factor_email",
+      "breakpoints": true
     }
   ]
 }

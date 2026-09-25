@@ -12,7 +12,8 @@ export default defineConfig({
     // they need the node environment and a real database, and pulling them into the
     // default jsdom suite would make every run depend on DATABASE_URL.
     include: ["./tests/**/*.test.{ts,tsx}"],
-    exclude: ["./tests/integration/**"],
+    // Live evals call the real model; they run under `pnpm eval:live`.
+    exclude: ["./tests/integration/**", "./tests/**/*.live.test.ts"],
     css: true,
   },
   resolve: {
