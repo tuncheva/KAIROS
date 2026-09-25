@@ -1187,6 +1187,19 @@
     }
   },
   "agents": {
+    "effort": {
+      "title": "Cuánto piensa el asistente",
+      "auto": "Auto",
+      "autoDescription": "Equilibrado: enrutado rápido y más reflexión tras consultar los datos.",
+      "low": "Rápido",
+      "lowDescription": "Respuestas más rápidas. Ideal para preguntas y consultas sencillas.",
+      "medium": "Equilibrado",
+      "mediumDescription": "Una reflexión moderada en cada paso.",
+      "high": "Profundo",
+      "highDescription": "Respuestas más lentas y cuidadosas para planificar y analizar.",
+      "max": "Máximo",
+      "maxDescription": "Toda la reflexión que ofrece el modelo. Notablemente más lento."
+    },
     "chooseAgent": "Elige un agente",
     "auto": "Automático",
     "autoDescription": "Dirige tu mensaje al especialista adecuado y puede usar varios a la vez.",

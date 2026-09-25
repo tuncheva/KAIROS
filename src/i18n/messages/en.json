@@ -2315,6 +2315,19 @@
     }
   },
   "agents": {
+    "effort": {
+      "title": "How hard the assistant thinks",
+      "auto": "Auto",
+      "autoDescription": "Balanced: quick routing, deeper thought once it has looked things up.",
+      "low": "Quick",
+      "lowDescription": "Fastest replies. Fine for simple questions and lookups.",
+      "medium": "Balanced",
+      "mediumDescription": "A moderate amount of thought on every step.",
+      "high": "Deep",
+      "highDescription": "Slower, more careful answers for planning and analysis.",
+      "max": "Maximum",
+      "maxDescription": "The most thought the model offers. Noticeably slower."
+    },
     "chooseAgent": "Choose an agent",
     "auto": "Auto",
     "autoDescription": "Routes your message to the right specialist, and can use several in one turn.",

@@ -1187,6 +1187,19 @@
     }
   },
   "agents": {
+    "effort": {
+      "title": "Wie gründlich der Assistent nachdenkt",
+      "auto": "Auto",
+      "autoDescription": "Ausgewogen: schnelle Weiterleitung, gründlicheres Nachdenken nach dem Nachschlagen.",
+      "low": "Schnell",
+      "lowDescription": "Schnellste Antworten. Gut für einfache Fragen und Abfragen.",
+      "medium": "Ausgewogen",
+      "mediumDescription": "Moderates Nachdenken bei jedem Schritt.",
+      "high": "Gründlich",
+      "highDescription": "Langsamere, sorgfältigere Antworten für Planung und Analyse.",
+      "max": "Maximal",
+      "maxDescription": "So viel Nachdenken, wie das Modell bietet. Merklich langsamer."
+    },
     "chooseAgent": "Agent auswählen",
     "auto": "Automatisch",
     "autoDescription": "Leitet Ihre Nachricht an den passenden Spezialisten weiter und kann mehrere gleichzeitig einsetzen.",

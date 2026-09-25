@@ -773,6 +773,8 @@ export function ProjectIntelligenceChat(props: {
    * outside the expanded workspace passes and what this chat has always done.
    */
   pinnedAgentId?: string;
+  /** The effort picked in the composer. Undefined is the server's default. */
+  effort?: "low" | "medium" | "high" | "max";
   /** Tools the last turn called, so the workspace can render an audit trail. */
   onToolsUsed?: (names: string[]) => void;
   /**
@@ -841,7 +843,7 @@ export function ProjectIntelligenceChat(props: {
    */
   onCanClearChange?: (canClear: boolean) => void;
 }) {
-  const { projectId, pinnedAgentId } = props;
+  const { projectId, pinnedAgentId, effort } = props;
   const isConsole = props.variant === "console";
   /** The two designed surfaces. See `variant`. */
   const isPanel = isConsole || props.variant === "widget";
@@ -1763,10 +1765,11 @@ export function ProjectIntelligenceChat(props: {
         projectId,
         conversationId: conversationIdRef.current,
         agentId: pinnedAgentId,
+        effort,
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [projectId, pinnedAgentId, pushTrail, sendTurn, tc],
+    [projectId, pinnedAgentId, effort, pushTrail, sendTurn, tc],
   );
 
   /**

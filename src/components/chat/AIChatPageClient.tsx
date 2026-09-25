@@ -22,6 +22,7 @@ import { useEntitlement } from "~/hooks/useEntitlements";
 import { api } from "~/trpc/react";
 
 import { ComposerMenu } from "./ComposerMenu";
+import { EffortMenu, useReasoningEffort } from "./EffortMenu";
 import { AiThreadRail } from "./AiThreadRail";
 import { DocumentsPanel } from "./DocumentsPanel";
 import { TurnTrailPanel } from "./TurnTrailPanel";
@@ -79,6 +80,7 @@ export function AIChatPageClient() {
 
   const [selectedAgent, setSelectedAgent] = useState<string>(AUTO_AGENT);
   const [scope, setScope] = useState<string>(ALL_PROJECTS);
+  const reasoning = useReasoningEffort();
 
   const [trail, setTrail] = useState<TrailEvent[]>([]);
   const [busy, setBusy] = useState(false);
@@ -240,6 +242,8 @@ export function AIChatPageClient() {
           ...projects.map((p) => ({ id: String(p.id), label: p.title })),
         ]}
       />
+
+      <EffortMenu selected={reasoning.selected} onSelect={reasoning.select} />
     </>
   );
 
@@ -324,6 +328,7 @@ export function AIChatPageClient() {
             projectId={scopeProjectId}
             prefill={prefill}
             pinnedAgentId={pinnedAgentId}
+            effort={reasoning.effort}
             onToolsUsed={setToolsUsed}
             onTrail={setTrail}
             onBusyChange={setBusy}

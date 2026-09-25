@@ -17,6 +17,10 @@ import { useTranslations } from "next-intl";
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
 import { AUTO_AGENT } from "~/components/agents/AgentPicker";
 import { ComposerMenu } from "~/components/chat/ComposerMenu";
+import {
+  EffortMenu,
+  useReasoningEffort,
+} from "~/components/chat/EffortMenu";
 import { api } from "~/trpc/react";
 
 const ALL_PROJECTS = "__all__";
@@ -167,6 +171,7 @@ export function A1ChatWidgetOverlay(props: {
    */
   const [selectedAgent, setSelectedAgent] = useState<string>(AUTO_AGENT);
   const [scope, setScope] = useState<string>(ALL_PROJECTS);
+  const reasoning = useReasoningEffort();
 
   const agentsQuery = api.agent.agents.useQuery(undefined, {
     enabled: open,
@@ -550,6 +555,7 @@ export function A1ChatWidgetOverlay(props: {
           prefill={props.prefill}
           projectId={scopeProjectId}
           pinnedAgentId={pinnedAgentId}
+          effort={reasoning.effort}
           composerControls={
             <>
               <ComposerMenu
@@ -606,6 +612,12 @@ export function A1ChatWidgetOverlay(props: {
                   ]}
                 />
               )}
+
+              <EffortMenu
+                selected={reasoning.selected}
+                onSelect={reasoning.select}
+                iconClassName="h-3 w-3 shrink-0"
+              />
             </>
           }
           emptyStateFooter={
