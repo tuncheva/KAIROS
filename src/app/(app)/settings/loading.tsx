@@ -3,8 +3,10 @@ import { Skeleton, SkeletonCards } from "~/components/ui/Skeleton";
 export default function SettingsLoading() {
   return (
     <div className="min-h-dvh bg-bg-primary">
-      <div className="rail-offset flex min-h-dvh flex-col">
-        <header className="sticky top-0 z-30 border-b border-border-light bg-bg-primary/95 px-4 py-4 backdrop-blur-md sm:px-6">
+      {/* The same gap and pin as the page it stands in for; without them the
+          placeholder header drew under the phone's fixed top bar. */}
+      <div className="rail-offset kairos-topbar-gap flex min-h-dvh flex-col">
+        <header className="sticky top-[calc(var(--kairos-topbar-h)+var(--kairos-safe-top))] z-30 border-b border-border-light bg-bg-primary/95 px-4 py-4 backdrop-blur-md sm:px-6 lg:top-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Skeleton className="h-8 w-8" shape="md" />

@@ -3459,6 +3459,22 @@ input[type="search"]::-webkit-search-results-decoration {
   .notif-stack {
     width: 100%;
   }
+
+  /* The flat 4.5rem / 6rem above were measured against a notch-less phone.
+     With an inset, a top-anchored stack slid under the fixed mobile bar and a
+     bottom-anchored one onto the tab bar — so both edges clear the bars plus
+     the safe area, the same arithmetic `.kairos-topbar-gap` uses. */
+  .toast-region,
+  .notif-region {
+    padding-bottom: calc(
+      var(--kairos-bottomnav-h) + var(--kairos-safe-bottom) + 1rem
+    );
+  }
+
+  :root[data-toast-block="start"] .toast-region,
+  :root[data-notif-block="start"] .notif-region {
+    padding-top: calc(var(--kairos-topbar-h) + var(--kairos-safe-top) + 0.5rem);
+  }
 }
 
 .toast-stack {

@@ -857,12 +857,12 @@ function SectionHead({
 }) {
   return (
     <div className="flex items-baseline gap-3">
-      <h2 className="m-0 text-base font-semibold tracking-[-0.012em] text-fg-primary">{title}</h2>
-      {note && <span className="font-mono text-[11px] text-fg-quaternary">{note}</span>}
+      <h2 className="m-0 min-w-0 truncate text-base font-semibold tracking-[-0.012em] text-fg-primary">{title}</h2>
+      {note && <span className="shrink-0 font-mono text-[11px] text-fg-quaternary">{note}</span>}
       <span className="flex-1" />
       <Link
         href={actionHref}
-        className="text-[13px] text-fg-tertiary transition-colors hover:text-fg-primary"
+        className="shrink-0 whitespace-nowrap text-[13px] text-fg-tertiary transition-colors hover:text-fg-primary"
       >
         {actionLabel}
       </Link>

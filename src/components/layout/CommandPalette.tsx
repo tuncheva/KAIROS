@@ -291,7 +291,10 @@ export function CommandPalette({
           className="w-full border-b border-border-light bg-transparent px-4 py-3.5 text-base text-fg-primary outline-none placeholder:text-fg-quaternary"
         />
 
-        <ul className="max-h-80 overflow-y-auto py-1">
+        {/* Capped at half the screen as well as 20rem: on a phone held
+            sideways, or with the keyboard up, a 20rem list ran past the
+            bottom of a backdrop that does not scroll. */}
+        <ul className="kairos-scroll-area max-h-[min(20rem,50dvh)] overflow-y-auto py-1">
           {rows.map((destination, index) => (
             <li key={destination.id}>
               {index === results.length ? (

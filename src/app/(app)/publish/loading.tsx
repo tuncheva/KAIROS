@@ -4,7 +4,7 @@ export default function PublishLoading() {
   return (
     <div className="min-h-dvh bg-bg-primary">
       <div className="rail-offset kairos-topbar-gap">
-        <header className="sticky top-16 z-30 border-b border-border-light bg-bg-primary lg:top-0">
+        <header className="sticky top-[calc(var(--kairos-topbar-h)+var(--kairos-safe-top))] z-30 border-b border-border-light bg-bg-primary lg:top-0">
           <SkeletonTopBar className="mx-auto max-w-7xl px-4 py-3 sm:px-6 sm:py-4 lg:px-8" />
         </header>
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">

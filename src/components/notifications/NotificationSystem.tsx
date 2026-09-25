@@ -539,8 +539,12 @@ export function NotificationSystem() {
         </div>
       </div>
 
-      {/* Bell + panel */}
-      <div className="relative">
+      {/* Bell + panel. Positioned only from `sm`: below it the panel anchors
+          to the TopBar (the nearest positioned box) instead of the bell, so
+          it can span the bar edge to edge. Anchored to the bell, a
+          viewport-wide panel ran off the left of the screen by the width of
+          the avatar beside it. */}
+      <div className="sm:relative">
         <button
           ref={bellRef}
           type="button"
@@ -574,13 +578,14 @@ export function NotificationSystem() {
             {/*
               380px on a laptop and right-anchored under the bell: the panel does
               not widen with the viewport, because a 700px row is no easier to
-              scan. Below `sm` it becomes a full-width sheet under the bar.
+              scan. Below `sm` it becomes a full-width sheet under the bar,
+              inset 12px from each edge.
             */}
             <div
               ref={panelRef}
               role="dialog"
               aria-label={t("title")}
-              className="animate-in slide-in-from-top-2 absolute right-0 z-50 mt-2 w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border border-border-light bg-bg-elevated shadow-2xl duration-200 sm:w-[380px]"
+              className="animate-in slide-in-from-top-2 absolute inset-x-3 z-50 mt-2 overflow-hidden rounded-lg border border-border-light bg-bg-elevated shadow-2xl duration-200 sm:inset-x-auto sm:right-0 sm:w-[380px]"
             >
               <div className="flex items-baseline gap-2.5 px-[18px] pb-3 pt-4">
                 <h3 className="font-display text-[17px] leading-tight font-normal text-fg-primary">
@@ -635,8 +640,16 @@ export function NotificationSystem() {
                 </div>
               )}
 
+              {/* Below `lg` the list is also held to what is left of the
+                  screen between the two fixed bars, less the panel's own
+                  header, tabs and footer — a 400px list under a phone's top
+                  bar ran its last rows and the footer under the tab bar. */}
               <div
-                className={`overflow-y-auto ${expanded ? "max-h-[640px]" : "max-h-[400px]"}`}
+                className={`kairos-scroll-area overflow-y-auto ${
+                  expanded
+                    ? "max-h-[640px] max-lg:max-h-[min(640px,calc(100dvh-22rem))]"
+                    : "max-h-[400px] max-lg:max-h-[min(400px,calc(100dvh-22rem))]"
+                }`}
               >
                 {notifications.length === 0 ? (
                   <div className="px-6 pb-14 pt-[52px] text-center">

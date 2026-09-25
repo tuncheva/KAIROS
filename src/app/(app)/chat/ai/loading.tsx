@@ -3,7 +3,7 @@ import { Skeleton } from "~/components/ui/Skeleton";
 export default function KairosAILoading() {
   return (
     <div className="h-[100dvh] overflow-hidden bg-bg-primary">
-      <div className="rail-offset flex h-[100dvh] flex-col overflow-hidden">
+      <div className="rail-offset kairos-topbar-gap kairos-bottomnav-gap flex h-[100dvh] flex-col overflow-hidden">
         <div className="flex flex-1 flex-col gap-4 p-4">
           <Skeleton className="h-8 w-48" />
           <div className="flex-1 space-y-4">

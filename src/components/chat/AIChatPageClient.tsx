@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Brain,
@@ -76,6 +76,9 @@ export function AIChatPageClient() {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const [railOpen, setRailOpen] = useState(true);
+  /* Below `lg` the rail is not a column but a drawer. Its own flag, so opening
+     it on a phone never un-collapses the desktop rail and vice versa. */
+  const [threadsDrawerOpen, setThreadsDrawerOpen] = useState(false);
   const [rightTab, setRightTab] = useState<RightTab>("trail");
 
   const [selectedAgent, setSelectedAgent] = useState<string>(AUTO_AGENT);
@@ -138,6 +141,15 @@ export function AIChatPageClient() {
     selectedAgent === AUTO_AGENT
       ? tAgents("auto")
       : (agents.find((a) => a.id === selectedAgent)?.name ?? tAgents("auto"));
+
+  useEffect(() => {
+    if (!threadsDrawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setThreadsDrawerOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [threadsDrawerOpen]);
 
   /* ---------------------------------------------------------------- */
   /*  Thread switching                                                */
@@ -262,10 +274,56 @@ export function AIChatPageClient() {
         </div>
       )}
 
+      {/* Phones and tablets. The column above is `lg:` only, and without this
+          the rail was simply gone below it — no way back to an earlier thread
+          and no "new conversation" either. */}
+      {threadsDrawerOpen && (
+        <>
+          <div
+            className="lg:hidden fixed inset-0 z-40 bg-black/40"
+            onClick={() => setThreadsDrawerOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("showConversations")}
+            className="lg:hidden fixed inset-y-0 left-0 z-50 flex max-w-[85vw]"
+          >
+            <AiThreadRail
+              conversations={conversations}
+              loading={conversationsQuery.isLoading}
+              activeId={activeId}
+              onSelect={(id) => {
+                setThreadsDrawerOpen(false);
+                openThread(id);
+              }}
+              onNew={() => {
+                setThreadsDrawerOpen(false);
+                startNewThread();
+              }}
+              onCollapse={() => setThreadsDrawerOpen(false)}
+            />
+          </div>
+        </>
+      )}
+
       <main className="flex min-w-0 flex-1 flex-col">
         {/* ---- Header ---- */}
-        <header className="flex h-[60px] shrink-0 items-center justify-between gap-5 border-b border-border-medium/60 bg-bg-surface px-5">
+        <header className="flex h-[60px] shrink-0 items-center justify-between gap-3 border-b border-border-medium/60 bg-bg-surface px-4 sm:gap-5 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setThreadsDrawerOpen(true)}
+              title={t("showConversations")}
+              aria-label={t("showConversations")}
+              className="kairos-tap flex shrink-0 items-center gap-2 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-bg-tertiary lg:hidden"
+            >
+              <PanelLeftOpen className="h-[15px] w-[15px]" />
+              <span className="kairos-stamp text-[10px]">
+                {conversations.length}
+              </span>
+            </button>
             {!railOpen && (
               <button
                 type="button"
@@ -301,7 +359,7 @@ export function AIChatPageClient() {
                 setConfirmDelete(true);
               }}
               disabled={!activeId}
-              className="kairos-stamp flex items-center gap-1.5 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-[10px] text-fg-secondary transition-colors hover:border-status-danger-border hover:text-status-danger-ink disabled:cursor-not-allowed disabled:opacity-40"
+              className="kairos-tap kairos-stamp flex items-center gap-1.5 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-[10px] text-fg-secondary transition-colors hover:border-status-danger-border hover:text-status-danger-ink disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Trash2 className="h-3 w-3" />
               <span className="hidden sm:inline">{t("delete")}</span>

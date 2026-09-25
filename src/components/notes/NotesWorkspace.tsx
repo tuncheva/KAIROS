@@ -582,8 +582,10 @@ export function NotesWorkspace() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Rail — a column on desktop, a sheet on mobile. */}
-      <div className="hidden md:block w-[236px] flex-none h-full">
+      {/* Rail — a column on desktop, a sheet below `lg`. The list/note split
+          still starts at `md`, but a 768px tablet cannot also hold a 236px
+          rail: rail + list left the note about 214px wide. */}
+      <div className="hidden lg:block w-[236px] flex-none h-full">
         <NotesRail
           view={view}
           onViewChange={(next) => {
@@ -607,7 +609,7 @@ export function NotesWorkspace() {
       </div>
 
       {railOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden">
           <div
             className={`absolute inset-0 bg-black/45 ${
               railClosing ? "notes-sheet-scrim--out" : "notes-sheet-scrim"

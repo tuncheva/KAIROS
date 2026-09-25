@@ -121,7 +121,7 @@ export function AiThreadRail({
   }, [messageHits.data, groups]);
 
   return (
-    <aside className="kairos-console-rail flex h-full w-[284px] shrink-0 flex-col border-r border-border-medium/60 bg-bg-surface">
+    <aside className="kairos-console-rail flex h-full w-[284px] max-w-full shrink-0 flex-col border-r border-border-medium/60 bg-bg-surface">
       <div className="flex flex-col gap-3.5 border-b border-border-medium/60 px-[18px] pt-5 pb-3.5">
         <div className="flex items-center justify-between gap-2.5">
           <Stamp>{t("conversations")}</Stamp>
@@ -168,7 +168,7 @@ export function AiThreadRail({
               type="button"
               onClick={() => setQuery("")}
               aria-label={t("clearSearch")}
-              className="shrink-0 rounded-sm p-0.5 text-fg-tertiary transition-colors hover:text-fg-primary"
+              className="kairos-tap shrink-0 rounded-sm p-0.5 text-fg-tertiary transition-colors hover:text-fg-primary"
             >
               <X className="h-3.5 w-3.5" />
             </button>

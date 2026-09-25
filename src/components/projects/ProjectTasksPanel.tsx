@@ -329,7 +329,7 @@ export function ProjectTasksPanel({
                 <div className="flex min-w-0 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <span
-                      className={`text-[15px] font-medium tracking-[-0.01em] ${
+                      className={`min-w-0 max-w-full text-[15px] font-medium tracking-[-0.01em] break-words ${
                         task.status === "completed"
                           ? "text-fg-quaternary line-through"
                           : "text-fg-primary"

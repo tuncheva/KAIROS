@@ -340,7 +340,9 @@ export function ProjectsWorkspace({
               />
             </label>
 
-            <div className="flex gap-1.5">
+            {/* Four filters with counts run ~400px, wider than a phone; they
+                wrap onto a second line there rather than push the page sideways. */}
+            <div className="flex flex-wrap gap-1.5">
               {FILTERS.map((key) => (
                 <Toggle
                   key={key}
@@ -909,7 +911,7 @@ function ProjectDetail({
 
       <div className="dash-rise flex flex-col gap-[18px]" style={rise(0.05)}>
         <div className="flex flex-wrap items-center gap-3.5">
-          <h1 className="text-fg-primary m-0 text-[32px] leading-[1.1] font-semibold tracking-[-0.025em]">
+          <h1 className="text-fg-primary m-0 min-w-0 max-w-full text-[32px] leading-[1.1] font-semibold tracking-[-0.025em] break-words">
             {project.title || t("untitled")}
           </h1>
           <HealthBadge health={project.health} />

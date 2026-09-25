@@ -64,7 +64,7 @@ export function ProgressClient() {
 function ProgressSkeleton() {
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-7 p-4 sm:p-6 lg:p-8">
-      <div className="h-9 w-80 animate-pulse rounded-lg bg-bg-secondary" />
+      <div className="h-9 w-80 max-w-full animate-pulse rounded-lg bg-bg-secondary" />
       <div className="h-6 w-full max-w-lg animate-pulse rounded-lg bg-bg-secondary" />
       <div className="h-40 w-full animate-pulse rounded-xl bg-bg-secondary" />
       <div className="h-56 w-full animate-pulse rounded-xl bg-bg-secondary" />

@@ -326,7 +326,7 @@ export function NewProjectDrawer({ defaultOpen = false }: { defaultOpen?: boolea
                 </div>
               </div>
 
-              <div className="flex gap-2.5 border-t border-border-light/50 bg-bg-primary px-[26px] py-5">
+              <div className="flex gap-2.5 border-t border-border-light/50 bg-bg-primary px-[26px] pt-5 pb-[calc(1.25rem+var(--kairos-safe-bottom))]">
                 <button
                   type="button"
                   onClick={close}

@@ -109,7 +109,7 @@ export function NotesRail({
             type="button"
             onClick={onClose}
             aria-label={t("common.close")}
-            className={`${ICON_BTN_BARE} md:hidden`}
+            className={`${ICON_BTN_BARE} lg:hidden`}
           >
             <X size={16} />
           </button>

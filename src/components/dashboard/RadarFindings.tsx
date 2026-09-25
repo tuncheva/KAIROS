@@ -133,12 +133,12 @@ export function RadarFindings({
               >
                 <div className="flex items-center gap-2.5">
                   <span
-                    className={`font-mono text-[10px] uppercase tracking-[0.14em] ${tone.label}`}
+                    className={`shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] ${tone.label}`}
                   >
                     {t(`severity.${severityOf(finding.severity)}`)}
                   </span>
                   <span className="flex-1" />
-                  <span className="truncate font-mono text-[10px] text-fg-quaternary">
+                  <span className="min-w-0 truncate font-mono text-[10px] text-fg-quaternary">
                     {project ?? t("workspaceWide")}
                   </span>
                 </div>

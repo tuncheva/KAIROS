@@ -85,7 +85,9 @@ function RailLink({
      It then fades itself out at the 1s mark, which is exactly when the rested
      pointer opens the rail: the tooltip answers the question, and hands the row
      back to the real label rather than sitting on top of it. */
-  const [tipTop, setTipTop] = useState<number | null>(null);
+  const [tip, setTip] = useState<{ top: number; delayMs: number } | null>(
+    null,
+  );
 
   const showTip = () => {
     const link = ref.current;
@@ -106,10 +108,24 @@ function RailLink({
       return;
     }
 
+    /* The tip's 1.4s animation is timed to end as the rail opens, but the rail
+       counts from when the pointer entered *it*, not this row. Moving down from
+       Dashboard to Notes started Notes' tip ~0.7s late, so it was still fully
+       opaque when the labels faded in — the label's first letter peeking out
+       at 58px, the tip covering the rest from 68px: "N ⟨Notes⟩". A negative
+       delay puts every tip on the rail's clock, so it fades out on time
+       whichever row it belongs to. */
+    const enteredAt = Number(
+      (rail as HTMLElement | null)?.dataset.enteredAt ?? NaN,
+    );
+    const delayMs = Number.isFinite(enteredAt)
+      ? -Math.max(0, performance.now() - enteredAt)
+      : 0;
+
     const box = link.getBoundingClientRect();
-    setTipTop(box.top + box.height / 2);
+    setTip({ top: box.top + box.height / 2, delayMs });
   };
-  const hideTip = () => setTipTop(null);
+  const hideTip = () => setTip(null);
 
   return (
     <Link
@@ -127,10 +143,10 @@ function RailLink({
     >
       <Icon size={20} className="shrink-0" />
       <span className={labelClass}>{label}</span>
-      {tipTop === null ? null : (
+      {tip === null ? null : (
         /* aria-hidden: the label span above is already the accessible name, and
            a screen reader announcing it twice is worse than not at all. */
-        <span aria-hidden="true" className="kairos-rail-tip" style={{ top: tipTop }}>
+        <span aria-hidden="true" className="kairos-rail-tip" style={{ top: tip.top, animationDelay: `${tip.delayMs}ms` }}>
           {label}
         </span>
       )}
@@ -463,6 +479,10 @@ export function SideNav() {
       <aside
         className={`group/rail hidden lg:flex fixed left-0 top-0 bottom-0 z-40 flex-col gap-0.5 overflow-hidden border-r border-border-light/60 bg-bg-elevated py-5 transition-[width] duration-[700ms] ease-[cubic-bezier(0.2,0.8,0.25,1)] motion-reduce:transition-none kairos-rail w-16 hover:w-[236px]`}
         aria-label="Primary"
+        // Read by `RailLink` to time its tooltip against the rail's own 1s rest.
+        onMouseEnter={(e) => {
+          e.currentTarget.dataset.enteredAt = String(performance.now());
+        }}
       >
         <div className="flex items-center justify-between gap-3 whitespace-nowrap px-[18px] pb-[22px]">
           <span className="flex items-center gap-3.5">

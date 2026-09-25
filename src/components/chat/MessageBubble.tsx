@@ -153,7 +153,7 @@ export function MessageBubble({
 
         <div className={`flex items-end gap-1 ${isOwn ? "flex-row-reverse" : ""}`}>
           <div
-            className={`px-3.5 py-2.5 rounded-lg ${
+            className={`min-w-0 px-3.5 py-2.5 rounded-lg ${
               isOwn ? "rounded-br-md" : "rounded-bl-md"
             } ${deleted ? "bg-bg-secondary text-fg-tertiary italic" : bubbleTone} ${
               pending ? "opacity-60" : ""
@@ -179,7 +179,7 @@ export function MessageBubble({
             {deleted ? (
               <p className="text-sm">{t("messageDeleted")}</p>
             ) : editing ? (
-              <div className="flex flex-col gap-2 min-w-[220px]">
+              <div className="flex flex-col gap-2 min-w-[min(220px,55vw)]">
                 <textarea
                   ref={editRef}
                   value={editDraft}
@@ -252,7 +252,7 @@ export function MessageBubble({
                           href={file.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`flex items-center gap-2.5 p-2 rounded-xl min-w-[200px] transition-colors ${
+                          className={`flex items-center gap-2.5 p-2 rounded-xl min-w-[min(200px,55vw)] transition-colors ${
                             isOwn ? "bg-white/15 hover:bg-white/25" : "bg-bg-secondary hover:bg-bg-tertiary"
                           }`}
                         >

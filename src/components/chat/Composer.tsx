@@ -152,7 +152,7 @@ export function Composer({
                 type="button"
                 onClick={() => onRemoveAttachment(idx)}
                 aria-label={t("removeAttachment", { name: item.file.name })}
-                className="p-1 rounded-lg text-fg-tertiary hover:text-error transition-colors"
+                className="kairos-tap p-1 rounded-lg text-fg-tertiary hover:text-error transition-colors"
               >
                 <X size={13} />
               </button>
@@ -183,7 +183,7 @@ export function Composer({
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || isUploading}
           aria-label={t("attachFiles")}
-          className="p-2 rounded-xl text-accent-primary hover:bg-bg-tertiary transition-colors disabled:opacity-50 flex-shrink-0"
+          className="kairos-tap p-2 rounded-xl text-accent-primary hover:bg-bg-tertiary transition-colors disabled:opacity-50 flex-shrink-0"
         >
           <Paperclip size={18} />
         </button>
@@ -218,7 +218,7 @@ export function Composer({
               onAddFiles(files);
             }
           }}
-          className="flex-1 bg-transparent text-sm text-fg-primary placeholder:text-fg-tertiary resize-none focus:outline-none py-1.5 leading-5 disabled:opacity-50"
+          className="min-w-0 flex-1 bg-transparent text-sm text-fg-primary placeholder:text-fg-tertiary resize-none focus:outline-none py-1.5 leading-5 disabled:opacity-50"
         />
 
         <button

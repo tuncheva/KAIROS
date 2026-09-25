@@ -715,8 +715,12 @@ export function SignInModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="kairos-auth-title"
-        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl overflow-hidden rounded-xl border border-white/10 bg-bg-overlay lg:grid-cols-2"
+        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl grid-rows-[minmax(0,1fr)] overflow-hidden rounded-xl border border-white/10 bg-bg-overlay lg:grid-cols-2"
       >
+        {/* The row is `minmax(0,1fr)` so it is held to the shell's 94dvh cap.
+            An auto row grew to the form's height instead, the shell clipped
+            it, and on a short phone the sign-up fields below the fold could
+            not be scrolled to. */}
         {/* ─── Left: brand panel (hidden on narrow screens) ─── */}
         <div className="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.08] bg-bg-secondary p-11 lg:flex">
           <div
@@ -769,8 +773,11 @@ export function SignInModal({
           </div>
         </div>
 
-        {/* ─── Right: the flow ─── */}
-        <div className="relative flex flex-col justify-center overflow-y-auto px-7 py-12 sm:px-14 sm:py-14">
+        {/* ─── Right: the flow ───
+            `justify-center-safe`: centred when it fits, top-aligned when it
+            overflows — plain centring pushed the heading above the scroll
+            origin, where no amount of scrolling reaches it. */}
+        <div className="relative flex flex-col justify-center-safe overflow-y-auto px-7 py-12 sm:px-14 sm:py-14">
           <ModalDismiss
             onDismiss={onClose}
             label={t("close")}

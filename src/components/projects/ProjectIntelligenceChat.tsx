@@ -2267,7 +2267,7 @@ export function ProjectIntelligenceChat(props: {
                               className={
                                 m.role === "agent"
                                   ? "kairos-chat-response text-sm leading-relaxed"
-                                  : "whitespace-pre-wrap text-sm leading-relaxed"
+                                  : "whitespace-pre-wrap break-words text-sm leading-relaxed"
                               }
                             >
                               {m.text}
@@ -3538,7 +3538,7 @@ export function ProjectIntelligenceChat(props: {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={t("placeholder")}
-              className="kairos-field-bare flex-1 bg-transparent px-2 py-2 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus-visible:outline-none"
+              className="kairos-field-bare min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus-visible:outline-none"
             />
             <button
               type="submit"

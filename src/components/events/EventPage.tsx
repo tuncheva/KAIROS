@@ -233,11 +233,12 @@ export function EventPage({ eventId }: { eventId: number }) {
   );
 
   return (
-    <main className="min-h-dvh bg-bg-primary pb-28 lg:pb-10">
+    <main className="min-h-dvh bg-bg-primary pb-[calc(8rem+var(--kairos-safe-bottom))] lg:pb-10">
       {/* A slim bar rather than the app rail: most people who open this link
           do not have an account, and a sidebar of links they cannot use is a
-          worse greeting than the event itself. */}
-      <header className="sticky top-0 z-30 border-b border-border-medium bg-bg-primary/85 backdrop-blur-md">
+          worse greeting than the event itself. It clears the notch itself —
+          this route is outside the shell, so nothing else does. */}
+      <header className="sticky top-0 z-30 pt-[var(--kairos-safe-top)] border-b border-border-medium bg-bg-primary/85 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4 sm:px-6">
           <Link
             href="/publish"
@@ -616,8 +617,10 @@ export function EventPage({ eventId }: { eventId: number }) {
       {/* On a phone the decision is pinned, because scrolling back up to answer
           is the one thing this page must not ask for. */}
       {event.enableRsvp && !past && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border-medium bg-bg-primary/95 p-3 backdrop-blur-md lg:hidden">
-          <div className="mb-2 flex items-center gap-2">
+        /* The bottom padding carries the home-indicator inset, and `main`'s
+           own bottom padding is sized to this bar plus that inset. */
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border-medium bg-bg-primary/95 p-3 pb-[calc(0.75rem+var(--kairos-safe-bottom))] backdrop-blur-md lg:hidden">
+          <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
             <Users size={13} className="text-accent-primary" />
             <Stamp className="tracking-[0.12em]">
               {full

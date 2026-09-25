@@ -262,7 +262,8 @@ export function EventDetailFields({
           <Clock className="mr-1 inline text-accent-primary" size={10} />
           {t("endsAt")}
         </label>
-        <div className="grid grid-cols-2 gap-3">
+        {/* Stacked on a phone, like the start date and time above it. */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className={SHELL}>
             <Clock size={16} className="shrink-0 text-accent-primary" />
             <input

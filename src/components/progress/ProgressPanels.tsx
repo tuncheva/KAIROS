@@ -416,11 +416,13 @@ export function FinishedLog({ groups, selectedYmd, onClearDay, variant, today }:
                 );
               }
 
+              /* Narrower fixed columns on a phone: at 130px + 58px they left
+                 the task title about 80px of a 375px screen. */
               return (
                 <Link
                   key={item.id}
                   href={projectHref(item.projectId)}
-                  className="grid grid-cols-[minmax(0,1fr)_130px_58px] items-center gap-3.5 border-b border-border-light py-2.5 transition-colors hover:bg-fg-primary/[0.025]"
+                  className="grid grid-cols-[minmax(0,1fr)_88px_52px] items-center gap-2.5 border-b border-border-light py-2.5 transition-colors hover:bg-fg-primary/[0.025] sm:grid-cols-[minmax(0,1fr)_130px_58px] sm:gap-3.5"
                 >
                   <span className="truncate text-[13px] font-medium text-fg-primary">
                     {item.title}
