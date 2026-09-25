@@ -33,10 +33,12 @@ import {
   isPurchasablePlan,
   monthsFreeOnAnnual,
   priceFor,
+  seatFloorFor,
 } from "~/lib/plans";
 import {
   accessEndsAt,
   isLiveSubscription,
+  paidThroughAt,
   planFromSubscription,
   planToRecord,
   willNotRenew,
@@ -228,6 +230,106 @@ describe("accessEndsAt", () => {
         cancel_at_period_end: false,
       }),
     ).toBeNull();
+  });
+});
+
+describe("paidThroughAt", () => {
+  const DAY = 24 * 60 * 60;
+
+  it("takes Stripe's date at face value while the subscription is paid", () => {
+    for (const status of ["active", "trialing", "canceled", "incomplete"] as const) {
+      expect(paidThroughAt(status, 2_000 * DAY, 1_000 * DAY), status).toBe(
+        2_000 * DAY,
+      );
+    }
+  });
+
+  it("does not let a failed renewal buy another period", () => {
+    // The case this exists for. Stripe advances `current_period_end` when it
+    // *issues* the renewal invoice, so a card that declined on the 1st produces
+    // a past_due subscription claiming to be paid up until the 1st of next
+    // month. Storing that verbatim granted a free month on top of dunning.
+    const lastPaid = 1_000 * DAY;
+    const advanced = lastPaid + 30 * DAY;
+
+    expect(paidThroughAt("past_due", advanced, lastPaid)).toBe(lastPaid);
+  });
+
+  it("only ever pins backwards", () => {
+    // A past_due subscription whose date moved *earlier* — a cancellation
+    // scheduled mid-dunning — must keep the earlier date, not be dragged
+    // forward to what is on file.
+    const lastPaid = 1_000 * DAY;
+    expect(paidThroughAt("past_due", lastPaid - 5 * DAY, lastPaid)).toBe(
+      lastPaid - 5 * DAY,
+    );
+  });
+
+  it("has nothing to pin against on a first sync", () => {
+    // A subscription that arrives already past_due — a replacement, or a first
+    // charge that failed — has no known-good period to fall back to. Stripe's
+    // answer is the only one there is.
+    expect(paidThroughAt("past_due", 2_000 * DAY, null)).toBe(2_000 * DAY);
+  });
+
+  it("keeps null meaning null", () => {
+    // Null is "no known end", which the resolver reads as "do not expire on time
+    // alone". Substituting the stored date here would invent an expiry.
+    expect(paidThroughAt("past_due", null, 1_000 * DAY)).toBeNull();
+    expect(paidThroughAt("active", null, null)).toBeNull();
+  });
+});
+
+describe("planForOwnerKind", () => {
+  it("lets each owner hold the plan sold to it", () => {
+    expect(planForOwnerKind("user", "pro")).toBe("pro");
+    expect(planForOwnerKind("organization", "team")).toBe("team");
+  });
+
+  it("refuses a personal plan on an organization", () => {
+    // The leak. An organization's plan is granted to every member, so one €12
+    // Pro price against a fifty-person org would entitle fifty people. Checkout
+    // cannot produce this; the Stripe portal can.
+    expect(planForOwnerKind("organization", "pro")).toBe("free");
+  });
+
+  it("tolerates an organization plan on a person", () => {
+    // Not symmetric with the case above, deliberately. Team costs more than Pro
+    // and reaches exactly one account, so revoking would punish someone who has
+    // overpaid for a mistake in the portal configuration.
+    expect(planForOwnerKind("user", "team")).toBe("team");
+  });
+
+  it("leaves free alone for both", () => {
+    expect(planForOwnerKind("user", "free")).toBe("free");
+    expect(planForOwnerKind("organization", "free")).toBe("free");
+  });
+
+  it("agrees with the catalogue rather than hardcoding the tiers", () => {
+    // The rule is "org-scoped plans on orgs"; if a future plan flips
+    // `perOrganization`, this should follow it rather than need editing.
+    for (const plan of PURCHASABLE_PLANS) {
+      const expected = PLAN_CATALOGUE[plan].perOrganization ? plan : "free";
+      expect(planForOwnerKind("organization", plan), plan).toBe(expected);
+    }
+  });
+});
+
+describe("seatFloorFor", () => {
+  it("holds the advertised minimum for a small workspace", () => {
+    expect(seatFloorFor("team", 1)).toBe(PLAN_CATALOGUE.team.minimumSeats);
+    expect(seatFloorFor("team", 0)).toBe(PLAN_CATALOGUE.team.minimumSeats);
+  });
+
+  it("will not sell fewer seats than there are people", () => {
+    // The way around seat enforcement if this were only the plan minimum: grow
+    // to fifty on the free plan, then buy three seats and hand Team to all
+    // fifty. Nobody may buy into a state the join gate would have refused.
+    expect(seatFloorFor("team", 50)).toBe(50);
+  });
+
+  it("never returns less than one seat for Pro", () => {
+    expect(seatFloorFor("pro", 0)).toBe(1);
   });
 });
 

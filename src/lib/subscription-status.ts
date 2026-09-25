@@ -128,6 +128,38 @@ export function accessEndsAt(
 }
 
 /**
+ * The last second actually paid for, which is not always what Stripe reports.
+ *
+ * Stripe advances `current_period_end` when it *issues* the renewal invoice, not
+ * when that invoice is paid. A failed renewal therefore produces a `past_due`
+ * subscription whose period end is a month further out than the last month
+ * anyone paid for — and because `invoice.payment_failed` re-syncs, storing it
+ * verbatim handed the subscriber a free month on top of whatever dunning window
+ * the Stripe account is configured for.
+ *
+ * `planFromSubscription` keeping `past_due` entitled is deliberate — a card that
+ * expires on a Tuesday should produce a dunning email, not a Wednesday outage.
+ * Funding that decision out of a period nobody paid for is not. So while a
+ * subscription is `past_due` the stored date is pinned to what was last known
+ * good, and the entitlement resolver's grace window counts from there.
+ *
+ * Only ever pins *backwards*. The moment a retry succeeds the status leaves
+ * `past_due` and the real, advanced date is written unmodified.
+ *
+ * @param endsAt what Stripe says, already folded through {@link accessEndsAt}
+ * @param lastPaidThrough what is on file from the last sync, or null on a first one
+ */
+export function paidThroughAt(
+  status: SubscriptionStatus,
+  endsAt: number | null,
+  lastPaidThrough: number | null,
+): number | null {
+  if (status !== "past_due") return endsAt;
+  if (endsAt === null || lastPaidThrough === null) return endsAt;
+  return Math.min(endsAt, lastPaidThrough);
+}
+
+/**
  * Whether a status represents a subscription that is still on the hook for money.
  *
  * The same three statuses {@link planFromSubscription} grants on, named

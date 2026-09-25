@@ -28,9 +28,37 @@ function canInvite(membership: {
 }): boolean {
   return membership.role === "admin" || membership.canAddMembers === true;
 }
+
+/**
+ * Refuse to add a member to an organization that has no seat for them.
+ *
+ * Applied at every entrance — access code, QR code and invitation — because a
+ * member added by any of them is entitled by `planForUser` exactly as much as
+ * one added by the others, and a limit with three ways around it is not a limit.
+ * See `~/server/billing/seats` for why free organizations are uncapped and why
+ * nobody is ever removed to make room.
+ *
+ * PRECONDITION_FAILED rather than FORBIDDEN: the caller is not being denied a
+ * permission, the workspace is in a state that has to change first, and the
+ * person who can change it is not the one reading the message.
+ */
+async function assertSeatAvailable(organizationId: number): Promise<void> {
+  const availability = await seatAvailability(organizationId);
+  if (!availability || availability.hasRoom) return;
+
+  throw new TRPCError({
+    code: "PRECONDITION_FAILED",
+    message: `This workspace has used all ${availability.seats} of its seats. An admin needs to add one before anyone else can join.`,
+  });
+}
 import { eq, and, or, isNull, gt, lte, desc, sql } from "drizzle-orm";
 import { notify } from "~/server/notifications/dispatch";
 import { createLogger } from "~/server/logger";
+import { seatAvailability } from "~/server/billing/seats";
+import {
+  cancelSubscriptionFor,
+  SubscriptionCancellationError,
+} from "~/server/billing/subscriptions";
 
 const log = createLogger("organization");
 
@@ -786,6 +814,30 @@ export const organizationRouter = createTRPCRouter({
         });
       }
 
+      /* Stop the subscription before the row that points at it is gone.
+         Deleting first left the Team plan running: Stripe kept charging the
+         saved card, and every later webhook for that subscription resolved to no
+         owner and was logged rather than acted on. Nobody notices until the
+         chargeback, and by then there is no record here of what was being paid
+         for.
+
+         A failure here aborts the deletion rather than being logged and stepped
+         over. That is the deliberate trade: refusing is recoverable — try again,
+         or cancel from the portal — while deleting an organization whose
+         subscription is still live is not. */
+      try {
+        await cancelSubscriptionFor({ kind: "organization", id: organization.id });
+      } catch (error) {
+        if (error instanceof SubscriptionCancellationError) {
+          log.error("refusing to delete an organization with a live subscription", {
+            organizationId: organization.id,
+            err: error,
+          });
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: error.message });
+        }
+        throw error;
+      }
+
       /* Read the membership before the delete cascades it away. */
       const members = await ctx.db
         .select({ userId: organizationMembers.userId })
@@ -1297,6 +1349,16 @@ export const organizationRouter = createTRPCRouter({
           message: "A pending invite already exists for this email",
         });
       }
+
+      // Checked here as well as at `acceptInvite`, which is the one that
+      // actually guarantees the limit. This one exists so the admin who can do
+      // something about it hears about it, at the moment they act, rather than
+      // the invitee hitting a wall days later with no idea who to ask.
+      //
+      // It counts members, not members plus outstanding invitations: a pending
+      // invite is not a seat until it is accepted, and reserving one would let a
+      // forgotten invitation from last month block a real colleague today.
+      await assertSeatAvailable(input.organizationId);
 
       // Map custom role names to a valid DB enum value
       const validRoles = ["admin", "member", "guest", "worker", "mentor"] as const;

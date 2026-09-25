@@ -17,7 +17,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { entitlementsFor } from "~/server/billing/entitlements";
+import { entitlementsFor, livePlan } from "~/server/billing/entitlements";
 import {
   absoluteUrl,
   isBillingConfigured,
@@ -32,7 +32,12 @@ import {
 } from "~/server/billing/subscriptions";
 import { organizations, organizationMembers } from "~/server/db/schemas/organizations";
 import { users } from "~/server/db/schemas/users";
-import { PLAN_CATALOGUE, PURCHASABLE_PLANS } from "~/lib/plans";
+import {
+  PLAN_CATALOGUE,
+  PURCHASABLE_PLANS,
+  seatFloorFor,
+  type PurchasablePlan,
+} from "~/lib/plans";
 import { createLogger } from "~/server/logger";
 import { env } from "~/env";
 
@@ -138,7 +143,11 @@ export const billingRouter = createTRPCRouter({
       /** The plan actually in force — the better of personal and org. */
       effective: await entitlementsFor(ctx),
       personal: {
-        plan: user?.plan ?? "free",
+        // Through `livePlan`, not raw. The column is only ever corrected by a
+        // webhook, so a row whose renewal event never arrived still reads "pro"
+        // long after the resolver stopped honouring it — and the screen would
+        // then promise a plan the rest of the app does not grant.
+        plan: livePlan(user?.plan ?? "free", user?.currentPeriodEnd ?? null),
         status: user?.subscriptionStatus ?? null,
         currentPeriodEnd: user?.currentPeriodEnd ?? null,
         cancelAtPeriodEnd: user?.cancelAtPeriodEnd ?? false,
@@ -149,7 +158,8 @@ export const billingRouter = createTRPCRouter({
         ? {
             id: org.id,
             name: org.name,
-            plan: org.plan,
+            /** Same reasoning as `personal.plan` above. */
+            plan: livePlan(org.plan, org.currentPeriodEnd),
             status: org.subscriptionStatus,
             currentPeriodEnd: org.currentPeriodEnd,
             cancelAtPeriodEnd: org.cancelAtPeriodEnd,
@@ -224,8 +234,8 @@ export const billingRouter = createTRPCRouter({
       const descriptor = PLAN_CATALOGUE[input.plan];
       const userId = ctx.session.user.id;
 
-      const { owner, customerId, quantity } = descriptor.perOrganization
-        ? await resolveOrgOwner(ctx, userId, input.organizationId, input.seats, descriptor.minimumSeats)
+      const { owner, customerId, quantity, minimumQuantity } = descriptor.perOrganization
+        ? await resolveOrgOwner(ctx, userId, input.organizationId, input.seats, input.plan)
         : await resolvePersonalOwner(ctx, userId);
 
       // A second checkout for an owner who already has a live subscription
@@ -290,7 +300,10 @@ export const billingRouter = createTRPCRouter({
                 quantity,
                 adjustable_quantity: {
                   enabled: true,
-                  minimum: descriptor.minimumSeats,
+                  // The floor, not the plan's bare minimum. Stripe's page is
+                  // outside this application's control once the redirect
+                  // happens, so the constraint has to travel with the session.
+                  minimum: minimumQuantity,
                   maximum: 500,
                 },
               }
@@ -460,6 +473,13 @@ interface ResolvedOwner {
   owner: BillingOwner;
   customerId: string | null;
   quantity: number;
+  /**
+   * The lowest quantity Stripe's own page may be talked down to.
+   *
+   * Not the same as the plan's minimum once an organization already has people
+   * in it — see {@link seatFloorFor}.
+   */
+  minimumQuantity: number;
 }
 
 async function resolvePersonalOwner(ctx: Ctx, userId: string): Promise<ResolvedOwner> {
@@ -474,6 +494,7 @@ async function resolvePersonalOwner(ctx: Ctx, userId: string): Promise<ResolvedO
     // Not client-supplied. A personal plan covers one person, and accepting a
     // quantity here would let a caller buy themselves 500 seats of Pro.
     quantity: 1,
+    minimumQuantity: 1,
   };
 }
 
@@ -482,7 +503,7 @@ async function resolveOrgOwner(
   userId: string,
   organizationId: number | undefined,
   requestedSeats: number | undefined,
-  minimumSeats: number,
+  plan: PurchasablePlan,
 ): Promise<ResolvedOwner> {
   if (!organizationId) {
     throw new TRPCError({
@@ -493,16 +514,22 @@ async function resolveOrgOwner(
 
   const org = await requireOrgAdmin(ctx, userId, organizationId);
 
-  // The floor is applied here rather than trusted from the client, and it is a
-  // floor rather than a validation error: someone who asks for two seats meant
-  // to buy Team, and refusing them is worse than charging the advertised minimum
-  // they can see on the pricing page.
-  const quantity = Math.max(requestedSeats ?? org.memberCount, minimumSeats);
+  // The plan's advertised minimum, or the number of people already in the
+  // workspace, whichever is larger — see `seatFloorFor`. Nobody may buy their
+  // way into a state the join gate would have refused.
+  const floor = seatFloorFor(plan, org.memberCount);
+
+  // Applied here rather than trusted from the client, and a floor rather than a
+  // validation error: someone who asks for two seats meant to buy Team, and
+  // refusing them is worse than charging the minimum they can see on the pricing
+  // page.
+  const quantity = Math.max(requestedSeats ?? org.memberCount, floor);
 
   return {
     owner: { kind: "organization", id: organizationId },
     customerId: org.stripeCustomerId,
     quantity,
+    minimumQuantity: floor,
   };
 }
 
