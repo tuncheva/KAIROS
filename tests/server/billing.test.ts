@@ -32,6 +32,7 @@ import {
   formatEuro,
   isPurchasablePlan,
   monthsFreeOnAnnual,
+  planForOwnerKind,
   priceFor,
   seatFloorFor,
 } from "~/lib/plans";

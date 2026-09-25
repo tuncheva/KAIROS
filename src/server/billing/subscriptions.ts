@@ -28,6 +28,7 @@ import { PLAN_CATALOGUE, planForOwnerKind } from "~/lib/plans";
 import {
   accessEndsAt,
   isLiveSubscription,
+  paidThroughAt,
   planToRecord,
   willNotRenew,
   type SubscriptionStatus,
@@ -390,11 +391,14 @@ export async function billingStateOf(owner: BillingOwner): Promise<{
   status: SubscriptionStatus | null;
   /** The tier on file, for {@link planToRecord}'s unmappable-price fallback. */
   plan: PlanId | null;
+  /** What was last stored, so {@link periodEndOf} can clamp a `past_due` sync. */
+  currentPeriodEnd: Date | null;
 }> {
   const columns = {
     stripeSubscriptionId: true,
     subscriptionStatus: true,
     plan: true,
+    currentPeriodEnd: true,
   } as const;
 
   const row =
@@ -412,6 +416,7 @@ export async function billingStateOf(owner: BillingOwner): Promise<{
     subscriptionId: row?.stripeSubscriptionId ?? null,
     status: row?.subscriptionStatus ?? null,
     plan: row?.plan ?? null,
+    currentPeriodEnd: row?.currentPeriodEnd ?? null,
   };
 }
 
