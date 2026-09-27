@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SideNav } from "~/components/layout/SideNav";
 import fs from "node:fs";
@@ -36,9 +36,8 @@ describe("SideNav", () => {
     expect(screen.getAllByText("Settings").length).toBeGreaterThanOrEqual(1);
   });
 
-  /* The tip is positioned for a 64px rail. Open, the row's own label is already
-     on screen and the tip lands on top of it — which showed as "N" beside a
-     floating "Notes" on every row once the rail had opened. */
+  /* The tip is positioned for the 68px collapsed rail. Open, the row's own
+     label is already on screen and the tip would land on top of it. */
   describe("the hover tip", () => {
     const railWidth = (container: HTMLElement, width: number) => {
       const rail = container.querySelector(".kairos-rail");
@@ -61,7 +60,7 @@ describe("SideNav", () => {
 
     it("appears while the rail is collapsed", async () => {
       const { container } = render(<SideNav />);
-      railWidth(container, 64);
+      railWidth(container, 68);
 
       await userEvent.hover(notesRow(container));
 
@@ -70,7 +69,7 @@ describe("SideNav", () => {
 
     it("stays away once the rail has opened", async () => {
       const { container } = render(<SideNav />);
-      railWidth(container, 236);
+      railWidth(container, 248);
 
       await userEvent.hover(notesRow(container));
 
@@ -176,84 +175,155 @@ describe("SideNav", () => {
     expect(source).toContain("Settings");
     expect(source).not.toContain("SlidersHorizontal");
   });
-  /* ---- Design 7A rail: hover expansion + pin ---- */
+  /* ---- Design 1b sidebar: open by default, collapses to a rail ---- */
 
-  it("collapses the rail to 64px and expands it on hover", () => {
+  const resetRail = () => {
+    window.localStorage.removeItem("kairos:railCollapsed");
+    delete document.documentElement.dataset.railCollapsed;
+  };
+
+  it("is open at 248px by default and does not expand on hover", () => {
     const { container } = render(<SideNav />);
     const aside = container.querySelector('aside[aria-label="Primary"]')!;
-    expect(aside.className).toContain("w-16");
-    expect(aside.className).toContain("hover:w-[236px]");
-    // A mouse click leaves focus on the clicked row, so `focus-within` would
-    // hold the rail open long after the cursor left. Keyboard expansion is
-    // handled by a `:has(:focus-visible)` rule in globals.css instead.
-    expect(aside.className).not.toContain("focus-within:w-[236px]");
+    expect(aside.className).toContain("w-[248px]");
+    expect(aside.className).not.toContain("hover:w-");
   });
 
-  it("expands the rail for keyboard focus only, via :focus-visible", () => {
-    const css = fs.readFileSync(
-      path.resolve(__dirname, "../../src/styles/globals.css"),
-      "utf-8"
-    );
-    expect(css).toContain(".kairos-rail:has(:focus-visible)");
-    expect(css).toContain(".kairos-rail:has(:focus-visible) .kairos-rail-label");
+  it("groups the destinations under Workspace, Insights and Collaboration", () => {
+    const { container } = render(<SideNav />);
+    const aside = container.querySelector('aside[aria-label="Primary"]')!;
+    expect(aside.textContent).toContain("Workspace");
+    expect(aside.textContent).toContain("Insights");
+    expect(aside.textContent).toContain("Collaboration");
   });
 
-  it("pins the rail open, stamps <html> and persists the choice", async () => {
+  it("collapses from its toggle, stamps <html> and persists the choice", async () => {
     const user = userEvent.setup();
-    window.localStorage.removeItem("kairos:railPinned");
-    delete document.documentElement.dataset.railPinned;
+    resetRail();
 
     render(<SideNav />);
-    const pin = screen.getByRole("button", { name: "Pin navigation" });
+    const toggle = screen.getByRole("button", { name: "Collapse sidebar" });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
 
-    expect(pin).toHaveAttribute("aria-pressed", "false");
-
-    await user.click(pin);
+    await user.click(toggle);
 
     // `--rail-w` hangs off this attribute, which is what shifts the page.
-    expect(document.documentElement.dataset.railPinned).toBe("true");
-    expect(window.localStorage.getItem("kairos:railPinned")).toBe("true");
-    expect(
-      screen.getByRole("button", { name: "Unpin navigation" }),
-    ).toHaveAttribute("aria-pressed", "true");
+    expect(document.documentElement.dataset.railCollapsed).toBe("true");
+    expect(window.localStorage.getItem("kairos:railCollapsed")).toBe("true");
+    const expand = screen.getByRole("button", { name: "Expand sidebar" });
+    expect(expand).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(expand);
+    expect(document.documentElement.dataset.railCollapsed).toBe("false");
+    expect(window.localStorage.getItem("kairos:railCollapsed")).toBe("false");
+
+    resetRail();
+  });
+
+  it("toggles on Mod+\\ on desktop", async () => {
+    const user = userEvent.setup();
+    resetRail();
+    const matchMedia = vi.spyOn(window, "matchMedia").mockImplementation(
+      (query: string) =>
+        ({
+          matches: true,
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }) as unknown as MediaQueryList,
+    );
+
+    render(<SideNav />);
+    await user.keyboard("{Control>}\\{/Control}");
+    expect(document.documentElement.dataset.railCollapsed).toBe("true");
+
+    matchMedia.mockRestore();
+    resetRail();
+  });
+
+  it("opens Kairos AI on Mod+J", async () => {
+    const user = userEvent.setup();
+    const handler = vi.fn();
+    window.addEventListener("kairos:openAI", handler);
+    const matchMedia = vi.spyOn(window, "matchMedia").mockImplementation(
+      (query: string) =>
+        ({
+          matches: true,
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }) as unknown as MediaQueryList,
+    );
+
+    render(<SideNav />);
+    await user.keyboard("{Control>}j{/Control}");
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    matchMedia.mockRestore();
+    window.removeEventListener("kairos:openAI", handler);
+  });
+
+  it("opens the command palette from the search row", async () => {
+    const user = userEvent.setup();
+    const handler = vi.fn();
+    window.addEventListener("kairos:openPalette", handler);
+
+    const { container } = render(<SideNav />);
+    const aside = container.querySelector('aside[aria-label="Primary"]')!;
+    await user.click(within(aside).getByRole("button", { name: "Search" }));
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener("kairos:openPalette", handler);
   });
 
   /**
-   * The pinned *width* is CSS, not React.
+   * The collapsed *width* is CSS, not React.
    *
-   * `globals.css` widens `.kairos-rail` under `:root[data-rail-pinned="true"]`,
-   * and the pre-paint script in `themeInitScript.ts` sets that attribute before
-   * the first frame. Picking the width class off React state instead meant the
-   * rail painted collapsed on every load and widened once the effect that reads
-   * localStorage had run — dragging `.rail-offset` and the whole page with it.
-   *
-   * So the class the stylesheet hooks onto has to be on the element, and it has
-   * to be there unconditionally.
+   * `globals.css` narrows `.kairos-rail` under
+   * `:root[data-rail-collapsed="true"]`, and the pre-paint script in
+   * `themeInitScript.ts` sets that attribute before the first frame. Picking the
+   * width class off React state instead would paint the open sidebar on every
+   * load and snap it shut once the effect that reads localStorage had run.
    */
-  it("carries the CSS hook the pinned rule targets, pinned or not", () => {
-    window.localStorage.setItem("kairos:railPinned", "true");
+  it("keeps the open width class whether collapsed or not", () => {
+    window.localStorage.setItem("kairos:railCollapsed", "true");
     const { container } = render(<SideNav />);
     const aside = container.querySelector('aside[aria-label="Primary"]')!;
 
     expect(aside.className).toContain("kairos-rail");
-    // Still the collapsed base width: the stylesheet overrides it, not React.
-    expect(aside.className).toContain("w-16");
+    expect(aside.className).toContain("w-[248px]");
 
-    window.localStorage.removeItem("kairos:railPinned");
+    resetRail();
+  });
+
+  it("narrows the rail and hides its labels from the stylesheet", () => {
+    const css = fs.readFileSync(
+      path.resolve(__dirname, "../../src/styles/globals.css"),
+      "utf-8"
+    );
+    expect(css).toContain(':root[data-rail-collapsed="true"] .kairos-rail {');
+    expect(css).toContain(':root[data-rail-collapsed="true"] .kairos-rail .kairos-rail-label');
   });
 
   it("does not stamp the rail attribute on mount, only on toggle", () => {
     // The pre-paint script owns the initial value. An effect that mirrored
     // React state onto <html> would overwrite it with "false" on every load,
     // which is the flash this whole arrangement exists to remove.
-    window.localStorage.setItem("kairos:railPinned", "true");
-    document.documentElement.dataset.railPinned = "true";
+    window.localStorage.setItem("kairos:railCollapsed", "true");
+    document.documentElement.dataset.railCollapsed = "true";
 
     render(<SideNav />);
 
-    expect(document.documentElement.dataset.railPinned).toBe("true");
+    expect(document.documentElement.dataset.railCollapsed).toBe("true");
 
-    window.localStorage.removeItem("kairos:railPinned");
-    delete document.documentElement.dataset.railPinned;
+    resetRail();
   });
 });

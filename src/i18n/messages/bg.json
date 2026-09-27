@@ -14,8 +14,11 @@
     "newProject": "Нов проект",
     "calendar": "Календар",
     "organizations": "Организации",
-    "pinNavigation": "Закачи навигацията",
-    "unpinNavigation": "Откачи навигацията",
+    "collapseNavigation": "Свий страничната лента",
+    "expandNavigation": "Разгъни страничната лента",
+    "groupWorkspace": "Работно пространство",
+    "groupInsights": "Анализи",
+    "groupCollaboration": "Сътрудничество",
     "gettingStarted": "Първи стъпки, Често задавани въпроси и контакт"
   },
   "calendar": {

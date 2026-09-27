@@ -3612,119 +3612,57 @@ html[data-kairos-intro="seen"] .k-intro {
 }
 
 /* ==========================================================================
-   Design 7A navigation rail
+   Design 1b navigation sidebar
    --------------------------------------------------------------------------
-   The rail sits at 64px and opens to 236px. Every way of opening it — hover,
-   keyboard focus, pin — feeds `--rail-w`, so the page shrinks alongside it and
-   the rail never covers content. Only the pin *persists* — `SideNav` stamps
-   `data-rail-pinned` on <html>; the var and the rail read the same source.
+   The sidebar is 248px, labelled and grouped, and collapses to a 68px rail of
+   icons — from its own toggle or Mod+\. Collapsed is the one state that
+   persists: `SideNav` stamps `data-rail-collapsed` on <html>, and the
+   pre-paint script in `themeInitScript.ts` sets it before the first frame, so
+   the rail, its labels and `--rail-w` all read the same source and are the
+   right size to begin with. Keying any of this off React state instead would
+   paint the open sidebar on every load and then snap it shut.
    ========================================================================== */
 
 :root {
-  --rail-w: 4rem;
+  --rail-w: 15.5rem; /* 248px */
 }
 
-:root[data-rail-pinned="true"] {
-  --rail-w: 14.75rem; /* 236px */
-}
-
-/* Hover and keyboard-focus expansion move the page too, so the rail never
-   overlaps content — it opens *beside* it whichever way it was opened. The
-   selectors mirror the two `.kairos-rail` width rules below exactly; `:has` on
-   the root is what lets a sibling's hover state feed a variable the page reads.
-   Below `lg` the rail is `display: none`, so neither can match there. */
-:root:has(.kairos-rail:hover),
-:root:has(.kairos-rail:has(:focus-visible)) {
-  --rail-w: 14.75rem; /* 236px */
+:root[data-rail-collapsed="true"] {
+  --rail-w: 4.25rem; /* 68px */
 }
 
 @media (min-width: 1024px) {
   .rail-offset {
     margin-left: var(--rail-w);
     /* Same duration and curve as the rail's own `transition-[width]` in
-       `SideNav` (700ms, cubic-bezier(0.2, 0.8, 0.25, 1)). They animate two
-       halves of one movement, so any mismatch shows: at 400ms the page finished
-       sliding while the rail was still mid-shrink, leaving a widening gap on
-       unpin and the page riding ahead of the rail on pin. Change one, change
-       both. */
-    transition: margin-left 700ms cubic-bezier(0.2, 0.8, 0.25, 1);
+       `SideNav` (300ms, cubic-bezier(0.22, 1, 0.36, 1)). They animate two
+       halves of one movement, so any mismatch shows as a gap opening between
+       the rail and the page. Change one, change both. */
+    transition: margin-left 300ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
 
-/* The pinned rail is drawn from the attribute, not from React state.
-   `SideNav` used to pick its width class off `isRailPinned`, which is read from
-   localStorage in an effect and therefore starts `false` on every load — the
-   rail painted collapsed, then widened, and `.rail-offset` above dragged the
-   whole page along with it. The pre-paint script in `themeInitScript.ts` stamps
-   `data-rail-pinned` before the first frame, so keying the width off it here
-   means the rail is simply the right size to begin with. React still tracks the
-   value, but only to label the pin button.
-
-   Specificity is what makes these win: `:root[data-rail-pinned="true"] .x` is
-   (0,2,1), above Tailwind's `w-16` (0,1,0) and its `hover:` variants (0,2,0),
-   so the hover-to-open behaviour survives untouched while unpinned. */
-:root[data-rail-pinned="true"] .kairos-rail {
-  width: 14.75rem; /* 236px — matches --rail-w */
+/* Specificity is what makes this win: `:root[data-rail-collapsed="true"] .x`
+   is (0,2,1), above Tailwind's `w-[248px]` (0,1,0). */
+:root[data-rail-collapsed="true"] .kairos-rail {
+  width: 4.25rem; /* 68px — matches --rail-w */
 }
 
-:root[data-rail-pinned="true"] .kairos-rail-label {
-  opacity: 1;
+/* Labels, group headings, counts and key hints only belong to the open
+   sidebar. They go outright rather than being clipped, so a row is just its
+   icon and nothing half-drawn sits at the rail's edge. */
+:root[data-rail-collapsed="true"] .kairos-rail .kairos-rail-label {
+  display: none;
 }
 
-/* Keyboard users need the rail to open when they tab into it, but it must not
-   stay open after a mouse click — clicking a rail link leaves focus inside the
-   <aside>, and a plain `:focus-within` then pinned the rail open until the user
-   clicked somewhere else. `:focus-visible` only matches the keyboard case, so
-   the rail collapses again as soon as the cursor leaves. */
-.kairos-rail:has(:focus-visible) {
-  width: 14.75rem; /* 236px — matches --rail-w */
-}
-
-.kairos-rail:has(:focus-visible) .kairos-rail-label {
-  opacity: 1;
-}
-
-/* Hover has to be *deliberate*. Sweeping the cursor past the rail — or leaving
-   it parked there after clicking a nav item — used to fling the rail open the
-   moment the pointer touched it. A `transition-delay` on the hovered state is
-   the whole mechanism: the width/opacity/margin changes are queued but do not
-   begin until the pointer has rested for 1s, and leaving early drops the
-   hover state before the delay elapses, so nothing ever starts. The delay is
-   only ever set on the :hover side — collapsing, keyboard focus, and the pin
-   all stay immediate.
-
-   Every surface that moves with the rail gets the same delay or they tear
-   apart: the rail's own width, the labels' fade, and the page's margin. */
-.kairos-rail:hover {
-  transition-delay: 1000ms;
-}
-
-/* The labels come in last, and only once the rail has actually made room for
-   them. 1000ms of rest, then the 700ms width, which on this curve is ~92% done
-   by 450ms in — hence 1450ms. Before this they shared the rail's 1000ms delay
-   and faded over 600ms, which painted each label while its row was still 64px
-   wide: all that fitted was the first letter, stranded at the clip edge with
-   the rest of its word arriving behind it. The tooltip's own 1.4s animation
-   ends at the same moment, so the sequence now reads as one movement —
-   tooltip out, rail open, labels in — instead of three things at once. */
-.kairos-rail:hover .kairos-rail-label {
-  transition-delay: 1450ms;
-  transition-duration: 300ms;
-}
-
-@media (min-width: 1024px) {
-  :root:has(.kairos-rail:hover) .rail-offset {
-    transition-delay: 1000ms;
-  }
-}
-
-/* A rail held open by the keyboard (or the pin) must not inherit the wait when
-   the pointer happens to be over it as well. */
-.kairos-rail:hover:has(:focus-visible),
-.kairos-rail:hover:has(:focus-visible) .kairos-rail-label,
-:root[data-rail-pinned="true"] .kairos-rail:hover,
-:root[data-rail-pinned="true"] .kairos-rail:hover .kairos-rail-label {
-  transition-delay: 0ms;
+/* Collapsed, the header cannot fit the mark and the toggle side by side in
+   40px, so they stack — the toggle stays reachable without the shortcut. */
+:root[data-rail-collapsed="true"] .kairos-rail-head {
+  height: auto;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -4642,16 +4580,12 @@ input[type="search"]::-webkit-search-results-decoration {
 
 /* ─── Collapsed rail tooltips ───────────────────────────────────────────────
    The rail is `overflow-hidden`, so a row's tooltip cannot be an absolutely
-   positioned child — it would be clipped at 4rem along with the labels. It is
-   `fixed`, with its `top` measured from the row in `RailLink`, which escapes
-   the clip because nothing above it establishes a containing block.
-
-   The fade-out at 70% is the handover: it lands on the 1s mark, which is when
-   a rested pointer opens the rail and the row's real label takes over. Without
-   it the tooltip would sit on top of the label it was standing in for. */
+   positioned child — it would be clipped at the rail's edge. It is `fixed`,
+   with its `top` measured from the row in `SideNav`, which escapes the clip
+   because nothing above it establishes a containing block. */
 .kairos-rail-tip {
   position: fixed;
-  left: 4.25rem;
+  left: 4.75rem; /* just past the 68px rail */
   transform: translateY(-50%);
   z-index: 50; /* above the rail (z-40), below modals */
   padding: 0.3125rem 0.5rem;
@@ -4666,31 +4600,22 @@ input[type="search"]::-webkit-search-results-decoration {
   box-shadow:
     var(--shadow-lg),
     inset 0 0 0 0.5px rgb(var(--border-light) / 0.6);
-  animation: kairos-rail-tip 1.4s ease forwards;
+  animation: kairos-rail-tip 160ms ease forwards;
 }
 
 @keyframes kairos-rail-tip {
-  0% {
+  from {
     opacity: 0;
     transform: translateY(-50%) translateX(-4px);
   }
-  12% {
+  to {
     opacity: 1;
-    transform: translateY(-50%) translateX(0);
-  }
-  70% {
-    opacity: 1;
-    transform: translateY(-50%) translateX(0);
-  }
-  100% {
-    opacity: 0;
     transform: translateY(-50%) translateX(0);
   }
 }
 
-/* Pinned, the labels are always on screen — a tooltip repeating one of them is
-   noise. */
-:root[data-rail-pinned="true"] .kairos-rail-tip {
+/* Open, the labels are always on screen — a tooltip repeating one is noise. */
+:root:not([data-rail-collapsed="true"]) .kairos-rail-tip {
   display: none;
 }
 

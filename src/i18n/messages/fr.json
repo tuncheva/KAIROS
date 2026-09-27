@@ -13,8 +13,11 @@
     "quickActions": "Actions rapides",
     "newProject": "Nouveau projet",
     "calendar": "Calendrier",
-    "pinNavigation": "Épingler la navigation",
-    "unpinNavigation": "Détacher la navigation",
+    "collapseNavigation": "Réduire la barre latérale",
+    "expandNavigation": "Développer la barre latérale",
+    "groupWorkspace": "Espace de travail",
+    "groupInsights": "Analyses",
+    "groupCollaboration": "Collaboration",
     "gettingStarted": "Pour commencer, FAQ et contact"
   },
   "calendar": {

@@ -13,8 +13,11 @@
     "quickActions": "Schnellaktionen",
     "newProject": "Neues Projekt",
     "calendar": "Kalender",
-    "pinNavigation": "Navigation anpinnen",
-    "unpinNavigation": "Navigation lösen",
+    "collapseNavigation": "Seitenleiste einklappen",
+    "expandNavigation": "Seitenleiste ausklappen",
+    "groupWorkspace": "Arbeitsbereich",
+    "groupInsights": "Einblicke",
+    "groupCollaboration": "Zusammenarbeit",
     "gettingStarted": "Erste Schritte, FAQ und Kontakt"
   },
   "calendar": {

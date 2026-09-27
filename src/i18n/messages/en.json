@@ -14,8 +14,11 @@
     "newProject": "New Project",
     "calendar": "Calendar",
     "organizations": "Organizations",
-    "pinNavigation": "Pin navigation",
-    "unpinNavigation": "Unpin navigation",
+    "collapseNavigation": "Collapse sidebar",
+    "expandNavigation": "Expand sidebar",
+    "groupWorkspace": "Workspace",
+    "groupInsights": "Insights",
+    "groupCollaboration": "Collaboration",
     "gettingStarted": "Getting started, FAQ and contact"
   },
   "calendar": {
