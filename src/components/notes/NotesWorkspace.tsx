@@ -581,7 +581,7 @@ export function NotesWorkspace() {
   const pageSwap = swapping && showPageOnMobile ? "notes-push-in md:animate-none" : "";
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="notes-quiet flex h-full overflow-hidden bg-bg-primary text-fg-primary">
       {/* Rail — a column on desktop, a sheet below `lg`. The list/note split
           still starts at `md`, but a 768px tablet cannot also hold a 236px
           rail: rail + list left the note about 214px wide. */}
@@ -678,9 +678,6 @@ export function NotesWorkspace() {
           query={query}
           lockedExcluded={lockedExcluded}
           unlocked={unlockedBodies}
-          notebookNameOf={(id) =>
-            id === null ? null : (notebooks.find((notebook) => notebook.id === id)?.name ?? null)
-          }
           locale={dateLocale}
           isLoading={isListLoading}
           onSelect={openNote}

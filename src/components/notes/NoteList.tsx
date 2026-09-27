@@ -41,14 +41,12 @@ import {
 import { ContextMenu, type ContextMenuAnchor } from "./ContextMenu";
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from "./Menu";
 import {
-  Badge,
   BTN_ACCENT,
   CHIP,
   CHIP_IDLE,
   CHIP_ON,
   ICON_BTN_BARE,
   MICRO,
-  SharedAvatars,
   STAMP,
 } from "./notesUi";
 import {
@@ -84,7 +82,6 @@ export function NoteList({
   query,
   lockedExcluded,
   unlocked,
-  notebookNameOf,
   locale,
   isLoading,
   onSelect,
@@ -112,7 +109,6 @@ export function NoteList({
   /** How many encrypted notes the search could not look inside. */
   lockedExcluded: number;
   unlocked: Record<number, string>;
-  notebookNameOf: (id: number | null) => string | null;
   locale: string;
   isLoading: boolean;
   onSelect: (id: number) => void;
@@ -285,7 +281,7 @@ export function NoteList({
             {grouped.map((group) => (
               <li key={group.key}>
                 {group.label && (
-                  <p className={`${MICRO} px-3.5 pt-4 pb-1.5`}>{t(`buckets.${group.label}`)}</p>
+                  <p className={`${MICRO} px-5 pt-4 pb-1.5`}>{t(`buckets.${group.label}`)}</p>
                 )}
                 <ul className="flex flex-col">
                   {group.notes.map((note) => {
@@ -296,7 +292,6 @@ export function NoteList({
                           note={note}
                           selected={note.id === selectedId}
                           unlockedContent={unlocked[note.id]}
-                          notebookName={notebookNameOf(note.notebookId)}
                           locale={locale}
                           sort={sort}
                           enterDelay={delay}
@@ -531,7 +526,6 @@ function NoteRow({
   note,
   selected,
   unlockedContent,
-  notebookName,
   locale,
   sort,
   enterDelay,
@@ -541,7 +535,6 @@ function NoteRow({
   note: NoteItem;
   selected: boolean;
   unlockedContent: string | undefined;
-  notebookName: string | null;
   locale: string;
   sort: NoteSort;
   enterDelay: number;
@@ -567,25 +560,9 @@ function NoteRow({
   );
 
   const locked = note.isPasswordProtected;
-  const shared = note.kind === "shared" || note.sharedWith.length > 0;
 
-  const sharedFaces =
-    note.kind === "own" && note.sharedWith.length > 0 ? (
-      <SharedAvatars
-        users={note.sharedWith}
-        ringClass="ring-bg-primary"
-        label={t("sharing.sharedWith")}
-      />
-    ) : null;
-
-  /* The faces are rendered twice on purpose.
-     A face has to be its own button so it can open the profile drawer, and a
-     button cannot sit inside the row button. So the copy *inside* the row is
-     inert and invisible — it exists only to reserve the exact space, which
-     keeps the meta badges from running under the real stack — and the copy
-     outside is laid over that gap. */
   return (
-    <div className="notes-row-in relative" style={{ animationDelay: `${enterDelay}s` }}>
+    <div className="notes-row-in relative px-2" style={{ animationDelay: `${enterDelay}s` }}>
       <button
         type="button"
         data-note-row
@@ -602,90 +579,32 @@ function NoteRow({
           );
         }}
         aria-current={selected ? "true" : undefined}
-        className={`relative w-full border-b border-l-2 border-border-light/45 border-l-transparent px-3.5 py-3 text-left transition-colors duration-[300ms] ${
-          selected ? "bg-accent-primary/[0.07]" : "hover:bg-accent-primary/[0.05]"
+        /* The quiet row: a rounded block with a neutral ink wash when selected —
+           the accent is spent elsewhere. No left marker, no bottom hairline, no
+           badges. Lock and share live as a glyph and an italic preview, and the
+           rest of a note's state waits in the editor. */
+        className={`relative block w-full rounded-lg px-3 py-2.5 text-left transition-colors duration-200 ${
+          selected ? "bg-fg-primary/[0.07]" : "hover:bg-fg-primary/[0.045]"
         }`}
       >
-        {/* The marker scales in from its own centre — `dash-grow`'s
-            transform-origin trick turned on its side. The old ring had nothing
-            to animate, so a selection change was a colour swap and no more. */}
-        <span
-          aria-hidden="true"
-          className={`absolute inset-y-0 -left-[2px] w-[2px] origin-center bg-accent-primary transition-transform duration-[220ms] ease-[cubic-bezier(0.2,0.8,0.25,1)] ${
-            selected ? "scale-y-100" : "scale-y-0"
-          }`}
-        />
-
-        <span className="flex items-baseline gap-2.5">
-          <span className="min-w-0 flex-1 truncate text-[13.5px] font-bold tracking-[-0.008em] text-fg-primary">
+        <span className="flex items-center gap-2">
+          {locked && (
+            <Lock size={11} className="flex-none text-fg-tertiary" aria-hidden="true" />
+          )}
+          <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-fg-primary">
             {title}
           </span>
           <span className={`${STAMP} flex-shrink-0`}>{stamp}</span>
         </span>
 
-        <span className="mt-1 block truncate text-[12.5px] text-fg-tertiary">
+        <span
+          className={`mt-0.5 block truncate text-[12.5px] text-fg-tertiary ${
+            locked && unlockedContent === undefined ? "italic" : ""
+          }`}
+        >
           {preview}
         </span>
-
-        <span className="mt-2 flex flex-wrap items-center gap-1.5">
-          {/* Lock and share are independent facts. The old card put them in one
-            ternary, so a shared note that was also encrypted showed neither
-            lock nor key — only "Shared". */}
-          {locked && (
-            <Badge tone="lock" icon={<Lock size={9} />}>
-              {t("filters.locked")}
-            </Badge>
-          )}
-          {note.kind === "shared" ? (
-            <Badge tone="share" icon={<Users size={9} />}>
-              {note.permission === "write"
-                ? t("sharing.canEdit")
-                : t("sharing.viewOnly")}
-            </Badge>
-          ) : (
-            shared && (
-              <Badge tone="share" icon={<Users size={9} />}>
-                {String(note.sharedWith.length)}
-              </Badge>
-            )
-          )}
-          {note.calendarDate && (
-            <Badge tone="calendar" icon={<CalendarDays size={9} />}>
-              {note.calendarDate.toLocaleDateString(locale, {
-                day: "numeric",
-                month: "short",
-              })}
-            </Badge>
-          )}
-          {notebookName && <Badge>{notebookName}</Badge>}
-
-          <span className="flex-1" />
-
-          {sharedFaces && (
-            <span aria-hidden="true" className="invisible">
-              {sharedFaces}
-            </span>
-          )}
-          {note.kind === "shared" && (
-            <span className={`${STAMP} max-w-[120px] truncate normal-case`}>
-              {t("sharing.fromOwner", {
-                owner: note.ownerName ?? note.ownerEmail ?? "",
-              })}
-            </span>
-          )}
-        </span>
       </button>
-
-      {sharedFaces && (
-        <span className="absolute right-3.5 bottom-3 z-10 flex">
-          <SharedAvatars
-            users={note.sharedWith}
-            ringClass="ring-bg-primary"
-            label={t("sharing.sharedWith")}
-            peek
-          />
-        </span>
-      )}
     </div>
   );
 }

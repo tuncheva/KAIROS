@@ -593,6 +593,43 @@
         "linkFailed": "Der Einladungslink konnte nicht erstellt werden.",
         "resend": "E-Mail erneut senden"
       }
+    },
+    "elegant": {
+      "back": "Zurück",
+      "close": "Einstellungen schließen (Esc)",
+      "clearSearch": "Suche löschen",
+      "intro": "Dein Konto, der Assistent und dein Workspace. Änderungen werden sofort gespeichert.",
+      "group": {
+        "account": "Konto",
+        "assistant": "Assistent",
+        "workspace": "Workspace"
+      },
+      "resultsFor": "Ergebnisse für „{query}“",
+      "saveIdle": "Änderungen werden sofort gespeichert",
+      "savedAt": "Alle Änderungen gespeichert · {time}",
+      "activity": "Aktivität",
+      "activityHint": "Was du bei diesem Besuch geändert hast. Wähle einen Eintrag, um zum Abschnitt zu springen.",
+      "activityEmpty": "Noch nichts geändert.",
+      "activityYou": "Du",
+      "activityChanged": "hast {section} geändert",
+      "activityChangedGeneric": "hast eine Einstellung geändert",
+      "activityFailed": "konntest eine Änderung in {section} nicht speichern",
+      "activityFailedGeneric": "konntest eine Änderung nicht speichern",
+      "activityFooter": "Nur für diesen Besuch. Wird beim Schließen geleert.",
+      "health": {
+        "headlineOk": "Alle Kontoprüfungen bestanden",
+        "headlineBad": "{count, plural, one {# Punkt braucht} other {# Punkte brauchen}} deine Aufmerksamkeit",
+        "details": "Details",
+        "review": "Prüfen",
+        "hide": "Ausblenden",
+        "reviewOne": "Prüfen",
+        "emailOk": "Deine E-Mail-Adresse ist bestätigt",
+        "emailBad": "Deine E-Mail-Adresse ist nicht bestätigt",
+        "twoFactorOk": "Zweistufige Anmeldung ist aktiv",
+        "twoFactorBad": "Zweistufige Anmeldung ist aus",
+        "pinOk": "Eine Wiederherstellungs-PIN für verschlüsselte Notizen ist gesetzt",
+        "pinBad": "Keine Wiederherstellungs-PIN für verschlüsselte Notizen"
+      }
     }
   },
   "create": {

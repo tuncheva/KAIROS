@@ -28,71 +28,72 @@ import { ProfileLink } from "~/components/profile/ProfileLink";
 import type { NoteUser } from "./notesData";
 
 /* ── Type ─────────────────────────────────────────────────────────────────
-   One micro-label, replacing `text-[9.5px] tracking-widest`,
-   `text-[10px] font-semibold uppercase tracking-wide`, `text-[11px]` and two
-   more. Group headers, the sort pill, the word count and menu section labels
-   are all the same kind of thing and now look like it. */
-export const MICRO = "font-mono text-[10px] font-normal uppercase tracking-[0.14em] text-fg-quaternary";
-/** A timestamp. Tighter tracking than a label, because digits are wide. */
-export const STAMP = "font-mono text-[9.5px] uppercase tracking-[0.1em] tabular-nums text-fg-quaternary";
+   The quiet edition drops the mono-uppercase micro-label of the terminal tier.
+   On this surface the chrome speaks in small grey sans; mono is reserved for
+   keycaps (⌘K, esc) alone, so a section header, a meta line and a word count
+   read as ordinary quiet text rather than as machine labels. */
+export const MICRO = "text-[12px] font-medium text-fg-tertiary";
+/** A timestamp. Sans and tabular, the same quiet grey as a label. */
+export const STAMP = "text-[11.5px] tabular-nums text-fg-tertiary";
 
 /* ── Buttons ──────────────────────────────────────────────────────────────
-   The rail's `bg-gradient-to-br from-accent-primary to-accent-secondary` pill
-   is gone: gradients appear nowhere else in the recent tier. This is the CTA
-   `DashboardClient` uses for its first-run action, which is the one primary
-   button shape in the app that is not legacy. */
+   The primary action is a neutral high-contrast button — ink on ground — not
+   an accent fill. On the quiet surface the violet accent is spent only on the
+   things that carry meaning (a pin, a selected row, a link, the caret), so a
+   dialog's confirm button is `bg-fg-primary text-bg-primary` and the accent is
+   left alone. */
 export const BTN_ACCENT =
-  "inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-accent-primary px-3.5 text-[13px] font-bold tracking-[-0.005em] text-white transition-all duration-[350ms] hover:-translate-y-[1.5px] hover:bg-accent-hover active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-fg-primary px-3.5 text-[13px] font-semibold text-bg-primary transition-opacity hover:opacity-90 active:opacity-80 disabled:pointer-events-none disabled:opacity-40";
+/** A bare icon-only "new note" control — a pen, not a filled square. */
 export const BTN_ACCENT_SQUARE =
-  "inline-grid h-8 w-8 place-items-center rounded-md bg-accent-primary text-white transition-all duration-[350ms] hover:-translate-y-[1.5px] hover:bg-accent-hover active:translate-y-0";
+  "kairos-tap grid h-[30px] w-[30px] place-items-center rounded-lg text-fg-secondary transition-colors hover:bg-bg-tertiary hover:text-fg-primary active:scale-95";
 export const BTN_GHOST =
-  "inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-border-medium px-3.5 text-[13px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border-medium px-3.5 text-[13px] font-medium text-fg-secondary transition-colors hover:bg-bg-tertiary hover:text-fg-primary disabled:pointer-events-none disabled:opacity-40";
 export const BTN_DANGER =
-  "inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-error px-3.5 text-[13px] font-bold text-white transition-all duration-[350ms] hover:-translate-y-[1.5px] hover:brightness-110 active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-error px-3.5 text-[13px] font-semibold text-bg-primary transition-opacity hover:opacity-90 active:opacity-80 disabled:pointer-events-none disabled:opacity-40";
 
-/** `CalendarClient`'s 30px bordered square, for every icon-only control. */
+/** A 30px icon-only control. Bare on the quiet surface — a hover wash, no border. */
 export const ICON_BTN =
-  "kairos-tap grid h-[30px] w-[30px] flex-none place-items-center rounded-md border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary active:scale-95";
-/** The same shape without the border, for icon buttons packed into a header. */
+  "kairos-tap grid h-[30px] w-[30px] flex-none place-items-center rounded-lg text-fg-secondary transition-colors hover:bg-bg-tertiary hover:text-fg-primary active:scale-95";
+/** The same shape, quieter ink, for icon buttons packed into a header. */
 export const ICON_BTN_BARE =
-  "kairos-tap grid h-7 w-7 flex-none place-items-center rounded-lg text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary active:scale-95";
-/** Bare, but holding an accent-tinted "on" state — a note that is shared. */
+  "kairos-tap grid h-8 w-8 flex-none place-items-center rounded-lg text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary active:scale-95";
+/** Bare, but holding the accent "on" state — a note that is pinned or shared. */
 export const ICON_BTN_ON =
-  "kairos-tap grid h-7 w-7 flex-none place-items-center rounded-lg border border-accent-primary/30 bg-accent-primary/10 text-accent-primary transition-colors hover:bg-accent-primary/20 active:scale-95";
+  "kairos-tap grid h-8 w-8 flex-none place-items-center rounded-lg text-accent-primary transition-colors hover:bg-bg-tertiary active:scale-95";
 
 /* ── Chips ────────────────────────────────────────────────────────────────
-   `CalendarClient`'s `SMALL_CHIP`, in mono. Used by the filter tabs and the
-   sort pill, which were two different shapes doing one job. */
+   A quiet rounded pill in sans, for the filter and sort controls. (These move
+   into the ⌘K command surface in the next pass; until then they stay, dressed
+   in the quiet language rather than the terminal one.) */
 export const CHIP =
-  "inline-flex h-[26px] flex-none items-center gap-1.5 rounded-md border px-2.5 font-mono text-[10px] tracking-[0.12em] whitespace-nowrap uppercase transition-colors";
-export const CHIP_IDLE = "border-border-medium text-fg-tertiary hover:bg-bg-secondary hover:text-fg-primary";
-export const CHIP_ON = "border-accent-primary/45 bg-accent-primary/10 text-accent-primary";
+  "inline-flex h-[30px] flex-none items-center gap-1.5 rounded-full border px-3 text-[12.5px] whitespace-nowrap transition-colors";
+export const CHIP_IDLE = "border-border-medium text-fg-secondary hover:bg-bg-tertiary hover:text-fg-primary";
+export const CHIP_ON = "border-accent-primary/40 bg-accent-primary/10 text-accent-primary";
 
 /* ── Fields ───────────────────────────────────────────────────────────────
-   A bordered shell with the focus ring on the shell rather than the input, so
-   a field with a reveal button inside it still reads as one control.
-   Replaces `bg-bg-secondary rounded-lg focus:ring-2 focus:ring-accent-primary/35`,
-   which had no border and therefore no shape when empty. */
+   A bordered shell with the focus state on the shell rather than the input, so
+   a field with a reveal button inside it still reads as one control. Softer and
+   rounder than the terminal field, and no ring — the border warming to accent
+   is the whole affordance. */
 export const FIELD =
-  "flex h-[38px] items-center gap-2 rounded-md border border-border-medium bg-bg-surface px-3 transition-colors focus-within:border-accent-primary/60 focus-within:bg-bg-elevated focus-within:ring-[3px] focus-within:ring-accent-primary/10";
+  "flex h-[42px] items-center gap-2.5 rounded-lg border border-border-medium bg-bg-surface px-3.5 transition-colors focus-within:border-accent-primary/55";
 export const FIELD_TALL =
-  "flex items-start gap-2 rounded-md border border-border-medium bg-bg-surface px-3 py-2.5 transition-colors focus-within:border-accent-primary/60 focus-within:bg-bg-elevated focus-within:ring-[3px] focus-within:ring-accent-primary/10";
+  "flex items-start gap-2.5 rounded-lg border border-border-medium bg-bg-surface px-3.5 py-2.5 transition-colors focus-within:border-accent-primary/55";
 /** The input itself, inside a `FIELD`. */
 export const FIELD_INPUT =
-  "min-w-0 flex-1 border-0 bg-transparent text-[13.5px] text-fg-primary outline-none placeholder:text-fg-quaternary";
-/** Field label. Quieter than the value it labels, which is the point. */
+  "min-w-0 flex-1 border-0 bg-transparent text-[14px] text-fg-primary caret-accent-primary outline-none placeholder:text-fg-quaternary";
+/** Field label. Quiet grey sans, a touch quieter than the value it labels. */
 export const FIELD_LABEL =
-  "mb-1.5 block font-mono text-[9.5px] uppercase tracking-[0.13em] text-fg-quaternary";
+  "mb-1.5 block text-[12px] font-medium text-fg-secondary";
 
 /* ── Surfaces ─────────────────────────────────────────────────────────────
-   One elevation language. `kairos-menu-surface` and
-   `kairos-system-card-elevated` were split arbitrarily across the six dialogs
-   and two menus of this surface; both are replaced by the CalendarClient
-   popover surface, which is also what `CommandPalette` uses. */
+   One elevation language for every menu, popover and dialog on the surface —
+   a raised warm panel with a hairline and a soft lift. */
 export const POPOVER_SURFACE =
   "rounded-xl border border-border-medium bg-bg-elevated shadow-xl";
 export const DIALOG_SURFACE =
-  "overflow-hidden rounded-xl border border-border-medium bg-bg-elevated shadow-2xl";
+  "overflow-hidden rounded-2xl border border-border-medium bg-bg-elevated shadow-2xl";
 
 export function initialOf(user: Pick<NoteUser, "name" | "email"> | null | undefined): string {
   const source = user?.name ?? user?.email ?? "";
@@ -189,18 +190,13 @@ export function SharedAvatars({
 }
 
 /**
- * A status badge.
+ * A fact.
  *
- * `tone` exists because lock and share are orthogonal states that the old card
- * treated as mutually exclusive — a shared note that was also encrypted showed
- * only "Shared", so the lock was invisible exactly where it mattered most.
- *
- * The fill is gone. Four filled tints (`bg-error/12`, `bg-accent-primary/12`,
- * `bg-info/12`, `bg-bg-tertiary`) read as four unrelated things and competed
- * with the accent wash on a selected row behind them. This is the dashboard's
- * `STATE_BADGE` pattern instead: one shape, one weight, colour carried by a
- * 40%-alpha border and the label — so Locked / Shared / a date / a notebook
- * read as one family.
+ * On the quiet surface a note's state is not a pill — it is a small grey line
+ * with a tinted glyph, the way the editor footer names what a note is (pinned,
+ * locked, on a date, shared). `tone` carries the colour because lock and share
+ * are orthogonal states; the fill and the border are gone entirely, so Locked /
+ * Shared / a date / a notebook read as one quiet family rather than four chips.
  */
 export function Badge({
   tone = "neutral",
@@ -214,17 +210,17 @@ export function Badge({
   title?: string;
 }) {
   const tones = {
-    neutral: "border-border-medium/90 text-fg-tertiary",
-    lock: "border-error/40 text-error",
-    share: "border-accent-primary/40 text-accent-primary",
-    calendar: "border-info/40 text-info",
-    ok: "border-success/45 text-success",
+    neutral: "text-fg-tertiary",
+    lock: "text-fg-tertiary",
+    share: "text-fg-tertiary",
+    calendar: "text-info",
+    ok: "text-success",
   } as const;
 
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-[1.5px] font-mono text-[9.5px] tracking-[0.12em] whitespace-nowrap uppercase ${tones[tone]}`}
+      className={`inline-flex items-center gap-1.5 text-[12px] whitespace-nowrap ${tones[tone]}`}
     >
       {icon}
       {children}

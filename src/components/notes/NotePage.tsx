@@ -274,7 +274,7 @@ export function NotePage({
             <FileText size={22} />
           </div>
           <p
-            className="calendar-pop text-[15px] font-bold tracking-[-0.012em] text-fg-primary"
+            className="calendar-pop note-serif text-[26px] leading-tight font-medium tracking-[-0.015em] text-fg-primary"
             style={{ animationDelay: "0.08s" }}
           >
             {t("empty.noSelection")}
@@ -303,7 +303,7 @@ export function NotePage({
 
   return (
     <div className="flex h-full flex-col bg-bg-primary">
-      <header className="flex min-h-[48px] flex-none items-center gap-2 border-b border-border-light/60 px-3 py-2 md:px-4">
+      <header className="flex min-h-[56px] flex-none items-center gap-2 border-b border-border-light px-3 py-2 md:px-6">
         <button
           type="button"
           onClick={() => {
@@ -435,7 +435,7 @@ export function NotePage({
             <div className="notes-disc-in mx-auto mb-4 grid h-[54px] w-[54px] place-items-center rounded-full border border-error/35 text-error">
               <Lock size={22} />
             </div>
-            <h2 className="text-[15.5px] font-bold tracking-[-0.012em] text-fg-primary">
+            <h2 className="note-serif text-[26px] leading-tight font-medium tracking-[-0.015em] text-fg-primary">
               {t("password.gateTitle")}
             </h2>
             <p className="mt-2 text-[13px] leading-relaxed text-fg-tertiary">
@@ -467,7 +467,8 @@ export function NotePage({
            blinked out and back and the caret was lost. The reading surface is
            the one thing on this page that should hold still — the motion is in
            the list, the rail, the menus and the dialogs around it. */
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-6 pb-3 md:px-10">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-10 pb-3 md:px-10 md:pt-[72px]">
+         <div className="mx-auto flex w-full max-w-[680px] flex-1 flex-col">
           <label htmlFor="note-title" className="sr-only">
             {t("create.titlePlaceholder")}
           </label>
@@ -486,10 +487,10 @@ export function NotePage({
             onBlur={() => void autosave.flush()}
             readOnly={readOnly}
             placeholder={t("untitled")}
-            className="w-full bg-transparent font-display text-[28px] leading-[1.14] font-normal tracking-[-0.012em] text-fg-primary placeholder:text-fg-quaternary focus:outline-none md:text-[34px]"
+            className="note-serif w-full bg-transparent text-[32px] leading-[1.12] font-medium tracking-[-0.02em] text-fg-primary caret-accent-primary placeholder:text-fg-quaternary focus:outline-none md:text-[44px]"
           />
 
-          <p className={`${MICRO} mt-3 mb-4 flex flex-wrap items-center gap-x-3.5 gap-y-1`}>
+          <p className={`${MICRO} mt-3 mb-4 flex flex-wrap items-center gap-x-3.5 gap-y-1 font-normal text-[12.5px]`}>
             {note && (
               <>
                 <span>{t("meta.createdOn", { date: formatFullDate(note.createdAt) })}</span>
@@ -595,7 +596,7 @@ export function NotePage({
           <div className="mb-5 h-px flex-none bg-border-light/50" aria-hidden="true" />
 
           {readOnly ? (
-            <p className="flex-1 text-[14.5px] leading-[1.75] whitespace-pre-wrap text-fg-secondary">
+            <p className="note-serif flex-1 text-[18.5px] leading-[1.72] whitespace-pre-wrap text-note-write">
               {content || t("noContent")}
             </p>
           ) : (
@@ -610,14 +611,15 @@ export function NotePage({
                 onChange={(event) => setContent(event.target.value)}
                 onBlur={() => void autosave.flush()}
                 placeholder={t("create.contentPlaceholder")}
-                className="min-h-[240px] w-full flex-1 resize-none bg-transparent text-[14.5px] leading-[1.75] text-fg-secondary placeholder:text-fg-quaternary focus:outline-none"
+                className="note-serif min-h-[240px] w-full flex-1 resize-none bg-transparent text-[18.5px] leading-[1.72] text-note-write caret-accent-primary placeholder:text-fg-quaternary focus:outline-none"
               />
             </>
           )}
+         </div>
         </div>
       )}
 
-      <footer className="flex flex-none flex-wrap items-center gap-2 border-t border-border-light/60 bg-bg-surface px-4 py-2.5 md:px-5">
+      <footer className="flex flex-none flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border-light px-4 py-2.5 md:px-8">
         {notebookName ? <Badge>{notebookName}</Badge> : null}
         {calendarDate && (
           <Badge tone="calendar" icon={<CalendarDays size={9} />}>
@@ -685,7 +687,7 @@ function SaveIndicator({
   const t = useTranslations("notes");
   if (readOnly) return null;
 
-  const shell = "calendar-pop flex flex-none items-center gap-1.5 font-mono text-[9.5px] uppercase tracking-[0.13em]";
+  const shell = "calendar-pop flex flex-none items-center gap-1.5 text-[12px]";
 
   if (status === "saving") {
     return (

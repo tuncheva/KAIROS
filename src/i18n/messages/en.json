@@ -1281,6 +1281,43 @@
       "creatingOrg": "Creating…",
       "orgNamePlaceholder": "Organization name",
       "orgNameLabel": "Name of the organization to create"
+    },
+    "elegant": {
+      "back": "Back",
+      "close": "Close settings (esc)",
+      "clearSearch": "Clear search",
+      "intro": "Your account, the assistant and your workspace. Changes are saved as you make them.",
+      "group": {
+        "account": "Account",
+        "assistant": "Assistant",
+        "workspace": "Workspace"
+      },
+      "resultsFor": "Results for “{query}”",
+      "saveIdle": "Changes save as you make them",
+      "savedAt": "All changes saved · {time}",
+      "activity": "Activity",
+      "activityHint": "What you changed during this visit. Select an entry to go to that section.",
+      "activityEmpty": "Nothing changed yet.",
+      "activityYou": "You",
+      "activityChanged": "changed {section}",
+      "activityChangedGeneric": "changed a setting",
+      "activityFailed": "couldn't save a change in {section}",
+      "activityFailedGeneric": "couldn't save a change",
+      "activityFooter": "Listed for this visit only. Closing settings clears it.",
+      "health": {
+        "headlineOk": "Every account check passes",
+        "headlineBad": "{count, plural, one {# thing needs} other {# things need}} your attention",
+        "details": "Details",
+        "review": "Review",
+        "hide": "Hide",
+        "reviewOne": "Review",
+        "emailOk": "Your email address is confirmed",
+        "emailBad": "Your email address isn't confirmed",
+        "twoFactorOk": "Two-step sign-in is on",
+        "twoFactorBad": "Two-step sign-in is off",
+        "pinOk": "A recovery PIN is set for encrypted notes",
+        "pinBad": "No recovery PIN for encrypted notes"
+      }
     }
   },
   "create": {

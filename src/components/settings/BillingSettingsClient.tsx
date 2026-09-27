@@ -114,7 +114,7 @@ function CheckoutBanner({ outcome, t }: { outcome: Outcome; t: Translator }) {
   return (
     <div
       role="status"
-      className={`rounded-lg border p-3 text-[13px] ${
+      className={`rounded-lg border p-3 text-settings-desc ${
         success
           ? "border-accent-primary/40 bg-accent-primary/[0.08] text-fg-primary"
           : "border-border-medium bg-bg-tertiary/40 text-fg-secondary"
@@ -167,7 +167,7 @@ function CurrentPlanGroup({
       desc: isLoading ? t("loading") : t(`planName.${plan}`),
       keywords: "subscription tier pro team free",
       control: (
-        <span className="font-mono text-[12px] uppercase tracking-[0.08em] text-accent-primary">
+        <span className="text-settings-eyebrow font-medium uppercase tracking-[0.14em] text-accent-primary">
           {plan}
         </span>
       ),
@@ -254,7 +254,7 @@ function OrganizationGroup({
       title: organization.name,
       desc: t(`planName.${organization.plan}`),
       control: (
-        <span className="font-mono text-[12px] uppercase tracking-[0.08em] text-fg-tertiary">
+        <span className="text-settings-eyebrow font-medium uppercase tracking-[0.14em] text-fg-tertiary">
           {organization.plan}
         </span>
       ),
@@ -423,7 +423,7 @@ function IntervalToggle({
           role="radio"
           aria-checked={value === option}
           onClick={() => onChange(option)}
-          className={`rounded-md px-3 py-1 text-[12.5px] transition-colors ${
+          className={`rounded-md px-3 py-1 text-settings-small font-medium transition-colors ${
             value === option
               ? "bg-accent-primary/15 font-medium text-fg-primary"
               : "text-fg-tertiary hover:text-fg-secondary"
@@ -469,7 +469,7 @@ function CreateOrgToBuy({ t }: { t: Translator }) {
     return (
       <>
         <LedgerAction onClick={() => setOpen(true)}>{t("createOrg")}</LedgerAction>
-        <p className="text-[11.5px] text-fg-quaternary">{t("teamNeedsOrg")}</p>
+        <p className="text-settings-micro text-fg-quaternary">{t("teamNeedsOrg")}</p>
       </>
     );
   }
@@ -501,7 +501,7 @@ function CreateOrgToBuy({ t }: { t: Translator }) {
         maxLength={256}
         placeholder={t("orgNamePlaceholder")}
         aria-label={t("orgNameLabel")}
-        className="rounded-md border border-border-medium bg-bg-primary px-2.5 py-1.5 text-[12.5px] text-fg-primary placeholder:text-fg-quaternary focus:border-accent-primary focus:outline-none"
+        className="rounded-md border border-border-medium bg-bg-primary px-2.5 py-1.5 text-settings-body text-fg-primary placeholder:text-fg-quaternary focus:border-accent-primary focus:outline-none"
       />
       <LedgerAction onClick={submit} disabled={!trimmed || create.isPending}>
         {create.isPending ? t("creatingOrg") : t("createOrgConfirm")}
@@ -576,24 +576,24 @@ function PlanCard({
       }`}
     >
       <div>
-        <p className="text-[13px] font-semibold text-fg-primary">
+        <p className="text-settings-row font-medium text-fg-primary">
           {t(`planName.${plan}`)}
         </p>
-        <p className="mt-0.5 text-[12.5px] text-fg-tertiary">{descriptor.tagline}</p>
+        <p className="mt-0.5 text-settings-desc text-fg-tertiary">{descriptor.tagline}</p>
       </div>
 
       <p className="text-fg-primary">
-        <span className="text-[22px] font-semibold tracking-[-0.02em]">
+        <span className="settings-serif text-settings-stat font-light tabular-nums">
           {formatEuro(priceFor(plan, interval))}
         </span>
-        <span className="ml-1 text-[12px] text-fg-tertiary">
+        <span className="ml-1 text-settings-meta text-fg-tertiary">
           {t(interval === "year" ? "perSeatYear" : "perSeatMonth")}
         </span>
       </p>
 
       <ul className="flex flex-col gap-1.5">
         {descriptor.highlights.map((line) => (
-          <li key={line} className="flex gap-2 text-[12.5px] text-fg-secondary">
+          <li key={line} className="flex gap-2 text-settings-small text-fg-secondary">
             <span aria-hidden className="text-accent-primary">
               •
             </span>
@@ -618,12 +618,12 @@ function PlanCard({
         </LedgerAction>
         )}
         {blocker ? (
-          <p className="text-[11.5px] text-fg-quaternary">{blocker}</p>
+          <p className="text-settings-micro text-fg-quaternary">{blocker}</p>
         ) : trialDays > 0 ? (
           // What happens at the end, said before the decision rather than in a
           // renewal email. A trial that collects no card and does not say so
           // reads as a subscription the buyer has forgotten the terms of.
-          <p className="text-[11.5px] text-fg-quaternary">
+          <p className="text-settings-micro text-fg-quaternary">
             {t("trialNote", { days: trialDays })}
           </p>
         ) : null}

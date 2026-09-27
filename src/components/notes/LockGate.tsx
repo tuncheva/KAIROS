@@ -75,27 +75,24 @@ export function LockGate({
   }, [attempt, error]);
 
   return (
-    <div className="grid min-h-0 flex-1 place-items-center p-6">
+    <div className="grid min-h-0 flex-1 place-items-center p-6 pb-[60px]">
       <form
-        className="notes-pane-in w-full max-w-[308px] text-center"
+        className="notes-pane-in flex w-full max-w-[360px] flex-col"
         onSubmit={(event) => {
           event.preventDefault();
           if (password && !isPending) onUnlock();
         }}
       >
-        {/* An outlined disc, the same shape every empty state and dialog icon
-            tile on this surface now uses — rather than a filled `rounded-lg`
-            tile that appeared nowhere else. */}
-        <div className="mx-auto mb-4 grid h-[54px] w-[54px] place-items-center rounded-full border border-error/35 text-error">
-          <Lock size={22} />
-        </div>
+        {/* A plain glyph, not a disc — the quiet gate leads with the note's own
+            title set in the serif, the way the design draws it. */}
+        <Lock size={16} className="mb-5 text-fg-tertiary" aria-hidden="true" />
 
-        <h2 className="font-display text-[18px] leading-tight font-normal text-fg-primary">
+        <h2 className="note-serif text-[30px] leading-[1.15] font-medium tracking-[-0.015em] text-fg-primary">
           {t("password.gateTitle")}
         </h2>
-        <p className="mt-2 mb-5 text-[13px] leading-relaxed text-fg-tertiary">{subtitle}</p>
+        <p className="mt-2.5 mb-6 text-[13.5px] leading-relaxed text-fg-tertiary">{subtitle}</p>
 
-        <div ref={fieldRef} className={`${FIELD} ${error ? "border-error/55" : ""}`}>
+        <div ref={fieldRef} className={`${FIELD} h-[44px] pr-1.5 ${error ? "border-error/55" : ""}`}>
           <input
             ref={inputRef}
             type={reveal ? "text" : "password"}
@@ -106,15 +103,19 @@ export function LockGate({
             aria-invalid={error ? "true" : undefined}
             aria-describedby={error ? "notes-unlock-error" : undefined}
             autoComplete="off"
-            className={`${FIELD_INPUT} text-left`}
+            className={FIELD_INPUT}
           />
           <button
             type="button"
             onClick={onToggleReveal}
             aria-label={reveal ? t("password.hide") : t("password.show")}
-            className="kairos-tap grid h-6 w-6 flex-none place-items-center rounded-md text-fg-tertiary transition-colors hover:text-fg-primary"
+            className="kairos-tap grid h-7 w-7 flex-none place-items-center rounded-md text-fg-tertiary transition-colors hover:text-fg-primary"
           >
             {reveal ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
+          <button type="submit" disabled={!password || isPending} className={`${BTN_ACCENT} h-[30px] flex-none px-3`}>
+            {isPending && <Loader2 size={12} className="animate-spin" />}
+            {isPending ? t("actions.unlocking") : t("actions.unlock")}
           </button>
         </div>
 
@@ -122,24 +123,19 @@ export function LockGate({
           <p
             id="notes-unlock-error"
             role="alert"
-            className="calendar-pop mt-2 flex items-center justify-center gap-1.5 text-[12px] text-error"
+            className="calendar-pop mt-2.5 flex items-center gap-1.5 text-[12.5px] text-error"
           >
-            <AlertCircle size={12} /> {error}
+            <AlertCircle size={12} className="flex-none" /> {error}
           </p>
         )}
 
-        <button type="submit" disabled={!password || isPending} className={`${BTN_ACCENT} mt-3 h-[38px] w-full`}>
-          {isPending && <Loader2 size={13} className="animate-spin" />}
-          {isPending ? t("actions.unlocking") : t("actions.unlock")}
-        </button>
-
         {canReset && (
-          <p className="mt-3.5 text-[11.5px] text-fg-quaternary">
+          <p className="mt-[18px] text-[12.5px] text-fg-tertiary">
             {t("password.forgot")}{" "}
             <button
               type="button"
               onClick={onResetPassword}
-              className="font-mono text-[9.5px] tracking-[0.12em] uppercase text-accent-primary transition-colors hover:text-accent-hover"
+              className="text-fg-primary underline decoration-border-strong underline-offset-[3px] transition-colors hover:decoration-accent-primary"
             >
               {t("password.resetWithPin")}
             </button>

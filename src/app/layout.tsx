@@ -1,7 +1,7 @@
 import "~/styles/globals.css";
 
 import { type Metadata, type Viewport } from "next";
-import { Nunito_Sans, Instrument_Serif, Playfair_Display, IBM_Plex_Mono } from "next/font/google";
+import { Nunito_Sans, Instrument_Serif, Playfair_Display, IBM_Plex_Mono, Source_Serif_4 } from "next/font/google";
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 
@@ -88,6 +88,18 @@ const displayCyrillic = Playfair_Display({
   display: "swap",
 });
 
+// The "quiet" notes surface sets the note itself in a text serif on a bare
+// ground. Source Serif 4 is a body serif (unlike the display faces above, which
+// are meant for headings) and carries Cyrillic, so it reads the same for the
+// `bg` locale. Bound to `--font-source-serif` and used only within `.notes-quiet`.
+const quietSerif = Source_Serif_4({
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-source-serif",
+  display: "swap",
+});
+
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -105,7 +117,7 @@ export default async function RootLayout({
   const display = locale === "bg" ? displayCyrillic : displayLatin;
 
   return (
-    <html lang={locale} className={`${sans.variable} ${display.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang={locale} className={`${sans.variable} ${display.variable} ${mono.variable} ${quietSerif.variable}`} suppressHydrationWarning>
       <head>
         {/* Applies the saved theme before first paint. Allowed by hash rather
             than nonce; the script text and its hash live together in

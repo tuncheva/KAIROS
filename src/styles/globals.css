@@ -29,6 +29,58 @@
   --color-border-medium: rgb(var(--border-medium));
   --color-border-strong: rgb(var(--border-strong));
 
+  /* The settings index's ground, a shade off the page. Set in `.settings-elegant`. */
+  --color-settings-side: rgb(var(--settings-side));
+
+  /* ─── Settings type scale ───
+     Every size on /settings is one of these steps, taken from the Kairos
+     Settings Elegant design. Name the role, not the pixel: a description is
+     `text-settings-desc` wherever it sits, so a row, a card and a panel never
+     drift half a pixel apart again. Serif steps (display, title, stat,
+     heading) are meant to be paired with `.settings-serif`.
+
+       display  54  page title             row      14.5 a setting's name, card titles
+       title    46  section heading (+icon) body     13.5 controls, list items, inputs
+       group    16  a group within one      desc     13   descriptions, empty states
+       stat     30  a figure (score, €)    small    12.5 buttons, hints, list meta
+       heading  22  drawer / panel title   meta     12   secondary lines
+       lead     15  the page's intro       micro    11.5 timestamps, counts, footnotes
+       subtitle 14  a section's summary    eyebrow  11   uppercase labels (+ tracking) */
+  --text-settings-display: clamp(44px, 2.5vw + 22px, 54px);
+  --text-settings-display--line-height: 1;
+  --text-settings-display--letter-spacing: -0.024em;
+  --text-settings-title: clamp(36px, 2vw + 18px, 46px);
+  --text-settings-title--line-height: 1.05;
+  --text-settings-title--letter-spacing: -0.02em;
+  --text-settings-group: 16px;
+  --text-settings-group--line-height: 1.35;
+  --text-settings-group--letter-spacing: -0.006em;
+  --text-settings-stat: 30px;
+  --text-settings-stat--line-height: 1;
+  --text-settings-stat--letter-spacing: -0.01em;
+  --text-settings-heading: 22px;
+  --text-settings-heading--line-height: 1.2;
+  --text-settings-heading--letter-spacing: -0.01em;
+  --text-settings-lead: 15px;
+  --text-settings-lead--line-height: 1.65;
+  --text-settings-subtitle: 14px;
+  --text-settings-subtitle--line-height: 1.65;
+  --text-settings-row: 14.5px;
+  --text-settings-row--line-height: 1.4;
+  --text-settings-row--letter-spacing: -0.003em;
+  --text-settings-body: 13.5px;
+  --text-settings-body--line-height: 1.5;
+  --text-settings-desc: 13px;
+  --text-settings-desc--line-height: 1.6;
+  --text-settings-small: 12.5px;
+  --text-settings-small--line-height: 1.5;
+  --text-settings-meta: 12px;
+  --text-settings-meta--line-height: 1.5;
+  --text-settings-micro: 11.5px;
+  --text-settings-micro--line-height: 1.45;
+  --text-settings-eyebrow: 11px;
+  --text-settings-eyebrow--line-height: 1.4;
+
   /* Accent (theme-switchable) */
   --color-accent-primary: rgb(var(--accent-primary));
   --color-accent-secondary: rgb(var(--accent-secondary));
@@ -100,6 +152,15 @@
   --font-display:
     var(--font-display), var(--font-geist-sans), ui-sans-serif, system-ui,
     sans-serif;
+  /* The note's own voice on the quiet surface. A text serif, not a display one,
+     so it holds up at 18px body sizes. See `.notes-quiet` below. */
+  --font-quiet-serif:
+    var(--font-source-serif), ui-serif, Georgia, "Times New Roman", serif;
+
+  /* The ink the note body is written in on the quiet surface — a touch softer
+     than `--fg-primary`, so the title leads and the prose settles. Its value is
+     set per-mode inside `.notes-quiet`. */
+  --color-note-write: rgb(var(--note-write));
 
   /* ─── Radius scale ───
      Four steps, tied to the element class rather than to taste:
@@ -486,6 +547,252 @@
   --accent-hover: 252 193 198;
   --accent-glow: 248 110 122;
   --event-active: var(--brand-strawberry);
+}
+
+/* ─── Notes · quiet edition ───
+   A second direction for the notes surface: a warm, near-black ground, warm
+   grey ink and a single lavender accent, with the note itself set in a text
+   serif. It is carried the same way the terminal dashboard carries `--tui-*` —
+   except here we *remap the semantic tokens themselves* on a scoped wrapper, so
+   every `bg-bg-*`, `text-fg-*`, `border-border-*` and `text-accent-*` already in
+   the notes components adopts the quiet palette without touching a class. The
+   accent is pinned to the design's violet regardless of the app's chosen accent,
+   because the quiet look is a whole; hairlines stay driven from the ink at low
+   opacity via the border tokens below. Light values are the default; the dark
+   ones apply under next-themes' `.dark`. See docs/theme.md and the Kairos Notes
+   2a design. */
+.notes-quiet {
+  --bg-primary: 247 246 243;
+  --bg-secondary: 255 255 255;
+  --bg-tertiary: 238 237 233;
+  --bg-elevated: 255 255 255;
+  --bg-surface: 255 255 255;
+  --bg-overlay: 25 24 22;
+
+  --fg-primary: 25 24 22;
+  --fg-secondary: 90 88 82;
+  --fg-tertiary: 139 137 131;
+  --fg-quaternary: 181 179 173;
+  --note-write: 52 50 46;
+
+  --border-light: 231 230 226;
+  --border-medium: 216 215 211;
+  --border-strong: 198 197 192;
+
+  --accent-primary: 91 72 145;
+  --accent-secondary: 91 72 145;
+  --accent-tertiary: 138 122 180;
+  --accent-hover: 70 54 120;
+  --accent-glow: 91 72 145;
+
+  --success: 63 115 85;
+  --warning: 138 103 42;
+  --error: 164 71 58;
+  --info: 61 102 128;
+
+  background-color: rgb(var(--bg-primary));
+  color: rgb(var(--fg-primary));
+}
+
+.dark .notes-quiet,
+.notes-quiet.dark {
+  --bg-primary: 12 12 13;
+  --bg-secondary: 20 20 22;
+  --bg-tertiary: 29 29 32;
+  --bg-elevated: 20 20 22;
+  --bg-surface: 20 20 22;
+  --bg-overlay: 6 6 7;
+
+  --fg-primary: 236 235 231;
+  --fg-secondary: 164 162 156;
+  --fg-tertiary: 116 114 108;
+  --fg-quaternary: 77 76 72;
+  --note-write: 212 209 202;
+
+  --border-light: 28 28 27;
+  --border-medium: 43 43 41;
+  --border-strong: 60 59 55;
+
+  --accent-primary: 168 150 216;
+  --accent-secondary: 168 150 216;
+  --accent-tertiary: 196 184 226;
+  --accent-hover: 200 188 232;
+  --accent-glow: 168 150 216;
+
+  --success: 147 186 158;
+  --warning: 210 176 116;
+  --error: 217 140 126;
+  --info: 143 178 201;
+}
+
+/* The note's voice. The chrome around it stays in the app sans. */
+.notes-quiet .note-serif {
+  font-family: var(--font-quiet-serif);
+}
+
+/* ─── Settings · elegant edition ───
+   /settings as its own quiet space: the same warm near-black (or paper) ground
+   as the quiet notes, hairlines drawn from the ink at low opacity, a serif for
+   the headings and a grotesk for everything else. Carried the same way as
+   `.notes-quiet` — the semantic tokens are remapped on the wrapper, so the
+   section components keep their `bg-*` / `fg-*` / `border-*` classes.
+
+   Unlike the notes, the accent is *not* pinned: Appearance is one of the
+   sections on this page, and picking an accent there has to visibly change it.
+
+   The two faces are loaded by the settings page only (see its `page.tsx`); for
+   Bulgarian, which neither covers, the page leaves their variables unset and
+   these fall back to the app's own sans and the quiet serif. See the Kairos
+   Settings Elegant design. */
+.settings-elegant {
+  --bg-primary: 246 245 241;
+  --bg-secondary: 252 251 248;
+  --bg-tertiary: 236 235 231;
+  --bg-elevated: 255 255 255;
+  --bg-surface: 252 251 248;
+  --bg-overlay: 26 25 23;
+  --settings-side: 241 240 236;
+
+  --fg-primary: 26 25 23;
+  --fg-secondary: 87 85 79;
+  --fg-tertiary: 133 131 124;
+  --fg-quaternary: 179 177 171;
+
+  --border-light: 228 227 223;
+  --border-medium: 211 210 206;
+  --border-strong: 190 189 185;
+
+  --success: 63 115 85;
+  --warning: 138 103 42;
+  --error: 164 71 58;
+
+  background-color: rgb(var(--bg-primary));
+  color: rgb(var(--fg-primary));
+  font-family: var(--font-hanken, var(--font-geist-sans)), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark .settings-elegant,
+.settings-elegant.dark {
+  --bg-primary: 13 13 15;
+  --bg-secondary: 20 20 23;
+  --bg-tertiary: 29 29 33;
+  --bg-elevated: 17 17 20;
+  --bg-surface: 17 17 20;
+  --bg-overlay: 6 6 7;
+  --settings-side: 10 10 12;
+
+  --fg-primary: 237 235 230;
+  --fg-secondary: 169 167 161;
+  --fg-tertiary: 122 120 115;
+  --fg-quaternary: 79 78 74;
+
+  --border-light: 30 30 31;
+  --border-medium: 49 48 49;
+  --border-strong: 70 69 68;
+
+  --success: 146 184 156;
+  --warning: 207 174 116;
+  --error: 214 139 125;
+}
+
+.settings-elegant .settings-serif {
+  font-family: var(--font-newsreader, var(--font-quiet-serif)), ui-serif, Georgia, serif;
+  font-variant-numeric: lining-nums;
+}
+
+/* Three families and nothing else. Components shared with the rest of the app
+   (the invite builder, the permission grid, image upload) still ask for the
+   app's own `font-sans` / `font-display` / `font-mono`; inside settings those
+   resolve to this page's faces, so a borrowed panel does not read in a
+   different voice from the row it sits in. The same goes for weight: only 300
+   (serif), 400, 500 and 600 are loaded, so a stray `font-bold` would be
+   synthesised — it is held at 600 instead. */
+.settings-elegant .font-sans {
+  font-family: var(--font-hanken, var(--font-geist-sans)), ui-sans-serif, system-ui, sans-serif;
+}
+
+.settings-elegant .font-display {
+  font-family: var(--font-newsreader, var(--font-quiet-serif)), ui-serif, Georgia, serif;
+  font-weight: 300;
+}
+
+.settings-elegant .font-mono,
+.settings-elegant code,
+.settings-elegant kbd {
+  font-family: var(--font-settings-mono, var(--font-mono)), ui-monospace, monospace;
+  font-variant-ligatures: none;
+}
+
+.settings-elegant .font-bold,
+.settings-elegant b,
+.settings-elegant strong {
+  font-weight: 600;
+}
+
+/* Figures in a column line up. */
+.settings-elegant .tabular-nums {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+@keyframes kairos-settings-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes kairos-settings-slide {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes kairos-settings-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Arriving at a row from the account check or Activity: a wash of the accent
+   that fades back out, so you can see which row you were sent to. */
+@keyframes kairos-settings-row-flash {
+  0%,
+  35% {
+    background-color: rgb(var(--accent-primary) / 0.14);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.settings-rise {
+  animation: kairos-settings-rise 0.4s ease both;
+}
+
+.settings-slide {
+  animation: kairos-settings-slide 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.settings-pulse {
+  animation: kairos-settings-pulse 1s ease infinite;
+}
+
+.settings-row-flash {
+  animation: kairos-settings-row-flash 1.8s ease both;
 }
 
 body {
@@ -3824,36 +4131,14 @@ input[type="search"]::-webkit-search-results-decoration {
 }
 
 /* ---------------------------------------------------------------------------
-   Settings: section transitions and scroll reveal
+   Settings: scroll reveal
    ---------------------------------------------------------------------------
 
-   Switching sections on /settings is a real navigation (`?section=`), so the
-   new section's markup replaces the old one's in a single frame and the page
-   used to snap. Three pieces smooth that over:
-
-   - `.settings-scroll` makes the ledger's scroll container animate the jump
-     back to the top after a section change instead of teleporting.
-   - `.settings-section-enter` is keyed on the active section in
-     `SettingsWorkspace`, so React remounts the wrapper on every switch and the
-     entrance replays. Opacity and transform only — both composited, so a
-     section carrying nine queries still enters at full frame rate.
-   - `.settings-reveal` is the scrolling half: a group starts 14px low and
-     lifts as it crosses into view, driven by the IntersectionObserver in
-     `Ledger.tsx` rather than a scroll handler. `.is-visible` is one-way, so a
-     group that has been read never animates again on the way back up.
-
-   Every one of these is turned off wholesale by the `prefers-reduced-motion`
+   `.settings-reveal` lifts a ledger group 14px as it crosses into view, driven
+   by the IntersectionObserver in `Ledger.tsx` rather than a scroll handler.
+   `.is-visible` is one-way, so a group that has been read never animates again
+   on the way back up. Turned off wholesale by the `prefers-reduced-motion`
    block above, which zeroes animation and transition durations globally. */
-@keyframes kairos-settings-section-enter {
-  0% {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 /* ─── Toast viewport ───────────────────────────────────────────────────────
    `ToastProvider` had a working manager and no surface to render into, so
@@ -4033,15 +4318,6 @@ input[type="search"]::-webkit-search-results-decoration {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.settings-scroll {
-  scroll-behavior: smooth;
-}
-
-.settings-section-enter {
-  animation: kairos-settings-section-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1)
-    both;
 }
 
 .settings-reveal {

@@ -144,7 +144,7 @@ export function NotesDialog({
           {icon}
         </span>
         <span className="min-w-0 flex-1">
-          <h2 id={titleId} className="font-display text-[18px] leading-tight font-normal text-fg-primary">
+          <h2 id={titleId} className="text-[16px] leading-tight font-semibold tracking-[-0.008em] text-fg-primary">
             {title}
           </h2>
           {subtitle && <p className="mt-0.5 text-[12.5px] leading-relaxed text-fg-tertiary">{subtitle}</p>}
@@ -167,7 +167,11 @@ export function NotesDialog({
       labelledBy={titleId}
       onDismiss={requestClose}
       overlayClassName={`bg-black/40 backdrop-blur-sm ${closing ? "notes-scrim--out" : "notes-scrim"}`}
-      className={`w-full ${SIZES[size]} ${DIALOG_SURFACE} ${closing ? "notes-dialog--out" : "notes-dialog"}`}
+      /* The dialog is portalled to <body>, outside the workspace's `.notes-quiet`
+         wrapper, so it re-declares the scope here to keep the warm palette. The
+         `.dark .notes-quiet` rule still matches — `.dark` sits on <html>, above
+         the portal. */
+      className={`notes-quiet w-full ${SIZES[size]} ${DIALOG_SURFACE} ${closing ? "notes-dialog--out" : "notes-dialog"}`}
     >
       {onSubmit ? (
         <form

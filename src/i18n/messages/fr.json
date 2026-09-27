@@ -593,6 +593,43 @@
         "linkFailed": "Impossible de créer le lien d'invitation.",
         "resend": "Renvoyer l'e-mail"
       }
+    },
+    "elegant": {
+      "back": "Retour",
+      "close": "Fermer les paramètres (échap)",
+      "clearSearch": "Effacer la recherche",
+      "intro": "Votre compte, l’assistant et votre espace de travail. Les modifications sont enregistrées au fur et à mesure.",
+      "group": {
+        "account": "Compte",
+        "assistant": "Assistant",
+        "workspace": "Espace de travail"
+      },
+      "resultsFor": "Résultats pour « {query} »",
+      "saveIdle": "Les modifications sont enregistrées au fur et à mesure",
+      "savedAt": "Toutes les modifications sont enregistrées · {time}",
+      "activity": "Activité",
+      "activityHint": "Ce que vous avez modifié pendant cette visite. Sélectionnez une entrée pour aller à la section.",
+      "activityEmpty": "Rien n’a encore été modifié.",
+      "activityYou": "Vous",
+      "activityChanged": "avez modifié {section}",
+      "activityChangedGeneric": "avez modifié un paramètre",
+      "activityFailed": "n’avez pas pu enregistrer une modification dans {section}",
+      "activityFailedGeneric": "n’avez pas pu enregistrer une modification",
+      "activityFooter": "Pour cette visite uniquement. Effacé à la fermeture.",
+      "health": {
+        "headlineOk": "Toutes les vérifications du compte sont réussies",
+        "headlineBad": "{count, plural, one {# point demande} other {# points demandent}} votre attention",
+        "details": "Détails",
+        "review": "Vérifier",
+        "hide": "Masquer",
+        "reviewOne": "Vérifier",
+        "emailOk": "Votre adresse e-mail est confirmée",
+        "emailBad": "Votre adresse e-mail n’est pas confirmée",
+        "twoFactorOk": "La connexion en deux étapes est activée",
+        "twoFactorBad": "La connexion en deux étapes est désactivée",
+        "pinOk": "Un code PIN de récupération est défini pour les notes chiffrées",
+        "pinBad": "Aucun code PIN de récupération pour les notes chiffrées"
+      }
     }
   },
   "create": {

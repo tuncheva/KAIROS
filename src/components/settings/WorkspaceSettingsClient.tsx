@@ -93,7 +93,7 @@ function OrgLogoCell({
         type="button"
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}
-        className="rounded-sm border border-border-medium px-[13px] py-1.5 text-[12.5px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-sm border border-border-medium px-[13px] py-1.5 text-settings-small font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:cursor-not-allowed disabled:opacity-50"
       >
         {uploadLabel}
       </button>
@@ -617,7 +617,7 @@ export function WorkspaceSettingsClient() {
           ) : (
             <span
               style={avatarGradientStyle(member.email)}
-              className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-xs font-bold text-white"
+              className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-settings-meta font-semibold text-white"
             >
               {(member.name ?? member.email)?.[0]?.toUpperCase() ?? "?"}
             </span>
@@ -670,7 +670,7 @@ export function WorkspaceSettingsClient() {
                 ].map(([flag, value]) => (
                   <label
                     key={flag}
-                    className="flex items-center gap-1.5 text-[12px] text-fg-tertiary"
+                    className="flex items-center gap-1.5 text-settings-meta text-fg-tertiary"
                   >
                     <input
                       type="checkbox"
@@ -738,7 +738,7 @@ export function WorkspaceSettingsClient() {
 
         {inviteCandidates?.length ? (
           <div>
-            <p className="mb-2 text-xs font-medium text-fg-tertiary">
+            <p className="mb-2 text-settings-meta font-medium text-fg-tertiary">
               {t("members.orgMemberQuickInviteLabel")}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -752,7 +752,7 @@ export function WorkspaceSettingsClient() {
                     onClick={() =>
                       setInvitePrefill((prev) => ({ email: m.email, n: (prev?.n ?? 0) + 1 }))
                     }
-                    className="rounded-sm border border-border-light px-3 py-1.5 text-xs text-fg-secondary transition hover:border-accent-primary/35 hover:text-fg-primary"
+                    className="rounded-sm border border-border-light px-3 py-1.5 text-settings-small font-medium text-fg-secondary transition hover:border-accent-primary/35 hover:text-fg-primary"
                   >
                     {m.name ?? m.email}
                   </button>
@@ -763,7 +763,7 @@ export function WorkspaceSettingsClient() {
 
         {invites?.length ? (
           <div>
-            <p className="mb-2 text-xs font-medium text-fg-tertiary">
+            <p className="mb-2 text-settings-meta font-medium text-fg-tertiary">
               {t("members.pendingInvites")}
             </p>
             <ul className="flex flex-col">
@@ -774,19 +774,19 @@ export function WorkspaceSettingsClient() {
                     index > 0 ? "border-t border-border-light" : ""
                   }`}
                 >
-                  <span className="kairos-break-anywhere min-w-0 text-[13.5px] text-fg-secondary">
+                  <span className="kairos-break-anywhere min-w-0 text-settings-body text-fg-secondary">
                     {inv.email}
                   </span>
-                  <span className="text-xs text-fg-tertiary">
+                  <span className="text-settings-meta text-fg-tertiary">
                     {translateRoleLabel(inv.displayRole ?? inv.role)}
                   </span>
                   <span
-                    className="text-xs text-fg-tertiary"
+                    className="text-settings-meta text-fg-tertiary"
                     title={t("inviteBuilder.permissions")}
                   >
                     {summarizePermissions(inv.permissions, t("inviteBuilder.viewOnly"))}
                   </span>
-                  <span className="text-[11px] text-fg-quaternary">
+                  <span className="text-settings-micro text-fg-quaternary">
                     {inv.expiresAt
                       ? t("members.expiresOn", {
                           date: new Date(inv.expiresAt).toLocaleDateString(),
@@ -835,7 +835,7 @@ export function WorkspaceSettingsClient() {
 
         {inviteHistory?.length ? (
           <div>
-            <p className="mb-2 text-xs font-medium text-fg-tertiary">
+            <p className="mb-2 text-settings-meta font-medium text-fg-tertiary">
               {t("members.inviteHistory")}
             </p>
             <ul className="flex flex-col">
@@ -848,13 +848,13 @@ export function WorkspaceSettingsClient() {
                     index > 0 ? "border-t border-border-light" : ""
                   }`}
                 >
-                  <span className="kairos-break-anywhere min-w-0 text-[13.5px] text-fg-secondary">
+                  <span className="kairos-break-anywhere min-w-0 text-settings-body text-fg-secondary">
                     {inv.email}
                   </span>
-                  <span className="text-xs text-fg-tertiary">
+                  <span className="text-settings-meta text-fg-tertiary">
                     {translateInviteStatus(inv.status)}
                   </span>
-                  <span className="text-[11px] text-fg-quaternary">
+                  <span className="text-settings-micro text-fg-quaternary">
                     {new Date(inv.createdAt).toLocaleString()}
                   </span>
                 </li>
@@ -941,14 +941,14 @@ export function WorkspaceSettingsClient() {
             placeholder={t("roles.namePlaceholder")}
             aria-label={t("roles.namePlaceholder")}
             maxLength={100}
-            className="mb-3 w-full rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
+            className="mb-3 w-full rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-settings-body text-fg-primary outline-none placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
             autoFocus
           />
           <div className="mb-3">
             <PermissionGrid value={newRolePerms} onChange={setNewRolePerms} />
           </div>
           {editingRoleId !== null ? (
-            <p className="mb-3 text-[11.5px] text-fg-tertiary">{t("roles.editNote")}</p>
+            <p className="mb-3 text-settings-micro text-fg-tertiary">{t("roles.editNote")}</p>
           ) : null}
           <LedgerAction
             disabled={!newRoleName.trim() || roleFormPending}
@@ -970,9 +970,9 @@ export function WorkspaceSettingsClient() {
       {TEMPLATE_ROLE_ORDER.map((role) => (
         <div key={role} className="flex flex-col gap-2 border-t border-border-light pt-4">
           <div className="flex items-center justify-between gap-2">
-            <h4 className="text-[13.5px] font-semibold text-fg-primary">{t(`roles.${role}`)}</h4>
+            <h4 className="text-settings-row font-medium text-fg-primary">{t(`roles.${role}`)}</h4>
             <div className="flex items-center gap-2">
-              <span className="rounded-sm bg-bg-tertiary px-2 py-0.5 text-[10px] font-medium text-fg-tertiary">
+              <span className="rounded-sm bg-bg-tertiary px-2 py-0.5 text-settings-eyebrow font-medium text-fg-tertiary">
                 {t("roles.template")}
               </span>
               {iManageRoles && activeOrgId ? (
@@ -981,7 +981,7 @@ export function WorkspaceSettingsClient() {
                   onClick={() =>
                     openRoleForm({ name: t(`roles.${role}`), ...ROLE_TEMPLATES[role] })
                   }
-                  className="rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-fg-tertiary transition hover:text-fg-primary"
+                  className="rounded-sm px-1.5 py-0.5 text-settings-micro font-medium text-fg-tertiary transition hover:text-fg-primary"
                 >
                   {t("roles.duplicate")}
                 </button>
@@ -998,9 +998,9 @@ export function WorkspaceSettingsClient() {
           className="flex flex-col gap-2 border-t border-border-light pt-4"
         >
           <div className="flex items-center justify-between gap-2">
-            <h4 className="text-[13.5px] font-semibold text-fg-primary">{role.name}</h4>
+            <h4 className="text-settings-row font-medium text-fg-primary">{role.name}</h4>
             <div className="flex items-center gap-2">
-              <span className="rounded-sm bg-accent-primary/10 px-2 py-0.5 text-[10px] font-medium text-accent-primary">
+              <span className="rounded-sm bg-accent-primary/10 px-2 py-0.5 text-settings-eyebrow font-medium text-accent-primary">
                 {t("roles.custom")}
               </span>
               {iManageRoles && activeOrgId ? (

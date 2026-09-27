@@ -266,7 +266,7 @@ export function InviteBuilder({
         disabled={disabled}
         aria-pressed={active}
         onClick={() => pickTemplate(key)}
-        className={`rounded-sm border px-3 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
+        className={`rounded-sm border px-3 py-1.5 text-settings-small font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
           active
             ? "border-accent-primary/50 bg-accent-primary/10 text-accent-primary"
             : "border-border-light text-fg-secondary hover:border-accent-primary/35 hover:text-fg-primary"
@@ -283,7 +283,7 @@ export function InviteBuilder({
       role="tab"
       aria-selected={mode === value}
       onClick={() => setMode(value)}
-      className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition ${
+      className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-settings-small font-medium transition ${
         mode === value
           ? "bg-bg-primary text-fg-primary shadow-sm"
           : "text-fg-tertiary hover:text-fg-secondary"
@@ -295,22 +295,22 @@ export function InviteBuilder({
   );
 
   const inputClass =
-    "min-w-0 flex-1 rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30";
+    "min-w-0 flex-1 rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-settings-body text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30";
   const primaryButton =
-    "flex items-center justify-center gap-1.5 rounded-md bg-accent-primary px-3.5 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50";
+    "flex items-center justify-center gap-1.5 rounded-md bg-accent-primary px-3.5 py-1.5 text-settings-small font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50";
   const selectClass =
-    "rounded-md border border-border-medium bg-bg-secondary px-2 py-1.5 text-[13px] text-fg-primary outline-none focus:border-accent-primary";
+    "rounded-md border border-border-medium bg-bg-secondary px-2 py-1.5 text-settings-body text-fg-primary outline-none focus:border-accent-primary";
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border-light p-4">
       <div>
-        <p className="text-[13.5px] font-semibold text-fg-primary">{t("inviteBuilder.title")}</p>
-        <p className="mt-0.5 text-xs text-fg-tertiary">{t("inviteBuilder.subtitle")}</p>
+        <p className="text-settings-row font-medium text-fg-primary">{t("inviteBuilder.title")}</p>
+        <p className="mt-0.5 text-settings-desc text-fg-tertiary">{t("inviteBuilder.subtitle")}</p>
       </div>
 
       {/* 1. Start from a template */}
       <div>
-        <p className="mb-2 text-xs font-medium text-fg-tertiary">{t("inviteBuilder.startFrom")}</p>
+        <p className="mb-2 text-settings-meta font-medium text-fg-tertiary">{t("inviteBuilder.startFrom")}</p>
         <div className="flex flex-wrap gap-2">
           {TEMPLATE_ROLE_ORDER.map((r) =>
             chip(`builtin:${r}`, roleName(r), r === "admin" && !callerIsRoleManager),
@@ -328,8 +328,8 @@ export function InviteBuilder({
       {/* 2. Tick exactly what they get */}
       <div>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-medium text-fg-tertiary">{t("inviteBuilder.permissions")}</p>
-          <p className="text-[11.5px] text-fg-tertiary">
+          <p className="text-settings-meta font-medium text-fg-tertiary">{t("inviteBuilder.permissions")}</p>
+          <p className="text-settings-micro text-fg-tertiary">
             {t("inviteBuilder.joinsAs", { role: resultingLabel, count: grantedCount })}
             {edited ? ` · ${t("inviteBuilder.edited")}` : ""}
           </p>
@@ -341,7 +341,7 @@ export function InviteBuilder({
           lockedHint={t("inviteBuilder.lockedHint")}
         />
         {role === "admin" && grantedCount < PERMISSION_FLAG_KEYS.length ? (
-          <p className="mt-2 text-[11.5px] text-fg-tertiary">{t("inviteBuilder.adminNote")}</p>
+          <p className="mt-2 text-settings-micro text-fg-tertiary">{t("inviteBuilder.adminNote")}</p>
         ) : null}
       </div>
 
@@ -377,12 +377,12 @@ export function InviteBuilder({
                 {t("inviteBuilder.sendInvitation")}
               </button>
             </div>
-            <p className="text-[11.5px] text-fg-tertiary">{t("inviteBuilder.emailHint")}</p>
+            <p className="text-settings-micro text-fg-tertiary">{t("inviteBuilder.emailHint")}</p>
 
             <button
               type="button"
               onClick={() => setBulkOpen((v) => !v)}
-              className="w-fit text-xs font-medium text-fg-tertiary transition hover:text-fg-secondary"
+              className="w-fit text-settings-small font-medium text-fg-tertiary transition hover:text-fg-secondary"
             >
               {bulkOpen ? t("inviteBuilder.hideBulk") : t("inviteBuilder.showBulk")}
             </button>
@@ -393,7 +393,7 @@ export function InviteBuilder({
                   onChange={(e) => setBulkInput(e.target.value)}
                   aria-label={t("members.bulkInviteLabel")}
                   placeholder={t("members.bulkInvitePlaceholder")}
-                  className="min-h-[72px] w-full resize-y rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
+                  className="min-h-[72px] w-full resize-y rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-settings-body text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
                 />
                 <button
                   type="button"
@@ -409,7 +409,7 @@ export function InviteBuilder({
         ) : (
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-xs text-fg-tertiary">
+              <label className="flex items-center gap-2 text-settings-meta text-fg-tertiary">
                 {t("inviteBuilder.uses")}
                 <select
                   value={maxUses}
@@ -423,7 +423,7 @@ export function InviteBuilder({
                   ))}
                 </select>
               </label>
-              <label className="flex items-center gap-2 text-xs text-fg-tertiary">
+              <label className="flex items-center gap-2 text-settings-meta text-fg-tertiary">
                 {t("inviteBuilder.expires")}
                 <select
                   value={expiresInDays}
@@ -447,7 +447,7 @@ export function InviteBuilder({
                 {t("inviteBuilder.createLink")}
               </button>
             </div>
-            <p className="text-[11.5px] text-fg-tertiary">{t("inviteBuilder.linkHint")}</p>
+            <p className="text-settings-micro text-fg-tertiary">{t("inviteBuilder.linkHint")}</p>
 
             {justCreated ? (
               <div className="flex flex-col gap-2 rounded-lg border border-accent-primary/25 bg-accent-primary/5 p-3">
@@ -468,7 +468,7 @@ export function InviteBuilder({
                   copyLabel={t("inviteBuilder.copy")}
                   copiedLabel={t("inviteBuilder.copied")}
                 />
-                <p className="text-[11.5px] text-fg-tertiary">{t("inviteBuilder.codeHint")}</p>
+                <p className="text-settings-micro text-fg-tertiary">{t("inviteBuilder.codeHint")}</p>
               </div>
             ) : null}
           </div>
@@ -477,7 +477,7 @@ export function InviteBuilder({
 
       {links?.length ? (
         <div>
-          <p className="mb-2 text-xs font-medium text-fg-tertiary">{t("inviteBuilder.activeLinks")}</p>
+          <p className="mb-2 text-settings-meta font-medium text-fg-tertiary">{t("inviteBuilder.activeLinks")}</p>
           <ul className="flex flex-col">
             {links.map((link, index) => (
               <li
@@ -486,13 +486,13 @@ export function InviteBuilder({
                   index > 0 ? "border-t border-border-light" : ""
                 }`}
               >
-                <span className="text-[13px] font-medium text-fg-secondary">
+                <span className="text-settings-body font-medium text-fg-secondary">
                   {link.displayRole ?? roleName(link.role)}
                 </span>
-                <span className="text-xs text-fg-tertiary">
+                <span className="text-settings-meta text-fg-tertiary">
                   {summarize(link.permissions, t("inviteBuilder.viewOnly"))}
                 </span>
-                <span className="text-[11px] text-fg-quaternary">
+                <span className="text-settings-micro text-fg-quaternary">
                   {t("inviteBuilder.usedOf", { used: link.usedCount, max: link.maxUses })} ·{" "}
                   {t("members.expiresOn", { date: new Date(link.expiresAt).toLocaleDateString() })}
                 </span>
@@ -546,7 +546,7 @@ function CopyRow({
 }) {
   return (
     <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-      <span className="w-12 flex-none text-[11px] font-medium uppercase tracking-wide text-fg-tertiary">
+      <span className="w-12 flex-none text-settings-eyebrow font-medium uppercase tracking-[0.14em] text-fg-tertiary">
         {label}
       </span>
       <input
@@ -554,14 +554,14 @@ function CopyRow({
         value={value}
         onFocus={(e) => e.currentTarget.select()}
         aria-label={label}
-        className={`min-w-0 flex-1 rounded-md border border-border-light bg-bg-primary px-2 py-1 text-[12.5px] text-fg-primary outline-none ${
-          mono ? "font-mono tracking-wider" : ""
+        className={`min-w-0 flex-1 rounded-md border border-border-light bg-bg-primary px-2 py-1 text-settings-body text-fg-primary outline-none ${
+          mono ? "font-mono tracking-[0.02em]" : ""
         }`}
       />
       <button
         type="button"
         onClick={onCopy}
-        className="flex w-fit items-center gap-1 rounded-sm border border-border-medium px-2.5 py-1 text-xs font-medium text-fg-primary transition hover:bg-bg-tertiary"
+        className="flex w-fit items-center gap-1 rounded-sm border border-border-medium px-2.5 py-1 text-settings-small font-medium text-fg-primary transition hover:bg-bg-tertiary"
       >
         {copied ? <Check size={12} /> : <Copy size={12} />}
         {copied ? copiedLabel : copyLabel}
