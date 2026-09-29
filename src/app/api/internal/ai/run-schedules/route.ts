@@ -41,6 +41,10 @@ import {
   syncDueCalendars,
   type CalendarSweepReport,
 } from "~/server/calendar/sweep";
+import {
+  embedPending,
+  type EmbedPendingReport,
+} from "~/server/llm/core/embedPending";
 import { runDueSchedules } from "~/server/llm/scheduled/runner";
 import { sendDueEventReminders } from "~/server/notifications/eventReminders";
 import {
@@ -163,6 +167,18 @@ export async function POST(request: Request) {
       billing = { error: "Billing reconciliation failed" };
     }
 
+    // Embeddings ride the tick too. The database clears a row's embedding when
+    // its text changes (migration 0048); this refills them. Search fuses keyword
+    // and vector hits, so a row waiting here is still findable by its words — a
+    // late embedding costs recall on paraphrases for a few minutes, nothing more.
+    let embeddings: EmbedPendingReport | { error: string };
+    try {
+      embeddings = await embedPending();
+    } catch (err) {
+      log.error("embedding sweep failed", { err });
+      embeddings = { error: "Embedding sweep failed" };
+    }
+
     return Response.json({
       ok: true,
       ...report,
@@ -171,6 +187,7 @@ export async function POST(request: Request) {
       retention,
       calendars,
       billing,
+      embeddings,
     });
   } catch (err) {
     log.error("scheduled sweep failed", { err });

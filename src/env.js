@@ -87,6 +87,8 @@ export const env = createEnv({
     LLM_MODEL_FAST: z.string().optional(),
     LLM_EMBEDDING_MODEL: z.string().optional(),
     LLM_EMBEDDING_DIMS: z.string().optional(),
+    /** "true" sends `input_type` (query | passage) — required by NVIDIA's asymmetric embedding models. */
+    LLM_EMBEDDING_INPUT_TYPE: z.enum(["true", "false"]).optional(),
     /**
      * Optional dedicated embedding endpoint. When set, embedding calls go here
      * instead of the main LLM base URL — use when the chat provider does not
@@ -236,6 +238,7 @@ export const env = createEnv({
     LLM_MODEL_FAST: process.env.LLM_MODEL_FAST,
     LLM_EMBEDDING_MODEL: process.env.LLM_EMBEDDING_MODEL,
     LLM_EMBEDDING_DIMS: process.env.LLM_EMBEDDING_DIMS,
+    LLM_EMBEDDING_INPUT_TYPE: process.env.LLM_EMBEDDING_INPUT_TYPE,
     LLM_EMBEDDING_BASE_URL: process.env.LLM_EMBEDDING_BASE_URL,
     LLM_EMBEDDING_API_KEY: process.env.LLM_EMBEDDING_API_KEY,
     LLM_REASONING_EFFORT: process.env.LLM_REASONING_EFFORT,

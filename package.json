@@ -11,6 +11,7 @@
     "db:migrate": "dotenv -e .env -- drizzle-kit migrate --config=drizzle.config.ts",
     "db:push": "dotenv -e .env -- drizzle-kit push --config=drizzle.config.ts",
     "db:studio": "dotenv -e .env -- drizzle-kit studio --config=drizzle.config.ts",
+    "db:embed": "dotenv -e .env -- tsx --conditions=react-server scripts/embed-backfill.ts",
     "db:verify": "dotenv -e .env -- tsx scripts/verify-schema.ts",
     "dev": "tsx watch server.ts",
     "dev:next": "next dev --turbo",

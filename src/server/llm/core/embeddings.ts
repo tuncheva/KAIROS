@@ -27,15 +27,30 @@ const TIMEOUT_MS = 15_000;
 
 /**
  * Must equal the width of the `embedding` columns, which migration
- * 0044_pgvector_embeddings creates as `vector(1024)`.
+ * 0049_embedding_halfvec_2048 sets to `halfvec(2048)` — the only width
+ * nvidia/nemotron-3-embed-1b emits.
  *
  * pgvector fixes the dimension at the column, so a mismatch is not degraded
  * results — it is a Postgres error on insert. Changing this means changing the
  * columns and rebuilding their HNSW indexes in the same migration.
  */
-const DEFAULT_EMBEDDING_DIMS = 1024;
+const DEFAULT_EMBEDDING_DIMS = 2048;
 
-function getEmbeddingConfig(): { baseUrl: string; apiKey: string; model: string; dims: number } | null {
+/**
+ * What a text is being embedded as. Asymmetric retrieval models embed a short
+ * question and the passage that answers it differently, and must be told which
+ * is which: sent without `input_type`, nemotron-3-embed-1b ranked the right
+ * passage first for 1 of 7 Bulgarian queries in our probe, and with it 7 of 7.
+ */
+export type EmbeddingPurpose = "query" | "passage";
+
+function getEmbeddingConfig(): {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  dims: number;
+  sendInputType: boolean;
+} | null {
   const model = env.LLM_EMBEDDING_MODEL;
   if (!model) return null;
 
@@ -52,6 +67,9 @@ function getEmbeddingConfig(): { baseUrl: string; apiKey: string; model: string;
     apiKey,
     model,
     dims: Number.isInteger(dims) && dims > 0 ? dims : DEFAULT_EMBEDDING_DIMS,
+    // Off by default: `input_type` is an NVIDIA/Cohere extension, and a strictly
+    // OpenAI-compatible endpoint may reject the unknown field.
+    sendInputType: env.LLM_EMBEDDING_INPUT_TYPE === "true",
   };
 }
 
@@ -65,18 +83,29 @@ export function embeddingDims(): number {
   return getEmbeddingConfig()?.dims ?? DEFAULT_EMBEDDING_DIMS;
 }
 
-/**
- * Embed one piece of text.
- *
- * Returns null when embedding is not configured or the call fails — callers
- * treat null as "fall back to keyword search", so a transient failure does not
- * break search entirely.
- */
-export async function embedText(text: string): Promise<number[] | null> {
-  const cfg = getEmbeddingConfig();
-  if (!cfg) return null;
+/** Characters of each input sent. Stays within typical model context limits. */
+const MAX_INPUT_CHARS = 8000;
 
-  const truncated = text.slice(0, 8000); // stay within typical context limits
+/**
+ * Embed several texts in one request.
+ *
+ * Returns one vector per input, in input order, or null for the whole batch when
+ * embedding is not configured or the call fails. All-or-nothing on purpose: the
+ * callers are sweeps that retry every NULL row on the next tick, so a partial
+ * result would only add bookkeeping without saving a request.
+ *
+ * A vector whose width is not `dims` is treated as a failure rather than handed
+ * on. The columns are `halfvec(2048)`: written, it is a Postgres error on insert;
+ * used as a query, it makes the `<=>` comparison throw and takes keyword search
+ * down with it, because both run in the same tool call.
+ */
+export async function embedTexts(
+  texts: string[],
+  purpose: EmbeddingPurpose,
+): Promise<number[][] | null> {
+  const cfg = getEmbeddingConfig();
+  if (!cfg || texts.length === 0) return null;
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -87,19 +116,40 @@ export async function embedText(text: string): Promise<number[] | null> {
         Authorization: `Bearer ${cfg.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model: cfg.model, input: truncated }),
+      body: JSON.stringify({
+        model: cfg.model,
+        input: texts.map((t) => t.slice(0, MAX_INPUT_CHARS)),
+        ...(cfg.sendInputType ? { input_type: purpose } : {}),
+      }),
       signal: controller.signal,
     });
 
     if (!response.ok) {
-      log.warn("embedding request failed", { status: response.status });
+      log.warn("embedding request failed", { status: response.status, batch: texts.length });
       return null;
     }
 
-    const data = (await response.json()) as { data?: Array<{ embedding?: number[] }> };
-    const embedding = data.data?.[0]?.embedding;
-    if (!Array.isArray(embedding) || embedding.length === 0) return null;
-    return embedding;
+    const data = (await response.json()) as {
+      data?: Array<{ embedding?: number[]; index?: number }>;
+    };
+    const items = data.data ?? [];
+    if (items.length !== texts.length) {
+      log.warn("embedding response size mismatch", { expected: texts.length, got: items.length });
+      return null;
+    }
+
+    // The spec returns `index` per item; order by it rather than trusting the array order.
+    const ordered = [...items].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+    const vectors: number[][] = [];
+    for (const item of ordered) {
+      const v = item.embedding;
+      if (!Array.isArray(v) || v.length !== cfg.dims) {
+        log.warn("embedding has unexpected width", { expected: cfg.dims, got: v?.length ?? 0 });
+        return null;
+      }
+      vectors.push(v);
+    }
+    return vectors;
   } catch (err) {
     log.warn("embedding error", { err });
     return null;
@@ -108,7 +158,22 @@ export async function embedText(text: string): Promise<number[] | null> {
   }
 }
 
-/** Serialize an embedding for Postgres pgvector: '[0.1,0.2,...]' */
+/**
+ * Embed one piece of text.
+ *
+ * Returns null when embedding is not configured or the call fails — callers
+ * treat null as "fall back to keyword search", so a transient failure does not
+ * break search entirely.
+ */
+export async function embedText(
+  text: string,
+  purpose: EmbeddingPurpose,
+): Promise<number[] | null> {
+  const vectors = await embedTexts([text], purpose);
+  return vectors?.[0] ?? null;
+}
+
+/** Serialize an embedding for pgvector's `vector`/`halfvec` input: '[0.1,0.2,...]' */
 export function serializeEmbedding(embedding: number[]): string {
   return `[${embedding.join(",")}]`;
 }

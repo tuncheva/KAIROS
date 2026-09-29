@@ -83,11 +83,18 @@ const CONSTRAINTS = [
   "ai_reminders_user_id_user_id_fk",
 ];
 
+/**
+ * Triggers from 0048_embedding_invalidation. Absent, an edited task or note keeps
+ * the embedding of its old text forever, and semantic search keeps matching what
+ * the row used to say — with nothing failing anywhere.
+ */
+const TRIGGERS = ["task_embedding_invalidate", "note_embedding_invalidate"];
+
 /** Extensions a migration installs. Absent, every vector query fails outright. */
 const EXTENSIONS = ["vector"];
 
 /** Must match DEFAULT_EMBEDDING_DIMS in ~/server/llm/core/embeddings.ts. */
-const EMBEDDING_DIMS = 1024;
+const EMBEDDING_DIMS = 2048;
 
 /** Enum values added alongside a feature are as skippable as a column. */
 const ENUM_VALUES: Array<[string, string]> = [
@@ -170,6 +177,13 @@ async function main(): Promise<void> {
       console.log(`ext     ${extension.padEnd(32)} ${ok ? "OK" : "MISSING"}`);
     }
 
+    for (const trigger of TRIGGERS) {
+      const rows = await sql`SELECT 1 FROM pg_trigger WHERE tgname = ${trigger} AND NOT tgisinternal`;
+      const ok = rows.length > 0;
+      if (!ok) missing += 1;
+      console.log(`trigger ${trigger.padEnd(32)} ${ok ? "OK" : "MISSING"}`);
+    }
+
     for (const constraint of CONSTRAINTS) {
       const rows = await sql`SELECT 1 FROM pg_constraint WHERE conname = ${constraint}`;
       const ok = rows.length > 0;
@@ -187,7 +201,7 @@ async function main(): Promise<void> {
         JOIN pg_class c ON c.oid = a.attrelid
         WHERE c.relname = ${table} AND a.attname = 'embedding'
           AND a.attnum > 0 AND NOT a.attisdropped`;
-      const expected = `vector(${String(EMBEDDING_DIMS)})`;
+      const expected = `halfvec(${String(EMBEDDING_DIMS)})`;
       const ok = row?.type === expected;
       if (!ok) missing += 1;
       console.log(
