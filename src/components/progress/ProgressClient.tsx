@@ -1,19 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft } from "~/components/ui/icons";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
-import { ProgressGrid } from "./ProgressGrid";
+import { exitDurationMs } from "~/components/ui/drawerExit";
+import { HeatLegend, ProgressGrid } from "./ProgressGrid";
+import { MemberDrawer } from "./ProgressDrawer";
 import {
   FinishedLog,
-  Leaderboard,
-  StatColumn,
+  SectionHead,
+  STAMP,
+  Standings,
   StatRow,
   SuggestionList,
+  TeamNotes,
+  TeamTable,
+  TextTabs,
   WorkloadList,
+  projectHref,
   useRecordStats,
+  useTeamStats,
 } from "./ProgressPanels";
 import {
   RECORD_DAYS,
@@ -22,12 +30,23 @@ import {
   buildGrid,
   buildLog,
   buildSuggestions,
+  buildTeamNotes,
+  buildTeamRows,
   countByDay,
+  countLogged,
   displayName,
-  initialsOf,
+  fromYmd,
+  mergeCounts,
   normaliseEntries,
+  projectTone,
+  sortTeamRows,
   startOfDayLocal,
   summarise,
+  summariseTeam,
+  tasksByDay,
+  teamHeatLevel,
+  toYmd,
+  type TeamSortKey,
   type WindowKey,
 } from "./progressModel";
 
@@ -37,14 +56,13 @@ const WINDOW_LABEL_KEYS: Record<WindowKey, string> = {
   all: "windowAll",
 };
 
-/** Kept in step with `.progress-person-card--out` in `globals.css`. */
-const PERSON_CARD_EXIT_MS = 260;
-
 const WINDOW_SINCE_KEYS: Record<WindowKey, string> = {
   week: "sinceWeek",
   month: "sinceMonth",
   all: "sinceAll",
 };
+
+type Scope = "me" | "team";
 
 /**
  * Which day is "today", which cell is inside the window and where the streak
@@ -61,14 +79,29 @@ export function ProgressClient() {
   return <ProgressWorkspace today={today} />;
 }
 
+/** The sheet the page sits on: one quiet surface over the dashboard's hatch. */
+function Sheet({ children }: { children: ReactNode }) {
+  return (
+    <div className="tui-screen text-tui-ink min-h-full">
+      <div className="mx-auto max-w-[1360px] px-3 pt-6 pb-12 sm:px-8 sm:pt-10">
+        <article className="border-tui-ink/10 bg-tui-pane rounded-[10px] border px-5 pt-6 pb-14 shadow-[var(--tui-pane-shadow)] sm:px-10 lg:px-16 lg:pt-9 lg:pb-[72px]">
+          {children}
+        </article>
+      </div>
+    </div>
+  );
+}
+
 function ProgressSkeleton() {
   return (
-    <div className="mx-auto flex max-w-[1400px] flex-col gap-7 p-4 sm:p-6 lg:p-8">
-      <div className="h-9 w-80 max-w-full animate-pulse rounded-lg bg-bg-secondary" />
-      <div className="h-6 w-full max-w-lg animate-pulse rounded-lg bg-bg-secondary" />
-      <div className="h-40 w-full animate-pulse rounded-xl bg-bg-secondary" />
-      <div className="h-56 w-full animate-pulse rounded-xl bg-bg-secondary" />
-    </div>
+    <Sheet>
+      <div className="flex flex-col gap-8" aria-hidden="true">
+        <div className="kairos-shimmer h-10 w-72 max-w-full rounded-md" />
+        <div className="kairos-shimmer mt-8 h-16 w-[560px] max-w-full rounded-md" />
+        <div className="kairos-shimmer h-28 w-full rounded-md" />
+        <div className="kairos-shimmer h-56 w-full rounded-md" />
+      </div>
+    </Sheet>
   );
 }
 
@@ -77,91 +110,68 @@ function ProgressWorkspace({ today }: { today: Date }) {
   const locale = useLocale();
   const dateLocale = locale === "bg" ? "bg-BG" : locale;
 
-  /** `null` is the reader's own record; a person id opens their profile. */
-  const [personId, setPersonId] = useState<string | null>(null);
-  /* React unmounts on the same tick it re-renders, so a card that is simply
-     dropped can never play an exit. `closing` keeps it mounted — and keeps
-     its record loaded — for exactly as long as the animation runs. */
-  const [closing, setClosing] = useState(false);
+  const [scope, setScope] = useState<Scope>("me");
   const [windowKey, setWindowKey] = useState<WindowKey>("month");
-  const [selectedYmd, setSelectedYmd] = useState<string | null>(null);
+  const [selectedYmd, setSelectedYmd] = useState<string>(() => toYmd(today));
   const [dismissed, setDismissed] = useState<string[]>([]);
+  const [sort, setSort] = useState<TeamSortKey>("finished");
+
+  /** The teammate whose record is open in the drawer. */
+  const [personId, setPersonId] = useState<string | null>(null);
+  /* React unmounts on the same tick it re-renders, so a drawer that is simply
+     dropped can never play an exit. `closing` keeps it mounted for exactly as
+     long as the animation runs. */
+  const [closing, setClosing] = useState(false);
 
   const board = api.progress.getLeaderboard.useQuery(undefined, { staleTime: 30_000 });
-  const record = api.progress.getRecord.useQuery(
-    { userId: personId ?? undefined, days: RECORD_DAYS },
-    {
-      staleTime: 30_000,
-      /* Opening a leaderboard block changes the query key. Without the
-         previous record standing in, the page would fall back to the
-         skeleton and remount every panel — the whole UI flashing when only
-         the person card is meant to move. */
-      placeholderData: (previous) => previous,
-    },
+  const canViewTeam = board.data?.canViewTeam ?? false;
+  const team = scope === "team" && canViewTeam;
+
+  const record = api.progress.getRecord.useQuery({ days: RECORD_DAYS }, { staleTime: 30_000 });
+  const teamQuery = api.progress.getTeam.useQuery(
+    { days: RECORD_DAYS },
+    { staleTime: 30_000, enabled: team },
   );
 
-  /* A block on the board toggles: the first tap opens that person's card,
-     a second tap on the same block closes it again — through the same exit
-     animation the back button uses, not an abrupt unmount. */
-  const togglePerson = useCallback(
-    (userId: string) => {
-      if (userId === personId && !closing) {
-        setClosing(true);
-        return;
-      }
-      /* Tapping a block mid-exit reopens rather than finishes closing. */
-      setClosing(false);
-      setPersonId(userId);
-      setSelectedYmd(null);
-    },
-    [personId, closing],
-  );
-
+  const openPerson = useCallback((userId: string) => {
+    setClosing(false);
+    setPersonId(userId);
+  }, []);
   const closePerson = useCallback(() => setClosing(true), []);
 
-  /* The card is dropped on a timer rather than on `animationend`: under
-     `prefers-reduced-motion` the animation is switched off entirely and no
-     such event would ever arrive. */
+  /* Dropped on a timer rather than on `animationend`: under reduced motion
+     the animation is off entirely and no such event would ever arrive. */
   useEffect(() => {
     if (!closing) return;
-    const instant =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const timer = window.setTimeout(
-      () => {
-        setClosing(false);
-        setPersonId(null);
-        setSelectedYmd(null);
-      },
-      instant ? 0 : PERSON_CARD_EXIT_MS,
-    );
+    const timer = window.setTimeout(() => {
+      setClosing(false);
+      setPersonId(null);
+    }, exitDurationMs());
     return () => window.clearTimeout(timer);
   }, [closing]);
 
-  const changeWindow = useCallback((next: WindowKey) => {
-    setWindowKey(next);
-    setSelectedYmd(null);
+  const changeScope = useCallback((next: Scope) => {
+    setScope(next);
+    setPersonId(null);
   }, []);
 
   const dismiss = useCallback((id: string) => {
     setDismissed((current) => (current.includes(id) ? current : [...current, id]));
   }, []);
 
-  const data = record.data;
+  /* ── My record ─────────────────────────────────────────────────── */
 
+  const data = record.data;
   const tasks = useMemo(() => normaliseEntries(data?.entries), [data?.entries]);
-  const counts = useMemo(() => countByDay(tasks), [tasks]);
-  const weeks = useMemo(
-    () => buildGrid({ today, counts, window: windowKey }),
-    [today, counts, windowKey],
-  );
+  const myCounts = useMemo(() => countByDay(tasks), [tasks]);
+  const myTasksByDay = useMemo(() => tasksByDay(tasks), [tasks]);
   const summary = useMemo(
-    () => summarise({ today, counts, window: windowKey }),
-    [today, counts, windowKey],
+    () => summarise({ today, counts: myCounts, window: windowKey }),
+    [today, myCounts, windowKey],
   );
   const log = useMemo(
-    () => buildLog({ today, tasks, window: windowKey, selectedYmd }),
-    [today, tasks, windowKey, selectedYmd],
+    () => buildLog({ today, tasks, window: windowKey, selectedYmd: null }),
+    [today, tasks, windowKey],
   );
   const suggestions = useMemo(
     () =>
@@ -173,8 +183,45 @@ function ProgressWorkspace({ today }: { today: Date }) {
       }).filter((suggestion) => !dismissed.includes(suggestion.id)),
     [today, summary, data?.workload, data?.nextTask, dismissed],
   );
+  const myStats = useRecordStats(summary, locale);
 
-  const stats = useRecordStats(summary, locale);
+  /* ── Team ──────────────────────────────────────────────────────── */
+
+  const teamData = teamQuery.data;
+  const teamRows = useMemo(
+    () =>
+      teamData
+        ? buildTeamRows({
+            today,
+            members: teamData.members,
+            completions: teamData.completions,
+            window: windowKey,
+          })
+        : [],
+    [today, teamData, windowKey],
+  );
+  const sortedRows = useMemo(() => sortTeamRows(teamRows, sort), [teamRows, sort]);
+  const teamCountsByDay = useMemo(() => mergeCounts(teamRows.map((row) => row.counts)), [teamRows]);
+  const teamSummary = useMemo(() => summariseTeam(teamRows, windowKey), [teamRows, windowKey]);
+  const teamNotes = useMemo(
+    () => buildTeamNotes({ today, rows: teamRows, projects: teamData?.projects ?? [] }),
+    [today, teamRows, teamData?.projects],
+  );
+  const teamStats = useTeamStats(teamSummary);
+
+  /* ── The grid, for whichever view is on ────────────────────────── */
+
+  const memberCount = teamRows.length;
+  const weeks = useMemo(
+    () =>
+      buildGrid({
+        today,
+        counts: team ? teamCountsByDay : myCounts,
+        window: windowKey,
+        level: team ? (count) => teamHeatLevel(count, memberCount) : undefined,
+      }),
+    [today, team, teamCountsByDay, myCounts, windowKey, memberCount],
+  );
 
   const formatMonth = useCallback(
     (date: Date) => date.toLocaleDateString(dateLocale, { month: "short" }),
@@ -185,18 +232,15 @@ function ProgressWorkspace({ today }: { today: Date }) {
       date.toLocaleDateString(dateLocale, { weekday: "short", day: "numeric", month: "short" }),
     [dateLocale],
   );
-
   const gridLabels = useMemo(
     () => ({
       less: t("less"),
       more: t("more"),
       hint: t("gridHint"),
       dayCount: (day: string, count: number) => t("gridDayCount", { day, count }),
-      daySelected: (day: string) => t("gridDaySelected", { day }),
     }),
     [t],
   );
-
   const weekdayLabels = useMemo(
     () => ({ monday: t("weekdayMon"), wednesday: t("weekdayWed"), friday: t("weekdayFri") }),
     [t],
@@ -207,219 +251,243 @@ function ProgressWorkspace({ today }: { today: Date }) {
   const errorMessage = record.error?.message ?? board.error?.message ?? null;
   if (errorMessage) {
     return (
-      <div className="p-6">
-        <p className="text-sm text-error">{errorMessage}</p>
-      </div>
+      <Sheet>
+        <p className="text-tui-danger text-[14px]">{errorMessage}</p>
+      </Sheet>
     );
   }
   if (!data) return <ProgressSkeleton />;
 
   const name = displayName(data.person);
   const firstName = name.split(/\s+/)[0] ?? name;
-  const windowLine = `${t(WINDOW_SINCE_KEYS[windowKey], { weeks: RECORD_WEEKS })} · ${t("perDayAverage", { perDay: summary.perDay })}`;
+  const since = t(WINDOW_SINCE_KEYS[windowKey], { weeks: RECORD_WEEKS });
+  const em = (chunks: ReactNode) => <em className="text-tui-accent italic">{chunks}</em>;
   /* A workspace with nothing finished and nothing open needs a sentence, not
      an unexplained empty grid. */
   const isBlank = data.allTimeCompleted === 0 && data.workload.length === 0;
 
-  const grid = (
-    <ProgressGrid
-      weeks={weeks}
-      selectedYmd={selectedYmd}
-      onSelect={setSelectedYmd}
-      showWeekdays={!personId}
-      weekdayLabels={weekdayLabels}
-      formatMonth={formatMonth}
-      formatDay={formatDay}
-      labels={gridLabels}
-    />
-  );
+  const headline = team
+    ? t.rich("headlineTeam", { count: teamSummary.finished, em })
+    : firstName
+      ? t.rich("headlinePerson", { name: firstName, count: summary.finished, em })
+      : t.rich("headlineFinished", { count: summary.finished, em });
 
-  const windowToggle = (
-    <span className="flex overflow-hidden rounded-lg border border-border-medium">
-      {WINDOW_KEYS.map((key) => (
-        <button
-          key={key}
-          type="button"
-          onClick={() => changeWindow(key)}
-          aria-pressed={windowKey === key}
-          className={cn(
-            "h-8 px-3.5 text-xs font-semibold transition-colors",
-            windowKey === key
-              ? "bg-accent-primary/15 text-accent-primary"
-              : "text-fg-tertiary hover:bg-bg-secondary",
-          )}
-        >
-          {t(WINDOW_LABEL_KEYS[key])}
-        </button>
-      ))}
-    </span>
-  );
+  const subline = team
+    ? `${t("teamSubline", { since, count: teamSummary.members, perPerson: teamSummary.perPersonPerDay })} ${t("teamPrivacy")}`
+    : `${since} · ${t("perDayAverage", { perDay: summary.perDay })}`;
 
-  const leaderboard = (
-    <Leaderboard
-      people={board.data?.people ?? []}
-      /* Un-highlight as the card starts leaving, so the board reflects
-         where a second tap has already taken you. */
-      activeId={closing ? null : personId}
-      onSelect={togglePerson}
-    />
-  );
+  const selected = fromYmd(selectedYmd) ?? today;
+  const selectedTasks = myTasksByDay.get(selectedYmd) ?? [];
+  const selectedMembers = team
+    ? teamRows
+        .map((row) => ({ row, count: row.counts.get(selectedYmd) ?? 0 }))
+        .filter((entry) => entry.count > 0)
+        .sort((a, b) => b.count - a.count)
+    : [];
+  const selectedTotal = team
+    ? selectedMembers.reduce((total, entry) => total + entry.count, 0)
+    : selectedTasks.length;
 
-  /* ------------------------------------------------------------------ */
-  /*  One layout serves both views.                                      */
-  /*                                                                     */
-  /*  Opening a leaderboard block used to swap the page for a different  */
-  /*  tree, which unmounted every panel and replayed the page-wide       */
-  /*  stagger. Here the person card is the only node that enters or      */
-  /*  leaves, so it is the only thing that animates; the grid, the log   */
-  /*  and the board itself stay put.                                     */
-  /* ------------------------------------------------------------------ */
-
-  const personCard = personId ? (
-    <aside
-      key={personId}
-      className={cn(
-        "progress-person-card flex w-full shrink-0 flex-col gap-6 border-b border-border-light bg-bg-surface px-6 py-7 lg:w-[330px] lg:border-b-0 lg:border-r",
-        closing && "progress-person-card--out",
-        /* Still showing the previous person while their record loads. */
-        !closing && record.isPlaceholderData && "opacity-60",
-      )}
-      aria-hidden={closing}
-    >
-      <button
-        type="button"
-        onClick={closePerson}
-        disabled={closing}
-        className="flex w-fit items-center gap-2 text-xs font-semibold text-fg-tertiary transition-colors hover:text-fg-primary"
-      >
-        <ArrowLeft size={14} />
-        {t("profileBack")}
-      </button>
-
-      <div className="flex items-center gap-3.5">
-        <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-accent-primary text-[19px] font-bold text-white">
-          {initialsOf(data.person)}
-        </span>
-        <span className="flex min-w-0 flex-col gap-0.5">
-          <span className="truncate text-[17px] font-semibold tracking-[-0.01em] text-fg-primary">
-            {name || t("boardUnknown")}
-          </span>
-          <span className="text-[11px] tabular-nums text-fg-tertiary">
-            {data.isSelf ? `${t("profileYou")} · ` : ""}
-            {t("profileProjects", { count: data.workload.length })}
-          </span>
-        </span>
-      </div>
-
-      <StatColumn stats={stats} />
-
-      <SuggestionList suggestions={suggestions} onDismiss={dismiss} variant="stacked" />
-
-      <div className="flex flex-col gap-3">
-        <span className="text-[10px] uppercase tracking-[0.14em] text-fg-tertiary">
-          {t("workloadShort")}
-        </span>
-        <WorkloadList workload={data.workload} today={today} variant="bare" />
-      </div>
-    </aside>
-  ) : null;
+  const drawerMember = personId ? teamRows.find((row) => row.member.id === personId)?.member : undefined;
 
   return (
-    <div className="flex flex-col lg:flex-row lg:items-stretch">
-      {personCard}
+    <Sheet>
+      {/* Toolbar: whose record, then over how long. */}
+      <header className="flex flex-wrap items-center gap-x-7 gap-y-2">
+        {canViewTeam && (
+          <>
+            <TextTabs
+              label={t("scopeLabel")}
+              value={team ? "team" : "me"}
+              onChange={changeScope}
+              options={[
+                { key: "me", label: t("scopeMine") },
+                { key: "team", label: t("scopeTeam") },
+              ]}
+            />
+            <span aria-hidden="true" className="bg-tui-ink/15 hidden h-[18px] w-px sm:block" />
+          </>
+        )}
+        <TextTabs
+          label={t("windowLabel")}
+          value={windowKey}
+          onChange={setWindowKey}
+          options={WINDOW_KEYS.map((key) => ({ key, label: t(WINDOW_LABEL_KEYS[key]) }))}
+        />
+      </header>
 
-      {/* One fixed set of classes: the column simply reflows as the card
-          beside it grows or collapses, instead of jumping to a new layout. */}
-      <div className="kairos-page-enter mx-auto flex w-full min-w-0 max-w-[1400px] flex-1 flex-col gap-7 p-4 sm:p-6 lg:p-8">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="flex flex-col gap-1.5">
-            {!personId && (
-              <span className="text-[10px] uppercase tracking-[0.16em] text-fg-tertiary">
-                {t("eyebrow")}
-              </span>
-            )}
-            <h1
-              className={cn(
-                "font-semibold leading-none tracking-[-0.025em] text-fg-primary",
-                personId ? "text-[28px]" : "text-[32px]",
-              )}
-            >
-              {!personId && firstName
-                ? t("headlinePerson", { name: firstName, count: summary.finished })
-                : t("headlineFinished", { count: summary.finished })}
-            </h1>
-            <span className="text-sm text-fg-secondary">{windowLine}</span>
-            {!personId && isBlank && (
-              <span className="text-sm text-fg-tertiary">{t("emptyHint")}</span>
-            )}
-          </div>
-          <span className="flex-1" />
-          {windowToggle}
+      <div key={team ? "team" : "me"} className="progress-view-in">
+        {/* Headline */}
+        <section className="mt-12 flex flex-col sm:mt-[72px]">
+          <span className="text-tui-accent font-mono text-[11px] tracking-[0.22em] uppercase">
+            {team ? t("eyebrowTeam") : t("eyebrow")}
+          </span>
+          <h1 className="font-display m-0 mt-[22px] text-[44px] leading-none font-normal tracking-[-0.022em] text-pretty sm:text-[60px] lg:text-[76px]">
+            {headline}
+          </h1>
+          <p className="text-tui-ink2 m-0 mt-[22px] max-w-[640px] text-[16.5px] leading-[1.65] text-pretty">
+            {subline}
+          </p>
+          {!team && isBlank && <p className="text-tui-ink3 m-0 mt-2 text-[14px]">{t("emptyHint")}</p>}
+        </section>
+
+        <div className="mt-14">
+          {team && teamQuery.isLoading ? (
+            <div className="kairos-shimmer h-[150px] rounded-md" aria-hidden="true" />
+          ) : (
+            <StatRow stats={team ? teamStats : myStats} />
+          )}
         </div>
 
-        {/* The panels that belong to only one of the two views fade in when
-            they arrive, so nothing pops into place beside the moving card. */}
-        {!personId && (
-          <div className="progress-view-in">
-            <StatRow stats={stats.slice(0, 3)} />
-          </div>
+        {team && teamQuery.error && (
+          <p className="text-tui-danger mt-6 text-[14px]">{teamQuery.error.message}</p>
         )}
 
-        {personId ? (
-          <div className="progress-view-in">{grid}</div>
+        {/* Finished per day, and the day that is picked, read out beside it. */}
+        <section className="mt-[72px]">
+          <SectionHead
+            title={team ? t("gridTitleTeam") : t("gridTitle")}
+            meta={t("gridSubtitle", { weeks: RECORD_WEEKS })}
+          >
+            <HeatLegend less={t("less")} more={t("more")} />
+          </SectionHead>
+
+          <div className="flex flex-col lg:flex-row">
+            <div className="pt-[26px] lg:pr-10">
+              <ProgressGrid
+                weeks={weeks}
+                selectedYmd={selectedYmd}
+                onSelect={setSelectedYmd}
+                showWeekdays
+                weekdayLabels={weekdayLabels}
+                formatMonth={formatMonth}
+                formatDay={formatDay}
+                labels={gridLabels}
+              />
+            </div>
+
+            <div className="border-tui-ink/[0.08] mt-8 flex min-w-0 flex-1 flex-col border-t pt-[26px] lg:mt-0 lg:border-t-0 lg:border-l lg:pl-10">
+              <span className={STAMP}>{t("selectedDay")}</span>
+              <div className="mt-3 flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
+                <span className="font-display text-[34px] leading-[1.05]">
+                  {selected.toLocaleDateString(dateLocale, { weekday: "long", day: "numeric", month: "long" })}
+                </span>
+                <span className="text-tui-ink2 text-[13px]">
+                  {team
+                    ? t("readoutCountTeam", { count: selectedTotal, people: selectedMembers.length })
+                    : t("readoutCount", { count: selectedTotal })}
+                </span>
+              </div>
+
+              <div className="mt-[18px] flex flex-col">
+                {selectedTotal === 0 && (
+                  <p className="border-tui-ink/[0.07] text-tui-ink3 border-t py-3.5 text-[14px]">
+                    {t("logEmptyDay")}
+                  </p>
+                )}
+                {team
+                  ? selectedMembers.map(({ row, count }) => (
+                      <button
+                        key={row.member.id}
+                        type="button"
+                        onClick={() => openPerson(row.member.id)}
+                        className="border-tui-ink/[0.07] hover:bg-tui-ink/[0.025] flex items-center gap-3 border-t py-[11px] text-left transition-colors"
+                      >
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 shrink-0 rounded-full",
+                            row.member.isSelf ? "bg-tui-accent" : "bg-tui-ink/35",
+                          )}
+                        />
+                        <span className="text-tui-ink min-w-0 flex-1 truncate text-[14px]">
+                          {displayName(row.member) || t("boardUnknown")}
+                        </span>
+                        <span className="text-tui-ink3 text-[12.5px] tabular-nums">
+                          {t("readoutCount", { count })}
+                        </span>
+                      </button>
+                    ))
+                  : selectedTasks.map((task) => (
+                      <Link
+                        key={task.id}
+                        href={projectHref(task.projectId)}
+                        className="border-tui-ink/[0.07] hover:bg-tui-ink/[0.025] flex items-center gap-3 border-t py-[11px] transition-colors"
+                      >
+                        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", projectTone(task.projectId).dot)} />
+                        <span className="text-tui-ink min-w-0 flex-1 truncate text-[14px]">{task.title}</span>
+                        <span className="text-tui-ink3 max-w-[40%] truncate text-[12.5px]">
+                          {task.projectTitle}
+                        </span>
+                      </Link>
+                    ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {team ? (
+          <>
+            <div className="mt-20">
+              {teamQuery.isLoading ? (
+                <div className="kairos-shimmer h-72 rounded-md" aria-hidden="true" />
+              ) : (
+                <TeamTable
+                  rows={sortedRows}
+                  sort={sort}
+                  onSort={setSort}
+                  onOpen={openPerson}
+                  activeId={closing ? null : personId}
+                />
+              )}
+            </div>
+            {!teamQuery.isLoading && (
+              <div className="mt-20">
+                <TeamNotes notes={teamNotes} onOpenMember={openPerson} />
+              </div>
+            )}
+          </>
         ) : (
-          <section className="progress-view-in flex flex-col gap-3.5">
-            <div className="flex flex-wrap items-baseline gap-3">
-              <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-fg-primary">
-                {t("gridTitle")}
-              </h2>
-              <span className="text-[11px] text-fg-tertiary">
-                {t("gridSubtitle", { weeks: RECORD_WEEKS })}
-              </span>
+          <>
+            <div className="mt-20 grid grid-cols-1 gap-16 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-[72px]">
+              <section>
+                <SectionHead title={t("logRecent")} meta={t("logCount", { count: countLogged(log) })} />
+                <FinishedLog groups={log} today={today} />
+              </section>
+
+              <div className="flex flex-col gap-16">
+                <SuggestionList suggestions={suggestions} onDismiss={dismiss} />
+                <section>
+                  <SectionHead title={t("workloadTitle")} />
+                  <div className="pt-[22px]">
+                    <WorkloadList workload={data.workload} today={today} />
+                    {data.workload.length > 0 && (
+                      <p className="text-tui-ink3 mt-[18px] text-[12px]">{t("workloadCaption")}</p>
+                    )}
+                  </div>
+                </section>
+              </div>
             </div>
-            <div className="rounded-xl border border-border-light bg-bg-elevated px-5 py-4">
-              {grid}
+
+            <div className="mt-20">
+              <Standings people={board.data?.people ?? []} onOpen={openPerson} />
             </div>
-          </section>
+          </>
         )}
-
-        {!personId && (
-          <div className="progress-view-in">
-            <SuggestionList suggestions={suggestions} onDismiss={dismiss} variant="rows" />
-          </div>
-        )}
-
-        {personId ? (
-          <div className="progress-view-in">
-            <FinishedLog
-              groups={log}
-              selectedYmd={selectedYmd}
-              onClearDay={() => setSelectedYmd(null)}
-              variant="boxed"
-              today={today}
-            />
-          </div>
-        ) : (
-          <div className="progress-view-in grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-            <FinishedLog
-              groups={log}
-              selectedYmd={selectedYmd}
-              onClearDay={() => setSelectedYmd(null)}
-              variant="rows"
-              today={today}
-            />
-
-            <div className="flex flex-col gap-3">
-              <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-fg-primary">
-                {t("workloadTitle")}
-              </h2>
-              <WorkloadList workload={data.workload} today={today} variant="panel" />
-            </div>
-          </div>
-        )}
-
-        {leaderboard}
       </div>
-    </div>
+
+      {personId && (
+        <MemberDrawer
+          userId={personId}
+          member={drawerMember}
+          closing={closing}
+          onClose={closePerson}
+          today={today}
+          windowKey={windowKey}
+          formatMonth={formatMonth}
+          formatDay={formatDay}
+          gridLabels={gridLabels}
+        />
+      )}
+    </Sheet>
   );
 }

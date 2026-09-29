@@ -6,9 +6,8 @@
 /*  the redesign draws — a contribution grid, a streak, a pace, a day  */
 /*  log, remaining workload and a leaderboard.                        */
 /*                                                                    */
-/*  The mock is dark-first with hard-coded hex. The app is themed, so  */
-/*  every colour here is a design token and follows both the light /   */
-/*  dark theme and the user's accent choice.                          */
+/*  Every colour here is a `tui-*` token — the dashboard's warm paper   */
+/*  edition — so the two pages read as one surface in both themes.     */
 /*                                                                    */
 /*  All date arithmetic is local-time and weeks start on Monday, the   */
 /*  same rules the calendar uses. Never `toISOString()` for a day key: */
@@ -190,12 +189,26 @@ export function heatLevel(count: number): HeatLevel {
 
 /** The accent at rising strength; level 0 is a faint neutral, not an accent. */
 const HEAT_CLASS: Record<HeatLevel, string> = {
-  0: "bg-fg-primary/[0.07]",
-  1: "bg-accent-primary/30",
-  2: "bg-accent-primary/55",
-  3: "bg-accent-primary/[0.78]",
-  4: "bg-accent-primary",
+  0: "bg-tui-ink/[0.07]",
+  1: "bg-tui-accent/30",
+  2: "bg-tui-accent/55",
+  3: "bg-tui-accent/[0.78]",
+  4: "bg-tui-accent",
 };
+
+/**
+ * The same ramp for a whole team, read per head: a day on which six people
+ * finished six things is an ordinary day, not a standout one, so the count is
+ * divided by the team before it is graded.
+ */
+export function teamHeatLevel(count: number, members: number): HeatLevel {
+  if (count <= 0) return 0;
+  const perHead = count / Math.max(1, members);
+  if (perHead <= 0.5) return 1;
+  if (perHead <= 1) return 2;
+  if (perHead <= 2) return 3;
+  return 4;
+}
 
 export function heatClass(level: HeatLevel): string {
   return HEAT_CLASS[level];
@@ -243,8 +256,11 @@ export function buildGrid(args: {
   counts: Map<string, number>;
   window: WindowKey;
   weeks?: number;
+  /** How a count is graded. The team view divides by head count first. */
+  level?: (count: number) => HeatLevel;
 }): GridWeek[] {
   const { today, counts } = args;
+  const grade = args.level ?? heatLevel;
   const weekCount = args.weeks ?? RECORD_WEEKS;
   const span = windowLength(args.window);
 
@@ -268,7 +284,7 @@ export function buildGrid(args: {
         ymd,
         date,
         count,
-        level: heatLevel(count),
+        level: grade(count),
         inWindow: age >= 0 && age < span,
         isToday: ymd === todayYmd,
         isFuture: age < 0,
@@ -495,17 +511,10 @@ export function buildSuggestions(args: {
 }
 
 export const SUGGESTION_TEXT: Record<SuggestionTone, string> = {
-  accent: "text-accent-primary",
-  warning: "text-warning",
-  error: "text-error",
-  info: "text-info",
-};
-
-export const SUGGESTION_DOT: Record<SuggestionTone, string> = {
-  accent: "bg-accent-primary",
-  warning: "bg-warning",
-  error: "bg-error",
-  info: "bg-info",
+  accent: "text-tui-accent",
+  warning: "text-tui-warn",
+  error: "text-tui-danger",
+  info: "text-tui-day",
 };
 
 /* ------------------------------------------------------------------ */
@@ -516,15 +525,17 @@ export const SUGGESTION_DOT: Record<SuggestionTone, string> = {
 /*  across reloads, which an index-into-a-list palette would not.      */
 /* ------------------------------------------------------------------ */
 
-export type ProjectTone = { dot: string; bar: string; text: string };
+export type ProjectTone = { dot: string };
 
+/* Muted on purpose: a project's colour is a way to find it again down the
+   page, not a status, and the brand neons read as alarms on warm paper. */
 const PROJECT_TONES: ProjectTone[] = [
-  { dot: "bg-brand-purple", bar: "bg-brand-purple", text: "text-brand-purple" },
-  { dot: "bg-brand-sky", bar: "bg-brand-sky", text: "text-brand-sky" },
-  { dot: "bg-brand-mint", bar: "bg-brand-mint", text: "text-brand-mint" },
-  { dot: "bg-brand-caramel", bar: "bg-brand-caramel", text: "text-brand-caramel" },
-  { dot: "bg-brand-strawberry", bar: "bg-brand-strawberry", text: "text-brand-strawberry" },
-  { dot: "bg-brand-pink", bar: "bg-brand-pink", text: "text-brand-pink" },
+  { dot: "bg-tui-accent" },
+  { dot: "bg-tui-day" },
+  { dot: "bg-tui-ok" },
+  { dot: "bg-tui-warn" },
+  { dot: "bg-tui-danger" },
+  { dot: "bg-tui-ink3" },
 ];
 
 export function projectTone(projectId: number): ProjectTone {
@@ -539,14 +550,12 @@ export function projectTone(projectId: number): ProjectTone {
 /** Blocks the leaderboard shows, as in the redesign. */
 export const BOARD_SIZE = 5;
 
-/** Tallest bar in the leaderboard, in pixels. */
-const BOARD_BAR_MAX = 150;
-const BOARD_BAR_MIN = 12;
-
 export type BoardBlock = LeaderboardPerson & {
   initials: string;
-  /** Bar height in pixels, proportional to the leader. */
-  barHeight: number;
+  /** Rank on the whole board, 1-based — the caller may be shown out of order. */
+  rank: number;
+  /** Tally as a fraction of the leader's, 0–1, for the standings rule. */
+  share: number;
 };
 
 /**
@@ -567,10 +576,8 @@ export function buildBoard(people: LeaderboardPerson[], size = BOARD_SIZE): Boar
   return shown.map((person) => ({
     ...person,
     initials: initialsOf(person),
-    barHeight:
-      leader > 0
-        ? Math.max(BOARD_BAR_MIN, Math.round((person.completed / leader) * BOARD_BAR_MAX))
-        : BOARD_BAR_MIN,
+    rank: ranked.indexOf(person) + 1,
+    share: leader > 0 ? person.completed / leader : 0,
   }));
 }
 
@@ -588,4 +595,260 @@ export function initialsOf(person: { name: string | null; email: string | null }
   if (!words.length) return "?";
   if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
   return `${words[0]![0]!}${words[1]![0]!}`.toUpperCase();
+}
+
+/* ------------------------------------------------------------------ */
+/*  The team view                                                     */
+/*                                                                    */
+/*  Admins only. Everything is derived from the                       */
+/*  same "finished at instant Y" facts as a personal record, bucketed  */
+/*  on the reader's clock, so a person's row in the table and their    */
+/*  own record never disagree about a day.                             */
+/* ------------------------------------------------------------------ */
+
+export type TeamMemberPayload = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
+  role: string;
+  displayRole: string | null;
+  isSelf: boolean;
+  open: number;
+  overdue: number;
+  lastFinishedAt: Date | string | null;
+  workload: { projectId: number; projectTitle: string; open: number }[];
+};
+
+export type TeamCompletion = { userId: string; finishedAt: Date | string };
+
+export type TeamProject = {
+  projectId: number;
+  projectTitle: string;
+  open: number;
+  people: number;
+  lastTouchedAt: Date | string | null;
+};
+
+/** Days in the table's activity strip, whatever the window. */
+export const TEAM_STRIP_DAYS = 30;
+
+/** Quiet this long, with work still open, and a person is worth a look. */
+export const QUIET_DAYS = 5;
+
+export type TeamRow = {
+  member: TeamMemberPayload;
+  counts: Map<string, number>;
+  finished: number;
+  perDay: string;
+  streak: number;
+  open: number;
+  /** Whole days since their last finish; null when they never have. */
+  lastFinishedDays: number | null;
+  /** Oldest first, `TEAM_STRIP_DAYS` long, today last. */
+  strip: number[];
+  quiet: boolean;
+  heavy: boolean;
+};
+
+export type TeamSortKey = "finished" | "streak" | "open" | "quiet";
+
+export const TEAM_SORT_KEYS: TeamSortKey[] = ["finished", "streak", "open", "quiet"];
+
+export function teamCounts(completions: TeamCompletion[]): Map<string, Map<string, number>> {
+  const byMember = new Map<string, Map<string, number>>();
+  for (const completion of completions) {
+    const at = new Date(completion.finishedAt);
+    if (Number.isNaN(at.getTime())) continue;
+    const ymd = toYmd(at);
+    const counts = byMember.get(completion.userId) ?? new Map<string, number>();
+    counts.set(ymd, (counts.get(ymd) ?? 0) + 1);
+    byMember.set(completion.userId, counts);
+  }
+  return byMember;
+}
+
+/** Every member's days summed — what the team grid draws. */
+export function mergeCounts(maps: Iterable<Map<string, number>>): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const map of maps) {
+    for (const [ymd, count] of map) out.set(ymd, (out.get(ymd) ?? 0) + count);
+  }
+  return out;
+}
+
+function median(values: number[]): number {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+}
+
+/**
+ * "Heavy" is relative, not a fixed number: ten open tasks is light for a team
+ * that averages twenty. Twice the team's median, and never fewer than eight,
+ * so a team of people with one task each does not flag the one with three.
+ */
+function heavyThreshold(openCounts: number[]): number {
+  return Math.max(8, median(openCounts) * 2);
+}
+
+export function buildTeamRows(args: {
+  today: Date;
+  members: TeamMemberPayload[];
+  completions: TeamCompletion[];
+  window: WindowKey;
+}): TeamRow[] {
+  const byMember = teamCounts(args.completions);
+  const heavyAt = heavyThreshold(args.members.map((m) => m.open));
+
+  return args.members.map((member) => {
+    const counts = byMember.get(member.id) ?? new Map<string, number>();
+    const summary = summarise({ today: args.today, counts, window: args.window });
+    const last = member.lastFinishedAt ? new Date(member.lastFinishedAt) : null;
+    const lastFinishedDays =
+      last && !Number.isNaN(last.getTime()) ? Math.max(0, daysBetween(last, args.today)) : null;
+
+    const strip: number[] = [];
+    for (let age = TEAM_STRIP_DAYS - 1; age >= 0; age--) {
+      strip.push(counts.get(toYmd(addDays(args.today, -age))) ?? 0);
+    }
+
+    return {
+      member,
+      counts,
+      finished: summary.finished,
+      perDay: summary.perDay,
+      streak: summary.streak,
+      open: member.open,
+      lastFinishedDays,
+      strip,
+      // Someone with nothing open is not quiet, they are done.
+      quiet: member.open > 0 && (lastFinishedDays === null || lastFinishedDays >= QUIET_DAYS),
+      heavy: member.open >= heavyAt,
+    };
+  });
+}
+
+export function sortTeamRows(rows: TeamRow[], key: TeamSortKey): TeamRow[] {
+  const byName = (a: TeamRow, b: TeamRow) =>
+    displayName(a.member).localeCompare(displayName(b.member));
+  const quietness = (row: TeamRow) => row.lastFinishedDays ?? Number.MAX_SAFE_INTEGER;
+
+  return [...rows].sort((a, b) => {
+    const diff =
+      key === "finished"
+        ? b.finished - a.finished
+        : key === "streak"
+          ? b.streak - a.streak
+          : key === "open"
+            ? b.open - a.open
+            : quietness(b) - quietness(a);
+    return diff || byName(a, b);
+  });
+}
+
+export type TeamSummary = {
+  finished: number;
+  days: number;
+  members: number;
+  /** Tasks per person per day across the window. */
+  perPersonPerDay: string;
+  /** Finished something in the last seven days. */
+  activeThisWeek: number;
+  medianFinished: number;
+  /** Quiet or heavy — the "worth a look" count. */
+  attention: number;
+};
+
+export function summariseTeam(rows: TeamRow[], window: WindowKey): TeamSummary {
+  const days = windowLength(window);
+  const finished = rows.reduce((total, row) => total + row.finished, 0);
+  return {
+    finished,
+    days,
+    members: rows.length,
+    perPersonPerDay: (finished / days / Math.max(1, rows.length)).toFixed(1),
+    activeThisWeek: rows.filter((row) => row.lastFinishedDays !== null && row.lastFinishedDays < 7)
+      .length,
+    medianFinished: median(rows.map((row) => row.finished)),
+    attention: rows.filter((row) => row.quiet || row.heavy).length,
+  };
+}
+
+/** Descriptors, like `Suggestion` — the component owns the sentences. */
+export type TeamNote =
+  | { id: "quiet"; tone: SuggestionTone; memberId: string; name: string; days: number | null; open: number }
+  | { id: "heavy"; tone: SuggestionTone; memberId: string; name: string; open: number; median: number }
+  | {
+      id: "stale";
+      tone: SuggestionTone;
+      projectId: number;
+      projectTitle: string;
+      quietDays: number;
+      open: number;
+      people: number;
+    };
+
+/**
+ * At most one of each kind, the most pressing first. Three notes a reader
+ * will act on beat a list of every threshold crossed.
+ */
+export function buildTeamNotes(args: {
+  today: Date;
+  rows: TeamRow[];
+  projects: TeamProject[];
+}): TeamNote[] {
+  const notes: TeamNote[] = [];
+
+  const quietest = args.rows
+    .filter((row) => row.quiet && !row.member.isSelf)
+    .sort(
+      (a, b) =>
+        (b.lastFinishedDays ?? Number.MAX_SAFE_INTEGER) - (a.lastFinishedDays ?? Number.MAX_SAFE_INTEGER) ||
+        b.open - a.open,
+    )[0];
+  if (quietest) {
+    notes.push({
+      id: "quiet",
+      tone: "error",
+      memberId: quietest.member.id,
+      name: displayName(quietest.member),
+      days: quietest.lastFinishedDays,
+      open: quietest.open,
+    });
+  }
+
+  const heaviest = args.rows
+    .filter((row) => row.heavy && row.member.id !== quietest?.member.id)
+    .sort((a, b) => b.open - a.open)[0];
+  if (heaviest) {
+    notes.push({
+      id: "heavy",
+      tone: "warning",
+      memberId: heaviest.member.id,
+      name: displayName(heaviest.member),
+      open: heaviest.open,
+      median: median(args.rows.map((row) => row.open)),
+    });
+  }
+
+  const stalest = args.projects
+    .filter((p) => p.open > 0 && p.lastTouchedAt)
+    .map((p) => ({ project: p, quietDays: daysBetween(new Date(p.lastTouchedAt!), args.today) }))
+    .filter((p) => p.quietDays >= STALE_DAYS)
+    .sort((a, b) => b.quietDays - a.quietDays)[0];
+  if (stalest) {
+    notes.push({
+      id: "stale",
+      tone: "info",
+      projectId: stalest.project.projectId,
+      projectTitle: stalest.project.projectTitle,
+      quietDays: stalest.quietDays,
+      open: stalest.project.open,
+      people: stalest.project.people,
+    });
+  }
+
+  return notes;
 }

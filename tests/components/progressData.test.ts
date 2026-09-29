@@ -6,17 +6,24 @@ import {
   buildGrid,
   buildLog,
   buildSuggestions,
+  buildTeamNotes,
+  buildTeamRows,
   countByDay,
   daysBetween,
   formatTook,
   heatLevel,
   initialsOf,
+  mergeCounts,
   normaliseEntries,
   projectTone,
+  sortTeamRows,
   summarise,
+  summariseTeam,
+  teamHeatLevel,
   toYmd,
   windowLength,
   type RecordEntry,
+  type TeamMemberPayload,
 } from "~/components/progress/progressModel";
 
 /** Tuesday 25 August 2026 — the day the redesign is drawn against. */
@@ -262,23 +269,26 @@ describe("buildBoard", () => {
     { id: "me", name: "Teodora B.", email: null, image: null, completed: 3, isSelf: true },
   ];
 
-  it("scales the bars against the leader", () => {
+  it("measures everyone as a share of the leader", () => {
     const board = buildBoard(people);
-    expect(board[0]!.barHeight).toBe(150);
-    expect(board[1]!.barHeight).toBe(Math.round((96 / 132) * 150));
+    expect(board[0]!.share).toBe(1);
+    expect(board[1]!.share).toBeCloseTo(96 / 132, 5);
   });
 
   it("keeps the reader on the board even outside the top five", () => {
     const board = buildBoard(people);
     expect(board).toHaveLength(5);
     expect(board.at(-1)!.id).toBe("me");
+    // Shown in fifth place, but ranked where they actually stand.
+    expect(board.at(-1)!.rank).toBe(6);
   });
 
   it("survives a board where nobody has finished anything", () => {
     const board = buildBoard([
       { id: "me", name: "Teodora B.", email: null, image: null, completed: 0, isSelf: true },
     ]);
-    expect(board[0]!.barHeight).toBeGreaterThan(0);
+    expect(board[0]!.share).toBe(0);
+    expect(board[0]!.rank).toBe(1);
   });
 });
 
@@ -312,3 +322,111 @@ describe("small helpers", () => {
 });
 
 const WINDOWS = ["week", "month", "all"] as const;
+
+describe("the team view", () => {
+  const member = (id: string, extra: Partial<TeamMemberPayload> = {}): TeamMemberPayload => ({
+    id,
+    name: `${id[0]!.toUpperCase()}${id.slice(1)} Test`,
+    email: null,
+    image: null,
+    role: "member",
+    displayRole: null,
+    isSelf: false,
+    open: 2,
+    overdue: 0,
+    lastFinishedAt: null,
+    workload: [],
+    ...extra,
+  });
+  const done = (userId: string, offset: number) => ({ userId, finishedAt: day(offset) });
+
+  const members = [
+    member("maya", { isSelf: true, open: 3, lastFinishedAt: day(0) }),
+    member("petar", { open: 20, lastFinishedAt: day(1) }),
+    member("nikol", { open: 4, lastFinishedAt: day(9) }),
+    member("elena", { open: 0, lastFinishedAt: null }),
+  ];
+  const completions = [
+    done("maya", 0),
+    done("maya", 1),
+    done("maya", 2),
+    done("petar", 1),
+    done("petar", 1),
+    done("nikol", 9),
+    // Outside every window but "all" — and a member no longer on the team.
+    done("maya", 60),
+    done("gone", 0),
+  ];
+  const rows = buildTeamRows({ today: TODAY, members, completions, window: "month" });
+  const byId = (id: string) => rows.find((row) => row.member.id === id)!;
+
+  it("counts each member's finishes inside the window", () => {
+    expect(byId("maya").finished).toBe(3);
+    expect(byId("petar").finished).toBe(2);
+    expect(byId("nikol").finished).toBe(1);
+    expect(byId("elena").finished).toBe(0);
+  });
+
+  it("ignores completions by people who are not on the team", () => {
+    expect(rows).toHaveLength(4);
+    expect(mergeCounts(rows.map((row) => row.counts)).get(toYmd(day(0)))).toBe(1);
+  });
+
+  it("draws a thirty-day strip ending today", () => {
+    const strip = byId("petar").strip;
+    expect(strip).toHaveLength(30);
+    expect(strip.at(-1)).toBe(0);
+    expect(strip.at(-2)).toBe(2);
+  });
+
+  it("flags quiet only when work is still open", () => {
+    expect(byId("nikol").quiet).toBe(true);
+    // Never finished anything, but nothing is open either: done, not quiet.
+    expect(byId("elena").quiet).toBe(false);
+    expect(byId("maya").quiet).toBe(false);
+  });
+
+  it("flags a load that is heavy for this team, not by a fixed number", () => {
+    expect(byId("petar").heavy).toBe(true);
+    expect(byId("nikol").heavy).toBe(false);
+  });
+
+  it("sorts by the column asked for, quietest first for quiet", () => {
+    expect(sortTeamRows(rows, "finished").map((r) => r.member.id)[0]).toBe("maya");
+    expect(sortTeamRows(rows, "open").map((r) => r.member.id)[0]).toBe("petar");
+    // Never finished sorts as the quietest of all.
+    expect(sortTeamRows(rows, "quiet").map((r) => r.member.id).slice(0, 2)).toEqual(["elena", "nikol"]);
+  });
+
+  it("summarises the team", () => {
+    const summary = summariseTeam(rows, "month");
+    expect(summary.finished).toBe(6);
+    expect(summary.members).toBe(4);
+    expect(summary.activeThisWeek).toBe(2);
+    expect(summary.medianFinished).toBe(1.5);
+    expect(summary.attention).toBe(2);
+  });
+
+  it("writes at most one note of each kind, and never about the reader", () => {
+    const notes = buildTeamNotes({
+      today: TODAY,
+      rows,
+      projects: [
+        { projectId: 7, projectTitle: "Thesis", open: 5, people: 2, lastTouchedAt: day(12) },
+        { projectId: 8, projectTitle: "Kairos", open: 5, people: 2, lastTouchedAt: day(20) },
+      ],
+    });
+    expect(notes.map((n) => n.id)).toEqual(["quiet", "heavy", "stale"]);
+    expect(notes[0]!.id === "quiet" && notes[0]!.memberId).toBe("nikol");
+    expect(notes[1]!.id === "heavy" && notes[1]!.memberId).toBe("petar");
+    expect(notes[2]!.id === "stale" && notes[2]!.projectTitle).toBe("Kairos");
+  });
+
+  it("grades a team day per head", () => {
+    expect(teamHeatLevel(0, 6)).toBe(0);
+    expect(teamHeatLevel(3, 6)).toBe(1);
+    expect(teamHeatLevel(6, 6)).toBe(2);
+    expect(teamHeatLevel(12, 6)).toBe(3);
+    expect(teamHeatLevel(13, 6)).toBe(4);
+  });
+});

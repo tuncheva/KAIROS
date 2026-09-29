@@ -2,19 +2,23 @@
 
 import { useState } from "react";
 import { cn } from "~/lib/utils";
-import { HEAT_LEGEND, fromYmd, heatClass, type GridWeek } from "./progressModel";
+import { HEAT_LEGEND, heatClass, type GridWeek } from "./progressModel";
 
-/** Cell edge and the gap between cells, in pixels — as in the redesign. */
-const CELL = 14;
-const GAP = 4;
+/** Cell edge and gap, in pixels, per size. `sm` is the member drawer's strip. */
+const SIZES = {
+  lg: { cell: 20, gap: 5, radius: "rounded-[4px]" },
+  sm: { cell: 13, gap: 3, radius: "rounded-[3px]" },
+} as const;
 /** Width of the weekday gutter, when it is shown. */
 const GUTTER = 30;
 
 type Props = {
   weeks: GridWeek[];
-  selectedYmd: string | null;
-  onSelect: (ymd: string | null) => void;
-  /** Mon/Wed/Fri gutter — the wide layout has room for it, the profile does not. */
+  size?: keyof typeof SIZES;
+  selectedYmd?: string | null;
+  /** Omitted, the grid is a picture: no buttons, no caption, nothing to tab to. */
+  onSelect?: (ymd: string) => void;
+  /** Mon/Wed/Fri gutter — the page has room for it, the drawer does not. */
   showWeekdays?: boolean;
   weekdayLabels?: { monday: string; wednesday: string; friday: string };
   formatMonth: (date: Date) => string;
@@ -25,13 +29,13 @@ type Props = {
     /** Shown until the reader points at a day. */
     hint: string;
     dayCount: (day: string, count: number) => string;
-    daySelected: (day: string) => string;
   };
 };
 
 export function ProgressGrid({
   weeks,
-  selectedYmd,
+  size = "lg",
+  selectedYmd = null,
   onSelect,
   showWeekdays = false,
   weekdayLabels,
@@ -40,10 +44,12 @@ export function ProgressGrid({
   labels,
 }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const { cell, gap, radius } = SIZES[size];
+  const interactive = !!onSelect;
 
   const gutter = showWeekdays && weekdayLabels ? GUTTER : 0;
   // Rows are Monday-first; only every other one is named, so the gutter
-  // stays readable at a 14px row height.
+  // stays readable at this row height.
   const rowNames = weekdayLabels
     ? [weekdayLabels.monday, "", weekdayLabels.wednesday, "", weekdayLabels.friday, "", ""]
     : [];
@@ -54,43 +60,38 @@ export function ProgressGrid({
 
   const caption = hoveredDay
     ? labels.dayCount(formatDay(hoveredDay.date), hoveredDay.count)
-    : selectedYmd
-      ? labels.daySelected(formatDay(fromYmd(selectedYmd) ?? new Date()))
-      : labels.hint;
+    : labels.hint;
 
   return (
-    <div className="flex flex-col gap-2.5">
-      <div
-        className="overflow-x-auto"
-        onMouseLeave={() => setHovered(null)}
-      >
+    <div className="flex flex-col gap-3">
+      <div className="overflow-x-auto" onMouseLeave={() => setHovered(null)}>
         <div className="flex w-max flex-col gap-2.5">
-          {/* Month ticks. Each column is CELL wide plus its gap, so a label
+          {/* Month ticks. Each column is a cell wide plus its gap, so a label
               placed on a column lines up with the week it names. */}
-          <div className="flex" style={{ gap: GAP, paddingLeft: gutter }}>
+          <div className="flex" style={{ gap, paddingLeft: gutter ? gutter + gap : 0 }}>
             {weeks.map((week) => (
               <span
                 key={week.key}
-                className="whitespace-nowrap text-[10px] tabular-nums text-fg-tertiary"
-                style={{ width: CELL }}
+                className="text-tui-ink3 text-[10.5px] whitespace-nowrap tabular-nums"
+                style={{ width: cell }}
               >
                 {week.monthLabel ? formatMonth(week.monthLabel) : ""}
               </span>
             ))}
           </div>
 
-          <div className="flex" style={{ gap: GAP }}>
+          <div className="flex" style={{ gap }}>
             {gutter > 0 && (
               <div
                 className="flex shrink-0 flex-col"
-                style={{ width: gutter, gap: GAP }}
+                style={{ width: gutter, gap }}
                 aria-hidden="true"
               >
                 {Array.from({ length: 7 }, (_, row) => (
                   <span
                     key={row}
-                    className="flex items-center text-[9px] text-fg-quaternary"
-                    style={{ height: CELL }}
+                    className="text-tui-ink3 flex items-center text-[10px]"
+                    style={{ height: cell }}
                   >
                     {rowNames[row] ?? ""}
                   </span>
@@ -99,43 +100,57 @@ export function ProgressGrid({
             )}
 
             {weeks.map((week) => (
-              <div key={week.key} className="flex flex-col" style={{ gap: GAP }}>
+              <div key={week.key} className="flex flex-col" style={{ gap }}>
                 {week.days.map((day) => {
                   if (day.isFuture) {
                     return (
                       <span
                         key={day.ymd}
                         className="block"
-                        style={{ width: CELL, height: CELL }}
+                        style={{ width: cell, height: cell }}
                         aria-hidden="true"
                       />
                     );
                   }
 
-                  const selected = day.ymd === selectedYmd;
+                  const selected = interactive && day.ymd === selectedYmd;
+                  const tone = cn(
+                    radius,
+                    heatClass(day.level),
+                    day.inWindow ? "opacity-100" : "opacity-[0.32]",
+                    selected
+                      ? "ring-tui-accent ring-offset-tui-pane ring-[1.5px] ring-offset-[1.5px]"
+                      : day.isToday && "ring-tui-ink/50 ring-1 ring-inset",
+                  );
 
+                  if (!interactive) {
+                    return (
+                      <span
+                        key={day.ymd}
+                        className={cn("block", tone)}
+                        style={{ width: cell, height: cell }}
+                        title={labels.dayCount(formatDay(day.date), day.count)}
+                      />
+                    );
+                  }
+
+                  const label = labels.dayCount(formatDay(day.date), day.count);
                   return (
                     <button
                       key={day.ymd}
                       type="button"
-                      onClick={() => onSelect(selected ? null : day.ymd)}
+                      onClick={() => onSelect(day.ymd)}
                       onMouseEnter={() => setHovered(day.ymd)}
                       onFocus={() => setHovered(day.ymd)}
-                      title={labels.dayCount(formatDay(day.date), day.count)}
-                      aria-label={labels.dayCount(formatDay(day.date), day.count)}
+                      title={label}
+                      aria-label={label}
                       aria-pressed={selected}
                       className={cn(
-                        "rounded-sm border transition-transform duration-200",
-                        "hover:scale-[1.35] focus-visible:scale-[1.35] focus-visible:outline-none",
-                        heatClass(day.level),
-                        selected
-                          ? "border-accent-primary"
-                          : day.isToday
-                            ? "border-fg-primary/40"
-                            : "border-transparent",
-                        day.inWindow ? "opacity-100" : "opacity-[0.34]",
+                        tone,
+                        "transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                        "hover:scale-[1.3] focus-visible:scale-[1.3] focus-visible:outline-none",
                       )}
-                      style={{ width: CELL, height: CELL }}
+                      style={{ width: cell, height: cell }}
                     />
                   );
                 })}
@@ -145,20 +160,22 @@ export function ProgressGrid({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-[11px] tabular-nums text-fg-tertiary">{caption}</span>
-        <span className="flex-1" />
-        <span className="flex items-center gap-1.5">
-          <span className="text-[10px] text-fg-quaternary">{labels.less}</span>
-          {HEAT_LEGEND.map((level) => (
-            <span
-              key={level}
-              className={cn("h-[11px] w-[11px] rounded-sm", heatClass(level))}
-            />
-          ))}
-          <span className="text-[10px] text-fg-quaternary">{labels.more}</span>
-        </span>
-      </div>
+      {interactive && (
+        <span className="text-tui-ink3 text-[12px] tabular-nums">{caption}</span>
+      )}
     </div>
+  );
+}
+
+/** Less ▢▢▢▢ More — lives in the section head, apart from the grid itself. */
+export function HeatLegend({ less, more }: { less: string; more: string }) {
+  return (
+    <span className="text-tui-ink3 flex items-center gap-[5px] text-[11px]">
+      {less}
+      {HEAT_LEGEND.map((level) => (
+        <span key={level} className={cn("h-2.5 w-2.5 rounded-[2px]", heatClass(level))} />
+      ))}
+      {more}
+    </span>
   );
 }
