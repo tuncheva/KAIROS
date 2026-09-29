@@ -55,6 +55,8 @@ import {
 } from "~/components/publish/publishUi";
 import { EditEventForm } from "./EditEventForm";
 import { EventDiscussion } from "./EventDiscussion";
+import { EventMap } from "./EventMap";
+import { googleMapsSearchUrl } from "~/lib/eventLocation";
 
 const ALLOWED_IMAGE_HOSTS = ["utfs.io", "lh3.googleusercontent.com"];
 
@@ -135,6 +137,11 @@ export function EventPage({ eventId }: { eventId: number }) {
 
   const { event, comments } = data;
   const past = isEventPast(event);
+  // Every region is a Bulgarian town; naming the country stops "Ruse" or "Pleven"
+  // matching somewhere else when the host left the address blank.
+  const mapQuery = [event.venue, event.address, regionLabel(event.region), "Bulgaria"]
+    .filter(Boolean)
+    .join(", ");
   const left =
     event.capacity === null
       ? null
@@ -597,12 +604,17 @@ export function EventPage({ eventId }: { eventId: number }) {
               {event.address && (
                 <p className="text-xs text-fg-tertiary">{event.address}</p>
               )}
+              <EventMap
+                point={
+                  event.latitude !== null && event.longitude !== null
+                    ? { lat: event.latitude, lng: event.longitude }
+                    : null
+                }
+                region={event.region}
+                label={mapQuery}
+              />
               <a
-                href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(
-                  [event.venue, event.address, regionLabel(event.region)]
-                    .filter(Boolean)
-                    .join(", "),
-                )}`}
+                href={googleMapsSearchUrl(mapQuery)}
                 target="_blank"
                 rel="noreferrer noopener"
                 className="mt-1 text-xs font-semibold text-accent-primary hover:text-accent-hover"

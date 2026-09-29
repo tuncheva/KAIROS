@@ -295,6 +295,13 @@
       "when": 1788939180000,
       "tag": "0049_embedding_halfvec_2048",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1790676680141,
+      "tag": "0050_event_coordinates",
+      "breakpoints": true
     }
   ]
 }

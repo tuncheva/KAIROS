@@ -33,7 +33,7 @@
  *
  * Verified with zero violations: the marketing page, the sign-in modal, and
  * `/verify-email`. **Not** verified, because signing in was not possible during
- * that pass: the Google Maps region picker, UploadThing image uploads, and the
+ * that pass: UploadThing image uploads and the
  * authenticated socket connection. Those hosts are in the allowlist below and
  * `strict-dynamic` covers scripts they inject at runtime, but if any of them turns
  * out to be blocked, set `CSP_REPORT_ONLY=1`, collect the violation, and add the
@@ -59,6 +59,13 @@ const ALLOWLIST = {
    * party no longer needs to be reachable (and no longer sees invite links).
    */
   images: ["https://lh3.googleusercontent.com"],
+  /**
+   * The event-page map is an OpenStreetMap embed iframe, so OSM needs a frame
+   * and nothing else — its tiles and scripts belong to the frame's document, not
+   * ours. Scoped to the one embed page. Must match `OSM_EMBED_URL` in
+   * `~/lib/eventLocation`.
+   */
+  frames: ["https://www.openstreetmap.org/export/embed.html"],
 } as const;
 
 /**
@@ -131,7 +138,7 @@ export function contentSecurityPolicy(nonce: string): string {
     "default-src": ["'self'"],
 
     // `strict-dynamic` lets a nonce-approved script load further scripts, which
-    // is how the Maps SDK bootstraps itself. Browsers that honour it ignore the
+    // is how a third-party SDK bootstraps itself. Browsers that honour it ignore the
     // host allowlist; the hosts stay for those that don't.
     "script-src": [
       "'self'",
@@ -171,7 +178,7 @@ export function contentSecurityPolicy(nonce: string): string {
       ...(isDev ? ["ws://localhost:*", "http://localhost:*"] : []),
     ],
 
-    "frame-src": ["'self'"],
+    "frame-src": ["'self'", ...ALLOWLIST.frames],
 
     "worker-src": ["'self'", "blob:"],
 

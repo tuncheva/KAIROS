@@ -29,6 +29,16 @@ export const events = createTable(
     /** The building. `region` says which town; this says where in it. */
     venue: d.varchar("venue", { length: 160 }),
     address: d.varchar("address", { length: 255 }),
+    /**
+     * Where the venue is, geocoded once from `venue` and `address` when the event
+     * is written (OpenStreetMap Nominatim — see `~/server/geo/geocode`).
+     *
+     * Null means "no pin": no venue was given, or the geocoder did not find it.
+     * The page then centres the map on the town instead, which `region` always
+     * provides.
+     */
+    latitude: d.doublePrecision("latitude"),
+    longitude: d.doublePrecision("longitude"),
     /** Null means unlimited, which is every event that predates the column. */
     capacity: d.integer("capacity"),
     topic: eventTopicEnum("topic"),

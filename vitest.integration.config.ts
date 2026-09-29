@@ -17,6 +17,8 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["./tests/integration/**/*.test.ts"],
+    // Redirects the global `db` into the harness's scratch schema.
+    setupFiles: ["./tests/integration/setup.ts"],
     testTimeout: 60_000,
     hookTimeout: 180_000,
     // One worker: every file provisions a schema, and running them in parallel

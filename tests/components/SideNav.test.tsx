@@ -277,7 +277,7 @@ describe("SideNav", () => {
     window.addEventListener("kairos:openPalette", handler);
 
     const { container } = render(<SideNav />);
-    const aside = container.querySelector('aside[aria-label="Primary"]')!;
+    const aside = container.querySelector<HTMLElement>('aside[aria-label="Primary"]')!;
     await user.click(within(aside).getByRole("button", { name: "Search" }));
     expect(handler).toHaveBeenCalledTimes(1);
 

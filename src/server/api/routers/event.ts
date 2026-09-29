@@ -21,6 +21,7 @@ import {
 } from "~/server/ws/emit";
 import { notify, notifyMany } from "~/server/notifications/dispatch";
 import { eventSubscribers } from "~/server/notifications/audience";
+import { geocodePlace } from "~/server/geo/geocode";
 
 /**
  * How an RSVP reads to the person who owns the event.
@@ -308,6 +309,15 @@ export const eventRouter = createTRPCRouter({
         });
       }
 
+      // Before the insert rather than after it, so the page the host lands on
+      // already has its map. Bounded by the geocoder's own timeout, and a miss
+      // only costs the pin — see `~/server/geo/geocode`.
+      const point = await geocodePlace({
+        venue: fields.venue,
+        address: fields.address,
+        region: fields.region,
+      });
+
       const newEvent: NewEvent = {
         title: fields.title,
         description: fields.description,
@@ -316,6 +326,8 @@ export const eventRouter = createTRPCRouter({
         region: fields.region,
         venue: fields.venue ?? null,
         address: fields.address ?? null,
+        latitude: point?.lat ?? null,
+        longitude: point?.lng ?? null,
         capacity: fields.capacity ?? null,
         topic: fields.topic ?? null,
         coverTheme: fields.coverTheme ?? null,
@@ -1169,6 +1181,8 @@ export const eventRouter = createTRPCRouter({
           title: events.title,
           eventDate: events.eventDate,
           region: events.region,
+          venue: events.venue,
+          address: events.address,
           isCoHost: sql<boolean>`EXISTS(SELECT 1 FROM ${eventCoHosts} WHERE ${eventCoHosts.eventId} = ${events.id} AND ${eventCoHosts.userId} = ${ctx.session.user.id})`,
         })
         .from(events)
@@ -1221,6 +1235,23 @@ export const eventRouter = createTRPCRouter({
             .values(wanted.map((userId) => ({ eventId, userId })))
             .onConflictDoNothing();
         }
+      }
+
+      /* The pin follows the place. Re-geocoded only when what it was computed
+         from actually changed, because every call spends Nominatim's goodwill. */
+      const place = {
+        venue: updates.venue !== undefined ? updates.venue : event.venue,
+        address: updates.address !== undefined ? updates.address : event.address,
+        region: updates.region ?? event.region,
+      };
+      if (
+        place.venue !== event.venue ||
+        place.address !== event.address ||
+        place.region !== event.region
+      ) {
+        const point = await geocodePlace(place);
+        updateFields.latitude = point?.lat ?? null;
+        updateFields.longitude = point?.lng ?? null;
       }
 
       if (Object.keys(updateFields).length === 0) {
@@ -1304,6 +1335,8 @@ export const eventRouter = createTRPCRouter({
           region: events.region,
           venue: events.venue,
           address: events.address,
+          latitude: events.latitude,
+          longitude: events.longitude,
           capacity: events.capacity,
           topic: events.topic,
           coverTheme: events.coverTheme,
@@ -1403,6 +1436,8 @@ export const eventRouter = createTRPCRouter({
           region: row.region,
           venue: row.venue,
           address: row.address,
+          latitude: row.latitude,
+          longitude: row.longitude,
           capacity: row.capacity,
           topic: row.topic,
           coverTheme: row.coverTheme,

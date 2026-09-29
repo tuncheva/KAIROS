@@ -1,0 +1,151 @@
+# CI for every push to `development`, and for every PR into `development` or `main`.
+#
+# Four jobs run in parallel so a failure names its cause at a glance:
+#
+#   checks       lint, typecheck, theme tokens, migration journal
+#   unit         the default vitest suite (jsdom)
+#   integration  real tRPC procedures against a throwaway Postgres with pgvector
+#   build        `next build`, which catches what tsc does not (RSC boundaries,
+#                route config, missing modules in the server bundle)
+#
+# Nothing here needs a secret. The app's env schema is skipped where no real
+# environment is needed, and the integration job gets dummy values plus its own
+# database — it never touches the hosted Supabase instance. Tests that call a real
+# model (orgAdminAgent, pdfTaskExtraction, *.live.test.ts) skip themselves without
+# an LLM key, which keeps CI inside the free-tier budget.
+
+name: CI
+
+on:
+  push:
+    branches: [development]
+  pull_request:
+    branches: [development, main]
+  workflow_dispatch:
+
+# A newer push to the same branch makes the older run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22
+  SKIP_ENV_VALIDATION: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  checks:
+    name: Lint, types & repo checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # version comes from `packageManager`
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Theme tokens
+        run: pnpm check:theme
+      # The script repairs a non-monotonic tail in place. In CI a repair means the
+      # committed journal would be silently skipped by `drizzle-kit migrate`, so a
+      # diff afterwards is a failure, not a fix.
+      - name: Migration journal
+        run: |
+          pnpm exec tsx scripts/fix-migration-journal.ts
+          git diff --exit-code -- src/server/db/migrations
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # One retry: a few component tests assert relative timestamps ("Active 20m
+      # ago") that drift under heavy parallel load. Vitest still reports a test
+      # that needed the retry, so a flake stays visible without failing the run.
+      - name: Vitest
+        run: pnpm test --retry=1
+
+  integration:
+    name: Integration tests (Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        # pgvector ships `vector` and `halfvec`, which migrations 0044 and 0049 need.
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: kairos_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/kairos_test
+      # Dummies that satisfy the env schema's 32-character floor.
+      AUTH_SECRET: ci-auth-secret-not-used-for-anything-real
+      WS_SECRET: ci-ws-secret-not-used-for-anything-real-00
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Called directly rather than through `pnpm test:integration`, which loads
+      # `.env` — a file that does not exist on the runner.
+      - name: Vitest (integration)
+        run: pnpm exec vitest run --config vitest.integration.config.ts
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Modules that open a client at import time still read these while Next
+    # collects page data. Nothing connects during the build.
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/unused
+      AUTH_SECRET: ci-auth-secret-not-used-for-anything-real
+      WS_SECRET: ci-ws-secret-not-used-for-anything-real-00
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('src/**') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+
+      - name: next build
+        run: pnpm build
