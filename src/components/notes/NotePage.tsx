@@ -43,6 +43,7 @@ import {
 } from "~/components/ui/icons";
 
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from "./Menu";
+import { toNotePassword } from "~/lib/notePassword";
 import { LockGate } from "./LockGate";
 import { useAutosave, type SaveStatus } from "./useAutosave";
 import {
@@ -242,7 +243,7 @@ export function NotePage({
   // ── the note is named but not here yet ─────────────────────────────
   if (!note && !isDraft && isLoading) {
     return (
-      <div className="flex h-full flex-col bg-bg-primary" aria-busy="true">
+      <div className="flex h-full flex-col" aria-busy="true">
         <div className="min-h-[48px] flex-none border-b border-border-light/60 px-4 py-2">
           <div className="kairos-shimmer h-3 w-24 rounded-sm" />
         </div>
@@ -268,7 +269,7 @@ export function NotePage({
   // ── nothing selected ───────────────────────────────────────────────
   if (!note && !isDraft) {
     return (
-      <div className="hidden h-full place-items-center bg-bg-primary p-6 text-center md:grid">
+      <div className="hidden h-full place-items-center p-6 text-center md:grid">
         <div className="max-w-[280px]">
           <div className="notes-disc-in mx-auto mb-4 grid h-[54px] w-[54px] place-items-center rounded-full border border-accent-primary/30 text-accent-primary">
             <FileText size={22} />
@@ -302,7 +303,7 @@ export function NotePage({
   const calendarDate = isDraft ? draftCalendarDate : (note?.calendarDate ?? null);
 
   return (
-    <div className="flex h-full flex-col bg-bg-primary">
+    <div className="flex h-full flex-col">
       <header className="flex min-h-[56px] flex-none items-center gap-2 border-b border-border-light px-3 py-2 md:px-6">
         <button
           type="button"
@@ -571,8 +572,9 @@ export function NotePage({
               <input
                 id="note-password"
                 type="password"
+                inputMode="numeric"
                 value={draftPassword}
-                onChange={(event) => setDraftPassword(event.target.value)}
+                onChange={(event) => setDraftPassword(toNotePassword(event.target.value))}
                 placeholder={t("create.passwordPlaceholder")}
                 autoComplete="new-password"
                 className={STRIP_INPUT}

@@ -562,7 +562,9 @@
    ones apply under next-themes' `.dark`. See docs/theme.md and the Kairos Notes
    2a design. */
 .notes-quiet {
-  --bg-primary: 247 246 243;
+  /* The ground is the dashboard's, so moving between the two doesn't shift the
+     page; the workspace also wears its `.tui-screen` hatch (NotesWorkspace). */
+  --bg-primary: var(--tui-bg);
   --bg-secondary: 255 255 255;
   --bg-tertiary: 238 237 233;
   --bg-elevated: 255 255 255;
@@ -596,7 +598,7 @@
 
 .dark .notes-quiet,
 .notes-quiet.dark {
-  --bg-primary: 12 12 13;
+  --bg-primary: var(--tui-bg);
   --bg-secondary: 20 20 22;
   --bg-tertiary: 29 29 32;
   --bg-elevated: 20 20 22;

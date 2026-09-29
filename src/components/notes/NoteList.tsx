@@ -174,7 +174,7 @@ export function NoteList({
   let rowIndex = 0;
 
   return (
-    <div className="flex h-full flex-col bg-bg-primary md:border-r md:border-border-light/60">
+    <div className="flex h-full flex-col md:border-r md:border-border-light/60">
       <div className="flex flex-none items-center gap-2 px-3.5 pt-4 pb-2.5">
         <button
           type="button"

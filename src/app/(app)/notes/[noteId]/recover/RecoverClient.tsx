@@ -28,6 +28,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
+import { toNotePassword } from "~/lib/notePassword";
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, KeyRound, Loader2 } from "~/components/ui/icons";
 import Link from "next/link";
 
@@ -166,8 +167,9 @@ export function RecoverClient({ noteId }: { noteId: string }) {
                 <input
                   id="new-password"
                   type={showPassword ? "text" : "password"}
+                  inputMode="numeric"
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(e) => setNewPassword(toNotePassword(e.target.value))}
                   placeholder={t("newPasswordPlaceholder")}
                   autoComplete="new-password"
                   className={FIELD_INPUT}
@@ -192,8 +194,9 @@ export function RecoverClient({ noteId }: { noteId: string }) {
                 <input
                   id="confirm-password"
                   type={showConfirmPassword ? "text" : "password"}
+                  inputMode="numeric"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => setConfirmPassword(toNotePassword(e.target.value))}
                   placeholder={t("confirmPasswordPlaceholder")}
                   autoComplete="new-password"
                   className={FIELD_INPUT}

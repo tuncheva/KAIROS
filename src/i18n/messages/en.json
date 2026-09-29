@@ -219,7 +219,7 @@
     "create": {
       "titlePlaceholder": "Title (optional)",
       "contentPlaceholder": "Write your note...",
-      "passwordPlaceholder": "Encrypt with password"
+      "passwordPlaceholder": "Encrypt with a numeric password"
     },
     "actions": {
       "delete": "Delete",
@@ -298,6 +298,13 @@
       "removeAccess": "Remove access for {name}",
       "fromOwner": "From {owner}"
     },
+    "dialog": {
+      "encryption": "Encryption",
+      "recovery": "Recovery",
+      "notebook": "Notebook",
+      "sharing": "Sharing",
+      "permanent": "Permanent"
+    },
     "password": {
       "enterPassword": "Enter password",
       "resetPassword": "Reset Password",
@@ -313,6 +320,7 @@
       "resetPin": "Reset PIN",
       "newPassword": "New Password",
       "confirmPassword": "Confirm Password",
+      "digitsOnly": "Numbers only",
       "gateTitle": "This note is encrypted",
       "gateSubtitle": "Last edited {edited}. The text is decrypted on the server only after your password checks out.",
       "forgot": "Forgot it?",
@@ -408,12 +416,12 @@
       "successTitle": "Password reset",
       "successBody": "Your note password has been updated. You can open the note with the new password.",
       "redirecting": "Taking you back to the note…",
-      "newPasswordPlaceholder": "Enter new password",
+      "newPasswordPlaceholder": "Enter new password (numbers only)",
       "confirmPasswordPlaceholder": "Confirm new password",
       "pinPlaceholder": "Enter your secret reset PIN",
       "pinHelp": "This is the PIN you set in Security settings to reset locked note passwords.",
       "tipLabel": "Tip:",
-      "tipBody": "Choose a strong password you will remember — you need it every time you open this note.",
+      "tipBody": "Choose a long number you will remember — you need it every time you open this note.",
       "submit": "Reset password",
       "submitting": "Resetting…",
       "show": "Show password",

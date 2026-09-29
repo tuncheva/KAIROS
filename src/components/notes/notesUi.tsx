@@ -93,7 +93,7 @@ export const FIELD_LABEL =
 export const POPOVER_SURFACE =
   "rounded-xl border border-border-medium bg-bg-elevated shadow-xl";
 export const DIALOG_SURFACE =
-  "overflow-hidden rounded-2xl border border-border-medium bg-bg-elevated shadow-2xl";
+  "overflow-hidden rounded-xl border border-border-light bg-bg-elevated shadow-[0_32px_90px_-24px_rgba(0,0,0,0.55)]";
 
 export function initialOf(user: Pick<NoteUser, "name" | "email"> | null | undefined): string {
   const source = user?.name ?? user?.email ?? "";

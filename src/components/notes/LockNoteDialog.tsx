@@ -18,19 +18,22 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { KeyRound, Loader2, Lock } from "~/components/ui/icons";
+import { KeyRound, Loader2 } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 
 import {
+  DIALOG_INPUT,
+  DIALOG_PRIMARY,
+  DIALOG_QUIET,
   DialogBlock,
   DialogError,
   DialogField,
   DialogPasswordField,
   NotesDialog,
 } from "./notesDialog";
-import { Badge, BTN_ACCENT, BTN_GHOST, FIELD_INPUT } from "./notesUi";
+import { Badge } from "./notesUi";
 
 export function LockNoteDialog({
   noteId,
@@ -114,7 +117,7 @@ export function LockNoteDialog({
 
   return (
     <NotesDialog
-      icon={<Lock size={15} />}
+      eyebrow={t("dialog.encryption")}
       title={t("password.protect")}
       subtitle={t("password.protectDesc")}
       onClose={onClose}
@@ -137,11 +140,11 @@ export function LockNoteDialog({
       }
       actions={({ close }) => (
         <>
-          <button type="button" onClick={close} className={BTN_GHOST}>
+          <button type="button" onClick={close} className={DIALOG_QUIET}>
             {t("common.cancel")}
           </button>
-          <button type="submit" disabled={isPending || !pinKnown} className={BTN_ACCENT}>
-            {isPending ? <Loader2 size={13} className="animate-spin" /> : <Lock size={13} />}
+          <button type="submit" disabled={isPending || !pinKnown} className={DIALOG_PRIMARY}>
+            {isPending && <Loader2 size={14} className="animate-spin" />}
             {isPending ? t("common.working") : t("actions.lock")}
           </button>
         </>
@@ -150,18 +153,21 @@ export function LockNoteDialog({
       <DialogPasswordField
         id="notes-lock-password"
         label={t("password.newPassword")}
+        hint={t("password.digitsOnly")}
         value={password}
         onChange={(next) => {
           setPassword(next);
           setError(null);
         }}
         inputRef={passwordRef}
+        numeric
       />
       <DialogPasswordField
         id="notes-lock-confirm"
         label={t("password.confirmPassword")}
         value={confirmPassword}
         onChange={setConfirmPassword}
+        numeric
       />
 
       {pinKnown && !hasResetPin ? (
@@ -178,7 +184,7 @@ export function LockNoteDialog({
                 setError(null);
               }}
               autoComplete="off"
-              className={FIELD_INPUT}
+              className={DIALOG_INPUT}
             />
           </DialogField>
           <DialogField id="notes-lock-pin-confirm" label={t("password.pinConfirmLabel")}>
@@ -189,7 +195,7 @@ export function LockNoteDialog({
               value={confirmPin}
               onChange={(event) => setConfirmPin(event.target.value)}
               autoComplete="off"
-              className={FIELD_INPUT}
+              className={DIALOG_INPUT}
             />
           </DialogField>
         </DialogBlock>

@@ -15,13 +15,19 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2, LockOpen, ShieldOff } from "~/components/ui/icons";
+import { Loader2 } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 
-import { DialogBlock, DialogError, DialogPasswordField, NotesDialog } from "./notesDialog";
-import { BTN_DANGER, BTN_GHOST } from "./notesUi";
+import {
+  DIALOG_DANGER,
+  DIALOG_QUIET,
+  DialogBlock,
+  DialogError,
+  DialogPasswordField,
+  NotesDialog,
+} from "./notesDialog";
 
 export function RemoveLockDialog({
   noteId,
@@ -67,8 +73,7 @@ export function RemoveLockDialog({
 
   return (
     <NotesDialog
-      icon={<LockOpen size={15} />}
-      tone="error"
+      eyebrow={t("dialog.encryption")}
       title={t("password.remove")}
       subtitle={t("password.removeDesc")}
       onClose={onClose}
@@ -76,15 +81,11 @@ export function RemoveLockDialog({
       initialFocusRef={passwordRef}
       actions={({ close }) => (
         <>
-          <button type="button" onClick={close} className={BTN_GHOST}>
+          <button type="button" onClick={close} className={DIALOG_QUIET}>
             {t("common.cancel")}
           </button>
-          <button type="submit" disabled={removePassword.isPending} className={BTN_DANGER}>
-            {removePassword.isPending ? (
-              <Loader2 size={13} className="animate-spin" />
-            ) : (
-              <ShieldOff size={13} />
-            )}
+          <button type="submit" disabled={removePassword.isPending} className={DIALOG_DANGER}>
+            {removePassword.isPending && <Loader2 size={14} className="animate-spin" />}
             {removePassword.isPending ? t("common.working") : t("password.remove")}
           </button>
         </>

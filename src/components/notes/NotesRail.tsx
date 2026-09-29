@@ -98,7 +98,7 @@ export function NotesRail({
   ];
 
   return (
-    <div className="flex h-full flex-col border-r border-border-light/60 bg-bg-primary">
+    <div className="flex h-full flex-col border-r border-border-light/60">
       <div className="flex flex-none items-center gap-2 px-4 pt-4 pb-3">
         <h1 className="flex-1 text-[15px] font-bold tracking-[-0.012em] text-fg-primary">
           {t("title")}

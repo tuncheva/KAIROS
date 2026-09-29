@@ -13,8 +13,12 @@ import {
 } from "~/server/security/authRateLimit";
 import { getClientIp } from "~/server/http/clientIp";
 import { createLogger } from "~/server/logger";
+import { NOTE_PASSWORD_MESSAGE, NOTE_PASSWORD_PATTERN } from "~/lib/notePassword";
 
 const log = createLogger("note");
+
+/** A password being *set* on a note. Checking one stays a plain string — see `~/lib/notePassword`. */
+const newNotePassword = z.string().regex(NOTE_PASSWORD_PATTERN, NOTE_PASSWORD_MESSAGE);
 
 function generatePublicId(): string {
   return crypto.randomBytes(9).toString("base64url");
@@ -56,7 +60,7 @@ export const noteRouter = createTRPCRouter({
     .input(z.object({
       content: z.string().min(1),
       title: z.string().optional(),
-      password: z.string().optional(),
+      password: newNotePassword.or(z.literal("")).optional(),
       notebookId: z.number().optional(),
       calendarDate: z.date().optional(),
     }))
@@ -608,7 +612,7 @@ export const noteRouter = createTRPCRouter({
   setPassword: protectedProcedure
     .input(z.object({
       noteId: z.number(),
-      password: z.string().min(1),
+      password: newNotePassword,
     }))
     .mutation(async ({ ctx, input }) => {
       const note = await ctx.db.query.stickyNotes.findFirst({
@@ -781,7 +785,7 @@ export const noteRouter = createTRPCRouter({
     .input(
       z.object({
         noteId: z.number(),
-        newPassword: z.string().min(1),
+        newPassword: newNotePassword,
         resetPin: z.string().regex(/^\d{4,}$/ , "PIN must be at least 4 digits"),
       })
     )
