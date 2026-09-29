@@ -461,9 +461,9 @@ export function SignInModal({
   /* ─── Shared bits ─── */
   const eyebrowClass = "font-mono text-[11px] uppercase tracking-[0.2em] text-accent-primary";
   const primaryBtnClass =
-    "k-btn flex items-center justify-center gap-2.5 rounded-xl bg-accent-primary px-7 py-4 text-base font-bold text-white disabled:cursor-not-allowed disabled:opacity-40";
+    "k-btn flex items-center justify-center gap-2.5 rounded-xl bg-accent-primary px-7 py-4 text-base font-bold text-bg-primary disabled:cursor-not-allowed disabled:opacity-40";
   const backLinkClass =
-    "k-auth-lnk flex items-center gap-1.5 self-start text-sm text-white/55";
+    "k-auth-lnk flex items-center gap-1.5 self-start text-sm text-fg-primary/55";
 
   const passwordEye = (shown: boolean, toggle: () => void) => (
     <button className="k-auth-eye" type="button" onClick={toggle} tabIndex={-1} aria-label={t("signIn.passwordLabel")}>
@@ -551,7 +551,7 @@ export function SignInModal({
         <button
           type="button"
           onClick={() => goTo("forgotPassword")}
-          className="k-auth-lnk whitespace-nowrap text-sm text-white/55"
+          className="k-auth-lnk whitespace-nowrap text-sm text-fg-primary/55"
         >
           {t("signIn.forgotPassword")}
         </button>
@@ -561,7 +561,7 @@ export function SignInModal({
         type="button"
         onClick={() => void handleGoogleSignIn()}
         disabled={isLoading}
-        className="k-ghost flex w-full items-center justify-center gap-2.5 rounded-xl border border-white/[0.14] bg-transparent px-4 py-3.5 text-[15px] font-semibold text-white/85 disabled:cursor-not-allowed disabled:opacity-50"
+        className="k-ghost flex w-full items-center justify-center gap-2.5 rounded-xl border border-fg-primary/[0.14] bg-transparent px-4 py-3.5 text-[15px] font-semibold text-fg-primary/85 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <svg className="k-brand-mark" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -625,7 +625,7 @@ export function SignInModal({
       </button>
 
       {/* Consent stays an explicit opt-in — the button is gated on it. */}
-      <label className="group flex cursor-pointer items-start gap-2.5 text-[13px] leading-relaxed text-white/50">
+      <label className="group flex cursor-pointer items-start gap-2.5 text-[13px] leading-relaxed text-fg-primary/50">
         <input
           type="checkbox"
           checked={agreeTerms}
@@ -637,10 +637,10 @@ export function SignInModal({
           className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm border transition-colors duration-200 ${
             agreeTerms
               ? "border-accent-primary bg-accent-primary"
-              : "border-white/20 group-hover:border-white/40"
+              : "border-fg-primary/20 group-hover:border-fg-primary/40"
           }`}
         >
-          {agreeTerms && <Check size={11} strokeWidth={3} className="text-white" />}
+          {agreeTerms && <Check size={11} strokeWidth={3} className="text-bg-primary" />}
         </span>
         <span>
           {t("signUp.agreeTerms")}{" "}
@@ -698,13 +698,13 @@ export function SignInModal({
       </div>
 
       {challenge ? (
-        <p role="status" className="flex items-center gap-2 text-sm text-white/55">
+        <p role="status" className="flex items-center gap-2 text-sm text-fg-primary/55">
           <span className="h-2 w-2 animate-pulse rounded-full bg-accent-primary" aria-hidden="true" />
           {t("twoFactor.waitingForLink")}
         </p>
       ) : null}
 
-      <p className="font-mono text-[11px] tracking-[0.12em] text-white/45">{t("twoFactor.expiry")}</p>
+      <p className="font-mono text-[11px] tracking-[0.12em] text-fg-primary/45">{t("twoFactor.expiry")}</p>
 
       <div className="flex items-center gap-4">
         <button
@@ -751,7 +751,7 @@ export function SignInModal({
         ))}
       </div>
 
-      <p className="font-mono text-[11px] tracking-[0.12em] text-white/45">{t("resetCode.expiry")}</p>
+      <p className="font-mono text-[11px] tracking-[0.12em] text-fg-primary/45">{t("resetCode.expiry")}</p>
 
       <div className="flex items-center gap-4">
         <button
@@ -827,7 +827,7 @@ export function SignInModal({
 
   const renderVerifyEmailSent = () => (
     <div className="k-auth-body mt-9 flex flex-col items-start gap-6">
-      <p className="max-w-[380px] text-[15px] leading-relaxed text-white/55">{t("verifyEmail.body")}</p>
+      <p className="max-w-[380px] text-[15px] leading-relaxed text-fg-primary/55">{t("verifyEmail.body")}</p>
 
       {resendVerificationMutation.isSuccess ? (
         <p className="text-sm text-accent-primary">{t("verifyEmail.resent")}</p>
@@ -878,7 +878,7 @@ export function SignInModal({
   const { step, title, sub } = copy[view];
 
   return (
-    <div className="dark fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+    <div className="dark k-landing fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
 
       <div
@@ -886,14 +886,14 @@ export function SignInModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="kairos-auth-title"
-        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl grid-rows-[minmax(0,1fr)] overflow-hidden rounded-xl border border-white/10 bg-bg-overlay lg:grid-cols-2"
+        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl grid-rows-[minmax(0,1fr)] overflow-hidden rounded-xl border border-fg-primary/10 bg-bg-elevated lg:grid-cols-2"
       >
         {/* The row is `minmax(0,1fr)` so it is held to the shell's 94dvh cap.
             An auto row grew to the form's height instead, the shell clipped
             it, and on a short phone the sign-up fields below the fold could
             not be scrolled to. */}
         {/* ─── Left: brand panel (hidden on narrow screens) ─── */}
-        <div className="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.08] bg-bg-secondary p-11 lg:flex">
+        <div className="relative hidden flex-col justify-between overflow-hidden border-r border-fg-primary/[0.08] bg-bg-primary p-11 lg:flex">
           <div
             aria-hidden="true"
             className="k-drift-slow pointer-events-none absolute -bottom-[180px] -left-[120px] h-[620px] w-[620px] rounded-full blur-[90px]"
@@ -913,15 +913,15 @@ export function SignInModal({
             >
               <Image src="/logo_white.png" alt="Kairos" width={18} height={18} className="h-[18px] w-[18px] object-contain" priority />
             </div>
-            <span className="font-display text-2xl text-white">Kairos</span>
+            <span className="font-display text-2xl text-fg-primary">Kairos</span>
           </div>
 
           <div className="relative">
-            <p className="font-display text-[52px] font-normal leading-[1.12] tracking-[-0.01em] text-white">
+            <p className="font-display text-[52px] font-normal leading-[1.12] tracking-[-0.01em] text-fg-primary">
               {t("brand.taglineLead")}{" "}
               <em className="italic text-accent-primary">{t("brand.taglineAccent")}</em>
             </p>
-            <p className="mt-[22px] max-w-[340px] text-base leading-[1.7] text-white/65">
+            <p className="mt-[22px] max-w-[340px] text-base leading-[1.7] text-fg-primary/65">
               {t("brand.blurb")}
             </p>
           </div>
@@ -933,10 +933,10 @@ export function SignInModal({
               { n: "1", label: t("brand.statOnePlace"), accent: true },
             ].map((s) => (
               <div key={s.label}>
-                <div className={`font-display text-[38px] leading-none ${s.accent ? "text-accent-primary" : "text-white"}`}>
+                <div className={`font-display text-[38px] leading-none ${s.accent ? "text-accent-primary" : "text-fg-primary"}`}>
                   {s.n}
                 </div>
-                <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-white/50">
+                <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-fg-primary/50">
                   {s.label}
                 </div>
               </div>
@@ -958,11 +958,11 @@ export function SignInModal({
           <div className={eyebrowClass}>{step}</div>
           <h2
             id="kairos-auth-title"
-            className="mt-4 font-display text-[38px] font-normal leading-[1.06] tracking-[-0.01em] text-white sm:text-[46px]"
+            className="mt-4 font-display text-[38px] font-normal leading-[1.06] tracking-[-0.01em] text-fg-primary sm:text-[46px]"
           >
             {title}
           </h2>
-          <p className="mt-3 max-w-[380px] text-base leading-[1.65] text-white/60">{sub}</p>
+          <p className="mt-3 max-w-[380px] text-base leading-[1.65] text-fg-primary/60">{sub}</p>
 
           {/* An expired session used to end at NextAuth's own unstyled sign-in
               page, or — from `notes` — at the marketing page with no message at
@@ -981,7 +981,7 @@ export function SignInModal({
             <div
               data-auth-pos={shownTab}
               onMouseLeave={() => setHoveredTab(null)}
-              className="relative mt-7 flex max-w-[300px] border-b border-white/10"
+              className="relative mt-7 flex max-w-[300px] border-b border-fg-primary/10"
             >
               <button
                 type="button"

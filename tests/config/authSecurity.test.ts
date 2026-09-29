@@ -55,10 +55,37 @@ describe("Auth Config — Account Linking", () => {
     expect(configSource).toContain("resetPinHash: null");
   });
 
-  it("only claims an unverified account when the provider verifies the email", () => {
+  /**
+   * Into any existing row, verified or not: a verified row is the one somebody
+   * owns, and an Entra work tenant can put any address on a token.
+   */
+  it("refuses to link an identity whose provider did not verify the address", () => {
     expect(configSource).toMatch(
-      /if \(!providerVerifiesEmail\) \{[\s\S]*?return false;/,
+      /if \(!linkedAlready && existingByEmail && !emailProven\) \{[\s\S]*?return false;/,
     );
+  });
+
+  it("only trusts Entra addresses from personal accounts or xms_edov", () => {
+    expect(configSource).toContain("9188040d-6c67-4c5b-b112-36a304b66dad");
+    expect(configSource).toContain("claims.xms_edov === true");
+  });
+
+  it("drops provider identities already on a row it claims", () => {
+    expect(configSource).toContain(
+      "db.delete(accounts).where(eq(accounts.userId, existingByEmail.id))",
+    );
+  });
+
+  it("does not trip the email unique constraint on a first OAuth link", () => {
+    expect(configSource).not.toContain("onConflictDoNothing({ target: users.id })");
+  });
+
+  it("registers Microsoft only when its keys are set", () => {
+    expect(configSource).toMatch(/\.\.\.\(isMicrosoftSignInEnabled\s*\?/);
+  });
+
+  it("keeps the Graph photo out of the JWT", () => {
+    expect(configSource).toMatch(/profile\(profile\) \{[\s\S]*?image: null/);
   });
 
   it("sends sign-in failures to a real page instead of the built-in error code", () => {

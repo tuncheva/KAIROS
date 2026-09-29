@@ -2953,7 +2953,8 @@ summary,
    utilities (`text-fg-tertiary`, `border-fg-primary/6`) rather than the
    design file's hexes. Doubled up with `.dark` so it outranks both the
    `.dark` block and the `[data-accent] .dark` companions above. The sign-in
-   modal carries its own `.dark` and so keeps the app palette.
+   modal carries its own `.dark`, which would reset it to the app palette, so
+   it carries `.k-landing` too.
 
    Hero entrance is CSS keyed off `.k-on`, which HomeClient adds once the
    intro curtain clears. Scroll reveals are GSAP (`data-reveal`,
@@ -3290,8 +3291,9 @@ html[data-kairos-intro="seen"] .k-intro {
    Auth split panel (sign in / sign up modal)
 
    Shares the landing page's `k-` vocabulary: underline-only fields,
-   an animated tab dot and per-child stagger on view switches. Accent
-   is always `--accent-primary`, so the panel follows `data-accent`.
+   an animated tab dot and per-child stagger on view switches. Ink and
+   accent are `--fg-primary` / `--accent-primary`, which the modal's
+   `.k-landing` scope pins to the landing's palette.
    ───────────────────────────────────────────────────────────── */
 
 @keyframes k-auth-in {
@@ -3384,23 +3386,23 @@ html[data-kairos-intro="seen"] .k-intro {
   box-sizing: border-box;
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+  border-bottom: 1px solid rgb(var(--fg-primary) / 0.14);
   border-radius: 0;
   padding: 13px 0;
-  color: #fff;
+  color: rgb(var(--fg-primary));
   font-family: inherit;
   font-size: 16px;
   outline: none;
   transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .k-auth-fld::placeholder {
-  color: rgb(255 255 255 / 0.3);
+  color: rgb(var(--fg-primary) / 0.3);
 }
 .k-auth-fld:focus {
   border-bottom-color: rgb(var(--accent-primary));
 }
 .k-auth-fld:focus::placeholder {
-  color: rgb(255 255 255 / 0.18);
+  color: rgb(var(--fg-primary) / 0.18);
 }
 .k-auth-fld:disabled {
   opacity: 0.5;
@@ -3412,7 +3414,7 @@ html[data-kairos-intro="seen"] .k-intro {
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+  border-bottom: 1px solid rgb(var(--fg-primary) / 0.14);
   transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .k-auth-fld-row:focus-within {
@@ -3428,11 +3430,11 @@ html[data-kairos-intro="seen"] .k-intro {
   box-sizing: border-box;
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+  border-bottom: 1px solid rgb(var(--fg-primary) / 0.14);
   border-radius: 0;
   padding: 10px 0;
   text-align: center;
-  color: #fff;
+  color: rgb(var(--fg-primary));
   font-family: inherit;
   font-size: 22px;
   font-weight: 600;
@@ -3448,11 +3450,11 @@ html[data-kairos-intro="seen"] .k-intro {
   border: none;
   padding: 0;
   cursor: pointer;
-  color: rgb(255 255 255 / 0.35);
+  color: rgb(var(--fg-primary) / 0.35);
   transition: color 0.25s;
 }
 .k-auth-eye:hover {
-  color: #fff;
+  color: rgb(var(--fg-primary));
 }
 
 .k-auth-lnk {
@@ -3464,7 +3466,7 @@ html[data-kairos-intro="seen"] .k-intro {
   transition: color 0.25s;
 }
 .k-auth-lnk:hover {
-  color: #fff;
+  color: rgb(var(--fg-primary));
 }
 .k-auth-lnk:disabled {
   opacity: 0.5;
@@ -3480,12 +3482,12 @@ html[data-kairos-intro="seen"] .k-intro {
   font-family: var(--font-display), Georgia, serif;
   font-size: 22px;
   line-height: 1;
-  color: rgb(255 255 255 / 0.42);
+  color: rgb(var(--fg-primary) / 0.42);
   cursor: pointer;
   transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .k-auth-tab[data-on="true"] {
-  color: #fff;
+  color: rgb(var(--fg-primary));
 }
 
 .k-auth-rail {

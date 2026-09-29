@@ -105,7 +105,6 @@ describe("SignInModal", () => {
     render(<SignInModal {...defaultProps} />);
     expect(screen.getByText("Google")).toBeInTheDocument();
   });
-
   it("renders with kairos design system classes", () => {
     render(<SignInModal {...defaultProps} />);
     const modal = document.querySelector(".k-auth-shell");
