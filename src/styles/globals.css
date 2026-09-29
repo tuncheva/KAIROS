@@ -2364,26 +2364,154 @@ summary,
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Landing page (pinned-editorial redesign)
+   Landing page (calm editorial redesign)
 
-   Hover/continuous motion lives here as CSS; scroll-driven reveals
-   are GSAP + ScrollTrigger in `src/components/homepage/`. Accent is
-   always `--accent-primary` so the page follows `data-accent`.
+   `.k-landing` sits on the landing's <main> beside `.dark` and narrows the
+   dark palette to the landing's warmer one — off-white ink, near-black
+   canvas, a muted lavender accent — so the sections use plain token
+   utilities (`text-fg-tertiary`, `border-fg-primary/6`) rather than the
+   design file's hexes. Doubled up with `.dark` so it outranks both the
+   `.dark` block and the `[data-accent] .dark` companions above. The sign-in
+   modal carries its own `.dark` and so keeps the app palette.
+
+   Hero entrance is CSS keyed off `.k-on`, which HomeClient adds once the
+   intro curtain clears. Scroll reveals are GSAP (`data-reveal`,
+   `data-reveal-rule`) in `src/components/homepage/useLandingReveals.ts`.
    ───────────────────────────────────────────────────────────── */
 
-@keyframes k-marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+.dark.k-landing {
+  --bg-primary: 12 12 14;
+  --bg-elevated: 17 17 20;
+  --bg-surface: 22 22 26;
+  --fg-primary: 237 235 230;
+  --fg-secondary: 201 199 193;
+  --fg-tertiary: 169 167 161;
+  --fg-quaternary: 140 138 132;
+  --accent-primary: 168 150 216;
+  --accent-secondary: 200 188 232;
+  /* Two more steps than the token set has: the faintest ink (footer stamps,
+     placeholders) and the "assistant online" dot. */
+  --k-ink-faint: 111 109 104;
+  --k-live: 146 184 156;
 }
 
-/* Two identical halves, so landing on -50% puts the seam back at the start. */
-.k-marquee-track {
-  display: flex;
-  width: max-content;
-  animation: k-marquee 30s linear infinite;
+.k-ink-faint { color: rgb(var(--k-ink-faint)); }
+.k-live-dot { background: rgb(var(--k-live)); }
+
+/* Sample-person avatars: four near-neutrals, each leaning a different way. */
+.k-avatar-1 { background: rgb(42 40 51); }
+.k-avatar-2 { background: rgb(51 48 42); }
+.k-avatar-3 { background: rgb(40 49 44); }
+.k-avatar-4 { background: rgb(43 47 53); }
+
+/* The raised sheet every section's illustration sits on. */
+.k-sheet {
+  overflow: hidden;
+  background: rgb(var(--bg-elevated));
+  border: 1px solid rgb(var(--fg-primary) / 0.09);
+  border-radius: var(--radius-xl);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 40px 90px -50px rgb(0 0 0 / 0.9);
+}
+.k-sheet-lg {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 60px 120px -50px rgb(0 0 0 / 0.9);
+}
+
+/* List rows that ease right under the cursor. */
+.k-item {
+  transition: background-color 0.4s ease,
+    padding-left 0.45s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+.k-item:hover {
+  background-color: rgb(var(--fg-primary) / 0.035);
+  padding-left: 26px;
+}
+
+/* Landing pill buttons lift and glow; the arrow travels. Separate from
+   `.k-btn`, which the sign-in modal shares and which deliberately does not. */
+.k-lift {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.25, 1),
+    box-shadow 0.35s;
+}
+.k-lift svg { transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.25, 1); }
+.k-lift:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -12px rgb(var(--accent-primary) / 0.5);
+}
+.k-lift:hover:not(:disabled) svg { transform: translateX(4px); }
+
+/* A headline line's mask. The inner `.k-in-line` slides up through it. */
+.k-mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+.k-in-line { display: block; }
+
+@keyframes k-in-down {
+  from { opacity: 0; transform: translateY(-14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes k-in-line {
+  from { transform: translateY(108%); }
+  to { transform: none; }
+}
+@keyframes k-in-up {
+  from { opacity: 0; transform: translateY(24px); filter: blur(8px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes k-in-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes k-in-panel {
+  from { opacity: 0; transform: translateY(60px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes k-ring {
+  0% { box-shadow: 0 0 0 0 rgb(var(--accent-primary) / 0.5); }
+  70% { box-shadow: 0 0 0 12px rgb(var(--accent-primary) / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(var(--accent-primary) / 0); }
+}
+@keyframes k-breathe {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+@keyframes k-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+@keyframes k-collapse {
+  to { opacity: 0; height: 0; margin: 0; padding: 0; }
+}
+
+/* Everything that moves is inside this query, so under reduced motion the
+   page is simply there: no hidden pre-state, no typing dots, no pulse. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Pre-state while the intro curtain is still up. */
+  .k-landing:not(.k-on) :is(.k-in-down, .k-in-up, .k-in-fade, .k-in-panel, .k-typing) {
+    opacity: 0;
+  }
+  .k-landing:not(.k-on) .k-in-line { transform: translateY(108%); }
+
+  .k-on .k-in-down { animation: k-in-down 0.9s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
+  .k-on .k-in-line { animation: k-in-line 1.2s cubic-bezier(0.19, 1, 0.22, 1) both; }
+  .k-on .k-in-up { animation: k-in-up 1s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
+  .k-on .k-in-fade { animation: k-in-fade 1.2s ease-out both; }
+  .k-on .k-in-panel { animation: k-in-panel 1.4s cubic-bezier(0.19, 1, 0.22, 1) both; }
+  .k-on .k-ring { animation: k-ring 2.4s ease-out 4.6s infinite; }
+  .k-on .k-breathe { animation: k-breathe 2.8s ease-in-out infinite; }
+  /* The dots arrive with the request and fold away as the reply lands. */
+  .k-on .k-typing {
+    animation: k-in-fade 0.3s ease 2.2s backwards,
+      k-collapse 0.3s ease 2.95s forwards;
+  }
+  .k-on .k-typing span { animation: k-dot 1s ease-in-out infinite; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .k-marquee-track { animation: none; }
+  .k-typing { display: none; }
 }
 
 @keyframes k-drift {
@@ -2393,6 +2521,7 @@ summary,
 
 .k-drift-slow { animation: k-drift 16s ease-in-out infinite; }
 .k-drift-slower { animation: k-drift 22s ease-in-out infinite; }
+
 
 /* Pill buttons. No white: the solid button warms to the lighter accent, the
    ghost picks up an accent border and a faint accent wash. No fill wipe, no
@@ -2440,101 +2569,6 @@ summary,
 }
 .k-nav:hover { color: #fff; }
 .k-nav:hover::after { transform: scaleX(1); transform-origin: left center; }
-
-/* "Why teams stay" rows — the row slides right as the arrow arrives */
-.k-row { transition: background-color 0.4s, padding-left 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-.k-row:hover { background: rgb(var(--accent-primary) / 0.05); padding-left: 28px; }
-.k-row:hover .k-arrow { transform: translateX(0); opacity: 1; }
-.k-arrow {
-  transform: translateX(-10px);
-  opacity: 0;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s;
-}
-
-/* Striped stand-in for product screenshots */
-.k-ph {
-  background-image: repeating-linear-gradient(
-    115deg,
-    rgb(255 255 255 / 0.045) 0 8px,
-    transparent 8px 18px
-  );
-}
-
-/* ─── Editorial blocks (workspaces + how it works) ─── */
-
-/* A block whose accent panel wipes up from the bottom edge on hover. Content
-   is lifted above the wipe; the arrow sits above both. */
-.k-block {
-  position: relative;
-  overflow: hidden;
-  transition: background-color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.k-block > * { position: relative; z-index: 1; }
-.k-block::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background: rgb(var(--accent-primary) / 0.2);
-  border-top: 1px solid rgb(var(--accent-primary) / 0.45);
-  transform: translateY(101%);
-  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.k-block:hover::before { transform: translateY(0); }
-.k-block:hover { transform: translateY(-6px); }
-
-/* The arrow shares the card's top-right slot with the tag rather than being
-   absolutely positioned over it — the two cross-fade on hover, so they can
-   never overlap. */
-.k-card-arrow {
-  color: rgb(var(--accent-secondary));
-  opacity: 0;
-  transform: translate(-8px, 8px);
-  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s;
-}
-.k-block:hover .k-card-arrow { transform: translate(0, 0); opacity: 1; }
-
-.k-block .k-card-num,
-.k-block .k-step-num {
-  transition: color 0.8s, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.k-block .k-card-tag { transition: opacity 0.5s; }
-.k-block .k-card-body,
-.k-block .k-step-body { transition: color 0.8s; }
-.k-block:hover .k-card-num,
-.k-block:hover .k-step-num {
-  color: rgb(var(--accent-secondary) / 0.85);
-  transform: translateY(-4px);
-}
-.k-block:hover .k-card-tag { opacity: 0; }
-.k-block:hover .k-card-body,
-.k-block:hover .k-step-body { color: rgb(255 255 255 / 0.82); }
-
-/* Workspace cards — resting colours; everything that lifts them is hover-only
-   (see .k-block above), so nothing stays highlighted once the cursor leaves. */
-.k-card {
-  background: #0c0c12;
-  color: #fff;
-}
-
-.k-card .k-card-num { color: rgb(255 255 255 / 0.3); }
-.k-card .k-card-tag { color: rgb(255 255 255 / 0.35); }
-.k-card .k-card-body { color: rgb(168 168 182); }
-
-/* Read-progress rail on the bottom edge of the sticky header */
-.k-prog {
-  position: absolute;
-  inset: auto 0 -2px;
-  height: 2px;
-  background: rgb(255 255 255 / 0.08);
-}
-.k-prog > i {
-  display: block;
-  height: 100%;
-  width: 0%;
-  background: rgb(var(--accent-primary));
-}
 
 /* ─── Intro curtain (wordmark on first load) ─── */
 

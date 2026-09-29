@@ -1,93 +1,74 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowRight } from "~/components/ui/icons";
-import { gsap } from "gsap";
-import { prefersReducedMotion } from "~/components/homepage/useLandingReveals";
+import { HeroAgentPanel } from "~/components/homepage/HeroAgentPanel";
 
 /**
+ * Editorial split: headline and CTAs on the left, a replay of the assistant
+ * drafting a plan on the right.
+ *
+ * All entrance motion is CSS keyed off `.k-on` on the page root (see the
+ * landing block in `globals.css`), which `HomeClient` adds when the intro
+ * curtain clears — so every `animation-delay` below counts from the moment the
+ * page is actually visible, not from first paint under the curtain.
+ *
  * Each headline line lives in its own `overflow:hidden` mask and must stay a
  * single visual line — the reveal slides the whole mask as one block, so a
  * wrapped translation would show two lines sliding together. If a locale
  * overflows, drop the size for that locale rather than letting the mask wrap.
  */
-export function Hero({ onSignIn, ready }: { onSignIn: () => void; ready: boolean }) {
+export function Hero({ onSignIn }: { onSignIn: () => void }) {
     const t = useTranslations("home");
-    const rootRef = useRef<HTMLElement>(null);
-
-    useEffect(() => {
-        const root = rootRef.current;
-        if (!root || !ready) return;
-
-        const lines = root.querySelectorAll<HTMLElement>("[data-hero-line] > span");
-        const ups = root.querySelectorAll<HTMLElement>("[data-hero-up]");
-
-        if (prefersReducedMotion()) {
-            gsap.set(lines, { y: 0 });
-            gsap.set(ups, { opacity: 1, y: 0, filter: "none" });
-            return;
-        }
-
-        const ctx = gsap.context(() => {
-            gsap.to(lines, { y: "0%", duration: 1.15, ease: "power3.out" });
-            gsap.to(ups, {
-                opacity: 1,
-                y: 0,
-                filter: "blur(0px)",
-                duration: 1.1,
-                ease: "power3.out",
-                stagger: 0.12,
-                delay: 0.15,
-            });
-        }, root);
-
-        return () => ctx.revert();
-    }, [ready]);
 
     return (
-        <section
-            ref={rootRef}
-            className="relative mx-auto flex w-full max-w-[1280px] flex-col justify-center px-6 pt-[120px] pb-[90px] lg:min-h-[720px] lg:px-12"
-        >
-            <h1 className="max-w-[1174px] font-display text-[clamp(3rem,9.4vw,8rem)] leading-[0.92] font-normal tracking-[-0.02em] text-fg-primary">
-                <span data-hero-line className="block overflow-hidden">
-                    <span className="block translate-y-[110%]">{t("heroLine1")}</span>
+        <section className="mx-auto grid w-full max-w-[1440px] grid-cols-1 items-center gap-y-16 px-6 pt-16 sm:pt-24 lg:grid-cols-12 lg:gap-x-6 lg:px-20 lg:pt-28">
+            <div className="flex flex-col lg:col-span-7">
+                <span className="k-in-fade flex items-center gap-3 font-mono text-[11px] tracking-[0.24em] text-fg-quaternary uppercase [animation-delay:0.3s]">
+                    <span className="k-breathe h-1.5 w-1.5 rounded-full bg-accent-primary" aria-hidden="true" />
+                    {t("heroEyebrow")}
                 </span>
-                <span data-hero-line className="block overflow-hidden">
-                    <span className="block translate-y-[110%]">{t("heroLine2")}</span>
-                </span>
-                <span data-hero-line className="block overflow-hidden">
-                    <span className="block translate-y-[110%] italic text-accent-primary">{t("heroLine3")}</span>
-                </span>
-            </h1>
 
-            <p
-                data-hero-up
-                className="mt-9 max-w-[520px] translate-y-11 text-[19px] leading-[1.65] text-[rgb(178,178,190)] opacity-0 blur-[8px]"
-            >
-                {t("heroSubline")}
-            </p>
+                <h1 className="mt-8 font-display text-[clamp(3.25rem,7.2vw,6.5rem)] leading-[0.98] font-normal tracking-[-0.025em] text-fg-primary">
+                    <span data-hero-line className="k-mask">
+                        <span className="k-in-line [animation-delay:0.45s]">{t("heroLine1")}</span>
+                    </span>
+                    <span data-hero-line className="k-mask">
+                        <span className="k-in-line [animation-delay:0.58s]">
+                            {t("heroLine2")}{" "}
+                            <span className="text-accent-primary italic">{t("heroLine2Accent")}</span>
+                        </span>
+                    </span>
+                    <span data-hero-line className="k-mask">
+                        <span className="k-in-line text-accent-primary italic [animation-delay:0.71s]">
+                            {t("heroLine3")}
+                        </span>
+                    </span>
+                </h1>
 
-            <div
-                data-hero-up
-                className="mt-10 flex translate-y-11 flex-col items-stretch gap-4 opacity-0 blur-[8px] sm:flex-row sm:items-center"
-            >
-                <button
-                    type="button"
-                    onClick={onSignIn}
-                    className="k-btn inline-flex items-center justify-center gap-2.5 rounded-full bg-accent-primary px-8 py-[17px] text-base font-bold text-white"
-                >
-                    {t("heroPrimaryCta")}
-                    <ArrowRight size={18} />
-                </button>
-                <a
-                    href="#product"
-                    className="k-ghost inline-flex items-center justify-center rounded-full border border-white/[0.16] px-[30px] py-[17px] text-base font-semibold text-[rgb(210,210,220)]"
-                >
-                    {t("heroSecondaryCta")}
-                </a>
+                <p className="k-in-up mt-9 max-w-[520px] text-lg leading-[1.7] font-light text-fg-tertiary [animation-delay:1.05s]">
+                    {t("heroSubline")}
+                </p>
+
+                <div className="k-in-up mt-11 flex flex-col items-start gap-6 [animation-delay:1.2s] sm:flex-row sm:items-center sm:gap-7">
+                    <button
+                        type="button"
+                        onClick={onSignIn}
+                        className="k-lift flex h-[54px] items-center gap-2.5 rounded-full bg-accent-primary px-[30px] text-[15px] font-semibold text-bg-primary"
+                    >
+                        {t("heroPrimaryCta")}
+                        <ArrowRight size={16} strokeWidth={2} />
+                    </button>
+                    <a
+                        href="#join"
+                        className="border-b border-fg-primary/30 pb-[3px] text-[15px] text-fg-primary transition-colors hover:border-accent-primary hover:text-accent-primary"
+                    >
+                        {t("heroAccessCode")}
+                    </a>
+                </div>
             </div>
+
+            <HeroAgentPanel />
         </section>
     );
 }

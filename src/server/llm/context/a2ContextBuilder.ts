@@ -5,6 +5,7 @@ import { projects, tasks, projectCollaborators, users } from "~/server/db/schema
 import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import { loadVisibleScope, visibleProjectsWhere } from "~/server/llm/tools/a1/scope";
+import { loadAssigneeWorkload, type AssigneeWorkload } from "~/server/llm/context/assigneeWorkload";
 
 export interface A2ContextPack {
   session: {
@@ -37,6 +38,11 @@ export interface A2ContextPack {
     orderIndex: number;
     dueDate: Date | null;
   }>;
+  /**
+   * Each candidate assignee's load across *all* their projects, lightest first.
+   * What A2 reads before choosing who to assign; see `assigneeWorkload.ts`.
+   */
+  assigneeWorkload?: AssigneeWorkload[];
   handoffContext?: Record<string, unknown>;
   /**
    * The user's saved interface language.
@@ -113,6 +119,13 @@ export async function buildA2Context(input: {
         .orderBy(tasks.projectId, desc(tasks.createdAt))
         .limit(200) : [];
 
+      const candidates = new Map<string, { id: string; name: string | null }>();
+      for (const p of allProjects) for (const c of p.collaborators) candidates.set(c.id, c);
+      const assigneeWorkload = await loadAssigneeWorkload(input.ctx, {
+        candidates: [...candidates.values()],
+        visibleTitleById: new Map(allProjectRows.map((p) => [p.id, p.title])),
+      });
+
       return {
         session: { userId, activeOrganizationId },
         scope,
@@ -120,6 +133,7 @@ export async function buildA2Context(input: {
         existingTasks: crossTasks,
         crossProject: true,
         allProjects,
+        assigneeWorkload,
         handoffContext: input.handoffContext,
         locale,
         memory,
@@ -219,11 +233,25 @@ export async function buildA2Context(input: {
     deduped.set(u.id, u);
   }
 
+  // Visible projects are the only ones a candidate's other work may be named
+  // from; everything else collapses to a count inside the workload loader.
+  const visibleScope = await loadVisibleScope(input.ctx, userId);
+  const visibleProjects = await input.ctx.db
+    .select({ id: projects.id, title: projects.title })
+    .from(projects)
+    .where(visibleProjectsWhere(visibleScope));
+  const assigneeWorkload = await loadAssigneeWorkload(input.ctx, {
+    candidates: [...deduped.values()],
+    currentProjectId: project.id,
+    visibleTitleById: new Map(visibleProjects.map((p) => [p.id, p.title])),
+  });
+
   return {
     session: { userId, activeOrganizationId },
     scope,
     project,
     collaborators: [...deduped.values()],
+    assigneeWorkload,
     existingTasks,
     handoffContext: input.handoffContext,
     locale,
