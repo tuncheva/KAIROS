@@ -15,9 +15,10 @@ gsap.registerPlugin(ScrollToPlugin);
  * every `href="#…"` on the page — nav, hero CTA, footer columns — behaves the
  * same way without each component knowing about it.
  *
- * The landing target is offset by the sticky header's real measured height, so
- * a section heading is never left tucked underneath it. Under reduced motion
- * the same offset is applied, just without the travel.
+ * When the header is pinned (sticky or fixed) the landing target is offset by
+ * its real measured height, so a section heading is never left tucked
+ * underneath it; a header that scrolls away with the page adds nothing. Under
+ * reduced motion the same offset is applied, just without the travel.
  */
 export function useSmoothAnchors(rootRef: RefObject<HTMLElement | null>): void {
     useEffect(() => {
@@ -52,7 +53,9 @@ export function useSmoothAnchors(rootRef: RefObject<HTMLElement | null>): void {
             event.preventDefault();
 
             const header = root.querySelector("header");
-            const offsetY = (header?.getBoundingClientRect().height ?? 0) + 24;
+            const pinned =
+                header !== null && ["sticky", "fixed"].includes(getComputedStyle(header).position);
+            const offsetY = (pinned ? header.getBoundingClientRect().height : 0) + 24;
 
             if (prefersReducedMotion()) {
                 const top = section.getBoundingClientRect().top + window.scrollY - offsetY;
