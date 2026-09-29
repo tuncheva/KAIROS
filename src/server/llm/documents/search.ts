@@ -8,9 +8,10 @@
  * is why full text was a defensible first step rather than a shortcut to regret.
  *
  * What full text costs, stated plainly so nobody has to discover it: it matches
- * words. "How do I cancel" will not find "termination clause". Users will phrase
- * questions in their own words and get nothing, and the honest mitigation until
- * vectors land is to say so in the UI rather than to let it look broken.
+ * words. "How do I cancel" will not find "termination clause". With an embedding
+ * provider configured (`LLM_EMBEDDING_MODEL`), a vector arm runs alongside and
+ * the two rankings are fused; without one, search is keyword-only and the tool
+ * description tells the model so.
  *
  * Scope is the other half. A chunk is visible if the caller owns the document, or
  * if the document is attached to a project the caller can see — the same
@@ -36,6 +37,7 @@ import {
   isEmbeddingConfigured,
   serializeEmbedding,
 } from "~/server/llm/core/embeddings";
+import { fuseRankings } from "~/server/llm/core/rankFusion";
 
 /** Passages returned per query. Enough to answer, few enough to read. */
 const DEFAULT_LIMIT = 5;
@@ -88,96 +90,72 @@ export async function searchDocuments(
 
   const limit = Math.min(input.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
 
-  // --- Semantic (vector) path ---
-  const queryEmbedding = await embedText(query);
-  if (queryEmbedding !== null) {
-    const embeddingLiteral = serializeEmbedding(queryEmbedding);
-    const vectorRows = await ctx.db
-      .select({
-        documentId: documentChunks.documentId,
-        filename: documents.filename,
-        page: documentChunks.page,
-        ordinal: documentChunks.ordinal,
-        content: documentChunks.content,
-        distance: sql<number>`"document_chunks"."embedding" <=> ${embeddingLiteral}::vector`,
-      })
+  // A chunk is visible if the caller owns its document, or if the document is
+  // attached to a project they can see. `isNull` is excluded on purpose: an
+  // unscoped document belongs to its owner alone, and treating null as
+  // "everyone" would leak every personal upload.
+  const visibleChunk = and(
+    // Only documents that finished indexing. A `pending` row has no chunks,
+    // but a `failed` one may have stale chunks from an earlier attempt.
+    eq(documents.status, "ready"),
+    or(
+      eq(documents.userId, userId),
+      projectIds.length
+        ? and(
+            inArray(documents.projectId, projectIds),
+            sql`${documents.projectId} IS NOT NULL`,
+          )
+        : sql`false`,
+    ),
+  );
+
+  const chunkColumns = {
+    id: documentChunks.id,
+    documentId: documentChunks.documentId,
+    filename: documents.filename,
+    page: documentChunks.page,
+    ordinal: documentChunks.ordinal,
+    content: documentChunks.content,
+  };
+
+  const queryEmbedding = await embedText(query, "query");
+  const embeddingLiteral = queryEmbedding ? serializeEmbedding(queryEmbedding) : null;
+
+  // Both arms run and are fused (see ~/server/llm/core/rankFusion.ts): chunks
+  // still waiting for an embedding stay findable by their words, and a literal
+  // term — a clause number, an invoice id — still finds the passage containing it.
+  const [vectorRows, keywordRows] = await Promise.all([
+    embeddingLiteral
+      ? ctx.db
+          .select(chunkColumns)
+          .from(documentChunks)
+          .innerJoin(documents, eq(documentChunks.documentId, documents.id))
+          .where(and(visibleChunk, sql`"document_chunks"."embedding" IS NOT NULL`))
+          .orderBy(sql`"document_chunks"."embedding" <=> ${embeddingLiteral}::halfvec`)
+          .limit(limit)
+      : Promise.resolve([]),
+    ctx.db
+      .select(chunkColumns)
       .from(documentChunks)
       .innerJoin(documents, eq(documentChunks.documentId, documents.id))
       .where(
         and(
-          eq(documents.status, "ready"),
-          sql`"document_chunks"."embedding" IS NOT NULL`,
-          or(
-            eq(documents.userId, userId),
-            projectIds.length
-              ? and(
-                  inArray(documents.projectId, projectIds),
-                  sql`${documents.projectId} IS NOT NULL`,
-                )
-              : sql`false`,
-          ),
+          visibleChunk,
+          sql`to_tsvector('simple', ${documentChunks.content}) @@ plainto_tsquery('simple', ${query})`,
         ),
       )
-      .orderBy(sql`"document_chunks"."embedding" <=> ${embeddingLiteral}::vector`)
-      .limit(limit);
-
-    if (vectorRows.length > 0) {
-      return {
-        hits: vectorRows.map((r) => ({
-          documentId: r.documentId,
-          filename: r.filename,
-          page: r.page,
-          ordinal: r.ordinal,
-          snippet: r.content.slice(0, SNIPPET_CHARS),
-        })),
-        note: "Cite the filename, and the page where one is given.",
-      };
-    }
-    // Fall through to keyword search if vector search returned nothing
-  }
-
-  // --- Keyword (full-text) path ---
-  const rows = await ctx.db
-    .select({
-      documentId: documentChunks.documentId,
-      filename: documents.filename,
-      page: documentChunks.page,
-      ordinal: documentChunks.ordinal,
-      content: documentChunks.content,
-      // `ts_rank_cd` weights by how close the matched terms are to each other,
-      // which is a better proxy for "this passage is about the query" than plain
-      // term frequency.
-      rank: sql<number>`ts_rank_cd(to_tsvector('simple', ${documentChunks.content}), plainto_tsquery('simple', ${query}))`,
-    })
-    .from(documentChunks)
-    .innerJoin(documents, eq(documentChunks.documentId, documents.id))
-    .where(
-      and(
-        // Only documents that finished indexing. A `pending` row has no chunks,
-        // but a `failed` one may have stale chunks from an earlier attempt.
-        eq(documents.status, "ready"),
-        or(
-          // The caller's own documents, project-scoped or not.
-          eq(documents.userId, userId),
-          // Or attached to a project they can see. `isNull` is excluded here on
-          // purpose: an unscoped document belongs to its owner alone, and
-          // treating null as "everyone" would leak every personal upload.
-          projectIds.length
-            ? and(
-                inArray(documents.projectId, projectIds),
-                sql`${documents.projectId} IS NOT NULL`,
-              )
-            : sql`false`,
+      .orderBy(
+        // `ts_rank_cd` weights by how close the matched terms are to each other,
+        // which is a better proxy for "this passage is about the query" than plain
+        // term frequency.
+        desc(
+          sql`ts_rank_cd(to_tsvector('simple', ${documentChunks.content}), plainto_tsquery('simple', ${query}))`,
         ),
-        sql`to_tsvector('simple', ${documentChunks.content}) @@ plainto_tsquery('simple', ${query})`,
-      ),
-    )
-    .orderBy(
-      desc(
-        sql`ts_rank_cd(to_tsvector('simple', ${documentChunks.content}), plainto_tsquery('simple', ${query}))`,
-      ),
-    )
-    .limit(limit);
+      )
+      .limit(limit),
+  ]);
+
+  const rows = fuseRankings([keywordRows, vectorRows], (r) => r.id, limit);
 
   if (!rows.length) {
     // Distinguishing "no documents" from "no match" is what stops the model
@@ -192,7 +170,9 @@ export async function searchDocuments(
       note:
         count === 0
           ? "This user has no indexed documents. Say so rather than suggesting different wording."
-          : "No passage matched those words. Search matches wording, not meaning, so suggest the user try the terms the document itself would use.",
+          : isEmbeddingConfigured()
+            ? "No passage matched. Suggest the user describe what they are looking for differently."
+            : "No passage matched those words. Search matches wording, not meaning, so suggest the user try the terms the document itself would use.",
     };
   }
 

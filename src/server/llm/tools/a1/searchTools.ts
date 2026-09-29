@@ -43,6 +43,7 @@ import {
 import { loadVisibleScope, requireUser, visibleProjectsWhere } from "./scope";
 import type { A1Tool } from "./types";
 import { embedText, serializeEmbedding } from "~/server/llm/core/embeddings";
+import { fuseRankings } from "~/server/llm/core/rankFusion";
 
 const SEARCHABLE_KINDS = [
   "task",
@@ -142,8 +143,9 @@ export const searchWorkspaceTool: A1Tool<
     const perKind = Math.max(3, Math.ceil(limit / kinds.size));
     const hits: SearchHit[] = [];
 
-    // Try to embed the query once and reuse for all vector-capable kinds
-    const queryEmbedding = await embedText(q);
+    // Embed the query once and reuse it for every vector-capable kind. Null when
+    // no provider is configured, which leaves only the keyword arms.
+    const queryEmbedding = await embedText(q, "query");
     const embeddingLiteral = queryEmbedding ? serializeEmbedding(queryEmbedding) : null;
 
     // ---- projects (keyword only — less benefit from embeddings)
@@ -180,48 +182,33 @@ export const searchWorkspaceTool: A1Tool<
 
     // ---- tasks
     if (kinds.has("task") && projectIds.length) {
-      let taskRows: Array<{
-        id: number;
-        title: string;
-        description: string | null;
-        status: string;
-        projectId: number;
-        updatedAt: Date;
-      }> = [];
+      const taskColumns = {
+        id: tasks.id,
+        title: tasks.title,
+        description: tasks.description,
+        status: tasks.status,
+        projectId: tasks.projectId,
+        updatedAt: tasks.updatedAt,
+      };
 
-      if (embeddingLiteral) {
-        // Vector path: semantic similarity over title+description embeddings
-        taskRows = await ctx.db
-          .select({
-            id: tasks.id,
-            title: tasks.title,
-            description: tasks.description,
-            status: tasks.status,
-            projectId: tasks.projectId,
-            updatedAt: tasks.updatedAt,
-          })
-          .from(tasks)
-          .where(
-            and(
-              inArray(tasks.projectId, projectIds),
-              sql`"tasks"."embedding" IS NOT NULL`,
-            ),
-          )
-          .orderBy(sql`"tasks"."embedding" <=> ${embeddingLiteral}::vector`)
-          .limit(perKind);
-      }
-
-      // Fall back to keyword if no vector results (or no embeddings configured)
-      if (taskRows.length === 0) {
-        taskRows = await ctx.db
-          .select({
-            id: tasks.id,
-            title: tasks.title,
-            description: tasks.description,
-            status: tasks.status,
-            projectId: tasks.projectId,
-            updatedAt: tasks.updatedAt,
-          })
+      // Both arms always run and are fused: see ~/server/llm/core/rankFusion.ts
+      // for why a vector-then-keyword fallback hid rows from search.
+      const [vectorRows, keywordRows] = await Promise.all([
+        embeddingLiteral
+          ? ctx.db
+              .select(taskColumns)
+              .from(tasks)
+              .where(
+                and(
+                  inArray(tasks.projectId, projectIds),
+                  sql`"tasks"."embedding" IS NOT NULL`,
+                ),
+              )
+              .orderBy(sql`"tasks"."embedding" <=> ${embeddingLiteral}::halfvec`)
+              .limit(perKind)
+          : Promise.resolve([]),
+        ctx.db
+          .select(taskColumns)
           .from(tasks)
           .where(
             and(
@@ -230,8 +217,9 @@ export const searchWorkspaceTool: A1Tool<
             ),
           )
           .orderBy(desc(tasks.updatedAt))
-          .limit(perKind);
-      }
+          .limit(perKind),
+      ]);
+      const taskRows = fuseRankings([keywordRows, vectorRows], (r) => r.id, perKind);
 
       hits.push(
         ...taskRows.map((r) => ({
@@ -272,43 +260,30 @@ export const searchWorkspaceTool: A1Tool<
         ...(sharedIds.length ? [inArray(stickyNotes.id, sharedIds)] : []),
       )!;
 
-      let noteRows: Array<{
-        id: number;
-        title: string | null;
-        content: string;
-        updatedAt: Date;
-      }> = [];
+      const noteColumns = {
+        id: stickyNotes.id,
+        title: stickyNotes.title,
+        content: stickyNotes.content,
+        updatedAt: stickyNotes.updatedAt,
+      };
 
-      if (embeddingLiteral) {
-        // Vector path: semantic similarity
-        noteRows = await ctx.db
-          .select({
-            id: stickyNotes.id,
-            title: stickyNotes.title,
-            content: stickyNotes.content,
-            updatedAt: stickyNotes.updatedAt,
-          })
-          .from(stickyNotes)
-          .where(
-            and(
-              reachable,
-              isNull(stickyNotes.passwordHash),
-              sql`"sticky_notes"."embedding" IS NOT NULL`,
-            ),
-          )
-          .orderBy(sql`"sticky_notes"."embedding" <=> ${embeddingLiteral}::vector`)
-          .limit(perKind);
-      }
-
-      // Fall back to keyword if no vector results
-      if (noteRows.length === 0) {
-        noteRows = await ctx.db
-          .select({
-            id: stickyNotes.id,
-            title: stickyNotes.title,
-            content: stickyNotes.content,
-            updatedAt: stickyNotes.updatedAt,
-          })
+      const [vectorRows, keywordRows] = await Promise.all([
+        embeddingLiteral
+          ? ctx.db
+              .select(noteColumns)
+              .from(stickyNotes)
+              .where(
+                and(
+                  reachable,
+                  isNull(stickyNotes.passwordHash),
+                  sql`"sticky_notes"."embedding" IS NOT NULL`,
+                ),
+              )
+              .orderBy(sql`"sticky_notes"."embedding" <=> ${embeddingLiteral}::halfvec`)
+              .limit(perKind)
+          : Promise.resolve([]),
+        ctx.db
+          .select(noteColumns)
           .from(stickyNotes)
           .where(
             and(
@@ -320,8 +295,9 @@ export const searchWorkspaceTool: A1Tool<
             ),
           )
           .orderBy(desc(stickyNotes.updatedAt))
-          .limit(perKind);
-      }
+          .limit(perKind),
+      ]);
+      const noteRows = fuseRankings([keywordRows, vectorRows], (r) => r.id, perKind);
 
       hits.push(
         ...noteRows.map((r) => ({

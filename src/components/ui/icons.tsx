@@ -56,9 +56,12 @@ import {
   CheckSquareIcon as PhosphorCheckSquare,
   ChecksIcon as PhosphorChecks,
   CircleNotchIcon as PhosphorCircleNotch,
+  CodeIcon as PhosphorCode,
+  ClockCounterClockwiseIcon as PhosphorClockCounterClockwise,
   ClockIcon as PhosphorClock,
   CloudSlashIcon as PhosphorCloudSlash,
   CopyIcon as PhosphorCopy,
+  CreditCardIcon as PhosphorCreditCard,
   DotsThreeIcon as PhosphorDotsThree,
   DownloadSimpleIcon as PhosphorDownloadSimple,
   EnvelopeIcon as PhosphorEnvelope,
@@ -117,6 +120,7 @@ import {
   SquaresFourIcon as PhosphorSquaresFour,
   SunIcon as PhosphorSun,
   TagIcon as PhosphorTag,
+  TranslateIcon as PhosphorTranslate,
   TrashIcon as PhosphorTrash,
   TreeStructureIcon as PhosphorTreeStructure,
   TrendUpIcon as PhosphorTrendUp,
@@ -198,7 +202,9 @@ export const ChevronRight = /*#__PURE__*/ lucideCompat(PhosphorCaretRight);
 export const ChevronUp = /*#__PURE__*/ lucideCompat(PhosphorCaretUp);
 export const Clock = /*#__PURE__*/ lucideCompat(PhosphorClock);
 export const CloudOff = /*#__PURE__*/ lucideCompat(PhosphorCloudSlash);
+export const Code = /*#__PURE__*/ lucideCompat(PhosphorCode);
 export const Copy = /*#__PURE__*/ lucideCompat(PhosphorCopy);
+export const CreditCard = /*#__PURE__*/ lucideCompat(PhosphorCreditCard);
 export const CornerUpLeft = /*#__PURE__*/ lucideCompat(PhosphorArrowBendUpLeft);
 export const Download = /*#__PURE__*/ lucideCompat(PhosphorDownloadSimple);
 export const Eraser = /*#__PURE__*/ lucideCompat(PhosphorEraser);
@@ -212,11 +218,13 @@ export const FolderOpen = /*#__PURE__*/ lucideCompat(PhosphorFolderOpen);
 export const Globe = /*#__PURE__*/ lucideCompat(PhosphorGlobe);
 export const Heart = /*#__PURE__*/ lucideCompat(PhosphorHeart);
 export const HelpCircle = /*#__PURE__*/ lucideCompat(PhosphorQuestion);
+export const History = /*#__PURE__*/ lucideCompat(PhosphorClockCounterClockwise);
 export const Home = /*#__PURE__*/ lucideCompat(PhosphorHouse);
 export const ImageIcon = /*#__PURE__*/ lucideCompat(PhosphorImage);
 export const ImagePlus = /*#__PURE__*/ lucideCompat(PhosphorImageSquare);
 export const Info = /*#__PURE__*/ lucideCompat(PhosphorInfo);
 export const KeyRound = /*#__PURE__*/ lucideCompat(PhosphorKey);
+export const Languages = /*#__PURE__*/ lucideCompat(PhosphorTranslate);
 export const LayoutDashboard = /*#__PURE__*/ lucideCompat(PhosphorSquaresFour);
 export const LayoutGrid = /*#__PURE__*/ lucideCompat(PhosphorGridFour);
 export const Link2 = /*#__PURE__*/ lucideCompat(PhosphorLinkSimple);

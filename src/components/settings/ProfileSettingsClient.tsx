@@ -206,6 +206,7 @@ export function ProfileSettingsClient({ user }: ProfileSettingsClientProps) {
       title: t("profile.bio"),
       desc: `${bio.value.length}/${BIO_MAX} ${t("profile.characters")}`,
       descText: t("profile.characters"),
+      stack: true,
       control: (
         <LedgerTextarea
           value={bio.value}

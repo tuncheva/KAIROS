@@ -56,30 +56,30 @@ export function CalendarConnectionPanel() {
 
   return (
     <section className="rounded-xl border border-border-light bg-bg-elevated p-5">
-      <h3 className="text-base font-semibold text-fg-primary">
+      <h3 className="text-settings-row font-medium text-fg-primary">
         {t("calendarTitle")}
       </h3>
-      <p className="mt-0.5 mb-4 text-sm text-fg-tertiary">
+      <p className="mt-0.5 mb-4 text-settings-desc text-fg-tertiary">
         {t("calendarDescription")}
       </p>
 
       {outcome ? <OutcomeBanner reason={outcome} onDismiss={() => setOutcome(null)} t={t} /> : null}
 
       {calendar.isLoading ? (
-        <p className="text-sm text-fg-tertiary">{t("loading")}</p>
+        <p className="text-settings-desc text-fg-tertiary">{t("loading")}</p>
       ) : !data?.entitled ? (
         // A plan limit. An upgrade prompt, not an error.
-        <p className="text-sm text-fg-tertiary">{t("calendarProOnly")}</p>
+        <p className="text-settings-desc text-fg-tertiary">{t("calendarProOnly")}</p>
       ) : !data.configured ? (
         // A deployment gap: no Google client id. The user can do nothing about
         // it, so there is no button — only an honest statement.
-        <p className="text-sm text-fg-tertiary">{t("calendarUnavailable")}</p>
+        <p className="text-settings-desc text-fg-tertiary">{t("calendarUnavailable")}</p>
       ) : connection === null ? (
         <div className="flex flex-col gap-2">
-          <p className="text-sm text-fg-tertiary">{t("calendarNone")}</p>
+          <p className="text-settings-desc text-fg-tertiary">{t("calendarNone")}</p>
           <a
             href="/api/calendar/google/connect"
-            className="self-start rounded-lg bg-accent-primary px-3 py-1.5 text-sm font-semibold text-white transition-[filter] hover:brightness-110"
+            className="self-start rounded-lg bg-accent-primary px-3 py-1.5 text-settings-small font-medium text-white transition-[filter] hover:brightness-110"
           >
             {t("calendarConnect")}
           </a>
@@ -87,10 +87,10 @@ export function CalendarConnectionPanel() {
       ) : (
         <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border-light bg-bg-secondary p-3">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-fg-primary">
+            <p className="text-settings-body font-medium text-fg-primary">
               {connection.accountEmail ?? connection.provider}
             </p>
-            <p className="mt-0.5 text-xs text-fg-quaternary">
+            <p className="mt-0.5 text-settings-meta text-fg-quaternary">
               {connection.lastSyncedAt
                 ? t("calendarSynced", {
                     count: data.eventCount,
@@ -104,7 +104,7 @@ export function CalendarConnectionPanel() {
               the user cannot guess from an empty calendar.
             */}
             {connection.lastError ? (
-              <p className="mt-1 text-xs text-error">
+              <p className="mt-1 text-settings-meta text-error">
                 {t("calendarFailing", { error: connection.lastError })}
               </p>
             ) : null}
@@ -115,13 +115,13 @@ export function CalendarConnectionPanel() {
               type="button"
               onClick={() => sync.mutate()}
               disabled={sync.isPending}
-              className="rounded-md border border-border-medium px-2 py-1 text-xs text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
+              className="rounded-md border border-border-medium px-2 py-1 text-settings-small font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
             >
               {sync.isPending ? t("calendarSyncing") : t("calendarSyncNow")}
             </button>
             <a
               href="/api/calendar/google/connect"
-              className="rounded-md border border-border-medium px-2 py-1 text-xs text-fg-primary transition-colors hover:bg-bg-tertiary"
+              className="rounded-md border border-border-medium px-2 py-1 text-settings-small font-medium text-fg-primary transition-colors hover:bg-bg-tertiary"
             >
               {t("calendarReconnect")}
             </a>
@@ -129,7 +129,7 @@ export function CalendarConnectionPanel() {
               type="button"
               onClick={() => disconnect.mutate()}
               disabled={disconnect.isPending}
-              className="rounded-md px-2 py-1 text-xs text-error transition-colors hover:bg-error/10 disabled:opacity-50"
+              className="rounded-md px-2 py-1 text-settings-small font-medium text-error transition-colors hover:bg-error/10 disabled:opacity-50"
             >
               {t("calendarDisconnect")}
             </button>
@@ -180,12 +180,12 @@ function OutcomeBanner({
           : "border-status-warning-border bg-status-warning-surface"
       }`}
     >
-      <p className="text-xs leading-snug text-fg-secondary">{t(key)}</p>
+      <p className="text-settings-meta text-fg-secondary">{t(key)}</p>
       <button
         type="button"
         onClick={onDismiss}
         aria-label={t("dismiss")}
-        className="shrink-0 text-xs text-fg-tertiary"
+        className="shrink-0 text-settings-meta text-fg-tertiary"
       >
         ×
       </button>

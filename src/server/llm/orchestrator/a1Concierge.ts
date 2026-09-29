@@ -7,16 +7,28 @@
 
 import { TRPCError } from "@trpc/server";
 
+import type { TRPCContext } from "~/server/api/trpc";
 import { a1WorkspaceConciergeProfile } from "~/server/llm/profiles/a1WorkspaceConcierge";
 import {
   A1OutputSchema,
   type A1Output,
 } from "~/server/llm/schemas/a1WorkspaceConciergeSchemas";
-import { buildA1Context } from "~/server/llm/context/a1ContextBuilder";
+import {
+  buildA1Context,
+  type A1ContextPack,
+} from "~/server/llm/context/a1ContextBuilder";
 import { getA1SystemPrompt } from "~/server/llm/prompts/a1Prompts";
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
-import { parseAndValidate } from "~/server/llm/core/jsonRepair";
-import { runToolLoop } from "~/server/llm/core/toolLoop";
+import {
+  parseAndValidate,
+  type ParseError,
+  type ParseResult,
+} from "~/server/llm/core/jsonRepair";
+import {
+  runToolLoop,
+  type ToolLoopOptions,
+  type ToolLoopResult,
+} from "~/server/llm/core/toolLoop";
 import { A1_READ_TOOLS } from "~/server/llm/tools/a1/readTools";
 import { toolDefinitionsFor } from "~/server/llm/tools/a1/toolDefinitions";
 
@@ -94,6 +106,104 @@ function buildFallbackResponse(
   };
 }
 
+export interface A1TurnInput {
+  ctx: TRPCContext;
+  userId: string;
+  contextPack: A1ContextPack;
+  message: string;
+  conversationHistory?: AgentDraftInput["conversationHistory"];
+  conversationSummary?: string | null;
+  /**
+   * The tools the loop may execute. Production leaves this unset and gets the
+   * real read tools. The live eval passes stubs over a fixed workspace, so it
+   * measures the model against the same prompt, message order and parser the
+   * product uses rather than a copy of them that could drift.
+   */
+  registry?: ToolLoopOptions["registry"];
+  signal?: AbortSignal;
+  onToolCall?: (name: string) => void;
+  onAnswerDelta?: (text: string) => void;
+}
+
+export interface A1TurnOutcome {
+  loop: ToolLoopResult;
+  /** `null` when the loop ran out of budget before producing an answer. */
+  parsed: ParseResult<A1Output> | ParseError | null;
+}
+
+/**
+ * The model half of an A1 turn: messages in, validated output out.
+ *
+ * Split from {@link a1Concierge.draft} so the live eval can run exactly this
+ * without a database behind it. Everything that needs one — building the context
+ * pack, choosing a fallback reply — stays in `draft`. Throws on a model failure;
+ * the caller decides what the user sees.
+ */
+export async function runA1Turn(input: A1TurnInput): Promise<A1TurnOutcome> {
+  const systemPrompt = getA1SystemPrompt(input.contextPack, input.message);
+
+  const historyMessages = (input.conversationHistory ?? [])
+    // An outage reply is not something the assistant "said" — it is what
+    // this file returns when the model is unreachable. Replaying it as
+    // context teaches the model that this thread answers everything with
+    // it, which it then does on the next turn that succeeds.
+    .filter((m) => !(m.role === "assistant" && isFallbackTurn(m.content)))
+    .map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+  // Retrieval and answering happen in one loop. The endpoint rejects
+  // `response_format` alongside `tools`, so the JSON contract is carried by
+  // the prompt and enforced afterwards by the schema (with a repair round if
+  // the model wraps it in prose).
+  const loop = await runToolLoop({
+    ctx: input.ctx,
+    userId: input.userId,
+    messages: [
+      { role: "system", content: systemPrompt },
+      // Kept as a separate turn rather than spliced into the system prompt,
+      // which stays byte-identical across turns so the provider can cache it.
+      ...(input.conversationSummary
+        ? [
+            {
+              role: "system" as const,
+              content: `Earlier in this conversation:
+${input.conversationSummary}`,
+            },
+          ]
+        : []),
+      ...historyMessages,
+      // After the history, not before it. A thread that ran in Bulgarian
+      // for ten turns and then gets an English message is the case that
+      // kept failing: whatever the system prompt says about mirroring the
+      // user is thousands of tokens back, while ten Bulgarian turns sit
+      // right next to the message being answered. This is the last thing
+      // the model reads before that message.
+      ...replyLanguageMessages({
+        locale: input.contextPack.locale,
+        message: input.message,
+      }),
+      { role: "user", content: input.message },
+    ],
+    tools: toolDefinitionsFor(a1WorkspaceConciergeProfile.draftToolAllowlist),
+    registry: input.registry ?? A1_READ_TOOLS,
+    temperature: 0.2,
+    purpose: "a1.draft",
+    signal: input.signal,
+    onToolCall: input.onToolCall,
+    onAnswerDelta: input.onAnswerDelta,
+  });
+
+  if (loop.exhausted) return { loop, parsed: null };
+
+  const parsed = await parseAndValidate(loop.content, A1OutputSchema, {
+    userId: input.userId,
+    signal: input.signal,
+  });
+  return { loop, parsed };
+}
+
 export const a1Concierge = {
   async draft(input: AgentDraftInput): Promise<AgentDraftResult> {
     // A1 is the only agent this entry point serves. It used to also accept
@@ -110,66 +220,22 @@ export const a1Concierge = {
     const userId = requireUserId(input.ctx);
     const draftId = createDraftId();
     const contextPack = await buildA1Context(input.ctx, input.scope);
-    const systemPrompt = getA1SystemPrompt(contextPack, input.message);
 
     let outputJson: A1Output;
     try {
-      const historyMessages = (input.conversationHistory ?? [])
-        // An outage reply is not something the assistant "said" — it is what
-        // this file returns when the model is unreachable. Replaying it as
-        // context teaches the model that this thread answers everything with
-        // it, which it then does on the next turn that succeeds.
-        .filter((m) => !(m.role === "assistant" && isFallbackTurn(m.content)))
-        .map((m) => ({
-          role: m.role,
-          content: m.content,
-        }));
-
-      // Retrieval and answering happen in one loop. The endpoint rejects
-      // `response_format` alongside `tools`, so the JSON contract is carried by
-      // the prompt and enforced afterwards by the schema (with a repair round if
-      // the model wraps it in prose).
-      const loopResult = await runToolLoop({
+      const { loop: loopResult, parsed: parseResult } = await runA1Turn({
         ctx: input.ctx,
         userId,
-        messages: [
-          { role: "system", content: systemPrompt },
-          // Kept as a separate turn rather than spliced into the system prompt,
-          // which stays byte-identical across turns so the provider can cache it.
-          ...(input.conversationSummary
-            ? [
-                {
-                  role: "system" as const,
-                  content: `Earlier in this conversation:
-${input.conversationSummary}`,
-                },
-              ]
-            : []),
-          ...historyMessages,
-          // After the history, not before it. A thread that ran in Bulgarian
-          // for ten turns and then gets an English message is the case that
-          // kept failing: whatever the system prompt says about mirroring the
-          // user is thousands of tokens back, while ten Bulgarian turns sit
-          // right next to the message being answered. This is the last thing
-          // the model reads before that message.
-          ...replyLanguageMessages({
-            locale: contextPack.locale,
-            message: input.message,
-          }),
-          { role: "user", content: input.message },
-        ],
-        tools: toolDefinitionsFor(
-          a1WorkspaceConciergeProfile.draftToolAllowlist,
-        ),
-        registry: A1_READ_TOOLS,
-        temperature: 0.2,
-        purpose: "a1.draft",
+        contextPack,
+        message: input.message,
+        conversationHistory: input.conversationHistory,
+        conversationSummary: input.conversationSummary,
         signal: input.signal,
         onToolCall: input.onToolCall,
         onAnswerDelta: input.onAnswerDelta,
       });
 
-      if (loopResult.exhausted) {
+      if (parseResult === null) {
         log.warn("A1 could not finish within its tool budget", {
           toolCalls: loopResult.toolCallsMade.length,
         });
@@ -178,12 +244,6 @@ ${input.conversationSummary}`,
           outputJson: buildFallbackResponse(input, contextPack.locale),
         };
       }
-
-      const parseResult = await parseAndValidate(
-        loopResult.content,
-        A1OutputSchema,
-        { userId, signal: input.signal },
-      );
 
       if (parseResult.success) {
         outputJson = parseResult.data;

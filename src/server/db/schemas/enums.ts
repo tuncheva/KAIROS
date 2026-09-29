@@ -162,6 +162,13 @@ export const verificationCodePurposeEnum = pgEnum("verification_code_purpose", [
   "email_verify",
   /** Authorise setting a new account password without being signed in. */
   "password_reset",
+  /**
+   * Authorise turning two-step sign-in on or off from Settings.
+   *
+   * A session alone is not enough: whoever holds a stolen session could
+   * otherwise switch the second factor off and keep the account.
+   */
+  "two_factor_toggle",
 ]);
 
 /**

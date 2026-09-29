@@ -1,45 +1,25 @@
 /**
- * Seats — the part of a Team subscription that was sold but never enforced.
+ * Whether an organization has room for another member — the rule that makes
+ * per-seat pricing mean something.
  *
- * `organizations.seats` records the quantity Stripe is billing for, and until
- * this module existed nothing read it except a warning on the billing screen.
- * Every way into an organization — the access code, a QR code, an emailed invite
- * — inserted a member without asking, and `planForUser` grants the org's plan to
- * *every* member. Three seats therefore bought an unlimited number of Team
- * entitlements, which is the whole revenue model rounded down to zero.
+ * Team is sold per seat with a three-seat minimum, and until this module existed
+ * `organizations.seats` was written by the webhook, rendered as a warning on the
+ * billing screen, and read by nothing that could act on it. Three separate
+ * admission paths inserted members without consulting it, so an organization
+ * could buy three seats and onboard three hundred people, every one of whom
+ * resolved to Team through {@link planForUser}. The seat count was a display
+ * field on an invoice.
  *
- * ## The invariant
- *
- * On a paid plan, `memberCount <= seats`. It is held from both ends, because
- * either alone is trivially walked around:
- *
- * - **Joining** is refused when the organization is full ({@link seatAvailability}).
- * - **Buying** cannot ask for fewer seats than there are members already —
- *   `seatFloorFor` in `~/lib/plans`. Without this an organization grows to fifty
- *   on the free plan and then buys the three-seat minimum, arriving over the
- *   limit without any single join having crossed it.
- *
- * Free organizations are not capped. That is a product decision rather than an
- * oversight: the free tier is per-person by entitlement, so a large free
- * organization costs nothing and gains nobody anything.
- *
- * ## What this deliberately does not do
- *
- * It never removes anybody. An organization that ends up over its seat count —
- * by a seat reduction in the portal, or by the race below — keeps everyone and
- * shows the admin the gap. Silently revoking a colleague's access to make the
- * arithmetic work is worse than being one seat over.
- *
- * The check is read-then-write rather than a conditional insert, so two people
- * accepting invitations in the same instant can both pass it and land one seat
- * over. That is bounded (it needs simultaneous joins by distinct rate-limited
- * accounts), self-correcting on the next join attempt, and visible on the
- * billing screen — all of which is cheaper than threading a transaction through
- * four unrelated join flows.
+ * Its own module rather than a helper inside the organization router, for the
+ * same reason `~/lib/subscription-status` is not inside `subscriptions.ts`: this
+ * is a billing rule that the membership code consumes, and there are three call
+ * sites that must not be able to drift from each other. A fourth admission path
+ * added later should have exactly one obvious thing to call.
  */
 
 import "server-only";
 
+import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 
 import { db } from "~/server/db";
@@ -47,54 +27,71 @@ import {
   organizations,
   organizationMembers,
 } from "~/server/db/schemas/organizations";
-import type { PlanId } from "~/lib/entitlements";
+import { createLogger } from "~/server/logger";
 import { livePlan } from "./entitlements";
 
-export interface SeatAvailability {
-  /** The plan actually in force, with a lapsed period already accounted for. */
-  plan: PlanId;
-  /** Seats bought. Zero on a free organization, which is not a limit. */
-  seats: number;
-  memberCount: number;
-  /** Whether one more member may be added. Always true on a free plan. */
-  hasRoom: boolean;
-}
+const log = createLogger("billing:seats");
 
 /**
- * How full an organization is.
+ * Refuse to admit a member an organization has not paid for.
  *
- * Reads the plan through `livePlan` for the same reason the billing screen does:
- * an organization whose renewal webhook never arrived is no longer entitled, and
- * enforcing a seat limit derived from a plan the resolver has already withdrawn
- * would lock people out of a workspace that is, as far as entitlements are
- * concerned, back on the uncapped free tier.
+ * Two deliberate non-enforcements:
+ *
+ * **A free organization is not seat-limited.** Its members resolve to Free
+ * anyway, so there is no entitlement being given away, and capping headcount on
+ * the unpaid tier would be a limit that sells nothing — it would only stop
+ * people from assembling the team they are meant to later buy Team for.
+ *
+ * **A non-free plan with no seats on file fails open**, and logs. That state is
+ * incoherent — `syncSubscription` writes `plan` and `seats` from the same Stripe
+ * object, and `clearSubscription` zeroes both together — so reaching it means a
+ * webhook is missing or a row was edited by hand. The safe direction is obvious
+ * once named: the cost of failing open is one unpaid seat until someone reads
+ * the log, and the cost of failing closed is a paying organization that cannot
+ * onboard anyone, with no way for the admin to tell why.
+ *
+ * Not transactional. Two people accepting invitations in the same instant can
+ * both read `count < seats` and both insert, putting the org one over. That is
+ * tolerated: the overage is bounded by concurrency rather than unbounded by
+ * design, the billing screen surfaces it, and serialising every join behind a
+ * row lock to close a one-seat window would be the more expensive mistake.
+ *
+ * @throws TRPCError FORBIDDEN when every paid seat is occupied.
  */
-export async function seatAvailability(
-  organizationId: number,
-): Promise<SeatAvailability | null> {
+export async function assertSeatAvailable(organizationId: number): Promise<void> {
   const org = await db.query.organizations.findFirst({
     where: eq(organizations.id, organizationId),
     columns: { plan: true, seats: true, currentPeriodEnd: true },
   });
 
-  if (!org) return null;
+  if (!org) return;
 
+  // Through `livePlan`, as the billing screen does: an organization whose
+  // renewal webhook never arrived is back on the uncapped free tier as far as
+  // entitlements are concerned, and must not be held to the seats it lapsed on.
   const plan = livePlan(org.plan, org.currentPeriodEnd);
-  const memberCount = await db.$count(
+  if (plan === "free") return;
+
+  if (org.seats <= 0) {
+    log.error("paid organization has no seats on file; admitting anyway", {
+      organizationId,
+      plan,
+    });
+    return;
+  }
+
+  const members = await db.$count(
     organizationMembers,
     eq(organizationMembers.organizationId, organizationId),
   );
 
-  return {
-    plan,
-    seats: org.seats,
-    memberCount,
-    hasRoom: plan === "free" || memberCount < org.seats,
-  };
-}
+  if (members < org.seats) return;
 
-// The buying half of the invariant is `seatFloorFor` in `~/lib/plans`, next to
-// the minimums it reads. It lives there rather than here because it is pure, and
-// because everything in this file needs a database — which, as
-// `tests/server/billing.test.ts` records the hard way, is what makes a rule
-// untestable.
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    // Addressed to the person who can fix it, even though it is read by the
+    // person who cannot. "You may not join" invites them to retry; naming the
+    // seat count and the admin tells them what to go and ask for.
+    message: `This organization has filled all ${String(org.seats)} of its seats. An admin can add one from Settings → Billing, then you can join.`,
+  });
+}

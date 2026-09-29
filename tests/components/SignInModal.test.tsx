@@ -202,6 +202,48 @@ describe("SignInModal", () => {
         screen.queryByRole("button", { name: /resend the email/i }),
       ).not.toBeInTheDocument();
     });
+
+    it("asks for the emailed code when two-step sign-in is on", async () => {
+      await submit({ error: "CredentialsSignin", code: "TWO_FACTOR_REQUIRED:s3cret" });
+
+      expect(await screen.findByText("Check your email")).toBeInTheDocument();
+      expect(screen.getAllByLabelText(/Sign-in code digit/)).toHaveLength(8);
+      expect(screen.getByText(/approve the link/i)).toBeInTheDocument();
+    });
+
+    it("finishes with the challenge secret and the typed code", async () => {
+      await submit({ error: "CredentialsSignin", code: "TWO_FACTOR_REQUIRED:s3cret" });
+      await screen.findByText("Check your email");
+
+      vi.mocked(signIn).mockResolvedValue({ ok: true, error: undefined } as never);
+      const user = userEvent.setup();
+      await user.click(screen.getAllByLabelText(/Sign-in code digit/)[0]!);
+      await user.paste("12345678");
+      await user.click(screen.getByRole("button", { name: /verify/i }));
+
+      expect(signIn).toHaveBeenLastCalledWith("two-factor", {
+        challenge: "s3cret",
+        code: "12345678",
+        redirect: false,
+      });
+    });
+
+    it("says so when the code is wrong, and stays on the code screen", async () => {
+      await submit({ error: "CredentialsSignin", code: "TWO_FACTOR_REQUIRED:s3cret" });
+      await screen.findByText("Check your email");
+
+      vi.mocked(signIn).mockResolvedValue({
+        error: "CredentialsSignin",
+        code: "TWO_FACTOR_FAILED:invalid",
+      } as never);
+      const user = userEvent.setup();
+      await user.click(screen.getAllByLabelText(/Sign-in code digit/)[0]!);
+      await user.paste("00000000");
+      await user.click(screen.getByRole("button", { name: /verify/i }));
+
+      expect(await screen.findByText(/code is not valid/i)).toBeInTheDocument();
+      expect(screen.getByText("Check your email")).toBeInTheDocument();
+    });
   });
 
   it("uses subtle backdrop-blur-sm (not aggressive xl)", () => {

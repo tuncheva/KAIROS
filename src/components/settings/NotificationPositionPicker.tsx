@@ -71,7 +71,7 @@ export function NotificationPositionPicker({
             return (
               <div
                 key={slot}
-                className={`flex items-center justify-center rounded-lg border border-dashed px-1 text-center text-[10px] leading-tight font-medium ${
+                className={`flex items-center justify-center rounded-lg border border-dashed px-1 text-center text-settings-eyebrow leading-tight font-medium ${
                   isReserved
                     ? "border-border-light text-fg-quaternary"
                     : "border-success/40 bg-success/8 text-success"
@@ -91,7 +91,7 @@ export function NotificationPositionPicker({
               aria-label={label}
               disabled={disabled}
               onClick={() => onChange(slot)}
-              className={`flex items-center justify-center rounded-lg border px-1 text-center text-[10px] leading-tight font-medium transition-colors focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:outline-none disabled:opacity-50 ${
+              className={`flex items-center justify-center rounded-lg border px-1 text-center text-settings-eyebrow leading-tight font-medium transition-colors focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:outline-none disabled:opacity-50 ${
                 isSelected
                   ? "border-accent-primary bg-accent-primary/12 text-accent-primary"
                   : "border-border-light text-fg-tertiary hover:border-border-medium hover:text-fg-secondary"
@@ -103,7 +103,7 @@ export function NotificationPositionPicker({
         })}
       </div>
 
-      <p className="text-xs text-fg-tertiary">
+      <p className="text-settings-meta text-fg-tertiary">
         {t("positionSummary", {
           notifications: t(LABEL_KEY[value]),
           toasts: t(LABEL_KEY[toastSlot]),
@@ -122,11 +122,11 @@ export function NotificationPositionPicker({
             applyNotificationPosition(value, document.documentElement);
             toast.info(t("positionPreviewToast"));
           }}
-          className="rounded-lg border border-border-medium px-3 py-1.5 text-xs font-semibold text-fg-secondary transition-colors hover:border-accent-primary hover:text-accent-primary disabled:opacity-50"
+          className="rounded-lg border border-border-medium px-3 py-1.5 text-settings-small font-medium text-fg-secondary transition-colors hover:border-accent-primary hover:text-accent-primary disabled:opacity-50"
         >
           {t("positionPreview")}
         </button>
-        <span className="text-[11px] text-fg-quaternary">{t("positionMobileNote")}</span>
+        <span className="text-settings-micro text-fg-quaternary">{t("positionMobileNote")}</span>
       </div>
     </div>
   );

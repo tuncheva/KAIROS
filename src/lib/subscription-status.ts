@@ -48,6 +48,40 @@ export function planFromSubscription(
 }
 
 /**
+ * The plan to record, with an unrecognised price treated as an incident.
+ *
+ * {@link planFromSubscription} answers "what does this status entitle", which
+ * needs a plan to work from. When the subscription's price maps to no known plan
+ * that argument is null, and the honest answer for a dead subscription is still
+ * `free` — that is where it was going anyway.
+ *
+ * For a **live** one it is not an answer at all. A price stops being recognised
+ * for reasons that have nothing to do with the subscriber: a price archived and
+ * recreated in the dashboard, a `STRIPE_PRICE_*` var missing from one
+ * environment, test-mode ids deployed against a live key. Every one of those
+ * hits every subscriber at once, on their next renewal webhook, and composing
+ * the two functions naively revokes the plan of everyone who is paying —
+ * silently, because `free` is a perfectly ordinary value to log.
+ *
+ * So a live subscription priced at nothing keeps whatever is already on file.
+ * Being wrong in the customer's favour until someone reads the error costs a few
+ * hours of one plan; the other direction costs every plan at once, and unlike
+ * the out-of-order webhook cases no later event corrects it — the next renewal
+ * maps to nothing too.
+ *
+ * `onFile` being null is the one case with no better answer: a first sync has
+ * nothing to preserve, so `free` stands and the caller's log is the whole output.
+ */
+export function planToRecord(
+  status: SubscriptionStatus,
+  priced: PlanId | null,
+  onFile: PlanId | null,
+): PlanId {
+  if (priced === null && isLiveSubscription(status)) return onFile ?? "free";
+  return planFromSubscription(status, priced);
+}
+
+/**
  * The two fields that say a subscription is on its way out.
  *
  * Structural rather than `Stripe.Subscription`, so this module stays free of the

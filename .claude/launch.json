@@ -4,8 +4,9 @@
     {
       "name": "kairos-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "runtimeArgs": ["run", "dev:next"],
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }

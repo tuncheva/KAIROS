@@ -949,6 +949,12 @@ export const agentRouter = createTRPCRouter({
   undoAvailability: protectedProcedure
     .input(z.object({ draftId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
+      // Reported as unavailable rather than refused, so the button simply does
+      // not appear for a plan that did not buy it. The mutation below is the
+      // rule; this is what keeps the UI from offering an action that would be.
+      if (!(await entitlementsFor(ctx)).undoApply) {
+        return { available: false, expiresAt: null };
+      }
       return undoAvailability(ctx, ctx.session.user.id, input.draftId);
     }),
 
@@ -960,6 +966,17 @@ export const agentRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // "Undo applied changes" is a Pro line on the pricing page and was
+      // reachable by any authenticated caller over tRPC — the client never
+      // gated it either. Checked here because this is the one that matters:
+      // the query above is a hint, and this is the guarantee.
+      if (!(await entitlementsFor(ctx)).undoApply) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Undoing an applied change is a Pro feature.",
+        });
+      }
+
       return input.kind === "tasks"
         ? undoTaskApply(ctx, ctx.session.user.id, input.draftId)
         : undoNoteApply(ctx, ctx.session.user.id, input.draftId);

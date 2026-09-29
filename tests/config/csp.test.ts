@@ -40,14 +40,14 @@ describe("theme init script hash", () => {
    * It runs synchronously in <head> precisely so the first painted frame is
    * already correct. The rail is the newest of these and the easiest to lose:
    * `SideNav` reads the same key, and if this line goes away the rail paints
-   * collapsed and then widens, dragging every page's `.rail-offset` margin
+   * open and then snaps shut, dragging every page's `.rail-offset` margin
    * along with it a frame later.
    */
   it("settles theme, accent and rail width before the first paint", () => {
     expect(THEME_INIT_SCRIPT).toContain("localStorage.getItem('theme')");
     expect(THEME_INIT_SCRIPT).toContain("sessionStorage.getItem('user-accent')");
-    expect(THEME_INIT_SCRIPT).toContain("kairos:railPinned");
-    expect(THEME_INIT_SCRIPT).toContain("dataset.railPinned");
+    expect(THEME_INIT_SCRIPT).toContain("kairos:railCollapsed");
+    expect(THEME_INIT_SCRIPT).toContain("dataset.railCollapsed");
   });
 
   it("is single-quoted in the source expression", () => {

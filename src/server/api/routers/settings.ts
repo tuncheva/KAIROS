@@ -12,7 +12,10 @@ import {
   consumeVerificationCode,
   issueVerificationCode,
 } from "~/server/email/verificationCodes";
-import { sendEmailVerificationCode } from "~/server/email/email";
+import {
+  sendEmailVerificationCode,
+  sendTwoFactorToggleCode,
+} from "~/server/email/email";
 import {
   consumeAuthRateLimit,
   createAuthRateLimitKey,
@@ -72,6 +75,10 @@ export const settingsRouter = createTRPCRouter({
 
           notesKeepUnlockedUntilClose: true,
           calendarFeedToken: true,
+          twoFactorEnabled: true,
+          // Read only to answer "can this account sign in with a password?".
+          // Never returned.
+          password: true,
 
           // Expose reset PIN hint and lockout metadata (but never the PIN itself)
           resetPinHint: true,
@@ -91,8 +98,8 @@ export const settingsRouter = createTRPCRouter({
       // which is optional, and from `resetPinFailedAttempts >= 0`, which is true
       // for every account that has never failed — so the screen told everyone
       // they had a PIN configured.
-      const { resetPinHash, ...rest } = user;
-      return { ...rest, hasResetPin: !!resetPinHash };
+      const { resetPinHash, password, ...rest } = user;
+      return { ...rest, hasResetPin: !!resetPinHash, hasPassword: !!password };
     }),
 
 
@@ -333,6 +340,123 @@ export const settingsRouter = createTRPCRouter({
         .update(users)
         .set({ emailVerified: new Date(), updatedAt: new Date() })
         .where(eq(users.id, user.id));
+
+      return { success: true };
+    }),
+
+  /**
+   * Email a code that authorises turning two-step sign-in on or off.
+   *
+   * Both directions need it. Turning it on proves the mailbox the second
+   * factor will depend on actually receives mail, before the account starts
+   * relying on it; turning it off proves the person asking is the owner and not
+   * someone holding a stolen session, who could otherwise strip the second
+   * factor and keep the account.
+   */
+  sendTwoFactorCode: protectedProcedure
+    .input(z.object({ enable: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.query.users.findFirst({
+        where: eq(users.id, ctx.session.user.id),
+        columns: { name: true, email: true, emailVerified: true, twoFactorEnabled: true },
+      });
+
+      if (!user?.email) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No email on file." });
+      }
+
+      if (user.twoFactorEnabled === input.enable) {
+        return { success: true, unchanged: true as const };
+      }
+
+      if (input.enable && !user.emailVerified) {
+        // The factor *is* the mailbox; it has to be proven first.
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Confirm your email address before turning on two-step sign-in.",
+        });
+      }
+
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("two_factor_toggle_send", ctx.session.user.id),
+      );
+
+      const code = await issueVerificationCode(ctx.db, "two_factor_toggle", user.email);
+
+      try {
+        await sendTwoFactorToggleCode({
+          email: user.email,
+          userName: user.name ?? user.email,
+          code,
+          enabling: input.enable,
+        });
+      } catch (err) {
+        log.error("failed to send two-factor toggle code", { err });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Couldn't send the code. Try again in a moment.",
+        });
+      }
+
+      return { success: true, unchanged: false as const };
+    }),
+
+  /** Redeem the emailed code and flip two-step sign-in. */
+  setTwoFactor: protectedProcedure
+    .input(
+      z.object({
+        enable: z.boolean(),
+        code: z.string().regex(/^\d{8}$/, "Enter the 8-digit code"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await consumeAuthRateLimit(
+        createAuthRateLimitKey("two_factor_toggle_confirm", ctx.session.user.id),
+      );
+
+      const user = await ctx.db.query.users.findFirst({
+        where: eq(users.id, ctx.session.user.id),
+        columns: { id: true, email: true, emailVerified: true, twoFactorEnabled: true },
+      });
+
+      if (!user?.email) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No email on file." });
+      }
+
+      if (user.twoFactorEnabled === input.enable) return { success: true };
+
+      if (input.enable && !user.emailVerified) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Confirm your email address before turning on two-step sign-in.",
+        });
+      }
+
+      const result = await consumeVerificationCode(
+        ctx.db,
+        "two_factor_toggle",
+        user.email,
+        input.code,
+      );
+
+      if (!result.ok) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            result.reason === "expired"
+              ? "That code has expired. Send yourself a new one."
+              : result.reason === "too_many_attempts"
+                ? "Too many incorrect attempts. Send yourself a new code."
+                : "That code is not valid.",
+        });
+      }
+
+      await ctx.db
+        .update(users)
+        .set({ twoFactorEnabled: input.enable, updatedAt: new Date() })
+        .where(eq(users.id, user.id));
+
+      log.info("two-factor sign-in changed", { userId: user.id, enabled: input.enable });
 
       return { success: true };
     }),

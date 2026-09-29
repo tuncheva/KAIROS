@@ -108,10 +108,10 @@ function ShowOnce({
 
   return (
     <div className="mb-3 rounded-lg border border-accent-primary/40 bg-accent-primary/[0.08] p-3">
-      <p className="text-[13px] font-semibold text-fg-primary">{title}</p>
-      <p className="mt-0.5 text-xs text-fg-tertiary">{hint}</p>
+      <p className="text-settings-row font-medium text-fg-primary">{title}</p>
+      <p className="mt-0.5 text-settings-desc text-fg-tertiary">{hint}</p>
       <div className="mt-2 flex items-center gap-2">
-        <code className="min-w-0 flex-1 overflow-x-auto rounded-md bg-bg-secondary px-2 py-1.5 font-mono text-xs text-fg-primary">
+        <code className="min-w-0 flex-1 overflow-x-auto rounded-md bg-bg-secondary px-2 py-1.5 font-mono text-settings-small text-fg-primary">
           {value}
         </code>
         {copyLabel ? (
@@ -121,19 +121,19 @@ function ShowOnce({
               void navigator.clipboard.writeText(value);
               setCopied(true);
             }}
-            className="shrink-0 rounded-lg bg-accent-primary px-3 py-1.5 text-xs font-semibold text-white"
+            className="shrink-0 rounded-lg bg-accent-primary px-3 py-1.5 text-settings-small font-medium text-white"
           >
             {copied ? (copiedLabel ?? copyLabel) : copyLabel}
           </button>
         ) : null}
       </div>
       {footer ? (
-        <p className="mt-2 font-mono text-[11px] text-fg-quaternary">{footer}</p>
+        <p className="mt-2 font-mono text-settings-micro text-fg-quaternary">{footer}</p>
       ) : null}
       <button
         type="button"
         onClick={onDismiss}
-        className="mt-2 text-xs text-fg-tertiary underline"
+        className="mt-2 text-settings-meta text-fg-tertiary underline"
       >
         {dismissLabel}
       </button>
@@ -212,9 +212,9 @@ function KeysGroup({ t }: { t: Translator }) {
       ) : null}
 
       {keys.isLoading ? (
-        <p className="text-sm text-fg-tertiary">{t("loading")}</p>
+        <p className="text-settings-desc text-fg-tertiary">{t("loading")}</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-fg-tertiary">{t("keysEmpty")}</p>
+        <p className="text-settings-desc text-fg-tertiary">{t("keysEmpty")}</p>
       ) : (
         <ul className="flex flex-col">
           {rows.map((key, index) => (
@@ -228,15 +228,15 @@ function KeysGroup({ t }: { t: Translator }) {
               } ${key.revokedAt ? "opacity-60" : ""}`}
             >
               <div className="min-w-0">
-                <p className="text-[13.5px] font-medium text-fg-primary">
+                <p className="text-settings-body font-medium text-fg-primary">
                   {key.label}
                   {key.revokedAt ? (
-                    <span className="ml-2 text-xs font-normal text-error">
+                    <span className="ml-2 text-settings-meta font-normal text-error">
                       {t("revoked")}
                     </span>
                   ) : null}
                 </p>
-                <p className="mt-0.5 font-mono text-xs text-fg-quaternary">
+                <p className="mt-0.5 font-mono text-settings-meta text-fg-quaternary">
                   {key.prefix}…{" · "}
                   {key.lastUsedAt
                     ? t("lastUsed", {
@@ -349,9 +349,9 @@ function WebhooksGroup({ t }: { t: Translator }) {
       ) : null}
 
       {hooks.isLoading ? (
-        <p className="text-sm text-fg-tertiary">{t("loading")}</p>
+        <p className="text-settings-desc text-fg-tertiary">{t("loading")}</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-fg-tertiary">{t("hooksEmpty")}</p>
+        <p className="text-settings-desc text-fg-tertiary">{t("hooksEmpty")}</p>
       ) : (
         <ul className="flex flex-col">
           {rows.map((hook, index) => (
@@ -361,10 +361,10 @@ function WebhooksGroup({ t }: { t: Translator }) {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-[13.5px] font-medium text-fg-primary">
+                  <p className="truncate text-settings-body font-medium text-fg-primary">
                     {hook.url}
                   </p>
-                  <p className="mt-0.5 text-xs text-fg-quaternary">
+                  <p className="mt-0.5 text-settings-meta text-fg-quaternary">
                     {hook.events ? hook.events : t("allEvents")}
                     {!hook.enabled ? ` · ${t("disabled")}` : ""}
                   </p>
@@ -374,7 +374,7 @@ function WebhooksGroup({ t }: { t: Translator }) {
                     the user cannot read.
                   */}
                   {!hook.enabled && hook.failureCount > 0 ? (
-                    <p className="mt-1 text-xs text-error">
+                    <p className="mt-1 text-settings-meta text-error">
                       {t("autoDisabled", { count: hook.failureCount })}
                     </p>
                   ) : null}
@@ -439,18 +439,18 @@ function DeliveryLog({ id, t }: { id: number; t: Translator }) {
   );
 
   if (log.isLoading) {
-    return <p className="mt-2 text-xs text-fg-tertiary">{t("loading")}</p>;
+    return <p className="mt-2 text-settings-meta text-fg-tertiary">{t("loading")}</p>;
   }
 
   const rows = log.data ?? [];
   if (!rows.length) {
-    return <p className="mt-2 text-xs text-fg-tertiary">{t("logEmpty")}</p>;
+    return <p className="mt-2 text-settings-meta text-fg-tertiary">{t("logEmpty")}</p>;
   }
 
   return (
     <ul className="mt-2 flex flex-col gap-1 border-t border-border-light pt-2">
       {rows.map((row) => (
-        <li key={row.id} className="flex items-baseline gap-2 text-xs">
+        <li key={row.id} className="flex items-baseline gap-2 text-settings-meta">
           <span className={`font-mono ${row.ok ? "text-fg-secondary" : "text-error"}`}>
             {row.statusCode ?? t("noResponse")}
           </span>
