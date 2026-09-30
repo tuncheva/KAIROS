@@ -83,8 +83,8 @@ export function ProgressClient() {
 function Sheet({ children }: { children: ReactNode }) {
   return (
     <div className="tui-screen text-tui-ink min-h-full">
-      <div className="mx-auto max-w-[1360px] px-3 pt-6 pb-12 sm:px-8 sm:pt-10">
-        <article className="border-tui-ink/10 bg-tui-pane rounded-[10px] border px-5 pt-6 pb-14 shadow-[var(--tui-pane-shadow)] sm:px-10 lg:px-16 lg:pt-9 lg:pb-[72px]">
+      <div className="mx-auto max-w-[1360px] px-3 pt-4 pb-8 sm:px-6 sm:pt-6">
+        <article className="border-tui-ink/10 bg-tui-pane rounded-[10px] border px-4 pt-4 pb-10 shadow-[var(--tui-pane-shadow)] sm:px-8 lg:px-12 lg:pt-6 lg:pb-12">
           {children}
         </article>
       </div>
@@ -318,22 +318,22 @@ function ProgressWorkspace({ today }: { today: Date }) {
 
       <div key={team ? "team" : "me"} className="progress-view-in">
         {/* Headline */}
-        <section className="mt-12 flex flex-col sm:mt-[72px]">
+        <section className="mt-7 flex flex-col sm:mt-10">
           <span className="text-tui-accent font-mono text-[11px] tracking-[0.22em] uppercase">
             {team ? t("eyebrowTeam") : t("eyebrow")}
           </span>
-          <h1 className="font-display m-0 mt-[22px] text-[44px] leading-none font-normal tracking-[-0.022em] text-pretty sm:text-[60px] lg:text-[76px]">
+          <h1 className="font-display m-0 mt-3.5 text-[34px] leading-none font-normal tracking-[-0.022em] text-pretty sm:text-[46px] lg:text-[56px]">
             {headline}
           </h1>
-          <p className="text-tui-ink2 m-0 mt-[22px] max-w-[640px] text-[16.5px] leading-[1.65] text-pretty">
+          <p className="text-tui-ink2 m-0 mt-3 max-w-[640px] text-[15px] leading-[1.6] text-pretty">
             {subline}
           </p>
           {!team && isBlank && <p className="text-tui-ink3 m-0 mt-2 text-[14px]">{t("emptyHint")}</p>}
         </section>
 
-        <div className="mt-14">
+        <div className="mt-8">
           {team && teamQuery.isLoading ? (
-            <div className="kairos-shimmer h-[150px] rounded-md" aria-hidden="true" />
+            <div className="kairos-shimmer h-[112px] rounded-md" aria-hidden="true" />
           ) : (
             <StatRow stats={team ? teamStats : myStats} />
           )}
@@ -344,7 +344,7 @@ function ProgressWorkspace({ today }: { today: Date }) {
         )}
 
         {/* Finished per day, and the day that is picked, read out beside it. */}
-        <section className="mt-[72px]">
+        <section className="mt-11">
           <SectionHead
             title={team ? t("gridTitleTeam") : t("gridTitle")}
             meta={t("gridSubtitle", { weeks: RECORD_WEEKS })}
@@ -353,7 +353,7 @@ function ProgressWorkspace({ today }: { today: Date }) {
           </SectionHead>
 
           <div className="flex flex-col lg:flex-row">
-            <div className="pt-[26px] lg:pr-10">
+            <div className="pt-5 lg:pr-8">
               <ProgressGrid
                 weeks={weeks}
                 selectedYmd={selectedYmd}
@@ -366,10 +366,10 @@ function ProgressWorkspace({ today }: { today: Date }) {
               />
             </div>
 
-            <div className="border-tui-ink/[0.08] mt-8 flex min-w-0 flex-1 flex-col border-t pt-[26px] lg:mt-0 lg:border-t-0 lg:border-l lg:pl-10">
+            <div className="border-tui-ink/[0.08] mt-6 flex min-w-0 flex-1 flex-col border-t pt-5 lg:mt-0 lg:border-t-0 lg:border-l lg:pl-8">
               <span className={STAMP}>{t("selectedDay")}</span>
-              <div className="mt-3 flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
-                <span className="font-display text-[34px] leading-[1.05]">
+              <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="font-display text-[26px] leading-[1.05]">
                   {selected.toLocaleDateString(dateLocale, { weekday: "long", day: "numeric", month: "long" })}
                 </span>
                 <span className="text-tui-ink2 text-[13px]">
@@ -379,9 +379,9 @@ function ProgressWorkspace({ today }: { today: Date }) {
                 </span>
               </div>
 
-              <div className="mt-[18px] flex flex-col">
+              <div className="mt-3 flex flex-col">
                 {selectedTotal === 0 && (
-                  <p className="border-tui-ink/[0.07] text-tui-ink3 border-t py-3.5 text-[14px]">
+                  <p className="border-tui-ink/[0.07] text-tui-ink3 border-t py-2.5 text-[13.5px]">
                     {t("logEmptyDay")}
                   </p>
                 )}
@@ -391,7 +391,7 @@ function ProgressWorkspace({ today }: { today: Date }) {
                         key={row.member.id}
                         type="button"
                         onClick={() => openPerson(row.member.id)}
-                        className="border-tui-ink/[0.07] hover:bg-tui-ink/[0.025] flex items-center gap-3 border-t py-[11px] text-left transition-colors"
+                        className="border-tui-ink/[0.07] hover:bg-tui-ink/[0.025] flex items-center gap-3 border-t py-2 text-left transition-colors"
                       >
                         <span
                           className={cn(
@@ -411,7 +411,7 @@ function ProgressWorkspace({ today }: { today: Date }) {
                       <Link
                         key={task.id}
                         href={projectHref(task.projectId)}
-                        className="border-tui-ink/[0.07] hover:bg-tui-ink/[0.025] flex items-center gap-3 border-t py-[11px] transition-colors"
+                        className="border-tui-ink/[0.07] hover:bg-tui-ink/[0.025] flex items-center gap-3 border-t py-2 transition-colors"
                       >
                         <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", projectTone(task.projectId).dot)} />
                         <span className="text-tui-ink min-w-0 flex-1 truncate text-[14px]">{task.title}</span>
@@ -427,7 +427,7 @@ function ProgressWorkspace({ today }: { today: Date }) {
 
         {team ? (
           <>
-            <div className="mt-20">
+            <div className="mt-11">
               {teamQuery.isLoading ? (
                 <div className="kairos-shimmer h-72 rounded-md" aria-hidden="true" />
               ) : (
@@ -441,34 +441,34 @@ function ProgressWorkspace({ today }: { today: Date }) {
               )}
             </div>
             {!teamQuery.isLoading && (
-              <div className="mt-20">
+              <div className="mt-11">
                 <TeamNotes notes={teamNotes} onOpenMember={openPerson} />
               </div>
             )}
           </>
         ) : (
           <>
-            <div className="mt-20 grid grid-cols-1 gap-16 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-[72px]">
+            <div className="mt-11 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-12">
               <section>
                 <SectionHead title={t("logRecent")} meta={t("logCount", { count: countLogged(log) })} />
                 <FinishedLog groups={log} today={today} />
               </section>
 
-              <div className="flex flex-col gap-16">
+              <div className="flex flex-col gap-10">
                 <SuggestionList suggestions={suggestions} onDismiss={dismiss} />
                 <section>
                   <SectionHead title={t("workloadTitle")} />
-                  <div className="pt-[22px]">
+                  <div className="pt-4">
                     <WorkloadList workload={data.workload} today={today} />
                     {data.workload.length > 0 && (
-                      <p className="text-tui-ink3 mt-[18px] text-[12px]">{t("workloadCaption")}</p>
+                      <p className="text-tui-ink3 mt-3 text-[12px]">{t("workloadCaption")}</p>
                     )}
                   </div>
                 </section>
               </div>
             </div>
 
-            <div className="mt-20">
+            <div className="mt-11">
               <Standings people={board.data?.people ?? []} onOpen={openPerson} />
             </div>
           </>

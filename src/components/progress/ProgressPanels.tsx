@@ -61,8 +61,8 @@ export function SectionHead({
   id?: string;
 }) {
   return (
-    <div className={cn("flex flex-wrap items-baseline gap-x-3.5 gap-y-2 border-b pb-[18px]", RULE)}>
-      <h2 id={id} className="font-display text-tui-ink m-0 text-[28px] leading-none font-normal">
+    <div className={cn("flex flex-wrap items-baseline gap-x-3 gap-y-1.5 border-b pb-3", RULE)}>
+      <h2 id={id} className="font-display text-tui-ink m-0 text-[22px] leading-none font-normal">
         {title}
       </h2>
       {meta && <span className="text-tui-ink3 text-[13px]">{meta}</span>}
@@ -102,7 +102,7 @@ export function TextTabs<K extends string>({
             aria-pressed={on}
             className={cn(
               "border-b-[1.5px] font-semibold transition-colors",
-              size === "md" ? "h-10 text-[13.5px]" : "pb-1 text-[13px]",
+              size === "md" ? "h-9 text-[13px]" : "pb-1 text-[12.5px]",
               on
                 ? "border-tui-accent text-tui-ink"
                 : "text-tui-ink3 hover:text-tui-ink border-transparent",
@@ -208,16 +208,16 @@ export function StatRow({ stats }: { stats: Stat[] }) {
         <div
           key={stat.key}
           className={cn(
-            "flex flex-col gap-3 py-[26px] pr-6",
+            "flex flex-col gap-2 py-4 pr-5",
             RULE,
             // Left rule on every cell but the first of its row.
-            index % 2 === 1 && "border-l pl-6 lg:pl-7",
-            index === 2 && "border-t pl-0 lg:border-t-0 lg:border-l lg:pl-7",
+            index % 2 === 1 && "border-l pl-5 lg:pl-6",
+            index === 2 && "border-t pl-0 lg:border-t-0 lg:border-l lg:pl-6",
             index === 3 && "border-t lg:border-t-0",
           )}
         >
           <span className={STAMP}>{stat.label}</span>
-          <span className={cn(NUMERAL, "text-[44px] sm:text-[56px]", stat.valueClass ?? "text-tui-ink")}>
+          <span className={cn(NUMERAL, "text-[34px] sm:text-[42px]", stat.valueClass ?? "text-tui-ink")}>
             {stat.value}
           </span>
           <span className="text-tui-ink3 text-[12.5px]">{stat.note}</span>
@@ -309,16 +309,16 @@ export function SuggestionList({
       <SectionHead title={t("suggestions")} />
 
       {suggestions.length === 0 && (
-        <p className="text-tui-ink3 py-[18px] text-[14px]">{t("suggestionsEmpty")}</p>
+        <p className="text-tui-ink3 py-3.5 text-[13.5px]">{t("suggestionsEmpty")}</p>
       )}
 
       {suggestions.map((suggestion, index) => {
         const copy = copyFor(suggestion);
         return (
-          <div key={suggestion.id} className={cn("flex gap-4 border-b py-5", HAIR)}>
+          <div key={suggestion.id} className={cn("flex gap-3.5 border-b py-3.5", HAIR)}>
             <span
               className={cn(
-                "font-display pt-px text-[20px] leading-[1.1] italic",
+                "font-display pt-px text-[18px] leading-[1.1] italic",
                 SUGGESTION_TEXT[suggestion.tone],
               )}
               aria-hidden="true"
@@ -388,14 +388,14 @@ export function FinishedLog({
   };
 
   if (!groups.length) {
-    return <p className="text-tui-ink3 py-6 text-[14px]">{t("logEmpty")}</p>;
+    return <p className="text-tui-ink3 py-4 text-[13.5px]">{t("logEmpty")}</p>;
   }
 
   return (
     <div className="flex flex-col">
       {groups.map((group) => (
         <div key={group.ymd} className="flex flex-col">
-          <span className={cn(STAMP, compact ? "pt-4 pb-2" : "pt-[22px] pb-2.5")}>
+          <span className={cn(STAMP, compact ? "pt-3 pb-1.5" : "pt-4 pb-2")}>
             {dayLabel(group.date)}
           </span>
 
@@ -406,7 +406,7 @@ export function FinishedLog({
               /* Narrower fixed columns on a phone: a wide project column left
                  the task title about 80px of a 375px screen. */
               className={cn(
-                "grid items-center gap-3 border-t py-3 transition-colors hover:bg-tui-ink/[0.025] sm:gap-[18px]",
+                "grid items-center gap-3 border-t py-2 transition-colors hover:bg-tui-ink/[0.025] sm:gap-[18px]",
                 HAIR,
                 compact
                   ? "grid-cols-[minmax(0,1fr)_44px]"
@@ -460,7 +460,7 @@ export function WorkloadList({
   }
 
   return (
-    <div className="flex flex-col gap-[18px]">
+    <div className="flex flex-col gap-3">
       {workload.map((entry) => {
         const quiet = entry.lastTouchedAt ? daysBetween(new Date(entry.lastTouchedAt), today) : null;
         return (
@@ -477,7 +477,7 @@ export function WorkloadList({
                 {quiet <= 0 ? t("workloadToday") : t("workloadQuiet", { count: quiet })}
               </span>
             )}
-            <span className={cn(NUMERAL, "text-tui-ink min-w-7 text-right text-[28px]")}>{entry.open}</span>
+            <span className={cn(NUMERAL, "text-tui-ink min-w-7 text-right text-[22px]")}>{entry.open}</span>
           </Link>
         );
       })}
@@ -510,7 +510,7 @@ export function Standings({
         const name = displayName(person) || t("boardUnknown");
         const row = (
           <>
-            <span className={cn(NUMERAL, "text-tui-ink3 text-[24px] italic")}>{person.rank}</span>
+            <span className={cn(NUMERAL, "text-tui-ink3 text-[19px] italic")}>{person.rank}</span>
             <span
               className={cn(
                 "grid h-[30px] w-[30px] place-items-center rounded-full text-[11px] font-bold",
@@ -533,11 +533,11 @@ export function Standings({
                 style={{ width: `${Math.round(person.share * 100)}%` }}
               />
             </span>
-            <span className={cn(NUMERAL, "text-tui-ink text-right text-[30px]")}>{person.completed}</span>
+            <span className={cn(NUMERAL, "text-tui-ink text-right text-[24px]")}>{person.completed}</span>
           </>
         );
         const grid = cn(
-          "grid w-full grid-cols-[32px_30px_minmax(0,1fr)_64px] items-center gap-3.5 border-b py-3.5 text-left sm:grid-cols-[44px_34px_240px_minmax(0,1fr)_76px] sm:gap-[18px]",
+          "grid w-full grid-cols-[32px_30px_minmax(0,1fr)_64px] items-center gap-3.5 border-b py-2 text-left sm:grid-cols-[44px_34px_240px_minmax(0,1fr)_76px] sm:gap-[18px]",
           HAIR,
         );
 
@@ -634,7 +634,7 @@ export function TeamTable({
           table sideways rather than dropping the numbers a lead came for. */}
       <div className="overflow-x-auto">
         <div className="min-w-[960px]">
-          <div className={cn("grid pt-4 pb-2.5", TABLE_COLUMNS, STAMP)} aria-hidden="true">
+          <div className={cn("grid pt-3 pb-2", TABLE_COLUMNS, STAMP)} aria-hidden="true">
             <span>{t("colMember")}</span>
             <span>{t("colLast30")}</span>
             <span className="text-right">{t("colFinished")}</span>
@@ -660,7 +660,7 @@ export function TeamTable({
                 onClick={() => onOpen(row.member.id)}
                 aria-label={t("boardOpenPerson", { name })}
                 className={cn(
-                  "grid w-full items-center border-t py-4 text-left transition-colors",
+                  "grid w-full items-center border-t py-2 text-left transition-colors",
                   TABLE_COLUMNS,
                   "border-tui-ink/[0.07]",
                   activeId === row.member.id ? "bg-tui-accent/[0.06]" : "hover:bg-tui-ink/[0.025]",
@@ -685,7 +685,7 @@ export function TeamTable({
                 </span>
 
                 {/* The last thirty days, one bar each — shape over precision. */}
-                <span aria-hidden="true" className="flex h-[26px] items-end gap-[3px]">
+                <span aria-hidden="true" className="flex h-5 items-end gap-[3px]">
                   {row.strip.map((count, index) => (
                     <span
                       key={index}
@@ -697,12 +697,12 @@ export function TeamTable({
                             ? "bg-tui-accent"
                             : "bg-tui-ink/45",
                       )}
-                      style={{ height: count === 0 ? 2 : Math.max(5, Math.round((count / peak) * 26)) }}
+                      style={{ height: count === 0 ? 2 : Math.max(4, Math.round((count / peak) * 20)) }}
                     />
                   ))}
                 </span>
 
-                <span className={cn(NUMERAL, "text-tui-ink text-right text-[28px]")}>{row.finished}</span>
+                <span className={cn(NUMERAL, "text-tui-ink text-right text-[22px]")}>{row.finished}</span>
                 <span className="text-tui-ink2 text-right text-[14px] tabular-nums">{row.perDay}</span>
                 <span
                   className={cn(
@@ -749,9 +749,9 @@ export function TeamNotes({
     <section>
       <SectionHead title={t("attentionTitle")} meta={t("attentionSubtitle")} />
       {notes.length === 0 ? (
-        <p className="text-tui-ink3 pt-6 text-[14px]">{t("attentionEmpty")}</p>
+        <p className="text-tui-ink3 pt-4 text-[13.5px]">{t("attentionEmpty")}</p>
       ) : (
-        <div className="grid grid-cols-1 gap-10 pt-7 md:grid-cols-3 md:gap-12">
+        <div className="grid grid-cols-1 gap-7 pt-5 md:grid-cols-3 md:gap-10">
           {notes.map((note, index) => {
             const action =
               note.id === "stale" ? (
@@ -790,7 +790,7 @@ export function TeamNotes({
               <div key={note.id} className="flex flex-col gap-2.5">
                 <span
                   aria-hidden="true"
-                  className={cn("font-display text-[22px] leading-none italic", SUGGESTION_TEXT[note.tone])}
+                  className={cn("font-display text-[19px] leading-none italic", SUGGESTION_TEXT[note.tone])}
                 >
                   {NUMERALS[index]}
                 </span>

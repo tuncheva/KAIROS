@@ -6,7 +6,7 @@ import { HEAT_LEGEND, heatClass, type GridWeek } from "./progressModel";
 
 /** Cell edge and gap, in pixels, per size. `sm` is the member drawer's strip. */
 const SIZES = {
-  lg: { cell: 20, gap: 5, radius: "rounded-[4px]" },
+  lg: { cell: 16, gap: 4, radius: "rounded-[3px]" },
   sm: { cell: 13, gap: 3, radius: "rounded-[3px]" },
 } as const;
 /** Width of the weekday gutter, when it is shown. */
