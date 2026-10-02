@@ -12,21 +12,37 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { BellOff, MessageCircle, Plus, Search, X } from "~/components/ui/icons";
+import { BellOff, FolderKanban, Pencil, Search, X } from "~/components/ui/icons";
 
 import type { RouterOutputs } from "~/trpc/react";
-import { Avatar, displayName, formatRailTimestamp, type ChatUser } from "./chatUi";
+import {
+  Avatar,
+  CHAT_EYEBROW,
+  CHAT_ICON_BUTTON,
+  CHAT_PANE,
+  chatPill,
+  displayName,
+  formatRailTimestamp,
+  type ChatUser,
+} from "./chatUi";
 
 type Conversation = RouterOutputs["chat"]["listAllConversations"][number];
 type SearchHit = RouterOutputs["chat"]["searchMessages"][number];
 
 export type RailFilter = "all" | "unread" | "projects" | "archived";
 
+/** The second line of a row: what it says and how it is set. */
+interface Preview {
+  text: string;
+  tone: "plain" | "accent" | "quiet";
+}
+
 export function ConversationRail({
   conversations,
   selectedId,
   userId,
   locale,
+  workspaceName,
   query,
   onQueryChange,
   filter,
@@ -37,7 +53,7 @@ export function ConversationRail({
   onSelectSearchHit,
   onNewChat,
   isOnline,
-  hasDraft,
+  draftOf,
   typingConversationIds,
   isLoading,
 }: {
@@ -45,6 +61,7 @@ export function ConversationRail({
   selectedId: number | null;
   userId: string;
   locale: string;
+  workspaceName: string;
   query: string;
   onQueryChange: (next: string) => void;
   filter: RailFilter;
@@ -55,7 +72,8 @@ export function ConversationRail({
   onSelectSearchHit: (hit: SearchHit) => void;
   onNewChat: () => void;
   isOnline: (userId: string | null | undefined) => boolean;
-  hasDraft: (conversationId: number) => boolean;
+  /** The saved draft for a conversation, or "" when there is none. */
+  draftOf: (conversationId: number) => string;
   typingConversationIds: Set<number>;
   isLoading: boolean;
 }) {
@@ -66,6 +84,11 @@ export function ConversationRail({
 
   const unreadTotal = useMemo(
     () => conversations.filter((c) => !c.archived && c.unreadCount > 0).length,
+    [conversations],
+  );
+
+  const activeCount = useMemo(
+    () => conversations.filter((c) => !c.archived).length,
     [conversations],
   );
 
@@ -101,45 +124,58 @@ export function ConversationRail({
   ];
 
   return (
-    <div className="flex flex-col h-full bg-bg-surface border-r border-border-light/40">
-      <div className="flex items-center gap-2 px-4 pt-4 pb-3 flex-none">
-        <h1 className="flex-1 text-xl font-bold text-fg-primary">{t("messages")}</h1>
+    <aside className={`${CHAT_PANE} flex h-full min-h-0 flex-col`} aria-label={t("conversations")}>
+      <div className="flex flex-none items-end gap-3 px-[22px] pt-[26px] pb-[18px]">
+        <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+          <span className={`${CHAT_EYEBROW} truncate`}>{workspaceName}</span>
+          <div className="flex items-baseline gap-2.5">
+            <h1 className="m-0 font-display text-[46px] leading-none font-light tracking-[-0.02em] text-tui-ink">
+              {t("chats")}
+            </h1>
+            <span className="font-display text-[22px] text-tui-ink3 tabular-nums">{activeCount}</span>
+          </div>
+        </div>
         <button
           type="button"
           onClick={onNewChat}
           aria-label={t("newChat")}
           title={t("newChat")}
-          className="p-2.5 rounded-xl bg-gradient-to-br from-accent-primary to-accent-secondary text-white shadow-lg hover:brightness-110 transition-all"
+          className={`${CHAT_ICON_BUTTON} h-9 w-9 text-tui-accent`}
         >
-          <Plus size={17} />
+          <Pencil size={15} />
         </button>
       </div>
 
-      <div className="px-4 pb-2.5 flex-none">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-tertiary pointer-events-none" size={15} />
+      <div className="flex-none px-4 pb-3">
+        <label className="flex h-[38px] items-center gap-2.5 rounded-full border border-tui-ink/16 bg-tui-bg pr-2 pl-3.5 transition-colors focus-within:border-tui-accent/45">
+          <Search size={14} className="flex-none text-tui-ink3" />
           <input
             type="search"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder={t("searchPeopleAndMessages")}
             aria-label={t("searchPeopleAndMessages")}
-            className="w-full pl-9 pr-9 py-2.5 text-sm bg-bg-secondary rounded-xl text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/35"
+            data-chat-search
+            className="min-w-0 flex-1 border-0 bg-transparent text-[13.5px] text-tui-ink outline-none placeholder:text-tui-ink3"
           />
           {query && (
             <button
               type="button"
               onClick={() => onQueryChange("")}
               aria-label={t("clearSearch")}
-              className="kairos-tap absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-fg-tertiary hover:text-fg-primary transition-colors"
+              className="kairos-tap grid h-6 w-6 flex-none place-items-center rounded-full text-tui-ink3 transition-colors hover:text-tui-ink"
             >
-              <X size={14} />
+              <X size={12} />
             </button>
           )}
-        </div>
+        </label>
       </div>
 
-      <div className="flex gap-1.5 px-4 pb-2.5 flex-none overflow-x-auto" role="tablist" aria-label={t("filterConversations")}>
+      <div
+        className="flex flex-none flex-wrap gap-1.5 px-4 pb-3.5"
+        role="tablist"
+        aria-label={t("filterConversations")}
+      >
         {filters.map((f) => (
           <button
             key={f.key}
@@ -147,38 +183,31 @@ export function ConversationRail({
             role="tab"
             aria-selected={filter === f.key}
             onClick={() => onFilterChange(f.key)}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap transition-colors ${
-              filter === f.key
-                ? "bg-accent-primary/12 text-accent-primary ring-1 ring-accent-primary/30"
-                : "bg-bg-secondary text-fg-tertiary hover:text-fg-secondary"
-            }`}
+            className={`flex h-7 items-center gap-1.5 rounded-full border px-[11px] text-[12.5px] font-medium whitespace-nowrap transition-colors ${chatPill(filter === f.key)}`}
           >
             {f.label}
-            {f.count ? <span className="ml-1.5 tabular-nums">{f.count}</span> : null}
+            {f.count ? <span className="text-[11.5px] tabular-nums opacity-80">{f.count}</span> : null}
           </button>
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-3">
+      <div className="mx-4 h-px flex-none bg-tui-ink/8" />
+
+      <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pt-2.5 pb-3.5">
         {isLoading ? (
           <div className="flex flex-col gap-2 p-2" aria-hidden="true">
             {[0, 1, 2, 3, 4].map((i) => (
               <div key={i} className="flex items-center gap-3 p-2.5">
-                <div className="w-[38px] h-[38px] rounded-full bg-bg-secondary animate-pulse" />
+                <div className="h-[38px] w-[38px] animate-pulse rounded-full bg-tui-ink/6" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-3 w-1/2 rounded-sm bg-bg-secondary animate-pulse" />
-                  <div className="h-2.5 w-3/4 rounded-sm bg-bg-secondary animate-pulse" />
+                  <div className="h-3 w-1/2 animate-pulse rounded-sm bg-tui-ink/6" />
+                  <div className="h-2.5 w-3/4 animate-pulse rounded-sm bg-tui-ink/6" />
                 </div>
               </div>
             ))}
           </div>
         ) : visible.length === 0 && searchHits.length === 0 ? (
-          <EmptyRail
-            query={query}
-            filter={filter}
-            isSearching={isSearching}
-            onNewChat={onNewChat}
-          />
+          <EmptyRail query={query} filter={filter} isSearching={isSearching} />
         ) : (
           <>
             {visible.length > 0 && (
@@ -187,8 +216,11 @@ export function ConversationRail({
                   const other = otherOf(convo);
                   const selected = convo.id === selectedId;
                   const typing = typingConversationIds.has(convo.id);
-                  const draft = hasDraft(convo.id);
+                  /* The open thread's draft is in the composer right under the
+                     reader's eyes; repeating it on the row is noise. */
+                  const draft = selected ? "" : draftOf(convo.id).trim();
                   const preview = previewFor(convo, userId, t, draft, typing);
+                  const loud = convo.unreadCount > 0 && !convo.muted;
 
                   return (
                     <li key={convo.id}>
@@ -196,10 +228,8 @@ export function ConversationRail({
                         type="button"
                         onClick={() => onSelect(convo.id)}
                         aria-current={selected ? "true" : undefined}
-                        className={`w-full flex items-start gap-3 p-2.5 rounded-xl text-left transition-colors ${
-                          selected
-                            ? "bg-accent-primary/10 ring-1 ring-accent-primary/25"
-                            : "hover:bg-bg-secondary"
+                        className={`flex w-full items-start gap-3 rounded-lg p-3 text-left text-tui-ink transition-colors ${
+                          selected ? "bg-tui-accent/15" : "hover:bg-tui-accent/6"
                         }`}
                       >
                         <Avatar
@@ -208,15 +238,17 @@ export function ConversationRail({
                           online={isOnline(other.id)}
                           fallbackLabel={t("userFallback")}
                         />
-                        <span className="flex-1 min-w-0">
+                        <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
                           <span className="flex items-baseline gap-2">
-                            <span className="flex-1 text-sm font-semibold text-fg-primary truncate">
+                            <span
+                              className={`min-w-0 flex-1 truncate text-[14.5px] ${loud ? "font-semibold" : "font-medium"}`}
+                            >
                               {displayName(other, t("userFallback"))}
                             </span>
                             {convo.muted && (
-                              <BellOff size={12} className="text-fg-quaternary flex-shrink-0" aria-label={t("muted")} />
+                              <BellOff size={12} className="flex-none text-tui-ink3" aria-label={t("muted")} />
                             )}
-                            <span className="text-[10px] text-fg-quaternary tabular-nums flex-shrink-0">
+                            <span className="flex-none text-[11.5px] text-tui-ink3 tabular-nums">
                               {formatRailTimestamp(
                                 new Date(convo.lastMessage?.createdAt ?? convo.lastMessageAt),
                                 locale,
@@ -224,22 +256,26 @@ export function ConversationRail({
                               )}
                             </span>
                           </span>
-                          <span className="flex items-center gap-2 mt-0.5">
+                          <span className="flex items-center gap-2">
                             <span
-                              className={`flex-1 text-xs truncate ${
-                                convo.unreadCount > 0 && !convo.muted
-                                  ? "text-fg-primary font-semibold"
-                                  : "text-fg-tertiary"
+                              className={`min-w-0 flex-1 truncate text-[13px] leading-[1.4] ${
+                                preview.tone === "accent"
+                                  ? `text-tui-accent ${typing ? "italic" : ""}`
+                                  : preview.tone === "quiet"
+                                    ? "text-tui-ink3 italic"
+                                    : loud
+                                      ? "font-medium text-tui-ink"
+                                      : "text-tui-ink2"
                               }`}
                             >
-                              {preview}
+                              {preview.text}
                             </span>
                             {convo.unreadCount > 0 && (
                               <span
-                                className={`min-w-[19px] h-[19px] px-1.5 grid place-items-center rounded-full text-[10px] font-bold tabular-nums flex-shrink-0 ${
+                                className={`flex h-5 min-w-5 flex-none items-center justify-center rounded-full border px-1.5 text-[11px] font-semibold tabular-nums ${
                                   convo.muted
-                                    ? "bg-bg-tertiary text-fg-tertiary"
-                                    : "bg-accent-primary text-white"
+                                    ? "border-tui-ink/16 bg-transparent text-tui-ink3"
+                                    : "border-tui-accent bg-tui-accent text-tui-on-accent"
                                 }`}
                               >
                                 {convo.unreadCount > 99 ? "99+" : convo.unreadCount}
@@ -247,8 +283,9 @@ export function ConversationRail({
                             )}
                           </span>
                           {convo.projectTitle && (
-                            <span className="inline-flex mt-1.5 px-1.5 py-0.5 rounded-sm text-[9.5px] font-semibold uppercase tracking-wide bg-info/12 text-info">
-                              {convo.projectTitle}
+                            <span className="mt-[5px] flex h-[22px] max-w-full items-center gap-1.5 self-start rounded-full border border-tui-ink/16 px-[9px] text-[11.5px] text-tui-ink2">
+                              <FolderKanban size={11} className="flex-none text-tui-ink3" />
+                              <span className="truncate">{convo.projectTitle}</span>
                             </span>
                           )}
                         </span>
@@ -260,27 +297,25 @@ export function ConversationRail({
             )}
 
             {searchHits.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-border-light/40">
-                <p className="px-2.5 pb-2 text-[10px] font-semibold uppercase tracking-widest text-fg-quaternary">
-                  {t("inMessages")}
-                </p>
+              <div className="mt-2 flex flex-col border-t border-tui-ink/8">
+                <p className={`${CHAT_EYEBROW} px-3 pt-[18px] pb-2`}>{t("inMessages")}</p>
                 <ul className="flex flex-col gap-0.5">
                   {searchHits.map((hit) => (
                     <li key={hit.id}>
                       <button
                         type="button"
                         onClick={() => onSelectSearchHit(hit)}
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-bg-secondary transition-colors"
+                        className="flex w-full flex-col gap-1 rounded-lg px-3 py-2.5 text-left text-tui-ink transition-colors hover:bg-tui-accent/6"
                       >
-                        <span className="flex items-baseline gap-2">
-                          <span className="flex-1 text-xs font-semibold text-fg-secondary truncate">
+                        <span className="flex gap-2 text-[12.5px]">
+                          <span className="flex-1 truncate font-medium text-tui-ink2">
                             {hit.senderName ?? t("userFallback")}
                           </span>
-                          <span className="text-[10px] text-fg-quaternary tabular-nums">
+                          <span className="text-tui-ink3 tabular-nums">
                             {formatRailTimestamp(new Date(hit.createdAt), locale, { yesterday: t("yesterday") })}
                           </span>
                         </span>
-                        <span className="block mt-0.5 text-xs text-fg-tertiary line-clamp-2">{hit.body}</span>
+                        <span className="line-clamp-2 text-[13px] leading-normal text-tui-ink2">{hit.body}</span>
                       </button>
                     </li>
                   ))}
@@ -289,12 +324,12 @@ export function ConversationRail({
             )}
 
             {isSearching && (
-              <p className="px-3 py-2 text-xs text-fg-quaternary">{t("searching")}</p>
+              <p className="px-3 py-2 text-[12.5px] text-tui-ink3">{t("searching")}</p>
             )}
           </>
         )}
       </div>
-    </div>
+    </aside>
   );
 }
 
@@ -303,70 +338,43 @@ function previewFor(
   convo: Conversation,
   userId: string,
   t: ReturnType<typeof useTranslations<"chat.direct">>,
-  draft: boolean,
+  draft: string,
   typing: boolean,
-): string {
-  if (typing) return t("typing");
-  if (draft) return t("draftPreview");
+): Preview {
+  if (typing) return { text: t("typing"), tone: "accent" };
+  if (draft) return { text: `${t("draftPreview")} · ${draft}`, tone: "accent" };
   const last = convo.lastMessage;
-  if (!last) return t("noMessagesYet");
-  if (last.deleted) return t("messageDeleted");
+  if (!last) return { text: t("noMessagesYet"), tone: "quiet" };
+  if (last.deleted) return { text: t("messageDeleted"), tone: "quiet" };
 
   const body = last.body.trim().length > 0 ? last.body : last.attachmentName ?? t("attachment");
-  return last.senderId === userId ? t("youPrefix", { body }) : body;
+  return { text: last.senderId === userId ? t("youPrefix", { body }) : body, tone: "plain" };
 }
 
 function EmptyRail({
   query,
   filter,
   isSearching,
-  onNewChat,
 }: {
   query: string;
   filter: RailFilter;
   isSearching: boolean;
-  onNewChat: () => void;
 }) {
   const t = useTranslations("chat.direct");
 
-  if (query.trim()) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-        <p className="text-sm text-fg-secondary">
-          {isSearching ? t("searching") : t("noResultsFor", { query })}
-        </p>
-      </div>
-    );
-  }
-
-  if (filter !== "all") {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-        <p className="text-sm text-fg-secondary">
-          {filter === "unread"
-            ? t("noUnread")
-            : filter === "projects"
-              ? t("noProjectConversations")
-              : t("noArchived")}
-        </p>
-      </div>
-    );
-  }
+  const text = query.trim()
+    ? isSearching
+      ? t("searching")
+      : t("noResultsFor", { query: query.trim() })
+    : filter === "unread"
+      ? t("noUnread")
+      : filter === "projects"
+        ? t("noProjectConversations")
+        : filter === "archived"
+          ? t("noArchived")
+          : t("noConversationsYet");
 
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <div className="w-14 h-14 rounded-full bg-accent-primary/10 grid place-items-center mb-3">
-        <MessageCircle size={24} className="text-accent-primary" />
-      </div>
-      <p className="text-sm font-semibold text-fg-primary mb-1">{t("noConversationsYet")}</p>
-      <p className="text-xs text-fg-tertiary mb-4">{t("startNewChatToGetStarted")}</p>
-      <button
-        type="button"
-        onClick={onNewChat}
-        className="px-4 py-2 rounded-lg bg-accent-primary/10 text-accent-primary text-sm font-semibold hover:bg-accent-primary/20 transition-colors"
-      >
-        {t("startNewChat")}
-      </button>
-    </div>
+    <p className="px-3.5 py-7 text-center text-[13.5px] leading-[1.55] text-tui-ink3">{text}</p>
   );
 }

@@ -18,7 +18,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Info, Loader2, MessageSquare, Search } from "~/components/ui/icons";
+import {
+  ArrowLeft,
+  BellOff,
+  Eraser,
+  FolderKanban,
+  Info,
+  Loader2,
+  LogOut,
+  Plus,
+  Search,
+} from "~/components/ui/icons";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
@@ -41,14 +51,22 @@ import {
 import { useTypingIndicator } from "./useTypingIndicator";
 import { usePresence } from "./usePresence";
 import { useDrafts } from "./useDrafts";
-import { Avatar, displayName, type ChatUser } from "./chatUi";
+import {
+  Avatar,
+  CHAT_EYEBROW,
+  CHAT_ICON_BUTTON,
+  CHAT_PANE,
+  chatPill,
+  displayName,
+  type ChatUser,
+} from "./chatUi";
 import { ConversationRail, type RailFilter } from "./ConversationRail";
 import { ConversationDetails } from "./ConversationDetails";
 import { MessageThread } from "./MessageThread";
 import { MessageBubble, type SendStatus, type ThreadMessage } from "./MessageBubble";
 import { Composer, type PendingAttachment } from "./Composer";
 import { NewChatModal } from "./NewChatModal";
-import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
+import { ChatDialog } from "./ChatDialog";
 
 const PAGE_SIZE = 50;
 /** Debounce before a typed query is sent to the server. */
@@ -73,6 +91,7 @@ export function ChatShell({
   conversationId: number | null;
 }) {
   const t = useTranslations("chat.direct");
+  const tOrg = useTranslations("org");
   const locale = useLocale();
   const timeLocale = locale === "bg" ? "bg-BG" : "en-US";
   const router = useRouter();
@@ -80,7 +99,7 @@ export function ChatShell({
   const utils = api.useUtils();
   const socket = useSocket();
   const { isOnline } = usePresence();
-  const { getDraft, setDraft, clearDraft, hasDraft } = useDrafts();
+  const { getDraft, setDraft, clearDraft } = useDrafts();
   const { startUpload } = useUploadThing("chatAttachment");
 
   const [railQuery, setRailQuery] = useState("");
@@ -88,6 +107,13 @@ export function ChatShell({
   const [filter, setFilter] = useState<RailFilter>("all");
   const [showNewChat, setShowNewChat] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+
+  /* Open by default where there is room for a third pane beside the thread;
+     below that it is a slide-over, and opening one unasked would cover the
+     thread the user just picked. */
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 1280px)").matches) setShowDetails(true);
+  }, []);
   const [replyingTo, setReplyingTo] = useState<ThreadMessage | null>(null);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -104,6 +130,13 @@ export function ChatShell({
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── data ────────────────────────────────────────────────────────────
+  /* The same cached query the side nav reads, so this costs no request. */
+  const { data: activeOrg } = api.organization.getActive.useQuery(undefined, {
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+  const workspaceName = activeOrg?.organization.name ?? tOrg("personalWorkspace");
+
   const conversationsQuery = api.chat.listAllConversations.useQuery();
   const conversations = useMemo(() => conversationsQuery.data ?? [], [conversationsQuery.data]);
 
@@ -159,14 +192,17 @@ export function ChatShell({
     { enabled: debouncedQuery.length >= 2 },
   );
 
-  const participants = useMemo(() => {
-    const map = new Map<string, ChatUser>();
-    for (const convo of conversations) {
-      map.set(convo.userOne.id, convo.userOne);
-      map.set(convo.userTwo.id, convo.userTwo);
-    }
-    return map;
-  }, [conversations]);
+  /* Whether a thread with this person — in this project, when one is given —
+     already exists, so the new-chat dialog can say "Open" rather than "Start". */
+  const hasConversationWith = useCallback(
+    (otherId: string, projectId?: number) =>
+      conversations.some(
+        (c) =>
+          (c.userOne.id === otherId || c.userTwo.id === otherId) &&
+          (projectId === undefined ? c.projectId === null : c.projectId === projectId),
+      ),
+    [conversations],
+  );
 
   // ── read pointer ────────────────────────────────────────────────────
   const markRead = api.chat.markRead.useMutation({
@@ -842,19 +878,23 @@ export function ChatShell({
 
   const draft = conversationId === null ? "" : getDraft(conversationId);
   const threadOpen = conversationId !== null;
+  const peerName = displayName(otherUser, t("userFallback"));
+  const peerFirst = peerName.split(" ")[0] ?? peerName;
+  const detailsOpen = showDetails && threadOpen && activeConversation !== null;
 
   return (
-    <div className="flex h-full w-full bg-bg-primary overflow-hidden">
+    <div className="tui-screen flex h-full w-full gap-4 overflow-hidden p-2 text-tui-ink sm:px-6 sm:pt-5 sm:pb-6">
       {/* Rail. Hidden on mobile once a thread is open — the thread is its own
           route, so the browser back button returns here. */}
       <div
-        className={`${threadOpen ? "hidden lg:flex" : "flex"} w-full lg:w-[300px] xl:w-[330px] flex-col flex-none`}
+        className={`${threadOpen ? "hidden lg:flex" : "flex"} min-h-0 w-full flex-none flex-col lg:w-[312px]`}
       >
         <ConversationRail
           conversations={conversations}
           selectedId={conversationId}
           userId={userId}
           locale={timeLocale}
+          workspaceName={workspaceName}
           query={railQuery}
           onQueryChange={setRailQuery}
           filter={filter}
@@ -865,24 +905,26 @@ export function ChatShell({
           onSelectSearchHit={selectSearchHit}
           onNewChat={() => setShowNewChat(true)}
           isOnline={isOnline}
-          hasDraft={hasDraft}
+          draftOf={getDraft}
           typingConversationIds={typingConversations}
           isLoading={conversationsQuery.isLoading}
         />
       </div>
 
       {/* Thread */}
-      <div className={`${threadOpen ? "flex" : "hidden lg:flex"} flex-1 min-w-0 flex-col`}>
+      <section
+        className={`${threadOpen ? "flex" : "hidden lg:flex"} ${CHAT_PANE} relative min-h-0 min-w-0 flex-1 flex-col overflow-hidden`}
+      >
         {threadOpen && activeConversation && otherUser ? (
           <>
-            <header className="flex items-center gap-3 px-3 sm:px-5 py-3 border-b border-border-light/40 bg-bg-surface flex-none">
+            <header className="flex flex-none items-center gap-3 border-b border-tui-ink/8 py-[18px] pr-4 pl-3 sm:gap-3.5 sm:pr-5 sm:pl-6">
               <button
                 type="button"
                 onClick={() => router.push("/chat")}
                 aria-label={t("backToConversations")}
-                className="kairos-tap lg:hidden p-1.5 rounded-lg text-fg-secondary hover:bg-bg-secondary transition-colors flex-shrink-0"
+                className={`${CHAT_ICON_BUTTON} h-9 w-9 lg:hidden`}
               >
-                <ArrowLeft size={18} />
+                <ArrowLeft size={16} />
               </button>
               <Avatar
                 user={otherUser}
@@ -891,12 +933,18 @@ export function ChatShell({
                 fallbackLabel={t("userFallback")}
                 peek
               />
-              <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-bold text-fg-primary truncate">
-                  {displayName(otherUser, t("userFallback"))}
+              <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                <h2 className="truncate font-display text-[23px] leading-[1.1] tracking-[-0.01em]">
+                  {peerName}
                 </h2>
                 <p
-                  className={`text-xs truncate ${peerTyping ? "text-accent-primary" : "text-fg-tertiary"}`}
+                  className={`truncate text-[12.5px] ${
+                    peerTyping
+                      ? "text-tui-accent"
+                      : isOnline(otherUser.id)
+                        ? "text-tui-ok"
+                        : "text-tui-ink3"
+                  }`}
                   aria-live="polite"
                 >
                   {peerTyping
@@ -906,44 +954,54 @@ export function ChatShell({
                       : t("offline")}
                 </p>
               </div>
+              {activeConversation.projectTitle && (
+                <span className="hidden h-7 max-w-[220px] items-center gap-[7px] rounded-full border border-tui-ink/16 px-3 text-[12.5px] text-tui-ink2 md:flex">
+                  <FolderKanban size={12} className="flex-none text-tui-ink3" />
+                  <span className="truncate">{activeConversation.projectTitle}</span>
+                </span>
+              )}
+              {activeConversation.muted && (
+                <span className="hidden h-7 items-center gap-[7px] rounded-full border border-tui-ink/16 px-3 text-[12.5px] text-tui-ink3 md:flex">
+                  <BellOff size={12} />
+                  {t("muted")}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => {
                   /* The rail's search box is the one search in this surface —
                      it matches names and message bodies together. Focus it
                      rather than opening a second, narrower one. */
-                  document.querySelector<HTMLInputElement>('input[type="search"]')?.focus();
+                  document.querySelector<HTMLInputElement>("[data-chat-search]")?.focus();
                 }}
                 aria-label={t("searchInConversation")}
-                className="hidden sm:grid place-items-center p-2 rounded-lg text-fg-tertiary hover:text-accent-primary hover:bg-bg-secondary transition-colors"
+                title={t("searchInConversation")}
+                className={`${CHAT_ICON_BUTTON} hidden h-9 w-9 lg:grid`}
               >
-                <Search size={17} />
+                <Search size={15} />
               </button>
               <button
                 type="button"
                 onClick={() => setShowDetails((v) => !v)}
                 aria-label={t("details")}
                 aria-pressed={showDetails}
-                className={`kairos-tap flex-shrink-0 p-2 rounded-lg transition-colors ${
-                  showDetails
-                    ? "text-accent-primary bg-accent-primary/10"
-                    : "text-fg-tertiary hover:text-accent-primary hover:bg-bg-secondary"
-                }`}
+                title={t("details")}
+                className={`kairos-tap grid h-9 w-9 flex-none place-items-center rounded-full border transition-colors ${chatPill(showDetails)}`}
               >
-                <Info size={17} />
+                <Info size={15} />
               </button>
             </header>
 
             <MessageThread
+              key={conversationId}
               messages={messages}
               userId={userId}
               locale={timeLocale}
               peerLastReadId={peerLastReadId}
               unreadAfterId={unreadAfterId}
               statusOf={statusOf}
-              participants={participants}
               peerTyping={peerTyping}
-              peerName={displayName(otherUser, t("userFallback"))}
+              peerName={peerName}
               hasPreviousPage={messagesQuery.hasPreviousPage}
               isFetchingPreviousPage={messagesQuery.isFetchingPreviousPage}
               onLoadPrevious={() => void messagesQuery.fetchPreviousPage()}
@@ -965,6 +1023,13 @@ export function ChatShell({
               onChange={(next) => setDraft(conversationId, next)}
               onSend={() => void doSend()}
               replyingTo={replyingTo}
+              replyingName={
+                replyingTo
+                  ? replyingTo.senderId === userId
+                    ? t("yourself")
+                    : replyingTo.senderName ?? peerName
+                  : undefined
+              }
               onCancelReply={() => setReplyingTo(null)}
               attachments={attachments}
               onAddFiles={addFiles}
@@ -975,22 +1040,20 @@ export function ChatShell({
               isSending={sendMessage.isPending}
               isUploading={isUploading}
               hasDraft={draft.trim().length > 0}
-              placeholder={t("messageSomeone", {
-                name: displayName(otherUser, t("userFallback")),
-              })}
+              placeholder={t("messageSomeone", { name: peerFirst })}
             />
           </>
         ) : threadOpen ? (
-          <div className="flex-1 grid place-items-center">
+          <div className="grid flex-1 place-items-center">
             {conversationsQuery.isLoading ? (
-              <Loader2 className="animate-spin text-accent-primary" size={22} />
+              <Loader2 className="animate-spin text-tui-accent" size={22} />
             ) : (
-              <div className="text-center px-6">
-                <p className="text-sm font-semibold text-fg-primary mb-1">{t("conversationNotFound")}</p>
+              <div className="flex flex-col items-center gap-3 px-6 text-center">
+                <p className="font-display text-[26px]">{t("conversationNotFound")}</p>
                 <button
                   type="button"
                   onClick={() => router.push("/chat")}
-                  className="text-sm text-accent-primary font-semibold hover:underline"
+                  className="h-[38px] rounded-full border border-tui-accent/45 px-[18px] text-[13.5px] font-semibold text-tui-accent transition-colors hover:bg-tui-accent/6"
                 >
                   {t("backToConversations")}
                 </button>
@@ -998,34 +1061,36 @@ export function ChatShell({
             )}
           </div>
         ) : (
-          <div className="flex-1 grid place-items-center px-8">
-            <div className="text-center max-w-sm">
-              <div className="w-20 h-20 rounded-full bg-accent-primary/10 grid place-items-center mx-auto mb-5">
-                <MessageSquare size={32} className="text-accent-primary" />
-              </div>
-              <h2 className="text-xl font-bold text-fg-primary mb-2">{t("yourMessages")}</h2>
-              <p className="text-sm text-fg-secondary mb-5">{t("selectConversationToStart")}</p>
-              <button
-                type="button"
-                onClick={() => setShowNewChat(true)}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-br from-accent-primary to-accent-secondary text-white text-sm font-semibold shadow-lg hover:brightness-110 transition-all"
-              >
-                {t("startNewChat")}
-              </button>
-            </div>
+          <div className="m-auto flex max-w-[380px] flex-col items-center gap-3 p-6 text-center">
+            <span className={CHAT_EYEBROW}>{t("chats")}</span>
+            <h2 className="font-display text-[40px] leading-[1.05] font-light tracking-[-0.02em]">
+              {t("noConversationOpen")}
+            </h2>
+            <p className="text-[14.5px] leading-[1.6] text-pretty text-tui-ink2">
+              {t("pickOrMessage", { workspace: workspaceName })}
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowNewChat(true)}
+              className="mt-2 flex h-[38px] items-center gap-2 rounded-full border border-tui-accent/45 px-[18px] text-[13.5px] font-semibold text-tui-accent transition-colors hover:bg-tui-accent/6"
+            >
+              <Plus size={14} />
+              {t("newChat")}
+            </button>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Details. A slide-over below xl so it never squeezes the thread. */}
-      {showDetails && threadOpen && activeConversation && (
+      {/* Details. A third pane on wide screens; a slide-over below xl so it
+          never squeezes the thread. */}
+      {detailsOpen && activeConversation && (
         <>
           <div
-            className="xl:hidden fixed inset-0 bg-black/40 z-40"
+            className="fixed inset-0 z-40 bg-black/40 xl:hidden"
             onClick={() => setShowDetails(false)}
             aria-hidden="true"
           />
-          <div className="fixed xl:static inset-y-0 right-0 z-50 xl:z-auto w-[300px] max-w-[85vw] flex-none">
+          <div className="fixed inset-y-2 right-2 z-50 w-[296px] max-w-[85vw] flex-none xl:static xl:inset-auto xl:z-auto xl:min-h-0">
             <ConversationDetails
               user={otherUser}
               online={isOnline(otherUser?.id)}
@@ -1033,6 +1098,7 @@ export function ChatShell({
               isLoading={detailsQuery.isLoading}
               muted={activeConversation.muted}
               archived={activeConversation.archived}
+              locale={timeLocale}
               onClose={() => setShowDetails(false)}
               onToggleMute={() =>
                 setPrefs.mutate({
@@ -1065,31 +1131,48 @@ export function ChatShell({
           }
           isCreating={createConversation.isPending || createProjectConversation.isPending}
           currentUserId={userId}
+          workspaceName={workspaceName}
+          hasConversation={hasConversationWith}
         />
       )}
 
       {confirm === "clear" && conversationId !== null && (
-        <ConfirmDialog
-          title={t("clearHistory")}
-          message={t("clearHistoryConfirm")}
-          confirmLabel={clearHistory.isPending ? t("working") : t("clearHistory")}
+        <ChatDialog
+          role="alertdialog"
+          icon={<Eraser size={17} />}
+          tone="warn"
+          eyebrow={peerName}
+          title={t("clearHistoryTitle")}
+          sub={t("clearHistorySub", { name: peerFirst })}
+          foot={t("cannotBeUndone")}
           cancelLabel={t("cancel")}
-          isPending={clearHistory.isPending}
-          onCancel={() => setConfirm(null)}
-          onConfirm={() => clearHistory.mutate({ conversationId })}
+          closeLabel={t("cancel")}
+          onDismiss={() => setConfirm(null)}
+          primary={{
+            label: clearHistory.isPending ? t("working") : t("clearHistory"),
+            onClick: () => clearHistory.mutate({ conversationId }),
+            disabled: clearHistory.isPending,
+          }}
         />
       )}
 
       {confirm === "leave" && conversationId !== null && (
-        <ConfirmDialog
-          title={t("leaveConversation")}
-          message={t("leaveConversationConfirm")}
-          confirmLabel={leaveConversation.isPending ? t("working") : t("leaveConversation")}
+        <ChatDialog
+          role="alertdialog"
+          icon={<LogOut size={17} />}
+          tone="danger"
+          eyebrow={peerName}
+          title={t("leaveTitle")}
+          sub={t("leaveSub", { name: peerFirst })}
+          foot={t("leaveFoot")}
           cancelLabel={t("cancel")}
-          destructive
-          isPending={leaveConversation.isPending}
-          onCancel={() => setConfirm(null)}
-          onConfirm={() => leaveConversation.mutate({ conversationId })}
+          closeLabel={t("cancel")}
+          onDismiss={() => setConfirm(null)}
+          primary={{
+            label: leaveConversation.isPending ? t("working") : t("leave"),
+            onClick: () => leaveConversation.mutate({ conversationId }),
+            disabled: leaveConversation.isPending,
+          }}
         />
       )}
     </div>

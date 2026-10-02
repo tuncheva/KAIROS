@@ -64,7 +64,10 @@ export function ProgressGrid({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="overflow-x-auto" onMouseLeave={() => setHovered(null)}>
+      {/* The selection ring and hover zoom reach a few pixels past a cell; the
+          padding keeps the scroller from clipping them at the edges, and the
+          negative margin keeps the grid where it was. */}
+      <div className="-m-1 overflow-x-auto p-1" onMouseLeave={() => setHovered(null)}>
         <div className="flex w-max flex-col gap-2.5">
           {/* Month ticks. Each column is a cell wide plus its gap, so a label
               placed on a column lines up with the week it names. */}

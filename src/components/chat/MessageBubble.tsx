@@ -3,48 +3,53 @@
 /**
  * One message, with everything that hangs off it.
  *
- * Grouping is decided by the thread and passed in: `showAvatar` marks the first
- * message of a run by one sender, so a burst reads as one block instead of a
- * stack of identical avatars.
+ * Grouping is decided by the thread and passed in: `showHead` marks the first
+ * message of a run by one sender, which carries the name and time once, so a
+ * burst reads as one block rather than a stack of identical captions.
+ *
+ * The actions — reply, react, pin, edit, delete — float in a small pill above
+ * the bubble on hover or keyboard focus, rather than sitting beside it, so the
+ * column of bubbles never shifts sideways while the pointer crosses it.
  */
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import {
+  AlertCircle,
   Check,
   CheckCheck,
+  Clock,
   CornerUpLeft,
   FileText,
-  MoreHorizontal,
   Pencil,
   Pin,
-  PinOff,
-  RotateCw,
   Smile,
   Trash2,
-  X,
 } from "~/components/ui/icons";
 
 import type { RouterOutputs } from "~/trpc/react";
-import { Avatar, formatFileSize, formatTime, isImageMime, type ChatUser } from "./chatUi";
+import { chatPill, formatFileSize, formatTime, isImageMime } from "./chatUi";
 
 export type ThreadMessage = RouterOutputs["chat"]["listMessages"]["messages"][number];
 
 /** The emoji offered by the quick reaction bar. */
-export const QUICK_REACTIONS = ["👍", "🎉", "❤️", "👀", "😄", "🙏"] as const;
+export const QUICK_REACTIONS = ["👍", "❤️", "😄", "🎉", "👀", "🙏"] as const;
 
 export type SendStatus = "sent" | "sending" | "failed";
+
+const TOOL =
+  "kairos-tap grid h-7 w-7 place-items-center rounded-full text-tui-ink2 transition-colors hover:bg-tui-accent/6";
 
 export function MessageBubble({
   message,
   isOwn,
-  showAvatar,
-  isLastOwn,
+  showHead,
+  senderLabel,
+  showReceipt,
   seen,
   status,
   locale,
-  sender,
   onReply,
   onToggleReaction,
   onEdit,
@@ -54,15 +59,19 @@ export function MessageBubble({
   onDiscard,
   onJumpToMessage,
   highlighted,
+  fresh,
 }: {
   message: ThreadMessage;
   isOwn: boolean;
-  showAvatar: boolean;
-  isLastOwn: boolean;
+  /** First of a run: show the name and time above the bubble. */
+  showHead: boolean;
+  /** "You" for your own messages, the sender's name otherwise. */
+  senderLabel: string;
+  /** The delivery line under the newest own message, when nothing came after it. */
+  showReceipt: boolean;
   seen: boolean;
   status: SendStatus;
   locale: string;
-  sender: ChatUser | null;
   onReply: (message: ThreadMessage) => void;
   onToggleReaction: (messageId: number, emoji: string) => void;
   onEdit: (messageId: number, body: string) => void;
@@ -72,31 +81,29 @@ export function MessageBubble({
   onDiscard: (messageId: number) => void;
   onJumpToMessage: (messageId: number) => void;
   highlighted: boolean;
+  /** Arrived while the thread was open — rises into place. */
+  fresh: boolean;
 }) {
   const t = useTranslations("chat.direct");
-  const [menuOpen, setMenuOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editDraft, setEditDraft] = useState(message.body);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const editRef = useRef<HTMLTextAreaElement | null>(null);
 
   const deleted = message.deletedAt !== null;
+  const failed = status === "failed";
   const pending = status !== "sent";
+  const pinned = message.pinnedAt !== null && !deleted;
+  const createdAt = new Date(message.createdAt);
 
   useEffect(() => {
-    if (!menuOpen && !pickerOpen) return;
+    if (!pickerOpen) return;
     const onPointerDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-        setPickerOpen(false);
-      }
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setPickerOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setMenuOpen(false);
-        setPickerOpen(false);
-      }
+      if (e.key === "Escape") setPickerOpen(false);
     };
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKey);
@@ -104,7 +111,7 @@ export function MessageBubble({
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [menuOpen, pickerOpen]);
+  }, [pickerOpen]);
 
   useEffect(() => {
     if (editing) {
@@ -127,272 +134,149 @@ export function MessageBubble({
     setEditing(false);
   };
 
-  const bubbleTone = isOwn
-    ? "bg-gradient-to-br from-accent-primary to-accent-secondary text-white"
-    : "bg-bg-elevated text-fg-primary kairos-system-card";
+  const side = isOwn ? "right-2" : "left-2";
+  const align = isOwn ? "items-end" : "items-start";
 
   return (
     <div
       id={`chat-message-${message.id}`}
-      className={`group flex items-end gap-2 ${isOwn ? "flex-row-reverse" : ""} ${
-        highlighted ? "rounded-lg ring-2 ring-accent-primary/50 bg-accent-primary/5 py-1" : ""
-      } transition-colors`}
+      ref={rootRef}
+      onMouseLeave={() => setPickerOpen(false)}
+      className={`group/msg flex flex-col gap-1.5 ${align} ${showHead ? "pt-5" : "pt-1"}`}
     >
-      {showAvatar && !isOwn ? (
-        <Avatar user={sender} size="sm" fallbackLabel={t("userFallback")} peek />
-      ) : (
-        <div className="w-[26px] flex-shrink-0" />
+      {showHead && (
+        <span className="flex items-baseline gap-2 text-[12.5px]">
+          <span className="font-medium text-tui-ink">{senderLabel}</span>
+          <span className="text-tui-ink3 tabular-nums">{formatTime(createdAt, locale)}</span>
+        </span>
       )}
 
-      <div className={`max-w-[78%] sm:max-w-[70%] flex flex-col gap-1 ${isOwn ? "items-end" : "items-start"}`}>
-        {showAvatar && !isOwn && (
-          <span className="text-xs font-semibold text-fg-secondary px-3">
-            {sender?.name ?? t("userFallback")}
-          </span>
-        )}
-
-        <div className={`flex items-end gap-1 ${isOwn ? "flex-row-reverse" : ""}`}>
-          <div
-            className={`min-w-0 px-3.5 py-2.5 rounded-lg ${
-              isOwn ? "rounded-br-md" : "rounded-bl-md"
-            } ${deleted ? "bg-bg-secondary text-fg-tertiary italic" : bubbleTone} ${
-              pending ? "opacity-60" : ""
-            }`}
-          >
-            {message.replyTo && !deleted && (
-              <button
-                type="button"
-                onClick={() => onJumpToMessage(message.replyTo!.id)}
-                className={`block w-full text-left mb-2 pl-2 border-l-2 text-xs rounded-r-sm hover:opacity-80 transition-opacity ${
-                  isOwn ? "border-white/50 text-white/80" : "border-accent-primary/60 text-fg-tertiary"
-                }`}
-              >
-                <span className={`block font-semibold ${isOwn ? "text-white" : "text-accent-primary"}`}>
-                  {message.replyTo.senderName ?? t("userFallback")}
-                </span>
-                <span className="line-clamp-2">
-                  {message.replyTo.deleted ? t("messageDeleted") : message.replyTo.body}
-                </span>
-              </button>
-            )}
-
-            {deleted ? (
-              <p className="text-sm">{t("messageDeleted")}</p>
-            ) : editing ? (
-              <div className="flex flex-col gap-2 min-w-[min(220px,55vw)]">
-                <textarea
-                  ref={editRef}
-                  value={editDraft}
-                  onChange={(e) => setEditDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      commitEdit();
-                    }
-                    if (e.key === "Escape") {
-                      setEditing(false);
-                      setEditDraft(message.body);
-                    }
-                  }}
-                  rows={2}
-                  className={`w-full text-sm bg-transparent resize-none focus:outline-none rounded-lg p-1 ring-1 ${
-                    isOwn ? "ring-white/40 placeholder:text-white/60" : "ring-border-medium"
-                  }`}
-                />
-                <div className="flex items-center gap-2 justify-end text-xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditing(false);
-                      setEditDraft(message.body);
-                    }}
-                    className="px-2 py-1 rounded-md hover:bg-black/10"
-                  >
-                    {t("cancel")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={commitEdit}
-                    className={`px-2 py-1 rounded-md font-semibold ${
-                      isOwn ? "bg-white/20 hover:bg-white/30" : "bg-accent-primary text-white"
-                    }`}
-                  >
-                    {t("save")}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {message.body.trim().length > 0 && (
-                  <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{message.body}</p>
-                )}
-                {message.attachments.length > 0 && (
-                  <div className={`flex flex-col gap-2 ${message.body.trim().length > 0 ? "mt-2" : ""}`}>
-                    {message.attachments.map((file) =>
-                      isImageMime(file.mime) ? (
-                        <a
-                          key={file.id}
-                          href={file.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block rounded-xl overflow-hidden"
-                        >
-                          <Image
-                            src={file.url}
-                            alt={file.name}
-                            width={file.width ?? 400}
-                            height={file.height ?? 300}
-                            className="max-w-full max-h-64 w-auto h-auto rounded-xl object-contain hover:opacity-90 transition-opacity"
-                            unoptimized
-                          />
-                        </a>
-                      ) : (
-                        <a
-                          key={file.id}
-                          href={file.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`flex items-center gap-2.5 p-2 rounded-xl min-w-[min(200px,55vw)] transition-colors ${
-                            isOwn ? "bg-white/15 hover:bg-white/25" : "bg-bg-secondary hover:bg-bg-tertiary"
-                          }`}
-                        >
-                          <span
-                            className={`w-8 h-8 rounded-lg grid place-items-center flex-shrink-0 ${
-                              isOwn ? "bg-white/20" : "bg-accent-primary/15 text-accent-primary"
-                            }`}
-                          >
-                            <FileText size={15} />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-xs font-semibold truncate max-w-[170px]">{file.name}</span>
-                            <span className={`block text-[11px] ${isOwn ? "text-white/70" : "text-fg-tertiary"}`}>
-                              {formatFileSize(file.sizeBytes)}
-                            </span>
-                          </span>
-                        </a>
-                      ),
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Hover actions. Hidden from the tab order only while invisible —
-              `focus-within` brings them back for keyboard users. */}
-          {!deleted && !pending && !editing && (
-            <div
-              ref={menuRef}
-              className="relative flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
+      <div className={`relative flex max-w-[min(480px,88%)] flex-col gap-1.5 ${align}`}>
+        <div
+          title={showHead ? undefined : formatTime(createdAt, locale)}
+          className={`flex min-w-0 max-w-full flex-col gap-2.5 rounded-[14px] border px-[15px] py-[11px] text-[14.5px] leading-[1.55] text-tui-ink transition-shadow duration-400 ${
+            isOwn ? "bg-tui-accent/10" : "bg-tui-ink/[0.045]"
+          } ${
+            failed ? "border-tui-danger/40" : isOwn ? "border-tui-accent/30" : "border-tui-ink/16"
+          } ${highlighted ? "shadow-[0_0_0_4px_rgb(var(--tui-accent)/0.28)]" : ""} ${
+            pending && !failed ? "opacity-70" : ""
+          } ${fresh ? "chat-rise" : ""}`}
+        >
+          {message.replyTo && !deleted && (
+            <button
+              type="button"
+              onClick={() => onJumpToMessage(message.replyTo!.id)}
+              className="flex flex-col gap-0.5 border-b border-tui-ink/16 pb-[9px] text-left"
             >
-              <button
-                type="button"
-                onClick={() => {
-                  setPickerOpen((v) => !v);
-                  setMenuOpen(false);
-                }}
-                aria-label={t("react")}
-                className="p-1.5 rounded-lg text-fg-tertiary hover:text-accent-primary hover:bg-bg-secondary transition-colors"
-              >
-                <Smile size={15} />
-              </button>
-              <button
-                type="button"
-                onClick={() => onReply(message)}
-                aria-label={t("reply")}
-                className="p-1.5 rounded-lg text-fg-tertiary hover:text-accent-primary hover:bg-bg-secondary transition-colors"
-              >
-                <CornerUpLeft size={15} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen((v) => !v);
-                  setPickerOpen(false);
-                }}
-                aria-label={t("moreActions")}
-                aria-expanded={menuOpen}
-                className="p-1.5 rounded-lg text-fg-tertiary hover:text-accent-primary hover:bg-bg-secondary transition-colors"
-              >
-                <MoreHorizontal size={15} />
-              </button>
+              <span className="flex items-center gap-1.5 text-[11.5px] font-medium text-tui-ink3">
+                <CornerUpLeft size={11} />
+                {message.replyTo.senderName ?? t("userFallback")}
+              </span>
+              <span className="line-clamp-2 text-[13px] leading-[1.45] text-tui-ink2">
+                {message.replyTo.deleted ? t("messageDeleted") : message.replyTo.body}
+              </span>
+            </button>
+          )}
 
-              {pickerOpen && (
-                <div
-                  className="absolute bottom-full mb-1 right-0 z-30 flex items-center gap-1 p-1.5 rounded-xl kairos-system-card-elevated bg-bg-elevated"
-                  role="menu"
+          {deleted ? (
+            <span className="text-tui-ink3 italic">{t("messageDeleted")}</span>
+          ) : editing ? (
+            <div className="flex min-w-[min(260px,60vw)] flex-col gap-2">
+              <textarea
+                ref={editRef}
+                value={editDraft}
+                onChange={(e) => setEditDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    commitEdit();
+                  }
+                  if (e.key === "Escape") {
+                    setEditing(false);
+                    setEditDraft(message.body);
+                  }
+                }}
+                rows={2}
+                className="w-full resize-none rounded-lg border border-tui-ink/16 bg-tui-bg p-2 text-[14px] text-tui-ink outline-none focus:border-tui-accent/45"
+              />
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing(false);
+                    setEditDraft(message.body);
+                  }}
+                  className="h-7 rounded-full border border-tui-ink/16 px-3 text-[12px] text-tui-ink2 transition-colors hover:bg-tui-accent/6"
                 >
-                  {QUICK_REACTIONS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        onToggleReaction(message.id, emoji);
-                        setPickerOpen(false);
-                      }}
-                      className="w-7 h-7 grid place-items-center rounded-lg text-base hover:bg-bg-secondary transition-colors"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {menuOpen && (
-                <div
-                  className="absolute bottom-full mb-1 right-0 z-30 min-w-[168px] py-1 rounded-xl kairos-system-card-elevated bg-bg-elevated"
-                  role="menu"
+                  {t("cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={commitEdit}
+                  className="h-7 rounded-full border border-tui-accent bg-tui-accent px-3 text-[12px] font-semibold text-tui-on-accent"
                 >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onTogglePin(message.id);
-                      setMenuOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-fg-secondary hover:bg-bg-secondary transition-colors"
-                  >
-                    {message.pinnedAt ? <PinOff size={14} /> : <Pin size={14} />}
-                    {message.pinnedAt ? t("unpin") : t("pin")}
-                  </button>
-                  {isOwn && (
-                    <>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setEditDraft(message.body);
-                          setEditing(true);
-                          setMenuOpen(false);
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-fg-secondary hover:bg-bg-secondary transition-colors"
-                      >
-                        <Pencil size={14} />
-                        {t("edit")}
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          onDelete(message.id);
-                          setMenuOpen(false);
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-error hover:bg-error/10 transition-colors"
-                      >
-                        <Trash2 size={14} />
-                        {t("delete")}
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
+                  {t("save")}
+                </button>
+              </div>
             </div>
+          ) : (
+            <>
+              {message.attachments.map((file) =>
+                isImageMime(file.mime) ? (
+                  <a
+                    key={file.id}
+                    href={file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block overflow-hidden rounded-[10px] border border-tui-ink/16"
+                  >
+                    <Image
+                      src={file.url}
+                      alt={file.name}
+                      width={file.width ?? 400}
+                      height={file.height ?? 300}
+                      className="h-auto max-h-64 w-auto max-w-full object-contain transition-opacity hover:opacity-90"
+                      unoptimized
+                    />
+                  </a>
+                ) : (
+                  <a
+                    key={file.id}
+                    href={file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-w-[min(260px,60vw)] items-center gap-3 rounded-[10px] border border-tui-ink/16 bg-tui-bg px-3 py-2.5 transition-colors hover:border-tui-accent/45"
+                  >
+                    <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-full border border-tui-ink/16 text-tui-ink2">
+                      <FileText size={14} />
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col gap-px">
+                      <span className="truncate text-[13.5px] font-medium">{file.name}</span>
+                      <span className="text-[12px] text-tui-ink3">{formatFileSize(file.sizeBytes)}</span>
+                    </span>
+                  </a>
+                ),
+              )}
+              {message.body.trim().length > 0 && (
+                <span className="break-words whitespace-pre-wrap text-pretty">
+                  {message.body}
+                  {message.editedAt && (
+                    <span className="ml-1.5 text-[11.5px] text-tui-ink3">{t("edited")}</span>
+                  )}
+                </span>
+              )}
+            </>
           )}
         </div>
 
-        {message.reactions.length > 0 && (
-          <div className={`flex flex-wrap gap-1 px-1 ${isOwn ? "justify-end" : ""}`}>
+        {!deleted && (pinned || message.reactions.length > 0) && (
+          <div className={`flex flex-wrap items-center gap-1.5 ${isOwn ? "justify-end" : "justify-start"}`}>
+            {pinned && (
+              <span className="flex h-6 items-center gap-[5px] rounded-full border border-tui-ink/16 px-[9px] text-[11.5px] text-tui-ink3">
+                <Pin size={11} />
+                {t("pinned")}
+              </span>
+            )}
             {message.reactions.map((group) => (
               <button
                 key={group.emoji}
@@ -400,59 +284,117 @@ export function MessageBubble({
                 onClick={() => onToggleReaction(message.id, group.emoji)}
                 aria-pressed={group.mine}
                 aria-label={`${group.emoji} ${group.count}`}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs transition-colors ${
-                  group.mine
-                    ? "bg-accent-primary/15 text-accent-primary ring-1 ring-accent-primary/35"
-                    : "bg-bg-secondary text-fg-secondary ring-1 ring-border-light/60 hover:bg-bg-tertiary"
-                }`}
+                className={`flex h-6 items-center gap-[5px] rounded-full border px-[9px] text-[12px] transition-colors ${chatPill(group.mine)}`}
               >
-                <span>{group.emoji}</span>
-                <span className="font-semibold tabular-nums">{group.count}</span>
+                <span className="text-[12.5px]">{group.emoji}</span>
+                <span className="tabular-nums">{group.count}</span>
               </button>
             ))}
           </div>
         )}
 
-        {/* One status line per message: the failure affordance when a send did
-            not land, the seen receipt on the last own message, otherwise the
-            timestamp. */}
-        {status === "failed" ? (
-          <div className="flex items-center gap-2 px-2 text-xs text-error">
-            <span>{t("notSent")}</span>
+        {failed ? (
+          <span className="flex flex-wrap items-center gap-2.5 text-[12.5px] text-tui-danger">
+            <span className="flex items-center gap-1.5">
+              <AlertCircle size={13} />
+              {t("notSent")}
+            </span>
             <button
               type="button"
               onClick={() => onRetry(message.id)}
-              className="inline-flex items-center gap-1 font-semibold underline underline-offset-2 hover:opacity-80"
+              className="h-[26px] rounded-full border border-tui-danger/40 bg-tui-danger/8 px-[11px] text-[12px] font-medium text-tui-danger"
             >
-              <RotateCw size={11} />
               {t("retry")}
             </button>
             <button
               type="button"
               onClick={() => onDiscard(message.id)}
-              className="inline-flex items-center gap-1 font-semibold underline underline-offset-2 hover:opacity-80"
+              className="h-[26px] rounded-full border border-tui-ink/16 bg-transparent px-[11px] text-[12px] text-tui-ink2 transition-colors hover:bg-tui-accent/6"
             >
-              <X size={11} />
               {t("discard")}
             </button>
-          </div>
-        ) : (
-          <span
-            className={`flex items-center gap-1.5 px-2 text-xs tabular-nums ${
-              isOwn && isLastOwn && seen ? "text-accent-primary" : "text-fg-tertiary"
-            }`}
+          </span>
+        ) : showReceipt ? (
+          <span className="flex items-center gap-[5px] text-[11.5px] text-tui-ink3" aria-live="polite">
+            {status === "sending" ? <Clock size={12} /> : seen ? <CheckCheck size={12} /> : <Check size={12} />}
+            {status === "sending" ? t("sending") : seen ? t("seen") : t("sent")}
+          </span>
+        ) : null}
+
+        {/* Hover actions. Invisible until the row is hovered or something in it
+            takes keyboard focus, so they stay reachable without a pointer. */}
+        {!deleted && !pending && !editing && !pickerOpen && (
+          <div
+            className={`pointer-events-none absolute -top-[18px] ${side} z-[4] flex gap-0.5 rounded-full border border-tui-ink/16 bg-tui-pane p-[3px] opacity-0 shadow-[var(--tui-lift)] transition-opacity group-hover/msg:pointer-events-auto group-hover/msg:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100`}
           >
-            {message.pinnedAt && !deleted && <Pin size={11} aria-label={t("pinned")} />}
-            {formatTime(new Date(message.createdAt), locale)}
-            {message.editedAt && !deleted && <span className="italic">{t("edited")}</span>}
-            {isOwn && status === "sending" && <Check size={12} aria-label={t("sending")} />}
-            {isOwn && isLastOwn && status === "sent" && (
+            <button type="button" onClick={() => onReply(message)} aria-label={t("reply")} title={t("reply")} className={TOOL}>
+              <CornerUpLeft size={14} />
+            </button>
+            <button type="button" onClick={() => setPickerOpen(true)} aria-label={t("react")} title={t("react")} className={TOOL}>
+              <Smile size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onTogglePin(message.id)}
+              aria-label={pinned ? t("unpin") : t("pin")}
+              aria-pressed={pinned}
+              title={pinned ? t("unpin") : t("pin")}
+              className={`${TOOL} ${pinned ? "text-tui-accent" : ""}`}
+            >
+              <Pin size={14} />
+            </button>
+            {isOwn && (
               <>
-                <CheckCheck size={12} />
-                {seen ? t("seen") : t("sent")}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditDraft(message.body);
+                    setEditing(true);
+                  }}
+                  aria-label={t("edit")}
+                  title={t("edit")}
+                  className={TOOL}
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(message.id)}
+                  aria-label={t("deleteForEveryone")}
+                  title={t("deleteForEveryone")}
+                  className={`${TOOL} text-tui-danger hover:bg-tui-danger/8`}
+                >
+                  <Trash2 size={14} />
+                </button>
               </>
             )}
-          </span>
+          </div>
+        )}
+
+        {pickerOpen && (
+          <div
+            role="menu"
+            aria-label={t("react")}
+            className={`chat-menu-in absolute -top-[22px] ${side} z-[5] flex gap-0.5 rounded-full border border-tui-ink/16 bg-tui-pane p-1 shadow-[var(--tui-lift)]`}
+          >
+            {QUICK_REACTIONS.map((emoji) => {
+              const mine = message.reactions.some((r) => r.emoji === emoji && r.mine);
+              return (
+                <button
+                  key={emoji}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onToggleReaction(message.id, emoji);
+                    setPickerOpen(false);
+                  }}
+                  className={`grid h-8 w-8 place-items-center rounded-full text-[16px] transition-colors hover:bg-tui-accent/6 ${mine ? "bg-tui-accent/15" : ""}`}
+                >
+                  {emoji}
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

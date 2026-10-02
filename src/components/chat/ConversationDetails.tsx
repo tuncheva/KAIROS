@@ -25,10 +25,23 @@ import {
 } from "~/components/ui/icons";
 
 import type { RouterOutputs } from "~/trpc/react";
-import { Avatar, displayName, formatFileSize, isImageMime, type ChatUser } from "./chatUi";
+import {
+  Avatar,
+  CHAT_EYEBROW,
+  CHAT_ICON_BUTTON,
+  CHAT_PANE,
+  displayName,
+  formatFileSize,
+  formatRailTimestamp,
+  isImageMime,
+  type ChatUser,
+} from "./chatUi";
 import { projectHref } from "~/lib/routes";
 
 type Details = RouterOutputs["chat"]["getConversationDetails"];
+
+const ROW =
+  "flex w-full items-center gap-[11px] rounded-lg px-1.5 text-left transition-colors disabled:opacity-50";
 
 export function ConversationDetails({
   user,
@@ -37,6 +50,7 @@ export function ConversationDetails({
   isLoading,
   muted,
   archived,
+  locale,
   onClose,
   onToggleMute,
   onToggleArchive,
@@ -51,6 +65,7 @@ export function ConversationDetails({
   isLoading: boolean;
   muted: boolean;
   archived: boolean;
+  locale: string;
   onClose: () => void;
   onToggleMute: () => void;
   onToggleArchive: () => void;
@@ -60,111 +75,98 @@ export function ConversationDetails({
   busy: boolean;
 }) {
   const t = useTranslations("chat.direct");
+  const name = displayName(user, t("userFallback"));
+  const firstName = name.split(" ")[0] ?? name;
 
   return (
-    <aside
-      className="flex flex-col h-full bg-bg-surface border-l border-border-light/40"
-      aria-label={t("details")}
-    >
-      <div className="flex items-center gap-2 px-4 py-3.5 border-b border-border-light/40 flex-none">
-        <h2 className="flex-1 font-display text-[18px] leading-tight font-normal text-fg-primary">{t("details")}</h2>
+    <aside className={`${CHAT_PANE} chat-fade-in flex h-full min-h-0 flex-col`} aria-label={t("details")}>
+      <div className="flex flex-none items-center border-b border-tui-ink/8 pt-[18px] pr-4 pb-4 pl-[22px]">
+        <h2 className="flex-1 font-display text-[21px] text-tui-ink">{t("details")}</h2>
         <button
           type="button"
           onClick={onClose}
           aria-label={t("closeDetails")}
-          className="kairos-tap p-1.5 rounded-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-secondary transition-colors"
+          className={`${CHAT_ICON_BUTTON} h-[30px] w-[30px]`}
         >
-          <X size={16} />
+          <X size={12} />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <section className="px-4 py-5 text-center border-b border-border-light/40">
-          <div className="inline-block">
+      <div className="min-h-0 flex-1 overflow-y-auto text-tui-ink">
+        <section className="flex flex-col items-center gap-1.5 border-b border-tui-ink/8 px-[22px] pt-7 pb-6 text-center">
+          <div className="mb-2">
             <Avatar user={user} size="xl" online={online} fallbackLabel={t("userFallback")} peek />
           </div>
-          <p className="mt-2.5 text-base font-bold text-fg-primary truncate">
-            {displayName(user, t("userFallback"))}
-          </p>
-          <p className="text-xs text-fg-tertiary truncate">
-            {online ? t("activeNow") : user?.email ?? ""}
+          <p className="max-w-full truncate font-display text-[24px] leading-[1.1]">{name}</p>
+          <p className="max-w-full truncate text-[13px] text-tui-ink3">
+            {user?.email ?? (online ? t("activeNow") : "")}
           </p>
         </section>
 
         {isLoading ? (
-          <div className="px-4 py-5 space-y-3" aria-hidden="true">
-            <div className="h-3 w-1/3 rounded-sm bg-bg-secondary animate-pulse" />
-            <div className="h-10 rounded-lg bg-bg-secondary animate-pulse" />
-            <div className="h-10 rounded-lg bg-bg-secondary animate-pulse" />
+          <div className="space-y-3 px-4 py-5" aria-hidden="true">
+            <div className="h-3 w-1/3 animate-pulse rounded-sm bg-tui-ink/6" />
+            <div className="h-10 animate-pulse rounded-lg bg-tui-ink/6" />
+            <div className="h-10 animate-pulse rounded-lg bg-tui-ink/6" />
           </div>
         ) : (
           <>
             {details && details.pinned.length > 0 && (
-              <Section label={t("pinned")}>
-                <ul className="flex flex-col gap-1.5">
-                  {details.pinned.map((message) => (
-                    <li key={message.id}>
-                      <button
-                        type="button"
-                        onClick={() => onJumpToMessage(message.id)}
-                        className="w-full text-left p-2.5 rounded-xl bg-bg-secondary hover:bg-bg-tertiary ring-1 ring-border-light/50 transition-colors"
-                      >
-                        <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-fg-quaternary">
-                          <Pin size={10} />
-                          {message.senderName ?? t("userFallback")}
-                        </span>
-                        <span className="block mt-1 text-xs text-fg-secondary line-clamp-3">{message.body}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+              <Section label={t("pinned")} gap="gap-2">
+                {details.pinned.map((message) => (
+                  <button
+                    key={message.id}
+                    type="button"
+                    onClick={() => onJumpToMessage(message.id)}
+                    className="flex flex-col gap-[5px] rounded-lg border border-tui-ink/16 bg-tui-bg px-3 py-[11px] text-left transition-colors hover:border-tui-accent/45"
+                  >
+                    <span className="flex items-center gap-1.5 text-[11.5px] font-medium text-tui-ink3">
+                      <Pin size={11} />
+                      {message.senderName ?? t("userFallback")} ·{" "}
+                      {formatRailTimestamp(new Date(message.createdAt), locale, { yesterday: t("yesterday") })}
+                    </span>
+                    <span className="line-clamp-3 text-[13px] leading-normal text-tui-ink2">{message.body}</span>
+                  </button>
+                ))}
               </Section>
             )}
 
             <Section label={t("sharedFilesCount", { count: details?.files.length ?? 0 })}>
               {details && details.files.length > 0 ? (
-                <ul className="flex flex-col">
-                  {details.files.map((file) => (
-                    <li key={file.id}>
-                      <a
-                        href={file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2.5 py-2 px-1 rounded-lg hover:bg-bg-secondary transition-colors group"
-                      >
-                        <span className="w-7 h-7 rounded-lg grid place-items-center bg-bg-tertiary text-fg-tertiary group-hover:text-accent-primary flex-shrink-0 transition-colors">
-                          {isImageMime(file.mime) ? <ImageIcon size={13} /> : <FileText size={13} />}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-xs text-fg-secondary truncate">{file.name}</span>
-                          <span className="block text-[10px] text-fg-quaternary">
-                            {formatFileSize(file.sizeBytes)}
-                          </span>
-                        </span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                details.files.map((file) => (
+                  <a
+                    key={file.id}
+                    href={file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${ROW} py-2 hover:bg-tui-accent/6`}
+                  >
+                    <span className="grid h-[30px] w-[30px] flex-none place-items-center rounded-full border border-tui-ink/16 text-tui-ink2">
+                      {isImageMime(file.mime) ? <ImageIcon size={13} /> : <FileText size={13} />}
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col gap-px">
+                      <span className="truncate text-[13px]">{file.name}</span>
+                      <span className="text-[11.5px] text-tui-ink3">{formatFileSize(file.sizeBytes)}</span>
+                    </span>
+                  </a>
+                ))
               ) : (
-                <p className="text-xs text-fg-quaternary py-1">{t("noSharedFiles")}</p>
+                <p className="px-1.5 text-[13px] text-tui-ink3">{t("noSharedFiles")}</p>
               )}
             </Section>
 
             {details && details.sharedProjects.length > 0 && (
               <Section label={t("sharedWork")}>
-                <ul className="flex flex-col">
-                  {details.sharedProjects.map((project) => (
-                    <li key={project.id}>
-                      <a
-                        href={projectHref(project.id)}
-                        className="flex items-center gap-2.5 py-2 px-1 rounded-lg hover:bg-bg-secondary transition-colors"
-                      >
-                        <FolderKanban size={14} className="text-fg-quaternary flex-shrink-0" />
-                        <span className="text-xs text-fg-secondary truncate">{project.title}</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                {details.sharedProjects.map((project) => (
+                  <a
+                    key={project.id}
+                    href={projectHref(project.id)}
+                    className={`${ROW} h-9 text-[13.5px] hover:bg-tui-accent/6`}
+                  >
+                    <FolderKanban size={14} className="flex-none text-tui-ink3" />
+                    <span className="truncate">{project.title}</span>
+                  </a>
+                ))}
               </Section>
             )}
           </>
@@ -187,43 +189,49 @@ export function ConversationDetails({
           />
         </Section>
 
-        <Section label={t("dangerZone")}>
+        <section className="flex flex-col gap-0.5 px-4 pt-3.5 pb-[22px]">
           <button
             type="button"
             onClick={onClearHistory}
             disabled={busy}
-            className="w-full flex items-center gap-2.5 py-2 px-1 rounded-lg text-xs text-fg-secondary hover:bg-bg-secondary transition-colors disabled:opacity-50"
+            className={`${ROW} h-10 text-[13.5px] text-tui-ink2 hover:bg-tui-accent/6`}
           >
-            <Eraser size={14} className="text-fg-quaternary flex-shrink-0" />
-            <span className="flex-1 text-left">{t("clearHistory")}</span>
+            <Eraser size={14} className="flex-none text-tui-ink3" />
+            {t("clearHistory")}
           </button>
           <button
             type="button"
             onClick={onLeave}
             disabled={busy}
-            className="w-full flex items-center gap-2.5 py-2 px-1 rounded-lg text-xs text-error hover:bg-error/10 transition-colors disabled:opacity-50"
+            className={`${ROW} h-10 text-[13.5px] text-tui-danger hover:bg-tui-danger/8`}
           >
-            <LogOut size={14} className="flex-shrink-0" />
-            <span className="flex-1 text-left">{t("leaveConversation")}</span>
+            <LogOut size={14} className="flex-none" />
+            {t("leaveConversation")}
           </button>
           {/* Both actions are one-sided by design — see `clearHistory` and
               `leaveConversation` in the router. The copy says so explicitly
               because the previous Delete Chat did the opposite. */}
-          <p className="mt-1.5 px-1 text-[10px] leading-relaxed text-fg-quaternary">
-            {t("oneSidedNote")}
+          <p className="px-1.5 pt-2 text-[12px] leading-[1.55] text-pretty text-tui-ink3">
+            {t("oneSidedNoteNamed", { name: firstName })}
           </p>
-        </Section>
+        </section>
       </div>
     </aside>
   );
 }
 
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
+function Section({
+  label,
+  gap = "gap-0.5",
+  children,
+}: {
+  label: string;
+  gap?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="px-4 py-4 border-b border-border-light/40">
-      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-fg-quaternary">
-        {label}
-      </h3>
+    <section className={`flex flex-col ${gap} border-b border-tui-ink/8 px-4 pt-5 pb-4`}>
+      <h3 className={`${CHAT_EYEBROW} px-1.5 pb-2`}>{label}</h3>
       {children}
     </section>
   );
@@ -249,18 +257,18 @@ function ToggleRow({
       aria-checked={checked}
       onClick={onChange}
       disabled={disabled}
-      className="w-full flex items-center gap-2.5 py-2 px-1 rounded-lg hover:bg-bg-secondary transition-colors disabled:opacity-50"
+      className={`${ROW} h-10 text-tui-ink hover:bg-tui-accent/6`}
     >
-      <span className="text-fg-quaternary flex-shrink-0">{icon}</span>
-      <span className="flex-1 text-left text-xs text-fg-secondary">{label}</span>
+      <span className="flex-none text-tui-ink3">{icon}</span>
+      <span className="flex-1 text-[13.5px]">{label}</span>
       <span
-        className={`w-[30px] h-[17px] rounded-full relative transition-colors flex-shrink-0 ${
-          checked ? "bg-accent-primary" : "bg-border-strong"
+        className={`relative h-5 w-[34px] flex-none rounded-full border transition-colors duration-200 ${
+          checked ? "border-tui-accent bg-tui-accent" : "border-tui-ink/16 bg-transparent"
         }`}
       >
         <span
-          className={`absolute top-0.5 w-[13px] h-[13px] rounded-full bg-white transition-all ${
-            checked ? "left-[15px]" : "left-0.5"
+          className={`absolute top-0.5 h-3.5 w-3.5 rounded-full transition-[left] duration-200 ease-[cubic-bezier(.22,1,.36,1)] ${
+            checked ? "left-4 bg-tui-on-accent" : "left-0.5 bg-tui-ink3"
           }`}
         />
       </span>

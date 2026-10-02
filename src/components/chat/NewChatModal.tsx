@@ -4,8 +4,8 @@
  * Start a conversation.
  *
  * The suggestion sources behind this — org members, recent contacts, project
- * teammates — already worked well and are unchanged; this restyles the modal and
- * gives it the focus handling it was missing.
+ * teammates — already worked well and are unchanged. The chrome is the chat
+ * surface's shared dialog shell; focus handling comes with it from `Modal`.
  *
  * Picking someone under a project heading starts a conversation *scoped to that
  * project* rather than a plain DM. The distinction was being dropped here: every
@@ -14,31 +14,38 @@
  * in the UI, and the rail's "Projects" filter could never match a row.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Briefcase, Loader2, MessageCircle, Search, Users } from "~/components/ui/icons";
+import { Loader2, MessageCircle, Search } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
-import { Avatar, displayName, type ChatUser } from "./chatUi";
-import { MODAL_SHELL, ModalHeader } from "~/components/ui/Modal";
+import { Avatar, CHAT_EYEBROW, displayName, type ChatUser } from "./chatUi";
+import { ChatDialog } from "./ChatDialog";
 
 export function NewChatModal({
   onClose,
   onSelect,
   isCreating,
   currentUserId,
+  workspaceName,
+  hasConversation,
 }: {
   onClose: () => void;
   /** `projectId` is present only for rows chosen under a project heading. */
   onSelect: (otherUserId: string, projectId?: number) => void;
   isCreating: boolean;
   currentUserId: string;
+  /** The eyebrow over the title. */
+  workspaceName?: string;
+  /**
+   * Whether a thread with this person (in this project, when given) already
+   * exists — the row then says "Open" rather than "Start", so picking it is
+   * not a surprise either way.
+   */
+  hasConversation?: (otherUserId: string, projectId?: number) => boolean;
 }) {
   const t = useTranslations("chat.direct");
   const [query, setQuery] = useState("");
-  const dialogRef = useRef<HTMLDivElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const restoreTo = useRef<HTMLElement | null>(null);
 
   const suggestionsQuery = api.chat.getParticipantSuggestions.useQuery();
   const suggestions = suggestionsQuery.data ?? {
@@ -51,39 +58,6 @@ export function NewChatModal({
     { email: query.trim() },
     { enabled: query.trim().length > 3 && query.includes("@"), retry: false },
   );
-
-  useEffect(() => {
-    restoreTo.current = document.activeElement as HTMLElement | null;
-    inputRef.current?.focus();
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-        return;
-      }
-      if (e.key !== "Tab") return;
-      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      if (!focusable || focusable.length === 0) return;
-      const first = focusable[0]!;
-      const last = focusable[focusable.length - 1]!;
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      restoreTo.current?.focus();
-    };
-  }, [onClose]);
 
   const matches = (person: ChatUser, needle: string) =>
     (person.name?.toLowerCase() ?? "").includes(needle) ||
@@ -123,138 +97,101 @@ export function NewChatModal({
   const nothingToShow =
     members.length === 0 && recents.length === 0 && projectGroups.length === 0 && !emailSearch.data;
 
+  const row = (person: ChatUser, key: string, projectId?: number) => {
+    const existing = hasConversation?.(person.id, projectId) ?? false;
+    return (
+      <PersonRow
+        key={key}
+        person={person}
+        onSelect={onSelect}
+        projectId={projectId}
+        disabled={isCreating}
+        fallbackLabel={t("userFallback")}
+        actionLabel={existing ? t("open") : t("start")}
+        existing={existing}
+      />
+    );
+  };
+
   return (
-    <div
-      className="fixed inset-0 z-[60] bg-black/50 grid place-items-center p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <ChatDialog
+      icon={<MessageCircle size={17} />}
+      eyebrow={workspaceName}
+      title={t("newChat")}
+      sub={t("newChatSub")}
+      foot={t("newChatFoot")}
+      cancelLabel={t("cancel")}
+      closeLabel={t("cancel")}
+      onDismiss={onClose}
+      widthClass="w-[540px]"
     >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="new-chat-title"
-        className={`${MODAL_SHELL} max-h-[85dvh] max-w-md`}
-      >
-        <ModalHeader
-          id="new-chat-title"
-          title={t("startNewChat")}
-          onDismiss={onClose}
-          closeLabel={t("cancel")}
-        />
+      <div className="flex min-h-0 flex-1 flex-col gap-3.5 px-5 pt-[22px] pb-2 sm:px-[26px]">
+        <label className="flex h-11 flex-none items-center gap-2.5 rounded-lg border border-tui-ink/16 bg-tui-bg px-3.5 transition-colors focus-within:border-tui-accent/45">
+          <Search size={14} className="flex-none text-tui-ink3" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("searchByNameOrEmail")}
+            aria-label={t("searchByNameOrEmail")}
+            data-autofocus
+            className="min-w-0 flex-1 border-0 bg-transparent text-[14px] text-tui-ink outline-none placeholder:text-tui-ink3"
+          />
+        </label>
 
-        <div className="px-5 py-3 flex-none">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-tertiary pointer-events-none" size={15} />
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("searchByNameOrEmail")}
-              aria-label={t("searchByNameOrEmail")}
-              className="w-full pl-9 pr-3 py-2.5 text-sm bg-bg-secondary rounded-xl text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/35"
-            />
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-3 pb-4">
+        <div className="-mx-2.5 flex max-h-[330px] min-h-0 flex-col gap-1 overflow-y-auto">
           {suggestionsQuery.isLoading ? (
             <div className="grid place-items-center py-10">
-              <Loader2 className="animate-spin text-accent-primary" size={20} />
+              <Loader2 className="animate-spin text-tui-accent" size={20} />
             </div>
           ) : (
             <>
               {emailSearch.data && (
-                <Group label={t("searchResults")}>
-                  <PersonRow
-                    person={emailSearch.data}
-                    onSelect={onSelect}
-                    disabled={isCreating}
-                    fallbackLabel={t("userFallback")}
-                  />
-                </Group>
+                <Group label={t("searchResults")}>{row(emailSearch.data, "email-hit")}</Group>
               )}
               {emailSearch.isError && query.includes("@") && (
-                <p className="px-3 py-3 text-sm text-fg-tertiary text-center">{t("userNotFound")}</p>
+                <p className="px-2.5 py-3 text-[13.5px] text-tui-ink3">{t("userNotFound")}</p>
               )}
 
               {recents.length > 0 && (
-                <Group label={t("recentContacts")} icon={<MessageCircle size={13} />}>
-                  {recents.map((person) => (
-                    <PersonRow
-                      key={`recent-${person.id}`}
-                      person={person}
-                      onSelect={onSelect}
-                      disabled={isCreating}
-                      fallbackLabel={t("userFallback")}
-                    />
-                  ))}
+                <Group label={t("recentContacts")}>
+                  {recents.map((person) => row(person, `recent-${person.id}`))}
                 </Group>
               )}
 
               {members.length > 0 && (
-                <Group label={t("workspaceMembers")} icon={<Users size={13} />}>
-                  {members.map((person) => (
-                    <PersonRow
-                      key={`member-${person.id}`}
-                      person={person}
-                      onSelect={onSelect}
-                      disabled={isCreating}
-                      fallbackLabel={t("userFallback")}
-                    />
-                  ))}
+                <Group label={t("people")}>
+                  {members.map((person) => row(person, `member-${person.id}`))}
                 </Group>
               )}
 
               {projectGroups.map((project) => (
-                <Group
-                  key={project.projectId}
-                  label={project.projectTitle}
-                  icon={<Briefcase size={13} />}
-                >
-                  {project.members.map((person) => (
-                    <PersonRow
-                      key={`p-${project.projectId}-${person.id}`}
-                      person={person}
-                      onSelect={onSelect}
-                      projectId={project.projectId}
-                      disabled={isCreating}
-                      fallbackLabel={t("userFallback")}
-                    />
-                  ))}
+                <Group key={project.projectId} label={project.projectTitle}>
+                  {project.members.map((person) =>
+                    row(person, `p-${project.projectId}-${person.id}`, project.projectId),
+                  )}
                 </Group>
               ))}
 
               {nothingToShow && (
-                <p className="px-3 py-8 text-sm text-fg-tertiary text-center">
-                  {query.trim() ? t("noWorkspaceMembersMatch") : t("noWorkspaceMembersAvailable")}
+                <p className="px-2.5 py-[18px] text-[13.5px] text-tui-ink3">
+                  {query.trim()
+                    ? t("noOneMatches", { query: query.trim() })
+                    : t("noWorkspaceMembersAvailable")}
                 </p>
               )}
             </>
           )}
         </div>
       </div>
-    </div>
+    </ChatDialog>
   );
 }
 
-function Group({
-  label,
-  icon,
-  children,
-}: {
-  label: string;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}) {
+function Group({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <section className="mb-1">
-      <h3 className="flex items-center gap-1.5 px-3 pt-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-fg-quaternary">
-        {icon}
-        {label}
-      </h3>
+    <section className="flex flex-col gap-1">
+      <h3 className={`${CHAT_EYEBROW} px-2.5 pt-2.5 pb-1`}>{label}</h3>
       <div className="flex flex-col">{children}</div>
     </section>
   );
@@ -266,6 +203,8 @@ function PersonRow({
   projectId,
   disabled,
   fallbackLabel,
+  actionLabel,
+  existing,
 }: {
   person: ChatUser;
   onSelect: (id: string, projectId?: number) => void;
@@ -273,22 +212,25 @@ function PersonRow({
   projectId?: number;
   disabled: boolean;
   fallbackLabel: string;
+  actionLabel: string;
+  existing: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={() => onSelect(person.id, projectId)}
       disabled={disabled}
-      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-tui-ink transition-colors hover:bg-tui-accent/6 disabled:cursor-not-allowed disabled:opacity-50"
     >
-      <Avatar user={person} size="md" fallbackLabel={fallbackLabel} ringClass="ring-bg-elevated" />
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-fg-primary truncate">
-          {displayName(person, fallbackLabel)}
-        </span>
+      <Avatar user={person} size="md" fallbackLabel={fallbackLabel} />
+      <span className="flex min-w-0 flex-1 flex-col gap-px">
+        <span className="truncate text-[14px] font-medium">{displayName(person, fallbackLabel)}</span>
         {person.email && (
-          <span className="block text-xs text-fg-tertiary truncate">{person.email}</span>
+          <span className="truncate text-[12.5px] text-tui-ink3">{person.email}</span>
         )}
+      </span>
+      <span className={`flex-none text-[12px] ${existing ? "text-tui-ink3" : "text-tui-accent"}`}>
+        {actionLabel}
       </span>
     </button>
   );
