@@ -4802,15 +4802,6 @@ input[type="search"]::-webkit-search-results-decoration {
   }
 }
 
-@keyframes kairos-shimmer {
-  from {
-    background-position: -160% 0;
-  }
-  to {
-    background-position: 260% 0;
-  }
-}
-
 /* ── Dialogs ─────────────────────────────────────────────────────────────
    One chrome for all six. The scrim is the CommandPalette treatment; the card
    is the CalendarClient popover surface. */
@@ -4964,34 +4955,193 @@ input[type="search"]::-webkit-search-results-decoration {
 }
 
 /* ── Skeletons ───────────────────────────────────────────────────────────
-   A sweep rather than `animate-pulse`, so a placeholder reads as arriving
-   instead of a column of boxes blinking in unison. Two backgrounds: the
-   moving highlight over the resting fill. */
-.kairos-shimmer {
-  background-image: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgb(var(--fg-primary) / 0.055) 45%,
-    transparent 90%
-  );
-  background-color: rgb(var(--bg-tertiary));
-  background-size: 220% 100%;
-  background-repeat: no-repeat;
-  animation: kairos-shimmer 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
+   Hatched placeholders. A skeleton is a denser patch of the page's own
+   ground: the same 135° hatch `.tui-screen` wears at 7px / 6%, here at 4px /
+   13% (11% in dark), crawling one tile along its own direction every 1.6s.
+   Over it, a slow opacity wave (1 → .42 → 1) whose start is offset 90ms per
+   row via `--k-skel-delay`, so loading reads as moving down the panel. No
+   shimmer band.
 
-.dark .kairos-shimmer {
-  background-image: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgb(var(--fg-primary) / 0.075) 45%,
-    transparent 90%
-  );
-}
+   Only data hatches. The rail, the top bar, page titles, column headers,
+   field labels and control outlines render for real.
 
-@media (prefers-reduced-motion: reduce) {
-  .kairos-shimmer {
-    animation: none !important;
-    background-image: none !important;
+   Timing: nothing for the first 300ms (`k-skel-in` holds the patch at 0 with
+   `backwards` fill, listed last so it wins over the wave while it runs);
+   the "still loading" line fades in at 8s (`.k-skel-slow`). The tile size is
+   8·√2, so a 4px-period hatch at 135° repeats seamlessly inside it. */
+@keyframes k-skel-crawl {
+  from {
+    background-position: 0 0;
   }
+  to {
+    background-position: 11.3137px 0;
+  }
+}
+
+@keyframes k-skel-wave {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+
+@keyframes k-skel-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes k-skel-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Layered so Tailwind utilities on a skeleton (`hidden xl:block`, `inline-block`,
+   `ml-auto`…) win over the defaults here. */
+@layer components {
+  .k-skel {
+    --k-skel-ink: var(--tui-ink);
+    --k-skel-fill: 0.04;
+    --k-skel-line: 0.13;
+    display: block;
+    flex-shrink: 0;
+    background-color: rgb(var(--k-skel-ink) / var(--k-skel-fill));
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgb(var(--k-skel-ink) / var(--k-skel-line)) 0 1.15px,
+      transparent 1.15px 4px
+    );
+    background-size: 11.3137px 11.3137px;
+    animation:
+      k-skel-crawl 1.6s linear infinite,
+      k-skel-wave 1.8s ease-in-out var(--k-skel-delay, 0ms) infinite,
+      k-skel-in 0.2s ease 300ms backwards;
+  }
+
+  .dark .k-skel {
+    --k-skel-fill: 0.035;
+    --k-skel-line: 0.11;
+  }
+
+  /* Yours: your own messages, your own row, the selected item. A faint accent
+     hatch so you can find yourself before the data arrives. */
+  .k-skel--yours {
+    --k-skel-ink: var(--tui-accent);
+    --k-skel-fill: 0.06;
+    --k-skel-line: 0.22;
+  }
+
+  .dark .k-skel--yours {
+    --k-skel-fill: 0.07;
+    --k-skel-line: 0.24;
+  }
+
+  /* After 8s a quiet mono line at the bottom of the panel. Never a spinner. */
+  .k-skel-slow {
+    animation: k-skel-in 0.4s ease 8s backwards;
+  }
+
+  /* Skeleton → content: a 220ms rise, staggered 30ms per row through
+     `--k-skel-delay` on the loaded element. */
+  .k-skel-reveal {
+    animation: k-skel-rise 0.22s cubic-bezier(0.22, 1, 0.36, 1)
+      var(--k-skel-delay, 0ms) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .k-skel,
+    .k-skel-reveal {
+      animation: none !important;
+    }
+    .k-skel-slow {
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ─── Team (/orgs) ───
+   Motion from the refined Team design: rows rise in on a short stagger (the
+   delay is set inline), the workspace list slides, invite-link usage bars
+   draw from the left, ticks pop, and a waiting invitation glows twice to be
+   noticed. `both` keeps a delayed row hidden until its turn. Reduced-motion
+   users get the end state via the global rule. */
+@keyframes team-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes team-slide {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes team-bar {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes team-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  70% {
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes team-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(var(--tui-accent) / 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgb(var(--tui-accent) / 0.18);
+  }
+}
+.team-rise {
+  animation: team-rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.team-slide {
+  animation: team-slide 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.team-bar {
+  transform-origin: left;
+  animation: team-bar 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both;
+}
+.team-pop {
+  animation: team-pop 0.26s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.team-glow {
+  animation:
+    team-rise 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    team-glow 2.6s ease-in-out 0.4s 2;
 }

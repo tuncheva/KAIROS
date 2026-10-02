@@ -47,7 +47,7 @@ function canInvite(membership: {
   return membership.role === "admin" || membership.canAddMembers === true;
 }
 
-import { eq, and, or, isNull, gt, lte, desc, sql } from "drizzle-orm";
+import { eq, and, or, isNull, gt, lte, desc, sql, inArray, count } from "drizzle-orm";
 import { notify } from "~/server/notifications/dispatch";
 import { createLogger } from "~/server/logger";
 import {
@@ -584,6 +584,18 @@ export const organizationRouter = createTRPCRouter({
       )
       .where(eq(organizationMembers.userId, ctx.session.user.id));
 
+    // Head counts for the Team page's workspace list, in one grouped query
+    // rather than a roster fetch per organization.
+    const orgIds = memberships.map((m) => m.organization.id);
+    const counts = orgIds.length
+      ? await ctx.db
+          .select({ organizationId: organizationMembers.organizationId, n: count() })
+          .from(organizationMembers)
+          .where(inArray(organizationMembers.organizationId, orgIds))
+          .groupBy(organizationMembers.organizationId)
+      : [];
+    const memberCount = new Map(counts.map((c) => [c.organizationId, Number(c.n)]));
+
     return memberships.map((m) => ({
       id: m.organization.id,
       name: m.organization.name,
@@ -593,6 +605,7 @@ export const organizationRouter = createTRPCRouter({
          that before it can decide whether to paint the control. */
       isOwner: m.organization.createdById === ctx.session.user.id,
       role: m.role,
+      memberCount: memberCount.get(m.organization.id) ?? 1,
       joinedAt: m.joinedAt,
       createdAt: m.organization.createdAt,
     }));
@@ -1285,6 +1298,14 @@ export const organizationRouter = createTRPCRouter({
         userId: z.string(),
         canAddMembers: z.boolean(),
         canAssignTasks: z.boolean(),
+        // The other six are optional so older callers that only send the
+        // original pair keep working; absent means "leave as is".
+        canCreateProjects: z.boolean().optional(),
+        canDeleteTasks: z.boolean().optional(),
+        canKickMembers: z.boolean().optional(),
+        canManageRoles: z.boolean().optional(),
+        canEditProjects: z.boolean().optional(),
+        canViewAnalytics: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -1321,6 +1342,14 @@ export const organizationRouter = createTRPCRouter({
         .set({
           canAddMembers: input.canAddMembers,
           canAssignTasks: input.canAssignTasks,
+          canCreateProjects: input.canCreateProjects,
+          canDeleteTasks: input.canDeleteTasks,
+          canKickMembers: input.canKickMembers,
+          canManageRoles: input.canManageRoles,
+          canEditProjects: input.canEditProjects,
+          canViewAnalytics: input.canViewAnalytics,
+          // Hand-edited ticks no longer match a custom role's name.
+          displayRole: null,
         })
         .where(
           and(
@@ -1960,9 +1989,13 @@ export const organizationRouter = createTRPCRouter({
         status: organizationInvites.status,
         createdAt: organizationInvites.createdAt,
         orgName: organizations.name,
+        orgImage: organizations.image,
+        inviterName: users.name,
       })
       .from(organizationInvites)
       .innerJoin(organizations, eq(organizations.id, organizationInvites.organizationId))
+      // Who sent it, so the Team page can say "from Ana Ruse".
+      .leftJoin(users, eq(users.id, organizationInvites.invitedById))
       .where(
         and(
           inviteEmailIs(currentUser.email),
@@ -1974,8 +2007,20 @@ export const organizationRouter = createTRPCRouter({
         ),
       );
 
+    // Team size per inviting organization — one grouped query, as in `listMine`.
+    const orgIds = [...new Set(invites.map((i) => i.organizationId))];
+    const counts = orgIds.length
+      ? await ctx.db
+          .select({ organizationId: organizationMembers.organizationId, n: count() })
+          .from(organizationMembers)
+          .where(inArray(organizationMembers.organizationId, orgIds))
+          .groupBy(organizationMembers.organizationId)
+      : [];
+    const memberCount = new Map(counts.map((c) => [c.organizationId, Number(c.n)]));
+
     return invites.map((invite) => ({
       ...invite,
+      memberCount: memberCount.get(invite.organizationId) ?? 0,
       permissions: storedGrantFlags(invite.permissions, flagsForRole(invite.role)),
     }));
   }),

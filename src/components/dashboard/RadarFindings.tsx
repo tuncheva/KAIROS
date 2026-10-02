@@ -5,7 +5,10 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
 import { api } from "~/trpc/react";
+import { Skeleton, SkeletonStatus } from "~/components/ui/Skeleton";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { relativeShort } from "./dashboardData";
+import { RadarFindingsSkeletonBody } from "./DashboardSkeleton";
 
 /**
  * B-2 / B-3 — what the Risk Radar found, and the one-click fix for it.
@@ -73,6 +76,7 @@ export function RadarFindings({
   });
 
   const rows = findings.data ?? [];
+  const loading = useSkeletonHold(findings.isLoading);
 
   const checked = rows.reduce<Date | null>((latest, row) => {
     const at = row.createdAt ? new Date(row.createdAt) : null;
@@ -89,11 +93,13 @@ export function RadarFindings({
         <h2 className="font-display text-tui-ink m-0 text-[22px] leading-none">
           {t("radar.title")}
         </h2>
-        <span className="text-tui-ink3 text-[12.5px]">
-          {findings.isLoading
-            ? t("radar.loading")
-            : t("radar.count", { count: rows.length })}
-        </span>
+        {loading ? (
+          <Skeleton className="h-[8px] w-[64px] self-center" />
+        ) : (
+          <span className="text-tui-ink3 text-[12.5px]">
+            {t("radar.count", { count: rows.length })}
+          </span>
+        )}
         <span className="flex-1" />
         {checked && (
           <span className="text-tui-ink3 hidden text-[12.5px] sm:block">
@@ -103,9 +109,14 @@ export function RadarFindings({
       </div>
 
       {/* Nothing found is the good case; it should look calm rather than empty. */}
-      {rows.length === 0 ? (
+      {loading ? (
+        <>
+          <SkeletonStatus label={t("radar.loading")} />
+          <RadarFindingsSkeletonBody row={1} />
+        </>
+      ) : rows.length === 0 ? (
         <p className="text-tui-ink2 px-7 py-6 text-[14px]">
-          {findings.isLoading ? t("radar.loading") : t("radar.allClear")}
+          {t("radar.allClear")}
         </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3">

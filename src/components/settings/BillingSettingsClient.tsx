@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { PLAN_CATALOGUE, formatEuro, priceFor, type BillingInterval } from "~/lib/plans";
 import type { PlanId } from "~/lib/entitlements";
+import { Skeleton } from "~/components/ui/Skeleton";
 
 import {
   LedgerAction,
@@ -164,9 +165,12 @@ function CurrentPlanGroup({
     {
       id: "plan",
       title: t("currentPlan"),
-      desc: isLoading ? t("loading") : t(`planName.${plan}`),
+      desc: isLoading ? <Skeleton className="mt-1 h-[9px] w-24" /> : t(`planName.${plan}`),
+      descText: t(`planName.${plan}`),
       keywords: "subscription tier pro team free",
-      control: (
+      control: isLoading ? (
+        <Skeleton className="h-[8px] w-10" />
+      ) : (
         <span className="text-settings-eyebrow font-medium uppercase tracking-[0.14em] text-accent-primary">
           {plan}
         </span>

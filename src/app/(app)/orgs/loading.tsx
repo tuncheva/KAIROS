@@ -1,16 +1,18 @@
-import { Skeleton, SkeletonCards } from "~/components/ui/Skeleton";
+import { TopBar } from "~/components/layout/TopBar";
+import { TeamSkeleton } from "~/components/orgs/team/TeamSkeleton";
 
 export default function OrgsLoading() {
+  /* The same wrappers as `/orgs` itself (top-bar gap, rail offset, the
+     definite height on wide screens) and the same three panes as
+     `TeamClient`, so nothing jumps when the page lands. */
   return (
-    /* The top-bar gap, as on `/orgs` itself — without it the skeleton's
-       heading started under the phone's fixed bar. */
-    <div className="kairos-topbar-gap min-h-dvh bg-bg-primary">
-      <div className="mx-auto max-w-5xl space-y-6 px-6 py-8 md:px-8">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-72 max-w-full" />
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <SkeletonCards count={4} className="h-48" />
-        </div>
+    <div className="min-h-dvh bg-bg-primary lg:h-[100dvh] lg:overflow-hidden">
+      <div className="rail-offset kairos-topbar-gap kairos-bottomnav-gap flex min-h-dvh flex-col lg:h-[100dvh] lg:overflow-hidden">
+        <TopBar />
+
+        <main id="main-content" className="flex w-full flex-1 flex-col lg:min-h-0 lg:overflow-hidden">
+          <TeamSkeleton />
+        </main>
       </div>
     </div>
   );

@@ -28,7 +28,6 @@ import {
   Bookmark,
   Clock,
   Heart,
-  Loader2,
   MapPin,
   Pencil,
   Share2,
@@ -39,6 +38,7 @@ import {
 import { api } from "~/trpc/react";
 import { ProfileLink } from "~/components/profile/ProfileLink";
 import { useDateFormat } from "~/hooks/useDateFormat";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import {
   canRemind,
   coverClass,
@@ -56,6 +56,7 @@ import {
 import { EditEventForm } from "./EditEventForm";
 import { EventDiscussion } from "./EventDiscussion";
 import { EventMap } from "./EventMap";
+import { EventPageSkeleton } from "./EventPageSkeleton";
 import { googleMapsSearchUrl } from "~/lib/eventLocation";
 
 const ALLOWED_IMAGE_HOSTS = ["utfs.io", "lh3.googleusercontent.com"];
@@ -84,7 +85,7 @@ export function EventPage({ eventId }: { eventId: number }) {
   const [showReminders, setShowReminders] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
 
-  const { data, isLoading, error } = api.event.getById.useQuery({ eventId });
+  const { data, isLoading, error, refetch } = api.event.getById.useQuery({ eventId });
 
   const refresh = {
     onSettled: () => {
@@ -103,12 +104,10 @@ export function EventPage({ eventId }: { eventId: number }) {
     { enabled: !!data?.event.enableRsvp },
   );
 
-  if (isLoading) {
-    return (
-      <main className="grid min-h-dvh place-items-center bg-bg-primary">
-        <Loader2 className="h-10 w-10 animate-spin text-accent-primary" />
-      </main>
-    );
+  const showSkeleton = useSkeletonHold(isLoading);
+
+  if (isLoading || showSkeleton) {
+    return <EventPageSkeleton onRetry={() => void refetch()} />;
   }
 
   if (error || !data) {

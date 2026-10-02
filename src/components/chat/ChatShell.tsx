@@ -24,7 +24,6 @@ import {
   Eraser,
   FolderKanban,
   Info,
-  Loader2,
   LogOut,
   Plus,
   Search,
@@ -63,6 +62,7 @@ import {
 import { ConversationRail, type RailFilter } from "./ConversationRail";
 import { ConversationDetails } from "./ConversationDetails";
 import { MessageThread } from "./MessageThread";
+import { ThreadSkeleton } from "./ChatSkeletons";
 import { MessageBubble, type SendStatus, type ThreadMessage } from "./MessageBubble";
 import { Composer, type PendingAttachment } from "./Composer";
 import { NewChatModal } from "./NewChatModal";
@@ -1044,10 +1044,10 @@ export function ChatShell({
             />
           </>
         ) : threadOpen ? (
-          <div className="grid flex-1 place-items-center">
-            {conversationsQuery.isLoading ? (
-              <Loader2 className="animate-spin text-tui-accent" size={22} />
-            ) : (
+          conversationsQuery.isLoading ? (
+            <ThreadSkeleton />
+          ) : (
+            <div className="grid flex-1 place-items-center">
               <div className="flex flex-col items-center gap-3 px-6 text-center">
                 <p className="font-display text-[26px]">{t("conversationNotFound")}</p>
                 <button
@@ -1058,8 +1058,8 @@ export function ChatShell({
                   {t("backToConversations")}
                 </button>
               </div>
-            )}
-          </div>
+            </div>
+          )
         ) : (
           <div className="m-auto flex max-w-[380px] flex-col items-center gap-3 p-6 text-center">
             <span className={CHAT_EYEBROW}>{t("chats")}</span>

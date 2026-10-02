@@ -16,6 +16,7 @@ import {
   useSettingsSave,
   type LedgerRow,
 } from "./ledger/Ledger";
+import { SettingsListSkeleton } from "./SettingsSkeleton";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -212,7 +213,7 @@ function KeysGroup({ t }: { t: Translator }) {
       ) : null}
 
       {keys.isLoading ? (
-        <p className="text-settings-desc text-fg-tertiary">{t("loading")}</p>
+        <SettingsListSkeleton rows={2} />
       ) : rows.length === 0 ? (
         <p className="text-settings-desc text-fg-tertiary">{t("keysEmpty")}</p>
       ) : (
@@ -349,7 +350,7 @@ function WebhooksGroup({ t }: { t: Translator }) {
       ) : null}
 
       {hooks.isLoading ? (
-        <p className="text-settings-desc text-fg-tertiary">{t("loading")}</p>
+        <SettingsListSkeleton rows={2} />
       ) : rows.length === 0 ? (
         <p className="text-settings-desc text-fg-tertiary">{t("hooksEmpty")}</p>
       ) : (
@@ -439,7 +440,11 @@ function DeliveryLog({ id, t }: { id: number; t: Translator }) {
   );
 
   if (log.isLoading) {
-    return <p className="mt-2 text-settings-meta text-fg-tertiary">{t("loading")}</p>;
+    return (
+      <div className="mt-2 border-t border-border-light pt-2">
+        <SettingsListSkeleton rows={2} meta={false} />
+      </div>
+    );
   }
 
   const rows = log.data ?? [];

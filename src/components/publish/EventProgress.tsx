@@ -23,12 +23,12 @@ import {
   Bookmark,
   CalendarDays,
   Heart,
-  Loader2,
   MessageCircle,
 } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { eventDateParts, regionLabel } from "./feedData";
+import { EventProgressSkeleton } from "./PublishSkeleton";
 import { Stamp } from "./publishUi";
 
 /** The toolbar button. Hidden from anyone who is not hosting anything. */
@@ -125,9 +125,7 @@ function EventProgressDialog({ onClose }: { onClose: () => void }) {
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {isLoading || !data ? (
-            <div className="py-12 text-center">
-              <Loader2 className="mx-auto h-7 w-7 animate-spin text-accent-primary" />
-            </div>
+            <EventProgressSkeleton />
           ) : (
             <>
               <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5">

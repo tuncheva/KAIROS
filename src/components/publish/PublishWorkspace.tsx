@@ -28,10 +28,11 @@ import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { AlertCircle, CalendarPlus, Loader2, Search, X } from "~/components/ui/icons";
+import { AlertCircle, CalendarPlus, Search, X } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { TopBar } from "~/components/layout/TopBar";
 import {
   CreateEventForm,
@@ -42,6 +43,7 @@ import { EventCard } from "./EventCard";
 import { EventComposer } from "./EventComposer";
 import { EventProgressButton } from "./EventProgress";
 import { FeedPager } from "./FeedPager";
+import { FeedSkeleton } from "./PublishSkeleton";
 import { PublishAside } from "./PublishAside";
 import { PublishRail, type RailCounts } from "./PublishRail";
 import { BandDivider } from "./publishUi";
@@ -176,6 +178,8 @@ export function PublishWorkspace() {
     topic,
   });
 
+  const showSkeleton = useSkeletonHold(isLoading);
+
   const loadedPages = useMemo(() => pages?.pages ?? [], [pages?.pages]);
   /* One server page is one feed page, so the pager counts what has arrived and
      the `+` on the end says the server has more. */
@@ -245,13 +249,8 @@ export function PublishWorkspace() {
   const viewerId = session?.user?.id ?? null;
 
   const feedBody = () => {
-    if (isLoading) {
-      return (
-        <div className="py-20 text-center">
-          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-accent-primary" />
-          <p className="text-sm text-fg-secondary">{t("loadingEvents")}</p>
-        </div>
-      );
+    if (isLoading || showSkeleton) {
+      return <FeedSkeleton count={3} onRetry={refreshFeed} />;
     }
 
     if (error) {
@@ -321,12 +320,8 @@ export function PublishWorkspace() {
     }
 
     if (!current) {
-      return (
-        <div className="py-20 text-center">
-          <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-accent-primary" />
-          <p className="text-sm text-fg-secondary">{t("loadingMoreEvents")}</p>
-        </div>
-      );
+      /* Paged past what has arrived: the next cursor is on its way. */
+      return <FeedSkeleton count={2} onRetry={() => void fetchNextPage()} />;
     }
 
     return (

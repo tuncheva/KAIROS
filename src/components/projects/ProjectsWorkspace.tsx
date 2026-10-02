@@ -7,6 +7,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
+import { Skeleton, skeletonWidth } from "~/components/ui/Skeleton";
+import { SkeletonSlow } from "~/components/ui/SkeletonSlow";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
+import { ProjectsSkeleton } from "./ProjectsSkeleton";
 import { NewProjectDrawer } from "./NewProjectDrawer";
 import { ProjectTasksPanel, ProjectTeamPanel } from "./ProjectTasksPanel";
 import {
@@ -204,8 +208,10 @@ export function ProjectsWorkspace({
     [rows, openId],
   );
 
-  if (projectsQuery.isLoading) {
-    return <LoadingState />;
+  const showSkeleton = useSkeletonHold(projectsQuery.isLoading);
+
+  if (showSkeleton) {
+    return <ProjectsSkeleton onRetry={() => void projectsQuery.refetch()} />;
   }
 
   const archivedRows = (archivedQuery.data ?? []) as RawProject[];
@@ -804,7 +810,9 @@ function ProjectDetail({
   const earlier = past.length - recent.length;
   const shownPast = showEarlier ? past : recent;
 
-  const loading = activityQuery.isLoading || tasksQuery.isLoading;
+  const loading = useSkeletonHold(
+    activityQuery.isLoading || tasksQuery.isLoading,
+  );
 
   return (
     <div className="dash-fade flex flex-col gap-6">
@@ -912,9 +920,13 @@ function ProjectDetail({
             <h2 className="font-display m-0 text-[22px] leading-none">
               {t("timeline.label")}
             </h2>
-            <span className="text-tui-ink3 text-[12.5px]">
-              {t("timeline.count", { count: future.length + past.length })}
-            </span>
+            {loading ? (
+              <Skeleton className="h-[8px] w-[56px]" />
+            ) : (
+              <span className="text-tui-ink3 text-[12.5px]">
+                {t("timeline.count", { count: future.length + past.length })}
+              </span>
+            )}
             <span className="hidden flex-1 sm:block" />
             {TIMELINE_FILTERS.map((key) => (
               <button
@@ -935,7 +947,12 @@ function ProjectDetail({
 
           <div className="px-7 py-4">
             {loading ? (
-              <TimelineSkeleton />
+              <TimelineSkeleton
+                onRetry={() => {
+                  void activityQuery.refetch();
+                  void tasksQuery.refetch();
+                }}
+              />
             ) : future.length + past.length === 0 ? (
               <p className="text-tui-ink2 py-6 text-[14px]">
                 {t("timeline.empty")}
@@ -1098,42 +1115,61 @@ function NowMarker({ now, locale }: { now: Date; locale: string }) {
   );
 }
 
-function TimelineSkeleton() {
+/** Timeline rows while activity and upcoming tasks load — `TimelineRow`'s grid. */
+function TimelineSkeleton({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex flex-col">
-      {Array.from({ length: 4 }).map((_, index) => (
-        <div
-          key={index}
-          className="border-tui-ink/8 border-b py-4 last:border-b-0"
-        >
-          <div className="bg-tui-ink/8 h-4 w-2/3 animate-pulse rounded-sm" />
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div key={index}>
+          {(index === 0 || index === 3) && (
+            <div className="pt-4 pb-1.5 pl-[68px]">
+              <span className="flex h-[16.5px] items-center">
+                <Skeleton className="h-[7px] w-[52px]" row={index} />
+              </span>
+            </div>
+          )}
+          <div className="grid grid-cols-[56px_28px_minmax(0,1fr)] items-start gap-3 py-3">
+            <span className="flex h-[19px] items-center pt-0.5">
+              <Skeleton className="h-[8px] w-[36px]" row={index} />
+            </span>
+            <span className="relative flex justify-center self-stretch">
+              <span
+                aria-hidden
+                className="bg-tui-ink/16 absolute -top-3 -bottom-3 w-px"
+              />
+              <Skeleton
+                shape="circle"
+                className="relative mt-[5px] h-[9px] w-[9px]"
+                row={index}
+              />
+            </span>
+            <span className="flex min-w-0 flex-col gap-1">
+              <span className="flex h-[20px] items-center">
+                <Skeleton
+                  className="h-[9px]"
+                  style={{ width: skeletonWidth(index + 11, 40, 72) }}
+                  row={index}
+                />
+              </span>
+              {index % 2 === 0 && (
+                <span className="flex h-[19.5px] items-center">
+                  <Skeleton
+                    className="h-[7px]"
+                    style={{ width: skeletonWidth(index + 23, 22, 44) }}
+                    row={index}
+                  />
+                </span>
+              )}
+            </span>
+          </div>
         </div>
       ))}
+      <SkeletonSlow what="events" onRetry={onRetry} />
     </div>
   );
 }
 
 /* --------------------------------------------------------------------- shell */
-
-function LoadingState() {
-  return (
-    <div className="tui-screen min-h-full">
-      <div className="mx-auto max-w-[1440px] px-4 pt-10 pb-12 sm:px-8">
-        <div className={CARD}>
-          <div className="flex flex-col gap-3 px-8 py-9">
-            {[64, 44, 72, 52, 60].map((w, i) => (
-              <div
-                key={i}
-                className="bg-tui-ink/8 h-5 animate-pulse rounded"
-                style={{ width: `${w}%`, animationDelay: `${i * 0.08}s` }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /**
  * No projects at all. The welcome — how to start, and what a project will hold.

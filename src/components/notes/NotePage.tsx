@@ -23,6 +23,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Skeleton, SkeletonStatus } from "~/components/ui/Skeleton";
+import { SkeletonSlow } from "~/components/ui/SkeletonSlow";
 import {
   AlertCircle,
   ArrowLeft,
@@ -137,6 +139,7 @@ export function NotePage({
   onNewNote: () => void;
 }) {
   const t = useTranslations("notes");
+  const tSkeleton = useTranslations("skeleton");
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -243,23 +246,38 @@ export function NotePage({
   // ── the note is named but not here yet ─────────────────────────────
   if (!note && !isDraft && isLoading) {
     return (
+      /* Same frame as the loaded page below — the 56px header, the
+         `pt-10 md:pt-[72px]` column capped at 680px, the 32/44px title line,
+         the 12.5px meta line and the 18.5px/1.72 body — so the text lands
+         where the hatch was. Lines are one body line-height apart and
+         paragraphs one blank line apart, as typed prose sits in the textarea. */
       <div className="flex h-full flex-col" aria-busy="true">
-        <div className="min-h-[48px] flex-none border-b border-border-light/60 px-4 py-2">
-          <div className="kairos-shimmer h-3 w-24 rounded-sm" />
-        </div>
-        <div className="min-h-0 flex-1 px-5 pt-6 md:px-10">
-          {/* 34px display serif, so the placeholder is that tall. */}
-          <div className="kairos-shimmer h-8 w-3/5 rounded-sm" />
-          <div className="kairos-shimmer mt-4 h-2.5 w-2/5 rounded-sm" />
-          <div className="mt-5 mb-5 h-px bg-border-light/50" />
-          <div className="space-y-3">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="kairos-shimmer h-2.5 rounded-sm"
-                style={{ width: `${90 - (i % 4) * 12}%` }}
-              />
+        <SkeletonStatus label={tSkeleton("status")} />
+        <header className="flex min-h-[56px] flex-none items-center gap-2 border-b border-border-light px-3 py-2 md:px-6">
+          <Skeleton className="h-[8px] w-[110px]" />
+        </header>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-10 pb-3 md:px-10 md:pt-[72px]">
+          <div className="mx-auto flex w-full max-w-[680px] flex-1 flex-col">
+            <span className="flex h-[36px] items-center md:h-[49px]">
+              <Skeleton shape="title" className="h-[28px] w-3/5 md:h-[34px]" row={1} />
+            </span>
+            <span className="mt-3 mb-4 flex h-[19px] items-center">
+              <Skeleton className="h-[8px] w-[38%]" row={1} />
+            </span>
+            {SKELETON_PARAGRAPHS.map((lines, p) => (
+              <span key={p} className={`flex flex-col ${p > 0 ? "pt-8" : ""}`}>
+                {lines.map((w, i) => (
+                  <span key={i} className="flex h-8 flex-none items-center">
+                    <Skeleton
+                      className="h-[9px]"
+                      row={2 + p * 2.5 + i * 0.5}
+                      style={{ width: `${w}%` }}
+                    />
+                  </span>
+                ))}
+              </span>
             ))}
+            <SkeletonSlow what="note" />
           </div>
         </div>
       </div>
@@ -731,3 +749,11 @@ function SaveIndicator({
 
   return null;
 }
+
+/** Line widths (percent of the column) for the page skeleton's paragraphs —
+ *  real prose lengths, each paragraph's last line short. */
+const SKELETON_PARAGRAPHS: readonly (readonly number[])[] = [
+  [96, 92, 98, 61],
+  [94, 97, 44],
+  [91, 95, 88, 97, 30],
+];

@@ -8,6 +8,8 @@ import { Overlay } from "~/components/ui/Overlay";
 import { ModalDismiss, useModalBehavior } from "~/components/ui/Modal";
 import { ProgressGrid } from "./ProgressGrid";
 import { FinishedLog, STAMP, WorkloadList, roleLabel } from "./ProgressPanels";
+import { MemberDrawerSkeleton } from "./ProgressSkeleton";
+import { Skeleton, SkeletonStatus } from "~/components/ui/Skeleton";
 import {
   RECORD_DAYS,
   RECORD_WEEKS,
@@ -59,6 +61,7 @@ export function MemberDrawer({
   };
 }) {
   const t = useTranslations("progress.record");
+  const tSkeleton = useTranslations("skeleton");
   const titleId = useId();
   const panelRef = useRef<HTMLElement | null>(null);
 
@@ -141,7 +144,7 @@ export function MemberDrawer({
               </span>
               <div className="flex min-w-0 flex-col gap-1.5">
                 <h2 id={titleId} className="font-display m-0 truncate text-[36px] leading-none font-normal">
-                  {name || " "}
+                  {name || <Skeleton shape="title" className="my-1 h-[28px] w-[200px]" />}
                 </h2>
                 <span className="text-tui-ink3 font-mono text-[10px] tracking-[0.18em] uppercase">
                   {member
@@ -154,10 +157,10 @@ export function MemberDrawer({
             {record.error ? (
               <p className="text-tui-danger mt-8 text-[14px]">{record.error.message}</p>
             ) : !data ? (
-              <div className="mt-8 flex flex-col gap-4" aria-hidden="true">
-                <div className="kairos-shimmer h-40 rounded-md" />
-                <div className="kairos-shimmer h-32 rounded-md" />
-              </div>
+              <>
+                <SkeletonStatus label={tSkeleton("status")} />
+                <MemberDrawerSkeleton />
+              </>
             ) : (
               <>
                 <div className="border-tui-ink/10 mt-8 grid grid-cols-2 border-t">

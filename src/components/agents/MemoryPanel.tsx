@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Globe, Plus, Trash2, X } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
+import { RailCardsSkeleton } from "~/components/chat/ChatSkeletons";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { api } from "~/trpc/react";
 
 import type { AgentSummary } from "./types";
@@ -37,6 +39,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
   const utils = api.useUtils();
 
   const memory = api.agent.memory.useQuery(undefined, { retry: false });
+  const showSkeleton = useSkeletonHold(memory.isLoading);
   const invalidate = () => void utils.agent.memory.invalidate();
 
   const upsert = api.agent.upsertMemory.useMutation({ onSuccess: invalidate });
@@ -71,8 +74,8 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-3">
-      {memory.isLoading ? (
-        <p className="text-sm text-fg-tertiary">{t("loading")}</p>
+      {showSkeleton ? (
+        <RailCardsSkeleton className="pb-3" />
       ) : rows.length === 0 && !adding ? (
         <p className="pb-3 text-sm leading-snug text-fg-tertiary">
           {t("memoryEmpty")}

@@ -46,6 +46,7 @@ import {
 } from "~/components/ui/icons";
 
 import { SECTION_ICON } from "./sectionIcons";
+import { HealthSkeleton } from "./SettingsSkeleton";
 import {
   FlaggedSectionsContext,
   SectionMatchCollector,
@@ -777,7 +778,7 @@ function HealthSummary({
 
   if (health.failed) return null;
   if (!health.loaded) {
-    return <div aria-hidden className="mt-[22px] h-[70px] rounded-[10px] border border-border-light" />;
+    return <HealthSkeleton />;
   }
 
   const total = health.checks.length;

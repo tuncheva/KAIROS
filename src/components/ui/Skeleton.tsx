@@ -1,77 +1,123 @@
 /**
- * The one skeleton block.
+ * The one skeleton block — a hatched placeholder.
  *
- * Ten `loading.tsx` files each wrote out `bg-bg-secondary rounded-* animate-pulse`
- * by hand, at four different radii between them. They compose from this instead,
- * so the placeholder surface and the pulse are defined once and a change to
- * either reaches every route.
+ * Every loading state in the app composes from this, so the hatch, the crawl,
+ * the per-row wave and the 300ms hold-off are defined once (`.k-skel` in
+ * `globals.css`) and a change to any of them reaches every route.
  *
- * `shape` follows the radius scale: chips and lines sm, controls md, cards lg,
- * and `circle` for an avatar or an icon button.
+ * ## Rules
+ *
+ * 1. Hatch only what's unknown. The rail, the top bar, page titles, column
+ *    headers, field labels and control outlines render for real — only data
+ *    turns to hatch.
+ * 2. Match the real geometry: same row heights, gaps and radii as the loaded
+ *    state, so nothing moves when data lands. A text bar follows the
+ *    x-height (≈9px for body copy), not the line box; the last line of a block
+ *    runs short.
+ * 3. Pass `row` so the wave reads top to bottom (+90ms per row, capped at 12).
+ * 4. `tone="yours"` for your own messages and the selected row.
+ *
+ * `shape` picks the radius: `line` for text (3px), `title` for a display line
+ * or a figure (6px), `tile` for orgs and files (9px), `block` for covers and
+ * cards (8px), `bubble` for messages (14px), `circle` for people.
  */
 
+import type { CSSProperties } from "react";
+
 const SHAPES = {
-  sm: "rounded-sm",
-  md: "rounded-md",
-  lg: "rounded-lg",
+  line: "rounded-[3px]",
+  title: "rounded-[6px]",
+  tile: "rounded-[9px]",
+  block: "rounded-[8px]",
+  bubble: "rounded-[14px]",
   circle: "rounded-full",
 } as const;
 
+export type SkeletonShape = keyof typeof SHAPES;
+
+/** The wave offset for the `row`th row of a panel: 90ms a row, capped at 12. */
+export function skeletonDelay(row: number): CSSProperties {
+  return {
+    "--k-skel-delay": `${Math.round(Math.min(Math.max(row, 0), 12) * 90)}ms`,
+  } as CSSProperties;
+}
+
 export function Skeleton({
   className = "",
-  shape = "sm",
+  shape = "line",
+  row = 0,
+  tone,
+  style,
+  children,
 }: {
   className?: string;
-  shape?: keyof typeof SHAPES;
+  shape?: SkeletonShape;
+  /** Position in the panel, top to bottom — offsets the opacity wave. */
+  row?: number;
+  /** `yours` — the faint accent hatch for your own message or row. */
+  tone?: "yours";
+  style?: CSSProperties;
+  /** Rarely needed: a ring or a cut-out drawn inside the patch. */
+  children?: React.ReactNode;
 }) {
   return (
-    <div
+    <span
       aria-hidden="true"
-      className={`bg-bg-secondary animate-pulse ${SHAPES[shape]} ${className}`}
-    />
+      className={`k-skel ${tone === "yours" ? "k-skel--yours" : ""} ${SHAPES[shape]} ${className}`}
+      style={{ ...skeletonDelay(row), ...style }}
+    >
+      {children}
+    </span>
   );
 }
 
 /**
- * The header strip every in-app route's skeleton draws: a title line on the
- * left, a couple of round controls on the right.
+ * A run of text lines, the last one short — a paragraph, a preview, a
+ * message body. `widths` are percentages of the column.
  */
-export function SkeletonTopBar({
-  titleClassName = "h-7 w-32",
-  className = "",
-  children,
+export function SkeletonLines({
+  widths,
+  row = 0,
+  className = "h-[9px]",
+  gap = "gap-[11px]",
 }: {
-  titleClassName?: string;
+  widths: readonly number[];
+  row?: number;
   className?: string;
-  children?: React.ReactNode;
+  gap?: string;
 }) {
   return (
-    <div className={`flex items-center justify-between gap-3 ${className}`}>
-      <div className="flex items-center gap-3">
-        <Skeleton className={titleClassName} />
-        {children}
-      </div>
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-8 w-8" shape="circle" />
-        <Skeleton className="h-8 w-8" shape="circle" />
-      </div>
-    </div>
+    <span aria-hidden="true" className={`flex flex-col ${gap}`}>
+      {widths.map((w, i) => (
+        <Skeleton
+          key={i}
+          className={className}
+          row={row + i * 0.5}
+          style={{ width: `${w}%` }}
+        />
+      ))}
+    </span>
   );
 }
 
-/** A run of identical card placeholders. */
-export function SkeletonCards({
-  count,
-  className = "h-32",
-}: {
-  count: number;
-  className?: string;
-}) {
+/**
+ * Deterministic widths so a skeleton renders identically on the server and the
+ * client (no hydration mismatch) while rows still vary like real data does.
+ * Returns a percentage between `lo` and `hi`.
+ */
+export function skeletonWidth(seed: number, lo: number, hi: number): string {
+  const x = Math.sin(seed * 9301 + 49297) * 233280;
+  return `${Math.round(lo + (x - Math.floor(x)) * (hi - lo))}%`;
+}
+
+/**
+ * The screen-reader side of a loading region. Skeleton blocks are
+ * `aria-hidden`; one of these per page says what is happening instead.
+ */
+export function SkeletonStatus({ label }: { label: string }) {
   return (
-    <>
-      {Array.from({ length: count }).map((_, i) => (
-        <Skeleton key={i} className={className} shape="lg" />
-      ))}
-    </>
+    <span role="status" className="sr-only">
+      {label}
+    </span>
   );
 }

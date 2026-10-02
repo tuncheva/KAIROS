@@ -13,8 +13,11 @@ import {
 import { useTranslations } from "next-intl";
 
 import { useEntitlement } from "~/hooks/useEntitlements";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { useUploadThing } from "~/lib/uploadthing";
 import { api } from "~/trpc/react";
+
+import { RailCardsSkeleton } from "./ChatSkeletons";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -52,6 +55,7 @@ export function DocumentsPanel() {
     retry: false,
     enabled: canUseDocuments,
   });
+  const showSkeleton = useSkeletonHold(documents.isLoading);
 
   const invalidate = () => void utils.integration.documents.invalidate();
 
@@ -151,8 +155,8 @@ export function DocumentsPanel() {
         </div>
       ) : null}
 
-      {documents.isLoading ? (
-        <p className="text-sm text-fg-tertiary">{t("loading")}</p>
+      {showSkeleton ? (
+        <RailCardsSkeleton />
       ) : rows.length === 0 ? (
         <p className="px-1 text-sm leading-snug text-fg-tertiary">
           {t("empty")}

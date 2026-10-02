@@ -20,6 +20,7 @@ import { useTranslations } from "next-intl";
 import { ArrowDown, Loader2 } from "~/components/ui/icons";
 
 import { formatDayLabel, isSameDay } from "./chatUi";
+import { MessagesSkeleton } from "./ChatSkeletons";
 import { MessageBubble, type SendStatus, type ThreadMessage } from "./MessageBubble";
 
 /** Distance from the bottom, in px, still treated as "at the bottom". */
@@ -151,12 +152,11 @@ export function MessageThread({
     }
   }, [messages.length, newestId, onVisibleNewest, scrollToBottom]);
 
+  /* No `useSkeletonHold` here on purpose: the first-paint scroll above and
+     the shell's deep-link jump both key off the query settling, and a held
+     skeleton would have them fire before the list exists. */
   if (isLoading) {
-    return (
-      <div className="flex-1 grid place-items-center" aria-busy="true">
-        <Loader2 className="animate-spin text-tui-accent" size={22} />
-      </div>
-    );
+    return <MessagesSkeleton />;
   }
 
   if (messages.length === 0 && !peerTyping) {

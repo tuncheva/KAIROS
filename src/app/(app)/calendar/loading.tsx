@@ -1,16 +1,16 @@
-import { Skeleton, SkeletonTopBar } from "~/components/ui/Skeleton";
+import { TopBar } from "~/components/layout/TopBar";
+import { CalendarSkeleton } from "~/components/calendar/CalendarSkeleton";
 
+/* Same shell as `page.tsx`, and the same skeleton CalendarClient holds until
+   the browser clock is known — so route loading, hydration and the first
+   client render all show one continuous frame. */
 export default function CalendarLoading() {
   return (
-    <div className="min-h-dvh bg-bg-primary">
-      <div className="rail-offset kairos-topbar-gap flex min-h-dvh flex-col">
-        <header className="topbar-solid sticky top-16 z-30 lg:top-0">
-          <SkeletonTopBar className="mx-auto max-w-7xl px-4 py-3 sm:px-6 sm:py-4 md:px-8" />
-        </header>
-        <main className="w-full flex-1 p-6">
-          <div className="mx-auto max-w-7xl space-y-4">
-            <Skeleton className="h-96" shape="lg" />
-          </div>
+    <div className="h-dvh overflow-hidden bg-bg-primary">
+      <div className="rail-offset h-dvh flex flex-col kairos-topbar-gap">
+        <TopBar />
+        <main className="flex-1 min-h-0 w-full overflow-auto kairos-bottomnav-gap">
+          <CalendarSkeleton />
         </main>
       </div>
     </div>

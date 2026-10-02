@@ -21,6 +21,7 @@ import Image from "next/image";
 
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useTranslations } from "next-intl";
+import { Skeleton } from "~/components/ui/Skeleton";
 import { AlertCircle, Loader2, X } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
@@ -266,7 +267,16 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
       </p>
 
       {sharesQuery.isLoading ? (
-        <div className="kairos-shimmer h-11 rounded-md" aria-hidden="true" />
+        /* One row in the shape of a share: the 28px avatar, a name and a mono
+           email line, the permission badge. */
+        <div className="flex items-center gap-2.5 py-2.5" aria-hidden="true">
+          <Skeleton shape="circle" className="h-7 w-7" />
+          <span className="flex min-w-0 flex-1 flex-col gap-[7px]">
+            <Skeleton className="h-[9px] w-[42%]" />
+            <Skeleton className="h-[6px] w-[58%]" />
+          </span>
+          <Skeleton className="h-[7px] w-[52px]" />
+        </div>
       ) : shares.length === 0 ? (
         <p className="py-2 text-[12.5px] text-fg-tertiary">{t("sharing.notSharedYet")}</p>
       ) : (

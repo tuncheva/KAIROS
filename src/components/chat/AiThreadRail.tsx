@@ -6,8 +6,10 @@ import { PanelLeftClose, Plus, Search, X } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { useDateFormat } from "~/hooks/useDateFormat";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { api } from "~/trpc/react";
 import { Stamp } from "./chatUi";
+import { AiThreadRowsSkeleton } from "./ChatSkeletons";
 
 export interface ConversationRow {
   id: string;
@@ -72,6 +74,7 @@ export function AiThreadRail({
   const t = useTranslations("aiConsole");
   const { formatDate } = useDateFormat();
   const [query, setQuery] = useState("");
+  const showSkeleton = useSkeletonHold(loading);
 
   /**
    * The query, held back from the server.
@@ -177,8 +180,8 @@ export function AiThreadRail({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2.5 py-3.5">
-        {loading && conversations.length === 0 ? (
-          <p className="px-2 py-4 text-xs text-fg-tertiary">{t("loading")}</p>
+        {showSkeleton && conversations.length === 0 ? (
+          <AiThreadRowsSkeleton />
         ) : groups.length === 0 ? (
           <p className="px-2 py-4 text-xs leading-relaxed text-fg-tertiary">
             {query ? t("noMatches") : t("noConversations")}

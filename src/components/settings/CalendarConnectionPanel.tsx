@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { useDateFormat } from "~/hooks/useDateFormat";
 import { api } from "~/trpc/react";
+import { SettingsListSkeleton } from "./SettingsSkeleton";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -66,7 +67,7 @@ export function CalendarConnectionPanel() {
       {outcome ? <OutcomeBanner reason={outcome} onDismiss={() => setOutcome(null)} t={t} /> : null}
 
       {calendar.isLoading ? (
-        <p className="text-settings-desc text-fg-tertiary">{t("loading")}</p>
+        <SettingsListSkeleton rows={1} />
       ) : !data?.entitled ? (
         // A plan limit. An upgrade prompt, not an error.
         <p className="text-settings-desc text-fg-tertiary">{t("calendarProOnly")}</p>

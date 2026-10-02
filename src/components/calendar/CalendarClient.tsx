@@ -16,11 +16,19 @@ import {
 import { replaceUrlSilently } from "~/lib/historyUrl";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
+import { SkeletonStatus } from "~/components/ui/Skeleton";
 import { useLocale, useTranslations } from "next-intl";
 import { CalendarAgenda } from "./CalendarAgenda";
 import { CalendarDayPeek } from "./CalendarDayPeek";
 import { CalendarDrawer, type DrawerState } from "./CalendarDrawer";
 import { CalendarMonthGrid } from "./CalendarMonthGrid";
+import {
+  CalendarAgendaSkeleton,
+  CalendarMonthGridSkeleton,
+  CalendarSkeleton,
+  CalendarTimeGridSkeleton,
+} from "./CalendarSkeleton";
 import { CalendarTimeGrid } from "./CalendarTimeGrid";
 import { useDismissOnOutside, useFocusTrap } from "./useCalendarA11y";
 import {
@@ -39,6 +47,7 @@ import {
   endOfDayLocal,
   fromYmd,
   hourWindow,
+  isSameDay,
   isoWeek,
   matchesFilters,
   priorityTone,
@@ -95,16 +104,6 @@ export function CalendarClient() {
 
   if (!today) return <CalendarSkeleton />;
   return <CalendarWorkspace today={today} />;
-}
-
-function CalendarSkeleton() {
-  return (
-    <div className="flex h-full flex-col gap-4 px-4 py-5 sm:px-6 md:px-8">
-      <div className="h-[46px] w-full animate-pulse rounded-lg bg-bg-secondary" />
-      <div className="h-5 w-64 animate-pulse rounded-sm bg-bg-secondary" />
-      <div className="min-h-0 flex-1 rounded-xl border border-border-light bg-bg-elevated" />
-    </div>
-  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -215,6 +214,8 @@ function CalendarWorkspace({ today }: { today: Date }) {
     { from: periodFrom, to: periodTo },
     { staleTime: 30_000 },
   );
+  const showSkeleton = useSkeletonHold(isLoading);
+  const tSkeleton = useTranslations("skeleton");
 
   const utils = api.useUtils();
   const refreshCalendar = useCallback(() => {
@@ -919,8 +920,45 @@ function CalendarWorkspace({ today }: { today: Date }) {
           actionLabel={t("tryAgain")}
           onAction={() => void refetch()}
         />
-      ) : isLoading ? (
-        <div className="min-h-0 flex-1 animate-pulse rounded-xl border border-border-light bg-bg-elevated" />
+      ) : showSkeleton ? (
+        <>
+          <SkeletonStatus label={tSkeleton("status")} />
+          {layout === "agenda" ? (
+            // Which days the agenda lists depends on the items, so the day
+            // headings hatch along with the rows.
+            <CalendarAgendaSkeleton days={days.slice(0, 4).map(() => ({}))} />
+          ) : (
+            <div className="kairos-scroll-area flex min-h-0 flex-1 overflow-x-auto">
+              <div
+                className={cn(
+                  "flex min-h-0 flex-1 flex-col",
+                  view === "month" || days.length === 1 ? "min-w-0" : "min-w-[760px]",
+                )}
+              >
+                {view === "month" ? (
+                  <CalendarMonthGridSkeleton
+                    weekdayLabels={weekdayLabels}
+                    cells={days.map((day) => ({
+                      date: day.getDate(),
+                      inMonth: day.getMonth() === anchor.getMonth(),
+                      isToday: isSameDay(day, today),
+                    }))}
+                  />
+                ) : (
+                  <CalendarTimeGridSkeleton
+                    columns={days.map((day) => ({
+                      weekday: weekdayLabel(day),
+                      date: day.getDate(),
+                      isToday: isSameDay(day, today),
+                    }))}
+                    hours={hours}
+                    allDayLabel={t("allDay")}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+        </>
       ) : layout === "agenda" ? (
         visibleItems.length === 0 ? (
           <ZeroState

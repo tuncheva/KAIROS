@@ -542,7 +542,7 @@ export function NotesWorkspace() {
      Without it, Next keeps the current UI on screen until the new payload
      arrives, so the rail and the list hold still and only the pane that changed
      changes. The loading state moves to the components that own the data:
-     `NoteList` already shimmered its own rows, and `NotePage` now does the same
+     `NoteList` already hatches its own rows, and `NotePage` now does the same
      when the route names a note the queries have not answered for yet. */
   const isNoteLoading =
     publicId !== null && activeNote === null && (ownQuery.isLoading || sharedQuery.isLoading);

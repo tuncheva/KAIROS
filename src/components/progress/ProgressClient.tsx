@@ -8,6 +8,8 @@ import { cn } from "~/lib/utils";
 import { exitDurationMs } from "~/components/ui/drawerExit";
 import { HeatLegend, ProgressGrid } from "./ProgressGrid";
 import { MemberDrawer } from "./ProgressDrawer";
+import { ProgressSkeleton, Sheet, StatRowSkeleton, TeamTableSkeleton } from "./ProgressSkeleton";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import {
   FinishedLog,
   SectionHead,
@@ -77,32 +79,6 @@ export function ProgressClient() {
 
   if (!today) return <ProgressSkeleton />;
   return <ProgressWorkspace today={today} />;
-}
-
-/** The sheet the page sits on: one quiet surface over the dashboard's hatch. */
-function Sheet({ children }: { children: ReactNode }) {
-  return (
-    <div className="tui-screen text-tui-ink min-h-full">
-      <div className="mx-auto max-w-[1360px] px-3 pt-4 pb-8 sm:px-6 sm:pt-6">
-        <article className="border-tui-ink/10 bg-tui-pane rounded-[10px] border px-4 pt-4 pb-10 shadow-[var(--tui-pane-shadow)] sm:px-8 lg:px-12 lg:pt-6 lg:pb-12">
-          {children}
-        </article>
-      </div>
-    </div>
-  );
-}
-
-function ProgressSkeleton() {
-  return (
-    <Sheet>
-      <div className="flex flex-col gap-8" aria-hidden="true">
-        <div className="kairos-shimmer h-10 w-72 max-w-full rounded-md" />
-        <div className="kairos-shimmer mt-8 h-16 w-[560px] max-w-full rounded-md" />
-        <div className="kairos-shimmer h-28 w-full rounded-md" />
-        <div className="kairos-shimmer h-56 w-full rounded-md" />
-      </div>
-    </Sheet>
-  );
 }
 
 function ProgressWorkspace({ today }: { today: Date }) {
@@ -246,7 +222,10 @@ function ProgressWorkspace({ today }: { today: Date }) {
     [t],
   );
 
-  if (record.isLoading && !data) return <ProgressSkeleton />;
+  const showRecordSkeleton = useSkeletonHold(record.isLoading && !data);
+  const teamLoading = useSkeletonHold(team && teamQuery.isLoading);
+
+  if (showRecordSkeleton) return <ProgressSkeleton />;
 
   const errorMessage = record.error?.message ?? board.error?.message ?? null;
   if (errorMessage) {
@@ -332,8 +311,8 @@ function ProgressWorkspace({ today }: { today: Date }) {
         </section>
 
         <div className="mt-8">
-          {team && teamQuery.isLoading ? (
-            <div className="kairos-shimmer h-[112px] rounded-md" aria-hidden="true" />
+          {team && teamLoading ? (
+            <StatRowSkeleton labels={teamStats.map((stat) => stat.label)} />
           ) : (
             <StatRow stats={team ? teamStats : myStats} />
           )}
@@ -428,8 +407,8 @@ function ProgressWorkspace({ today }: { today: Date }) {
         {team ? (
           <>
             <div className="mt-11">
-              {teamQuery.isLoading ? (
-                <div className="kairos-shimmer h-72 rounded-md" aria-hidden="true" />
+              {teamLoading ? (
+                <TeamTableSkeleton />
               ) : (
                 <TeamTable
                   rows={sortedRows}
@@ -440,7 +419,7 @@ function ProgressWorkspace({ today }: { today: Date }) {
                 />
               )}
             </div>
-            {!teamQuery.isLoading && (
+            {!teamLoading && (
               <div className="mt-11">
                 <TeamNotes notes={teamNotes} onOpenMember={openPerson} />
               </div>

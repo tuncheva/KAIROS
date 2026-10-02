@@ -24,6 +24,7 @@ import {
   useSettingsSave,
   type LedgerRow,
 } from "./ledger/Ledger";
+import { SettingsListSkeleton } from "./SettingsSkeleton";
 
 /**
  * Settings → AI.
@@ -406,7 +407,7 @@ export function AiSettingsClient() {
         hint={t("memoryDescription")}
         block={
           memory.isLoading ? (
-            <p className="text-settings-desc text-fg-tertiary">{t("loading")}</p>
+            <SettingsListSkeleton rows={3} meta={false} />
           ) : facts.length === 0 ? (
             <p className="text-settings-desc text-fg-tertiary">{t("memoryEmpty")}</p>
           ) : (

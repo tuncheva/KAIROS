@@ -16,6 +16,9 @@ import { useLocale, useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { ProfileLink } from "~/components/profile/ProfileLink";
 import { useToast } from "~/components/providers/ToastProvider";
+import { Skeleton, skeletonWidth } from "~/components/ui/Skeleton";
+import { SkeletonSlow } from "~/components/ui/SkeletonSlow";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import {
   TaskDrawer,
   type EditableTask,
@@ -156,6 +159,8 @@ export function ProjectTasksPanel({
     { id: projectId },
     { staleTime: 1000 * 30 },
   );
+
+  const loading = useSkeletonHold(projectQuery.isLoading);
 
   const isOwner = projectQuery.data?.createdById === userId;
   const canWrite = isOwner || (projectQuery.data?.userHasWriteAccess ?? false);
@@ -319,11 +324,15 @@ export function ProjectTasksPanel({
             onClick={() => setFilter(key)}
           >
             {t(`filters.${key}`)}
-            <span className="text-tui-ink3 text-[11.5px] tabular-nums">
-              {key === "all"
-                ? tasks.length
-                : tasks.filter((task) => task.status === key).length}
-            </span>
+            {loading ? (
+              <Skeleton className="h-[8px] w-[14px]" />
+            ) : (
+              <span className="text-tui-ink3 text-[11.5px] tabular-nums">
+                {key === "all"
+                  ? tasks.length
+                  : tasks.filter((task) => task.status === key).length}
+              </span>
+            )}
           </FilterPill>
         ))}
 
@@ -342,15 +351,8 @@ export function ProjectTasksPanel({
       </div>
 
       <div className={CARD}>
-        {projectQuery.isLoading ? (
-          Array.from({ length: 3 }).map((_, index) => (
-            <div
-              key={index}
-              className="border-tui-ink/8 border-b px-7 py-4 last:border-b-0"
-            >
-              <div className="bg-tui-ink/8 h-4 w-2/5 animate-pulse rounded-sm" />
-            </div>
-          ))
+        {loading ? (
+          <TaskRowsSkeleton onRetry={() => void projectQuery.refetch()} />
         ) : shown.length === 0 ? (
           <p className="text-tui-ink2 px-7 py-8 text-[14px]">
             {tasks.length === 0 ? t("empty") : t("noneInFilter")}
@@ -631,6 +633,7 @@ export function ProjectTeamPanel({
   const project = projectQuery.data;
   const isOwner = project?.createdById === userId;
   const collaborators = project?.collaborators ?? [];
+  const loading = useSkeletonHold(projectQuery.isLoading);
 
   return (
     <div className="flex flex-col gap-6">
@@ -639,10 +642,18 @@ export function ProjectTeamPanel({
           <h2 className="font-display m-0 text-[22px] leading-none">
             {t("label")}
           </h2>
-          <span className="text-tui-ink3 text-[12.5px]">
-            {collaborators.length + (project?.createdBy ? 1 : 0)}
-          </span>
+          {loading ? (
+            <Skeleton className="h-[8px] w-[14px]" />
+          ) : (
+            <span className="text-tui-ink3 text-[12.5px]">
+              {collaborators.length + (project?.createdBy ? 1 : 0)}
+            </span>
+          )}
         </div>
+
+        {loading && (
+          <MemberRowsSkeleton onRetry={() => void projectQuery.refetch()} />
+        )}
 
         {project?.createdBy && (
           <div className="border-tui-ink/8 flex items-center gap-3 border-b px-7 py-3.5">
@@ -714,7 +725,7 @@ export function ProjectTeamPanel({
           </div>
         ))}
 
-        {collaborators.length === 0 && !project?.createdBy && (
+        {!loading && collaborators.length === 0 && !project?.createdBy && (
           <p className="text-tui-ink2 px-7 py-4 text-[14px]">{t("empty")}</p>
         )}
       </section>
@@ -767,6 +778,87 @@ export function ProjectTeamPanel({
         </form>
       )}
     </div>
+  );
+}
+
+/** Task rows while the project loads — the real row grid, marker as an outline. */
+function TaskRowsSkeleton({ onRetry }: { onRetry: () => void }) {
+  return (
+    <>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div
+          key={index}
+          aria-hidden
+          className="border-tui-ink/8 grid grid-cols-[22px_minmax(0,1fr)_auto] items-start gap-3.5 border-b px-7 py-4 last:border-b-0"
+        >
+          <span className="border-tui-ink/25 mt-[3px] h-[18px] w-[18px] rounded-full border" />
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex h-[22.5px] items-center gap-2.5">
+              <Skeleton
+                className="h-[10px]"
+                style={{ width: skeletonWidth(index + 3, 30, 58) }}
+                row={index}
+              />
+              <Skeleton className="h-[7px] w-[44px]" row={index} />
+              <Skeleton className="h-[7px] w-[56px]" row={index} />
+            </div>
+            <div className="flex h-[22px] items-center gap-2 pt-0.5">
+              <Skeleton
+                shape="circle"
+                className="h-[18px] w-[18px]"
+                row={index}
+              />
+              <Skeleton className="h-[8px] w-[72px]" row={index} />
+              <Skeleton className="ml-1 h-[7px] w-[64px]" row={index} />
+            </div>
+          </div>
+          <span />
+        </div>
+      ))}
+      <SkeletonSlow what="generic" onRetry={onRetry} className="px-7 pb-4" />
+    </>
+  );
+}
+
+/** Team rows while the project loads — `Member`'s avatar, name and email. */
+function MemberRowsSkeleton({ onRetry }: { onRetry: () => void }) {
+  return (
+    <>
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div
+          key={index}
+          aria-hidden
+          className="border-tui-ink/8 flex items-center gap-3 border-b px-7 py-3.5 last:border-b-0"
+        >
+          <span className="flex min-w-0 flex-1 items-center gap-2.5">
+            <Skeleton
+              shape="circle"
+              className="h-[30px] w-[30px]"
+              row={index}
+            />
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="flex h-[25.5px] items-center">
+                <Skeleton
+                  shape="title"
+                  className="h-[12px]"
+                  style={{ width: skeletonWidth(index + 7, 22, 40) }}
+                  row={index}
+                />
+              </span>
+              <span className="flex h-[18px] items-center">
+                <Skeleton
+                  className="h-[7px]"
+                  style={{ width: skeletonWidth(index + 17, 26, 46) }}
+                  row={index}
+                />
+              </span>
+            </span>
+          </span>
+          <Skeleton className="h-[7px] w-[52px]" row={index} />
+        </div>
+      ))}
+      <SkeletonSlow what="people" onRetry={onRetry} className="px-7 pb-4" />
+    </>
   );
 }
 

@@ -8,6 +8,8 @@ import Image from"next/image";
 import { avatarGradientStyle } from"~/lib/avatarGradient";
 import { useTranslations } from"next-intl";
 import { onAvatarUpdate } from"~/lib/avatarEvents";
+import { Skeleton } from "~/components/ui/Skeleton";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -47,6 +49,7 @@ export function UserDisplay() {
  refetchOnWindowFocus: false,
  refetchOnMount: false,
  });
+ const showSkeleton = useSkeletonHold(isLoading);
 
  const { data: profile } = api.user.getProfile.useQuery(undefined, {
  enabled,
@@ -198,14 +201,21 @@ export function UserDisplay() {
  window.location.href ="/";
  };
 
- if (isLoading) {
+ if (showSkeleton) {
  return (
- <div className="flex items-center gap-3 animate-pulse">
- <div className="hidden sm:flex flex-col items-end gap-1">
- <div className="h-4 bg-bg-tertiary/60 rounded-sm w-24" />
- <div className="h-3 bg-bg-tertiary/60 rounded-sm w-32" />
+ <div className="flex items-center gap-3" aria-hidden="true">
+ {/* Same boxes as the loaded button: a 20px name line and a 16px email
+     line, right-aligned, then the avatar and the (real, inert) chevron. */}
+ <div className="hidden sm:flex flex-col items-end">
+ <span className="flex h-5 items-center">
+ <Skeleton className="h-[9px] w-24" />
+ </span>
+ <span className="flex h-4 items-center">
+ <Skeleton className="h-[7px] w-32" row={1} />
+ </span>
  </div>
- <div className="w-8 h-8 bg-bg-tertiary/60 rounded-full" />
+ <Skeleton shape="circle" className="w-8 h-8" />
+ <ChevronDown size={16} className="text-fg-secondary" />
  </div>
  );
  }

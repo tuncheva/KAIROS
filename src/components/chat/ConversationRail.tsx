@@ -14,7 +14,9 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { BellOff, FolderKanban, Pencil, Search, X } from "~/components/ui/icons";
 
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import type { RouterOutputs } from "~/trpc/react";
+import { ConversationRowsSkeleton } from "./ChatSkeletons";
 import {
   Avatar,
   CHAT_EYEBROW,
@@ -78,6 +80,7 @@ export function ConversationRail({
   isLoading: boolean;
 }) {
   const t = useTranslations("chat.direct");
+  const showSkeleton = useSkeletonHold(isLoading);
 
   const otherOf = (convo: Conversation): ChatUser =>
     convo.userOne.id === userId ? convo.userTwo : convo.userOne;
@@ -194,18 +197,8 @@ export function ConversationRail({
       <div className="mx-4 h-px flex-none bg-tui-ink/8" />
 
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pt-2.5 pb-3.5">
-        {isLoading ? (
-          <div className="flex flex-col gap-2 p-2" aria-hidden="true">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-center gap-3 p-2.5">
-                <div className="h-[38px] w-[38px] animate-pulse rounded-full bg-tui-ink/6" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3 w-1/2 animate-pulse rounded-sm bg-tui-ink/6" />
-                  <div className="h-2.5 w-3/4 animate-pulse rounded-sm bg-tui-ink/6" />
-                </div>
-              </div>
-            ))}
-          </div>
+        {showSkeleton ? (
+          <ConversationRowsSkeleton />
         ) : visible.length === 0 && searchHits.length === 0 ? (
           <EmptyRail query={query} filter={filter} isSearching={isSearching} />
         ) : (

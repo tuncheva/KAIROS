@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
+import { SettingsListSkeleton } from "./SettingsSkeleton";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -104,7 +105,7 @@ export function CustomSchedulesPanel() {
       ) : null}
 
       {schedules.isLoading ? (
-        <p className="text-settings-desc text-fg-tertiary">{t("loading")}</p>
+        <SettingsListSkeleton rows={2} />
       ) : rows.length === 0 ? (
         <p className="text-settings-desc text-fg-tertiary">{t("ownSchedulesEmpty")}</p>
       ) : (

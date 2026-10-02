@@ -1,19 +1,33 @@
-import { SkeletonCards, SkeletonTopBar } from "~/components/ui/Skeleton";
+import { getTranslations } from "next-intl/server";
 
-export default function ProjectsLoading() {
+import { TopBar } from "~/components/layout/TopBar";
+import { ProjectsSkeleton } from "~/components/projects/ProjectsSkeleton";
+import { Plus } from "~/components/ui/icons";
+
+/**
+ * Mirrors `page.tsx`: the same shell and the real top bar, with the page's
+ * primary action drawn inert until the drawer that owns it has loaded.
+ */
+export default async function ProjectsLoading() {
+  const t = await getTranslations("projects.drawer");
+
   return (
     <div className="min-h-dvh bg-bg-primary">
-      <div className="rail-offset kairos-topbar-gap flex min-h-dvh flex-col">
-        <header className="topbar-solid sticky top-16 z-30 lg:top-0">
-          <SkeletonTopBar
-            className="mx-auto max-w-7xl px-4 py-3 sm:px-6 sm:py-4 md:px-8"
-            titleClassName="h-7 w-28"
-          />
-        </header>
-        <main className="flex-1 px-4 pt-4 sm:px-6">
-          <div className="mx-auto max-w-6xl space-y-4">
-            <SkeletonCards count={4} className="h-32" />
-          </div>
+      <div className="rail-offset flex min-h-dvh flex-col kairos-topbar-gap">
+        <TopBar
+          actions={
+            <span
+              aria-hidden
+              className="bg-tui-accent text-tui-on-accent flex h-9 items-center gap-2 rounded-full px-4 text-[13px] font-semibold opacity-45"
+            >
+              <Plus size={15} aria-hidden />
+              <span className="hidden sm:inline">{t("open")}</span>
+            </span>
+          }
+        />
+
+        <main className="w-full flex-1 overflow-auto kairos-bottomnav-gap">
+          <ProjectsSkeleton />
         </main>
       </div>
     </div>

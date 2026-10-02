@@ -17,7 +17,9 @@ import { UserPlus } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { ProfileLink } from "~/components/profile/ProfileLink";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { eventDateParts, regionLabel } from "./feedData";
+import { AsideListSkeleton } from "./PublishSkeleton";
 import { PersonAvatar, Stamp, TitledPanel } from "./publishUi";
 
 /** Workspace invitations — the one inbound request this app actually models. */
@@ -97,7 +99,7 @@ function WhoToFollow() {
   const utils = api.useUtils();
   const { data: session } = useSession();
 
-  const { data: suggestions } = api.profile.getSuggestions.useQuery(
+  const { data: suggestions, isLoading: suggestionsLoading } = api.profile.getSuggestions.useQuery(
     { limit: 4 },
     { enabled: !!session },
   );
@@ -109,6 +111,9 @@ function WhoToFollow() {
     },
   });
 
+  const showSkeleton = useSkeletonHold(!!session && suggestionsLoading);
+
+  if (showSkeleton) return <AsideListSkeleton title={t("whoToFollow")} rows={4} />;
   if (!suggestions || suggestions.length === 0) return null;
 
   const reasonFor = (reason: (typeof suggestions)[number]["reason"]) => {
@@ -164,9 +169,13 @@ function WhoToFollow() {
 function Agenda() {
   const t = useTranslations("publish");
   const locale = useLocale();
-  const { data: summary } = api.event.getMySummary.useQuery();
+  const { data: summary, isLoading } = api.event.getMySummary.useQuery();
+  const showSkeleton = useSkeletonHold(isLoading);
 
   const agenda = summary?.agenda ?? [];
+  if (showSkeleton) {
+    return <AsideListSkeleton title={t("yourAgenda")} rows={3} avatar={false} />;
+  }
   if (agenda.length === 0) return null;
 
   return (

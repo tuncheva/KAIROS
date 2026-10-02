@@ -18,6 +18,8 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Skeleton, skeletonWidth } from "~/components/ui/Skeleton";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import {
   ArrowDownWideNarrow,
   CalendarDays,
@@ -129,6 +131,7 @@ export function NoteList({
   onRemoveCalendarDate: (id: number) => void;
 }) {
   const t = useTranslations("notes");
+  const showSkeleton = useSkeletonHold(isLoading);
   const listRef = useRef<HTMLUListElement | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     note: NoteItem;
@@ -254,16 +257,8 @@ export function NoteList({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {isLoading ? (
-          <ul className="flex flex-col" aria-hidden="true">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <li key={i} className="space-y-2 border-b border-border-light/45 px-3.5 py-3.5">
-                <div className="kairos-shimmer h-3 w-1/2 rounded-sm" />
-                <div className="kairos-shimmer h-2.5 w-4/5 rounded-sm" />
-                <div className="kairos-shimmer h-2 w-1/4 rounded-sm" />
-              </li>
-            ))}
-          </ul>
+        {showSkeleton ? (
+          <NoteListSkeleton />
         ) : notes.length === 0 ? (
           <EmptyList
             query={query}
@@ -749,5 +744,61 @@ function Empty({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * The list before the query answers. Rows copy `NoteRow`'s geometry — the
+ * `px-2` gutter, the `px-3 py-2.5` block, a 13.5px title line with its stamp
+ * and a 12.5px preview line — under bucket labels in the same `px-5 pt-4
+ * pb-1.5` slot, so nothing shifts when the notes land. Only the titles,
+ * stamps, previews and bucket names hatch; the heading, search and filters
+ * above are already real.
+ */
+const SKELETON_GROUPS = [2, 5] as const;
+
+function NoteListSkeleton() {
+  return (
+    <ul className="flex flex-col" aria-hidden="true">
+      {SKELETON_GROUPS.map((count, g) => {
+        const first = g === 0 ? 0 : SKELETON_GROUPS[0] + 1;
+        return (
+          <li key={g}>
+            <div className="flex h-[18px] items-center px-5 pt-4 pb-1.5">
+              <Skeleton className="h-[7px] w-[72px]" row={first} />
+            </div>
+            <ul className="flex flex-col">
+              {Array.from({ length: count }).map((_, i) => {
+                const row = first + i + 1;
+                const seed = g * 10 + i;
+                return (
+                  <li key={i} className="px-2">
+                    <div className="rounded-lg px-3 py-2.5">
+                      <span className="flex h-5 items-center gap-2">
+                        <span className="min-w-0 flex-1">
+                          <Skeleton
+                            className="h-[9px]"
+                            row={row}
+                            style={{ width: skeletonWidth(seed + 81, 45, 80) }}
+                          />
+                        </span>
+                        <Skeleton className="h-[7px] w-[34px]" row={row} />
+                      </span>
+                      <span className="mt-0.5 flex h-[19px] items-center">
+                        <Skeleton
+                          className="h-[7px]"
+                          row={row}
+                          style={{ width: skeletonWidth(seed + 91, 65, 95) }}
+                        />
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

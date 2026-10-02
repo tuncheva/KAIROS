@@ -24,7 +24,9 @@ import {
   X,
 } from "~/components/ui/icons";
 
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import type { RouterOutputs } from "~/trpc/react";
+import { DetailsSectionsSkeleton } from "./ChatSkeletons";
 import {
   Avatar,
   CHAT_EYEBROW,
@@ -75,6 +77,7 @@ export function ConversationDetails({
   busy: boolean;
 }) {
   const t = useTranslations("chat.direct");
+  const showSkeleton = useSkeletonHold(isLoading);
   const name = displayName(user, t("userFallback"));
   const firstName = name.split(" ")[0] ?? name;
 
@@ -103,12 +106,8 @@ export function ConversationDetails({
           </p>
         </section>
 
-        {isLoading ? (
-          <div className="space-y-3 px-4 py-5" aria-hidden="true">
-            <div className="h-3 w-1/3 animate-pulse rounded-sm bg-tui-ink/6" />
-            <div className="h-10 animate-pulse rounded-lg bg-tui-ink/6" />
-            <div className="h-10 animate-pulse rounded-lg bg-tui-ink/6" />
-          </div>
+        {showSkeleton ? (
+          <DetailsSectionsSkeleton />
         ) : (
           <>
             {details && details.pinned.length > 0 && (

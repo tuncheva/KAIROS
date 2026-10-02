@@ -7,6 +7,8 @@ import { Plus } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
+import { DashboardSkeleton } from "./DashboardSkeleton";
 import { RadarFindings } from "./RadarFindings";
 import {
   dayFraction,
@@ -251,7 +253,9 @@ export function DashboardClient({ userName }: { userName: string | null }) {
     5,
   );
 
-  const isLoading = projectsQuery.isLoading || calendarQuery.isLoading;
+  const isLoading = useSkeletonHold(
+    projectsQuery.isLoading || calendarQuery.isLoading,
+  );
   const isFirstRun = !isLoading && projects.length === 0;
 
   const p = useEntrance(!isLoading);
@@ -266,7 +270,17 @@ export function DashboardClient({ userName }: { userName: string | null }) {
   const greeting = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
   const firstName = (userName ?? "").trim().split(" ")[0] ?? "";
 
-  if (isLoading) return <BootScreen />;
+  if (isLoading) {
+    return (
+      <DashboardSkeleton
+        userName={userName}
+        onRetry={() => {
+          void projectsQuery.refetch();
+          void calendarQuery.refetch();
+        }}
+      />
+    );
+  }
   if (isFirstRun) {
     return (
       <div className="tui-screen min-h-full">
@@ -888,27 +902,6 @@ function ActivityItem({ row, now }: { row: ActivityRow; now: Date }) {
       <span className="text-tui-ink3 text-right text-[12.5px]">
         {relativeShort(row.createdAt, now)}
       </span>
-    </div>
-  );
-}
-
-/** Warming the queries — a shimmer of the page to come. */
-function BootScreen() {
-  return (
-    <div className="tui-screen min-h-full">
-      <div className="mx-auto max-w-[1440px] px-4 pt-10 pb-12 sm:px-8">
-        <div className={CARD}>
-          <div className="flex flex-col gap-3 px-8 py-9">
-            {[62, 44, 70, 52, 66].map((w, i) => (
-              <div
-                key={i}
-                className="bg-tui-ink/8 h-5 animate-pulse rounded"
-                style={{ width: `${w}%`, animationDelay: `${i * 0.08}s` }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
