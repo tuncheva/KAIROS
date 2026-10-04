@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
+import { Skeleton, SkeletonStatus, skeletonWidth } from "~/components/ui/Skeleton";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { api } from "~/trpc/react";
 import {
   eventHref,
@@ -182,6 +184,15 @@ export function CommandPalette({
   const hasQuery = query.trim().length > 0;
   const rowCount = rows.length + (hasQuery ? 1 : 0);
 
+  /* While the workspace search is in flight and has nothing to show yet, its
+     tier is drawn as hatched rows in the slot the hits will land in, under the
+     real "In your workspace" eyebrow — so the ask row doesn't jump when they
+     arrive. */
+  const searchPending = useSkeletonHold(
+    search.isFetching && debounced.length >= 2,
+  );
+  const showHitSkeleton = searchPending && dedupedHits.length === 0;
+
   const close = useCallback(() => setClosing(true), []);
 
   /* Re-opening mid-exit has to cancel the pending teardown, or the palette
@@ -291,7 +302,10 @@ export function CommandPalette({
           className="w-full border-b border-border-light bg-transparent px-4 py-3.5 text-base text-fg-primary outline-none placeholder:text-fg-quaternary"
         />
 
-        <ul className="max-h-80 overflow-y-auto py-1">
+        {/* Capped at half the screen as well as 20rem: on a phone held
+            sideways, or with the keyboard up, a 20rem list ran past the
+            bottom of a backdrop that does not scroll. */}
+        <ul className="kairos-scroll-area max-h-[min(20rem,50dvh)] overflow-y-auto py-1">
           {rows.map((destination, index) => (
             <li key={destination.id}>
               {index === results.length ? (
@@ -319,6 +333,31 @@ export function CommandPalette({
             </li>
           ))}
 
+          {showHitSkeleton ? (
+            <li aria-hidden="true">
+              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-quaternary">
+                {t("inYourWorkspace")}
+              </p>
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-2.5"
+                >
+                  <span className="flex h-5 min-w-0 flex-1 items-center">
+                    <Skeleton
+                      className="h-[9px]"
+                      row={i}
+                      style={{ width: skeletonWidth(i + 1, 34, 62) }}
+                    />
+                  </span>
+                  <span className="flex h-4 shrink-0 items-center">
+                    <Skeleton className="h-[7px] w-10" row={i} />
+                  </span>
+                </div>
+              ))}
+            </li>
+          ) : null}
+
           {hasQuery ? (
             <li>
               <button
@@ -341,12 +380,9 @@ export function CommandPalette({
             </li>
           ) : null}
 
-          {search.isFetching && debounced.length >= 2 ? (
-            <li
-              aria-live="polite"
-              className="px-4 py-2 text-center text-xs text-fg-quaternary"
-            >
-              {t("searching")}
+          {searchPending ? (
+            <li className="sr-only">
+              <SkeletonStatus label={t("searching")} />
             </li>
           ) : null}
 

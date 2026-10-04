@@ -10,13 +10,12 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { BookOpen, Loader2 } from "~/components/ui/icons";
+import { Loader2 } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 
-import { DialogField, NotesDialog } from "./notesDialog";
-import { BTN_ACCENT, BTN_GHOST, FIELD_INPUT } from "./notesUi";
+import { DIALOG_INPUT, DIALOG_PRIMARY, DIALOG_QUIET, DialogField, NotesDialog } from "./notesDialog";
 
 export function NotebookDialog({
   notebook,
@@ -71,7 +70,7 @@ export function NotebookDialog({
 
   return (
     <NotesDialog
-      icon={<BookOpen size={15} />}
+      eyebrow={t("dialog.notebook")}
       size="sm"
       title={notebook ? t("notebooks.rename") : t("notebooks.create")}
       subtitle={notebook?.name}
@@ -80,11 +79,11 @@ export function NotebookDialog({
       initialFocusRef={nameRef}
       actions={({ close }) => (
         <>
-          <button type="button" onClick={close} className={BTN_GHOST}>
+          <button type="button" onClick={close} className={DIALOG_QUIET}>
             {t("common.cancel")}
           </button>
-          <button type="submit" disabled={!name.trim() || isPending} className={BTN_ACCENT}>
-            {isPending && <Loader2 size={13} className="animate-spin" />}
+          <button type="submit" disabled={!name.trim() || isPending} className={DIALOG_PRIMARY}>
+            {isPending && <Loader2 size={14} className="animate-spin" />}
             {notebook ? t("actions.save") : t("actions.create")}
           </button>
         </>
@@ -99,7 +98,7 @@ export function NotebookDialog({
           onChange={(event) => setName(event.target.value)}
           placeholder={t("notebooks.namePlaceholder")}
           maxLength={256}
-          className={FIELD_INPUT}
+          className={DIALOG_INPUT}
         />
       </DialogField>
 
@@ -110,7 +109,7 @@ export function NotebookDialog({
           onChange={(event) => setDescription(event.target.value)}
           placeholder={t("notebooks.descriptionPlaceholder")}
           rows={2}
-          className={`${FIELD_INPUT} resize-none leading-relaxed`}
+          className={`${DIALOG_INPUT} resize-none leading-relaxed`}
         />
       </DialogField>
     </NotesDialog>

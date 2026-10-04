@@ -28,7 +28,6 @@ import {
   Bookmark,
   Clock,
   Heart,
-  Loader2,
   MapPin,
   Pencil,
   Share2,
@@ -39,6 +38,7 @@ import {
 import { api } from "~/trpc/react";
 import { ProfileLink } from "~/components/profile/ProfileLink";
 import { useDateFormat } from "~/hooks/useDateFormat";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import {
   canRemind,
   coverClass,
@@ -55,6 +55,9 @@ import {
 } from "~/components/publish/publishUi";
 import { EditEventForm } from "./EditEventForm";
 import { EventDiscussion } from "./EventDiscussion";
+import { EventMap } from "./EventMap";
+import { EventPageSkeleton } from "./EventPageSkeleton";
+import { googleMapsSearchUrl } from "~/lib/eventLocation";
 
 const ALLOWED_IMAGE_HOSTS = ["utfs.io", "lh3.googleusercontent.com"];
 
@@ -82,7 +85,7 @@ export function EventPage({ eventId }: { eventId: number }) {
   const [showReminders, setShowReminders] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
 
-  const { data, isLoading, error } = api.event.getById.useQuery({ eventId });
+  const { data, isLoading, error, refetch } = api.event.getById.useQuery({ eventId });
 
   const refresh = {
     onSettled: () => {
@@ -101,12 +104,10 @@ export function EventPage({ eventId }: { eventId: number }) {
     { enabled: !!data?.event.enableRsvp },
   );
 
-  if (isLoading) {
-    return (
-      <main className="grid min-h-dvh place-items-center bg-bg-primary">
-        <Loader2 className="h-10 w-10 animate-spin text-accent-primary" />
-      </main>
-    );
+  const showSkeleton = useSkeletonHold(isLoading);
+
+  if (isLoading || showSkeleton) {
+    return <EventPageSkeleton onRetry={() => void refetch()} />;
   }
 
   if (error || !data) {
@@ -135,6 +136,11 @@ export function EventPage({ eventId }: { eventId: number }) {
 
   const { event, comments } = data;
   const past = isEventPast(event);
+  // Every region is a Bulgarian town; naming the country stops "Ruse" or "Pleven"
+  // matching somewhere else when the host left the address blank.
+  const mapQuery = [event.venue, event.address, regionLabel(event.region), "Bulgaria"]
+    .filter(Boolean)
+    .join(", ");
   const left =
     event.capacity === null
       ? null
@@ -209,7 +215,7 @@ export function EventPage({ eventId }: { eventId: number }) {
             className={`h-10 flex-1 rounded-lg text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
               active
                 ? "bg-accent-primary text-white"
-                : "border border-slate-200 text-fg-secondary hover:bg-slate-100 dark:border-white/10 dark:hover:bg-white/5"
+                : "border border-border-medium text-fg-secondary hover:bg-bg-tertiary"
             }`}
           >
             {t(status)}
@@ -223,8 +229,8 @@ export function EventPage({ eventId }: { eventId: number }) {
         aria-pressed={event.userRsvpStatus === "not_going"}
         className={`h-10 rounded-lg px-3 text-[13px] transition-colors disabled:opacity-40 ${
           event.userRsvpStatus === "not_going"
-            ? "bg-slate-200 font-semibold text-fg-primary dark:bg-white/10"
-            : "border border-slate-200 text-fg-tertiary hover:bg-slate-100 dark:border-white/10 dark:hover:bg-white/5"
+            ? "bg-bg-tertiary font-semibold text-fg-primary"
+            : "border border-border-medium text-fg-tertiary hover:bg-bg-tertiary"
         }`}
       >
         {t("cantGo")}
@@ -233,11 +239,12 @@ export function EventPage({ eventId }: { eventId: number }) {
   );
 
   return (
-    <main className="min-h-dvh bg-bg-primary pb-28 lg:pb-10">
+    <main className="min-h-dvh bg-bg-primary pb-[calc(8rem+var(--kairos-safe-bottom))] lg:pb-10">
       {/* A slim bar rather than the app rail: most people who open this link
           do not have an account, and a sidebar of links they cannot use is a
-          worse greeting than the event itself. */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-bg-primary/85 backdrop-blur-md dark:border-white/10">
+          worse greeting than the event itself. It clears the notch itself —
+          this route is outside the shell, so nothing else does. */}
+      <header className="sticky top-0 z-30 pt-[var(--kairos-safe-top)] border-b border-border-medium bg-bg-primary/85 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4 sm:px-6">
           <Link
             href="/publish"
@@ -250,7 +257,7 @@ export function EventPage({ eventId }: { eventId: number }) {
           <button
             type="button"
             onClick={handleShare}
-            className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary dark:border-white/10"
+            className="flex h-control-md items-center gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
           >
             <Share2 size={14} />
             <span className="hidden sm:inline">{t("share")}</span>
@@ -258,7 +265,7 @@ export function EventPage({ eventId }: { eventId: number }) {
           {!session && (
             <Link
               href={`/?callbackUrl=/events/${eventId}`}
-              className="flex h-9 items-center rounded-lg bg-accent-primary px-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="flex h-control-md items-center rounded-lg bg-accent-primary px-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
             >
               {t("signIn")}
             </Link>
@@ -268,7 +275,7 @@ export function EventPage({ eventId }: { eventId: number }) {
 
       <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-6">
         {/* The cover, and the three things that decide whether to read on. */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-bg-elevated dark:border-white/10">
+        <div className="overflow-hidden rounded-lg border border-border-medium bg-bg-elevated">
           {isValidImageUrl(event.imageUrl) && (
             <div className="relative aspect-[1200/500] bg-bg-tertiary">
               <Image
@@ -321,14 +328,14 @@ export function EventPage({ eventId }: { eventId: number }) {
             )}
 
             <div className="flex flex-wrap gap-2">
-              <span className="flex h-9 items-center gap-2 rounded-lg bg-bg-elevated/75 px-3 text-[13px] text-fg-secondary backdrop-blur-sm">
+              <span className="flex h-control-md items-center gap-2 rounded-lg bg-bg-elevated/75 px-3 text-[13px] text-fg-secondary backdrop-blur-sm">
                 <Clock size={13} className="text-accent-primary" />
                 {/* `withYear` rather than `long`: the long format already ends
                     in a time, which read as "4 July 2026 13:00 · 13:00". */}
                 {formatDate(new Date(event.eventDate), "withYear")} ·{" "}
                 {formatTimeRange(event, locale)}
               </span>
-              <span className="flex h-9 items-center gap-2 rounded-lg bg-bg-elevated/75 px-3 text-[13px] text-fg-secondary backdrop-blur-sm">
+              <span className="flex h-control-md items-center gap-2 rounded-lg bg-bg-elevated/75 px-3 text-[13px] text-fg-secondary backdrop-blur-sm">
                 <MapPin size={13} className="text-accent-primary" />
                 {placeLine(event)}
               </span>
@@ -357,10 +364,10 @@ export function EventPage({ eventId }: { eventId: number }) {
                 }}
                 disabled={toggleLike.isPending}
                 aria-pressed={event.hasLiked}
-                className={`flex h-9 items-center gap-2 rounded-lg border px-3 text-[13px] transition-colors ${
+                className={`flex h-control-md items-center gap-2 rounded-lg border px-3 text-[13px] transition-colors ${
                   event.hasLiked
                     ? "border-accent-primary/50 bg-accent-primary/20 font-medium text-accent-primary"
-                    : "border-slate-200 text-fg-secondary hover:bg-slate-100 dark:border-white/10 dark:hover:bg-white/5"
+                    : "border-border-medium text-fg-secondary hover:bg-bg-tertiary"
                 }`}
               >
                 <Heart
@@ -378,10 +385,10 @@ export function EventPage({ eventId }: { eventId: number }) {
                 }}
                 disabled={toggleSave.isPending}
                 aria-pressed={event.hasSaved}
-                className={`flex h-9 items-center gap-2 rounded-lg border px-3 text-[13px] transition-colors ${
+                className={`flex h-control-md items-center gap-2 rounded-lg border px-3 text-[13px] transition-colors ${
                   event.hasSaved
                     ? "border-accent-primary/50 bg-accent-primary/20 font-medium text-accent-primary"
-                    : "border-slate-200 text-fg-secondary hover:bg-slate-100 dark:border-white/10 dark:hover:bg-white/5"
+                    : "border-border-medium text-fg-secondary hover:bg-bg-tertiary"
                 }`}
               >
                 <Bookmark
@@ -397,7 +404,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                 <button
                   type="button"
                   onClick={() => setShowEditForm(true)}
-                  className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary dark:border-white/10"
+                  className="flex h-control-md items-center gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
                 >
                   <Pencil size={14} />
                   {t("edit.title")}
@@ -416,7 +423,7 @@ export function EventPage({ eventId }: { eventId: number }) {
           {/* The decision, the host, and where to go. */}
           <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
             {event.enableRsvp && (
-              <div className="hidden flex-col gap-3 rounded-2xl border border-slate-200 bg-bg-elevated p-4 lg:flex dark:border-white/10">
+              <div className="hidden flex-col gap-3 rounded-lg border border-border-medium bg-bg-elevated p-4 lg:flex">
                 <div className="flex items-baseline justify-between">
                   <Stamp className="tracking-[0.14em]">{t("going")}</Stamp>
                   <span className="kairos-mono text-xl font-semibold text-fg-primary">
@@ -426,9 +433,9 @@ export function EventPage({ eventId }: { eventId: number }) {
 
                 {event.capacity !== null && (
                   <>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
                       <div
-                        className={`h-full rounded-full ${full ? "bg-red-500" : "bg-accent-primary"}`}
+                        className={`h-full rounded-full ${full ? "bg-status-danger-ink" : "bg-accent-primary"}`}
                         style={{
                           width: `${Math.min(100, Math.round((event.rsvpCounts.going / event.capacity) * 100))}%`,
                         }}
@@ -439,7 +446,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                         {t("capacity", { count: event.capacity })}
                       </Stamp>
                       <Stamp
-                        className={`text-[9.5px] tracking-[0.12em] ${full ? "text-red-500" : "text-accent-primary"}`}
+                        className={`text-[9.5px] tracking-[0.12em] ${full ? "text-status-danger-ink" : "text-accent-primary"}`}
                       >
                         {full ? t("soldOut") : t("placesLeft", { count: left ?? 0 })}
                       </Stamp>
@@ -464,7 +471,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                       </ProfileLink>
                     ))}
                     {attendees.length > 6 && (
-                      <span className="kairos-mono grid h-[30px] w-[30px] place-items-center rounded-full bg-slate-100 text-[10px] text-fg-tertiary ring-2 ring-bg-elevated dark:bg-white/10">
+                      <span className="kairos-mono grid h-[30px] w-[30px] place-items-center rounded-full bg-bg-tertiary text-[10px] text-fg-tertiary ring-2 ring-bg-elevated">
                         +{attendees.length - 6}
                       </span>
                     )}
@@ -474,7 +481,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                 {rsvpButtons}
 
                 {showReminders && !past && (
-                  <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-2.5 dark:border-white/[0.06]">
+                  <div className="flex flex-wrap gap-1.5 border-t border-border-light pt-2.5">
                     <Stamp className="w-full tracking-[0.12em]">
                       {t("getNotified")}
                     </Stamp>
@@ -510,7 +517,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                     RSVP row is disabled here and a reminder is not on offer
                     because there is nothing left to be reminded about. */}
                 {past && (
-                  <p className="flex items-start gap-2 border-t border-slate-100 pt-2.5 text-xs text-fg-tertiary dark:border-white/[0.06]">
+                  <p className="flex items-start gap-2 border-t border-border-light pt-2.5 text-xs text-fg-tertiary">
                     <BellOff size={13} className="mt-px shrink-0" />
                     {t("reminderPastEvent")}
                   </p>
@@ -518,7 +525,7 @@ export function EventPage({ eventId }: { eventId: number }) {
               </div>
             )}
 
-            <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-bg-elevated p-4 dark:border-white/10">
+            <div className="flex flex-col gap-3 rounded-lg border border-border-medium bg-bg-elevated p-4">
               <Stamp className="tracking-[0.14em]">{t("hostedBy")}</Stamp>
               <div className="flex items-center gap-3">
                 <ProfileLink userId={event.author.id} name={event.author.name}>
@@ -555,7 +562,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                   aria-pressed={event.viewerFollowsAuthor}
                   className={`flex h-9 items-center justify-center gap-2 rounded-lg text-[13px] font-semibold transition-colors ${
                     event.viewerFollowsAuthor
-                      ? "bg-slate-100 text-fg-secondary hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10"
+                      ? "bg-bg-secondary text-fg-secondary hover:bg-bg-tertiary"
                       : "bg-accent-primary text-white hover:bg-accent-hover"
                   }`}
                 >
@@ -565,7 +572,7 @@ export function EventPage({ eventId }: { eventId: number }) {
               )}
 
               {event.coHosts.length > 0 && (
-                <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-white/[0.06]">
+                <div className="flex flex-col gap-2 border-t border-border-light pt-3">
                   <Stamp className="tracking-[0.14em]">{t("coHosts")}</Stamp>
                   {event.coHosts.map((host) => (
                     <ProfileLink
@@ -588,7 +595,7 @@ export function EventPage({ eventId }: { eventId: number }) {
               )}
             </div>
 
-            <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-bg-elevated p-4 dark:border-white/10">
+            <div className="flex flex-col gap-2 rounded-lg border border-border-medium bg-bg-elevated p-4">
               <Stamp className="tracking-[0.14em]">{t("where")}</Stamp>
               <p className="text-sm text-fg-primary">
                 {event.venue ?? regionLabel(event.region)}
@@ -596,12 +603,17 @@ export function EventPage({ eventId }: { eventId: number }) {
               {event.address && (
                 <p className="text-xs text-fg-tertiary">{event.address}</p>
               )}
+              <EventMap
+                point={
+                  event.latitude !== null && event.longitude !== null
+                    ? { lat: event.latitude, lng: event.longitude }
+                    : null
+                }
+                region={event.region}
+                label={mapQuery}
+              />
               <a
-                href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(
-                  [event.venue, event.address, regionLabel(event.region)]
-                    .filter(Boolean)
-                    .join(", "),
-                )}`}
+                href={googleMapsSearchUrl(mapQuery)}
                 target="_blank"
                 rel="noreferrer noopener"
                 className="mt-1 text-xs font-semibold text-accent-primary hover:text-accent-hover"
@@ -616,8 +628,10 @@ export function EventPage({ eventId }: { eventId: number }) {
       {/* On a phone the decision is pinned, because scrolling back up to answer
           is the one thing this page must not ask for. */}
       {event.enableRsvp && !past && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-bg-primary/95 p-3 backdrop-blur-md lg:hidden dark:border-white/10">
-          <div className="mb-2 flex items-center gap-2">
+        /* The bottom padding carries the home-indicator inset, and `main`'s
+           own bottom padding is sized to this bar plus that inset. */
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border-medium bg-bg-primary/95 p-3 pb-[calc(0.75rem+var(--kairos-safe-bottom))] backdrop-blur-md lg:hidden">
+          <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
             <Users size={13} className="text-accent-primary" />
             <Stamp className="tracking-[0.12em]">
               {full
@@ -631,7 +645,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                 and the desktop card that carries it is hidden here. */}
             {!full && left !== null && (
               <Stamp
-                className={`tracking-[0.12em] ${left <= 10 ? "text-amber-500" : "text-accent-primary"}`}
+                className={`tracking-[0.12em] ${left <= 10 ? "text-status-warning-ink" : "text-accent-primary"}`}
               >
                 · {t("placesLeft", { count: left })}
               </Stamp>
@@ -646,7 +660,7 @@ export function EventPage({ eventId }: { eventId: number }) {
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl dark:border-white/5 dark:bg-[#1A191E]">
+            <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border-medium bg-bg-overlay shadow-2xl">
               <EditEventForm
                 event={{
                   id: event.id,

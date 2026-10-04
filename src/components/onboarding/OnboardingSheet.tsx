@@ -4,11 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
-import { useModalBehavior } from "~/components/ui/Modal";
+import { useModalBehavior, ModalDismiss } from "~/components/ui/Modal";
 import { modalExitMs } from "~/components/ui/modalExit";
 import { KairosMark } from "~/components/layout/KairosMark";
 import {
-  X,
   ChevronDown,
   LayoutDashboard,
   Briefcase,
@@ -136,7 +135,7 @@ export function OnboardingSheet() {
     /* A solid backdrop so the sheet reads as its own surface over either the
        light app or the dark landing — the sheet is dark regardless of theme. */
     <div
-      className={`onboarding-sheet-scrim fixed inset-0 z-[120] flex items-center justify-center overscroll-contain bg-[#050507]/92 p-4 backdrop-blur-sm ${
+      className={`onboarding-sheet-scrim fixed inset-0 z-[120] flex items-center justify-center overscroll-contain bg-black/92 p-4 backdrop-blur-sm ${
         closing ? "onboarding-sheet-scrim--out" : ""
       }`}
       onClick={(e) => {
@@ -148,7 +147,7 @@ export function OnboardingSheet() {
         role="dialog"
         aria-modal="true"
         aria-label={t("title")}
-        className={`onboarding-sheet-dialog dark relative flex max-h-[88dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#08080c] text-fg-primary shadow-2xl ${
+        className={`onboarding-sheet-dialog dark relative flex max-h-[88dvh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-white/10 bg-bg-overlay text-fg-primary shadow-2xl ${
           closing ? "onboarding-sheet-dialog--out" : ""
         }`}
       >
@@ -169,14 +168,7 @@ export function OnboardingSheet() {
               {t("eyebrow")}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={dismiss}
-            aria-label={t("close")}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-fg-tertiary transition-colors hover:bg-white/5 hover:text-fg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
-          >
-            <X size={18} />
-          </button>
+          <ModalDismiss onDismiss={dismiss} label={t("close")} />
         </header>
 
         <div className="relative flex-1 overflow-y-auto px-6 pt-8 pb-10 sm:px-10">
@@ -201,7 +193,7 @@ export function OnboardingSheet() {
                 type="button"
                 onClick={() => setTab(item.id)}
                 aria-pressed={tab === item.id}
-                className={`rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary ${
+                className={`rounded-md px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary ${
                   tab === item.id
                     ? "bg-accent-primary text-white"
                     : "border border-white/10 text-fg-tertiary hover:border-white/20 hover:text-fg-primary"

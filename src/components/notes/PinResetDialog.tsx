@@ -11,13 +11,20 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { KeyRound, Loader2 } from "~/components/ui/icons";
+import { Loader2 } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 
-import { DialogError, DialogField, DialogPasswordField, NotesDialog } from "./notesDialog";
-import { BTN_ACCENT, BTN_GHOST, FIELD_INPUT } from "./notesUi";
+import {
+  DIALOG_INPUT,
+  DIALOG_PRIMARY,
+  DIALOG_QUIET,
+  DialogError,
+  DialogField,
+  DialogPasswordField,
+  NotesDialog,
+} from "./notesDialog";
 
 export function PinResetDialog({
   noteId,
@@ -85,7 +92,7 @@ export function PinResetDialog({
 
   return (
     <NotesDialog
-      icon={<KeyRound size={15} />}
+      eyebrow={t("dialog.recovery")}
       title={t("password.resetPassword")}
       subtitle={t("password.enterSecretPin")}
       onClose={onClose}
@@ -93,15 +100,11 @@ export function PinResetDialog({
       initialFocusRef={pinRef}
       actions={({ close }) => (
         <>
-          <button type="button" onClick={close} className={BTN_GHOST}>
+          <button type="button" onClick={close} className={DIALOG_QUIET}>
             {t("common.cancel")}
           </button>
-          <button type="submit" disabled={resetPassword.isPending} className={BTN_ACCENT}>
-            {resetPassword.isPending ? (
-              <Loader2 size={13} className="animate-spin" />
-            ) : (
-              <KeyRound size={13} />
-            )}
+          <button type="submit" disabled={resetPassword.isPending} className={DIALOG_PRIMARY}>
+            {resetPassword.isPending && <Loader2 size={14} className="animate-spin" />}
             {resetPassword.isPending ? t("password.resetting") : t("password.resetPassword")}
           </button>
         </>
@@ -125,21 +128,24 @@ export function PinResetDialog({
           placeholder={t("password.enterPin")}
           autoComplete="off"
           aria-invalid={pinRejected ? "true" : undefined}
-          className={FIELD_INPUT}
+          className={DIALOG_INPUT}
         />
       </DialogField>
 
       <DialogPasswordField
         id="notes-reset-password"
         label={t("password.newPassword")}
+        hint={t("password.digitsOnly")}
         value={password}
         onChange={setPassword}
+        numeric
       />
       <DialogPasswordField
         id="notes-reset-confirm"
         label={t("password.confirmPassword")}
         value={confirmPassword}
         onChange={setConfirmPassword}
+        numeric
       />
 
       {error && <DialogError>{error}</DialogError>}

@@ -143,7 +143,7 @@ function ViewButton({
       className={`flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2.5 text-left text-[13.5px] transition-colors ${
         active
           ? "bg-accent-primary/10 font-semibold text-accent-primary ring-1 ring-inset ring-accent-primary/20"
-          : "text-fg-secondary hover:bg-slate-100 dark:hover:bg-white/5"
+          : "text-fg-secondary hover:bg-bg-tertiary"
       }`}
     >
       <Icon
@@ -183,7 +183,7 @@ function FilterChip({
       className={`kairos-mono flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] transition-colors ${
         active
           ? "bg-accent-primary/10 font-semibold text-accent-primary ring-1 ring-inset ring-accent-primary/30"
-          : "bg-slate-100 text-fg-secondary hover:text-fg-primary dark:bg-white/5"
+          : "bg-bg-tertiary text-fg-secondary hover:text-fg-primary"
       }`}
     >
       <span>{label}</span>
@@ -320,15 +320,17 @@ export function PublishRail({
           type="button"
           onClick={() => setShowMobileFilters((open) => !open)}
           aria-expanded={showMobileFilters}
-          className="flex h-9 items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 text-[13px] text-fg-secondary dark:border-white/10"
+          className="flex h-control-md items-center justify-between gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary"
         >
-          <span className="flex items-center gap-2">
+          <span className="flex shrink-0 items-center gap-2">
             <SlidersHorizontal size={14} className="text-accent-primary" />
             {t("filters")}
           </span>
-          <span className="flex items-center gap-2">
+          {/* The summary truncates rather than pushing the chevron out: a
+              long town and a topic together outran a 320px button. */}
+          <span className="flex min-w-0 items-center gap-2">
             {(region || topic) && (
-              <span className="kairos-mono text-[11px] text-accent-primary">
+              <span className="kairos-mono min-w-0 truncate text-[11px] text-accent-primary">
                 {[region ? regionLabel(region) : null, topic ? t(`topics.${topic}`) : null]
                   .filter(Boolean)
                   .join(" · ")}
@@ -337,7 +339,7 @@ export function PublishRail({
             <ChevronDown
               size={13}
               aria-hidden="true"
-              className={showMobileFilters ? "rotate-180" : ""}
+              className={`shrink-0 ${showMobileFilters ? "rotate-180" : ""}`}
             />
           </span>
         </button>
@@ -354,7 +356,7 @@ export function PublishRail({
 
         {filters}
 
-        <Panel className="flex flex-col gap-2 border-slate-200 bg-slate-50 dark:bg-[#0c0c11]">
+        <Panel className="flex flex-col gap-2 border-border-medium bg-bg-surface">
           <Stamp className="tracking-[0.14em]">{t("messages")}</Stamp>
           <p className="text-xs leading-relaxed text-fg-tertiary">
             {t("messagesHint")}

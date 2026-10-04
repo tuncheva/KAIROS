@@ -1,16 +1,16 @@
-export default function ChatLoading() {
+import { TopBar } from "~/components/layout/TopBar";
+import { ChatShellSkeleton } from "~/components/chat/ChatSkeletons";
+
+export default function ConversationLoading() {
+  /* The same wrappers as the page itself (rail offset, top-bar gap, the
+     definite height the panes scroll against), so nothing jumps on arrival. */
   return (
-    <div className="h-[100dvh] overflow-hidden bg-bg-primary">
-      <div className="rail-offset h-[100dvh] overflow-hidden flex flex-col">
-        <div className="flex-1 flex flex-col p-4 gap-4">
-          <div className="h-8 w-48 bg-bg-secondary rounded animate-pulse" />
-          <div className="flex-1 space-y-4">
-            <div className="h-12 w-3/4 bg-bg-secondary rounded-lg animate-pulse" />
-            <div className="h-12 w-1/2 bg-bg-secondary rounded-lg animate-pulse ml-auto" />
-            <div className="h-12 w-2/3 bg-bg-secondary rounded-lg animate-pulse" />
-          </div>
-          <div className="h-12 bg-bg-secondary rounded-xl animate-pulse" />
-        </div>
+    <div className="bg-bg-primary h-[100dvh] overflow-hidden">
+      <div className="rail-offset kairos-topbar-gap kairos-bottomnav-gap flex h-[100dvh] flex-col overflow-hidden">
+        <TopBar />
+        <main id="main-content" className="min-h-0 flex-1 overflow-hidden">
+          <ChatShellSkeleton threadOpen />
+        </main>
       </div>
     </div>
   );

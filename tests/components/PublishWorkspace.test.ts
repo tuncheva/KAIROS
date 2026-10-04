@@ -320,12 +320,12 @@ describe("EventCard – the proposal's card, not the old one", () => {
   it("gives the RSVP its own full-width row", () => {
     // It is the one thing the card is asking for, and it used to share a line
     // with five icon buttons.
-    expect(card).toContain("h-9 flex-1 rounded-lg text-[12.5px] font-semibold");
+    expect(card).toContain("h-control-md flex-1 rounded-lg text-[12.5px] font-semibold");
   });
 
   it("draws the reactions flat, under a hairline", () => {
-    expect(card).toContain("border-t border-slate-100 px-2.5 py-2");
-    expect(card).not.toContain("flex h-9 items-center gap-2 rounded-lg border px-3");
+    expect(card).toContain("border-t border-border-light px-2.5 py-2");
+    expect(card).not.toContain("flex h-control-md items-center gap-2 rounded-lg border px-3");
   });
 
   it("sets the title in the display face", () => {

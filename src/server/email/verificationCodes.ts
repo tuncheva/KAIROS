@@ -35,7 +35,10 @@ import { verificationCodes } from "~/server/db/schema";
 
 type Db = typeof Database;
 
-export type VerificationPurpose = "email_verify" | "password_reset";
+export type VerificationPurpose =
+  | "email_verify"
+  | "password_reset"
+  | "two_factor_toggle";
 
 /** How long an emailed code stays usable. */
 export const VERIFICATION_CODE_TTL_MS = 15 * 60 * 1000;

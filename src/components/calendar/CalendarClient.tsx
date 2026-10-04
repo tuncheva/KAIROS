@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ModalDismiss } from "~/components/ui/Modal";
 import {
   CalendarDays,
   ChevronLeft,
@@ -12,13 +13,22 @@ import {
   SlidersHorizontal,
   X,
 } from "~/components/ui/icons";
+import { replaceUrlSilently } from "~/lib/historyUrl";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
+import { SkeletonStatus } from "~/components/ui/Skeleton";
 import { useLocale, useTranslations } from "next-intl";
 import { CalendarAgenda } from "./CalendarAgenda";
 import { CalendarDayPeek } from "./CalendarDayPeek";
 import { CalendarDrawer, type DrawerState } from "./CalendarDrawer";
 import { CalendarMonthGrid } from "./CalendarMonthGrid";
+import {
+  CalendarAgendaSkeleton,
+  CalendarMonthGridSkeleton,
+  CalendarSkeleton,
+  CalendarTimeGridSkeleton,
+} from "./CalendarSkeleton";
 import { CalendarTimeGrid } from "./CalendarTimeGrid";
 import { useDismissOnOutside, useFocusTrap } from "./useCalendarA11y";
 import {
@@ -37,6 +47,7 @@ import {
   endOfDayLocal,
   fromYmd,
   hourWindow,
+  isSameDay,
   isoWeek,
   matchesFilters,
   priorityTone,
@@ -71,11 +82,11 @@ const VIEW_LABEL_KEYS: Record<ViewMode, string> = {
 };
 
 const SMALL_CHIP =
-  "flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-semibold transition-colors";
+  "flex h-control-sm items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-semibold transition-colors";
 const IDLE_CHIP = "border-border-medium text-fg-tertiary hover:bg-bg-secondary";
 const MICRO_LABEL = "text-[11px] uppercase tracking-[0.12em] text-fg-tertiary";
 const BAR_BTN =
-  "flex h-[30px] items-center gap-1.5 rounded-lg border border-border-medium px-2.5 text-xs font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary";
+  "kairos-tap flex h-[30px] items-center gap-1.5 rounded-lg border border-border-medium px-2.5 text-xs font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary";
 const DATE_INPUT =
   "h-[30px] rounded-md border border-border-medium bg-bg-surface px-2 text-[11px] tabular-nums text-fg-primary outline-none transition-colors focus:border-accent-primary/60";
 
@@ -93,16 +104,6 @@ export function CalendarClient() {
 
   if (!today) return <CalendarSkeleton />;
   return <CalendarWorkspace today={today} />;
-}
-
-function CalendarSkeleton() {
-  return (
-    <div className="flex h-full flex-col gap-4 px-4 py-5 sm:px-6 md:px-8">
-      <div className="h-[46px] w-full animate-pulse rounded-lg bg-bg-secondary" />
-      <div className="h-5 w-64 animate-pulse rounded bg-bg-secondary" />
-      <div className="min-h-0 flex-1 rounded-xl border border-border-light bg-bg-elevated" />
-    </div>
-  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -213,6 +214,8 @@ function CalendarWorkspace({ today }: { today: Date }) {
     { from: periodFrom, to: periodTo },
     { staleTime: 30_000 },
   );
+  const showSkeleton = useSkeletonHold(isLoading);
+  const tSkeleton = useTranslations("skeleton");
 
   const utils = api.useUtils();
   const refreshCalendar = useCallback(() => {
@@ -241,7 +244,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
   }, [visibleItems]);
 
   const kindCounts = useMemo(() => {
-    const counts: Record<CalendarKind, number> = { task: 0, event: 0, note: 0 };
+    const counts: Record<CalendarKind, number> = { task: 0, event: 0, note: 0, external: 0 };
     for (const item of allItems) counts[item.kind] += 1;
     return counts;
   }, [allItems]);
@@ -306,7 +309,12 @@ function CalendarWorkspace({ today }: { today: Date }) {
      one page, so each arrow press should not become a history entry you have
      to walk back through — and routing would re-render the shell above for a
      change that is entirely local to this grid. Back still leaves the
-     calendar, which is what the button appeared to promise and never did. */
+     calendar, which is what the button appeared to promise and never did.
+
+     `replaceUrlSilently` rather than `history.replaceState` directly: the
+     App Router turns the latter into a fresh RSC request for the new URL, so
+     this effect — which runs on every arrow press, filter toggle and debounced
+     search keystroke — was refetching the route each time, skeleton and all. */
   useEffect(() => {
     const next = new URLSearchParams();
     next.set("view", view);
@@ -321,7 +329,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
     if (kinds.size !== ITEM_KINDS.length) next.set("kinds", [...kinds].join(","));
     if (statuses.size !== TASK_STATUSES.length) next.set("status", [...statuses].join(","));
     if (priorities.size !== TASK_PRIORITIES.length) next.set("prio", [...priorities].join(","));
-    window.history.replaceState(null, "", `?${next.toString()}`);
+    replaceUrlSilently(`?${next.toString()}`);
   }, [anchor, kinds, priorities, query, rangeText, statuses, view]);
 
   /* ---------------- labels ---------------- */
@@ -367,7 +375,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
     (item: CalendarItem) => {
       const parts = [t(KIND_LABEL_KEYS[item.kind]), item.title];
       if (item.allDay) parts.push(t("allDay"));
-      else if (item.kind === "event" && item.endsAt)
+      else if ((item.kind === "event" || item.kind === "external") && item.endsAt)
         parts.push(`${toHm(item.date)}–${toHm(item.endsAt)}`);
       else parts.push(toHm(item.date));
 
@@ -377,6 +385,10 @@ function CalendarWorkspace({ today }: { today: Date }) {
         if (item.projectTitle) parts.push(item.projectTitle);
       }
       if (item.kind === "note" && item.locked) parts.push(t("locked"));
+      // The one kind nothing on this page can change. Said out loud, because a
+      // sighted user infers it from the dimmed treatment and a screen-reader
+      // user would otherwise reach the detail panel before finding out.
+      if (item.kind === "external") parts.push(t("readOnlyItem"));
       return parts.join(", ");
     },
     [t],
@@ -390,6 +402,9 @@ function CalendarWorkspace({ today }: { today: Date }) {
           .join(" · ");
       }
       if (item.kind === "event") return t(KIND_LABEL_KEYS.event);
+      if (item.kind === "external") {
+        return [t(KIND_LABEL_KEYS.external), item.location].filter(Boolean).join(" · ");
+      }
       return t(KIND_LABEL_KEYS.note);
     },
     [t],
@@ -573,14 +588,14 @@ function CalendarWorkspace({ today }: { today: Date }) {
         role="toolbar"
         aria-label={t("toolbarLabel")}
         aria-orientation="horizontal"
-        className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-border-light bg-bg-elevated px-2.5 py-2 calendar-rise"
+        className="relative flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-border-light bg-bg-elevated px-2.5 py-2 calendar-rise"
       >
         <div className="flex items-center gap-1" role="group" aria-label={t("periodGroup")}>
           <button
             type="button"
             onClick={() => step(-1)}
             aria-label={t("previousPeriod")}
-            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
+            className="kairos-tap flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
           >
             <ChevronLeft size={15} />
           </button>
@@ -588,14 +603,14 @@ function CalendarWorkspace({ today }: { today: Date }) {
             type="button"
             onClick={() => step(1)}
             aria-label={t("nextPeriod")}
-            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
+            className="kairos-tap flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
           >
             <ChevronRight size={15} />
           </button>
           <button
             type="button"
             onClick={goToToday}
-            className="ml-1 h-[30px] rounded-lg border border-accent-primary/30 bg-accent-primary/10 px-2.5 text-xs font-semibold text-accent-primary transition-colors hover:bg-accent-primary/20"
+            className="kairos-tap ml-1 h-[30px] rounded-lg border border-accent-primary/30 bg-accent-primary/10 px-2.5 text-xs font-semibold text-accent-primary transition-colors hover:bg-accent-primary/20"
           >
             {t("today")}
           </button>
@@ -623,7 +638,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
             />
           </div>
         ) : (
-          <h2 className="px-1 font-display text-[20px] leading-none font-semibold tracking-tight text-fg-primary">
+          <h2 className="min-w-0 truncate px-1 font-display text-[20px] leading-none font-semibold tracking-tight text-fg-primary">
             {title}
           </h2>
         )}
@@ -654,8 +669,11 @@ function CalendarWorkspace({ today }: { today: Date }) {
 
         <span className="flex-1" />
 
-        <div className="flex items-center gap-2" role="group" aria-label={t("lensGroup")}>
-          <label className="flex h-[30px] min-w-0 items-center gap-2 rounded-lg border border-border-medium bg-bg-surface px-2.5 sm:w-[190px]">
+        {/* A row of its own on a phone, with search taking what is left: at
+            375px the group's natural width was ~420px in a ~320px bar, and it
+            does not wrap, so New was pushed off the edge. */}
+        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto" role="group" aria-label={t("lensGroup")}>
+          <label className="flex h-[30px] min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-medium bg-bg-surface px-2.5 sm:w-[190px] sm:flex-none">
             <Search size={13} className="shrink-0 text-fg-tertiary" aria-hidden="true" />
             <input
               ref={searchRef}
@@ -681,14 +699,16 @@ function CalendarWorkspace({ today }: { today: Date }) {
           {/* One filter control. Kind, status and priority used to be three
               mechanisms split across the bar and a popover, with two resets
               and no single answer to "what am I hiding". */}
-          <div className="relative">
+          {/* Anchored to the whole bar below `sm`: right-aligned under a button
+              that sits mid-row, the 300px panel ran off the left edge. */}
+          <div className="sm:relative">
             <button
               type="button"
               onClick={() => setFiltersOpen((open) => !open)}
               aria-expanded={filtersOpen}
               aria-haspopup="dialog"
               className={cn(
-                "flex h-[30px] items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-colors",
+                "kairos-tap flex h-[30px] shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-colors",
                 filtersOpen || tokens.length
                   ? "border-accent-primary/30 bg-accent-primary/10 text-accent-primary"
                   : IDLE_CHIP,
@@ -706,7 +726,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
                 ref={filterRef}
                 role="dialog"
                 aria-label={t("filters")}
-                className="calendar-pop absolute right-0 top-10 z-40 flex w-[min(300px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border-medium bg-bg-elevated shadow-2xl"
+                className="calendar-pop absolute right-0 top-full z-40 mt-2 flex max-h-[calc(100dvh-22rem)] w-[min(300px,calc(100vw-2rem))] flex-col overflow-y-auto rounded-xl border border-border-medium bg-bg-elevated shadow-2xl sm:top-10 sm:mt-0 sm:max-h-none sm:overflow-hidden"
               >
                 <fieldset className="flex flex-col gap-1.5 border-b border-border-light/70 p-3.5">
                   <legend className={cn(MICRO_LABEL, "mb-1")}>{t("showLabel")}</legend>
@@ -800,7 +820,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
                   <button
                     type="button"
                     onClick={closeFilters}
-                    className="h-7 rounded-md border border-border-medium px-2.5 text-[11px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
+                    className="h-control-sm rounded-md border border-border-medium px-2.5 text-[11px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
                   >
                     {t("done")}
                   </button>
@@ -817,7 +837,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
             title={t("toggleAgenda")}
             className={cn(
               BAR_BTN,
-              "w-[30px] justify-center px-0",
+              "w-[30px] shrink-0 justify-center px-0",
               layout === "agenda" && "border-accent-primary/30 bg-accent-primary/10 text-accent-primary",
             )}
           >
@@ -829,7 +849,9 @@ function CalendarWorkspace({ today }: { today: Date }) {
             onClick={() => setShortcutsOpen(true)}
             aria-label={t("shortcutsTitle")}
             title={t("shortcutsTitle")}
-            className={cn(BAR_BTN, "w-[30px] justify-center px-0")}
+            /* Keyboard shortcuts; a phone has no keyboard to use them with,
+               and the slot is what search needs at 320px. */
+            className={cn(BAR_BTN, "hidden w-[30px] justify-center px-0 sm:flex")}
           >
             <HelpCircle size={14} />
           </button>
@@ -837,7 +859,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
           <button
             type="button"
             onClick={() => openNew(defaultNewDate())}
-            className="flex h-[30px] items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="kairos-tap flex h-[30px] shrink-0 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
           >
             <Plus size={14} aria-hidden="true" />
             {t("newButton")}
@@ -864,7 +886,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
                   <button
                     type="button"
                     onClick={token.clear}
-                    className="flex h-6 items-center gap-1.5 rounded-full border border-accent-primary/30 bg-accent-primary/10 pr-1.5 pl-2.5 text-[11px] font-semibold text-accent-primary transition-colors hover:bg-accent-primary/20"
+                    className="flex h-6 items-center gap-1.5 rounded-sm border border-accent-primary/30 bg-accent-primary/10 pr-1.5 pl-2.5 text-[11px] font-semibold text-accent-primary transition-colors hover:bg-accent-primary/20"
                   >
                     {token.label}
                     <X size={11} aria-hidden="true" />
@@ -898,8 +920,45 @@ function CalendarWorkspace({ today }: { today: Date }) {
           actionLabel={t("tryAgain")}
           onAction={() => void refetch()}
         />
-      ) : isLoading ? (
-        <div className="min-h-0 flex-1 animate-pulse rounded-xl border border-border-light bg-bg-elevated" />
+      ) : showSkeleton ? (
+        <>
+          <SkeletonStatus label={tSkeleton("status")} />
+          {layout === "agenda" ? (
+            // Which days the agenda lists depends on the items, so the day
+            // headings hatch along with the rows.
+            <CalendarAgendaSkeleton days={days.slice(0, 4).map(() => ({}))} />
+          ) : (
+            <div className="kairos-scroll-area flex min-h-0 flex-1 overflow-x-auto">
+              <div
+                className={cn(
+                  "flex min-h-0 flex-1 flex-col",
+                  view === "month" || days.length === 1 ? "min-w-0" : "min-w-[760px]",
+                )}
+              >
+                {view === "month" ? (
+                  <CalendarMonthGridSkeleton
+                    weekdayLabels={weekdayLabels}
+                    cells={days.map((day) => ({
+                      date: day.getDate(),
+                      inMonth: day.getMonth() === anchor.getMonth(),
+                      isToday: isSameDay(day, today),
+                    }))}
+                  />
+                ) : (
+                  <CalendarTimeGridSkeleton
+                    columns={days.map((day) => ({
+                      weekday: weekdayLabel(day),
+                      date: day.getDate(),
+                      isToday: isSameDay(day, today),
+                    }))}
+                    hours={hours}
+                    allDayLabel={t("allDay")}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+        </>
       ) : layout === "agenda" ? (
         visibleItems.length === 0 ? (
           <ZeroState
@@ -936,14 +995,17 @@ function CalendarWorkspace({ today }: { today: Date }) {
           )}
           {/* The 760px floor is a readability floor, not a layout
               requirement — both grids are fluid. It is worth scrolling
-              sideways for on the time views, where a column narrower than
-              ~100px cannot hold an event's title, but the phone gets the
-              agenda instead of a grid it has to pan. */}
+              sideways for on the multi-day time views, where a column
+              narrower than ~100px cannot hold an event's title, so it holds
+              at every width there (a phone that opts out of the agenda pans
+              the week rather than squeezing it to 38px columns). A single
+              day and the month grid have no such floor: on a 768px tablet
+              the month's 100px columns fit and used to pan anyway. */}
           <div className="kairos-scroll-area flex min-h-0 flex-1 overflow-x-auto">
             <div
               className={cn(
                 "flex min-h-0 flex-1 flex-col",
-                view === "month" ? "min-w-0 sm:min-w-[760px]" : "min-w-0 sm:min-w-[760px]",
+                view === "month" || days.length === 1 ? "min-w-0" : "min-w-[760px]",
               )}
             >
               {view === "month" ? (
@@ -1065,7 +1127,7 @@ function EmptyState({
       <button
         type="button"
         onClick={onAction}
-        className="mt-1 h-9 rounded-lg bg-accent-primary px-4 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+        className="mt-1 h-control-md rounded-lg bg-accent-primary px-4 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
       >
         {actionLabel}
       </button>
@@ -1125,7 +1187,7 @@ function ZeroNotice({
       <button
         type="button"
         onClick={filtered ? onClear : onCreate}
-        className="h-7 rounded-md border border-accent-primary/30 bg-accent-primary/10 px-2.5 text-[11px] font-semibold text-accent-primary transition-colors hover:bg-accent-primary/20"
+        className="h-control-sm rounded-md border border-accent-primary/30 bg-accent-primary/10 px-2.5 text-[11px] font-semibold text-accent-primary transition-colors hover:bg-accent-primary/20"
       >
         {filtered ? t("clearAll") : t("addSomething")}
       </button>
@@ -1174,15 +1236,7 @@ function ShortcutSheet({
           <h2 className="text-[15px] font-semibold tracking-tight text-fg-primary">
             {t("shortcutsTitle")}
           </h2>
-          <button
-            type="button"
-            data-autofocus
-            onClick={onClose}
-            aria-label={t("close")}
-            className="flex h-7 w-7 items-center justify-center rounded-md border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
-          >
-            <X size={13} />
-          </button>
+          <ModalDismiss onDismiss={onClose} label={t("close")} autoFocus />
         </div>
         <dl className="kairos-scroll-area flex min-h-0 flex-1 flex-col overflow-y-auto">
           {SHORTCUTS.map((shortcut) => (
@@ -1194,7 +1248,7 @@ function ShortcutSheet({
                 {shortcut.keys.map((k) => (
                   <kbd
                     key={k}
-                    className="min-w-[1.6em] rounded border border-border-medium border-b-2 bg-bg-secondary px-1.5 py-0.5 text-center text-[11px] font-semibold text-fg-primary"
+                    className="min-w-[1.6em] rounded-sm border border-border-medium border-b-2 bg-bg-secondary px-1.5 py-0.5 text-center text-[11px] font-semibold text-fg-primary"
                   >
                     {k}
                   </kbd>

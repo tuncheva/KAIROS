@@ -18,6 +18,8 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Skeleton, skeletonWidth } from "~/components/ui/Skeleton";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import {
   ArrowDownWideNarrow,
   CalendarDays,
@@ -41,14 +43,12 @@ import {
 import { ContextMenu, type ContextMenuAnchor } from "./ContextMenu";
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from "./Menu";
 import {
-  Badge,
   BTN_ACCENT,
   CHIP,
   CHIP_IDLE,
   CHIP_ON,
   ICON_BTN_BARE,
   MICRO,
-  SharedAvatars,
   STAMP,
 } from "./notesUi";
 import {
@@ -84,7 +84,6 @@ export function NoteList({
   query,
   lockedExcluded,
   unlocked,
-  notebookNameOf,
   locale,
   isLoading,
   onSelect,
@@ -112,7 +111,6 @@ export function NoteList({
   /** How many encrypted notes the search could not look inside. */
   lockedExcluded: number;
   unlocked: Record<number, string>;
-  notebookNameOf: (id: number | null) => string | null;
   locale: string;
   isLoading: boolean;
   onSelect: (id: number) => void;
@@ -133,6 +131,7 @@ export function NoteList({
   onRemoveCalendarDate: (id: number) => void;
 }) {
   const t = useTranslations("notes");
+  const showSkeleton = useSkeletonHold(isLoading);
   const listRef = useRef<HTMLUListElement | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     note: NoteItem;
@@ -178,13 +177,13 @@ export function NoteList({
   let rowIndex = 0;
 
   return (
-    <div className="flex h-full flex-col bg-bg-primary md:border-r md:border-border-light/60">
+    <div className="flex h-full flex-col md:border-r md:border-border-light/60">
       <div className="flex flex-none items-center gap-2 px-3.5 pt-4 pb-2.5">
         <button
           type="button"
           onClick={onOpenRail}
           aria-label={t("common.openLibrary")}
-          className={`${ICON_BTN_BARE} -ml-1 md:hidden`}
+          className={`${ICON_BTN_BARE} -ml-1 lg:hidden`}
         >
           <MenuIcon size={18} />
         </button>
@@ -232,7 +231,7 @@ export function NoteList({
           type="button"
           onClick={onNewNote}
           aria-label={t("actions.create")}
-          className={`${ICON_BTN_BARE} text-accent-primary md:hidden`}
+          className={`${ICON_BTN_BARE} text-accent-primary lg:hidden`}
         >
           <Plus size={18} />
         </button>
@@ -258,16 +257,8 @@ export function NoteList({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {isLoading ? (
-          <ul className="flex flex-col" aria-hidden="true">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <li key={i} className="space-y-2 border-b border-border-light/45 px-3.5 py-3.5">
-                <div className="kairos-shimmer h-3 w-1/2 rounded" />
-                <div className="kairos-shimmer h-2.5 w-4/5 rounded" />
-                <div className="kairos-shimmer h-2 w-1/4 rounded" />
-              </li>
-            ))}
-          </ul>
+        {showSkeleton ? (
+          <NoteListSkeleton />
         ) : notes.length === 0 ? (
           <EmptyList
             query={query}
@@ -285,7 +276,7 @@ export function NoteList({
             {grouped.map((group) => (
               <li key={group.key}>
                 {group.label && (
-                  <p className={`${MICRO} px-3.5 pt-4 pb-1.5`}>{t(`buckets.${group.label}`)}</p>
+                  <p className={`${MICRO} px-5 pt-4 pb-1.5`}>{t(`buckets.${group.label}`)}</p>
                 )}
                 <ul className="flex flex-col">
                   {group.notes.map((note) => {
@@ -296,7 +287,6 @@ export function NoteList({
                           note={note}
                           selected={note.id === selectedId}
                           unlockedContent={unlocked[note.id]}
-                          notebookName={notebookNameOf(note.notebookId)}
                           locale={locale}
                           sort={sort}
                           enterDelay={delay}
@@ -531,7 +521,6 @@ function NoteRow({
   note,
   selected,
   unlockedContent,
-  notebookName,
   locale,
   sort,
   enterDelay,
@@ -541,7 +530,6 @@ function NoteRow({
   note: NoteItem;
   selected: boolean;
   unlockedContent: string | undefined;
-  notebookName: string | null;
   locale: string;
   sort: NoteSort;
   enterDelay: number;
@@ -567,25 +555,9 @@ function NoteRow({
   );
 
   const locked = note.isPasswordProtected;
-  const shared = note.kind === "shared" || note.sharedWith.length > 0;
 
-  const sharedFaces =
-    note.kind === "own" && note.sharedWith.length > 0 ? (
-      <SharedAvatars
-        users={note.sharedWith}
-        ringClass="ring-bg-primary"
-        label={t("sharing.sharedWith")}
-      />
-    ) : null;
-
-  /* The faces are rendered twice on purpose.
-     A face has to be its own button so it can open the profile drawer, and a
-     button cannot sit inside the row button. So the copy *inside* the row is
-     inert and invisible — it exists only to reserve the exact space, which
-     keeps the meta badges from running under the real stack — and the copy
-     outside is laid over that gap. */
   return (
-    <div className="notes-row-in relative" style={{ animationDelay: `${enterDelay}s` }}>
+    <div className="notes-row-in relative px-2" style={{ animationDelay: `${enterDelay}s` }}>
       <button
         type="button"
         data-note-row
@@ -602,90 +574,32 @@ function NoteRow({
           );
         }}
         aria-current={selected ? "true" : undefined}
-        className={`relative w-full border-b border-l-2 border-border-light/45 border-l-transparent px-3.5 py-3 text-left transition-colors duration-[300ms] ${
-          selected ? "bg-accent-primary/[0.07]" : "hover:bg-accent-primary/[0.05]"
+        /* The quiet row: a rounded block with a neutral ink wash when selected —
+           the accent is spent elsewhere. No left marker, no bottom hairline, no
+           badges. Lock and share live as a glyph and an italic preview, and the
+           rest of a note's state waits in the editor. */
+        className={`relative block w-full rounded-lg px-3 py-2.5 text-left transition-colors duration-200 ${
+          selected ? "bg-fg-primary/[0.07]" : "hover:bg-fg-primary/[0.045]"
         }`}
       >
-        {/* The marker scales in from its own centre — `dash-grow`'s
-            transform-origin trick turned on its side. The old ring had nothing
-            to animate, so a selection change was a colour swap and no more. */}
-        <span
-          aria-hidden="true"
-          className={`absolute inset-y-0 -left-[2px] w-[2px] origin-center bg-accent-primary transition-transform duration-[220ms] ease-[cubic-bezier(0.2,0.8,0.25,1)] ${
-            selected ? "scale-y-100" : "scale-y-0"
-          }`}
-        />
-
-        <span className="flex items-baseline gap-2.5">
-          <span className="min-w-0 flex-1 truncate text-[13.5px] font-bold tracking-[-0.008em] text-fg-primary">
+        <span className="flex items-center gap-2">
+          {locked && (
+            <Lock size={11} className="flex-none text-fg-tertiary" aria-hidden="true" />
+          )}
+          <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-fg-primary">
             {title}
           </span>
           <span className={`${STAMP} flex-shrink-0`}>{stamp}</span>
         </span>
 
-        <span className="mt-1 block truncate text-[12.5px] text-fg-tertiary">
+        <span
+          className={`mt-0.5 block truncate text-[12.5px] text-fg-tertiary ${
+            locked && unlockedContent === undefined ? "italic" : ""
+          }`}
+        >
           {preview}
         </span>
-
-        <span className="mt-2 flex items-center gap-1.5">
-          {/* Lock and share are independent facts. The old card put them in one
-            ternary, so a shared note that was also encrypted showed neither
-            lock nor key — only "Shared". */}
-          {locked && (
-            <Badge tone="lock" icon={<Lock size={9} />}>
-              {t("filters.locked")}
-            </Badge>
-          )}
-          {note.kind === "shared" ? (
-            <Badge tone="share" icon={<Users size={9} />}>
-              {note.permission === "write"
-                ? t("sharing.canEdit")
-                : t("sharing.viewOnly")}
-            </Badge>
-          ) : (
-            shared && (
-              <Badge tone="share" icon={<Users size={9} />}>
-                {String(note.sharedWith.length)}
-              </Badge>
-            )
-          )}
-          {note.calendarDate && (
-            <Badge tone="calendar" icon={<CalendarDays size={9} />}>
-              {note.calendarDate.toLocaleDateString(locale, {
-                day: "numeric",
-                month: "short",
-              })}
-            </Badge>
-          )}
-          {notebookName && <Badge>{notebookName}</Badge>}
-
-          <span className="flex-1" />
-
-          {sharedFaces && (
-            <span aria-hidden="true" className="invisible">
-              {sharedFaces}
-            </span>
-          )}
-          {note.kind === "shared" && (
-            <span className={`${STAMP} max-w-[120px] truncate normal-case`}>
-              {t("sharing.fromOwner", {
-                owner: note.ownerName ?? note.ownerEmail ?? "",
-              })}
-            </span>
-          )}
-        </span>
       </button>
-
-      {sharedFaces && (
-        <span className="absolute right-3.5 bottom-3 z-10 flex">
-          <SharedAvatars
-            users={note.sharedWith}
-            ringClass="ring-bg-primary"
-            label={t("sharing.sharedWith")}
-            peek
-          />
-        </span>
-      )}
     </div>
   );
 }
@@ -830,5 +744,61 @@ function Empty({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * The list before the query answers. Rows copy `NoteRow`'s geometry — the
+ * `px-2` gutter, the `px-3 py-2.5` block, a 13.5px title line with its stamp
+ * and a 12.5px preview line — under bucket labels in the same `px-5 pt-4
+ * pb-1.5` slot, so nothing shifts when the notes land. Only the titles,
+ * stamps, previews and bucket names hatch; the heading, search and filters
+ * above are already real.
+ */
+const SKELETON_GROUPS = [2, 5] as const;
+
+function NoteListSkeleton() {
+  return (
+    <ul className="flex flex-col" aria-hidden="true">
+      {SKELETON_GROUPS.map((count, g) => {
+        const first = g === 0 ? 0 : SKELETON_GROUPS[0] + 1;
+        return (
+          <li key={g}>
+            <div className="flex h-[18px] items-center px-5 pt-4 pb-1.5">
+              <Skeleton className="h-[7px] w-[72px]" row={first} />
+            </div>
+            <ul className="flex flex-col">
+              {Array.from({ length: count }).map((_, i) => {
+                const row = first + i + 1;
+                const seed = g * 10 + i;
+                return (
+                  <li key={i} className="px-2">
+                    <div className="rounded-lg px-3 py-2.5">
+                      <span className="flex h-5 items-center gap-2">
+                        <span className="min-w-0 flex-1">
+                          <Skeleton
+                            className="h-[9px]"
+                            row={row}
+                            style={{ width: skeletonWidth(seed + 81, 45, 80) }}
+                          />
+                        </span>
+                        <Skeleton className="h-[7px] w-[34px]" row={row} />
+                      </span>
+                      <span className="mt-0.5 flex h-[19px] items-center">
+                        <Skeleton
+                          className="h-[7px]"
+                          row={row}
+                          style={{ width: skeletonWidth(seed + 91, 65, 95) }}
+                        />
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

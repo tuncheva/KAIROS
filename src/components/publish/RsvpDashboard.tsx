@@ -34,7 +34,7 @@ function Breakdown({
         <span className="font-medium text-fg-secondary">{label}</span>
         <span className="font-semibold text-fg-primary">{count}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
+      <div className="h-2 overflow-hidden rounded-full bg-bg-tertiary">
         <div
           className={`h-full transition-all duration-500 ${barClass}`}
           style={{ width: `${percentage}%` }}
@@ -67,13 +67,13 @@ export function RsvpDashboard({
       aria-label={t("responsesDashboard")}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
     >
-      <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/5 dark:bg-[#16151A]">
-        <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-2xl bg-white/95 p-4 backdrop-blur-sm sm:p-6 dark:bg-[#16151A]/95">
+      <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl border border-border-medium bg-bg-overlay shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-xl bg-bg-overlay/95 p-4 backdrop-blur-sm sm:p-6">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-lg bg-accent-primary/20">
               <BarChart3 size={18} className="text-accent-primary" />
             </div>
-            <h2 className="text-lg font-bold text-fg-primary sm:text-xl">
+            <h2 className="font-display text-[19px] leading-tight font-normal text-fg-primary sm:text-[21px]">
               {t("responsesDashboard")}
             </h2>
           </div>
@@ -88,7 +88,7 @@ export function RsvpDashboard({
         </div>
 
         <div className="space-y-6 p-4 sm:p-6">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5 dark:border-white/[0.06] dark:bg-bg-secondary">
+          <div className="rounded-xl border border-border-light bg-bg-secondary p-4 sm:p-5">
             <div className="mb-2 flex items-center gap-3">
               <Users className="text-accent-primary" size={20} />
               <h3 className="text-base font-semibold text-fg-primary sm:text-lg">
@@ -129,7 +129,7 @@ export function RsvpDashboard({
             />
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-white/[0.06] dark:bg-bg-secondary">
+          <div className="rounded-xl border border-border-light bg-bg-secondary p-4">
             <h4 className="mb-2 text-sm font-semibold text-accent-primary">
               {t("eventDetails")}
             </h4>

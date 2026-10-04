@@ -89,7 +89,7 @@ export function CalendarAgenda({
                 onClick={() => onCreate(day)}
                 aria-label={addLabel}
                 title={addLabel}
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border-medium text-fg-tertiary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
+                className="kairos-tap flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border-medium text-fg-tertiary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
               >
                 <Plus size={12} />
               </button>

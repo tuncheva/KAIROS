@@ -42,7 +42,7 @@ export function CalendarItemChip({
       onClick={onSelect}
       aria-label={label}
       className={cn(
-        "flex w-full min-w-0 items-center gap-1.5 rounded border px-1.5 py-[3px] text-left transition-transform hover:translate-x-0.5",
+        "flex w-full min-w-0 items-center gap-1.5 rounded-sm border px-1.5 py-[3px] text-left transition-transform hover:translate-x-0.5",
         tone.bg,
         tone.border,
         className,

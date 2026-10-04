@@ -90,7 +90,7 @@ export function ImageUpload({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
-          className="rounded-[7px] border border-border-medium px-[13px] py-1.5 text-[12.5px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-sm border border-border-medium px-[13px] py-1.5 text-settings-small font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isUploading ? t("uploading") : t("uploadImage")}
         </button>
@@ -101,7 +101,7 @@ export function ImageUpload({
 
   return (
     <div>
-      <label className="block text-sm font-semibold text-fg-secondary mb-4">
+      <label className="block text-settings-meta font-semibold text-fg-secondary mb-4">
         {label}
       </label>
       <div className="flex items-center gap-6">
@@ -138,12 +138,12 @@ export function ImageUpload({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="flex items-center gap-2 px-6 py-2 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-fg-primary text-bg-primary hover:bg-fg-primary/90 dark:bg-bg-surface dark:text-fg-primary dark:hover:bg-bg-elevated shadow-sm"
+            className="flex items-center gap-2 px-6 py-2 text-settings-small font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-fg-primary text-bg-primary hover:bg-fg-primary/90 dark:bg-bg-surface dark:text-fg-primary dark:hover:bg-bg-elevated shadow-sm"
           >
             <Upload size={18} />
             {isUploading ? t("uploading") : t("uploadImage")}
           </button>
-          <p className="text-xs text-fg-secondary mt-2">
+          <p className="text-settings-meta text-fg-secondary mt-2">
             {description}
           </p>
         </div>

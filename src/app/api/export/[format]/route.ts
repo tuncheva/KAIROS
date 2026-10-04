@@ -73,7 +73,7 @@ export async function GET(
     headers: new Headers(),
   } as TRPCContext;
 
-  const entitlements = entitlementsFor(ctx);
+  const entitlements = await entitlementsFor(ctx);
   if (!entitlements.exportFormats.includes(format)) {
     // 403 rather than 404: the format exists, this plan does not include it, and
     // the client needs to be able to tell those apart to offer an upgrade.

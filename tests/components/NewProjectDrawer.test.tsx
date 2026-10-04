@@ -16,14 +16,20 @@ vi.mock("~/trpc/react", () => {
     api: {
       useUtils: () => new Proxy({}, { get: () => invalidate() }),
       project: {
-        create: { useMutation: () => ({ mutate: createMutate, isPending: false }) },
-        addCollaborator: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
+        create: {
+          useMutation: () => ({ mutate: createMutate, isPending: false }),
+        },
+        addCollaborator: {
+          useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+        },
       },
     },
   };
 });
 
-const { NewProjectDrawer } = await import("~/components/projects/NewProjectDrawer");
+const { NewProjectDrawer } = await import(
+  "~/components/projects/NewProjectDrawer"
+);
 const { DRAWER_EXIT_MS } = await import("~/components/ui/drawerExit");
 
 /** The drawer holds itself on screen for its exit, so closing is not synchronous. */
@@ -45,7 +51,9 @@ beforeEach(() => {
 describe("NewProjectDrawer", () => {
   it("starts closed, showing only its trigger", () => {
     setup();
-    expect(screen.getByRole("button", { name: "New project" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "New project" }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -53,7 +61,9 @@ describe("NewProjectDrawer", () => {
     const { user } = setup();
     await user.click(screen.getByRole("button", { name: "New project" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(await screen.findByPlaceholderText(/Thesis, Q4 launch/)).toHaveFocus();
+    expect(
+      await screen.findByPlaceholderText("Untitled project"),
+    ).toHaveFocus();
   });
 
   it("closes on Escape, playing its exit on the way out", async () => {
@@ -65,7 +75,9 @@ describe("NewProjectDrawer", () => {
     // on the keypress is what made the drawer look like it had crashed.
     const dialog = screen.getByRole("dialog");
     expect(dialog.className).toContain("pointer-events-none");
-    expect(dialog.querySelector("aside")?.className).toContain("projects-drawer-out");
+    expect(dialog.querySelector("aside")?.className).toContain(
+      "projects-drawer-out",
+    );
 
     await waitForClose();
   });
@@ -75,8 +87,12 @@ describe("NewProjectDrawer", () => {
     await user.click(screen.getByRole("button", { name: "New project" }));
     // "Can view" / "Can edit" appear in both sets; the radiogroup label is what
     // tells a screen reader which control it is reading.
-    const visibility = screen.getByRole("radiogroup", { name: "Visibility" });
-    const permission = screen.getByRole("radiogroup", { name: "Their permission" });
+    const visibility = screen.getByRole("radiogroup", {
+      name: "Who can see it",
+    });
+    const permission = screen.getByRole("radiogroup", {
+      name: "Their permission",
+    });
     expect(within(visibility).getAllByRole("radio")).toHaveLength(3);
     expect(within(permission).getAllByRole("radio")).toHaveLength(2);
   });
@@ -98,16 +114,28 @@ describe("NewProjectDrawer", () => {
   it("will not submit without a name", async () => {
     const { user } = setup();
     await user.click(screen.getByRole("button", { name: "New project" }));
-    expect(screen.getByRole("button", { name: "Create project" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Create project" }),
+    ).toBeDisabled();
   });
 
   it("sends the trimmed name, the description and the chosen visibility", async () => {
     const { user } = setup();
     await user.click(screen.getByRole("button", { name: "New project" }));
-    await user.type(screen.getByPlaceholderText(/Thesis, Q4 launch/), "  Q4 launch  ");
-    await user.type(screen.getByPlaceholderText("What is this project for?"), "Landing and sign-in");
-    const visibility = screen.getByRole("radiogroup", { name: "Visibility" });
-    await user.click(within(visibility).getByRole("radio", { name: "Can edit" }));
+    await user.type(
+      screen.getByPlaceholderText("Untitled project"),
+      "  Q4 launch  ",
+    );
+    await user.type(
+      screen.getByPlaceholderText("What is this project for?"),
+      "Landing and sign-in",
+    );
+    const visibility = screen.getByRole("radiogroup", {
+      name: "Who can see it",
+    });
+    await user.click(
+      within(visibility).getByRole("radio", { name: "Can edit" }),
+    );
     await user.click(screen.getByRole("button", { name: "Create project" }));
 
     expect(createMutate).toHaveBeenCalledWith({
@@ -120,7 +148,7 @@ describe("NewProjectDrawer", () => {
   it("omits an empty description rather than sending a blank string", async () => {
     const { user } = setup();
     await user.click(screen.getByRole("button", { name: "New project" }));
-    await user.type(screen.getByPlaceholderText(/Thesis, Q4 launch/), "Thesis");
+    await user.type(screen.getByPlaceholderText("Untitled project"), "Thesis");
     await user.click(screen.getByRole("button", { name: "Create project" }));
 
     expect(createMutate).toHaveBeenCalledWith({
@@ -133,17 +161,26 @@ describe("NewProjectDrawer", () => {
   it("defaults to private, and forgets the draft after cancelling", async () => {
     const { user } = setup();
     await user.click(screen.getByRole("button", { name: "New project" }));
-    const visibility = screen.getByRole("radiogroup", { name: "Visibility" });
-    expect(within(visibility).getByRole("radio", { name: "Private" })).toBeChecked();
+    const visibility = screen.getByRole("radiogroup", {
+      name: "Who can see it",
+    });
+    expect(
+      within(visibility).getByRole("radio", { name: "Private" }),
+    ).toBeChecked();
 
-    await user.type(screen.getByPlaceholderText(/Thesis, Q4 launch/), "Abandoned");
+    await user.type(
+      screen.getByPlaceholderText("Untitled project"),
+      "Abandoned",
+    );
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     // The fields survive the exit — an emptied form sliding away reads as a
     // glitch — so the reset only lands once the drawer is gone.
-    expect(screen.getByPlaceholderText(/Thesis, Q4 launch/)).toHaveValue("Abandoned");
+    expect(screen.getByPlaceholderText("Untitled project")).toHaveValue(
+      "Abandoned",
+    );
     await waitForClose();
 
     await user.click(screen.getByRole("button", { name: "New project" }));
-    expect(screen.getByPlaceholderText(/Thesis, Q4 launch/)).toHaveValue("");
+    expect(screen.getByPlaceholderText("Untitled project")).toHaveValue("");
   });
 });

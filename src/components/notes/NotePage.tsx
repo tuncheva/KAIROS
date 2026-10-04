@@ -23,6 +23,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Skeleton, SkeletonStatus } from "~/components/ui/Skeleton";
+import { SkeletonSlow } from "~/components/ui/SkeletonSlow";
 import {
   AlertCircle,
   ArrowLeft,
@@ -43,6 +45,7 @@ import {
 } from "~/components/ui/icons";
 
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from "./Menu";
+import { toNotePassword } from "~/lib/notePassword";
 import { LockGate } from "./LockGate";
 import { useAutosave, type SaveStatus } from "./useAutosave";
 import {
@@ -79,7 +82,7 @@ export interface LockState {
 
 /** An inline strip: the calendar-date picker and the draft password field. */
 const STRIP =
-  "notes-strip mb-4 flex items-center gap-2.5 rounded-[10px] border border-border-medium bg-bg-surface px-3 py-2.5";
+  "notes-strip mb-4 flex items-center gap-2.5 rounded-md border border-border-medium bg-bg-surface px-3 py-2.5";
 const STRIP_INPUT =
   "min-w-0 flex-1 rounded-lg border border-border-medium bg-bg-elevated px-2.5 py-1.5 text-[12px] tabular-nums text-fg-primary outline-none transition-colors focus:border-accent-primary/60 focus:ring-[3px] focus:ring-accent-primary/10";
 
@@ -136,6 +139,7 @@ export function NotePage({
   onNewNote: () => void;
 }) {
   const t = useTranslations("notes");
+  const tSkeleton = useTranslations("skeleton");
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -242,23 +246,38 @@ export function NotePage({
   // ── the note is named but not here yet ─────────────────────────────
   if (!note && !isDraft && isLoading) {
     return (
-      <div className="flex h-full flex-col bg-bg-primary" aria-busy="true">
-        <div className="min-h-[48px] flex-none border-b border-border-light/60 px-4 py-2">
-          <div className="kairos-shimmer h-3 w-24 rounded" />
-        </div>
-        <div className="min-h-0 flex-1 px-5 pt-6 md:px-10">
-          {/* 34px display serif, so the placeholder is that tall. */}
-          <div className="kairos-shimmer h-8 w-3/5 rounded" />
-          <div className="kairos-shimmer mt-4 h-2.5 w-2/5 rounded" />
-          <div className="mt-5 mb-5 h-px bg-border-light/50" />
-          <div className="space-y-3">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="kairos-shimmer h-2.5 rounded"
-                style={{ width: `${90 - (i % 4) * 12}%` }}
-              />
+      /* Same frame as the loaded page below — the 56px header, the
+         `pt-10 md:pt-[72px]` column capped at 680px, the 32/44px title line,
+         the 12.5px meta line and the 18.5px/1.72 body — so the text lands
+         where the hatch was. Lines are one body line-height apart and
+         paragraphs one blank line apart, as typed prose sits in the textarea. */
+      <div className="flex h-full flex-col" aria-busy="true">
+        <SkeletonStatus label={tSkeleton("status")} />
+        <header className="flex min-h-[56px] flex-none items-center gap-2 border-b border-border-light px-3 py-2 md:px-6">
+          <Skeleton className="h-[8px] w-[110px]" />
+        </header>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-10 pb-3 md:px-10 md:pt-[72px]">
+          <div className="mx-auto flex w-full max-w-[680px] flex-1 flex-col">
+            <span className="flex h-[36px] items-center md:h-[49px]">
+              <Skeleton shape="title" className="h-[28px] w-3/5 md:h-[34px]" row={1} />
+            </span>
+            <span className="mt-3 mb-4 flex h-[19px] items-center">
+              <Skeleton className="h-[8px] w-[38%]" row={1} />
+            </span>
+            {SKELETON_PARAGRAPHS.map((lines, p) => (
+              <span key={p} className={`flex flex-col ${p > 0 ? "pt-8" : ""}`}>
+                {lines.map((w, i) => (
+                  <span key={i} className="flex h-8 flex-none items-center">
+                    <Skeleton
+                      className="h-[9px]"
+                      row={2 + p * 2.5 + i * 0.5}
+                      style={{ width: `${w}%` }}
+                    />
+                  </span>
+                ))}
+              </span>
             ))}
+            <SkeletonSlow what="note" />
           </div>
         </div>
       </div>
@@ -268,13 +287,13 @@ export function NotePage({
   // ── nothing selected ───────────────────────────────────────────────
   if (!note && !isDraft) {
     return (
-      <div className="hidden h-full place-items-center bg-bg-primary p-6 text-center md:grid">
+      <div className="hidden h-full place-items-center p-6 text-center md:grid">
         <div className="max-w-[280px]">
           <div className="notes-disc-in mx-auto mb-4 grid h-[54px] w-[54px] place-items-center rounded-full border border-accent-primary/30 text-accent-primary">
             <FileText size={22} />
           </div>
           <p
-            className="calendar-pop text-[15px] font-bold tracking-[-0.012em] text-fg-primary"
+            className="calendar-pop note-serif text-[26px] leading-tight font-medium tracking-[-0.015em] text-fg-primary"
             style={{ animationDelay: "0.08s" }}
           >
             {t("empty.noSelection")}
@@ -302,8 +321,8 @@ export function NotePage({
   const calendarDate = isDraft ? draftCalendarDate : (note?.calendarDate ?? null);
 
   return (
-    <div className="flex h-full flex-col bg-bg-primary">
-      <header className="flex min-h-[48px] flex-none items-center gap-2 border-b border-border-light/60 px-3 py-2 md:px-4">
+    <div className="flex h-full flex-col">
+      <header className="flex min-h-[56px] flex-none items-center gap-2 border-b border-border-light px-3 py-2 md:px-6">
         <button
           type="button"
           onClick={() => {
@@ -435,7 +454,7 @@ export function NotePage({
             <div className="notes-disc-in mx-auto mb-4 grid h-[54px] w-[54px] place-items-center rounded-full border border-error/35 text-error">
               <Lock size={22} />
             </div>
-            <h2 className="text-[15.5px] font-bold tracking-[-0.012em] text-fg-primary">
+            <h2 className="note-serif text-[26px] leading-tight font-medium tracking-[-0.015em] text-fg-primary">
               {t("password.gateTitle")}
             </h2>
             <p className="mt-2 text-[13px] leading-relaxed text-fg-tertiary">
@@ -467,7 +486,8 @@ export function NotePage({
            blinked out and back and the caret was lost. The reading surface is
            the one thing on this page that should hold still — the motion is in
            the list, the rail, the menus and the dialogs around it. */
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-6 pb-3 md:px-10">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-10 pb-3 md:px-10 md:pt-[72px]">
+         <div className="mx-auto flex w-full max-w-[680px] flex-1 flex-col">
           <label htmlFor="note-title" className="sr-only">
             {t("create.titlePlaceholder")}
           </label>
@@ -486,10 +506,10 @@ export function NotePage({
             onBlur={() => void autosave.flush()}
             readOnly={readOnly}
             placeholder={t("untitled")}
-            className="w-full bg-transparent font-display text-[28px] leading-[1.14] font-normal tracking-[-0.012em] text-fg-primary placeholder:text-fg-quaternary focus:outline-none md:text-[34px]"
+            className="note-serif w-full bg-transparent text-[32px] leading-[1.12] font-medium tracking-[-0.02em] text-fg-primary caret-accent-primary placeholder:text-fg-quaternary focus:outline-none md:text-[44px]"
           />
 
-          <p className={`${MICRO} mt-3 mb-4 flex flex-wrap items-center gap-x-3.5 gap-y-1`}>
+          <p className={`${MICRO} mt-3 mb-4 flex flex-wrap items-center gap-x-3.5 gap-y-1 font-normal text-[12.5px]`}>
             {note && (
               <>
                 <span>{t("meta.createdOn", { date: formatFullDate(note.createdAt) })}</span>
@@ -570,8 +590,9 @@ export function NotePage({
               <input
                 id="note-password"
                 type="password"
+                inputMode="numeric"
                 value={draftPassword}
-                onChange={(event) => setDraftPassword(event.target.value)}
+                onChange={(event) => setDraftPassword(toNotePassword(event.target.value))}
                 placeholder={t("create.passwordPlaceholder")}
                 autoComplete="new-password"
                 className={STRIP_INPUT}
@@ -595,7 +616,7 @@ export function NotePage({
           <div className="mb-5 h-px flex-none bg-border-light/50" aria-hidden="true" />
 
           {readOnly ? (
-            <p className="flex-1 text-[14.5px] leading-[1.75] whitespace-pre-wrap text-fg-secondary">
+            <p className="note-serif flex-1 text-[18.5px] leading-[1.72] whitespace-pre-wrap text-note-write">
               {content || t("noContent")}
             </p>
           ) : (
@@ -610,14 +631,15 @@ export function NotePage({
                 onChange={(event) => setContent(event.target.value)}
                 onBlur={() => void autosave.flush()}
                 placeholder={t("create.contentPlaceholder")}
-                className="min-h-[240px] w-full flex-1 resize-none bg-transparent text-[14.5px] leading-[1.75] text-fg-secondary placeholder:text-fg-quaternary focus:outline-none"
+                className="note-serif min-h-[240px] w-full flex-1 resize-none bg-transparent text-[18.5px] leading-[1.72] text-note-write caret-accent-primary placeholder:text-fg-quaternary focus:outline-none"
               />
             </>
           )}
+         </div>
         </div>
       )}
 
-      <footer className="flex flex-none flex-wrap items-center gap-2 border-t border-border-light/60 bg-bg-surface px-4 py-2.5 md:px-5">
+      <footer className="flex flex-none flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border-light px-4 py-2.5 md:px-8">
         {notebookName ? <Badge>{notebookName}</Badge> : null}
         {calendarDate && (
           <Badge tone="calendar" icon={<CalendarDays size={9} />}>
@@ -685,7 +707,7 @@ function SaveIndicator({
   const t = useTranslations("notes");
   if (readOnly) return null;
 
-  const shell = "calendar-pop flex flex-none items-center gap-1.5 font-mono text-[9.5px] uppercase tracking-[0.13em]";
+  const shell = "calendar-pop flex flex-none items-center gap-1.5 text-[12px]";
 
   if (status === "saving") {
     return (
@@ -727,3 +749,11 @@ function SaveIndicator({
 
   return null;
 }
+
+/** Line widths (percent of the column) for the page skeleton's paragraphs —
+ *  real prose lengths, each paragraph's last line short. */
+const SKELETON_PARAGRAPHS: readonly (readonly number[])[] = [
+  [96, 92, 98, 61],
+  [94, 97, 44],
+  [91, 95, 88, 97, 30],
+];

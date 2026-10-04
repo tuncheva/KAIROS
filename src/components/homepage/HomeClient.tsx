@@ -1,27 +1,22 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { SignInModal } from "~/components/auth/SignInModal";
 import { LandingIntro } from "~/components/homepage/LandingIntro";
 import { SiteHeader } from "~/components/homepage/SiteHeader";
 import { Hero } from "~/components/homepage/Hero";
-import { Marquee } from "~/components/homepage/Marquee";
-import { Workspaces } from "~/components/homepage/Workspaces";
-import { ProductStrip } from "~/components/homepage/ProductStrip";
-import { HowItWorks } from "~/components/homepage/HowItWorks";
-import { WhyTeams } from "~/components/homepage/WhyTeams";
-import { Stats } from "~/components/homepage/Stats";
-import { Testimonial } from "~/components/homepage/Testimonial";
+import { Agents } from "~/components/homepage/Agents";
+import { Teams } from "~/components/homepage/Teams";
+import { Events } from "~/components/homepage/Events";
 import { FinalCta } from "~/components/homepage/FinalCta";
 import { SiteFooter } from "~/components/homepage/SiteFooter";
 import { useLandingReveals } from "~/components/homepage/useLandingReveals";
 import { useSmoothAnchors } from "~/components/homepage/useSmoothAnchors";
 
 /**
- * Pre-auth landing page. Composition only — each section owns its own markup
- * and motion; this holds the sign-in modal, the page-wide scroll reveals and
- * the dark scope.
+ * Pre-auth landing page. Composition only — each section owns its own markup;
+ * this holds the sign-in modal, the page-wide scroll reveals and the dark scope.
  *
  * The design is dark-only, and that used to be arranged with `setTheme("dark")`
  * in an effect. `next-themes` writes `setTheme` straight to localStorage, so
@@ -30,9 +25,14 @@ import { useSmoothAnchors } from "~/components/homepage/useSmoothAnchors";
  * A light-mode user then signed back in to a dark first paint that flipped to
  * light once the server preference resolved, and had to set it again. The
  * `dark` class on this element below is the whole of the fix: it scopes the
- * palette to the page instead of storing it.
+ * palette to the page instead of storing it. `k-landing` then narrows that
+ * palette to the landing's warmer one (see `globals.css`).
+ *
+ * `k-on` is what starts the hero's CSS entrance; it waits for the intro
+ * curtain so the choreography is not spent underneath it.
  */
 export function HomeClient() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     // Arriving here with a `callbackUrl` means the proxy bounced someone off a
     // page they were trying to reach — most sharply, a scanned invite QR. Show
@@ -53,43 +53,37 @@ export function HomeClient() {
     const openModal = useCallback(() => setIsModalOpen(true), []);
     const handleIntroClear = useCallback(() => setIntroCleared(true), []);
 
+    /* A typed code is the same short-lived token a scanned QR carries, so it
+       takes the scan's route: `/join/<code>` behind sign-in. Parking it in
+       `callbackUrl` is what SignInModal already honours. Separators people
+       copy along with the code ("K7M·42Q", "K7M-42Q") are dropped. */
+    const handleJoin = useCallback(
+        (raw: string) => {
+            const code = raw.replace(/[^0-9a-z]/gi, "").toUpperCase();
+            if (!code) return;
+            router.replace(`/?callbackUrl=${encodeURIComponent(`/join/${code}`)}`, { scroll: false });
+            setIsModalOpen(true);
+        },
+        [router],
+    );
+
     return (
         <main
             id="main-content"
             ref={rootRef}
-            className="dark relative min-h-dvh overflow-x-hidden bg-bg-primary text-fg-primary"
+            className={`dark k-landing relative flex min-h-dvh flex-col overflow-x-hidden bg-bg-primary font-sans text-fg-primary ${
+                introCleared ? "k-on" : ""
+            }`}
         >
             <LandingIntro onClear={handleIntroClear} />
 
-            {/* Background wash — two calm drifting circles behind everything */}
-            <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-                <div
-                    className="k-drift-slow absolute -top-[160px] -left-[200px] h-[820px] w-[820px] rounded-full blur-[90px]"
-                    style={{
-                        background:
-                            "radial-gradient(circle at 45% 45%, rgb(var(--accent-primary) / 0.22), rgb(var(--accent-secondary) / 0.09), transparent 66%)",
-                    }}
-                />
-                <div
-                    className="k-drift-slower absolute top-[1100px] -right-[260px] h-[700px] w-[700px] rounded-full blur-[90px]"
-                    style={{
-                        background:
-                            "radial-gradient(circle at 50% 50%, rgb(var(--accent-secondary) / 0.16), transparent 62%)",
-                    }}
-                />
-            </div>
-
-            <div id="top" className="relative z-10">
+            <div id="top" className="flex flex-grow flex-col">
                 <SiteHeader onSignIn={openModal} />
-                <Hero onSignIn={openModal} ready={introCleared} />
-                <Marquee />
-                <Workspaces />
-                <ProductStrip />
-                <HowItWorks />
-                <WhyTeams />
-                <Stats />
-                <Testimonial />
-                <FinalCta onSignIn={openModal} />
+                <Hero onSignIn={openModal} />
+                <Agents />
+                <Teams />
+                <Events />
+                <FinalCta onSignIn={openModal} onJoin={handleJoin} />
                 <SiteFooter />
             </div>
 

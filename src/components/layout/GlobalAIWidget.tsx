@@ -130,6 +130,10 @@ export function GlobalAIWidget() {
   if (!session) return null;
 
   const onChatPage = pathname === "/chat/ai";
+  /* An open direct-message thread has its composer pinned to the bottom of the
+     screen on a phone, exactly where the pill's bottom corners are — it sat on
+     the send button. */
+  const onChatThread = pathname.startsWith("/chat/");
 
   return (
     <>
@@ -139,6 +143,7 @@ export function GlobalAIWidget() {
         <>
           {!open && (
             <AskKairosLauncher
+              hideBelowLg={onChatThread}
               onOpen={(text) => {
                 if (text) setAsk((a) => ({ text, n: a.n + 1 }));
                 setOpen(true);

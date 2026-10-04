@@ -7,10 +7,12 @@ describe("NotFound (404) Page", () => {
     render(<NotFound />);
   });
 
-  it("displays 404 badge", () => {
+  it("carries the status as a mono eyebrow", () => {
+    // Was "404" set in bold sans at text-4xl inside a tinted tile — the one
+    // place in the product where a number did a stamp's job.
     const { container } = render(<NotFound />);
-    const badge = container.querySelector("span");
-    expect(badge?.textContent).toBe("404");
+    const eyebrow = container.querySelector(".font-mono");
+    expect(eyebrow?.textContent).toContain("404");
   });
 
   it("shows Page Not Found heading", () => {
@@ -51,10 +53,11 @@ describe("NotFound (404) Page", () => {
     expect(wrapper.className).toContain("justify-center");
   });
 
-  it("uses accent-primary color for 404 badge", () => {
+  it("sets the heading in the display face, not bold sans", () => {
     const { container } = render(<NotFound />);
-    const badge = container.querySelector(".text-accent-primary");
-    expect(badge).toBeInTheDocument();
+    const heading = container.querySelector("h1");
+    expect(heading?.className).toContain("font-display");
+    expect(heading?.className).not.toContain("font-bold");
   });
 
   it("has proper background color", () => {

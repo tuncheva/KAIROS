@@ -6,6 +6,7 @@ import { AlertCircle, Building2, CheckCircle2, Loader2 } from "~/components/ui/i
 import { useTranslations } from "next-intl";
 
 import { useToast } from "~/components/providers/ToastProvider";
+import { PermissionGrid } from "~/components/orgs/PermissionGrid";
 import { api } from "~/trpc/react";
 
 /**
@@ -66,7 +67,7 @@ export function JoinWithQrClient({ code }: { code: string }) {
   if (peek.isError) {
     return (
       <Card>
-        <AlertCircle size={28} className="text-red-500" />
+        <AlertCircle size={28} className="text-status-danger-ink" />
         <p className="text-sm text-fg-secondary">{peek.error.message}</p>
         <SecondaryButton onClick={goToDashboard} label={t("joinGoToDashboard")} />
       </Card>
@@ -78,7 +79,7 @@ export function JoinWithQrClient({ code }: { code: string }) {
   if (joined) {
     return (
       <Card>
-        <CheckCircle2 size={28} className="text-emerald-500" />
+        <CheckCircle2 size={28} className="text-status-success-ink" />
         <p className="text-sm font-medium text-fg-primary">
           {t("joinedOrg", { name: joined })}
         </p>
@@ -102,7 +103,7 @@ export function JoinWithQrClient({ code }: { code: string }) {
 
     return (
       <Card>
-        <AlertCircle size={28} className="text-amber-500" />
+        <AlertCircle size={28} className="text-status-warning-ink" />
         <p className="text-sm text-fg-secondary">{reason}</p>
         <p className="text-xs text-fg-tertiary">{t("joinAskForFresh")}</p>
         <SecondaryButton onClick={goToDashboard} label={t("joinGoToDashboard")} />
@@ -123,15 +124,18 @@ export function JoinWithQrClient({ code }: { code: string }) {
   }
 
   const roleLabel =
-    result.role === "mentor"
+    result.displayRole ??
+    (result.role === "mentor"
       ? t("roleMentor")
       : result.role === "admin"
         ? t("roleAdmin")
-        : t("roleWorker");
+        : result.role === "guest"
+          ? t("roleGuest")
+          : t("roleWorker"));
 
   return (
     <Card>
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-primary/10">
+      <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-accent-primary/10">
         <Building2 size={24} className="text-accent-primary" />
       </div>
       <div className="space-y-1">
@@ -141,6 +145,11 @@ export function JoinWithQrClient({ code }: { code: string }) {
         <p className="text-sm text-fg-secondary">
           {t("joinAsRole", { role: roleLabel })}
         </p>
+      </div>
+
+      <div className="w-full rounded-lg border border-border-light p-4 text-left">
+        <p className="mb-3 text-xs font-medium text-fg-tertiary">{t("inviteYouWillBeAbleTo")}</p>
+        <PermissionGrid value={result.permissions} />
       </div>
 
       <button

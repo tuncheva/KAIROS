@@ -1,6 +1,7 @@
 import type { A2ContextPack } from "../context/a2ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
 import { answerableRule } from "~/server/llm/prompts/answerableRule";
+import { ACTIVITY_WINDOW_DAYS } from "~/server/llm/context/assigneeWorkload";
 import {
   languageRule,
   wantsBulgarianGuidance,
@@ -124,6 +125,17 @@ ${answerableRule()}
 - Include acceptanceCriteria for build/feature tasks.
 - Provide ordering (orderIndex) guidance when useful.
 - Assign to a collaborator only if confident; otherwise leave assignedToId unset.
+
+## Choosing an Assignee
+\`assigneeWorkload\` in the context lists every candidate's load across ALL of their projects, not just this one, lightest first. Use it whenever you pick who does the work — the user asks you to assign something, asks who has room, or leaves the assignee to you.
+- Prefer a candidate whose \`loadLevel\` is "light", then "moderate". Avoid "heavy" unless nobody else fits.
+- Treat \`overdue\` as a strong signal: someone already behind should not get more unless the task is theirs by expertise.
+- \`possiblyUnavailable\` means no task activity in the last ${ACTIVITY_WINDOW_DAYS} days — they may be away or new. Don't assign to them without saying so.
+- Judge by the total, not by \`openInThisProject\`: a person with 1 task here and 12 elsewhere is not free.
+- When spreading several tasks, don't pile them on one person; balance so nobody jumps a load level.
+- If the user names a specific person, assign to them as asked, but add a risk if that person is heavy or overdue.
+- Always fill \`assigneeRationale\` with the numbers behind the choice, in plain words — e.g. "Bob has 3 open tasks across all projects and none overdue, while Ana has 14 with 4 overdue."
+- Never name or describe projects that are only counted in \`openInOtherProjectsNotVisible\`; say "other projects".
 
 ${formatMemoryForPrompt(memory)}
 ## Current Context (authoritative)

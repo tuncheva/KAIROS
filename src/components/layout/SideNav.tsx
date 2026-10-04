@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { KairosMark } from "~/components/layout/KairosMark";
 import { openOnboarding } from "~/components/onboarding/OnboardingSheet";
+import { avatarGradientStyle } from "~/lib/avatarGradient";
+import { api } from "~/trpc/react";
 import {
   Briefcase,
   LayoutDashboard,
@@ -20,92 +24,177 @@ import {
   CalendarDays,
   CalendarCheck,
   Plus,
-  Pin,
+  Search,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "~/components/ui/icons";
 
-const RAIL_PIN_KEY = "kairos:railPinned";
+const RAIL_COLLAPSED_KEY = "kairos:railCollapsed";
+
+/** The collapsed rail, in px (`w-[68px]`). The tooltip is only for this width. */
+const RAIL_COLLAPSED_WIDTH = 68;
 
 /**
- * Every rail row carries a 2px transparent left border so the active tint can
- * fill it in without nudging the icon across.
+ * Design 1b rows: 36px tall, a 16px icon, and a quiet tint for the active one.
+ *
+ * The rail is `px-3.5` and a row is `px-3`, so the icon sits 26px in whichever
+ * width the rail is at — collapsing only takes the labels away, the icons never
+ * move.
  */
 const railRowClass =
-  "flex w-full items-center gap-4 border-l-2 px-5 py-[11px] text-sm whitespace-nowrap";
+  "flex h-9 w-full items-center gap-3 rounded-lg px-3 text-left text-[13.5px] whitespace-nowrap transition-colors duration-200";
 
 /**
- * Labels sit in the clipped overflow; they fade in as the rail opens.
- *
- * `kairos-rail-label` is the hook the pinned and keyboard-focus rules in
- * `globals.css` use to hold them open. It is a class rather than a second Tailwind string picked during
- * render because the pinned state is only known after hydration, and swapping
- * the class then made every label fade in again on each load.
+ * Anything that only belongs to the open sidebar — labels, group headings,
+ * counts, key hints. `globals.css` hides it under `data-rail-collapsed`, which
+ * the pre-paint script stamps before the first frame, so a collapsed rail never
+ * flashes its labels on load the way a class picked off React state would.
  */
-const RAIL_LABEL =
-  "kairos-rail-label opacity-0 transition-opacity duration-[600ms] group-hover/rail:opacity-100 motion-reduce:transition-none";
+const RAIL_LABEL = "kairos-rail-label";
+
+function railRowTone(active: boolean): string {
+  return active
+    ? "bg-fg-primary/[0.055] font-semibold text-fg-primary"
+    : "font-medium text-fg-secondary hover:bg-fg-primary/[0.055] hover:text-fg-primary";
+}
+
+/**
+ * Collapsed, the rail is eight unlabelled icons, and `title` never shows on a
+ * touch screen and takes a second on a mouse. So each row carries its own tip.
+ *
+ * Position is `fixed` and measured, not `absolute`: the rail is
+ * `overflow-hidden`, so anything absolutely positioned past its edge is cut
+ * off. `fixed` escapes the clip — nothing on the rail's ancestor chain sets a
+ * transform, so it resolves against the viewport as intended.
+ */
+function useRailTip() {
+  const [top, setTop] = useState<number | null>(null);
+
+  const show = (el: HTMLElement | null) => {
+    if (!el) return;
+    /* Only while the rail is shut. Open, the row's label is already on screen
+       and the tip would land on top of it. Measured rather than read from
+       state so it is right mid-animation too. */
+    const rail = el.closest(".kairos-rail");
+    if (rail && rail.getBoundingClientRect().width > RAIL_COLLAPSED_WIDTH + 8) {
+      return;
+    }
+    const box = el.getBoundingClientRect();
+    setTop(box.top + box.height / 2);
+  };
+  const hide = () => setTop(null);
+
+  return { top, show, hide };
+}
+
+function RailTip({ top, label }: { top: number | null; label: string }) {
+  if (top === null) return null;
+  /* aria-hidden: the label span is already the accessible name, and a screen
+     reader announcing it twice is worse than not at all. */
+  return (
+    <span aria-hidden="true" className="kairos-rail-tip" style={{ top }}>
+      {label}
+    </span>
+  );
+}
+
+function RailCount({ count, active }: { count: number; active: boolean }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className={`${RAIL_LABEL} text-[11.5px] tabular-nums ${
+        active ? "text-accent-primary" : "text-fg-tertiary"
+      }`}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
 
 function RailLink({
   href,
   icon: Icon,
   label,
   active,
-  labelClass,
+  count = 0,
 }: {
   href: string;
   icon: typeof CalendarDays;
   label: string;
   active: boolean;
-  labelClass: string;
+  count?: number;
 }) {
   const ref = useRef<HTMLAnchorElement>(null);
-
-  /* Unpinned is the default, so a new user meets eight unlabelled icons. The
-     rail's own labels do arrive — on keyboard focus immediately, on hover after
-     the deliberate 1s rest — but a pointer user who just wants to know what the
-     third icon is should not have to wait, and a touch user never hovers at all.
-     So each row carries its own tooltip that appears at once.
-
-     Position is `fixed` and measured, not `absolute`: the rail is
-     `overflow-hidden` (its labels live in the clipped overflow), so anything
-     absolutely positioned past 4rem is cut off. `fixed` escapes the clip —
-     nothing on the rail's ancestor chain sets a transform, so it resolves
-     against the viewport as intended.
-
-     It then fades itself out at the 1s mark, which is exactly when the rested
-     pointer opens the rail: the tooltip answers the question, and hands the row
-     back to the real label rather than sitting on top of it. */
-  const [tipTop, setTipTop] = useState<number | null>(null);
-
-  const showTip = () => {
-    const box = ref.current?.getBoundingClientRect();
-    if (box) setTipTop(box.top + box.height / 2);
-  };
-  const hideTip = () => setTipTop(null);
+  const tip = useRailTip();
 
   return (
     <Link
       ref={ref}
       href={href}
       aria-current={active ? "page" : undefined}
-      onMouseEnter={showTip}
-      onMouseLeave={hideTip}
-      onClick={hideTip}
-      className={`${railRowClass} transition-colors duration-300 ease-[cubic-bezier(0.2,0.8,0.25,1)] ${
-        active
-          ? "border-accent-primary bg-accent-primary/10 font-semibold text-fg-primary"
-          : "border-transparent text-fg-secondary hover:bg-fg-primary/5 hover:text-fg-primary"
-      }`}
+      /* The label is `display: none` on the collapsed rail, which would take
+         the accessible name with it. */
+      aria-label={label}
+      onMouseEnter={() => tip.show(ref.current)}
+      onMouseLeave={tip.hide}
+      onClick={tip.hide}
+      className={`${railRowClass} ${railRowTone(active)}`}
     >
-      <Icon size={20} className="shrink-0" />
-      <span className={labelClass}>{label}</span>
-      {tipTop === null ? null : (
-        /* aria-hidden: the label span above is already the accessible name, and
-           a screen reader announcing it twice is worse than not at all. */
-        <span aria-hidden="true" className="kairos-rail-tip" style={{ top: tipTop }}>
-          {label}
-        </span>
-      )}
+      <Icon
+        size={16}
+        className={`shrink-0 ${active ? "text-accent-primary" : "text-fg-tertiary"}`}
+      />
+      <span className={`${RAIL_LABEL} min-w-0 flex-1`}>{label}</span>
+      <RailCount count={count} active={active} />
+      <RailTip top={tip.top} label={label} />
     </Link>
   );
+}
+
+/** A rail row that is an action rather than a destination — Ask Kairos. */
+function RailButton({
+  onClick,
+  icon: Icon,
+  label,
+  hint,
+}: {
+  onClick: () => void;
+  icon: typeof CalendarDays;
+  label: string;
+  hint?: string;
+}) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const tip = useRailTip();
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={() => {
+        tip.hide();
+        onClick();
+      }}
+      onMouseEnter={() => tip.show(ref.current)}
+      onMouseLeave={tip.hide}
+      aria-label={label}
+      className={`${railRowClass} font-medium text-fg-primary hover:bg-fg-primary/[0.055]`}
+    >
+      <Icon size={16} className="shrink-0 text-accent-primary" />
+      <span className={`${RAIL_LABEL} min-w-0 flex-1`}>{label}</span>
+      {hint ? (
+        <kbd className={`${RAIL_LABEL} font-mono text-[10.5px] text-fg-tertiary`}>{hint}</kbd>
+      ) : null}
+      <RailTip top={tip.top} label={label} />
+    </button>
+  );
+}
+
+function initialsOf(name: string | null | undefined): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  const first = parts[0]!.charAt(0);
+  const last = parts.length > 1 ? parts[parts.length - 1]!.charAt(0) : "";
+  return (first + last).toUpperCase();
 }
 
 export function SideNav() {
@@ -113,7 +202,10 @@ export function SideNav() {
   const tCommon = useTranslations("common");
   const tOrg = useTranslations("org");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isRailPinned, setIsRailPinned] = useState(false);
+  const [isRailCollapsed, setIsRailCollapsed] = useState(false);
+  // "Ctrl" until mounted, so the server and first client render agree.
+  const [modKey, setModKey] = useState("Ctrl");
+  const { status } = useSession();
   const pathname = usePathname();
   const mobileNavId = "mobile-nav-menu";
 
@@ -169,30 +261,83 @@ export function SideNav() {
     return () => desktop.removeEventListener("change", onChange);
   }, [isMobileMenuOpen]);
 
-  // The rail's *appearance* while pinned now comes from CSS (see `.kairos-rail`
-  // in globals.css), so this read no longer decides what gets painted. It keeps
-  // the pin button's pressed state and label honest, and runs once per session
-  // rather than once per navigation: the rail lives in `(app)/layout.tsx` now.
+  // The rail's *appearance* while collapsed comes from CSS (see `.kairos-rail`
+  // in globals.css), so this read does not decide what gets painted. It keeps
+  // the toggle's label and icon honest, and runs once per session rather than
+  // once per navigation: the rail lives in `(app)/layout.tsx`.
   useEffect(() => {
-    setIsRailPinned(window.localStorage.getItem(RAIL_PIN_KEY) === "true");
+    setIsRailCollapsed(window.localStorage.getItem(RAIL_COLLAPSED_KEY) === "true");
+    if (/Mac|iPhone|iPad/.test(navigator.userAgent)) setModKey("⌘");
   }, []);
 
   // `--rail-w` hangs off <html> so every page's `.rail-offset` shifts with the
   // rail without threading the state through each layout. It is written here
-  // only when the user actually toggles the pin, never from an effect keyed on
-  // `isRailPinned` — that state starts `false` and would stamp "false" over
+  // only when the user actually toggles, never from an effect keyed on
+  // `isRailCollapsed` — that state starts `false` and would stamp "false" over
   // whatever the pre-paint script in `themeInitScript.ts` already worked out,
-  // which is exactly what made the page slide sideways after every load.
-  const togglePin = () => {
-    setIsRailPinned((pinned) => {
-      const next = !pinned;
-      window.localStorage.setItem(RAIL_PIN_KEY, String(next));
-      document.documentElement.dataset.railPinned = String(next);
-      return next;
-    });
+  // which would slide the page sideways after every load. The next value is
+  // read off <html> for the same reason: it is the one source that is right
+  // before hydration too.
+  const toggleRail = () => {
+    const next = document.documentElement.dataset.railCollapsed !== "true";
+    window.localStorage.setItem(RAIL_COLLAPSED_KEY, String(next));
+    document.documentElement.dataset.railCollapsed = String(next);
+    setIsRailCollapsed(next);
   };
 
-  const labelClass = RAIL_LABEL;
+  const openAI = () => window.dispatchEvent(new CustomEvent("kairos:openAI"));
+  const openPalette = () => window.dispatchEvent(new CustomEvent("kairos:openPalette"));
+
+  // Mod+\ collapses and expands the rail; Mod+J opens Kairos AI. Mod+K belongs
+  // to `GlobalAIWidget`, which owns the palette. Both are desktop-only: below
+  // `lg` there is no rail to toggle.
+  const toggleRailRef = useRef(toggleRail);
+  toggleRailRef.current = toggleRail;
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+      if (!window.matchMedia("(min-width: 1024px)").matches) return;
+      if (e.key === "\\") {
+        e.preventDefault();
+        toggleRailRef.current();
+      } else if (e.key.toLowerCase() === "j") {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("kairos:openAI"));
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const signedIn = status === "authenticated";
+  const { data: user } = api.user.getCurrentUser.useQuery(undefined, {
+    enabled: signedIn,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+  const { data: activeOrg } = api.organization.getActive.useQuery(undefined, {
+    enabled: signedIn,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+  // `ChatShell` invalidates this whenever a thread is read or a message lands.
+  const { data: unread } = api.chat.getUnreadTotal.useQuery(undefined, {
+    enabled: signedIn,
+    staleTime: 1000 * 30,
+  });
+  const unreadChats = unread?.total ?? 0;
+
+  const roleLabels: Record<string, string> = {
+    admin: tOrg("roleAdmin"),
+    member: tOrg("roleWorker"),
+    worker: tOrg("roleWorker"),
+    mentor: tOrg("roleMentor"),
+    guest: tOrg("roleGuest"),
+  };
+  const workspaceName = activeOrg?.organization.name ?? tOrg("personalWorkspace");
+  const workspaceSubtitle = activeOrg
+    ? (roleLabels[activeOrg.role] ?? activeOrg.role)
+    : tOrg("personalSubtitle");
 
   const mainNavItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: t("dashboard") },
@@ -257,6 +402,42 @@ export function SideNav() {
     }
     return false;
   };
+
+  /* Design 1b groups the destinations by what they are for. Organizations sits
+     with Chat under Collaboration rather than in the footer: it is where you
+     manage the people, and the footer is kept for you and your settings. */
+  const railGroups: Array<{
+    label: string;
+    items: Array<{ href: string; icon: typeof CalendarDays; label: string; count?: number }>;
+  }> = [
+    {
+      label: t("groupWorkspace"),
+      items: [
+        { href: "/dashboard", icon: LayoutDashboard, label: t("dashboard") },
+        { href: "/projects", icon: Briefcase, label: t("projects") },
+        { href: "/calendar", icon: CalendarCheck, label: t("calendar") },
+        { href: "/publish", icon: CalendarDays, label: t("events") },
+      ],
+    },
+    {
+      label: t("groupInsights"),
+      items: [
+        { href: "/notes", icon: BookText, label: t("notes") },
+        { href: "/progress", icon: TrendingUp, label: t("progress") },
+      ],
+    },
+    {
+      label: t("groupCollaboration"),
+      items: [
+        { href: "/chat", icon: MessageCircle, label: t("chat"), count: unreadChats },
+        { href: profileItem.href, icon: profileItem.icon, label: profileItem.label },
+      ],
+    },
+  ];
+
+  const hint = (key: string) => (modKey === "⌘" ? `⌘${key}` : `Ctrl ${key}`);
+  const toggleLabel = isRailCollapsed ? t("expandNavigation") : t("collapseNavigation");
+  const avatarSrc = user?.image ?? null;
 
   return (
     <>
@@ -386,7 +567,7 @@ export function SideNav() {
           renders later in the tree, so it won every time — covering the last
           item on every phone. The launcher also lifts to `bottom-24` to clear
           this bar; the toast viewport uses the same clearance. */}
-      <nav className={`kairos-mobile-bottomnav fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-bg-primary/95 pt-2 backdrop-blur-md lg:hidden dark:border-white/[0.06] ${isMobileMenuOpen ? "hidden" : ""}`} aria-label="Primary">
+      <nav className={`kairos-mobile-bottomnav fixed bottom-0 left-0 right-0 z-50 border-t border-border-medium bg-bg-primary/95 pt-2 backdrop-blur-md lg:hidden ${isMobileMenuOpen ? "hidden" : ""}`} aria-label="Primary">
         <div className="flex items-center justify-around gap-1">
           {mobileBottomItems.map((item) => {
             const isActive = isItemActive(item.href);
@@ -423,85 +604,117 @@ export function SideNav() {
         </div>
       </nav>
 
-      {/* Design 7A rail: 64px of icons that opens to 236px after the pointer
-          rests on it for 1s (the delay lives in `globals.css` so every surface
-          that moves with the rail waits in step), on
-          keyboard focus (see `:has(:focus-visible)` in globals.css — a plain
-          `focus-within` kept it open after a mouse click), or stays open when
-          pinned. All three feed `--rail-w`, so the page shrinks in step with
-          the rail instead of being covered by it. */}
+      {/* Design 1b sidebar: 248px, labelled and grouped, collapsing to a 68px
+          rail of icons from its own toggle or Mod+\. The collapsed state is
+          drawn from `data-rail-collapsed` on <html> (see `.kairos-rail` in
+          globals.css) and feeds `--rail-w`, so the page narrows and widens in
+          step with the rail instead of being covered by it. */}
       <aside
-        className={`group/rail hidden lg:flex fixed left-0 top-0 bottom-0 z-40 flex-col gap-0.5 overflow-hidden border-r border-border-light/60 bg-bg-elevated py-5 transition-[width] duration-[700ms] ease-[cubic-bezier(0.2,0.8,0.25,1)] motion-reduce:transition-none kairos-rail w-16 hover:w-[236px]`}
+        className="kairos-rail hidden lg:flex fixed left-0 top-0 bottom-0 z-40 w-[248px] flex-col overflow-hidden border-r border-border-light/60 bg-bg-elevated px-3.5 pt-[18px] pb-4 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
         aria-label="Primary"
       >
-        <div className="flex items-center justify-between gap-3 whitespace-nowrap px-[18px] pb-[22px]">
-          <span className="flex items-center gap-3.5">
-            <button
-              type="button"
-              onClick={openOnboarding}
-              aria-label={t("gettingStarted")}
-              title={t("gettingStarted")}
-              className="flex items-center gap-3.5 rounded-lg transition-opacity hover:opacity-70"
-            >
-              <KairosMark size={26} />
-              <span className={`font-display text-[15px] font-semibold tracking-[0.18em] text-fg-primary ${labelClass}`}>
-                KAIROS
-              </span>
-            </button>
-          </span>
+        <div className="kairos-rail-head mb-[18px] flex h-9 shrink-0 items-center gap-2.5 pr-1.5 pl-2">
           <button
             type="button"
-            onClick={togglePin}
-            aria-pressed={isRailPinned}
-            aria-label={isRailPinned ? t("unpinNavigation") : t("pinNavigation")}
-            title={isRailPinned ? t("unpinNavigation") : t("pinNavigation")}
-            className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md border transition-colors ${labelClass} ${
-              isRailPinned
-                ? "border-accent-primary/40 text-accent-primary"
-                : "border-border-light/70 text-fg-tertiary hover:text-fg-primary"
-            }`}
+            onClick={openOnboarding}
+            aria-label={t("gettingStarted")}
+            title={t("gettingStarted")}
+            className="flex shrink-0 items-center rounded-md transition-opacity hover:opacity-70"
           >
-            <Pin size={13} className={isRailPinned ? "fill-current" : undefined} />
+            <KairosMark size={20} />
+          </button>
+          <Link
+            href={profileItem.href}
+            title={tOrg("switchWorkspace")}
+            className={`${RAIL_LABEL} flex min-w-0 flex-1 flex-col gap-px whitespace-nowrap transition-opacity hover:opacity-75`}
+          >
+            <span className="truncate text-[13.5px] font-semibold text-fg-primary">{workspaceName}</span>
+            <span className="truncate text-[11.5px] text-fg-tertiary">{workspaceSubtitle}</span>
+          </Link>
+          <button
+            type="button"
+            onClick={toggleRail}
+            aria-expanded={!isRailCollapsed}
+            aria-label={toggleLabel}
+            title={`${toggleLabel} (${hint("\\")})`}
+            className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-fg-primary/[0.055] hover:text-fg-primary"
+          >
+            {isRailCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
           </button>
         </div>
 
-        {mainNavItems.map((item) => (
-          <RailLink
-            key={item.href}
-            href={item.href}
-            icon={item.icon}
-            label={item.label}
-            active={isItemActive(item.href)}
-            labelClass={labelClass}
-          />
-        ))}
-
+        {/* The palette's door, same as `SearchTrigger` in the top bar. */}
         <button
           type="button"
-          onClick={() => window.dispatchEvent(new CustomEvent("kairos:openAI"))}
-          aria-label="Kairos AI"
-          className={`${railRowClass} border-transparent text-fg-secondary transition-colors duration-300 ease-[cubic-bezier(0.2,0.8,0.25,1)] hover:bg-fg-primary/5 hover:text-fg-primary`}
+          onClick={openPalette}
+          aria-label={tCommon("search")}
+          title={`${tCommon("search")} (${hint("K")})`}
+          className="mb-[22px] flex h-[34px] w-full shrink-0 items-center gap-2.5 rounded-lg bg-fg-primary/[0.055] pr-2.5 pl-3 text-left text-[13px] whitespace-nowrap text-fg-tertiary transition-colors hover:text-fg-primary"
         >
-          <Sparkles size={20} className="shrink-0" />
-          <span className={labelClass}>Kairos AI</span>
+          <Search size={14} className="shrink-0" />
+          <span className={`${RAIL_LABEL} flex-1`}>{tCommon("search")}</span>
+          <kbd className={`${RAIL_LABEL} rounded border border-border-light px-[5px] font-mono text-[10.5px] leading-4`}>
+            {hint("K")}
+          </kbd>
         </button>
 
-        <div className="min-h-6 flex-1" />
+        <div className="kairos-scroll-area -mx-3.5 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overflow-x-hidden px-3.5">
+          {railGroups.map((group) => (
+            <div key={group.label} className="flex flex-col gap-0.5">
+              <span className={`${RAIL_LABEL} px-3 pb-1.5 text-[10.5px] font-medium tracking-[0.18em] whitespace-nowrap text-fg-tertiary uppercase`}>
+                {group.label}
+              </span>
+              {group.items.map((item) => (
+                <RailLink
+                  key={item.href}
+                  href={item.href}
+                  icon={item.icon}
+                  label={item.label}
+                  count={item.count}
+                  active={item.href === "/orgs" ? pathname === "/orgs" : isItemActive(item.href)}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
 
-        <RailLink
-          href={profileItem.href}
-          icon={profileItem.icon}
-          label={profileItem.label}
-          active={pathname === "/orgs"}
-          labelClass={labelClass}
-        />
-        <RailLink
-          href={settingsItem.href}
-          icon={settingsItem.icon}
-          label={settingsItem.label}
-          active={pathname === "/settings"}
-          labelClass={labelClass}
-        />
+        <div className="mt-3 flex shrink-0 flex-col gap-0.5 border-t border-border-light/60 pt-3">
+          <RailButton onClick={openAI} icon={Sparkles} label="Kairos AI" hint={hint("J")} />
+          <RailLink
+            href={settingsItem.href}
+            icon={settingsItem.icon}
+            label={settingsItem.label}
+            active={pathname === "/settings"}
+          />
+          {user ? (
+            <div className="mt-1.5 flex h-11 items-center gap-2.5 px-1.5 whitespace-nowrap" title={user.name ?? user.email ?? undefined}>
+              {avatarSrc ? (
+                <Image
+                  src={avatarSrc}
+                  alt=""
+                  width={30}
+                  height={30}
+                  unoptimized
+                  className="h-[30px] w-[30px] shrink-0 rounded-full border border-border-light object-cover"
+                />
+              ) : (
+                <span
+                  style={avatarGradientStyle(user.id ?? user.email ?? user.name)}
+                  className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full font-display text-[12px] font-semibold text-white"
+                  aria-hidden="true"
+                >
+                  {initialsOf(user.name ?? user.email)}
+                </span>
+              )}
+              <span className={`${RAIL_LABEL} flex min-w-0 flex-col gap-px`}>
+                <span className="truncate text-[13px] font-medium text-fg-primary">{user.name ?? user.email}</span>
+                {user.name && user.email ? (
+                  <span className="truncate text-[11.5px] text-fg-tertiary">{user.email}</span>
+                ) : null}
+              </span>
+            </div>
+          ) : null}
+        </div>
       </aside>
     </>
   );

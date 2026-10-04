@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { signInHref } from "~/lib/routes";
 import { auth } from "~/server/auth";
-import { OrgDashboardClient } from "~/components/orgs/OrgDashboardClient";
+import { TeamClient } from "~/components/orgs/team/TeamClient";
 import { TopBar } from "~/components/layout/TopBar";
 
 export default async function OrgsPage() {
@@ -10,16 +10,16 @@ export default async function OrgsPage() {
     redirect(signInHref("/orgs"));
   }
 
-
+  /* The Team page's panes scroll internally against a definite height on wide
+     screens, the way `/chat` does. Below `xl` the person pane drops to its own
+     row, so the page has to scroll or that row is clipped away. */
   return (
-    <div className="min-h-dvh bg-bg-primary">
-      <div className="rail-offset min-h-dvh flex flex-col kairos-topbar-gap kairos-page-enter">
+    <div className="min-h-dvh bg-bg-primary xl:h-[100dvh] xl:overflow-hidden">
+      <div className="rail-offset kairos-topbar-gap kairos-bottomnav-gap flex min-h-dvh flex-col xl:h-[100dvh] xl:overflow-hidden">
         <TopBar />
 
-        <main id="main-content" className="flex-1 w-full overflow-auto kairos-bottomnav-gap">
-          <div className="max-w-5xl mx-auto px-6 md:px-8 py-8">
-            <OrgDashboardClient />
-          </div>
+        <main id="main-content" className="kairos-page-enter flex w-full flex-1 flex-col xl:min-h-0 xl:overflow-hidden">
+          <TeamClient />
         </main>
       </div>
     </div>

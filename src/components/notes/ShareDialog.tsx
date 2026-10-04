@@ -21,22 +21,14 @@ import Image from "next/image";
 
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useTranslations } from "next-intl";
-import { AlertCircle, Loader2, Share2, X } from "~/components/ui/icons";
+import { Skeleton } from "~/components/ui/Skeleton";
+import { AlertCircle, Loader2, X } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 
-import { NotesDialog } from "./notesDialog";
-import {
-  Badge,
-  BTN_ACCENT,
-  BTN_GHOST,
-  FIELD,
-  FIELD_INPUT,
-  ICON_BTN_BARE,
-  MICRO,
-  POPOVER_SURFACE,
-} from "./notesUi";
+import { DIALOG_FIELD, DIALOG_INPUT, DIALOG_PRIMARY, DIALOG_QUIET, NotesDialog } from "./notesDialog";
+import { Badge, ICON_BTN_BARE, POPOVER_SURFACE } from "./notesUi";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LOOKUP_DEBOUNCE_MS = 400;
@@ -196,23 +188,23 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
 
   return (
     <NotesDialog
-      icon={<Share2 size={15} />}
+      eyebrow={t("dialog.sharing")}
       size="lg"
       title={t("sharing.title")}
       onClose={onClose}
       initialFocusRef={emailRef}
       actions={({ close }) => (
-        <button type="button" onClick={close} className={BTN_GHOST}>
+        <button type="button" onClick={close} className={DIALOG_QUIET}>
           {t("common.close")}
         </button>
       )}
     >
       <div className="relative">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
           <label htmlFor="notes-share-email" className="sr-only">
             {t("sharing.emailPlaceholder")}
           </label>
-          <div className={`${FIELD} min-w-[180px] flex-1`}>
+          <div className={`${DIALOG_FIELD} min-w-[180px] flex-1`}>
             <input
               id="notes-share-email"
               ref={emailRef}
@@ -231,19 +223,19 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
               }}
               placeholder={t("sharing.emailPlaceholder")}
               autoComplete="off"
-              className={FIELD_INPUT}
+              className={DIALOG_INPUT}
             />
           </div>
 
           <label htmlFor="notes-share-permission" className="sr-only">
             {t("sharing.permission")}
           </label>
-          <div className={`${FIELD} w-[104px] flex-none`}>
+          <div className={`${DIALOG_FIELD} w-[96px] flex-none`}>
             <select
               id="notes-share-permission"
               value={permission}
               onChange={(event) => setPermission(event.target.value as "read" | "write")}
-              className={`${FIELD_INPUT} cursor-pointer`}
+              className={`${DIALOG_INPUT} cursor-pointer`}
             >
               <option value="read">{t("sharing.view")}</option>
               <option value="write">{t("sharing.edit")}</option>
@@ -254,9 +246,9 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
             type="button"
             onClick={submit}
             disabled={!email.trim() || shareNote.isPending}
-            className={`${BTN_ACCENT} h-[38px]`}
+            className={DIALOG_PRIMARY}
           >
-            {shareNote.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
+            {shareNote.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
             {t("share")}
           </button>
         </div>
@@ -270,10 +262,21 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
         )}
       </div>
 
-      <p className={`${MICRO} mt-6 mb-1`}>{t("sharing.sharedWith")}</p>
+      <p className="mt-8 mb-1 font-mono text-[10px] tracking-[0.16em] text-fg-quaternary uppercase">
+        {t("sharing.sharedWith")}
+      </p>
 
       {sharesQuery.isLoading ? (
-        <div className="kairos-shimmer h-11 rounded-[10px]" aria-hidden="true" />
+        /* One row in the shape of a share: the 28px avatar, a name and a mono
+           email line, the permission badge. */
+        <div className="flex items-center gap-2.5 py-2.5" aria-hidden="true">
+          <Skeleton shape="circle" className="h-7 w-7" />
+          <span className="flex min-w-0 flex-1 flex-col gap-[7px]">
+            <Skeleton className="h-[9px] w-[42%]" />
+            <Skeleton className="h-[6px] w-[58%]" />
+          </span>
+          <Skeleton className="h-[7px] w-[52px]" />
+        </div>
       ) : shares.length === 0 ? (
         <p className="py-2 text-[12.5px] text-fg-tertiary">{t("sharing.notSharedYet")}</p>
       ) : (

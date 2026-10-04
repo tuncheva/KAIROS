@@ -20,6 +20,7 @@
  */
 
 import Image from "next/image";
+import { ModalDismiss } from "~/components/ui/Modal";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
@@ -31,7 +32,6 @@ import {
   MessageCircle,
   UserMinus,
   UserPlus,
-  X,
 } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
@@ -40,6 +40,8 @@ import { useToast } from "~/components/providers/ToastProvider";
 import { api } from "~/trpc/react";
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useProfilePeek } from "./ProfilePeekProvider";
+import { Skeleton, SkeletonStatus, skeletonWidth } from "~/components/ui/Skeleton";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { DRAWER_EXIT_MS, exitDurationMs } from "~/components/ui/drawerExit";
 
 type TabId = "shared" | "activity" | "followers";
@@ -182,6 +184,11 @@ export function ProfileDrawer({
     { enabled: open && Boolean(full) && tab === "followers" },
   );
 
+  const profileLoading = useSkeletonHold(profileQuery.isLoading);
+  const sharedLoading = useSkeletonHold(sharedQuery.isLoading);
+  const activityLoading = useSkeletonHold(activityQuery.isLoading);
+  const followersLoading = useSkeletonHold(followersQuery.isLoading);
+
   const invalidate = () => {
     if (!shownUserId) return;
     void utils.profile.getPublicProfile.invalidate({ userId: shownUserId });
@@ -240,28 +247,23 @@ export function ProfileDrawer({
           }`}
         />
 
+        {/* Full height edge to edge, so the notch and the home indicator are
+            the sheet's to clear: the header's ESC sat under the status bar
+            and the last shared project under the home indicator. The
+            insets are 0 wherever there is no safe area. */}
         <aside
-          className={`relative flex h-full w-full max-w-[440px] flex-col border-l border-border-light/60 bg-bg-secondary shadow-[-28px_0_60px_rgba(0,0,0,0.5)] ${
+          className={`kairos-sheet-right relative flex h-full w-full max-w-[440px] flex-col pt-[var(--kairos-safe-top)] pb-[var(--kairos-safe-bottom)] border-l border-border-light/60 bg-bg-secondary shadow-[-28px_0_60px_rgba(0,0,0,0.5)] ${
             closing ? "projects-drawer-out" : "projects-drawer"
           }`}
         >
           <div className="flex items-center justify-between gap-4 border-b border-border-light/50 px-[26px] py-5">
             <span className={STAMP}>{t("title")}</span>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={t("close")}
-              className="flex h-[30px] w-[30px] items-center justify-center rounded-[7px] border border-border-light/70 text-fg-tertiary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
-            >
-              <X size={15} aria-hidden />
-            </button>
+            <ModalDismiss onDismiss={onClose} label={t("close")} />
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-auto">
-            {profileQuery.isLoading ? (
-              <div className="p-[26px] text-[13px] text-fg-tertiary">
-                {t("loading")}
-              </div>
+            {profileLoading ? (
+              <ProfileSkeleton t={t} />
             ) : profileQuery.isError ? (
               // A failed query is not the same fact as a missing person.
               // Reporting one as the other told the viewer that a colleague
@@ -340,7 +342,7 @@ export function ProfileDrawer({
                   <>
                     {/* Counts. Buttons, not labels — the follower count is the
                         way into the follower list. */}
-                    <div className="mx-[26px] flex items-center justify-center gap-6 rounded-[11px] border border-border-light/50 bg-bg-tertiary/40 py-3">
+                    <div className="mx-[26px] flex items-center justify-center gap-6 rounded-md border border-border-light/50 bg-bg-tertiary/40 py-3">
                       <button
                         type="button"
                         onClick={() => setTab("followers")}
@@ -372,7 +374,7 @@ export function ProfileDrawer({
                             onClose();
                             router.push("/settings?section=profile");
                           }}
-                          className="w-full rounded-[9px] border border-border-light/70 py-2.5 text-[14px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary"
+                          className="w-full rounded-sm border border-border-light/70 py-2.5 text-[14px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary"
                         >
                           {t("editProfile")}
                         </button>
@@ -390,7 +392,7 @@ export function ProfileDrawer({
                             onClick={() =>
                               startChat.mutate({ otherUserId: full.id })
                             }
-                            className="flex flex-1 items-center justify-center gap-2 rounded-[9px] border border-border-light/70 py-2.5 text-[14px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
+                            className="flex flex-1 items-center justify-center gap-2 rounded-sm border border-border-light/70 py-2.5 text-[14px] font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
                           >
                             <MessageCircle size={15} aria-hidden />
                             {t("message")}
@@ -406,7 +408,7 @@ export function ProfileDrawer({
                                 ? unfollow.mutate({ userId: full.id })
                                 : follow.mutate({ userId: full.id })
                             }
-                            className={`flex flex-1 items-center justify-center gap-2 rounded-[9px] py-2.5 text-[14px] font-medium transition-colors disabled:opacity-50 ${
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-sm py-2.5 text-[14px] font-medium transition-colors disabled:opacity-50 ${
                               full.isFollowing
                                 ? "border border-border-light/70 text-fg-primary hover:bg-bg-tertiary"
                                 : "bg-accent-primary text-white hover:opacity-90"
@@ -504,7 +506,7 @@ export function ProfileDrawer({
                       {tab === "shared" ? (
                         <SharedTab
                           data={sharedQuery.data}
-                          loading={sharedQuery.isLoading}
+                          loading={sharedLoading}
                           isSelf={full.isSelf}
                           onOpenProject={(id) => {
                             onClose();
@@ -521,15 +523,15 @@ export function ProfileDrawer({
                       {tab === "activity" ? (
                         !full.showsActivity ? (
                           <Empty text={t("activityHidden")} />
-                        ) : activityQuery.isLoading ? (
-                          <Empty text={t("loading")} />
+                        ) : activityLoading ? (
+                          <TabSkeleton kind="activity" label={t("loading")} />
                         ) : (activityQuery.data ?? []).length === 0 ? (
                           <Empty text={t("noActivity")} />
                         ) : (
                           (activityQuery.data ?? []).map((item) => (
                             <div
                               key={`${item.kind}-${item.eventId}`}
-                              className="rounded-[10px] border border-border-light/50 px-3.5 py-3"
+                              className="rounded-md border border-border-light/50 px-3.5 py-3"
                             >
                               <span className={STAMP}>
                                 {item.kind === "published_event"
@@ -550,8 +552,8 @@ export function ProfileDrawer({
                       ) : null}
 
                       {tab === "followers" ? (
-                        followersQuery.isLoading ? (
-                          <Empty text={t("loading")} />
+                        followersLoading ? (
+                          <TabSkeleton kind="followers" label={t("loading")} />
                         ) : (followersQuery.data ?? []).length === 0 ? (
                           <Empty text={t("noFollowers")} />
                         ) : (
@@ -560,7 +562,7 @@ export function ProfileDrawer({
                               key={person.id}
                               type="button"
                               onClick={() => openProfile(person.id)}
-                              className="flex items-center gap-3 rounded-[10px] border border-border-light/50 px-3.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary"
+                              className="flex items-center gap-3 rounded-md border border-border-light/50 px-3.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary"
                             >
                               {person.image ? (
                                 <Image
@@ -629,6 +631,196 @@ function MetaRow({
   );
 }
 
+const SKELETON_META = [
+  { key: "localTime", Icon: Clock, width: 44 },
+  { key: "organization", Icon: Building2, width: 96 },
+  { key: "memberSince", Icon: CalendarDays, width: 84 },
+] as const;
+
+/**
+ * The drawer while the person is still on the way. The chrome a loaded
+ * profile always has (the count labels, the meta labels, the tabs) renders
+ * for real; only the person's own data is hatched. The actions are drawn as
+ * one inert outline, since whether you can message or follow is itself data.
+ */
+function ProfileSkeleton({ t }: { t: (key: string) => string }) {
+  return (
+    <>
+      <SkeletonStatus label={t("loading")} />
+      <div aria-hidden="true" className="flex flex-col">
+        <div className="flex flex-col items-center gap-3 px-[26px] pb-6 pt-7 text-center">
+          <Skeleton shape="circle" className="h-[76px] w-[76px]" />
+          <div className="flex flex-col items-center">
+            <span className="flex h-[28px] items-center">
+              <Skeleton shape="title" className="h-[14px] w-40" row={1} />
+            </span>
+            <span className="mt-1 flex h-5 items-center">
+              <Skeleton className="h-[8px] w-32" row={1} />
+            </span>
+          </div>
+          <span className="flex w-[260px] max-w-full flex-col items-center gap-[12px] pt-1">
+            <Skeleton className="h-[9px] w-full" row={2} />
+            <Skeleton className="h-[9px] w-[62%]" row={2} />
+          </span>
+        </div>
+
+        <div className="mx-[26px] flex items-center justify-center gap-6 rounded-md border border-border-light/50 bg-bg-tertiary/40 py-3">
+          <div className="flex flex-col items-center px-2">
+            <span className="flex h-[25px] items-center">
+              <Skeleton shape="title" className="h-[13px] w-7" row={3} />
+            </span>
+            <span className={STAMP}>{t("followers")}</span>
+          </div>
+          <span className="h-7 w-px bg-border-light/60" />
+          <div className="flex flex-col items-center px-2">
+            <span className="flex h-[25px] items-center">
+              <Skeleton shape="title" className="h-[13px] w-7" row={3} />
+            </span>
+            <span className={STAMP}>{t("following")}</span>
+          </div>
+        </div>
+
+        <div className="px-[26px] pt-5">
+          <div className="flex h-[43px] w-full items-center justify-center rounded-sm border border-border-light/70">
+            <Skeleton className="h-[9px] w-20" row={4} />
+          </div>
+        </div>
+
+        <dl className="mt-6 grid gap-2.5 px-[26px] text-[13px]">
+          {SKELETON_META.map(({ key, Icon, width }, i) => (
+            <div key={key} className="flex items-center gap-2.5">
+              <span className="text-fg-quaternary">
+                <Icon size={13} aria-hidden />
+              </span>
+              <dt className="text-fg-tertiary">{t(key)}</dt>
+              <dd className="ml-auto m-0 flex h-5 items-center">
+                <Skeleton
+                  className="h-[8px]"
+                  row={5 + i}
+                  style={{ width: `${width}px` }}
+                />
+              </dd>
+            </div>
+          ))}
+        </dl>
+
+        <div className="mt-6 flex gap-1 border-b border-border-light/50 px-[26px]">
+          {(["tabShared", "tabActivity", "tabFollowers"] as const).map(
+            (key, i) => (
+              <span
+                key={key}
+                className={`-mb-px border-b-2 px-3 py-2.5 text-[13px] font-medium ${
+                  i === 0
+                    ? "border-accent-primary text-fg-primary"
+                    : "border-transparent text-fg-tertiary"
+                }`}
+              >
+                {t(key)}
+              </span>
+            ),
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2 p-[26px]">
+          <TabSkeleton kind="shared" startRow={8} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+/**
+ * A tab's list while it loads, in that tab's own row shape: bordered title
+ * rows for shared context, stamp/title/date cards for activity, avatar rows
+ * for followers.
+ */
+function TabSkeleton({
+  kind,
+  label,
+  startRow = 0,
+}: {
+  kind: TabId;
+  label?: string;
+  startRow?: number;
+}) {
+  return (
+    <>
+      {label ? <SkeletonStatus label={label} /> : null}
+      {kind === "shared" ? (
+        <span aria-hidden="true" className="flex h-[15px] items-center">
+          <Skeleton className="h-[7px] w-24" row={startRow} />
+        </span>
+      ) : null}
+      {[0, 1, 2].map((i) => {
+        const row = startRow + i + (kind === "shared" ? 1 : 0);
+        if (kind === "activity") {
+          return (
+            <div
+              key={i}
+              aria-hidden="true"
+              className="rounded-md border border-border-light/50 px-3.5 py-3"
+            >
+              <span className="flex h-[15px] items-center">
+                <Skeleton className="h-[7px] w-20" row={row} />
+              </span>
+              <span className="mt-1 flex h-[21px] items-center">
+                <Skeleton
+                  className="h-[9px]"
+                  row={row}
+                  style={{ width: skeletonWidth(i + 11, 48, 80) }}
+                />
+              </span>
+              <span className="mt-0.5 flex h-[18px] items-center">
+                <Skeleton className="h-[7px] w-24" row={row} />
+              </span>
+            </div>
+          );
+        }
+        if (kind === "followers") {
+          return (
+            <div
+              key={i}
+              aria-hidden="true"
+              className="flex items-center gap-3 rounded-md border border-border-light/50 px-3.5 py-2.5"
+            >
+              <Skeleton shape="circle" className="h-[30px] w-[30px]" row={row} />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="flex h-[21px] items-center">
+                  <Skeleton
+                    className="h-[9px]"
+                    row={row}
+                    style={{ width: skeletonWidth(i + 21, 34, 58) }}
+                  />
+                </span>
+                <span className="flex h-[18px] items-center">
+                  <Skeleton
+                    className="h-[7px]"
+                    row={row}
+                    style={{ width: skeletonWidth(i + 31, 50, 78) }}
+                  />
+                </span>
+              </span>
+            </div>
+          );
+        }
+        return (
+          <div
+            key={i}
+            aria-hidden="true"
+            className="flex h-[43px] items-center rounded-md border border-border-light/50 px-3.5"
+          >
+            <Skeleton
+              className="h-[9px]"
+              row={row}
+              style={{ width: skeletonWidth(i + 1, 38, 70) }}
+            />
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 function Empty({ text }: { text: string }) {
   return <p className="py-2 text-[13px] text-fg-tertiary">{text}</p>;
 }
@@ -656,7 +848,7 @@ function SharedTab({
 }) {
   // Shared context with yourself is a category error, not an empty result.
   if (isSelf) return <Empty text={t("sharedSelf")} />;
-  if (loading) return <Empty text={t("loading")} />;
+  if (loading) return <TabSkeleton kind="shared" label={t("loading")} />;
 
   const empty =
     !data ||
@@ -674,7 +866,7 @@ function SharedTab({
           {data.organizations.map((org) => (
             <div
               key={org.id}
-              className="rounded-[10px] border border-border-light/50 px-3.5 py-2.5 text-[14px] text-fg-primary"
+              className="rounded-md border border-border-light/50 px-3.5 py-2.5 text-[14px] text-fg-primary"
             >
               {org.name}
             </div>
@@ -690,7 +882,7 @@ function SharedTab({
               key={project.id}
               type="button"
               onClick={() => onOpenProject(project.id)}
-              className="rounded-[10px] border border-border-light/50 px-3.5 py-2.5 text-left text-[14px] text-fg-primary transition-colors hover:bg-bg-tertiary"
+              className="rounded-md border border-border-light/50 px-3.5 py-2.5 text-left text-[14px] text-fg-primary transition-colors hover:bg-bg-tertiary"
             >
               {project.title}
             </button>
@@ -706,7 +898,7 @@ function SharedTab({
               key={event.id}
               type="button"
               onClick={() => onOpenEvent(event.id)}
-              className="rounded-[10px] border border-border-light/50 px-3.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary"
+              className="rounded-md border border-border-light/50 px-3.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary"
             >
               <span className="block text-[14px] text-fg-primary">
                 {event.title}

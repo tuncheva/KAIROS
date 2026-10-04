@@ -25,7 +25,30 @@
  *   writing it. See `docs/pro-features-implementation-plan.md`.
  */
 
-export type PlanId = "free" | "pro";
+export type PlanId = "free" | "pro" | "team";
+
+/**
+ * Plans in ascending order of what they grant.
+ *
+ * Exists because a user can hold two plans at once — their own subscription and
+ * the one their organization pays for — and the answer has to be a single flag
+ * set. Ordering them makes "whichever grants more" a lookup rather than a chain
+ * of ifs that has to be revisited every time a plan is added.
+ */
+const PLAN_RANK: Record<PlanId, number> = { free: 0, pro: 1, team: 2 };
+
+/**
+ * The more generous of two plans.
+ *
+ * Deliberately not "the one the user pays for". Someone on personal Pro who
+ * joins a Team org must not lose per-agent memory because the org's seat is the
+ * more recent fact, and someone on a Team org who lets their personal Pro lapse
+ * must not lose the org's features. Taking the maximum makes both cases right
+ * without either subscription needing to know the other exists.
+ */
+export function higherPlan(a: PlanId, b: PlanId): PlanId {
+  return PLAN_RANK[a] >= PLAN_RANK[b] ? a : b;
+}
 
 /**
  * Bulk export formats.
@@ -84,6 +107,24 @@ export interface Entitlements {
   planDiff: boolean;
   /** Which bulk export formats are offered. */
   exportFormats: readonly ExportFormat[];
+
+  // ---- organization tier ---------------------------------------------------
+  //
+  // These separate Team from Pro. Every one of them is about a *second person*
+  // seeing something, which is why they could not be folded into Pro by raising
+  // a number: a single-seat workspace has nothing to share, and a flag that is
+  // meaningless below a certain headcount belongs to the tier that has one.
+
+  /** A5 Org Admin — roles and membership changed by asking. */
+  orgAdminAgent: boolean;
+  /** Remembered facts the whole organization draws on, not just their author. */
+  sharedOrgMemory: boolean;
+  /** Risk Radar reads every project in the org, not only the caller's own. */
+  orgWideRiskRadar: boolean;
+  /** A durable record of every applied change, readable by org admins. */
+  auditTrail: boolean;
+  /** Long turns get the larger model rather than the fast one. */
+  priorityModel: boolean;
 }
 
 /**
@@ -118,6 +159,12 @@ export const FREE_ENTITLEMENTS: Entitlements = {
   apiAccess: false,
   planDiff: false,
   exportFormats: ["csv"],
+
+  orgAdminAgent: false,
+  sharedOrgMemory: false,
+  orgWideRiskRadar: false,
+  auditTrail: false,
+  priorityModel: false,
 };
 
 export const PRO_ENTITLEMENTS: Entitlements = {
@@ -140,11 +187,44 @@ export const PRO_ENTITLEMENTS: Entitlements = {
   apiAccess: true,
   planDiff: true,
   exportFormats: ["csv", "markdown", "ics"],
+
+  orgAdminAgent: false,
+  sharedOrgMemory: false,
+  orgWideRiskRadar: false,
+  auditTrail: false,
+  priorityModel: false,
+};
+
+/**
+ * Team — everything in Pro, plus the things that only mean anything with
+ * colleagues.
+ *
+ * Spread from Pro rather than written out, so a flag added to Pro is granted to
+ * Team automatically. The alternative — two full literals — has exactly one
+ * failure mode, and it is silent: Pro gains a feature, Team does not, and the
+ * more expensive plan quietly offers less. The type would not catch it, because
+ * both objects would still be complete.
+ *
+ * The numeric ceilings are deliberately *not* raised. The pricing memo sells
+ * Team as "everything in Pro, across an organization" — the boundary is who can
+ * see it, not how much of it there is — and inventing a higher number here
+ * would put a claim in the code that no one has made to a customer.
+ */
+export const TEAM_ENTITLEMENTS: Entitlements = {
+  ...PRO_ENTITLEMENTS,
+  plan: "team",
+
+  orgAdminAgent: true,
+  sharedOrgMemory: true,
+  orgWideRiskRadar: true,
+  auditTrail: true,
+  priorityModel: true,
 };
 
 const BY_PLAN: Record<PlanId, Entitlements> = {
   free: FREE_ENTITLEMENTS,
   pro: PRO_ENTITLEMENTS,
+  team: TEAM_ENTITLEMENTS,
 };
 
 /** The flag set for a named plan. */

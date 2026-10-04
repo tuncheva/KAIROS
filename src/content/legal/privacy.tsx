@@ -283,9 +283,13 @@ const sections: LegalSection[] = [
                     ]}
                 />
                 <p>
-                    There is no map embedded in the product. When an event has a location, Kairos shows
-                    a link that opens OpenStreetMap in a new tab — nothing is loaded from them unless
-                    you click it, and then you are visiting their site under their terms.
+                    An event page can show where the event is on an OpenStreetMap map. The map is not
+                    loaded until you press &ldquo;Show map&rdquo;; only then does your browser contact
+                    the OpenStreetMap Foundation, which receives your IP address and the area shown.
+                    To place the pin, Kairos sends an event&apos;s published venue and address — never
+                    anything about you — to OpenStreetMap&apos;s Nominatim service once, when the event
+                    is saved. The &ldquo;Open in Google Maps&rdquo; link sends nothing to Google unless
+                    you click it.
                 </p>
             </>
         ),
@@ -441,7 +445,7 @@ const sections: LegalSection[] = [
 ];
 
 export const privacyPolicy = {
-    lastUpdated: "11 September 2026",
+    lastUpdated: "29 September 2026",
     intro: (
         <>
             <p>

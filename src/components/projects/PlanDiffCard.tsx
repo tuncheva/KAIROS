@@ -74,7 +74,7 @@ export function PlanDiffCard({ draftId }: Props) {
                     {change.field}
                   </dt>
                   <dd className="text-[11.5px]">
-                    <span className="text-fg-tertiary line-through decoration-red-500/50">
+                    <span className="text-fg-tertiary line-through decoration-status-danger-ink/50">
                       {format(change.before, t)}
                     </span>
                     <span aria-hidden className="px-1.5 text-fg-quaternary">
@@ -97,7 +97,7 @@ export function PlanDiffCard({ draftId }: Props) {
         the button is a promise the apply cannot keep.
       */}
       {data.missing.length > 0 ? (
-        <p className="px-1 text-[11px] leading-snug text-amber-600 dark:text-amber-400">
+        <p className="px-1 text-[11px] leading-snug text-status-warning-ink">
           {t("missing", { count: data.missing.length })}
         </p>
       ) : null}
@@ -114,14 +114,14 @@ function KindBadge({
 }) {
   const tone =
     kind === "create"
-      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+      ? "bg-status-success-surface text-status-success-ink"
       : kind === "delete"
-        ? "bg-red-500/15 text-red-600 dark:text-red-400"
-        : "bg-sky-500/15 text-sky-600 dark:text-sky-400";
+        ? "bg-status-danger-surface text-status-danger-ink"
+        : "bg-status-info-surface text-status-info-ink";
 
   return (
     <span
-      className={`kairos-stamp shrink-0 rounded px-1.5 py-0.5 text-[9px] ${tone}`}
+      className={`kairos-stamp shrink-0 rounded-sm px-1.5 py-0.5 text-[9px] ${tone}`}
     >
       {t(kind)}
     </span>

@@ -34,7 +34,10 @@ export function TopBar({
   scrim?: boolean;
 }) {
   return (
-    <header className="sticky top-16 z-30 border-b border-border-light/50 topbar-solid lg:top-0">
+    /* Pinned under the phone's fixed bar, whose height grows by the notch
+       inset — a flat `top-16` slid this bar's top edge under it on every
+       phone with a safe area. */
+    <header className="sticky top-[calc(var(--kairos-topbar-h)+var(--kairos-safe-top))] z-30 border-b border-border-light/50 topbar-solid lg:top-0">
       <div className="flex items-center gap-3 px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3">
         <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
           <WorkspaceMenu />

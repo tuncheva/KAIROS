@@ -17,9 +17,10 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowDown, Loader2, MessageSquare } from "~/components/ui/icons";
+import { ArrowDown, Loader2 } from "~/components/ui/icons";
 
-import { formatDayLabel, isSameDay, type ChatUser } from "./chatUi";
+import { formatDayLabel, isSameDay } from "./chatUi";
+import { MessagesSkeleton } from "./ChatSkeletons";
 import { MessageBubble, type SendStatus, type ThreadMessage } from "./MessageBubble";
 
 /** Distance from the bottom, in px, still treated as "at the bottom". */
@@ -34,7 +35,6 @@ export function MessageThread({
   peerLastReadId,
   unreadAfterId,
   statusOf,
-  participants,
   peerTyping,
   peerName,
   hasPreviousPage,
@@ -65,7 +65,6 @@ export function MessageThread({
    */
   unreadAfterId: number | null;
   statusOf: (message: ThreadMessage) => SendStatus;
-  participants: Map<string, ChatUser>;
   peerTyping: boolean;
   peerName: string;
   hasPreviousPage: boolean;
@@ -91,6 +90,13 @@ export function MessageThread({
   const scrollAnchorRef = useRef<number | null>(null);
 
   const newestId = messages.length > 0 ? messages[messages.length - 1]!.id : null;
+
+  /* The newest id on screen when the thread first rendered. Anything past it
+     arrived while the reader was here and rises into place; history and the
+     first paint do not animate. The shell keys this component by conversation,
+     so the baseline resets with each thread. */
+  const baselineRef = useRef<number | null>(null);
+  if (baselineRef.current === null && newestId !== null) baselineRef.current = newestId;
 
   const isAtBottom = useCallback(() => {
     const el = scrollRef.current;
@@ -146,29 +152,34 @@ export function MessageThread({
     }
   }, [messages.length, newestId, onVisibleNewest, scrollToBottom]);
 
+  /* No `useSkeletonHold` here on purpose: the first-paint scroll above and
+     the shell's deep-link jump both key off the query settling, and a held
+     skeleton would have them fire before the list exists. */
   if (isLoading) {
-    return (
-      <div className="flex-1 grid place-items-center" aria-busy="true">
-        <Loader2 className="animate-spin text-accent-primary" size={22} />
-      </div>
-    );
+    return <MessagesSkeleton />;
   }
 
-  if (messages.length === 0) {
+  if (messages.length === 0 && !peerTyping) {
     return (
       <div className="flex-1 grid place-items-center px-6">
-        <div className="text-center">
-          <div className="w-14 h-14 rounded-full bg-accent-primary/10 grid place-items-center mx-auto mb-3">
-            <MessageSquare size={22} className="text-accent-primary" />
-          </div>
-          <p className="text-sm font-semibold text-fg-secondary">{t("noMessagesYet")}</p>
-          <p className="text-xs text-fg-tertiary mt-1">{t("startConversation")}</p>
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className="font-display text-[26px] text-tui-ink">{t("noMessagesYet")}</p>
+          <p className="text-[14px] text-tui-ink2">
+            {t("sayHello", { name: peerName.split(" ")[0] ?? peerName })}
+          </p>
         </div>
       </div>
     );
   }
 
-  const lastOwnIndex = findLastIndex(messages, (m) => m.senderId === userId && m.deletedAt === null);
+  /* The delivery line goes under the newest own message only while nothing
+     from the other person has come after it — a reply is receipt enough. */
+  const lastOwnIndex = findLastIndex(
+    messages,
+    (m) => m.senderId === userId && m.deletedAt === null && statusOf(m) !== "failed",
+  );
+  const lastPeerIndex = findLastIndex(messages, (m) => m.senderId !== userId && m.deletedAt === null);
+  const baseline = baselineRef.current ?? Number.POSITIVE_INFINITY;
 
   return (
     <div className="relative flex-1 min-h-0">
@@ -179,15 +190,15 @@ export function MessageThread({
         aria-live="polite"
         aria-relevant="additions"
         aria-label={t("messagesWith", { name: peerName })}
-        className="h-full overflow-y-auto px-3 sm:px-6 py-4 flex flex-col gap-2"
+        className="flex h-full flex-col overflow-y-auto px-4 pt-3.5 pb-[26px] sm:px-7"
       >
         {isFetchingPreviousPage && (
           <div className="flex justify-center py-2" aria-hidden="true">
-            <Loader2 className="animate-spin text-fg-tertiary" size={16} />
+            <Loader2 className="animate-spin text-tui-ink3" size={16} />
           </div>
         )}
         {!hasPreviousPage && messages.length > 12 && (
-          <p className="text-center text-[10px] uppercase tracking-widest text-fg-quaternary py-2">
+          <p className="py-2 text-center text-[11px] font-medium tracking-[0.18em] text-tui-ink3 uppercase">
             {t("startOfConversation")}
           </p>
         )}
@@ -196,11 +207,15 @@ export function MessageThread({
           const previous = idx > 0 ? messages[idx - 1] : undefined;
           const createdAt = new Date(message.createdAt);
           const newDay = !previous || !isSameDay(new Date(previous.createdAt), createdAt);
-          /* A new run starts on a new day, on a sender change, or after a gap
-             long enough that the messages are not really one thought. */
+          /* A new run starts on a new day, on a sender change, after the unread
+             divider, or after a gap long enough that the messages are not
+             really one thought. */
+          const previousWasDivider =
+            previous !== undefined && unreadAfterId !== null && previous.id === unreadAfterId;
           const startsRun =
             newDay ||
             !previous ||
+            previousWasDivider ||
             previous.senderId !== message.senderId ||
             createdAt.getTime() - new Date(previous.createdAt).getTime() > 5 * 60 * 1000;
 
@@ -216,37 +231,37 @@ export function MessageThread({
             message.id > unreadAfterId;
 
           return (
-            <div key={message.id} className="flex flex-col gap-2">
+            <div key={message.id} className="flex flex-col">
               {newDay && (
-                <div className="flex items-center gap-3 my-1">
-                  <span className="h-px flex-1 bg-border-light/50" />
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-fg-quaternary">
+                <div className="flex items-center gap-3.5 pt-[22px] pb-1">
+                  <span className="h-px flex-1 bg-tui-ink/8" />
+                  <span className="font-display text-[15px] text-tui-ink3 italic">
                     {formatDayLabel(createdAt, locale, {
                       today: t("today"),
                       yesterday: t("yesterday"),
                     })}
                   </span>
-                  <span className="h-px flex-1 bg-border-light/50" />
+                  <span className="h-px flex-1 bg-tui-ink/8" />
                 </div>
               )}
               {showUnreadDivider && (
-                <div className="flex items-center gap-3 my-1">
-                  <span className="h-px flex-1 bg-accent-primary/45" />
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-accent-primary">
-                    {t("newMessages")}
+                <div className="flex items-center gap-3 pt-[22px] pb-0.5" role="separator" aria-label={t("newMessages")}>
+                  <span className="h-px flex-1 bg-tui-accent/45" />
+                  <span className="text-[11px] font-medium tracking-[0.18em] text-tui-accent uppercase">
+                    {t("newDivider")}
                   </span>
-                  <span className="h-px flex-1 bg-accent-primary/45" />
                 </div>
               )}
               <MessageBubble
                 message={message}
                 isOwn={isOwn}
-                showAvatar={startsRun}
-                isLastOwn={idx === lastOwnIndex}
+                showHead={startsRun}
+                senderLabel={isOwn ? t("you") : message.senderName ?? peerName}
+                showReceipt={idx === lastOwnIndex && lastOwnIndex > lastPeerIndex}
                 seen={peerLastReadId >= message.id}
                 status={statusOf(message)}
                 locale={locale}
-                sender={participants.get(message.senderId) ?? null}
+                fresh={message.id < 0 || (message.id > baseline && !isOwn)}
                 onReply={onReply}
                 onToggleReaction={onToggleReaction}
                 onEdit={onEdit}
@@ -262,14 +277,14 @@ export function MessageThread({
         })}
 
         {peerTyping && (
-          <div className="flex items-end gap-2" aria-live="polite">
-            <div className="w-[26px]" />
-            <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-bg-elevated kairos-system-card flex items-center gap-1">
+          <div className="chat-rise flex flex-col items-start gap-1.5 pt-5" aria-live="polite">
+            <span className="text-[12.5px] text-tui-ink3">{peerName}</span>
+            <span className="flex gap-[5px] rounded-[14px] border border-tui-ink/16 bg-tui-ink/[0.045] px-4 py-3.5">
               <span className="sr-only">{t("isTyping", { name: peerName })}</span>
-              <Dot delay="0ms" />
-              <Dot delay="150ms" />
-              <Dot delay="300ms" />
-            </div>
+              <Dot delay="0s" />
+              <Dot delay=".2s" />
+              <Dot delay=".4s" />
+            </span>
           </div>
         )}
 
@@ -284,8 +299,8 @@ export function MessageThread({
 function Dot({ delay }: { delay: string }) {
   return (
     <span
-      className="w-1.5 h-1.5 rounded-full bg-fg-quaternary animate-bounce"
-      style={{ animationDelay: delay, animationDuration: "1s" }}
+      className="chat-breathe h-1.5 w-1.5 rounded-full bg-tui-ink2"
+      style={{ animationDelay: delay }}
     />
   );
 }
@@ -329,7 +344,7 @@ function JumpToLatest({
       onClick={onClick}
       aria-label={t("jumpToLatest")}
       style={{ opacity: 0, pointerEvents: "none" }}
-      className="absolute bottom-4 right-5 p-2.5 rounded-full bg-bg-elevated kairos-system-card-elevated text-accent-primary hover:brightness-105 transition-all"
+      className="absolute right-5 bottom-4 grid h-9 w-9 place-items-center rounded-full border border-tui-ink/16 bg-tui-pane text-tui-accent shadow-[var(--tui-lift)] transition-all"
     >
       <ArrowDown size={16} />
     </button>

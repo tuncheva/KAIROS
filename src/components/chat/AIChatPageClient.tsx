@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Brain,
@@ -22,7 +22,8 @@ import { useEntitlement } from "~/hooks/useEntitlements";
 import { api } from "~/trpc/react";
 
 import { ComposerMenu } from "./ComposerMenu";
-import { ConversationsRail } from "./ConversationsRail";
+import { EffortMenu, useReasoningEffort } from "./EffortMenu";
+import { AiThreadRail } from "./AiThreadRail";
 import { DocumentsPanel } from "./DocumentsPanel";
 import { TurnTrailPanel } from "./TurnTrailPanel";
 import type { TrailEvent } from "./trail";
@@ -75,10 +76,14 @@ export function AIChatPageClient() {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const [railOpen, setRailOpen] = useState(true);
+  /* Below `lg` the rail is not a column but a drawer. Its own flag, so opening
+     it on a phone never un-collapses the desktop rail and vice versa. */
+  const [threadsDrawerOpen, setThreadsDrawerOpen] = useState(false);
   const [rightTab, setRightTab] = useState<RightTab>("trail");
 
   const [selectedAgent, setSelectedAgent] = useState<string>(AUTO_AGENT);
   const [scope, setScope] = useState<string>(ALL_PROJECTS);
+  const reasoning = useReasoningEffort();
 
   const [trail, setTrail] = useState<TrailEvent[]>([]);
   const [busy, setBusy] = useState(false);
@@ -136,6 +141,15 @@ export function AIChatPageClient() {
     selectedAgent === AUTO_AGENT
       ? tAgents("auto")
       : (agents.find((a) => a.id === selectedAgent)?.name ?? tAgents("auto"));
+
+  useEffect(() => {
+    if (!threadsDrawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setThreadsDrawerOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [threadsDrawerOpen]);
 
   /* ---------------------------------------------------------------- */
   /*  Thread switching                                                */
@@ -240,6 +254,8 @@ export function AIChatPageClient() {
           ...projects.map((p) => ({ id: String(p.id), label: p.title })),
         ]}
       />
+
+      <EffortMenu selected={reasoning.selected} onSelect={reasoning.select} />
     </>
   );
 
@@ -247,7 +263,7 @@ export function AIChatPageClient() {
     <div className="flex h-full min-h-0 w-full">
       {railOpen && (
         <div className="hidden lg:flex">
-          <ConversationsRail
+          <AiThreadRail
             conversations={conversations}
             loading={conversationsQuery.isLoading}
             activeId={activeId}
@@ -258,17 +274,63 @@ export function AIChatPageClient() {
         </div>
       )}
 
+      {/* Phones and tablets. The column above is `lg:` only, and without this
+          the rail was simply gone below it — no way back to an earlier thread
+          and no "new conversation" either. */}
+      {threadsDrawerOpen && (
+        <>
+          <div
+            className="lg:hidden fixed inset-0 z-40 bg-black/40"
+            onClick={() => setThreadsDrawerOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("showConversations")}
+            className="lg:hidden fixed inset-y-0 left-0 z-50 flex max-w-[85vw]"
+          >
+            <AiThreadRail
+              conversations={conversations}
+              loading={conversationsQuery.isLoading}
+              activeId={activeId}
+              onSelect={(id) => {
+                setThreadsDrawerOpen(false);
+                openThread(id);
+              }}
+              onNew={() => {
+                setThreadsDrawerOpen(false);
+                startNewThread();
+              }}
+              onCollapse={() => setThreadsDrawerOpen(false)}
+            />
+          </div>
+        </>
+      )}
+
       <main className="flex min-w-0 flex-1 flex-col">
         {/* ---- Header ---- */}
-        <header className="flex h-[60px] shrink-0 items-center justify-between gap-5 border-b border-border-medium/60 bg-bg-surface px-5">
+        <header className="flex h-[60px] shrink-0 items-center justify-between gap-3 border-b border-border-medium/60 bg-bg-surface px-4 sm:gap-5 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setThreadsDrawerOpen(true)}
+              title={t("showConversations")}
+              aria-label={t("showConversations")}
+              className="kairos-tap flex shrink-0 items-center gap-2 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-bg-tertiary lg:hidden"
+            >
+              <PanelLeftOpen className="h-[15px] w-[15px]" />
+              <span className="kairos-stamp text-[10px]">
+                {conversations.length}
+              </span>
+            </button>
             {!railOpen && (
               <button
                 type="button"
                 onClick={() => setRailOpen(true)}
                 title={t("showConversations")}
                 aria-label={t("showConversations")}
-                className="hidden items-center gap-2 rounded-[7px] border border-border-medium/70 px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-bg-tertiary lg:flex"
+                className="hidden items-center gap-2 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-bg-tertiary lg:flex"
               >
                 <PanelLeftOpen className="h-[15px] w-[15px]" />
                 <span className="kairos-stamp text-[10px]">
@@ -282,7 +344,7 @@ export function AIChatPageClient() {
             </h1>
 
             {scopeProject && (
-              <span className="kairos-stamp hidden shrink-0 rounded-[5px] border border-border-medium/70 px-2 py-1 text-[10px] text-fg-tertiary sm:inline">
+              <span className="kairos-stamp hidden shrink-0 rounded-sm border border-border-medium/70 px-2 py-1 text-[10px] text-fg-tertiary sm:inline">
                 {scopeProject.title}
               </span>
             )}
@@ -297,7 +359,7 @@ export function AIChatPageClient() {
                 setConfirmDelete(true);
               }}
               disabled={!activeId}
-              className="kairos-stamp flex items-center gap-1.5 rounded-[7px] border border-border-medium/70 px-2.5 py-1.5 text-[10px] text-fg-secondary transition-colors hover:border-red-400/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
+              className="kairos-tap kairos-stamp flex items-center gap-1.5 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-[10px] text-fg-secondary transition-colors hover:border-status-danger-border hover:text-status-danger-ink disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Trash2 className="h-3 w-3" />
               <span className="hidden sm:inline">{t("delete")}</span>
@@ -324,6 +386,7 @@ export function AIChatPageClient() {
             projectId={scopeProjectId}
             prefill={prefill}
             pinnedAgentId={pinnedAgentId}
+            effort={reasoning.effort}
             onToolsUsed={setToolsUsed}
             onTrail={setTrail}
             onBusyChange={setBusy}
@@ -386,8 +449,8 @@ export function AIChatPageClient() {
           aria-modal="true"
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
         >
-          <div className="w-full max-w-md rounded-2xl border border-border-medium bg-bg-primary p-6 shadow-2xl">
-            <h2 className="text-lg font-bold text-fg-primary">
+          <div className="w-full max-w-md rounded-xl border border-border-medium bg-bg-primary p-6 shadow-2xl">
+            <h2 className="font-display text-[19px] leading-tight font-normal text-fg-primary">
               {tChat("deleteChatTitle")}
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-fg-secondary">
@@ -395,7 +458,7 @@ export function AIChatPageClient() {
             </p>
 
             {deleteError && (
-              <p className="mt-3 text-sm text-red-400">
+              <p className="mt-3 text-sm text-status-danger-ink">
                 {tChat("deleteChatFailed")} {deleteError}
               </p>
             )}
@@ -416,7 +479,7 @@ export function AIChatPageClient() {
                 data-testid="delete-conversation-confirm"
                 onClick={() => void deleteActiveThread()}
                 disabled={deleteConversation.isPending}
-                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                className="rounded-lg border border-status-danger-border bg-status-danger-surface px-4 py-2 text-sm font-medium text-status-danger-ink transition-colors hover:border-status-danger-ink disabled:opacity-50"
               >
                 {deleteConversation.isPending
                   ? tChat("deleting")

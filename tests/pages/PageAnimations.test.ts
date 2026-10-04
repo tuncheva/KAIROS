@@ -15,8 +15,14 @@ const pageFiles = [
   "(app)/publish/page.tsx",
   "(app)/orgs/page.tsx",
   "(app)/chat/page.tsx",
-  "not-found.tsx",
 ];
+
+/**
+ * 404, the error boundaries and the root loading state carry the class through
+ * `ui/SystemScreen` rather than writing it out themselves, so it is checked
+ * there — once — instead of in each of them.
+ */
+const sharedShells = ["../../src/components/ui/SystemScreen.tsx"];
 
 describe("Page animations", () => {
   for (const pageFile of pageFiles) {
@@ -24,6 +30,13 @@ describe("Page animations", () => {
 
     it(`${pageFile} includes kairos-page-enter class`, () => {
       const content = fs.readFileSync(fullPath, "utf-8");
+      expect(content).toContain("kairos-page-enter");
+    });
+  }
+
+  for (const shell of sharedShells) {
+    it(`${shell} carries kairos-page-enter for the screens that share it`, () => {
+      const content = fs.readFileSync(path.resolve(__dirname, shell), "utf-8");
       expect(content).toContain("kairos-page-enter");
     });
   }

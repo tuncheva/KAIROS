@@ -10,8 +10,14 @@
 
 import Image from "next/image";
 
-import { avatarGradientStyle } from "~/lib/avatarGradient";
+import { Panel, TitledPanel } from "~/components/ui/Panel";
+import { Stamp } from "~/components/ui/Stamp";
 import { ProfileLink } from "~/components/profile/ProfileLink";
+
+/* The card shell and the mono stamp live in `components/ui`; re-exported
+   here so the chat panes read their whole vocabulary from one file, the same
+   way the publish panes read theirs from `publishUi`. */
+export { Panel, TitledPanel, Stamp };
 
 export interface ChatUser {
   id: string;
@@ -30,24 +36,48 @@ export function displayName(user: ChatUser | null | undefined, fallback: string)
   return user?.name ?? user?.email ?? fallback;
 }
 
+/* The refined chat surface is drawn in the terminal-edition palette the
+   dashboard and progress pages use: warm panes on a hatched ground, hairlines
+   from `tui-ink`, a single lavender accent. These are the pieces every pane
+   repeats, so the three of them read as one design. */
+
+/** A pane on the hatched ground — rail, thread, details. */
+export const CHAT_PANE =
+  "bg-tui-pane border border-tui-ink/10 rounded-lg shadow-[var(--tui-pane-shadow)]";
+
+/** The small spaced caps over a section — "PINNED", "IN MESSAGES". */
+export const CHAT_EYEBROW =
+  "text-[11px] font-medium tracking-[0.18em] uppercase text-tui-ink3";
+
+/** A round outline control: header search, details toggle, close. */
+export const CHAT_ICON_BUTTON =
+  "kairos-tap grid place-items-center flex-none rounded-full border border-tui-ink/16 bg-transparent text-tui-ink2 transition-colors hover:bg-tui-accent/6 disabled:opacity-50";
+
+/** An outline pill — filters, tags, reactions. `on` lights it in the accent. */
+export function chatPill(on: boolean): string {
+  return on
+    ? "border-tui-accent/45 bg-tui-accent/15 text-tui-accent"
+    : "border-tui-ink/16 bg-transparent text-tui-ink2 hover:bg-tui-accent/6";
+}
+
 const SIZES = {
-  sm: { px: 26, cls: "w-[26px] h-[26px] text-[10px]" },
-  md: { px: 38, cls: "w-[38px] h-[38px] text-[13px]" },
-  lg: { px: 44, cls: "w-11 h-11 text-sm" },
-  xl: { px: 56, cls: "w-14 h-14 text-lg" },
+  sm: { px: 26, cls: "w-[26px] h-[26px] text-[12px]", dot: "w-[8px] h-[8px]" },
+  md: { px: 38, cls: "w-[38px] h-[38px] text-[18px]", dot: "w-[9px] h-[9px]" },
+  lg: { px: 42, cls: "w-[42px] h-[42px] text-[20px]", dot: "w-[10px] h-[10px]" },
+  xl: { px: 72, cls: "w-[72px] h-[72px] text-[32px]", dot: "w-[12px] h-[12px]" },
 } as const;
 
 export function Avatar({
   user,
   size = "md",
   online,
-  ringClass = "ring-bg-surface",
+  ringClass = "border-tui-pane",
   fallbackLabel = "User",
   peek = false,
 }: {
   user: ChatUser | null | undefined;
   size?: keyof typeof SIZES;
-  /** `undefined` renders no dot at all — distinct from a grey "offline" dot. */
+  /** Draws the green presence dot when true. Offline people carry no dot. */
   online?: boolean;
   /** The dot's border has to match whatever surface it sits on. */
   ringClass?: string;
@@ -63,7 +93,7 @@ export function Avatar({
    */
   peek?: boolean;
 }) {
-  const { px, cls } = SIZES[size];
+  const { px, cls, dot } = SIZES[size];
 
   const face = (
     <div className={`relative flex-shrink-0 ${cls}`}>
@@ -73,22 +103,21 @@ export function Avatar({
           alt={displayName(user, fallbackLabel)}
           width={px}
           height={px}
-          className={`${cls} rounded-full object-cover`}
+          className={`${cls} rounded-full border border-tui-ink/16 object-cover`}
         />
       ) : (
+        /* A serif initial on a faint wash rather than a coloured gradient —
+           the refined surface keeps colour for state. */
         <div
-          className={`${cls} rounded-full flex items-center justify-center text-white font-bold`}
-          style={avatarGradientStyle(user?.id ?? user?.email ?? user?.name)}
+          className={`${cls} grid place-items-center rounded-full border border-tui-ink/16 bg-tui-ink/5 font-display leading-none text-tui-ink`}
           aria-hidden="true"
         >
           {initialOf(user)}
         </div>
       )}
-      {online !== undefined && (
+      {online && (
         <span
-          className={`absolute -right-0.5 -bottom-0.5 w-[11px] h-[11px] rounded-full ring-2 ${ringClass} ${
-            online ? "bg-success" : "bg-fg-quaternary"
-          }`}
+          className={`absolute ${size === "xl" ? "right-[3px] bottom-[3px]" : "-right-px -bottom-px"} ${dot} rounded-full border-2 ${ringClass} bg-tui-ok`}
         />
       )}
     </div>

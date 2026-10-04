@@ -24,6 +24,7 @@ import {
   useSettingsSave,
   type LedgerRow,
 } from "./ledger/Ledger";
+import { SettingsListSkeleton } from "./SettingsSkeleton";
 
 /**
  * Settings → AI.
@@ -382,7 +383,7 @@ export function AiSettingsClient() {
                     index > 0 ? "border-t border-border-light" : ""
                   }`}
                 >
-                  <p className="min-w-0 text-[13.5px] text-fg-primary">{rule.value}</p>
+                  <p className="min-w-0 text-settings-body text-fg-primary">{rule.value}</p>
                   <LedgerAction
                     danger
                     disabled={forget.isPending}
@@ -396,7 +397,7 @@ export function AiSettingsClient() {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-fg-tertiary">{t("rulesEmpty")}</p>
+            <p className="text-settings-desc text-fg-tertiary">{t("rulesEmpty")}</p>
           )
         }
       />
@@ -406,9 +407,9 @@ export function AiSettingsClient() {
         hint={t("memoryDescription")}
         block={
           memory.isLoading ? (
-            <p className="text-sm text-fg-tertiary">{t("loading")}</p>
+            <SettingsListSkeleton rows={3} meta={false} />
           ) : facts.length === 0 ? (
-            <p className="text-sm text-fg-tertiary">{t("memoryEmpty")}</p>
+            <p className="text-settings-desc text-fg-tertiary">{t("memoryEmpty")}</p>
           ) : (
             <div className="flex flex-col gap-3">
               <ul className="flex flex-col">
@@ -422,8 +423,8 @@ export function AiSettingsClient() {
                     <div className="min-w-0">
                       {/* The value verbatim: paraphrasing what it remembers
                           would defeat the point of showing it. */}
-                      <p className="text-[13.5px] text-fg-primary">{fact.value}</p>
-                      <p className="mt-0.5 text-xs text-fg-quaternary">
+                      <p className="text-settings-body text-fg-primary">{fact.value}</p>
+                      <p className="mt-0.5 text-settings-meta text-fg-quaternary">
                         {/* Which agent this applies to. A fact scoped to one
                             agent reads as a general rule without this, and a
                             user cannot correct a scope they cannot see. */}
@@ -470,9 +471,9 @@ export function AiSettingsClient() {
         block={
           (metrics.data?.latencyByAgent.length ?? 0) > 0 ? (
             <div className="kairos-scroll-area overflow-x-auto">
-              <table className="w-full min-w-[24rem] text-sm">
+              <table className="w-full min-w-[24rem] text-settings-body">
                 <thead>
-                  <tr className="text-left text-xs uppercase tracking-wide text-fg-quaternary">
+                  <tr className="text-left text-settings-eyebrow font-medium uppercase tracking-[0.14em] text-fg-quaternary">
                     <th className="pb-2 font-medium">{t("agent")}</th>
                     <th className="pb-2 text-right font-medium">p50</th>
                     <th className="pb-2 text-right font-medium">p95</th>

@@ -1,16 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, X } from "~/components/ui/icons";
+import type { ReactNode } from "react";
+import { X } from "~/components/ui/icons";
 import { useLocale, useTranslations } from "next-intl";
 import { cn } from "~/lib/utils";
 import {
-  SUGGESTION_DOT,
   SUGGESTION_TEXT,
   buildBoard,
-  countLogged,
   daysBetween,
-  fromYmd,
   displayName,
   formatTook,
   initialsOf,
@@ -19,6 +17,10 @@ import {
   type LogGroup,
   type RecordSummary,
   type Suggestion,
+  type TeamNote,
+  type TeamRow,
+  type TeamSortKey,
+  type TeamSummary,
   type WorkloadEntry,
 } from "./progressModel";
 
@@ -33,9 +35,86 @@ const PRIORITY_LABEL_KEYS: Record<string, string> = {
   low: "priorityLow",
 };
 
-const MICRO_LABEL = "text-[10px] uppercase tracking-[0.14em] text-fg-tertiary";
-const SECTION_TITLE = "text-[15px] font-semibold tracking-[-0.01em] text-fg-primary";
-const PANEL = "rounded-xl border border-border-light bg-bg-elevated";
+/* ------------------------------------------------------------------ */
+/*  The page's vocabulary                                              */
+/*                                                                    */
+/*  The front door's dialect, carried onto the dashboard's paper: a    */
+/*  mono stamp for labels, the display serif for anything a reader     */
+/*  compares, hairlines from the ink at low opacity for structure.     */
+/* ------------------------------------------------------------------ */
+
+export const STAMP = "font-mono text-[10px] tracking-[0.2em] uppercase text-tui-ink3";
+const NUMERAL = "font-display tabular-nums leading-none";
+const RULE = "border-tui-ink/10";
+const HAIR = "border-tui-ink/[0.06]";
+
+/** A section's head: serif title, a quiet meta line, anything on the right. */
+export function SectionHead({
+  title,
+  meta,
+  children,
+  id,
+}: {
+  title: string;
+  meta?: string;
+  children?: ReactNode;
+  id?: string;
+}) {
+  return (
+    <div className={cn("flex flex-wrap items-baseline gap-x-3 gap-y-1.5 border-b pb-3", RULE)}>
+      <h2 id={id} className="font-display text-tui-ink m-0 text-[22px] leading-none font-normal">
+        {title}
+      </h2>
+      {meta && <span className="text-tui-ink3 text-[13px]">{meta}</span>}
+      {children && (
+        <>
+          <span className="flex-1" />
+          {children}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Text tabs with an accent rule under the one that is on. */
+export function TextTabs<K extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  size = "md",
+}: {
+  label: string;
+  options: { key: K; label: string }[];
+  value: K;
+  onChange: (next: K) => void;
+  size?: "md" | "sm";
+}) {
+  return (
+    <div role="group" aria-label={label} className={cn("flex items-center", size === "md" ? "gap-[22px]" : "gap-[18px]")}>
+      {options.map((option) => {
+        const on = option.key === value;
+        return (
+          <button
+            key={option.key}
+            type="button"
+            onClick={() => onChange(option.key)}
+            aria-pressed={on}
+            className={cn(
+              "border-b-[1.5px] font-semibold transition-colors",
+              size === "md" ? "h-9 text-[13px]" : "pb-1 text-[12.5px]",
+              on
+                ? "border-tui-accent text-tui-ink"
+                : "text-tui-ink3 hover:text-tui-ink border-transparent",
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Stats                                                            */
@@ -45,100 +124,103 @@ export type Stat = {
   key: string;
   label: string;
   value: string;
-  delta: string;
-  /** Tailwind text colour for the value; the default is plain foreground. */
+  note: string;
+  /** Tailwind text colour for the value; the default is plain ink. */
   valueClass?: string;
-  deltaClass?: string;
 };
 
-/** Finished / per day / streak / best day — the four numbers on the record. */
+/** Finished / per day / streak / best day — the four numbers on a record. */
 export function useRecordStats(summary: RecordSummary, locale: string): Stat[] {
   const t = useTranslations("progress.record");
-
-  const bestDay = summary.bestDay
-    ? summary.bestDay.toLocaleDateString(locale === "bg" ? "bg-BG" : locale, {
-        day: "numeric",
-        month: "short",
-      })
-    : "—";
+  const running = summary.streak >= 3;
 
   return [
     {
       key: "finished",
       label: t("statFinished"),
       value: String(summary.finished),
-      delta: t("statInDays", { count: summary.days }),
+      note: t("statInDays", { count: summary.days }),
     },
     {
       key: "perDay",
       label: t("statPerDay"),
       value: summary.perDay,
-      delta: t("statAvg"),
+      note: t("statAvg"),
     },
     {
       key: "streak",
       label: t("statStreak"),
       value: t("streakDays", { count: summary.streak }),
-      valueClass: summary.streak >= 3 ? "text-info" : undefined,
-      delta: summary.streak >= 3 ? t("streakRunning") : t("streakFragile"),
-      deltaClass: summary.streak >= 3 ? "text-info" : "text-warning",
+      valueClass: running ? "text-tui-ok" : "text-tui-warn",
+      note: running ? t("streakRunning") : t("streakFragile"),
     },
     {
       key: "best",
       label: t("statBestDay"),
       value: String(summary.bestCount),
-      delta: bestDay,
+      note: summary.bestDay
+        ? summary.bestDay.toLocaleDateString(locale === "bg" ? "bg-BG" : locale, {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+          })
+        : "—",
     },
   ];
 }
 
-/** The wide layout reads the numbers along one baseline. */
-export function StatRow({ stats }: { stats: Stat[] }) {
-  return (
-    <div className="flex flex-wrap items-baseline gap-x-9 gap-y-3">
-      {stats.map((stat) => (
-        <div key={stat.key} className="flex items-baseline gap-2.5">
-          <span
-            className={cn(
-              "text-[21px] font-semibold tracking-[-0.02em] tabular-nums",
-              stat.valueClass ?? "text-fg-primary",
-            )}
-          >
-            {stat.value}
-          </span>
-          <span className={MICRO_LABEL}>{stat.label}</span>
-          <span className={cn("text-[11px] tabular-nums", stat.deltaClass ?? "text-fg-tertiary")}>
-            {stat.delta}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
+export function useTeamStats(summary: TeamSummary): Stat[] {
+  const t = useTranslations("progress.record");
+  return [
+    {
+      key: "finished",
+      label: t("statTeamFinished"),
+      value: String(summary.finished),
+      note: t("statInDays", { count: summary.days }),
+    },
+    {
+      key: "active",
+      label: t("statActive"),
+      value: `${summary.activeThisWeek}/${summary.members}`,
+      note: t("statActiveNote"),
+    },
+    {
+      key: "median",
+      label: t("statMedian"),
+      value: String(summary.medianFinished),
+      note: t("statMedianNote"),
+    },
+    {
+      key: "attention",
+      label: t("statAttention"),
+      value: String(summary.attention),
+      valueClass: summary.attention > 0 ? "text-tui-danger" : undefined,
+      note: t("statAttentionNote"),
+    },
+  ];
 }
 
-/** The profile column stacks them instead, one hairline row each. */
-export function StatColumn({ stats }: { stats: Stat[] }) {
+/** Four numbers along one rule, divided by hairlines — two by two on a phone. */
+export function StatRow({ stats }: { stats: Stat[] }) {
   return (
-    <div className="flex flex-col">
-      {stats.map((stat) => (
+    <div className={cn("grid grid-cols-2 border-y lg:grid-cols-4", RULE)}>
+      {stats.map((stat, index) => (
         <div
           key={stat.key}
-          className="flex items-baseline justify-between gap-3 border-b border-border-light py-3"
+          className={cn(
+            "flex flex-col gap-2 py-4 pr-5",
+            RULE,
+            // Left rule on every cell but the first of its row.
+            index % 2 === 1 && "border-l pl-5 lg:pl-6",
+            index === 2 && "border-t pl-0 lg:border-t-0 lg:border-l lg:pl-6",
+            index === 3 && "border-t lg:border-t-0",
+          )}
         >
-          <span className={MICRO_LABEL}>{stat.label}</span>
-          <span className="flex items-baseline gap-2">
-            <span
-              className={cn(
-                "text-[22px] font-semibold tracking-[-0.02em] tabular-nums",
-                stat.valueClass ?? "text-fg-primary",
-              )}
-            >
-              {stat.value}
-            </span>
-            <span className={cn("text-[11px] tabular-nums", stat.deltaClass ?? "text-fg-tertiary")}>
-              {stat.delta}
-            </span>
+          <span className={STAMP}>{stat.label}</span>
+          <span className={cn(NUMERAL, "text-[34px] sm:text-[42px]", stat.valueClass ?? "text-tui-ink")}>
+            {stat.value}
           </span>
+          <span className="text-tui-ink3 text-[12.5px]">{stat.note}</span>
         </div>
       ))}
     </div>
@@ -148,6 +230,8 @@ export function StatColumn({ stats }: { stats: Stat[] }) {
 /* ------------------------------------------------------------------ */
 /*  Suggestions                                                      */
 /* ------------------------------------------------------------------ */
+
+const NUMERALS = ["i.", "ii.", "iii.", "iv.", "v."];
 
 type SuggestionCopy = { title: string; body: string; cta: string | null; href: string | null };
 
@@ -210,100 +294,64 @@ function useSuggestionCopy() {
   };
 }
 
-type SuggestionListProps = {
+export function SuggestionList({
+  suggestions,
+  onDismiss,
+}: {
   suggestions: Suggestion[];
   onDismiss: (id: string) => void;
-  /** `rows` is the wide hairline list, `stacked` the narrow profile column. */
-  variant: "rows" | "stacked";
-};
-
-export function SuggestionList({ suggestions, onDismiss, variant }: SuggestionListProps) {
+}) {
   const t = useTranslations("progress.record");
   const copyFor = useSuggestionCopy();
 
   return (
-    <div className="flex flex-col gap-2.5">
-      <span className={MICRO_LABEL}>{t("suggestions")}</span>
+    <section>
+      <SectionHead title={t("suggestions")} />
 
       {suggestions.length === 0 && (
-        <p className="border-t border-border-light py-3 text-[13px] text-fg-tertiary">
-          {t("suggestionsEmpty")}
-        </p>
+        <p className="text-tui-ink3 py-3.5 text-[13.5px]">{t("suggestionsEmpty")}</p>
       )}
 
-      <div className="flex flex-col">
-        {suggestions.map((suggestion) => {
-          const copy = copyFor(suggestion);
-          const stacked = variant === "stacked";
-
-          return (
-            <div
-              key={suggestion.id}
+      {suggestions.map((suggestion, index) => {
+        const copy = copyFor(suggestion);
+        return (
+          <div key={suggestion.id} className={cn("flex gap-3.5 border-b py-3.5", HAIR)}>
+            <span
               className={cn(
-                "flex gap-2.5 border-t border-border-light transition-colors hover:bg-fg-primary/[0.02]",
-                stacked ? "items-start py-2.5" : "items-center py-2.5",
+                "font-display pt-px text-[18px] leading-[1.1] italic",
+                SUGGESTION_TEXT[suggestion.tone],
               )}
+              aria-hidden="true"
             >
-              <span
-                className={cn(
-                  "h-1.5 w-1.5 shrink-0 rounded-full opacity-75",
-                  SUGGESTION_DOT[suggestion.tone],
-                  stacked && "mt-2",
-                )}
-              />
-
-              <div
-                className={cn(
-                  "min-w-0 flex-1",
-                  stacked ? "flex flex-col gap-1" : "flex flex-wrap items-baseline gap-x-1.5",
-                )}
-              >
-                <span className="text-[13px] leading-relaxed text-fg-secondary">{copy.title}</span>
-                <span className="text-[13px] leading-relaxed text-fg-tertiary">
-                  {stacked ? copy.body : `— ${copy.body}`}
-                </span>
-
-                {stacked && copy.cta && copy.href && (
-                  <Link
-                    href={copy.href}
-                    className={cn(
-                      "mt-0.5 flex items-center gap-1.5 self-start text-xs font-medium opacity-85 transition-opacity hover:opacity-100",
-                      SUGGESTION_TEXT[suggestion.tone],
-                    )}
-                  >
-                    {copy.cta}
-                    <ArrowRight size={12} />
-                  </Link>
-                )}
-              </div>
-
-              {!stacked && copy.cta && copy.href && (
+              {NUMERALS[index]}
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <span className="text-tui-ink text-[14.5px] leading-[1.45] font-semibold">
+                {copy.title}
+              </span>
+              <span className="text-tui-ink2 text-[13.5px] leading-[1.6]">{copy.body}</span>
+              {copy.cta && copy.href && (
                 <Link
                   href={copy.href}
-                  className={cn(
-                    "flex shrink-0 items-center gap-1.5 text-xs font-medium opacity-85 transition-opacity hover:opacity-100",
-                    SUGGESTION_TEXT[suggestion.tone],
-                  )}
+                  className="text-tui-accent hover:text-tui-ink mt-1 self-start text-[13px] font-semibold transition-colors"
                 >
-                  {copy.cta}
-                  <ArrowRight size={12} />
+                  {copy.cta} →
                 </Link>
               )}
-
-              <button
-                type="button"
-                onClick={() => onDismiss(suggestion.id)}
-                aria-label={t("dismiss")}
-                title={t("dismiss")}
-                className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md text-fg-quaternary opacity-60 transition-opacity hover:bg-bg-secondary hover:opacity-100"
-              >
-                <X size={11} />
-              </button>
             </div>
-          );
-        })}
-      </div>
-    </div>
+            <button
+              type="button"
+              onClick={() => onDismiss(suggestion.id)}
+              aria-label={t("dismiss")}
+              title={t("dismiss")}
+              className="border-tui-ink/10 text-tui-ink3 hover:border-tui-ink/30 hover:text-tui-ink grid h-8 w-8 shrink-0 place-items-center rounded-full border transition-colors"
+            >
+              <X size={10} />
+            </button>
+          </div>
+        );
+      })}
+    </section>
   );
 }
 
@@ -311,15 +359,16 @@ export function SuggestionList({ suggestions, onDismiss, variant }: SuggestionLi
 /*  The finished log                                                 */
 /* ------------------------------------------------------------------ */
 
-type LogProps = {
+export function FinishedLog({
+  groups,
+  today,
+  compact = false,
+}: {
   groups: LogGroup[];
-  selectedYmd: string | null;
-  onClearDay: () => void;
-  variant: "rows" | "boxed";
   today: Date;
-};
-
-export function FinishedLog({ groups, selectedYmd, onClearDay, variant, today }: LogProps) {
+  /** The drawer's version: no project column, no heading of its own. */
+  compact?: boolean;
+}) {
   const t = useTranslations("progress.record");
   const locale = useLocale();
   const dateLocale = locale === "bg" ? "bg-BG" : locale;
@@ -338,165 +387,98 @@ export function FinishedLog({ groups, selectedYmd, onClearDay, variant, today }:
     return unit === "d" ? t("tookDays", { value }) : t("tookHours", { value });
   };
 
-  const selectedDate = selectedYmd ? fromYmd(selectedYmd) : null;
-  const total = countLogged(groups);
-  const boxed = variant === "boxed";
+  if (!groups.length) {
+    return <p className="text-tui-ink3 py-4 text-[13.5px]">{t("logEmpty")}</p>;
+  }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-baseline gap-3">
-        <h2 className={SECTION_TITLE}>
-          {selectedDate ? t("logOnDay", { day: dayLabel(selectedDate) }) : t("logRecent")}
-        </h2>
-        <span className="text-[11px] tabular-nums text-fg-tertiary">
-          {t("logCount", { count: total })}
-        </span>
-        <span className="flex-1" />
-        {selectedYmd && (
-          <button
-            type="button"
-            onClick={onClearDay}
-            className="h-7 rounded-md border border-border-medium px-2.5 text-[11px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary"
-          >
-            {t("logShowRecent")}
-          </button>
-        )}
-      </div>
+    <div className="flex flex-col">
+      {groups.map((group) => (
+        <div key={group.ymd} className="flex flex-col">
+          <span className={cn(STAMP, compact ? "pt-3 pb-1.5" : "pt-4 pb-2")}>
+            {dayLabel(group.date)}
+          </span>
 
-      <div
-        className={cn(
-          "flex flex-col",
-          boxed ? `${PANEL} overflow-hidden` : "border-t border-border-light",
-        )}
-      >
-        {groups.length === 0 && (
-          <p
-            className={cn(
-              "text-[13px] text-fg-tertiary",
-              boxed ? "px-4 py-6" : "py-6",
-            )}
-          >
-            {selectedYmd ? t("logEmptyDay") : t("logEmpty")}
-          </p>
-        )}
-
-        {groups.map((group) => (
-          <div key={group.ymd} className="flex flex-col">
-            <div
+          {group.items.map((item) => (
+            <Link
+              key={item.id}
+              href={projectHref(item.projectId)}
+              /* Narrower fixed columns on a phone: a wide project column left
+                 the task title about 80px of a 375px screen. */
               className={cn(
-                MICRO_LABEL,
-                boxed
-                  ? "border-b border-border-light bg-bg-secondary px-4 py-2.5"
-                  : "pt-3 pb-2",
+                "grid items-center gap-3 border-t py-2 transition-colors hover:bg-tui-ink/[0.025] sm:gap-[18px]",
+                HAIR,
+                compact
+                  ? "grid-cols-[minmax(0,1fr)_44px]"
+                  : "grid-cols-[minmax(0,1fr)_96px_40px] sm:grid-cols-[minmax(0,1fr)_170px_44px]",
               )}
             >
-              {dayLabel(group.date)}
-            </div>
-
-            {group.items.map((item) => {
-              const tone = projectTone(item.projectId);
-
-              if (boxed) {
-                return (
-                  <Link
-                    key={item.id}
-                    href={projectHref(item.projectId)}
-                    className="flex items-center gap-3 border-b border-border-light px-4 py-3 transition-colors last:border-b-0 hover:bg-bg-secondary/60"
-                  >
-                    <span className={cn("h-6 w-[3px] shrink-0 rounded-sm", tone.bar)} />
-                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="truncate text-[13px] font-medium text-fg-primary">
-                        {item.title}
-                      </span>
-                      <span className="truncate text-[10px] tabular-nums text-fg-tertiary">
-                        {item.projectTitle} · {took(item.tookDays)}
-                      </span>
-                    </span>
-                  </Link>
-                );
-              }
-
-              return (
-                <Link
-                  key={item.id}
-                  href={projectHref(item.projectId)}
-                  className="grid grid-cols-[minmax(0,1fr)_130px_58px] items-center gap-3.5 border-b border-border-light py-2.5 transition-colors hover:bg-fg-primary/[0.025]"
-                >
-                  <span className="truncate text-[13px] font-medium text-fg-primary">
-                    {item.title}
-                  </span>
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className={cn("h-[7px] w-[7px] shrink-0 rounded-full", tone.dot)} />
-                    <span className="truncate text-xs text-fg-secondary">{item.projectTitle}</span>
-                  </span>
-                  <span className="text-right text-[11px] tabular-nums text-fg-tertiary">
-                    {took(item.tookDays)}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        ))}
-      </div>
+              <span className="text-tui-ink truncate text-[14.5px]">{item.title}</span>
+              {!compact && (
+                <span className="flex min-w-0 items-center gap-[9px]">
+                  <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", projectTone(item.projectId).dot)} />
+                  <span className="text-tui-ink2 truncate text-[13px]">{item.projectTitle}</span>
+                </span>
+              )}
+              <span className="text-tui-ink3 text-right font-mono text-[11.5px]">
+                {took(item.tookDays)}
+              </span>
+            </Link>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
 /*  Remaining workload                                               */
+/*                                                                    */
+/*  The dashboard's "Today" row: a label, a dotted leader, the number  */
+/*  in the serif. Read down the right edge like a ledger.              */
 /* ------------------------------------------------------------------ */
 
-type WorkloadProps = {
-  workload: WorkloadEntry[];
+export function WorkloadList({
+  workload,
+  today,
+  showQuiet = true,
+}: {
+  workload: {
+    projectId: number;
+    projectTitle: string;
+    open: number;
+    lastTouchedAt?: WorkloadEntry["lastTouchedAt"];
+  }[];
   today: Date;
-  variant: "panel" | "bare";
-};
-
-export function WorkloadList({ workload, today, variant }: WorkloadProps) {
+  /** The drawer's copy has no touch dates to show. */
+  showQuiet?: boolean;
+}) {
   const t = useTranslations("progress.record");
-  const maxOpen = workload.reduce((max, entry) => Math.max(max, entry.open), 1);
-  const panel = variant === "panel";
 
-  const quietLabel = (lastTouchedAt: WorkloadEntry["lastTouchedAt"]) => {
-    if (!lastTouchedAt) return "";
-    const quiet = daysBetween(new Date(lastTouchedAt), today);
-    return quiet <= 0 ? t("workloadToday") : t("workloadQuiet", { count: quiet });
-  };
+  if (!workload.length) {
+    return <p className="text-tui-ink3 text-[14px]">{t("workloadEmpty")}</p>;
+  }
 
   return (
-    <div className={cn("flex flex-col gap-3.5", panel && `${PANEL} px-5 py-4`)}>
-      {workload.length === 0 && (
-        <p className="text-[13px] text-fg-tertiary">{t("workloadEmpty")}</p>
-      )}
-
+    <div className="flex flex-col gap-3">
       {workload.map((entry) => {
-        const tone = projectTone(entry.projectId);
+        const quiet = entry.lastTouchedAt ? daysBetween(new Date(entry.lastTouchedAt), today) : null;
         return (
-          <div key={entry.projectId} className="flex flex-col gap-1.5">
-            <div className="flex items-baseline gap-2.5">
-              <Link
-                href={projectHref(entry.projectId)}
-                className="truncate text-xs font-medium text-fg-secondary transition-colors hover:text-fg-primary"
-              >
-                {entry.projectTitle}
-              </Link>
-              <span className="flex-1" />
-              <span className={cn("text-[11px] tabular-nums", tone.text)}>
-                {t("workloadOpen", { count: entry.open })}
+          <Link
+            key={entry.projectId}
+            href={projectHref(entry.projectId)}
+            className="text-tui-ink2 hover:text-tui-ink flex items-baseline gap-2.5 text-[14px] transition-colors"
+          >
+            <span className={cn("h-1.5 w-1.5 shrink-0 -translate-y-0.5 rounded-full", projectTone(entry.projectId).dot)} />
+            <span className="min-w-0 truncate">{entry.projectTitle}</span>
+            <span className="border-tui-ink/20 min-w-4 flex-1 -translate-y-1 border-b border-dotted" />
+            {showQuiet && quiet !== null && (
+              <span className={cn("shrink-0 text-[12px]", quiet >= 7 ? "text-tui-danger" : "text-tui-ink3")}>
+                {quiet <= 0 ? t("workloadToday") : t("workloadQuiet", { count: quiet })}
               </span>
-              {panel && (
-                <span className="text-[11px] tabular-nums text-fg-quaternary">
-                  {quietLabel(entry.lastTouchedAt)}
-                </span>
-              )}
-            </div>
-            <span className="h-1.5 overflow-hidden rounded-sm bg-fg-primary/[0.07]">
-              <span
-                className={cn("block h-full rounded-sm", tone.bar)}
-                style={{ width: `${Math.round((entry.open / maxOpen) * 100)}%` }}
-              />
-            </span>
-          </div>
+            )}
+            <span className={cn(NUMERAL, "text-tui-ink min-w-7 text-right text-[22px]")}>{entry.open}</span>
+          </Link>
         );
       })}
     </div>
@@ -504,97 +486,322 @@ export function WorkloadList({ workload, today, variant }: WorkloadProps) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Leaderboard                                                      */
+/*  Standings                                                        */
 /*                                                                    */
-/*  Every block is a button: clicking one opens that person's record.  */
+/*  Every row but your own opens that person's record in the drawer.   */
 /* ------------------------------------------------------------------ */
 
-type LeaderboardProps = {
+export function Standings({
+  people,
+  onOpen,
+}: {
   people: LeaderboardPerson[];
-  activeId: string | null;
-  onSelect: (userId: string) => void;
-};
-
-export function Leaderboard({ people, activeId, onSelect }: LeaderboardProps) {
+  onOpen: (userId: string) => void;
+}) {
   const t = useTranslations("progress.record");
   const board = buildBoard(people);
 
   if (!board.length) return null;
 
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-baseline gap-3">
-        <h2 className={SECTION_TITLE}>{t("boardTitle")}</h2>
-        <span className="text-[11px] text-fg-tertiary">{t("boardSubtitle")}</span>
-      </div>
-
-      <div className={cn(PANEL, "flex items-end gap-6 overflow-x-auto px-6 pt-6 sm:gap-11")}>
-        {board.map((person) => {
-          const name = displayName(person) || t("boardUnknown");
-          const active = person.id === activeId;
-          /* The block is a toggle, so the label has to say which way the
-             next tap goes — otherwise a screen reader announces "open" on
-             the card that is already open. */
-          const label = active
-            ? t("boardClosePerson", { name })
-            : t("boardOpenPerson", { name });
-
-          return (
-            <button
-              key={person.id}
-              type="button"
-              onClick={() => onSelect(person.id)}
-              title={label}
-              aria-label={label}
-              aria-pressed={active}
+    <section>
+      <SectionHead title={t("boardTitle")} meta={t("boardSubtitle")} />
+      {board.map((person) => {
+        const name = displayName(person) || t("boardUnknown");
+        const row = (
+          <>
+            <span className={cn(NUMERAL, "text-tui-ink3 text-[19px] italic")}>{person.rank}</span>
+            <span
               className={cn(
-                "group flex min-w-[92px] flex-1 flex-col items-center gap-2 rounded-t-md transition-colors",
-                active && "bg-accent-primary/[0.07]",
+                "grid h-[30px] w-[30px] place-items-center rounded-full text-[11px] font-bold",
+                person.isSelf ? "bg-tui-accent text-tui-on-accent" : "bg-tui-ink/10 text-tui-ink2",
               )}
             >
+              {person.initials}
+            </span>
+            <span className="flex min-w-0 items-baseline gap-2.5">
+              <span className="text-tui-ink truncate text-[14.5px] font-semibold">{name}</span>
+              {person.isSelf && (
+                <span className="text-tui-accent font-mono text-[9.5px] tracking-[0.2em] uppercase">
+                  {t("profileYou")}
+                </span>
+              )}
+            </span>
+            <span className="bg-tui-ink/[0.07] hidden h-0.5 sm:block">
               <span
+                className={cn("block h-full", person.isSelf ? "bg-tui-accent" : "bg-tui-ink/30")}
+                style={{ width: `${Math.round(person.share * 100)}%` }}
+              />
+            </span>
+            <span className={cn(NUMERAL, "text-tui-ink text-right text-[24px]")}>{person.completed}</span>
+          </>
+        );
+        const grid = cn(
+          "grid w-full grid-cols-[32px_30px_minmax(0,1fr)_64px] items-center gap-3.5 border-b py-2 text-left sm:grid-cols-[44px_34px_240px_minmax(0,1fr)_76px] sm:gap-[18px]",
+          HAIR,
+        );
+
+        return person.isSelf ? (
+          <div key={person.id} className={grid}>
+            {row}
+          </div>
+        ) : (
+          <button
+            key={person.id}
+            type="button"
+            onClick={() => onOpen(person.id)}
+            aria-label={t("boardOpenPerson", { name })}
+            className={cn(grid, "hover:bg-tui-ink/[0.025] transition-colors")}
+          >
+            {row}
+          </button>
+        );
+      })}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  The team table                                                   */
+/* ------------------------------------------------------------------ */
+
+export function roleLabel(
+  t: (key: string) => string,
+  member: { role: string; displayRole: string | null },
+): string {
+  if (member.displayRole?.trim()) return member.displayRole.trim();
+  switch (member.role) {
+    case "admin":
+      return t("roleAdmin");
+    case "worker":
+      return t("roleWorker");
+    case "mentor":
+      return t("roleMentor");
+    case "guest":
+      return t("roleGuest");
+    default:
+      return t("roleMember");
+  }
+}
+
+const TABLE_COLUMNS =
+  "grid-cols-[250px_minmax(210px,1fr)_84px_76px_76px_64px_118px] gap-5";
+
+export function TeamTable({
+  rows,
+  sort,
+  onSort,
+  onOpen,
+  activeId,
+}: {
+  rows: TeamRow[];
+  sort: TeamSortKey;
+  onSort: (key: TeamSortKey) => void;
+  onOpen: (userId: string) => void;
+  activeId: string | null;
+}) {
+  const t = useTranslations("progress.record");
+  /* One scale for every row, so a strip of single-task days does not stand as
+     tall as a colleague's busiest week — the column exists to be compared
+     down, not read across. */
+  const peak = Math.max(1, ...rows.flatMap((row) => row.strip));
+
+  return (
+    <section aria-labelledby="progress-members">
+      <SectionHead
+        id="progress-members"
+        title={t("membersTitle")}
+        meta={t("membersSubtitle", { count: rows.length })}
+      >
+        <span className="flex items-center gap-4">
+          <span className={STAMP}>{t("sortLabel")}</span>
+          <TextTabs
+            label={t("sortLabel")}
+            size="sm"
+            value={sort}
+            onChange={onSort}
+            options={[
+              { key: "finished", label: t("sortFinished") },
+              { key: "streak", label: t("sortStreak") },
+              { key: "open", label: t("sortOpen") },
+              { key: "quiet", label: t("sortQuiet") },
+            ]}
+          />
+        </span>
+      </SectionHead>
+
+      {/* Seven columns do not fold gracefully, so a narrow screen scrolls the
+          table sideways rather than dropping the numbers a lead came for. */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[960px]">
+          <div className={cn("grid pt-3 pb-2", TABLE_COLUMNS, STAMP)} aria-hidden="true">
+            <span>{t("colMember")}</span>
+            <span>{t("colLast30")}</span>
+            <span className="text-right">{t("colFinished")}</span>
+            <span className="text-right">{t("colPerDay")}</span>
+            <span className="text-right">{t("colStreak")}</span>
+            <span className="text-right">{t("colOpen")}</span>
+            <span className="text-right">{t("colLastFinished")}</span>
+          </div>
+
+          {rows.map((row) => {
+            const name = displayName(row.member) || t("boardUnknown");
+            const last =
+              row.lastFinishedDays === null
+                ? "—"
+                : row.lastFinishedDays === 0
+                  ? t("workloadToday")
+                  : t("lastDaysAgo", { count: row.lastFinishedDays });
+
+            return (
+              <button
+                key={row.member.id}
+                type="button"
+                onClick={() => onOpen(row.member.id)}
+                aria-label={t("boardOpenPerson", { name })}
                 className={cn(
-                  "text-[13px] font-semibold tabular-nums",
-                  person.isSelf ? "text-accent-primary" : "text-fg-secondary",
+                  "grid w-full items-center border-t py-2 text-left transition-colors",
+                  TABLE_COLUMNS,
+                  "border-tui-ink/[0.07]",
+                  activeId === row.member.id ? "bg-tui-accent/[0.06]" : "hover:bg-tui-ink/[0.025]",
                 )}
               >
-                {person.completed}
-              </span>
+                <span className="flex min-w-0 items-center gap-3.5">
+                  <span
+                    className={cn(
+                      "grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-[11.5px] font-bold",
+                      row.member.isSelf ? "bg-tui-accent text-tui-on-accent" : "bg-tui-ink/10 text-tui-ink2",
+                    )}
+                  >
+                    {initialsOf(row.member)}
+                  </span>
+                  <span className="flex min-w-0 flex-col gap-[3px]">
+                    <span className="text-tui-ink truncate text-[14.5px] font-semibold">{name}</span>
+                    <span className="text-tui-ink3 font-mono text-[9.5px] tracking-[0.18em] uppercase">
+                      {roleLabel(t, row.member)}
+                      {row.member.isSelf ? ` · ${t("profileYou")}` : ""}
+                    </span>
+                  </span>
+                </span>
 
-              <span
-                className={cn(
-                  "w-full max-w-[76px] rounded-t-sm transition-opacity group-hover:opacity-80",
-                  person.isSelf ? "bg-accent-primary" : "bg-fg-primary/[0.17]",
-                )}
-                style={{ height: person.barHeight }}
-              />
+                {/* The last thirty days, one bar each — shape over precision. */}
+                <span aria-hidden="true" className="flex h-5 items-end gap-[3px]">
+                  {row.strip.map((count, index) => (
+                    <span
+                      key={index}
+                      className={cn(
+                        "w-1 rounded-[1px]",
+                        count === 0
+                          ? "bg-tui-ink/[0.12]"
+                          : row.member.isSelf
+                            ? "bg-tui-accent"
+                            : "bg-tui-ink/45",
+                      )}
+                      style={{ height: count === 0 ? 2 : Math.max(4, Math.round((count / peak) * 20)) }}
+                    />
+                  ))}
+                </span>
 
-              <span className="flex w-full items-center justify-center gap-2 border-t border-border-medium px-1 pt-3 pb-4">
-                {/* Initials, not the avatar: the design draws them, and an
-                    avatar on an unconfigured host would fail next/image. */}
+                <span className={cn(NUMERAL, "text-tui-ink text-right text-[22px]")}>{row.finished}</span>
+                <span className="text-tui-ink2 text-right text-[14px] tabular-nums">{row.perDay}</span>
                 <span
                   className={cn(
-                    "flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-                    person.isSelf
-                      ? "bg-accent-primary text-white"
-                      : "bg-fg-quaternary text-bg-primary",
+                    "text-right text-[14px] tabular-nums",
+                    row.streak >= 3 ? "text-tui-ok" : "text-tui-ink3",
                   )}
                 >
-                  {initialsOf(person)}
+                  {t("streakDays", { count: row.streak })}
                 </span>
                 <span
                   className={cn(
-                    "truncate text-xs font-semibold",
-                    person.isSelf ? "text-fg-primary" : "text-fg-secondary",
+                    "text-right text-[14px] tabular-nums",
+                    row.heavy ? "text-tui-warn" : "text-tui-ink2",
                   )}
                 >
-                  {name}
+                  {row.open}
                 </span>
-              </span>
-            </button>
-          );
-        })}
+                <span className={cn("text-right text-[13px]", row.quiet ? "text-tui-danger" : "text-tui-ink3")}>
+                  {last}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Worth a look                                                     */
+/* ------------------------------------------------------------------ */
+
+export function TeamNotes({
+  notes,
+  onOpenMember,
+}: {
+  notes: TeamNote[];
+  onOpenMember: (userId: string) => void;
+}) {
+  const t = useTranslations("progress.record");
+
+  return (
+    <section>
+      <SectionHead title={t("attentionTitle")} meta={t("attentionSubtitle")} />
+      {notes.length === 0 ? (
+        <p className="text-tui-ink3 pt-4 text-[13.5px]">{t("attentionEmpty")}</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-7 pt-5 md:grid-cols-3 md:gap-10">
+          {notes.map((note, index) => {
+            const action =
+              note.id === "stale" ? (
+                <Link
+                  href={projectHref(note.projectId)}
+                  className="text-tui-accent hover:text-tui-ink mt-0.5 self-start text-[13px] font-semibold transition-colors"
+                >
+                  {t("staleCta")} →
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onOpenMember(note.memberId)}
+                  className="text-tui-accent hover:text-tui-ink mt-0.5 self-start text-[13px] font-semibold transition-colors"
+                >
+                  {t("noteOpenRecord")} →
+                </button>
+              );
+
+            const title =
+              note.id === "quiet"
+                ? note.days === null
+                  ? t("noteQuietNeverTitle", { name: note.name })
+                  : t("noteQuietTitle", { name: note.name, days: note.days })
+                : note.id === "heavy"
+                  ? t("noteHeavyTitle", { name: note.name, count: note.open })
+                  : t("staleTitle", { project: note.projectTitle, days: note.quietDays });
+            const body =
+              note.id === "quiet"
+                ? t("noteQuietBody", { count: note.open })
+                : note.id === "heavy"
+                  ? t("noteHeavyBody", { median: note.median })
+                  : t("noteStaleBody", { count: note.open, people: note.people });
+
+            return (
+              <div key={note.id} className="flex flex-col gap-2.5">
+                <span
+                  aria-hidden="true"
+                  className={cn("font-display text-[19px] leading-none italic", SUGGESTION_TEXT[note.tone])}
+                >
+                  {NUMERALS[index]}
+                </span>
+                <span className="text-tui-ink text-[15px] leading-[1.45] font-semibold">{title}</span>
+                <span className="text-tui-ink2 text-[13.5px] leading-[1.6]">{body}</span>
+                {action}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

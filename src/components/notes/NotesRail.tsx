@@ -56,9 +56,9 @@ export interface RailNotebook {
  * tabular, like every other figure on the surface.
  */
 const ROW_BASE =
-  "flex w-full items-center gap-2.5 border-l-2 py-2 pr-3 pl-3.5 text-left text-[13px] transition-colors duration-[300ms]";
-const ROW_IDLE = "border-l-transparent text-fg-secondary hover:bg-accent-primary/[0.06] hover:text-fg-primary";
-const ROW_ON = "border-l-accent-primary bg-accent-primary/[0.08] font-bold text-fg-primary";
+  "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] transition-colors duration-200";
+const ROW_IDLE = "text-fg-secondary hover:bg-fg-primary/[0.045] hover:text-fg-primary";
+const ROW_ON = "bg-fg-primary/[0.07] font-medium text-fg-primary";
 
 export function NotesRail({
   view,
@@ -98,7 +98,7 @@ export function NotesRail({
   ];
 
   return (
-    <div className="flex h-full flex-col border-r border-border-light/60 bg-bg-primary">
+    <div className="flex h-full flex-col border-r border-border-light/60">
       <div className="flex flex-none items-center gap-2 px-4 pt-4 pb-3">
         <h1 className="flex-1 text-[15px] font-bold tracking-[-0.012em] text-fg-primary">
           {t("title")}
@@ -109,7 +109,7 @@ export function NotesRail({
             type="button"
             onClick={onClose}
             aria-label={t("common.close")}
-            className={`${ICON_BTN_BARE} md:hidden`}
+            className={`${ICON_BTN_BARE} lg:hidden`}
           >
             <X size={16} />
           </button>
@@ -142,7 +142,7 @@ export function NotesRail({
               type="button"
               onClick={() => onQueryChange("")}
               aria-label={t("common.clearSearch")}
-              className="kairos-tap grid h-5 w-5 flex-none place-items-center rounded text-fg-tertiary transition-colors hover:text-fg-primary"
+              className="kairos-tap grid h-5 w-5 flex-none place-items-center rounded-sm text-fg-tertiary transition-colors hover:text-fg-primary"
             >
               <X size={12} />
             </button>
@@ -153,7 +153,7 @@ export function NotesRail({
       <nav className="min-h-0 flex-1 overflow-y-auto pb-5" aria-label={t("title")}>
         {/* `kairos-stagger` has been in globals.css since the design system
             landed; the rail is exactly what it is for. */}
-        <ul className="kairos-stagger flex flex-col">
+        <ul className="kairos-stagger flex flex-col px-2">
           {views.map((entry) => (
             <li key={entry.key}>
               <button
@@ -167,7 +167,7 @@ export function NotesRail({
                 </span>
                 <span className="flex-1 truncate">{entry.label}</span>
                 <span
-                  className={`font-mono text-[10px] tabular-nums ${
+                  className={`text-[11.5px] tabular-nums ${
                     view === entry.key ? "text-accent-primary" : "text-fg-quaternary"
                   }`}
                 >
@@ -194,7 +194,7 @@ export function NotesRail({
         {notebooks.length === 0 ? (
           <p className="px-4 py-2 text-[12px] text-fg-quaternary">{t("notebooks.emptyRail")}</p>
         ) : (
-          <ul className="kairos-stagger flex flex-col">
+          <ul className="kairos-stagger flex flex-col px-2">
             {notebooks.map((notebook) => {
               const selected = activeNotebookId === notebook.id;
               return (
@@ -209,7 +209,7 @@ export function NotesRail({
                     <BookOpen size={15} className={selected ? "text-accent-primary" : "text-fg-tertiary"} />
                     <span className="flex-1 truncate">{notebook.name}</span>
                     <span
-                      className={`font-mono text-[10px] tabular-nums ${
+                      className={`text-[11.5px] tabular-nums ${
                         selected ? "text-accent-primary" : "text-fg-quaternary"
                       }`}
                     >

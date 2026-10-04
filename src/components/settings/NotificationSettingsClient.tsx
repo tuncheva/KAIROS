@@ -10,6 +10,7 @@ import {
   type NotificationPosition,
 } from "~/lib/notificationPosition";
 import { NotificationPositionPicker } from "./NotificationPositionPicker";
+import { PushDeviceGroup } from "./PushDeviceGroup";
 
 import {
   LedgerGroup,
@@ -204,6 +205,8 @@ export function NotificationSettingsClient() {
       title={t("title")}
       subtitle={t("subtitle")}
     >
+      <PushDeviceGroup />
+
       <LedgerGroup
         label={t("groupPositionTitle")}
         hint={t("groupPositionDesc")}

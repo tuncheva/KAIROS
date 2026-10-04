@@ -34,7 +34,7 @@ export function SearchTrigger() {
          looks like it behaves rather than leaving the user typing into a
          button. */
       onFocus={open}
-      className="group flex h-8 min-w-0 items-center gap-2 rounded-[9px] border border-border-light/70 bg-bg-secondary/50 px-2.5 text-left text-fg-quaternary transition-colors hover:border-border-medium hover:text-fg-tertiary focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:outline-none sm:w-56 lg:w-72"
+      className="group flex h-8 min-w-0 items-center gap-2 rounded-sm border border-border-light/70 bg-bg-secondary/50 px-2.5 text-left text-fg-quaternary transition-colors hover:border-border-medium hover:text-fg-tertiary focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:outline-none sm:w-56 lg:w-72"
     >
       <Search size={14} className="shrink-0" aria-hidden="true" />
       <span className="hidden min-w-0 flex-1 truncate text-[13px] sm:block">

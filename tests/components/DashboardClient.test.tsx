@@ -159,7 +159,10 @@ const FINDINGS = [
     title: "Four days behind on the sprint",
     detail: "Six tasks are due before Friday and none have been started.",
     createdAt: new Date(now - 14 * 60_000),
-    suggestedFix: { label: "Draft a rebalance", prompt: "Rebalance the redesign sprint" },
+    suggestedFix: {
+      label: "Draft a rebalance",
+      prompt: "Rebalance the redesign sprint",
+    },
   },
   {
     id: 102,
@@ -188,26 +191,42 @@ vi.mock("~/trpc/react", () => {
     api: {
       useUtils: () => new Proxy({}, { get: () => invalidate() }),
       project: { getMyProjects: query(PROJECTS) },
-      task: { getOrgActivity: query(ACTIVITY), getForCalendar: query(CALENDAR) },
+      task: {
+        getOrgActivity: query(ACTIVITY),
+        getForCalendar: query(CALENDAR),
+      },
       progress: { getPulse: query(PULSE) },
       agent: {
         findings: query(FINDINGS),
-        dismissFinding: { useMutation: () => ({ mutate: dismissMutate, isPending: false }) },
+        dismissFinding: {
+          useMutation: () => ({ mutate: dismissMutate, isPending: false }),
+        },
       },
-      organization: { join: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } },
+      organization: {
+        join: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      },
     },
   };
 });
 
-const { DashboardClient } = await import("~/components/dashboard/DashboardClient");
+const { DashboardClient } = await import(
+  "~/components/dashboard/DashboardClient"
+);
 
 const setup = () => render(<DashboardClient userName="Teodora Tuncheva" />);
 
 describe("the dashboard headline", () => {
   it("greets by first name and says what the day holds", () => {
     setup();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/Teodora$/);
-    expect(screen.getByText(/tasks are due today|task is due today|Nothing is due today/)).toBeInTheDocument();
+    // The name is set in italic accent and closes with a full stop.
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(
+      /Teodora\.$/,
+    );
+    expect(
+      screen.getByText(
+        /tasks are due today|task is due today|Nothing is due today/,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("carries the four stats with their footnotes", () => {
@@ -231,21 +250,32 @@ describe("what the radar found", () => {
     expect(screen.getByText("2 findings")).toBeInTheDocument();
     expect(screen.getByText("Checked 14m ago")).toBeInTheDocument();
     expect(screen.getByText("Critical")).toBeInTheDocument();
-    expect(screen.getByText("Four days behind on the sprint")).toBeInTheDocument();
+    expect(
+      screen.getByText("Four days behind on the sprint"),
+    ).toBeInTheDocument();
   });
 
   it("names the project a finding is about, or says it is workspace-wide", () => {
     setup();
-    const card = screen.getByText("Reviews are the bottleneck").closest("article")!;
+    const card = screen
+      .getByText("Reviews are the bottleneck")
+      .closest("article")!;
     expect(within(card).getByText("Across the workspace")).toBeInTheDocument();
   });
 
   it("offers the drafted fix, and a dismissal beside it", async () => {
     setup();
-    expect(screen.getByRole("button", { name: /Draft a rebalance/ })).toBeInTheDocument();
+    // The fix pill reads "Draft a rebalance →".
+    expect(
+      screen.getByRole("button", { name: /Draft a rebalance/ }),
+    ).toBeInTheDocument();
 
-    const card = screen.getByText("Four days behind on the sprint").closest("article")!;
-    await userEvent.click(within(card).getByRole("button", { name: "Dismiss" }));
+    const card = screen
+      .getByText("Four days behind on the sprint")
+      .closest("article")!;
+    await userEvent.click(
+      within(card).getByRole("button", { name: "Dismiss" }),
+    );
     expect(dismissMutate).toHaveBeenCalledWith({ findingId: 101 });
   });
 });
@@ -264,7 +294,14 @@ describe("the project status table", () => {
   it("heads every column the design lists", () => {
     setup();
     const header = screen.getByText("Project").parentElement!;
-    for (const column of ["Project", "Team", "Open", "Overdue", "Completion", "Health"]) {
+    for (const column of [
+      "Project",
+      "Team",
+      "Open",
+      "Overdue",
+      "Completion",
+      "Health",
+    ]) {
       expect(within(header).getByText(column)).toBeInTheDocument();
     }
   });
@@ -275,7 +312,9 @@ describe("the project status table", () => {
       .getAllByRole("link", { name: /Redesign sprint|Docs refresh/ })
       .filter((link) => link.closest("div.group"));
     expect(titles[0]).toHaveAttribute("href", "/projects?projectId=1");
-    expect(within(rowFor(/Redesign sprint/)).getByText("At risk")).toBeInTheDocument();
+    expect(
+      within(rowFor(/Redesign sprint/)).getByText("At risk"),
+    ).toBeInTheDocument();
   });
 
   it("reads open, overdue and completion off the tasks", () => {
@@ -296,26 +335,10 @@ describe("the project status table", () => {
   });
 });
 
-describe("a person's face", () => {
-  it("is its own control in a project row and in an activity row", () => {
-    setup();
-    // Three owners on the sprint, plus the two people in the activity feed and
-    // the three in the team panel.
-    expect(screen.getAllByRole("button", { name: /View .*'s profile/ }).length).toBeGreaterThanOrEqual(8);
-  });
-
-  it("sits above the row's own link so the two clicks do not collide", () => {
-    setup();
-    const face = screen.getAllByRole("button", { name: "View Ivan's profile" })[0]!;
-    expect(face.closest("span")?.className).toMatch(/z-10/);
-  });
-});
-
 describe("team activity", () => {
-  it("lists what happened, in which project, and how long ago", () => {
+  it("lists what happened and in which project", () => {
     setup();
     expect(screen.getByText(/Ivan completed/)).toBeInTheDocument();
-    expect(screen.getByText("12M")).toBeInTheDocument();
     expect(screen.getByText(/Nadia created/)).toBeInTheDocument();
   });
 });
@@ -332,7 +355,11 @@ describe("the aside", () => {
     setup();
     expect(screen.getByText("Your momentum")).toBeInTheDocument();
     expect(screen.getByText("2-day streak")).toBeInTheDocument();
-    expect(screen.getByText(/You finished 6 tasks in the last fortnight, 4 of them today\./)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /You finished 6 tasks in the last fortnight, 4 of them today\./,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("lists the team by load, marking the reader and the quiet ones", () => {
@@ -351,19 +378,33 @@ describe("first run", () => {
     vi.resetModules();
     vi.doMock("~/trpc/react", () => {
       const query = (data: unknown) => ({
-        useQuery: () => ({ data, isLoading: false, error: null, refetch: vi.fn() }),
+        useQuery: () => ({
+          data,
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }),
       });
       return {
         api: {
           useUtils: () => new Proxy({}, { get: () => () => Promise.resolve() }),
           project: { getMyProjects: query([]) },
-          task: { getOrgActivity: query({ rows: [] }), getForCalendar: query({ tasks: [] }) },
+          task: {
+            getOrgActivity: query({ rows: [] }),
+            getForCalendar: query({ tasks: [] }),
+          },
           progress: { getPulse: query(null) },
           agent: {
             findings: query([]),
-            dismissFinding: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+            dismissFinding: {
+              useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+            },
           },
-          organization: { join: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } },
+          organization: {
+            join: {
+              useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+            },
+          },
         },
       };
     });
@@ -373,11 +414,10 @@ describe("first run", () => {
     );
     render(<Empty userName="Teodora" />);
 
-    expect(screen.getByText("First run")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Create a project/ })).toHaveAttribute(
-      "href",
-      "/projects?new=1",
-    );
+    expect(screen.getByText(/Nothing on the board yet/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Create a project/ }),
+    ).toHaveAttribute("href", "/projects?new=1");
     vi.doUnmock("~/trpc/react");
   });
 });

@@ -33,6 +33,8 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslations } from "next-intl";
+import { SECTION_GROUP, isSettingsSection, sectionNumber } from "../sections";
+import { SECTION_ICON } from "../sectionIcons";
 
 /** `useTranslations` typed loosely, matching how the rest of settings uses it. */
 type Translator = (key: string, values?: Record<string, unknown>) => string;
@@ -117,14 +119,36 @@ export function matches(query: string, ...haystack: (string | undefined | null)[
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
 
+/**
+ * One write, as the Activity drawer lists it.
+ *
+ * Kept for this visit only. There is no settings audit table to read back from,
+ * so the drawer is an account of what *you* changed since opening settings —
+ * which is also the question it gets asked ("did that go through?").
+ */
+export interface SettingsActivityEntry {
+  id: number;
+  /** The section the write came from, when it came from inside one. */
+  section: string | null;
+  /** What changed, when the caller said; otherwise the section stands in. */
+  label?: string;
+  at: Date;
+  ok: boolean;
+}
+
 interface SaveApi {
   state: SaveState;
+  /** When the last write finished, for "All changes saved · 14:02". */
+  savedAt: Date | null;
+  activity: SettingsActivityEntry[];
   /** Wraps a mutation so the header reports it. Never throws. */
-  run: <T>(work: () => Promise<T>) => Promise<T | undefined>;
+  run: <T>(work: () => Promise<T>, label?: string) => Promise<T | undefined>;
 }
 
 const SaveContext = createContext<SaveApi>({
   state: "idle",
+  savedAt: null,
+  activity: [],
   run: async (work) => {
     try {
       return await work();
@@ -134,44 +158,106 @@ const SaveContext = createContext<SaveApi>({
   },
 });
 
+/**
+ * Names the section a subtree belongs to, so a write made inside it is filed
+ * under that section in Activity without every call site having to say so.
+ */
+const SectionScopeContext = createContext<string | null>(null);
+
+export function SettingsSectionScope({
+  sectionId,
+  children,
+}: {
+  sectionId: string;
+  children: ReactNode;
+}) {
+  return (
+    <SectionScopeContext.Provider value={sectionId}>{children}</SectionScopeContext.Provider>
+  );
+}
+
 export function SettingsSaveProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SaveState>("idle");
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [activity, setActivity] = useState<SettingsActivityEntry[]>([]);
   // Counts in-flight writes rather than tracking a single one: touching three
   // toggles quickly must not let the first one's completion report "saved"
   // while the other two are still open.
   const inFlight = useRef(0);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nextId = useRef(1);
 
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-    },
-    [],
-  );
-
-  const run = useCallback(async <T,>(work: () => Promise<T>) => {
-    if (timer.current) clearTimeout(timer.current);
-    inFlight.current += 1;
-    setState("saving");
-    try {
-      const result = await work();
-      inFlight.current -= 1;
-      if (inFlight.current === 0) setState("saved");
-      return result;
-    } catch {
-      inFlight.current -= 1;
-      if (inFlight.current === 0) setState("error");
-      return undefined;
-    }
+  const record = useCallback((section: string | null, label: string | undefined, ok: boolean) => {
+    const at = new Date();
+    setActivity((prev) => {
+      const top = prev[0];
+      // A text field commits every time you pause, so one edit would otherwise
+      // be ten entries. Repeats of the same write within a few seconds fold
+      // into the entry already on top.
+      if (
+        top?.ok === ok &&
+        top.section === section &&
+        top.label === label &&
+        at.getTime() - top.at.getTime() < 8000
+      ) {
+        return [{ ...top, at }, ...prev.slice(1)];
+      }
+      return [{ id: nextId.current++, section, label, at, ok }, ...prev].slice(0, 50);
+    });
   }, []);
 
-  return (
-    <SaveContext.Provider value={{ state, run }}>{children}</SaveContext.Provider>
+  const runScoped = useCallback(
+    async <T,>(section: string | null, work: () => Promise<T>, label?: string) => {
+      inFlight.current += 1;
+      setState("saving");
+      try {
+        const result = await work();
+        inFlight.current -= 1;
+        if (inFlight.current === 0) {
+          setState("saved");
+          setSavedAt(new Date());
+        }
+        record(section, label, true);
+        return result;
+      } catch {
+        inFlight.current -= 1;
+        if (inFlight.current === 0) setState("error");
+        record(section, label, false);
+        return undefined;
+      }
+    },
+    [record],
   );
+
+  const value = useMemo(
+    () => ({ state, savedAt, activity, runScoped }),
+    [state, savedAt, activity, runScoped],
+  );
+
+  return <SaveInternalContext.Provider value={value}>{children}</SaveInternalContext.Provider>;
 }
 
+const SaveInternalContext = createContext<
+  | (Omit<SaveApi, "run"> & {
+      runScoped: <T>(
+        section: string | null,
+        work: () => Promise<T>,
+        label?: string,
+      ) => Promise<T | undefined>;
+    })
+  | null
+>(null);
+
 export function useSettingsSave(): SaveApi {
-  return useContext(SaveContext);
+  const internal = useContext(SaveInternalContext);
+  const section = useContext(SectionScopeContext);
+  const fallback = useContext(SaveContext);
+  const runScoped = internal?.runScoped;
+  const run = useCallback<SaveApi["run"]>(
+    (work, label) => (runScoped ? runScoped(section, work, label) : fallback.run(work, label)),
+    [runScoped, section, fallback],
+  );
+  if (!internal) return fallback;
+  return { state: internal.state, savedAt: internal.savedAt, activity: internal.activity, run };
 }
 
 /**
@@ -249,8 +335,10 @@ export interface LedgerRow {
   control?: ReactNode;
   danger?: boolean;
   dim?: boolean;
-  /** Dropped to 45% and made inert, e.g. while the master switch is off. */
+  /** Dropped to 40% and made inert, e.g. while the master switch is off. */
   muted?: boolean;
+  /** Control under the text at full width rather than beside it — a textarea. */
+  stack?: boolean;
 }
 
 export interface LedgerGroupProps {
@@ -342,64 +430,84 @@ export function LedgerGroup({ label, hint, note, rows = [], block }: LedgerGroup
   return (
     <div
       ref={revealRef}
-      className={`settings-reveal flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-12 ${
-        visible ? "is-visible" : ""
-      }`}
+      className={`settings-reveal flex flex-col pt-10 ${visible ? "is-visible" : ""}`}
     >
-      <div className="flex w-full flex-col gap-1.5 pt-0.5 lg:w-[220px] lg:flex-none">
-        <span className="text-[13.5px] font-semibold tracking-[-0.01em] text-fg-primary">
+      <div className="flex flex-col gap-1.5 pb-3">
+        <h3 className="m-0 flex items-center gap-2.5 text-settings-group font-semibold text-fg-primary">
+          <span aria-hidden className="h-[5px] w-[5px] flex-none rounded-full bg-accent-primary" />
           {label}
-        </span>
+        </h3>
         {hint ? (
-          <span className="text-[12px] leading-[1.5] text-fg-tertiary">{hint}</span>
+          <span className="max-w-[520px] pl-[15px] text-settings-desc text-fg-tertiary">
+            {hint}
+          </span>
         ) : null}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        {visibleRows.map((row) => (
-          <LedgerRowView key={row.id} row={row} />
+      <div className="flex min-w-0 flex-col">
+        {visibleRows.map((row, index) => (
+          <LedgerRowView key={row.id} row={row} first={index === 0} />
         ))}
         {block && (groupMatched || !query) ? (
-          <div className="border-t border-border-light pt-4">{block}</div>
+          <div className={visibleRows.length ? "border-t border-border-light pt-4" : "pt-1"}>
+            {block}
+          </div>
         ) : null}
         {note ? (
-          <div className="max-w-[680px] border-t border-border-light pt-3.5 text-[12.5px] leading-[1.5] text-fg-tertiary">
-            {note}
-          </div>
+          <span className="pt-2.5 text-settings-meta italic text-fg-tertiary">{note}</span>
         ) : null}
       </div>
     </div>
   );
 }
 
-function LedgerRowView({ row }: { row: LedgerRow }) {
+/**
+ * One setting: what it is on the left, the control on the right.
+ *
+ * The row bleeds 16px past the column on both sides so the highlight drawn
+ * when you arrive at it from the account check or from Activity
+ * (`.settings-row-flash`) has room around the text, while the text itself
+ * still lines up with the group label above it.
+ */
+function LedgerRowView({ row, first }: { row: LedgerRow; first: boolean }) {
   return (
     <div
-      className={`flex flex-col gap-2 border-t border-border-light py-4 sm:flex-row sm:items-center sm:gap-8 ${
-        row.muted ? "pointer-events-none opacity-45" : ""
-      }`}
+      data-row={row.id}
+      className={`settings-row -mx-4 flex flex-col gap-3 rounded-sm px-4 py-[18px] transition-opacity ${
+        row.stack ? "" : "sm:flex-row sm:items-center sm:gap-6"
+      } ${
+        first ? "" : "border-t border-border-light"
+      } ${row.muted ? "pointer-events-none opacity-40" : ""}`}
     >
-      <div className="flex w-full items-center gap-3 sm:w-[300px] sm:flex-none">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         {row.leading}
-        <span
-          className={`text-[14px] font-medium tracking-[-0.01em] ${
-            row.danger ? "text-error" : row.dim ? "text-fg-tertiary" : "text-fg-primary"
-          }`}
-        >
-          {row.title}
-        </span>
+        <div className="flex min-w-0 flex-col gap-[5px]">
+          {/* Breakable: a member with no name is titled by their e-mail, and an
+              unbroken address was wider than a phone's column. */}
+          <span
+            className={`kairos-break-anywhere text-settings-row font-medium ${
+              row.danger ? "text-error" : row.dim ? "text-fg-tertiary" : "text-fg-primary"
+            }`}
+          >
+            {row.title}
+          </span>
+          {row.desc ? (
+            <span className="kairos-break-anywhere max-w-[380px] text-settings-desc text-fg-tertiary">
+              {row.desc}
+            </span>
+          ) : null}
+        </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        {row.control ? (
-          <div className="flex flex-wrap items-center gap-3">{row.control}</div>
-        ) : null}
-        {row.desc ? (
-          <span className="max-w-[620px] text-[12.5px] leading-[1.45] text-fg-tertiary">
-            {row.desc}
-          </span>
-        ) : null}
-      </div>
+      {row.control ? (
+        <div
+          className={`flex min-w-0 max-w-full flex-wrap items-center gap-2.5 ${
+            row.stack ? "" : "sm:max-w-[60%] sm:flex-none sm:justify-end"
+          }`}
+        >
+          {row.control}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -427,19 +535,22 @@ function textOf(node: ReactNode): string {
  */
 export function LedgerSection({
   sectionId,
-  crumb,
   title,
   subtitle,
   children,
 }: {
   sectionId: string;
-  crumb: string;
+  /** Unused since /settings became one document; the eyebrow is derived. */
+  crumb?: string;
   title: string;
   subtitle?: string;
   children: ReactNode;
 }) {
+  const useT = useTranslations as unknown as (ns: string) => Translator;
+  const t = useT("settings");
   const query = useSettingsFilter();
   const parentReport = useContext(ReportContext);
+  const flagged = useContext(FlaggedSectionsContext).has(sectionId);
   const counts = useRef(new Map<string, number>());
   const [total, setTotal] = useState(0);
 
@@ -462,39 +573,56 @@ export function LedgerSection({
     [parentReport, sectionId],
   );
 
-  const filtering = query.length > 0;
-  const hidden = filtering && total === 0;
+  const known = isSettingsSection(sectionId);
+  const Icon = known ? SECTION_ICON[sectionId] : null;
+  const heading = known ? t(`nav.${sectionId}`) : title;
+  const eyebrow = known
+    ? `${sectionNumber(sectionId)} · ${t(`elegant.group.${SECTION_GROUP[sectionId]}`)}`
+    : "";
 
   return (
     <ReportContext.Provider value={report}>
-      <div className={`flex flex-col gap-10 ${hidden ? "hidden" : ""}`}>
-        {filtering ? (
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-accent-primary">
-            {title}
-          </span>
-        ) : (
-          <div className="flex flex-col gap-4 border-b border-border-light pb-5 sm:flex-row sm:items-end sm:gap-5">
-            <div className="flex flex-col gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-fg-tertiary">
-                {crumb}
-              </span>
-              <h1 className="m-0 text-[29px] font-semibold leading-none tracking-[-0.025em] text-fg-primary">
-                {title}
-              </h1>
-            </div>
-            <span className="flex-1" />
-            {subtitle ? (
-              <span className="max-w-[420px] text-[13.5px] text-fg-secondary sm:text-right">
-                {subtitle}
+      <div className="flex flex-col">
+        <div className="mb-2 flex flex-col gap-3">
+          {eyebrow ? (
+            <span
+              className={`text-settings-eyebrow font-medium uppercase tracking-[0.14em] ${
+                flagged ? "text-warning" : "text-fg-tertiary"
+              }`}
+            >
+              {eyebrow}
+            </span>
+          ) : null}
+          <h2 className="settings-serif m-0 flex items-center gap-4 text-settings-title font-light text-fg-primary">
+            {Icon ? (
+              <span
+                aria-hidden
+                className={`flex h-11 w-11 flex-none items-center justify-center rounded-md ${
+                  flagged ? "bg-warning/12 text-warning" : "bg-accent-primary/10 text-accent-primary"
+                }`}
+              >
+                <Icon size={21} />
               </span>
             ) : null}
-          </div>
-        )}
+            {heading}
+          </h2>
+          {subtitle && !query ? (
+            <p className="m-0 max-w-[560px] text-settings-subtitle text-fg-secondary">
+              {subtitle}
+            </p>
+          ) : null}
+        </div>
         {children}
       </div>
     </ReportContext.Provider>
   );
 }
+
+/**
+ * Sections the account check has something to say about. The workspace fills
+ * it; a section's eyebrow turns amber while it is listed.
+ */
+export const FlaggedSectionsContext = createContext<ReadonlySet<string>>(new Set());
 
 // ---------------------------------------------------------------------------
 // Controls
@@ -519,13 +647,13 @@ export function LedgerToggle({
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative h-[26px] w-[44px] flex-none rounded-full border transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/50 ${
-        checked ? "border-transparent bg-accent-primary" : "border-border-medium bg-bg-tertiary"
+      className={`relative h-5 w-9 flex-none rounded-full transition-colors duration-[250ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/50 ${
+        checked ? "bg-accent-primary" : "bg-fg-primary/15"
       } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
     >
       <span
-        className={`pointer-events-none absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-300 ${
-          checked ? "translate-x-[18px]" : "translate-x-0"
+        className={`pointer-events-none absolute left-0.5 top-0.5 h-4 w-4 rounded-full shadow-[0_1px_3px_rgb(0_0_0/0.35)] transition-[transform,background-color] duration-[250ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          checked ? "translate-x-4 bg-white" : "translate-x-0 bg-fg-secondary"
         }`}
       />
     </button>
@@ -551,8 +679,8 @@ export function LedgerValue({
           : "text-fg-secondary";
   return (
     <span
-      className={`text-[13.5px] ${toneClass} ${
-        mono ? "font-mono tracking-[0.08em]" : "tracking-[-0.01em]"
+      className={`${toneClass} ${
+        mono ? "font-mono text-settings-small tracking-[0.02em]" : "text-settings-body"
       }`}
     >
       {children}
@@ -575,11 +703,11 @@ export function LedgerAction({
   disabled?: boolean;
   title?: string;
 }) {
-  const className = `rounded-[7px] border px-[13px] py-1.5 text-[12.5px] font-medium transition-colors ${
+  const className = `inline-flex h-8 items-center whitespace-nowrap rounded-[6px] border px-[13px] text-settings-small font-medium transition-colors ${
     danger
-      ? "border-error/35 text-error hover:bg-error/10"
-      : "border-border-medium text-fg-primary hover:bg-bg-tertiary"
-  } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`;
+      ? "border-error/45 bg-transparent text-error hover:bg-error/10"
+      : "border-transparent bg-fg-primary/5 text-fg-primary hover:bg-fg-primary/10"
+  } ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`;
 
   if (href) {
     return (
@@ -594,6 +722,12 @@ export function LedgerAction({
     </button>
   );
 }
+
+/**
+ * The field look every text control shares: a faint wash of the ink rather
+ * than a bordered box, which only draws its edge (in the accent) while focused.
+ */
+const FIELD = "rounded-[6px] border border-transparent bg-fg-primary/5 text-settings-body text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary/50 focus:bg-transparent disabled:opacity-50";
 
 export function LedgerInput({
   value,
@@ -634,8 +768,8 @@ export function LedgerInput({
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
       onKeyDown={onKeyDown}
-      className={`${width} max-w-full rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 disabled:opacity-50 ${
-        mono ? "font-mono tracking-[0.08em]" : ""
+      className={`${width} h-9 max-w-full px-3 ${FIELD} ${
+        mono ? "font-mono tracking-[0.02em]" : ""
       }`}
     />
   );
@@ -670,7 +804,7 @@ export function LedgerTextarea({
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
-      className="w-full max-w-[420px] resize-none rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] leading-[1.5] text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 disabled:opacity-50"
+      className={`w-full resize-none px-3 py-[11px] leading-[1.6] ${FIELD}`}
     />
   );
 }
@@ -696,7 +830,7 @@ export function LedgerSelect<T extends string | number>({
       aria-label={ariaLabel}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className={`${width} max-w-full cursor-pointer rounded-[10px] border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-[13.5px] text-fg-primary outline-none transition-colors focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 disabled:cursor-not-allowed disabled:opacity-50`}
+      className={`${width} h-9 max-w-full cursor-pointer px-2.5 disabled:cursor-not-allowed ${FIELD}`}
     >
       {options.map((o) => (
         <option
@@ -762,7 +896,7 @@ export function LedgerCheck({
         </svg>
       </span>
       {showLabel ? (
-        <span className={`text-[13px] ${checked ? "text-fg-primary" : "text-fg-tertiary"}`}>
+        <span className={`text-settings-body ${checked ? "text-fg-primary" : "text-fg-tertiary"}`}>
           {label}
         </span>
       ) : null}
@@ -783,7 +917,7 @@ export function LedgerCheck({
       aria-checked={checked}
       aria-label={label}
       onClick={onClick}
-      className="flex cursor-pointer items-center gap-2.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/50"
+      className="flex cursor-pointer items-center gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/50"
     >
       {body}
     </button>
@@ -823,5 +957,5 @@ export function LedgerSwatches({
 /** A one-line inline error, for a control that refused. */
 export function LedgerError({ children }: { children: ReactNode }) {
   if (!children) return null;
-  return <span className="text-[12.5px] leading-[1.45] text-error">{children}</span>;
+  return <span className="text-settings-small text-error">{children}</span>;
 }

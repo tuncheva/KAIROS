@@ -12,6 +12,7 @@ import {
   isCspEnforced,
   staticSecurityHeaders,
 } from "~/server/http/securityHeaders";
+import { OSM_EMBED_URL } from "~/lib/eventLocation";
 
 /**
  * Tests for the Content-Security-Policy.
@@ -40,14 +41,14 @@ describe("theme init script hash", () => {
    * It runs synchronously in <head> precisely so the first painted frame is
    * already correct. The rail is the newest of these and the easiest to lose:
    * `SideNav` reads the same key, and if this line goes away the rail paints
-   * collapsed and then widens, dragging every page's `.rail-offset` margin
+   * open and then snaps shut, dragging every page's `.rail-offset` margin
    * along with it a frame later.
    */
   it("settles theme, accent and rail width before the first paint", () => {
     expect(THEME_INIT_SCRIPT).toContain("localStorage.getItem('theme')");
     expect(THEME_INIT_SCRIPT).toContain("sessionStorage.getItem('user-accent')");
-    expect(THEME_INIT_SCRIPT).toContain("kairos:railPinned");
-    expect(THEME_INIT_SCRIPT).toContain("dataset.railPinned");
+    expect(THEME_INIT_SCRIPT).toContain("kairos:railCollapsed");
+    expect(THEME_INIT_SCRIPT).toContain("dataset.railCollapsed");
   });
 
   it("is single-quoted in the source expression", () => {
@@ -92,12 +93,25 @@ describe("contentSecurityPolicy", () => {
     }
   });
 
+  it("lets the OpenStreetMap embed in as a frame and nothing more", () => {
+    // The event map is an OSM embed iframe. It needs one frame-src page; its
+    // tiles and scripts belong to the frame's own document and must stay out of
+    // ours.
+    const directive = (name: string) =>
+      policy.split("; ").find((d) => d.startsWith(`${name} `)) ?? "";
+
+    expect(directive("frame-src")).toContain(OSM_EMBED_URL);
+    for (const name of ["script-src", "img-src", "connect-src"]) {
+      expect(directive(name)).not.toContain("openstreetmap");
+    }
+  });
+
   it("no longer reaches Google Maps", () => {
     // `@react-google-maps/api` was a dependency with no importer anywhere in the
     // tree, so the policy was opening script-src, img-src, connect-src and
-    // frame-src to two Google hosts for a feature that did not exist. The package
-    // is gone; if maps come back, the allowlist entry comes back with them.
-    for (const host of ["https://maps.googleapis.com", "https://maps.gstatic.com"]) {
+    // frame-src to Google hosts for a feature that did not exist. The map is OSM
+    // now; the "Open in Google Maps" link is a plain navigation and needs no CSP.
+    for (const host of ["https://maps.googleapis.com", "https://maps.gstatic.com", "google.com/maps"]) {
       expect(policy).not.toContain(host);
     }
   });

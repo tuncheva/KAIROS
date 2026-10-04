@@ -413,7 +413,7 @@ function InlineTaskCard({ task, index }: { task: InlineTask; index: number }) {
       <span className="flex-1 truncate">{task.title}</span>
       {task.priority && (
         <span
-          className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+          className="text-[10px] px-1.5 py-0.5 rounded-sm font-medium"
           style={{
             backgroundColor: "rgb(var(--accent-primary) / 0.1)",
             color: "rgb(var(--accent-primary))",
@@ -773,6 +773,8 @@ export function ProjectIntelligenceChat(props: {
    * outside the expanded workspace passes and what this chat has always done.
    */
   pinnedAgentId?: string;
+  /** The effort picked in the composer. Undefined is the server's default. */
+  effort?: "low" | "medium" | "high" | "max";
   /** Tools the last turn called, so the workspace can render an audit trail. */
   onToolsUsed?: (names: string[]) => void;
   /**
@@ -841,7 +843,7 @@ export function ProjectIntelligenceChat(props: {
    */
   onCanClearChange?: (canClear: boolean) => void;
 }) {
-  const { projectId, pinnedAgentId } = props;
+  const { projectId, pinnedAgentId, effort } = props;
   const isConsole = props.variant === "console";
   /** The two designed surfaces. See `variant`. */
   const isPanel = isConsole || props.variant === "widget";
@@ -1763,10 +1765,11 @@ export function ProjectIntelligenceChat(props: {
         projectId,
         conversationId: conversationIdRef.current,
         agentId: pinnedAgentId,
+        effort,
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [projectId, pinnedAgentId, pushTrail, sendTurn, tc],
+    [projectId, pinnedAgentId, effort, pushTrail, sendTurn, tc],
   );
 
   /**
@@ -1811,7 +1814,7 @@ export function ProjectIntelligenceChat(props: {
       {rateLimitPopup.show && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div
-            className="w-[90vw] max-w-md rounded-2xl p-6 shadow-2xl border"
+            className="w-[90vw] max-w-md rounded-xl p-6 shadow-2xl border"
             style={{
               backgroundColor: "rgb(var(--bg-primary))",
               borderColor: "rgb(var(--border-medium))",
@@ -1824,7 +1827,7 @@ export function ProjectIntelligenceChat(props: {
               >
                 <Sparkles size={28} style={{ color: "rgb(var(--accent-primary))" }} />
               </div>
-              <h3 className="text-lg font-bold text-fg-primary">
+              <h3 className="font-display text-[19px] leading-tight font-normal text-fg-primary">
                 You&apos;ve reached your limit for messages to KAIROS
               </h3>
               <p className="text-sm text-fg-secondary leading-relaxed">
@@ -1859,7 +1862,7 @@ export function ProjectIntelligenceChat(props: {
           aria-labelledby="kairos-new-chat-title"
         >
           <div
-            className="w-full max-w-sm rounded-2xl border p-6 shadow-2xl"
+            className="w-full max-w-sm rounded-xl border p-6 shadow-2xl"
             style={{
               backgroundColor: "rgb(var(--bg-primary))",
               borderColor: "rgb(var(--border-medium))",
@@ -1875,7 +1878,7 @@ export function ProjectIntelligenceChat(props: {
               {t("deleteChatConfirmMessage")}
             </p>
             {newChatError && (
-              <p className="mt-3 text-xs text-red-400" role="alert">
+              <p className="mt-3 text-xs text-status-danger-ink" role="alert">
                 {t("deleteChatFailed", { error: newChatError })}
               </p>
             )}
@@ -1895,7 +1898,7 @@ export function ProjectIntelligenceChat(props: {
                 data-testid="new-chat-confirm"
                 onClick={() => void startNewChat()}
                 disabled={deleteConversationMutation.isPending}
-                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                className="rounded-lg border border-status-danger-border bg-status-danger-surface px-4 py-2 text-sm font-medium text-status-danger-ink transition-colors hover:border-status-danger-ink disabled:opacity-50"
               >
                 {deleteConversationMutation.isPending
                   ? t("deleting")
@@ -2066,7 +2069,7 @@ export function ProjectIntelligenceChat(props: {
           ) : messages.length === 0 ? (
             <div className="py-8 text-center space-y-5">
               <div
-                className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mx-auto"
+                className="inline-flex items-center justify-center w-12 h-12 rounded-lg mx-auto"
                 style={{
                   backgroundColor: "rgb(var(--accent-primary) / 0.1)",
                 }}
@@ -2090,7 +2093,7 @@ export function ProjectIntelligenceChat(props: {
                     key={q}
                     type="button"
                     onClick={() => handleSend(q)}
-                    className="text-[11px] px-3 py-1.5 rounded-full border transition-all hover:scale-[1.03]"
+                    className="text-[11px] px-3 py-1.5 rounded-sm border transition-all hover:scale-[1.03]"
                     style={{
                       borderColor:
                         "rgb(var(--accent-primary) / 0.2)",
@@ -2162,8 +2165,8 @@ export function ProjectIntelligenceChat(props: {
                             "group max-w-[520px] rounded-xl rounded-br-sm border border-border-medium/60 bg-bg-tertiary px-4 py-3 text-fg-primary"
                           : "group w-full max-w-[720px] text-fg-primary"
                         : m.role === "user"
-                          ? "group max-w-[85%] rounded-2xl rounded-br-md text-white px-4 py-2.5 shadow-sm"
-                          : "group max-w-[85%] rounded-2xl rounded-bl-md text-fg-primary px-4 py-2.5 shadow-sm"
+                          ? "group max-w-[85%] rounded-lg rounded-br-md text-white px-4 py-2.5 shadow-sm"
+                          : "group max-w-[85%] rounded-lg rounded-bl-md text-fg-primary px-4 py-2.5 shadow-sm"
                     }
                     style={
                       isPanel
@@ -2193,7 +2196,7 @@ export function ProjectIntelligenceChat(props: {
                         }`}
                       >
                         {isConsole && (
-                          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[7px] bg-accent-primary/15 text-accent-primary">
+                          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-sm bg-accent-primary/15 text-accent-primary">
                             <Sparkles size={13} />
                           </span>
                         )}
@@ -2264,7 +2267,7 @@ export function ProjectIntelligenceChat(props: {
                               className={
                                 m.role === "agent"
                                   ? "kairos-chat-response text-sm leading-relaxed"
-                                  : "whitespace-pre-wrap text-sm leading-relaxed"
+                                  : "whitespace-pre-wrap break-words text-sm leading-relaxed"
                               }
                             >
                               {m.text}
@@ -3440,7 +3443,7 @@ export function ProjectIntelligenceChat(props: {
       {props.hideHeader && newChatError && (
         <div
           role="alert"
-          className="shrink-0 border-t border-border-medium/60 bg-red-500/10 px-4 py-2 text-[11.5px] text-red-400"
+          className="shrink-0 border-t border-border-medium/60 bg-status-danger-surface px-4 py-2 text-[11.5px] text-status-danger-ink"
         >
           {t("deleteChatFailed", { error: newChatError })}
         </div>
@@ -3480,7 +3483,7 @@ export function ProjectIntelligenceChat(props: {
               isConsole ? "w-full px-6 pt-4 pb-5 lg:px-10" : "w-full p-3"
             }
           >
-            <div className="flex flex-col gap-3 rounded-2xl border border-border-medium/70 bg-bg-secondary px-3 py-2.5 transition-colors focus-within:border-accent-primary">
+            <div className="flex flex-col gap-3 rounded-md border border-border-medium/70 bg-bg-secondary px-3 py-2.5 transition-colors focus-within:border-accent-primary">
               <textarea
                 ref={composerRef}
                 value={draft}
@@ -3527,7 +3530,7 @@ export function ProjectIntelligenceChat(props: {
         ) : (
         <div className="w-full px-4 py-4">
           <div
-            className="flex items-end gap-2 rounded-[999px] px-3 py-2 shadow-sm"
+            className="flex items-end gap-2 rounded-md px-3 py-2 shadow-sm"
             style={{ backgroundColor: "rgb(var(--bg-secondary))" }}
           >
             <input
@@ -3535,11 +3538,11 @@ export function ProjectIntelligenceChat(props: {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={t("placeholder")}
-              className="kairos-field-bare flex-1 bg-transparent px-2 py-2 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus-visible:outline-none"
+              className="kairos-field-bare min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus-visible:outline-none"
             />
             <button
               type="submit"
-              className="h-10 shrink-0 px-4 rounded-full text-sm font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed text-white hover:scale-[1.03] active:scale-95"
+              className="h-10 shrink-0 px-4 rounded-md text-sm font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed text-white hover:scale-[1.03] active:scale-95"
               style={{
                 backgroundColor:
                   !isThinking && draft.trim()

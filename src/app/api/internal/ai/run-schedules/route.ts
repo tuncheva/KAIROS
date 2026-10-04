@@ -27,9 +27,11 @@
 import crypto from "node:crypto";
 
 import { env } from "~/env";
-import type { TRPCContext } from "~/server/api/trpc";
-import { entitlementsFor } from "~/server/billing/entitlements";
-import { db } from "~/server/db";
+import { entitlementsForUser } from "~/server/billing/entitlements";
+import {
+  reconcileSubscriptions,
+  type ReconcileReport,
+} from "~/server/billing/reconcile";
 import { createLogger } from "~/server/logger";
 import {
   cullExpiredHistory,
@@ -39,6 +41,10 @@ import {
   syncDueCalendars,
   type CalendarSweepReport,
 } from "~/server/calendar/sweep";
+import {
+  embedPending,
+  type EmbedPendingReport,
+} from "~/server/llm/core/embedPending";
 import { runDueSchedules } from "~/server/llm/scheduled/runner";
 import { sendDueEventReminders } from "~/server/notifications/eventReminders";
 import {
@@ -117,12 +123,14 @@ export async function POST(request: Request) {
     let retention: CullReport | { error: string };
     try {
       retention = await cullExpiredHistory({
-        resolveHistoryDays: (userId) =>
-          entitlementsFor({
-            db,
-            apiKeyId: null,
-            session: { user: { id: userId } },
-          } as TRPCContext).historyDays,
+        // Resolved by user id rather than through a synthesised context. The
+        // cast this used to need was already a fiction — the object had a `db`
+        // and a user id and nothing else a `TRPCContext` promises — and it
+        // became an expensive one once entitlements hit the database, because
+        // each iteration built a fresh object that the per-request memo could
+        // never hit.
+        resolveHistoryDays: async (userId) =>
+          (await entitlementsForUser(userId)).historyDays,
       });
     } catch (err) {
       log.error("history cull failed", { err });
@@ -143,6 +151,34 @@ export async function POST(request: Request) {
       calendars = { error: "Calendar sweep failed" };
     }
 
+    // Billing reconciliation rides this tick for the same reasons the cull and
+    // the calendar sweep do — and for one of its own: it is the only thing that
+    // repairs a lost Stripe webhook, and a repair nobody schedules is a repair
+    // that happens when someone complains. It throttles itself to hourly, so
+    // most of these calls return immediately; see `~/server/billing/reconcile`.
+    //
+    // It never throws, but it is wrapped anyway: this endpoint has already sent
+    // briefs by the time it runs, and a 500 here would make the caller retry them.
+    let billing: ReconcileReport | { error: string };
+    try {
+      billing = await reconcileSubscriptions();
+    } catch (err) {
+      log.error("billing reconciliation failed", { err });
+      billing = { error: "Billing reconciliation failed" };
+    }
+
+    // Embeddings ride the tick too. The database clears a row's embedding when
+    // its text changes (migration 0048); this refills them. Search fuses keyword
+    // and vector hits, so a row waiting here is still findable by its words — a
+    // late embedding costs recall on paraphrases for a few minutes, nothing more.
+    let embeddings: EmbedPendingReport | { error: string };
+    try {
+      embeddings = await embedPending();
+    } catch (err) {
+      log.error("embedding sweep failed", { err });
+      embeddings = { error: "Embedding sweep failed" };
+    }
+
     return Response.json({
       ok: true,
       ...report,
@@ -150,6 +186,8 @@ export async function POST(request: Request) {
       taskReminders,
       retention,
       calendars,
+      billing,
+      embeddings,
     });
   } catch (err) {
     log.error("scheduled sweep failed", { err });

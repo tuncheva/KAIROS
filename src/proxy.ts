@@ -40,6 +40,9 @@ const PUBLIC_PATHS = new Set([
   "/",
   "/api/auth",
   "/verify-email",
+  // Same reason: the two-step sign-in link is opened by someone who is, by
+  // definition, not signed in yet — often on a different device.
+  "/verify-login",
   // A failed sign-in has, by definition, no session cookie. Gating the page that
   // explains the failure sent it back to `/` with the error code buried in a
   // query string nothing reads — the dead end this page exists to end.
@@ -53,6 +56,13 @@ const PUBLIC_PATHS = new Set([
   "/about",
   "/contact",
   "/careers",
+  // The one marketing page that was missing, and the expensive one to miss: a
+  // visitor with no account was bounced to sign-in, so nobody could read the
+  // prices without first becoming a user. `PricingPage` reads the session and
+  // `PricingTable` takes a `signedIn` prop precisely because it expects to be
+  // rendered for someone who is not — the page was written to be public and
+  // only this list disagreed.
+  "/pricing",
 ]);
 
 /**
@@ -106,6 +116,14 @@ function isPublicPath(pathname: string): boolean {
   // `/`, which fetch followed to a 200 HTML page — so every tick logged
   // "could not reach the app" while the app was up and the sweep never ran.
   if (pathname.startsWith("/api/internal")) return true;
+  // The Stripe webhook. Stripe POSTs from its own servers with no cookie, so the
+  // session gate would bounce every delivery to `/` as a 307 — and Stripe does
+  // not follow redirects, it records a failed delivery, retries for three days
+  // and then disables the endpoint. Since the webhook is the *only* place a plan
+  // is granted, that failure is silent and total: checkout takes the money and
+  // nobody is ever upgraded. The signature check inside the route is the real
+  // gate here, and it is strictly stronger than a cookie.
+  if (pathname.startsWith("/api/stripe/webhook")) return true;
   if (pathname.startsWith("/_next")) return true;
   if (isStaticAsset(pathname)) return true;
   return false;

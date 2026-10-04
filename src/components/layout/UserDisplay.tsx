@@ -8,6 +8,9 @@ import Image from"next/image";
 import { avatarGradientStyle } from"~/lib/avatarGradient";
 import { useTranslations } from"next-intl";
 import { onAvatarUpdate } from"~/lib/avatarEvents";
+import { Skeleton } from "~/components/ui/Skeleton";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
+import { useReleasePush } from "~/hooks/useReleasePush";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -40,6 +43,7 @@ export function UserDisplay() {
  const enabled = status ==="authenticated";
 
  const utils = api.useUtils();
+ const releasePush = useReleasePush();
 
  const { data: user, isLoading } = api.user.getCurrentUser.useQuery(undefined, {
  enabled,
@@ -47,6 +51,7 @@ export function UserDisplay() {
  refetchOnWindowFocus: false,
  refetchOnMount: false,
  });
+ const showSkeleton = useSkeletonHold(isLoading);
 
  const { data: profile } = api.user.getProfile.useQuery(undefined, {
  enabled,
@@ -124,6 +129,7 @@ export function UserDisplay() {
  await utils.user.getCurrentUser.cancel();
  await utils.organization.getActive.cancel();
  await utils.organization.listMine.cancel();
+ await releasePush();
  await signOut({ callbackUrl:"/" });
  };
 
@@ -132,6 +138,7 @@ export function UserDisplay() {
  await utils.user.getCurrentUser.cancel();
  await utils.organization.getActive.cancel();
  await utils.organization.listMine.cancel();
+ await releasePush();
  await signOut({ callbackUrl:"/?switchAccount=1" });
  };
 
@@ -155,6 +162,7 @@ export function UserDisplay() {
   */
  const switchViaFullSignIn = async (account: StoredAccount) => {
  const encoded = encodeURIComponent(account.email);
+ await releasePush();
  await signOut({ callbackUrl: `/?switchAccount=1&email=${encoded}` });
  };
 
@@ -172,6 +180,13 @@ export function UserDisplay() {
  password,
  redirect: false,
  });
+
+ // The password was right, but the account has two-step sign-in on, and the
+ // switcher is a password-only door. The full sign-in asks for the code.
+ if (result?.code === "FULL_SIGN_IN_REQUIRED") {
+ await switchViaFullSignIn(account);
+ return;
+ }
 
  if (result?.error) {
  // The server cannot distinguish "wrong password" from "no password on this
@@ -191,14 +206,21 @@ export function UserDisplay() {
  window.location.href ="/";
  };
 
- if (isLoading) {
+ if (showSkeleton) {
  return (
- <div className="flex items-center gap-3 animate-pulse">
- <div className="hidden sm:flex flex-col items-end gap-1">
- <div className="h-4 bg-bg-tertiary/60 rounded w-24" />
- <div className="h-3 bg-bg-tertiary/60 rounded w-32" />
+ <div className="flex items-center gap-3" aria-hidden="true">
+ {/* Same boxes as the loaded button: a 20px name line and a 16px email
+     line, right-aligned, then the avatar and the (real, inert) chevron. */}
+ <div className="hidden sm:flex flex-col items-end">
+ <span className="flex h-5 items-center">
+ <Skeleton className="h-[9px] w-24" />
+ </span>
+ <span className="flex h-4 items-center">
+ <Skeleton className="h-[7px] w-32" row={1} />
+ </span>
  </div>
- <div className="w-8 h-8 bg-bg-tertiary/60 rounded-full" />
+ <Skeleton shape="circle" className="w-8 h-8" />
+ <ChevronDown size={16} className="text-fg-secondary" />
  </div>
  );
  }
@@ -249,11 +271,11 @@ export function UserDisplay() {
 
  {isOpen && (
  <div
- className="absolute right-0 mt-3 w-64 rounded-2xl dark:border-white/[0.06] border border-slate-200 shadow-2xl overflow-hidden z-50 dark:bg-[#16151A] bg-white"
+ className="absolute right-0 mt-3 w-64 rounded-lg border border-border-medium shadow-2xl overflow-hidden z-50 bg-bg-elevated"
  role="menu"
  aria-label={tSettings("title")}
  >
- <div className="p-4 border-b dark:border-white/10 border-slate-200 dark:bg-[#1A191E] bg-slate-50">
+ <div className="p-4 border-b border-border-medium bg-bg-secondary">
  <div className="flex items-center gap-3">
  {avatarSrc ? (
  <Image
@@ -336,7 +358,7 @@ export function UserDisplay() {
  className="w-full px-2.5 py-1.5 text-sm rounded-lg bg-bg-secondary/60 text-fg-primary border border-border-light/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary"
  />
  {switchError ? (
- <div className="text-xs text-red-500">{switchError}</div>
+ <div className="text-xs text-status-danger-ink">{switchError}</div>
  ) : null}
  <div className="flex items-center gap-2">
  <button

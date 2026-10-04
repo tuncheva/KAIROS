@@ -21,7 +21,7 @@ import { and, eq } from "drizzle-orm";
 
 import { env } from "~/env";
 import { auth } from "~/server/auth";
-import { exchangeCode } from "~/server/calendar/google";
+import { exchangeCode, hasCalendarScope } from "~/server/calendar/google";
 import { syncConnection } from "~/server/calendar/sync";
 import { encryptToken, newTokenSalt } from "~/server/calendar/tokens";
 import { db } from "~/server/db";
@@ -77,6 +77,20 @@ export async function GET(request: Request) {
     return back("failed");
   }
 
+  // A grant without calendar scope is the failure this flow is most likely to
+  // produce, and the least obvious: the consent screen's calendar checkboxes are
+  // per-scope and can be left unticked, and `include_granted_scopes=true` then
+  // returns a perfectly valid token carrying only the sign-in scopes. Stored, it
+  // becomes a connection that 403s on every sync for ever. Refused here, where
+  // there is still a user in front of a browser who can be told what to tick.
+  if (!hasCalendarScope(tokens.scope)) {
+    log.warn("calendar grant carried no calendar scope", {
+      userId,
+      scope: tokens.scope,
+    });
+    return back("no_scope");
+  }
+
   // No refresh token means the grant expires in an hour and cannot be renewed.
   // Refused rather than stored, because storing it would produce a connection
   // that works now and dies silently before the first scheduled sync.
@@ -98,6 +112,7 @@ export async function GET(request: Request) {
         refreshToken: encryptToken(tokens.refreshToken, salt),
         tokenSalt: salt,
         accessTokenExpiresAt: tokens.expiresAt,
+        scope: tokens.scope,
       })
       .onConflictDoUpdate({
         target: [calendarConnections.userId, calendarConnections.provider],
@@ -106,6 +121,7 @@ export async function GET(request: Request) {
           refreshToken: encryptToken(tokens.refreshToken, salt),
           tokenSalt: salt,
           accessTokenExpiresAt: tokens.expiresAt,
+          scope: tokens.scope,
           accountEmail: session.user.email ?? null,
           // A reconnection starts clean: the old sync token belonged to a grant
           // that is being replaced, and keeping it would ask Google for a delta

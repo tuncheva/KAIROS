@@ -1,6 +1,26 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
+/**
+ * An optional string where a blank value means "unset" rather than "set to
+ * nothing".
+ *
+ * `z.string().optional()` accepts `""`, so `STRIPE_PRICE_TEAM_ANNUAL=` — a
+ * declared-but-empty line, which is how half of `.env` files record "we haven't
+ * filled this in yet" — parsed as a present value. Downstream that is worse than
+ * being unset: `priceIdFor` returned `""`, `isPlanPurchasable` saw a non-null
+ * value and rendered a buy button, and checkout then failed at Stripe.
+ *
+ * Collapsing to `undefined` rather than rejecting, because these variables are
+ * optional by design — the billing surface is built to degrade to "unavailable",
+ * and a blank line should not be the one thing that stops the app booting.
+ */
+const blankAsUnset = () =>
+  z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().min(1).optional(),
+  );
+
 export const env = createEnv({
 
   server: {
@@ -67,6 +87,8 @@ export const env = createEnv({
     LLM_MODEL_FAST: z.string().optional(),
     LLM_EMBEDDING_MODEL: z.string().optional(),
     LLM_EMBEDDING_DIMS: z.string().optional(),
+    /** "true" sends `input_type` (query | passage) — required by NVIDIA's asymmetric embedding models. */
+    LLM_EMBEDDING_INPUT_TYPE: z.enum(["true", "false"]).optional(),
     /**
      * Optional dedicated embedding endpoint. When set, embedding calls go here
      * instead of the main LLM base URL — use when the chat provider does not
@@ -113,6 +135,15 @@ export const env = createEnv({
     REDIS_NATIVE_URL: z.string().optional(),
 
     /**
+     * Web Push (VAPID). Unset, push is off and notifications stay in-app only.
+     * Generate a pair with `pnpm dlx web-push generate-vapid-keys`; the public
+     * half is `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. The subject must be `mailto:` or a
+     * real `https:` URL — Apple answers a localhost subject with 403 BadJwtToken.
+     */
+    VAPID_PRIVATE_KEY: blankAsUnset(),
+    VAPID_SUBJECT: blankAsUnset(),
+
+    /**
      * silent | error | warn | info | debug. Unset: debug in dev, info in prod.
      *
      * Declared here for validation and discoverability, but `~/server/logger`
@@ -124,6 +155,61 @@ export const env = createEnv({
 
     /** Any non-empty value sends CSP as report-only instead of enforcing it. */
     CSP_REPORT_ONLY: z.string().optional(),
+
+    /**
+     * Stripe.
+     *
+     * All optional, and the whole billing surface degrades to "unavailable"
+     * rather than failing at boot when they are unset. That is not politeness —
+     * it is what keeps the app runnable in development and CI without a Stripe
+     * account, and what makes `isBillingConfigured()` a real question with a
+     * real answer rather than an assertion that always holds.
+     *
+     * The consequence is that a *production* deploy missing these will run with
+     * checkout disabled instead of crashing. `~/server/billing/stripe` logs a
+     * warning at first use for exactly that reason.
+     */
+    STRIPE_SECRET_KEY: blankAsUnset(),
+    /**
+     * The signing secret for the webhook endpoint, from the Stripe dashboard.
+     *
+     * Without it the webhook route rejects every delivery. That is deliberate
+     * and must never become a bypass: the route mutates subscription state
+     * purely on the strength of its payload, so an unverified POST to it is a
+     * free Pro subscription for anyone who can reach the URL.
+     */
+    STRIPE_WEBHOOK_SECRET: blankAsUnset(),
+
+    // Price IDs, one per (plan × interval). Server-side so a test-mode id can
+    // never be inlined into a client bundle and charge a real customer nothing.
+    //
+    // `blankAsUnset` rather than a bare optional string — see its docblock. A
+    // declared-but-empty line used to render a buy button that could not check
+    // out.
+    STRIPE_PRICE_PRO_MONTHLY: blankAsUnset(),
+    STRIPE_PRICE_PRO_ANNUAL: blankAsUnset(),
+    STRIPE_PRICE_TEAM_MONTHLY: blankAsUnset(),
+    STRIPE_PRICE_TEAM_ANNUAL: blankAsUnset(),
+
+    /**
+     * Whether checkout asks Stripe to calculate VAT.
+     *
+     * Off by default, and the default is the awkward one: selling without it
+     * takes the VAT out of margin on every euro-priced subscription, so this
+     * wants to be `true` in production. It defaults to `false` anyway because
+     * Stripe **rejects the checkout session outright** when `automatic_tax` is
+     * on and Stripe Tax is not yet active on the account — and "nobody can buy
+     * anything" is a worse first day than "the tax is wrong".
+     *
+     * Turn it on once Stripe Tax reports `active` with an origin registration,
+     * which is a dashboard step this code cannot perform or detect cheaply. The
+     * checkout mutation logs a warning while it is off, so the reminder lives
+     * somewhere other than a comment.
+     */
+    STRIPE_AUTOMATIC_TAX: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
 
     NODE_ENV: z
       .enum(["development", "test", "production"])
@@ -137,6 +223,7 @@ export const env = createEnv({
     // variable was checking it in the wrong scope. Client vars stay readable on
     // the server, so existing server-side reads are unaffected.
     NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: blankAsUnset(),
   },
 
 
@@ -161,6 +248,7 @@ export const env = createEnv({
     LLM_MODEL_FAST: process.env.LLM_MODEL_FAST,
     LLM_EMBEDDING_MODEL: process.env.LLM_EMBEDDING_MODEL,
     LLM_EMBEDDING_DIMS: process.env.LLM_EMBEDDING_DIMS,
+    LLM_EMBEDDING_INPUT_TYPE: process.env.LLM_EMBEDDING_INPUT_TYPE,
     LLM_EMBEDDING_BASE_URL: process.env.LLM_EMBEDDING_BASE_URL,
     LLM_EMBEDDING_API_KEY: process.env.LLM_EMBEDDING_API_KEY,
     LLM_REASONING_EFFORT: process.env.LLM_REASONING_EFFORT,
@@ -176,8 +264,19 @@ export const env = createEnv({
     WS_SECRET: process.env.WS_SECRET,
     WS_INTERNAL_URL: process.env.WS_INTERNAL_URL,
     REDIS_NATIVE_URL: process.env.REDIS_NATIVE_URL,
+    VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+    VAPID_SUBJECT: process.env.VAPID_SUBJECT,
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     LOG_LEVEL: process.env.LOG_LEVEL,
     CSP_REPORT_ONLY: process.env.CSP_REPORT_ONLY,
+
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    STRIPE_PRICE_PRO_MONTHLY: process.env.STRIPE_PRICE_PRO_MONTHLY,
+    STRIPE_PRICE_PRO_ANNUAL: process.env.STRIPE_PRICE_PRO_ANNUAL,
+    STRIPE_PRICE_TEAM_MONTHLY: process.env.STRIPE_PRICE_TEAM_MONTHLY,
+    STRIPE_PRICE_TEAM_ANNUAL: process.env.STRIPE_PRICE_TEAM_ANNUAL,
+    STRIPE_AUTOMATIC_TAX: process.env.STRIPE_AUTOMATIC_TAX,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

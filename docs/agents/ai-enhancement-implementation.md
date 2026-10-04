@@ -225,7 +225,10 @@ codebase audit flagged (#13) — and is a candidate for rewriting.
 - **Timezones.** `ai_schedules.hourUtc` is UTC. Fine for one region; a real
   timezone column is needed before this ships more widely.
 - **Undo of updates/deletes** needs before-images in the applies tables.
-- **Live evals.** The harness measures our half of the contract offline. Wiring
-  `EVAL_LIVE=1` to send the real messages upstream is the obvious next step.
+- **Live evals cover A1 routing only.** `pnpm eval:live`
+  (`tests/agents/evals/routing.live.test.ts`) sends the golden set to the
+  configured model through `runA1Turn` with stubbed tools, and writes a report to
+  `docs/diploma/evals/`. The plans A2–A6 produce and the scheduled agents' prose
+  have no golden set yet.
 - **`getAiMetrics` is per-user.** A cross-tenant admin view needs an admin role,
   which KAIROS does not currently have.

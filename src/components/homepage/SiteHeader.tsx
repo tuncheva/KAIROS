@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "~/components/layout/LanguageSwitcher";
-import { ScrollProgress } from "~/components/homepage/ScrollProgress";
 import { openOnboarding } from "~/components/onboarding/OnboardingSheet";
 
 /**
@@ -12,68 +11,68 @@ import { openOnboarding } from "~/components/onboarding/OnboardingSheet";
  * would full-reload the page; it needs next/link.
  */
 const NAV = [
-    { href: "#workspaces", key: "navWorkspaces" },
-    { href: "#product", key: "navProduct" },
-    { href: "#why", key: "navWhyKairos" },
+    { href: "#agents", key: "navAgents" },
+    { href: "#teams", key: "navTeams" },
+    { href: "#events", key: "navEvents" },
     { href: "#footer", key: "navAbout" },
 ] as const;
 
+/** Drops in with the rest of the page once the intro curtain lifts (`.k-in-down`). */
 export function SiteHeader({ onSignIn }: { onSignIn: () => void }) {
     const t = useTranslations("home");
 
     return (
-        <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[rgb(8_8_12_/_0.72)] backdrop-blur-[20px]">
-            <div className="flex w-full items-center justify-between gap-4 px-6 py-[18px] lg:px-12">
+        <header className="k-in-down border-b border-fg-primary/6 [animation-delay:0.1s]">
+            <div className="flex h-20 w-full items-center justify-between gap-4 px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-20">
                 <a
-                  href="#top"
-                  aria-label={t("aboutKairos")}
-                  title={t("aboutKairos")}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    openOnboarding();
-                  }}
-                  className="flex flex-shrink-0 cursor-pointer items-center gap-3 transition-opacity hover:opacity-70"
+                    href="#top"
+                    aria-label={t("aboutKairos")}
+                    title={t("aboutKairos")}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        openOnboarding();
+                    }}
+                    className="flex flex-shrink-0 cursor-pointer items-center gap-3 justify-self-start transition-opacity hover:opacity-70"
                 >
                     <Image
                         src="/logo_white.png"
                         alt=""
-                        width={30}
-                        height={30}
-                        className="h-[30px] w-[30px] object-contain"
+                        width={24}
+                        height={24}
+                        className="h-6 w-6 object-contain"
                         priority
                     />
-                    <span className="font-display text-[25px] tracking-[0.07em] text-fg-primary">
+                    <span className="font-display text-[23px] tracking-[0.08em] text-fg-primary">
                         KAIROS
                     </span>
                 </a>
 
-                <nav className="hidden items-center gap-[34px] font-mono text-[11px] uppercase tracking-[0.18em] text-[rgb(150,150,162)] lg:flex">
+                <nav aria-label="Primary" className="hidden items-center gap-10 text-sm lg:flex">
                     {NAV.map((item) => (
-                        <a key={item.href} href={item.href} className="k-nav text-inherit">
+                        <a key={item.href} href={item.href} className="k-nav text-fg-tertiary">
                             {t(item.key)}
                         </a>
                     ))}
                 </nav>
 
-                <div className="flex flex-shrink-0 items-center gap-3">
+                <div className="flex flex-shrink-0 items-center gap-4 justify-self-end sm:gap-7">
                     <LanguageSwitcher variant="compact" />
                     <button
                         type="button"
                         onClick={onSignIn}
-                        className="k-ghost hidden rounded-full border border-white/[0.16] px-[18px] py-[9px] text-[13px] font-semibold text-[rgb(210,210,220)] sm:inline-flex"
+                        className="k-nav hidden text-sm text-fg-primary sm:inline"
                     >
                         {t("logIn")}
                     </button>
                     <button
                         type="button"
                         onClick={onSignIn}
-                        className="k-btn rounded-full bg-accent-primary px-[22px] py-[10px] text-[13px] font-bold text-white"
+                        className="k-lift h-11 rounded-full bg-fg-primary px-[22px] text-sm font-semibold text-bg-primary"
                     >
                         {t("startFree")}
                     </button>
                 </div>
             </div>
-            <ScrollProgress />
         </header>
     );
 }

@@ -37,7 +37,7 @@ export function EventComposer({
 
   return (
     <div
-      className="dash-rise rounded-xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#0e0e14]"
+      className="dash-rise rounded-xl border border-border-medium bg-bg-elevated p-4"
       style={{ animationDelay: "80ms" }}
     >
       <div className="flex items-center gap-3">
@@ -55,7 +55,7 @@ export function EventComposer({
           maxLength={256}
           placeholder={t("composerPlaceholder")}
           aria-label={t("eventTitle")}
-          className="h-10 min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-fg-primary placeholder:text-fg-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary/40 dark:border-white/10 dark:bg-white/5"
+          className="h-10 min-w-0 flex-1 rounded-lg border border-border-medium bg-bg-secondary px-3 text-sm text-fg-primary placeholder:text-fg-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary/40"
         />
       </div>
 

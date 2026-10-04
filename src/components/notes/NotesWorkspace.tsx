@@ -24,7 +24,7 @@ import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useDateFormat } from "~/hooks/useDateFormat";
 
-import { ConfirmDialog } from "./ConfirmDialog";
+import { NotesConfirmDialog } from "./notesDialog";
 import { LockNoteDialog } from "./LockNoteDialog";
 import { NoteList } from "./NoteList";
 import { NotePage, type DraftInput } from "./NotePage";
@@ -542,7 +542,7 @@ export function NotesWorkspace() {
      Without it, Next keeps the current UI on screen until the new payload
      arrives, so the rail and the list hold still and only the pane that changed
      changes. The loading state moves to the components that own the data:
-     `NoteList` already shimmered its own rows, and `NotePage` now does the same
+     `NoteList` already hatches its own rows, and `NotePage` now does the same
      when the route names a note the queries have not answered for yet. */
   const isNoteLoading =
     publicId !== null && activeNote === null && (ownQuery.isLoading || sharedQuery.isLoading);
@@ -580,10 +580,15 @@ export function NotesWorkspace() {
   const listSwap = swapping && !showPageOnMobile ? "notes-push-in md:animate-none" : "";
   const pageSwap = swapping && showPageOnMobile ? "notes-push-in md:animate-none" : "";
 
+  /* `tui-screen` is the dashboard's ground and diagonal hatch. The rail, list
+     and page leave their backgrounds unpainted so it runs under all three; the
+     mobile sheet wears it too, since it has to cover the list. */
   return (
-    <div className="flex h-full overflow-hidden">
-      {/* Rail — a column on desktop, a sheet on mobile. */}
-      <div className="hidden md:block w-[236px] flex-none h-full">
+    <div className="notes-quiet tui-screen flex h-full overflow-hidden text-fg-primary">
+      {/* Rail — a column on desktop, a sheet below `lg`. The list/note split
+          still starts at `md`, but a 768px tablet cannot also hold a 236px
+          rail: rail + list left the note about 214px wide. */}
+      <div className="hidden lg:block w-[236px] flex-none h-full">
         <NotesRail
           view={view}
           onViewChange={(next) => {
@@ -607,7 +612,7 @@ export function NotesWorkspace() {
       </div>
 
       {railOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden">
           <div
             className={`absolute inset-0 bg-black/45 ${
               railClosing ? "notes-sheet-scrim--out" : "notes-sheet-scrim"
@@ -616,7 +621,7 @@ export function NotesWorkspace() {
             aria-hidden="true"
           />
           <div
-            className={`absolute inset-y-0 left-0 w-[280px] max-w-[85vw] shadow-2xl ${
+            className={`tui-screen absolute inset-y-0 left-0 w-[280px] max-w-[85vw] shadow-2xl ${
               railClosing ? "notes-sheet--out" : "notes-sheet"
             }`}
           >
@@ -676,9 +681,6 @@ export function NotesWorkspace() {
           query={query}
           lockedExcluded={lockedExcluded}
           unlocked={unlockedBodies}
-          notebookNameOf={(id) =>
-            id === null ? null : (notebooks.find((notebook) => notebook.id === id)?.name ?? null)
-          }
           locale={dateLocale}
           isLoading={isListLoading}
           onSelect={openNote}
@@ -796,10 +798,12 @@ export function NotesWorkspace() {
       )}
 
       {confirmDeleteNote !== null && (
-        <ConfirmDialog
+        <NotesConfirmDialog
+          eyebrow={t("dialog.permanent")}
           title={t("delete.title")}
           message={t("delete.confirmMessage")}
-          confirmLabel={t("actions.delete")}
+          confirmLabel={deleteNote.isPending ? t("common.working") : t("actions.delete")}
+          cancelLabel={t("common.cancel")}
           destructive
           isPending={deleteNote.isPending}
           onCancel={() => setConfirmDeleteNote(null)}
@@ -811,13 +815,15 @@ export function NotesWorkspace() {
       )}
 
       {confirmDeleteNotebook && (
-        <ConfirmDialog
+        <NotesConfirmDialog
+          eyebrow={t("dialog.permanent")}
           title={t("notebooks.deleteTitle")}
           /* The FK is `on delete set null`, so the notes survive and become
              unfiled. The old `window.confirm` said as much; the dialog should
              not say less. */
           message={t("notebooks.deleteConfirm", { name: confirmDeleteNotebook.name })}
-          confirmLabel={t("actions.delete")}
+          confirmLabel={deleteNotebook.isPending ? t("common.working") : t("actions.delete")}
+          cancelLabel={t("common.cancel")}
           destructive
           isPending={deleteNotebook.isPending}
           onCancel={() => setConfirmDeleteNotebook(null)}
@@ -829,7 +835,8 @@ export function NotesWorkspace() {
       )}
 
       {resetPromptFor !== null && (
-        <ConfirmDialog
+        <NotesConfirmDialog
+          eyebrow={t("dialog.recovery")}
           title={t("messages.incorrectPassword")}
           message={t("password.resetPrompt")}
           confirmLabel={t("password.resetPassword")}

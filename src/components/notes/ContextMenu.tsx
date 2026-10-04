@@ -20,6 +20,8 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { Overlay } from "~/components/ui/Overlay";
+
 import { exitMs, MENU_EXIT_MS, popoverOrigin } from "./notesMotion";
 import { POPOVER_SURFACE } from "./notesUi";
 
@@ -141,26 +143,32 @@ export function ContextMenu({
     };
   }, [closing, close, dismiss]);
 
+  /* Portalled, because the coordinates are viewport ones: inside the shell's
+     `.kairos-page-enter` (see `ui/Overlay`) `fixed` resolves against <main>,
+     so the panel landed offset by the rail and the bars above it — on a phone
+     a long-press opened it a bar's height below the finger, or clipped it. */
   return (
-    <div
-      ref={menuRef}
-      role="menu"
-      aria-label={label}
-      style={{
-        top: position.y,
-        left: position.x,
-        /* Whichever way the clamp pushed the panel is the way it came from. */
-        transformOrigin: popoverOrigin({
-          align: position.x < anchor.x ? "right" : "left",
-          flipped: position.y < anchor.y,
-        }),
-      }}
-      className={`fixed z-50 max-h-[70dvh] min-w-[190px] overflow-y-auto p-1.5 ${POPOVER_SURFACE} ${
-        closing ? "notes-menu--out" : "notes-menu"
-      }`}
-    >
-      {children(close)}
-    </div>
+    <Overlay>
+      <div
+        ref={menuRef}
+        role="menu"
+        aria-label={label}
+        style={{
+          top: position.y,
+          left: position.x,
+          /* Whichever way the clamp pushed the panel is the way it came from. */
+          transformOrigin: popoverOrigin({
+            align: position.x < anchor.x ? "right" : "left",
+            flipped: position.y < anchor.y,
+          }),
+        }}
+        className={`fixed z-50 max-h-[70dvh] min-w-[190px] overflow-y-auto p-1.5 ${POPOVER_SURFACE} ${
+          closing ? "notes-menu--out" : "notes-menu"
+        }`}
+      >
+        {children(close)}
+      </div>
+    </Overlay>
   );
 }
 

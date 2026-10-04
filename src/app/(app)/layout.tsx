@@ -1,6 +1,7 @@
 import { SideNav } from "~/components/layout/SideNav";
 import { ProfilePeekProvider } from "~/components/profile/ProfilePeekProvider";
 import { OnboardingGate } from "~/components/auth/OnboardingGate";
+import { PushRegistrar } from "~/components/notifications/PushRegistrar";
 
 /**
  * The shell every signed-in page sits inside.
@@ -48,6 +49,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ProfilePeekProvider>
       <SideNav />
+      <PushRegistrar />
       {/* One mount, covering every signed-in route. It was mounted on `/create`
           and `/notes/*` only — never on `/dashboard`, which is where sign-in
           actually lands — so the users it exists for routinely never met it.

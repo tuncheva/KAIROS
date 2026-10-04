@@ -46,8 +46,17 @@ import {
 const MAX_KEYS = 10;
 const MAX_WEBHOOKS = 5;
 
-function assertDocuments(ctx: Parameters<typeof entitlementsFor>[0]): void {
-  if (!entitlementsFor(ctx).documents) {
+// Both assertions became async when entitlements started reading the database.
+// The `await` at each of the fourteen call sites is load-bearing: without it the
+// promise is truthy, the `throw` happens off the request's own stack, and the
+// gate passes every caller while logging an unhandled rejection. Kept as
+// functions rather than folded into a procedure builder because several
+// procedures check ownership first and would otherwise report "Pro feature" for
+// a resource that is not the caller's.
+async function assertDocuments(
+  ctx: Parameters<typeof entitlementsFor>[0],
+): Promise<void> {
+  if (!(await entitlementsFor(ctx)).documents) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Document search is a Pro feature.",
@@ -55,8 +64,10 @@ function assertDocuments(ctx: Parameters<typeof entitlementsFor>[0]): void {
   }
 }
 
-function assertApiAccess(ctx: Parameters<typeof entitlementsFor>[0]): void {
-  if (!entitlementsFor(ctx).apiAccess) {
+async function assertApiAccess(
+  ctx: Parameters<typeof entitlementsFor>[0],
+): Promise<void> {
+  if (!(await entitlementsFor(ctx)).apiAccess) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "API access is a Pro feature.",
@@ -68,7 +79,7 @@ export const integrationRouter = createTRPCRouter({
   // ---- API keys -----------------------------------------------------------
 
   keys: protectedProcedure.query(async ({ ctx }) => {
-    assertApiAccess(ctx);
+    await assertApiAccess(ctx);
     return listApiKeys(ctx.session.user.id);
   }),
 
@@ -82,7 +93,7 @@ export const integrationRouter = createTRPCRouter({
   createKey: protectedProcedure
     .input(z.object({ label: z.string().trim().min(1).max(80) }))
     .mutation(async ({ ctx, input }) => {
-      assertApiAccess(ctx);
+      await assertApiAccess(ctx);
 
       const existing = await listApiKeys(ctx.session.user.id);
       // Revoked keys are kept for the audit trail, so the cap counts live ones.
@@ -111,7 +122,7 @@ export const integrationRouter = createTRPCRouter({
   revokeKey: protectedProcedure
     .input(z.object({ keyId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      assertApiAccess(ctx);
+      await assertApiAccess(ctx);
 
       const revoked = await revokeApiKey({
         userId: ctx.session.user.id,
@@ -133,7 +144,7 @@ export const integrationRouter = createTRPCRouter({
   // ---- Webhooks -----------------------------------------------------------
 
   webhooks: protectedProcedure.query(async ({ ctx }) => {
-    assertApiAccess(ctx);
+    await assertApiAccess(ctx);
 
     return ctx.db
       .select({
@@ -158,7 +169,7 @@ export const integrationRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      assertApiAccess(ctx);
+      await assertApiAccess(ctx);
 
       // Validated here as well as at delivery time. Refusing at registration is
       // what makes the rule visible to the user; the delivery-time check is what
@@ -211,7 +222,7 @@ export const integrationRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      assertApiAccess(ctx);
+      await assertApiAccess(ctx);
 
       const updated = await ctx.db
         .update(webhooks)
@@ -245,7 +256,7 @@ export const integrationRouter = createTRPCRouter({
   deleteWebhook: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      assertApiAccess(ctx);
+      await assertApiAccess(ctx);
 
       await ctx.db
         .delete(webhooks)
@@ -298,7 +309,7 @@ export const integrationRouter = createTRPCRouter({
       // reasons a Connect button would dead-end are not interchangeable: a Free
       // plan is an upgrade prompt, a missing client id is a deployment gap the
       // user can do nothing about, and collapsing them means the UI has to guess.
-      entitled: entitlementsFor(ctx).calendarSync,
+      entitled: (await entitlementsFor(ctx)).calendarSync,
       configured: isGoogleCalendarConfigured(),
     };
   }),
@@ -344,7 +355,7 @@ export const integrationRouter = createTRPCRouter({
   // ---- Documents ----------------------------------------------------------
 
   documents: protectedProcedure.query(async ({ ctx }) => {
-    assertDocuments(ctx);
+    await assertDocuments(ctx);
 
     return ctx.db
       .select({
@@ -387,7 +398,7 @@ export const integrationRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      assertDocuments(ctx);
+      await assertDocuments(ctx);
 
       if (!isSupportedDocumentType(input.mimeType)) {
         throw new TRPCError({
@@ -428,7 +439,7 @@ export const integrationRouter = createTRPCRouter({
   reindexDocument: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      assertDocuments(ctx);
+      await assertDocuments(ctx);
 
       const [owned] = await ctx.db
         .select({ id: documents.id })
@@ -451,7 +462,7 @@ export const integrationRouter = createTRPCRouter({
   deleteDocument: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      assertDocuments(ctx);
+      await assertDocuments(ctx);
 
       // Fetch the storageKey before deleting so we can remove the file from
       // the upload provider. Ownership is checked here rather than in a
@@ -514,7 +525,7 @@ export const integrationRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      assertApiAccess(ctx);
+      await assertApiAccess(ctx);
 
       // Ownership through the parent row, so a delivery log cannot be read by id
       // alone.

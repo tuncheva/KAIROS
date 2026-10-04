@@ -6,7 +6,8 @@ import path from "path";
  * i18n progress keys.
  *
  * /progress is the record redesign: a contribution grid, a suggestions list,
- * the remaining workload and the all-time leaderboard. Every string it renders
+ * the remaining workload, the all-time standings and, for people who can view
+ * analytics, the team view. Every string it renders
  * lives under `progress.record`, and a locale missing one shows the reader a
  * MISSING_MESSAGE overlay rather than a label — so the list below is derived
  * from what the components actually call.
@@ -28,6 +29,10 @@ const INDIRECT_KEYS = [
   "sinceWeek",
   "sinceMonth",
   "sinceAll",
+  // Called through `t.rich`, which the `t("…")` scan below does not match.
+  "headlinePerson",
+  "headlineFinished",
+  "headlineTeam",
 ];
 
 /** `t("key")` calls in components bound to the `progress.record` namespace. */

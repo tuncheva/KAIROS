@@ -51,8 +51,8 @@ export const stickyNotes = createTable(
     passwordSalt: varchar("password_salt", { length: 256 }),
     shareStatus: shareStatusEnum("share_status").notNull(),
     publicId: varchar("public_id", { length: 21 }),
-    // embedding vector(1024) — deliberately absent from this schema: created by
-    // migration 0044_pgvector_embeddings and queried via raw sql in
+    // embedding halfvec(2048) — deliberately absent from this schema: created by
+    // migrations 0044/0049 and queried via raw sql in
     // searchTools.ts. See the note on `tasks.embedding` for why.
   }),
   (t) => [

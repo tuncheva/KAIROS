@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown } from "~/components/ui/icons";
 
 export interface ComposerMenuOption {
@@ -46,7 +46,28 @@ export function ComposerMenu({
   tone = "neutral",
 }: Props) {
   const [open, setOpen] = useState(false);
+  /* How far left the list has to move to stay on screen. */
+  const [shift, setShift] = useState(0);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  /*
+   * The list hangs off the chip's left edge, which is right until the chips
+   * wrap on a phone: the third one starts past the middle of a 375px screen and
+   * a 288px list then runs off the right edge. Measured before paint so it
+   * never flashes in the wrong place; on a desktop there is always room and the
+   * shift stays 0.
+   */
+  useLayoutEffect(() => {
+    if (!open) return;
+    const root = rootRef.current;
+    const list = listRef.current;
+    if (!root || !list) return;
+    const gutter = 8;
+    const left = root.getBoundingClientRect().left;
+    const overflow = left + list.offsetWidth - (window.innerWidth - gutter);
+    setShift(overflow > 0 ? -Math.min(overflow, left - gutter) : 0);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -83,7 +104,7 @@ export function ComposerMenu({
          * this size, and it leaves the accent to mean one thing — who is
          * answering — instead of two.
          */
-        className={`flex max-w-[190px] items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] transition-colors ${
+        className={`kairos-tap flex max-w-[190px] items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] transition-colors ${
           tone === "accent"
             ? "bg-accent-primary/[0.08] text-accent-primary shadow-[0_0_0_0.5px_rgb(var(--accent-primary)/0.4)] hover:bg-accent-primary/15"
             : "text-fg-tertiary shadow-[0_0_0_0.5px_rgb(var(--border-medium)/0.8)] hover:text-fg-secondary"
@@ -96,8 +117,10 @@ export function ComposerMenu({
 
       {open && (
         <div
+          ref={listRef}
           role="listbox"
-          className="kairos-menu-surface absolute bottom-[calc(100%+6px)] left-0 z-30 max-h-72 w-72 overflow-y-auto rounded-xl p-1.5"
+          style={{ left: shift }}
+          className="kairos-menu-surface absolute bottom-[calc(100%+6px)] left-0 z-30 max-h-72 w-72 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl p-1.5"
         >
           {options.map((option) => {
             const isSelected = option.id === selected;

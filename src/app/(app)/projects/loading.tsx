@@ -1,22 +1,33 @@
-export default function ProjectsLoading() {
+import { getTranslations } from "next-intl/server";
+
+import { TopBar } from "~/components/layout/TopBar";
+import { ProjectsSkeleton } from "~/components/projects/ProjectsSkeleton";
+import { Plus } from "~/components/ui/icons";
+
+/**
+ * Mirrors `page.tsx`: the same shell and the real top bar, with the page's
+ * primary action drawn inert until the drawer that owns it has loaded.
+ */
+export default async function ProjectsLoading() {
+  const t = await getTranslations("projects.drawer");
+
   return (
     <div className="min-h-dvh bg-bg-primary">
-      <div className="rail-offset min-h-dvh flex flex-col kairos-topbar-gap">
-        <header className="sticky top-16 lg:top-0 z-30 topbar-solid">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4 flex justify-between items-center">
-            <div className="h-7 w-28 bg-bg-secondary rounded animate-pulse" />
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-bg-secondary rounded-full animate-pulse" />
-              <div className="h-8 w-8 bg-bg-secondary rounded-full animate-pulse" />
-            </div>
-          </div>
-        </header>
-        <main className="flex-1 px-4 sm:px-6 pt-4">
-          <div className="max-w-6xl mx-auto space-y-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-32 bg-bg-secondary rounded-xl animate-pulse" />
-            ))}
-          </div>
+      <div className="rail-offset flex min-h-dvh flex-col kairos-topbar-gap">
+        <TopBar
+          actions={
+            <span
+              aria-hidden
+              className="bg-tui-accent text-tui-on-accent flex h-9 items-center gap-2 rounded-full px-4 text-[13px] font-semibold opacity-45"
+            >
+              <Plus size={15} aria-hidden />
+              <span className="hidden sm:inline">{t("open")}</span>
+            </span>
+          }
+        />
+
+        <main className="w-full flex-1 overflow-auto kairos-bottomnav-gap">
+          <ProjectsSkeleton />
         </main>
       </div>
     </div>

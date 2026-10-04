@@ -35,15 +35,21 @@ import type { TRPCContext } from "~/server/api/trpc";
 import { createLogger } from "~/server/logger";
 import { entitlementsFor } from "~/server/billing/entitlements";
 import { consumeRateLimit } from "~/server/security/rateLimit";
-import { runAgentTurn } from "~/server/llm/orchestrator/handoff";
+import {
+  runAgentTurn,
+  type AgentTurnResult,
+} from "~/server/llm/orchestrator/handoff";
 import { isPinnable } from "~/server/llm/agents/registry";
+import {
+  isUserReasoningEffort,
+  withUserReasoningEffort,
+} from "~/server/llm/core/effortScope";
 import type { TargetAgent } from "~/server/llm/schemas/a1WorkspaceConciergeSchemas";
 import {
   appendMessage,
-  ensureConversation,
   ensureTitle,
-  loadHistory,
   maybeSummarize,
+  openConversation,
 } from "~/server/llm/conversations";
 
 // The custom Node server in server.ts keeps connections open for as long as the
@@ -63,6 +69,8 @@ interface ChatRequestBody {
   priorTaskDraftId?: unknown;
   /** A sub-agent the user pinned in the picker. Omit for Auto. */
   agentId?: unknown;
+  /** How hard the model thinks: low/medium/high/max. Omit for the default. */
+  effort?: unknown;
 }
 
 function sse(event: string, data: unknown): string {
@@ -106,10 +114,13 @@ export async function POST(request: Request) {
   // an older client should degrade to the default rather than break the chat.
   // `isPinnable` is what guarantees the value reaching `runHandoff`'s exhaustive
   // switch is one that switch handles.
-  const pinnedAgent =
+  const requestedAgent =
     typeof body.agentId === "string" && isPinnable(body.agentId)
       ? (body.agentId as TargetAgent)
       : undefined;
+
+  // Same leniency as the agent id: an unknown value is the default, not a 400.
+  const effort = isUserReasoningEffort(body.effort) ? body.effort : undefined;
 
   // Built before the rate-limit gate rather than after: the ceiling is now the
   // caller's plan ceiling, and resolving entitlements needs a context.
@@ -121,31 +132,100 @@ export async function POST(request: Request) {
     headers: request.headers,
   };
 
+  // Addressing a specialist directly is a Pro line on the pricing page, so the
+  // pin is honoured only for a plan that bought it. Dropped to Auto rather than
+  // refused, for the same reason an unrecognised id is: the pin is a routing
+  // preference, and a free user's message should be answered by A1 rather than
+  // rejected. The picker is already hidden client-side; this is the half that
+  // holds when the request does not come from the picker.
+  //
+  // `entitlementsFor` is memoised against `ctx`, so this and the ceiling below
+  // are one query between them.
+  const pinnedAgent = (await entitlementsFor(ctx)).agentPinning
+    ? requestedAgent
+    : undefined;
+
   // Same door as the tRPC procedures: one AI request off the caller's daily
   // budget, refused before any model call.
   try {
-    await consumeRateLimit(userId, entitlementsFor(ctx).aiRequestsPerDay);
+    await consumeRateLimit(userId, (await entitlementsFor(ctx)).aiRequestsPerDay);
   } catch (err) {
     const detail =
       err instanceof Error ? err.message : "Rate limit exceeded";
     return Response.json({ error: detail, code: "TOO_MANY_REQUESTS" }, { status: 429 });
   }
 
-  const conversationId = await ensureConversation(ctx, {
+  // One select for the conversation, one for its recent turns — see
+  // `openConversation`. This is the last thing between the request and the first
+  // streamed byte, so whatever does not have to happen here does not.
+  const {
+    conversationId,
+    messages: history,
+    summary,
+  } = await openConversation(ctx, {
     conversationId: requestedConversationId,
     userId,
     projectId,
   });
-  const history = await loadHistory(ctx, conversationId, userId);
-
-  await appendMessage(ctx, {
-    conversationId,
-    role: "user",
-    content: message,
-  });
 
   const encoder = new TextEncoder();
   const startedAt = Date.now();
+
+  /**
+   * Filled in by the stream below, read by the `after` callback once the
+   * response has finished. Null means the turn failed and there is no assistant
+   * message to store — the user's own message is stored either way, so a thread
+   * that hit an error still reads back as something that was asked.
+   */
+  let turn: { result: AgentTurnResult; latencyMs: number } | null = null;
+
+  // Registered before the stream runs, executed after it finishes. None of this
+  // is anything the user can see, and `ensureTitle` and `maybeSummarize` are
+  // model calls of their own, so none of it belongs in front of the answer.
+  //
+  // The user's message used to be written before the response even started.
+  // Nothing in the turn reads it — the history it would belong to was loaded
+  // above, one statement earlier — so it was a round trip spent in front of the
+  // spinner for nothing.
+  after(async () => {
+    try {
+      await appendMessage(ctx, {
+        conversationId,
+        role: "user",
+        content: message,
+      });
+    } catch (err) {
+      log.error("failed to persist user message", { err });
+    }
+
+    if (turn) {
+      try {
+        await appendMessage(ctx, {
+          conversationId,
+          role: "assistant",
+          // Store the structured output, which is what the model produced
+          // and what the next turn should see — not the rendered bubble.
+          content: JSON.stringify(turn.result.a1),
+          // On a pinned turn A1 never ran, so attributing the message to it
+          // would make the history claim a model call that did not happen.
+          agentId: pinnedAgent ?? "workspace_concierge",
+          draftId: turn.result.plans[0]?.draftId ?? null,
+          latencyMs: turn.latencyMs,
+        });
+      } catch (err) {
+        log.error("failed to persist assistant message", { err });
+      }
+    }
+
+    // Independent of each other and of the writes above: one failing must not
+    // skip the other.
+    await Promise.allSettled([
+      history.length === 0
+        ? ensureTitle(ctx, conversationId, message)
+        : Promise.resolve(),
+      maybeSummarize(ctx, conversationId),
+    ]);
+  });
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -158,56 +238,28 @@ export async function POST(request: Request) {
       try {
         send("start", { conversationId });
 
-        const result = await runAgentTurn({
-          ctx,
-          message,
-          scope: projectId ? { projectId } : undefined,
-          conversationHistory: history.messages,
-          conversationSummary: history.summary,
-          priorTaskDraftId,
-          pinnedAgent,
-          signal: request.signal,
-          onToolCall: (name) => send("tool_call", { name }),
-          onSubAgent: (agent) => send("sub_agent", { agent }),
-          // G-1: the answer arrives as text while the rest of the object is
-          // still being generated. The `result` event still carries the whole
-          // validated object — this is the same bytes, seen earlier.
-          onAnswerDelta: (text) => send("answer_delta", { text }),
-        });
+        const result = await withUserReasoningEffort(effort, () =>
+          runAgentTurn({
+            ctx,
+            message,
+            scope: projectId ? { projectId } : undefined,
+            conversationHistory: history,
+            conversationSummary: summary,
+            priorTaskDraftId,
+            pinnedAgent,
+            signal: request.signal,
+            onToolCall: (name) => send("tool_call", { name }),
+            onSubAgent: (agent) => send("sub_agent", { agent }),
+            // G-1: the answer arrives as text while the rest of the object is
+            // still being generated. The `result` event still carries the whole
+            // validated object — this is the same bytes, seen earlier.
+            onAnswerDelta: (text) => send("answer_delta", { text }),
+          }),
+        );
 
         const latencyMs = Date.now() - startedAt;
+        turn = { result, latencyMs };
         send("result", { ...result, conversationId, latencyMs });
-
-        // Persist after the response is on its way — the user should not wait on
-        // a write they cannot see. The title and the rolling summary are model
-        // calls of their own, so they especially belong here.
-        after(async () => {
-          try {
-            await appendMessage(ctx, {
-              conversationId,
-              role: "assistant",
-              // Store the structured output, which is what the model produced
-              // and what the next turn should see — not the rendered bubble.
-              content: JSON.stringify(result.a1),
-              // On a pinned turn A1 never ran, so attributing the message to it
-              // would make the history claim a model call that did not happen.
-              agentId: pinnedAgent ?? "workspace_concierge",
-              draftId: result.plans[0]?.draftId ?? null,
-              latencyMs,
-            });
-          } catch (err) {
-            log.error("failed to persist assistant message", { err });
-          }
-
-          // Independent of each other and of the write above: one failing must
-          // not skip the other.
-          await Promise.allSettled([
-            history.messages.length === 0
-              ? ensureTitle(ctx, conversationId, message)
-              : Promise.resolve(),
-            maybeSummarize(ctx, conversationId),
-          ]);
-        });
       } catch (err) {
         log.error("agent turn failed", { err });
         send("error", {

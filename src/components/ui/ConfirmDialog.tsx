@@ -33,7 +33,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { Modal } from "./Modal";
+import { Modal, MODAL_SHELL, ModalAction, ModalActions, ModalHeader } from "./Modal";
 import { modalExitMs } from "./modalExit";
 
 export function ConfirmDialog({
@@ -118,21 +118,16 @@ export function ConfirmDialog({
       describedBy="kairos-confirm-message"
       onDismiss={dismiss}
       overlayClassName={`bg-black/40 backdrop-blur-sm ${closing ? "notes-scrim--out" : "notes-scrim"}`}
-      className={`w-full max-w-[380px] overflow-hidden rounded-xl border border-border-medium bg-bg-elevated shadow-2xl ${
+      className={`${MODAL_SHELL} max-w-[380px] ${
         closing ? "notes-dialog--out" : "notes-dialog"
       }`}
     >
       <>
-        <div className="px-4 pt-4">
-          <h2
-            id="kairos-confirm-title"
-            className="text-[15.5px] font-bold tracking-[-0.014em] text-fg-primary"
-          >
-            {title}
-          </h2>
+        <ModalHeader id="kairos-confirm-title" title={title} />
+        <div className="px-pad-dialog pt-4">
           <p
             id="kairos-confirm-message"
-            className="mt-1.5 text-[13px] leading-relaxed text-fg-secondary"
+            className="text-[13px] leading-relaxed text-fg-secondary"
           >
             {message}
           </p>
@@ -142,7 +137,7 @@ export function ConfirmDialog({
               <span className="mb-1.5 block font-mono text-[9.5px] tracking-[0.13em] uppercase text-fg-quaternary">
                 {requireTextLabel}
               </span>
-              <span className="flex h-[38px] items-center rounded-[10px] border border-border-medium bg-bg-surface px-3 transition-colors focus-within:border-accent-primary/60 focus-within:bg-bg-elevated focus-within:ring-[3px] focus-within:ring-accent-primary/10">
+              <span className="flex h-[38px] items-center rounded-md border border-border-medium bg-bg-surface px-3 transition-colors focus-within:border-accent-primary/60 focus-within:bg-bg-elevated focus-within:ring-[3px] focus-within:ring-accent-primary/10">
                 <input
                   ref={inputRef}
                   type="text"
@@ -162,32 +157,23 @@ export function ConfirmDialog({
           ) : null}
 
           {error ? (
-            <p role="alert" className="calendar-pop mt-3 text-[12.5px] text-error">
+            <p role="alert" className="calendar-pop mt-3 text-[12.5px] text-status-danger-ink">
               {error}
             </p>
           ) : null}
         </div>
 
-        <div className="mt-4 flex items-center justify-end gap-2.5 border-t border-border-light/50 bg-bg-surface px-4 py-3">
-          <button
-            type="button"
-            onClick={dismiss}
-            className="inline-flex h-8 items-center justify-center rounded-[10px] border border-border-medium px-3.5 text-[13px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
-          >
-            {cancelLabel}
-          </button>
-          <button
+        <ModalActions className="mt-4">
+          <ModalAction onClick={dismiss}>{cancelLabel}</ModalAction>
+          <ModalAction
             ref={confirmRef}
-            type="button"
+            tone={destructive ? "danger" : "primary"}
             onClick={() => onConfirm(typed)}
             disabled={isPending || !textOk}
-            className={`inline-flex h-8 items-center justify-center rounded-[10px] px-3.5 text-[13px] font-bold text-white transition-all duration-[350ms] hover:-translate-y-[1.5px] active:translate-y-0 disabled:pointer-events-none disabled:opacity-50 ${
-              destructive ? "bg-error hover:brightness-110" : "bg-accent-primary hover:bg-accent-hover"
-            }`}
           >
             {confirmLabel}
-          </button>
-        </div>
+          </ModalAction>
+        </ModalActions>
       </>
     </Modal>
   );

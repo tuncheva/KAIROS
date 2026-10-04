@@ -1,20 +1,21 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { X, Loader2, Eye, EyeOff, ArrowRight, ArrowLeft, KeyRound, Check } from "~/components/ui/icons";
+import { Loader2, Eye, EyeOff, ArrowRight, ArrowLeft, KeyRound, Check } from "~/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 
-import { useModalBehavior } from "~/components/ui/Modal";
+import { ModalDismiss, useModalBehavior } from "~/components/ui/Modal";
 
 /* ─── Types ─── */
 type ModalView =
   | "signIn"
   | "signUp"
   | "verifyEmailSent"
+  | "twoFactor"
   | "forgotPassword"
   | "resetCode"
   | "newPassword"
@@ -72,7 +73,14 @@ export function SignInModal({
   const [slide, setSlide] = useState<"from-left" | "from-right">("from-left");
   const [hoveredTab, setHoveredTab] = useState<"signIn" | "signUp" | null>(null);
 
-  /* Forgot password state */
+  /* Two-step sign-in. `challenge` is the secret the server hands back once the
+     password is right; only this browser holds it, and it is what lets this
+     screen — not whichever device opens the emailed link — finish signing in.
+     See `~/server/auth/twoFactor`. */
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const finishingTwoFactor = useRef(false);
+
+  /* Forgot password state (the code boxes are shared with two-step sign-in) */
   const [enteredCode, setEnteredCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -87,6 +95,19 @@ export function SignInModal({
   const requestResetMutation = api.auth.requestPasswordReset.useMutation();
   const verifyCodeMutation = api.auth.verifyResetCode.useMutation();
   const resetPasswordMutation = api.auth.resetPassword.useMutation();
+
+  /* Watches for the emailed link being approved. Polling rather than a socket:
+     it runs for at most the challenge's ten minutes, only while this view is
+     open, and the endpoint is a single indexed read. */
+  const twoFactorStatus = api.auth.twoFactorStatus.useQuery(
+    { challenge: challenge ?? "" },
+    {
+      enabled: isOpen && view === "twoFactor" && !!challenge,
+      refetchInterval: 3000,
+      refetchOnWindowFocus: true,
+      retry: false,
+    },
+  );
 
   /* Handle code input (8 separate boxes) */
   const handleCodeInput = useCallback((index: number, value: string) => {
@@ -141,6 +162,7 @@ export function SignInModal({
         setView("signIn");
         setSlide("from-left");
         setHoveredTab(null);
+        setChallenge(null);
       }, 200);
       return () => clearTimeout(t);
     }
@@ -152,11 +174,82 @@ export function SignInModal({
      the newer surfaces already had; see `~/components/ui/Modal`. */
   useModalBehavior({ containerRef: shellRef, onDismiss: onClose, enabled: isOpen });
 
+  /**
+   * Finish a two-step sign-in, with the typed code or — when `code` is null —
+   * on the strength of the emailed link having been approved.
+   */
+  const finishTwoFactor = async (code: string | null) => {
+    if (!challenge || finishingTwoFactor.current) return;
+    finishingTwoFactor.current = true;
+    setIsLoading(true);
+    setError("");
+    setLoadingMessage(t("twoFactor.signingIn"));
+
+    try {
+      const result = await signIn("two-factor", {
+        challenge,
+        code: code ?? "",
+        redirect: false,
+      });
+
+      if (result?.error) {
+        const [, reason] = (result.code ?? "").split(":");
+        if (reason === "expired" || (reason === "invalid" && code === null)) {
+          setChallenge(null);
+          setError(t("twoFactor.expired"));
+        } else if (reason === "denied") {
+          setChallenge(null);
+          setError(t("twoFactor.denied"));
+        } else if (reason === "too_many_attempts") {
+          setChallenge(null);
+          setError(t("twoFactor.tooManyAttempts"));
+        } else {
+          setEnteredCode("");
+          setError(t("twoFactor.invalidCode"));
+        }
+        return;
+      }
+
+      onClose();
+      router.push(callbackUrl);
+      router.refresh();
+    } catch (err) {
+      console.error("Two-step sign in error:", err);
+      setError(t("signIn.error"));
+    } finally {
+      finishingTwoFactor.current = false;
+      setIsLoading(false);
+      setLoadingMessage("");
+    }
+  };
+
+  /* React to the link being answered while this screen waits. */
+  const linkStatus = twoFactorStatus.data?.status;
+  useEffect(() => {
+    if (view !== "twoFactor" || !linkStatus) return;
+    if (linkStatus === "approved") {
+      void finishTwoFactor(null);
+    } else if (linkStatus === "denied") {
+      setChallenge(null);
+      setError(t("twoFactor.denied"));
+    } else if (linkStatus === "expired") {
+      setChallenge(null);
+      setError(t("twoFactor.expired"));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- react to the status only
+  }, [linkStatus, view]);
+
   /* ─── Early return AFTER all hooks ─── */
   if (!isOpen) return null;
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    await submitCredentials();
+  };
+
+  /* Shared by the sign-in form and "send a new code" on the two-step screen:
+     a fresh code is a fresh challenge, and only the password can open one. */
+  const submitCredentials = async () => {
     setIsLoading(true);
     setError("");
     setNeedsVerification(false);
@@ -176,7 +269,16 @@ export function SignInModal({
            `SIGN_IN_UNVERIFIED` in `~/server/auth/config`. */
         const [code, detail] = (result.code ?? "").split(":");
 
-        if (code === "EMAIL_UNVERIFIED") {
+        if (code === "TWO_FACTOR_REQUIRED" && detail) {
+          setChallenge(detail);
+          setEnteredCode("");
+          setView("twoFactor");
+          setError("");
+        } else if (code === "TWO_FACTOR_UNSENT") {
+          setError(t("twoFactor.sendFailed"));
+        } else if (code === "TWO_FACTOR_THROTTLED") {
+          setError(t("twoFactor.throttled"));
+        } else if (code === "EMAIL_UNVERIFIED") {
           setNeedsVerification(true);
           setError(t("signIn.emailUnverified"));
         } else if (code === "ACCOUNT_LOCKED") {
@@ -346,15 +448,22 @@ export function SignInModal({
 
   const handleBackToSignIn = () => {
     resetForm();
+    setChallenge(null);
     goTo("signIn");
+  };
+
+  const handleVerifyTwoFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (enteredCode.length < 8) return;
+    await finishTwoFactor(enteredCode);
   };
 
   /* ─── Shared bits ─── */
   const eyebrowClass = "font-mono text-[11px] uppercase tracking-[0.2em] text-accent-primary";
   const primaryBtnClass =
-    "k-btn flex items-center justify-center gap-2.5 rounded-xl bg-accent-primary px-7 py-4 text-base font-bold text-white disabled:cursor-not-allowed disabled:opacity-40";
+    "k-btn flex items-center justify-center gap-2.5 rounded-xl bg-accent-primary px-7 py-4 text-base font-bold text-bg-primary disabled:cursor-not-allowed disabled:opacity-40";
   const backLinkClass =
-    "k-auth-lnk flex items-center gap-1.5 self-start text-sm text-white/55";
+    "k-auth-lnk flex items-center gap-1.5 self-start text-sm text-fg-primary/55";
 
   const passwordEye = (shown: boolean, toggle: () => void) => (
     <button className="k-auth-eye" type="button" onClick={toggle} tabIndex={-1} aria-label={t("signIn.passwordLabel")}>
@@ -373,6 +482,11 @@ export function SignInModal({
   const copy: Record<ModalView, { step: string; title: string; sub: string }> = {
     signIn: { step: t("steps.signIn"), title: t("signIn.title"), sub: t("signIn.subtitle") },
     signUp: { step: t("steps.signUp"), title: t("signUp.title"), sub: t("signUp.subtitle") },
+    twoFactor: {
+      step: t("steps.twoFactor"),
+      title: t("twoFactor.title"),
+      sub: t("twoFactor.subtitle", { email }),
+    },
     verifyEmailSent: {
       step: t("steps.verifyEmail"),
       title: t("verifyEmail.title"),
@@ -437,7 +551,7 @@ export function SignInModal({
         <button
           type="button"
           onClick={() => goTo("forgotPassword")}
-          className="k-auth-lnk whitespace-nowrap text-sm text-white/55"
+          className="k-auth-lnk whitespace-nowrap text-sm text-fg-primary/55"
         >
           {t("signIn.forgotPassword")}
         </button>
@@ -447,7 +561,7 @@ export function SignInModal({
         type="button"
         onClick={() => void handleGoogleSignIn()}
         disabled={isLoading}
-        className="k-ghost flex w-full items-center justify-center gap-2.5 rounded-xl border border-white/[0.14] bg-transparent px-4 py-3.5 text-[15px] font-semibold text-white/85 disabled:cursor-not-allowed disabled:opacity-50"
+        className="k-ghost flex w-full items-center justify-center gap-2.5 rounded-xl border border-fg-primary/[0.14] bg-transparent px-4 py-3.5 text-[15px] font-semibold text-fg-primary/85 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <svg className="k-brand-mark" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -511,7 +625,7 @@ export function SignInModal({
       </button>
 
       {/* Consent stays an explicit opt-in — the button is gated on it. */}
-      <label className="group flex cursor-pointer items-start gap-2.5 text-[13px] leading-relaxed text-white/50">
+      <label className="group flex cursor-pointer items-start gap-2.5 text-[13px] leading-relaxed text-fg-primary/50">
         <input
           type="checkbox"
           checked={agreeTerms}
@@ -520,13 +634,13 @@ export function SignInModal({
         />
         <span
           aria-hidden="true"
-          className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border transition-colors duration-200 ${
+          className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm border transition-colors duration-200 ${
             agreeTerms
               ? "border-accent-primary bg-accent-primary"
-              : "border-white/20 group-hover:border-white/40"
+              : "border-fg-primary/20 group-hover:border-fg-primary/40"
           }`}
         >
-          {agreeTerms && <Check size={11} strokeWidth={3} className="text-white" />}
+          {agreeTerms && <Check size={11} strokeWidth={3} className="text-bg-primary" />}
         </span>
         <span>
           {t("signUp.agreeTerms")}{" "}
@@ -562,6 +676,62 @@ export function SignInModal({
     </div>
   );
 
+  const renderTwoFactor = () => (
+    <div className="k-auth-body mt-9 flex flex-col gap-7">
+      <div className="grid grid-cols-8 gap-1.5 sm:gap-2.5" onPaste={handleCodePaste}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <input
+            key={i}
+            ref={(el) => { codeInputsRef.current[i] = el; }}
+            className="k-auth-box"
+            type="text"
+            inputMode="numeric"
+            autoComplete={i === 0 ? "one-time-code" : "off"}
+            maxLength={1}
+            value={enteredCode[i] ?? ""}
+            onChange={(e) => handleCodeInput(i, e.target.value)}
+            onKeyDown={(e) => handleCodeKeyDown(i, e)}
+            aria-label={`${t("twoFactor.label")} ${i + 1}`}
+            disabled={isLoading}
+          />
+        ))}
+      </div>
+
+      {challenge ? (
+        <p role="status" className="flex items-center gap-2 text-sm text-fg-primary/55">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-accent-primary" aria-hidden="true" />
+          {t("twoFactor.waitingForLink")}
+        </p>
+      ) : null}
+
+      <p className="font-mono text-[11px] tracking-[0.12em] text-fg-primary/45">{t("twoFactor.expiry")}</p>
+
+      <div className="flex items-center gap-4">
+        <button
+          type="submit"
+          disabled={isLoading || !challenge || enteredCode.length < 8}
+          className={`${primaryBtnClass} flex-1`}
+        >
+          {isLoading ? (
+            <Loader2 className="animate-spin" size={18} />
+          ) : (
+            <>{t("twoFactor.submit")}<KeyRound size={17} /></>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => void submitCredentials()}
+          disabled={isLoading}
+          className="k-auth-lnk whitespace-nowrap text-sm text-accent-primary"
+        >
+          {t("twoFactor.resend")}
+        </button>
+      </div>
+
+      {backToSignIn()}
+    </div>
+  );
+
   const renderResetCode = () => (
     <div className="k-auth-body mt-9 flex flex-col gap-7">
       <div className="grid grid-cols-8 gap-1.5 sm:gap-2.5" onPaste={handleCodePaste}>
@@ -581,7 +751,7 @@ export function SignInModal({
         ))}
       </div>
 
-      <p className="font-mono text-[11px] tracking-[0.12em] text-white/45">{t("resetCode.expiry")}</p>
+      <p className="font-mono text-[11px] tracking-[0.12em] text-fg-primary/45">{t("resetCode.expiry")}</p>
 
       <div className="flex items-center gap-4">
         <button
@@ -657,7 +827,7 @@ export function SignInModal({
 
   const renderVerifyEmailSent = () => (
     <div className="k-auth-body mt-9 flex flex-col items-start gap-6">
-      <p className="max-w-[380px] text-[15px] leading-relaxed text-white/55">{t("verifyEmail.body")}</p>
+      <p className="max-w-[380px] text-[15px] leading-relaxed text-fg-primary/55">{t("verifyEmail.body")}</p>
 
       {resendVerificationMutation.isSuccess ? (
         <p className="text-sm text-accent-primary">{t("verifyEmail.resent")}</p>
@@ -698,6 +868,7 @@ export function SignInModal({
     signUp: (e) => void handleSignUp(e),
     forgotPassword: (e) => void handleSendResetCode(e),
     resetCode: (e) => void handleVerifyCode(e),
+    twoFactor: (e) => void handleVerifyTwoFactor(e),
     newPassword: (e) => void handleResetPassword(e),
     verifyEmailSent: (e) => e.preventDefault(),
     done: (e) => e.preventDefault(),
@@ -707,7 +878,7 @@ export function SignInModal({
   const { step, title, sub } = copy[view];
 
   return (
-    <div className="dark fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+    <div className="dark k-landing fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
 
       <div
@@ -715,10 +886,14 @@ export function SignInModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="kairos-auth-title"
-        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl overflow-hidden rounded-[18px] border border-white/10 bg-[#08080c] lg:grid-cols-2"
+        className="k-auth-shell relative grid max-h-[94dvh] w-full max-w-5xl grid-rows-[minmax(0,1fr)] overflow-hidden rounded-xl border border-fg-primary/10 bg-bg-elevated lg:grid-cols-2"
       >
+        {/* The row is `minmax(0,1fr)` so it is held to the shell's 94dvh cap.
+            An auto row grew to the form's height instead, the shell clipped
+            it, and on a short phone the sign-up fields below the fold could
+            not be scrolled to. */}
         {/* ─── Left: brand panel (hidden on narrow screens) ─── */}
-        <div className="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.08] bg-[#0a0a10] p-11 lg:flex">
+        <div className="relative hidden flex-col justify-between overflow-hidden border-r border-fg-primary/[0.08] bg-bg-primary p-11 lg:flex">
           <div
             aria-hidden="true"
             className="k-drift-slow pointer-events-none absolute -bottom-[180px] -left-[120px] h-[620px] w-[620px] rounded-full blur-[90px]"
@@ -730,7 +905,7 @@ export function SignInModal({
 
           <div className="relative flex items-center gap-3">
             <div
-              className="flex h-[30px] w-[30px] items-center justify-center rounded-[9px]"
+              className="flex h-[30px] w-[30px] items-center justify-center rounded-sm"
               style={{
                 background:
                   "linear-gradient(140deg, rgb(var(--accent-primary)), rgb(var(--accent-secondary)))",
@@ -738,15 +913,15 @@ export function SignInModal({
             >
               <Image src="/logo_white.png" alt="Kairos" width={18} height={18} className="h-[18px] w-[18px] object-contain" priority />
             </div>
-            <span className="font-display text-2xl text-white">Kairos</span>
+            <span className="font-display text-2xl text-fg-primary">Kairos</span>
           </div>
 
           <div className="relative">
-            <p className="font-display text-[52px] font-normal leading-[1.12] tracking-[-0.01em] text-white">
+            <p className="font-display text-[52px] font-normal leading-[1.12] tracking-[-0.01em] text-fg-primary">
               {t("brand.taglineLead")}{" "}
               <em className="italic text-accent-primary">{t("brand.taglineAccent")}</em>
             </p>
-            <p className="mt-[22px] max-w-[340px] text-base leading-[1.7] text-white/65">
+            <p className="mt-[22px] max-w-[340px] text-base leading-[1.7] text-fg-primary/65">
               {t("brand.blurb")}
             </p>
           </div>
@@ -758,10 +933,10 @@ export function SignInModal({
               { n: "1", label: t("brand.statOnePlace"), accent: true },
             ].map((s) => (
               <div key={s.label}>
-                <div className={`font-display text-[38px] leading-none ${s.accent ? "text-accent-primary" : "text-white"}`}>
+                <div className={`font-display text-[38px] leading-none ${s.accent ? "text-accent-primary" : "text-fg-primary"}`}>
                   {s.n}
                 </div>
-                <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-white/50">
+                <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-fg-primary/50">
                   {s.label}
                 </div>
               </div>
@@ -769,24 +944,25 @@ export function SignInModal({
           </div>
         </div>
 
-        {/* ─── Right: the flow ─── */}
-        <div className="relative flex flex-col justify-center overflow-y-auto px-7 py-12 sm:px-14 sm:py-14">
-          <button
-            onClick={onClose}
-            className="k-auth-lnk absolute right-6 top-6 flex text-white/35"
-            aria-label={t("close")}
-          >
-            <X size={18} />
-          </button>
+        {/* ─── Right: the flow ───
+            `justify-center-safe`: centred when it fits, top-aligned when it
+            overflows — plain centring pushed the heading above the scroll
+            origin, where no amount of scrolling reaches it. */}
+        <div className="relative flex flex-col justify-center-safe overflow-y-auto px-7 py-12 sm:px-14 sm:py-14">
+          <ModalDismiss
+            onDismiss={onClose}
+            label={t("close")}
+            className="absolute right-6 top-6"
+          />
 
           <div className={eyebrowClass}>{step}</div>
           <h2
             id="kairos-auth-title"
-            className="mt-4 font-display text-[38px] font-normal leading-[1.06] tracking-[-0.01em] text-white sm:text-[46px]"
+            className="mt-4 font-display text-[38px] font-normal leading-[1.06] tracking-[-0.01em] text-fg-primary sm:text-[46px]"
           >
             {title}
           </h2>
-          <p className="mt-3 max-w-[380px] text-base leading-[1.65] text-white/60">{sub}</p>
+          <p className="mt-3 max-w-[380px] text-base leading-[1.65] text-fg-primary/60">{sub}</p>
 
           {/* An expired session used to end at NextAuth's own unstyled sign-in
               page, or — from `notes` — at the marketing page with no message at
@@ -795,7 +971,7 @@ export function SignInModal({
           {sessionExpired ? (
             <p
               role="status"
-              className="mt-4 max-w-[380px] rounded-xl border border-amber-400/25 bg-amber-400/10 px-3.5 py-2.5 text-sm leading-[1.5] text-amber-200"
+              className="mt-4 max-w-[380px] rounded-xl border border-status-warning-border bg-status-warning-surface px-3.5 py-2.5 text-sm leading-[1.5] text-status-warning-ink"
             >
               {t("sessionExpired")}
             </p>
@@ -805,7 +981,7 @@ export function SignInModal({
             <div
               data-auth-pos={shownTab}
               onMouseLeave={() => setHoveredTab(null)}
-              className="relative mt-7 flex max-w-[300px] border-b border-white/10"
+              className="relative mt-7 flex max-w-[300px] border-b border-fg-primary/10"
             >
               <button
                 type="button"
@@ -832,7 +1008,7 @@ export function SignInModal({
           {(error || loadingMessage) && (
             <div className="mt-6 flex flex-col gap-2">
               {error && (
-                <p className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                <p className="rounded-xl border border-status-danger-border bg-status-danger-surface px-4 py-3 text-sm text-status-danger-ink">
                   {error}
                 </p>
               )}
@@ -866,6 +1042,7 @@ export function SignInModal({
             {view === "signIn" && renderSignIn()}
             {view === "signUp" && renderSignUp()}
             {view === "verifyEmailSent" && renderVerifyEmailSent()}
+            {view === "twoFactor" && renderTwoFactor()}
             {view === "forgotPassword" && renderForgotPassword()}
             {view === "resetCode" && renderResetCode()}
             {view === "newPassword" && renderNewPassword()}

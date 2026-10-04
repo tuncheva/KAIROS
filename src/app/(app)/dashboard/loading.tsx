@@ -1,38 +1,38 @@
-export default function DashboardLoading() {
+import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+
+import { DashboardSkeleton } from "~/components/dashboard/DashboardSkeleton";
+import { TopBar } from "~/components/layout/TopBar";
+import { Plus } from "~/components/ui/icons.server";
+
+/**
+ * The dashboard route's fallback: the real top bar and page frame from
+ * `page.tsx`, with `DashboardSkeleton` where `DashboardClient` will mount.
+ */
+export default async function DashboardLoading() {
+  const tNav = await getTranslations("nav");
+
   return (
     <div className="min-h-dvh bg-bg-primary">
       <div className="rail-offset min-h-dvh flex flex-col kairos-topbar-gap">
-        <header className="sticky top-16 lg:top-0 z-30 topbar-solid">
-          <div className="flex items-center justify-between px-4 py-3 sm:px-6 md:px-8 sm:py-4">
-            <div className="h-7 w-40 bg-bg-secondary rounded animate-pulse" />
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-28 bg-bg-secondary rounded-lg animate-pulse" />
-              <div className="h-8 w-8 bg-bg-secondary rounded-full animate-pulse" />
-              <div className="h-8 w-8 bg-bg-secondary rounded-full animate-pulse" />
-            </div>
-          </div>
-        </header>
+        <TopBar
+          actions={
+            <Link
+              href="/projects?new=1"
+              className="flex items-center gap-2 rounded-lg bg-accent-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
+            >
+              <Plus size={15} />
+              <span className="hidden sm:inline">{tNav("newProject")}</span>
+            </Link>
+          }
+        />
 
-        <main className="grid flex-1 grid-cols-1 items-start xl:grid-cols-[minmax(0,1fr)_372px]">
-          <div className="flex flex-col gap-9 px-4 pt-8 pb-14 sm:px-8">
-            <div className="space-y-3">
-              <div className="h-3 w-40 bg-bg-secondary rounded animate-pulse" />
-              <div className="h-10 w-72 bg-bg-secondary rounded animate-pulse" />
-              <div className="h-4 w-96 max-w-full bg-bg-secondary rounded animate-pulse" />
-            </div>
-            <div className="h-20 bg-bg-secondary rounded-[10px] animate-pulse" />
-            <div className="space-y-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-14 bg-bg-secondary rounded animate-pulse" />
-              ))}
-            </div>
-            <div className="h-28 bg-bg-secondary rounded-[10px] animate-pulse" />
-          </div>
-          <div className="flex flex-col gap-8 px-4 pt-8 pb-14 sm:px-8 xl:px-7">
-            <div className="h-40 bg-bg-secondary rounded-[10px] animate-pulse" />
-            <div className="h-56 bg-bg-secondary rounded-[10px] animate-pulse" />
-            <div className="h-32 bg-bg-secondary rounded-[10px] animate-pulse" />
-          </div>
+        <main
+          id="main-content"
+          className="flex-1 w-full overflow-auto kairos-bottomnav-gap"
+          aria-busy="true"
+        >
+          <DashboardSkeleton />
         </main>
       </div>
     </div>

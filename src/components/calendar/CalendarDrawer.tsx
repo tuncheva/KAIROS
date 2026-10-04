@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { ModalDismiss } from "~/components/ui/Modal";
 import Link from "next/link";
 import {
   Check,
@@ -9,7 +10,6 @@ import {
   Pencil,
   SquareArrowOutUpRight,
   Trash2,
-  X,
 } from "~/components/ui/icons";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
@@ -103,21 +103,14 @@ export function CalendarDrawer({ state, onClose, onCreated, onChanged, onDeleted
           aria-labelledby={headingId}
           className="relative flex h-full w-full max-w-[420px] flex-col border-l border-border-light bg-bg-elevated shadow-2xl calendar-drawer"
         >
-          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border-light px-6 py-5">
+          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border-light px-6 py-5 pt-[calc(1.25rem+var(--kairos-safe-top))]">
             <h2
               id={headingId}
               className="text-[17px] font-semibold tracking-tight text-fg-primary"
             >
               {state.mode === "detail" ? t(KIND_LABEL_KEYS[state.item.kind]) : t("newTitle")}
             </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={t("close")}
-              className="flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-border-medium text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
-            >
-              <X size={14} />
-            </button>
+            <ModalDismiss onDismiss={onClose} label={t("close")} />
           </div>
 
           {state.mode === "detail" ? (
@@ -244,6 +237,12 @@ function DetailPanel({
 
   const completed = item.kind === "task" && item.status === "completed";
 
+  /* An entry read from a connected calendar. Kairos holds a copy, not the
+     original: rescheduling it here would move nothing, and deleting it would
+     delete our copy and have the next sync put it straight back. So the whole
+     action bar is replaced by a line saying where it lives. */
+  const readOnly = item.kind === "external";
+
   const toggleComplete = () => {
     if (item.kind !== "task") return;
     // The toggle is its own undo: press it again and the task comes back.
@@ -256,15 +255,17 @@ function DetailPanel({
   };
 
   const reschedule = (at: Date) => {
+    if (readOnly) return;
     if (item.kind === "task") taskUpdate.mutate({ taskId: item.id, dueDate: at });
     else if (item.kind === "event") eventUpdate.mutate({ eventId: item.id, eventDate: at });
-    else noteDate.mutate({ id: item.id, calendarDate: at });
+    else if (item.kind === "note") noteDate.mutate({ id: item.id, calendarDate: at });
   };
 
   const remove = () => {
+    if (readOnly) return;
     if (item.kind === "task") taskDelete.mutate({ taskId: item.id });
     else if (item.kind === "event") eventDelete.mutate({ eventId: item.id });
-    else noteDelete.mutate({ id: item.id });
+    else if (item.kind === "note") noteDelete.mutate({ id: item.id });
   };
 
   const openHref =
@@ -312,6 +313,21 @@ function DetailPanel({
           ? `${toHm(item.date)} – ${toHm(item.endsAt)}`
           : t("startsAtUnknownEnd", { time: toHm(item.date) }),
     });
+  } else if (item.kind === "external") {
+    rows.push({ label: t("dateLabel"), value: dateLabel });
+    rows.push({
+      label: t("timeLabel"),
+      value: item.allDay
+        ? t("allDay")
+        : item.endsAt
+          ? `${toHm(item.date)} – ${toHm(item.endsAt)}`
+          : t("startsAtUnknownEnd", { time: toHm(item.date) }),
+    });
+    if (item.location) rows.push({ label: t("locationLabel"), value: item.location });
+    if (item.status === "tentative") {
+      rows.push({ label: t("statusLabel"), value: t("tentative"), tone: "text-warning" });
+    }
+    rows.push({ label: t("sourceLabel"), value: t("sourceGoogleCalendar") });
   } else {
     rows.push({ label: t("dateLabel"), value: dateLabel });
     rows.push({ label: t("typeLabel"), value: t("stickyNote") });
@@ -322,7 +338,8 @@ function DetailPanel({
     });
   }
 
-  const body = item.kind === "event" ? item.description : "";
+  const body =
+    item.kind === "event" || item.kind === "external" ? item.description : "";
 
   return (
     <>
@@ -403,8 +420,14 @@ function DetailPanel({
           One primary, two secondary, then a menu. Five flat buttons put
           Delete one slip away from Complete; this keeps every control one
           click away without any of them competing for the eye. */}
-      {tab === "view" && (
-        <div className="flex shrink-0 items-center gap-2 border-t border-border-light bg-bg-surface px-5 py-4">
+      {tab === "view" && readOnly && (
+        <div className="shrink-0 border-t border-border-light bg-bg-surface px-5 py-4 pb-[calc(1rem+var(--kairos-safe-bottom))]">
+          <p className="text-[12px] leading-snug text-fg-tertiary">{t("externalReadOnly")}</p>
+        </div>
+      )}
+
+      {tab === "view" && !readOnly && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border-light bg-bg-surface px-5 py-4 pb-[calc(1rem+var(--kairos-safe-bottom))]">
           {item.kind === "task" ? (
             <button
               type="button"
@@ -485,14 +508,14 @@ function DetailPanel({
                         type="button"
                         onClick={remove}
                         disabled={busy}
-                        className="h-7 flex-1 rounded-md bg-error px-2 text-[11px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                        className="h-control-sm flex-1 rounded-md bg-error px-2 text-[11px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                       >
                         {t("deleteYes")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmDelete(false)}
-                        className="h-7 rounded-md border border-border-medium px-2 text-[11px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary"
+                        className="h-control-sm rounded-md border border-border-medium px-2 text-[11px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary"
                       >
                         {t("cancel")}
                       </button>
@@ -542,7 +565,7 @@ function RescheduleForm({
   return (
     <div className="flex flex-col gap-4 calendar-field">
       <div className="flex gap-3">
-        <label className="flex flex-1 flex-col gap-2">
+        <label className="flex min-w-0 flex-1 flex-col gap-2">
           <span className={MICRO_LABEL}>{t("dateFieldLabel")}</span>
           <input
             data-autofocus
@@ -906,7 +929,7 @@ function NewItemPanel({
         </label>
 
         <div className="flex gap-3 calendar-field" style={{ animationDelay: "100ms" }}>
-          <label className="flex flex-1 flex-col gap-2">
+          <label className="flex min-w-0 flex-1 flex-col gap-2">
             <span className={MICRO_LABEL}>{t("dateFieldLabel")}</span>
             <input
               type="date"
@@ -1004,7 +1027,7 @@ function NewItemPanel({
         </label>
       </div>
 
-      <div className="flex shrink-0 gap-2.5 border-t border-border-light p-5">
+      <div className="flex shrink-0 gap-2.5 border-t border-border-light p-5 pb-[calc(1.25rem+var(--kairos-safe-bottom))]">
         <button
           type="button"
           onClick={onCancel}

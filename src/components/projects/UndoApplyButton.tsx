@@ -132,8 +132,8 @@ function UndoOutcome({
     <div
       className={`mt-2 rounded-lg border px-3 py-2 ${
         partial
-          ? "border-amber-500/35 bg-amber-500/10"
-          : "border-emerald-500/35 bg-emerald-500/10"
+          ? "border-status-warning-border bg-status-warning-surface"
+          : "border-status-success-border bg-status-success-surface"
       }`}
     >
       <p className="text-xs font-semibold text-fg-primary">
@@ -155,7 +155,7 @@ function UndoOutcome({
       {notReversed.map((line) => (
         <p
           key={line}
-          className="mt-1 text-[11px] leading-snug text-amber-700 dark:text-amber-300"
+          className="mt-1 text-[11px] leading-snug text-status-warning-ink"
         >
           {line}
         </p>

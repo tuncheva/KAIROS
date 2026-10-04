@@ -105,7 +105,6 @@ describe("SignInModal", () => {
     render(<SignInModal {...defaultProps} />);
     expect(screen.getByText("Google")).toBeInTheDocument();
   });
-
   it("renders with kairos design system classes", () => {
     render(<SignInModal {...defaultProps} />);
     const modal = document.querySelector(".k-auth-shell");
@@ -141,27 +140,23 @@ describe("SignInModal", () => {
     expect(screen.getByText(/Terms of Service/i)).toBeInTheDocument();
   });
 
-  it("has an X close button", () => {
+  /**
+   * The dialog dismisses with the mono ESC affordance from `ui/Modal`, not a
+   * glyph cross — a key name says how to close from the keyboard, which the
+   * cross never did. See docs/theme.md §6.
+   */
+  it("closes with the mono ESC affordance, not a glyph cross", () => {
     render(<SignInModal {...defaultProps} />);
-    // The X button is rendered as a button with an SVG X icon
-    const closeButtons = document.querySelectorAll("button");
-    const xButton = Array.from(closeButtons).find(
-      (btn) => btn.querySelector("svg") && btn.className.includes("absolute"),
-    );
-    expect(xButton).toBeTruthy();
+    const dismiss = screen.getByText("ESC");
+    expect(dismiss.tagName).toBe("BUTTON");
+    expect(dismiss.querySelector("svg")).toBeNull();
   });
 
-  it("X close button calls onClose when clicked", async () => {
+  it("the ESC affordance calls onClose when clicked", () => {
     const onClose = vi.fn();
     render(<SignInModal isOpen={true} onClose={onClose} />);
-    const closeButtons = document.querySelectorAll("button");
-    const xButton = Array.from(closeButtons).find(
-      (btn) => btn.querySelector("svg") && btn.className.includes("absolute"),
-    );
-    if (xButton) {
-      fireEvent.click(xButton);
-      expect(onClose).toHaveBeenCalled();
-    }
+    fireEvent.click(screen.getByText("ESC"));
+    expect(onClose).toHaveBeenCalled();
   });
 
   /**
@@ -205,6 +200,48 @@ describe("SignInModal", () => {
       expect(
         screen.queryByRole("button", { name: /resend the email/i }),
       ).not.toBeInTheDocument();
+    });
+
+    it("asks for the emailed code when two-step sign-in is on", async () => {
+      await submit({ error: "CredentialsSignin", code: "TWO_FACTOR_REQUIRED:s3cret" });
+
+      expect(await screen.findByText("Check your email")).toBeInTheDocument();
+      expect(screen.getAllByLabelText(/Sign-in code digit/)).toHaveLength(8);
+      expect(screen.getByText(/approve the link/i)).toBeInTheDocument();
+    });
+
+    it("finishes with the challenge secret and the typed code", async () => {
+      await submit({ error: "CredentialsSignin", code: "TWO_FACTOR_REQUIRED:s3cret" });
+      await screen.findByText("Check your email");
+
+      vi.mocked(signIn).mockResolvedValue({ ok: true, error: undefined } as never);
+      const user = userEvent.setup();
+      await user.click(screen.getAllByLabelText(/Sign-in code digit/)[0]!);
+      await user.paste("12345678");
+      await user.click(screen.getByRole("button", { name: /verify/i }));
+
+      expect(signIn).toHaveBeenLastCalledWith("two-factor", {
+        challenge: "s3cret",
+        code: "12345678",
+        redirect: false,
+      });
+    });
+
+    it("says so when the code is wrong, and stays on the code screen", async () => {
+      await submit({ error: "CredentialsSignin", code: "TWO_FACTOR_REQUIRED:s3cret" });
+      await screen.findByText("Check your email");
+
+      vi.mocked(signIn).mockResolvedValue({
+        error: "CredentialsSignin",
+        code: "TWO_FACTOR_FAILED:invalid",
+      } as never);
+      const user = userEvent.setup();
+      await user.click(screen.getAllByLabelText(/Sign-in code digit/)[0]!);
+      await user.paste("00000000");
+      await user.click(screen.getByRole("button", { name: /verify/i }));
+
+      expect(await screen.findByText(/code is not valid/i)).toBeInTheDocument();
+      expect(screen.getByText("Check your email")).toBeInTheDocument();
     });
   });
 

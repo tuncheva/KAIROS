@@ -30,6 +30,7 @@ import "server-only";
 
 import { env } from "~/env";
 import { createLogger } from "~/server/logger";
+import { currentUserReasoningEffort } from "./effortScope";
 import { resolveLlmConfig } from "./providers";
 
 const log = createLogger("llm");
@@ -114,9 +115,20 @@ const CHAT_TEMPLATE_KWARGS: ReadonlyArray<
  */
 const FAST_TIER_REASONING_EFFORT = "low";
 
-function strongTierReasoningEffort(): string {
-  return env.LLM_REASONING_EFFORT ?? "medium";
+/**
+ * The strong tier's configured effort: the user's pick for this turn, then
+ * `LLM_REASONING_EFFORT`. Undefined means neither was set.
+ */
+function configuredStrongEffort(): string | undefined {
+  return currentUserReasoningEffort() ?? env.LLM_REASONING_EFFORT;
 }
+
+function strongTierReasoningEffort(): string {
+  return configuredStrongEffort() ?? "medium";
+}
+
+/** The ladder `chat_template_kwargs.reasoning_effort` accepts. */
+const TEMPLATE_EFFORT_LADDER = ["low", "medium", "high"] as const;
 
 /**
  * Models that take reasoning effort as a **top-level** `reasoning_effort` field.
@@ -160,7 +172,8 @@ const REASONING_EFFORT_MODELS: ReadonlyArray<
  * Unsupported values resolve *downwards* — `medium` on a `low`/`high`/`max`
  * model becomes `low`. This dial exists to buy latency back, so the ambiguous
  * case should not silently cost more than was asked for. Only reached when
- * `LLM_REASONING_EFFORT` is set; an unset dial takes the family's own default
+ * an effort was asked for — `LLM_REASONING_EFFORT`, the user's pick, or a
+ * per-call override; an unset dial takes the family's own default
  * rather than being resolved from the global one.
  */
 function nearestSupportedEffort(
@@ -182,16 +195,21 @@ function nearestSupportedEffort(
 function reasoningEffortFor(
   model: string,
   tier: "fast" | "strong",
+  override?: string,
 ): string | undefined {
   const bare = model.slice(model.lastIndexOf("/") + 1);
   const spec = REASONING_EFFORT_MODELS.find(([prefix]) =>
     bare.startsWith(prefix),
   )?.[1];
   if (!spec) return undefined;
+  // A per-request override is a deliberate choice by a caller that knows what
+  // this particular call is for, so it outranks both the tier and the env dial —
+  // still resolved onto the model's own ladder, like every other source.
+  if (override) return nearestSupportedEffort(override, spec.supported);
   if (tier === "fast") {
     return nearestSupportedEffort(FAST_TIER_REASONING_EFFORT, spec.supported);
   }
-  const configured = env.LLM_REASONING_EFFORT;
+  const configured = configuredStrongEffort();
   return configured
     ? nearestSupportedEffort(configured, spec.supported)
     : spec.strongDefault;
@@ -208,6 +226,7 @@ function reasoningEffortFor(
 function chatTemplateKwargsFor(
   model: string,
   tier: "fast" | "strong",
+  override?: string,
 ): Record<string, unknown> | undefined {
   const bare = model.slice(model.lastIndexOf("/") + 1);
   const kwargs = CHAT_TEMPLATE_KWARGS.find(([prefix]) =>
@@ -215,10 +234,17 @@ function chatTemplateKwargsFor(
   )?.[1];
   if (!kwargs) return undefined;
   if (!("thinking" in kwargs)) return kwargs;
+  // Resolved onto the template's ladder: the user can ask for "max", which no
+  // template-flag model offers, and an unknown value is silently ignored there.
   return {
     ...kwargs,
-    reasoning_effort:
-      tier === "fast" ? FAST_TIER_REASONING_EFFORT : strongTierReasoningEffort(),
+    reasoning_effort: nearestSupportedEffort(
+      override ??
+        (tier === "fast"
+          ? FAST_TIER_REASONING_EFFORT
+          : strongTierReasoningEffort()),
+      TEMPLATE_EFFORT_LADDER,
+    ),
   };
 }
 
@@ -256,7 +282,12 @@ function getModelChain(): string[] {
  */
 function getFastModelChain(): string[] {
   const { fastModel, models } = config();
-  return fastModel ? [fastModel, ...models] : models;
+  if (!fastModel) return models;
+  // Deduplicated: pointing LLM_MODEL_FAST at the same id as LLM_MODEL is the
+  // normal configuration for a gateway that serves one model, and the naive
+  // concatenation turned that into the same endpoint twice — a doubled retry
+  // ladder (three attempts, then three more) against a model already known bad.
+  return [fastModel, ...models.filter((m) => m !== fastModel)];
 }
 
 /** Resolve the model chain for one request: explicit pin, then tier, then default. */
@@ -303,6 +334,16 @@ export interface ChatRequest {
    * `model` pins one explicitly.
    */
   tier?: "fast" | "strong";
+  /**
+   * Chain-of-thought budget for this one call, overriding the tier, the user's
+   * pick for the turn (`effortScope.ts`) and `LLM_REASONING_EFFORT`.
+   *
+   * For callers that know a particular call does not need the depth the tier
+   * implies — picking which tools to fetch is not the same work as reasoning
+   * over what they returned. Resolved onto the model's own ladder, so a value it
+   * does not offer lands on the nearest cheaper rung rather than being rejected.
+   */
+  reasoningEffort?: "low" | "medium" | "high" | "max";
   temperature?: number;
   maxTokens?: number;
   /** Ask for `response_format: json_object`. Ignored when `tools` is set. */
@@ -503,14 +544,22 @@ function buildBody(
     max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
   };
 
-  const templateKwargs = chatTemplateKwargsFor(model, req.tier ?? "strong");
+  const templateKwargs = chatTemplateKwargsFor(
+    model,
+    req.tier ?? "strong",
+    req.reasoningEffort,
+  );
   if (templateKwargs) {
     // Top level, not nested: the OpenAI SDK's `extra_body` merges its keys into
     // the request root, and that is the shape the NIM reads off the wire.
     body.chat_template_kwargs = templateKwargs;
   }
 
-  const reasoningEffort = reasoningEffortFor(model, req.tier ?? "strong");
+  const reasoningEffort = reasoningEffortFor(
+    model,
+    req.tier ?? "strong",
+    req.reasoningEffort,
+  );
   if (reasoningEffort) {
     body.reasoning_effort = reasoningEffort;
   }

@@ -39,6 +39,8 @@ import { appRouter } from "~/server/api/root";
 import { createCallerFactory } from "~/server/api/trpc";
 import type { TRPCContext } from "~/server/api/trpc";
 
+import { setHarnessDb } from "./harness-db";
+
 const MIGRATIONS_DIR = path.resolve(process.cwd(), "src/server/db/migrations");
 
 export const INTEGRATION_DB_URL = process.env.DATABASE_URL;
@@ -123,6 +125,8 @@ export async function createHarness(label: string): Promise<Harness> {
   });
 
   const db = drizzle(appSql, { schema }) as unknown as TRPCContext["db"];
+  // Modules that import the global `db` land here too — see `setup.ts`.
+  setHarnessDb(db);
 
   return {
     db,
@@ -135,6 +139,7 @@ export async function createHarness(label: string): Promise<Harness> {
         headers: new Headers(),
       } as unknown as TRPCContext),
     cleanup: async () => {
+      setHarnessDb(null);
       await appSql.end({ timeout: 5 });
       try {
         await sql.unsafe(`DROP SCHEMA IF EXISTS "${scratch}" CASCADE`);

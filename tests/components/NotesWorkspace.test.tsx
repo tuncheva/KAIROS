@@ -154,14 +154,15 @@ describe("NotesWorkspace", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows that a note is locked *and* shared, not one or the other", () => {
+  it("shows that a shared note is locked", () => {
     /* The old card chose between the two with a ternary that tested sharing
-       first, so an encrypted note that was shared never showed a lock. */
+       first, so an encrypted note that was shared never showed a lock. The
+       quiet row has no badges — sharing waits in the editor — but the lock
+       still has to survive the note being shared. */
     renderAt("/notes");
 
     const row = screen.getByRole("button", { name: /Salary review/ });
-    expect(within(row).getByText("Locked")).toBeInTheDocument();
-    expect(within(row).getByText("1")).toBeInTheDocument();
+    expect(within(row).getByText("Locked · unlock to read")).toBeInTheDocument();
   });
 
   it("offers the rail views and notebooks with their counts", () => {

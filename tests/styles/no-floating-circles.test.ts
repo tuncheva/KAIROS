@@ -72,7 +72,10 @@ describe("Publish Page – No Gradient Background", () => {
     expect(publishWorkspaceSource).toContain("minmax(0,1fr)");
   });
 
-  it("panel separators stay on the subtle dark border", () => {
-    expect(publishWorkspaceSource).toContain("dark:border-white/5");
+  it("panel separators stay on the hairline token", () => {
+    // Was `dark:border-white/5` beside a `border-slate-200` twin: one hairline
+    // per mode, hand-painted. The token carries both.
+    expect(publishWorkspaceSource).toContain("border-border-medium");
+    expect(publishWorkspaceSource).not.toContain("border-white/5");
   });
 });

@@ -19,6 +19,8 @@ import {
   themeEnum,
   profileAudienceEnum,
   verificationCodePurposeEnum,
+  planEnum,
+  subscriptionStatusEnum,
 } from "./enums";
 
 export const users = createTable("user", (d) => ({
@@ -184,8 +186,58 @@ export const users = createTable("user", (d) => ({
      */
     calendarFeedToken: varchar("calendar_feed_token", { length: 64 }).unique(),
 
+    /**
+     * Two-step sign-in by email: a correct password is not enough on its own,
+     * the sign-in is also confirmed with a code or link sent to this address.
+     * Enforced in `~/server/auth/config`, see `~/server/auth/twoFactor`.
+     */
     twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
+    /** Reserved for an authenticator-app (TOTP) factor. Unused by the email factor. */
     twoFactorSecret: varchar("two_factor_secret", { length: 255 }),
+
+
+    /**
+     * Billing — this person's own subscription.
+     *
+     * Columns rather than a `subscriptions` table, deliberately. Every request
+     * that resolves entitlements reads this, and the read is on the hot path of
+     * the rate limiter; a join to answer "what may you do" is a join on every AI
+     * turn. The cost of the choice is that there is no subscription *history*
+     * here — only the current state. Stripe holds the history, and it is the
+     * better system of record for it.
+     *
+     * This is only half the answer. Team is bought by an organization, so the
+     * plan that actually applies to someone is the better of this column and
+     * their active org's — see `~/server/billing/entitlements`.
+     *
+     * `plan` is denormalised from `subscriptionStatus` + Stripe's price on
+     * purpose: it is what every reader wants, and deriving it on each read means
+     * the "is past_due still entitled?" rule living in more than one place.
+     * `~/server/billing/subscriptions` is the only writer.
+     */
+    plan: planEnum("plan").default("free").notNull(),
+    /**
+     * Stripe's customer handle, kept even after a subscription ends.
+     *
+     * Nulling it on cancellation would orphan the customer's invoice history and
+     * make a returning subscriber a second customer with the same email — which
+     * is how one person ends up with two payment methods and two receipts for
+     * the same account.
+     */
+    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }).unique(),
+    stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }).unique(),
+    subscriptionStatus: subscriptionStatusEnum("subscription_status"),
+    /**
+     * When the paid period ends — the moment access lapses if nothing renews.
+     *
+     * Stored so the UI can say "until 14 March" rather than only "cancelling",
+     * and so a webhook that never arrives cannot leave someone paying for
+     * nothing: the resolver treats a period end in the past as unentitled
+     * regardless of what `status` still claims.
+     */
+    currentPeriodEnd: timestamp("current_period_end", { mode: "date", withTimezone: true }),
+    /** Set when the subscriber has cancelled but the period they paid for runs on. */
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
 
     createdAt: timestamp("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
@@ -331,6 +383,46 @@ export const verificationCodes = createTable(
     // Every lookup is "the live code for this address and purpose".
     index("verification_code_lookup_idx").on(t.email, t.purpose),
   ],
+);
+
+/**
+ * A sign-in that has passed the password and is waiting on the second factor.
+ *
+ * Three secrets, each held by a different party, and only their SHA-256 is kept:
+ *
+ * - `secretHash` — the handle the browser that typed the password holds. Only
+ *   that browser can finish the sign-in, so approving the emailed link on a
+ *   phone unlocks the laptop that asked, not the phone.
+ * - `codeHash` — the eight digits in the email, typed into that browser.
+ * - `linkTokenHash` — the link in the same email. Following it and pressing
+ *   Approve marks the row approved; the waiting browser notices and finishes.
+ *
+ * One live row per user: issuing a new challenge retires the previous one.
+ */
+export const twoFactorChallenges = createTable(
+  "two_factor_challenge",
+  (d) => ({
+    id: d.integer().primaryKey().generatedAlwaysAsIdentity(),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    secretHash: d.varchar("secret_hash", { length: 64 }).notNull().unique(),
+    codeHash: d.varchar("code_hash", { length: 64 }).notNull(),
+    linkTokenHash: d.varchar("link_token_hash", { length: 64 }).notNull().unique(),
+    attempts: d.integer().default(0).notNull(),
+    expiresAt: d
+      .timestamp("expires_at", { mode: "date", withTimezone: true })
+      .notNull(),
+    approvedAt: d.timestamp("approved_at", { mode: "date", withTimezone: true }),
+    deniedAt: d.timestamp("denied_at", { mode: "date", withTimezone: true }),
+    consumedAt: d.timestamp("consumed_at", { mode: "date", withTimezone: true }),
+    createdAt: d
+      .timestamp("created_at", { mode: "date", withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [index("two_factor_challenge_user_idx").on(t.userId)],
 );
 
 /**

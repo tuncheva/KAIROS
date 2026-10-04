@@ -1,6 +1,7 @@
 import { type InferInsertModel, type InferSelectModel, sql } from "drizzle-orm";
-import { index, timestamp, varchar, integer, boolean, text, uniqueIndex } from "drizzle-orm/pg-core";
-import { createTable, orgRoleEnum } from "./enums";
+import { index, timestamp, varchar, integer, boolean, text, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
+import type { MemberPermissionFlags } from "~/lib/permissions";
+import { createTable, orgRoleEnum, planEnum, subscriptionStatusEnum } from "./enums";
 import { users } from "./users";
 
 export const organizations = createTable(
@@ -14,6 +15,38 @@ export const organizations = createTable(
     createdById: varchar("created_by_id", { length: 255 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+
+    /**
+     * Billing — the organization's Team subscription.
+     *
+     * The same column set `users` carries, on the other thing that can hold a
+     * subscription. Team is sold per seat to an organization, so it cannot live
+     * on a person: the payer is usually one admin, and putting the plan on their
+     * row would mean everyone else's entitlements depend on a user they may not
+     * be able to see, and would vanish if that admin left.
+     *
+     * Every member of an org whose subscription is live gets the Team flag set,
+     * regardless of their own `users.plan`. The resolver takes the better of the
+     * two — see `~/server/billing/entitlements`.
+     */
+    plan: planEnum("plan").default("free").notNull(),
+    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }).unique(),
+    stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }).unique(),
+    subscriptionStatus: subscriptionStatusEnum("subscription_status"),
+    currentPeriodEnd: timestamp("current_period_end", { mode: "date", withTimezone: true }),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
+    /**
+     * Seats paid for, which is not the same as members present.
+     *
+     * Stored rather than counted from `organization_members`, because the number
+     * that matters for entitlement is the one Stripe is invoicing. Letting the
+     * membership count *be* the seat count would mean adding a colleague
+     * silently increases the bill with no one having agreed to it; instead the
+     * seat count is what was bought, and exceeding it is a condition the org
+     * admin is asked to resolve.
+     */
+    seats: integer("seats").default(0).notNull(),
+
     createdAt: timestamp("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -38,6 +71,9 @@ export const organizationMembers = createTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: orgRoleEnum("role").notNull(),
+    // The custom role's name when the member was given one. A label only: the
+    // flags below were copied from the role at the time and are what authorize.
+    displayRole: varchar("display_role", { length: 100 }),
     canAddMembers: boolean("can_add_members").default(false).notNull(),
     canAssignTasks: boolean("can_assign_tasks").default(false).notNull(),
     canCreateProjects: boolean("can_create_projects").default(false).notNull(),
@@ -97,6 +133,13 @@ export const organizationInvites = createTable(
     email: varchar("email", { length: 255 }).notNull(),
     role: orgRoleEnum("role").notNull().default("member"),
     displayRole: varchar("display_role", { length: 100 }),
+    // The exact flags the inviter ticked, written verbatim into the membership
+    // on acceptance. Null only on invites issued before this column existed,
+    // which fall back to the role's template.
+    permissions: jsonb("permissions").$type<MemberPermissionFlags>(),
+    // SHA-256 of the token in the emailed link. The token itself is never
+    // stored, so a read of this table does not yield working links.
+    acceptTokenHash: varchar("accept_token_hash", { length: 64 }).unique(),
     invitedById: varchar("invited_by_id", { length: 255 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -129,7 +172,15 @@ export const organizationJoinCodes = createTable(
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
     code: varchar("code", { length: 64 }).notNull().unique(),
+    // "qr" is the short-lived code shown on screen; "link" is an invite link an
+    // admin shares by hand, with a hand-picked flag set and a longer life.
+    // Rotating the QR only ever retires "qr" rows.
+    kind: varchar("kind", { length: 10 }).notNull().default("qr"),
     role: orgRoleEnum("role").notNull().default("worker"),
+    displayRole: varchar("display_role", { length: 100 }),
+    // As on invites: the exact flags a redeemer gets. Null means the role's
+    // template, which is what every QR minted before this column got.
+    permissions: jsonb("permissions").$type<MemberPermissionFlags>(),
     createdById: varchar("created_by_id", { length: 255 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -152,6 +203,7 @@ export const organizationJoinCodes = createTable(
 
 export type Organization = InferSelectModel<typeof organizations>;
 export type OrganizationJoinCode = InferSelectModel<typeof organizationJoinCodes>;
+export type OrganizationInvite = InferSelectModel<typeof organizationInvites>;
 export type NewOrganization = InferInsertModel<typeof organizations>;
 export type OrganizationMember = InferSelectModel<typeof organizationMembers>;
 export type NewOrganizationMember = InferInsertModel<typeof organizationMembers>;

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Globe, Plus, Trash2, X } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
+import { RailCardsSkeleton } from "~/components/chat/ChatSkeletons";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { api } from "~/trpc/react";
 
 import type { AgentSummary } from "./types";
@@ -37,6 +39,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
   const utils = api.useUtils();
 
   const memory = api.agent.memory.useQuery(undefined, { retry: false });
+  const showSkeleton = useSkeletonHold(memory.isLoading);
   const invalidate = () => void utils.agent.memory.invalidate();
 
   const upsert = api.agent.upsertMemory.useMutation({ onSuccess: invalidate });
@@ -71,8 +74,8 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-3">
-      {memory.isLoading ? (
-        <p className="text-sm text-fg-tertiary">{t("loading")}</p>
+      {showSkeleton ? (
+        <RailCardsSkeleton className="pb-3" />
       ) : rows.length === 0 && !adding ? (
         <p className="pb-3 text-sm leading-snug text-fg-tertiary">
           {t("memoryEmpty")}
@@ -93,7 +96,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
                   onClick={() => forget.mutate({ id: fact.id })}
                   disabled={forget.isPending}
                   aria-label={t("forget")}
-                  className="shrink-0 rounded-lg p-1 text-fg-tertiary transition-colors hover:bg-red-500/15 hover:text-red-500"
+                  className="shrink-0 rounded-lg p-1 text-fg-tertiary transition-colors hover:bg-status-danger-surface hover:text-status-danger-ink"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -112,7 +115,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
       )}
 
       {adding ? (
-        <div className="space-y-2 rounded-xl border border-slate-200 p-2.5 dark:border-white/[0.06]">
+        <div className="space-y-2 rounded-xl border border-border-medium p-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-fg-primary">
               {t("addFact")}
@@ -172,12 +175,12 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
               hit; surfacing it here is the difference between "nothing happened"
               and "you already have twenty of these". */}
           {upsert.data && !upsert.data.stored && (
-            <p className="text-[11px] leading-snug text-amber-600 dark:text-amber-400">
+            <p className="text-[11px] leading-snug text-status-warning-ink">
               {upsert.data.message}
             </p>
           )}
           {upsert.error && (
-            <p className="text-[11px] leading-snug text-red-500">
+            <p className="text-[11px] leading-snug text-status-danger-ink">
               {upsert.error.message}
             </p>
           )}
@@ -195,7 +198,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-xs font-medium text-fg-secondary transition-colors hover:bg-bg-secondary/60 dark:border-white/[0.12]"
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border-strong px-3 py-2 text-xs font-medium text-fg-secondary transition-colors hover:bg-bg-secondary/60"
         >
           <Plus className="h-3.5 w-3.5" />
           {t("addFact")}

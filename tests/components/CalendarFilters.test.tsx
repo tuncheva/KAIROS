@@ -180,6 +180,7 @@ describe("mapping router rows to calendar items", () => {
             createdById: "u1",
           },
         ],
+        external: [],
       },
       "Untitled note",
     );
@@ -190,6 +191,46 @@ describe("mapping router rows to calendar items", () => {
       ["task", 1, false],
     ]);
     expect(items.find((i) => i.kind === "note")?.title).toBe("Untitled note");
+  });
+
+  it("takes all-day from the provider on imported events, not from midnight", () => {
+    const items = toCalendarItems(
+      {
+        tasks: [],
+        events: [],
+        notes: [],
+        external: [
+          {
+            id: 1,
+            title: "Date-only",
+            description: null,
+            location: null,
+            startsAt: new Date(2026, 3, 8, 0, 0),
+            endsAt: null,
+            allDay: true,
+            status: "confirmed",
+          },
+          {
+            // Starts at midnight but is a *timed* event. The midnight heuristic
+            // the product's own rows use would put this in the all-day strip.
+            id: 2,
+            title: "Midnight standup",
+            description: null,
+            location: "Berlin",
+            startsAt: new Date(2026, 3, 8, 0, 0),
+            endsAt: new Date(2026, 3, 8, 1, 0),
+            allDay: false,
+            status: "confirmed",
+          },
+        ],
+      },
+      "Untitled note",
+    );
+
+    expect(items.map((i) => [i.kind, i.id, i.allDay])).toEqual([
+      ["external", 1, true],
+      ["external", 2, false],
+    ]);
   });
 });
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { api } from "~/trpc/react";
+import { SettingsListSkeleton } from "./SettingsSkeleton";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -85,28 +86,28 @@ export function CustomSchedulesPanel() {
   return (
     <div className="mt-4 border-t border-border-light pt-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h4 className="text-sm font-semibold text-fg-primary">
+        <h4 className="text-settings-row font-medium text-fg-primary">
           {t("ownSchedulesTitle")}
         </h4>
-        <span className="text-xs text-fg-tertiary">
+        <span className="text-settings-meta text-fg-tertiary">
           {t("ownSchedulesUsed", { used: rows.length, max: allowance })}
         </span>
       </div>
 
-      <p className="mt-0.5 mb-3 text-xs text-fg-tertiary">
+      <p className="mt-0.5 mb-3 text-settings-desc text-fg-tertiary">
         {t("ownSchedulesReadOnly")}
       </p>
 
       {error ? (
-        <p className="mb-2 rounded-lg bg-error/10 px-3 py-2 text-xs text-error">
+        <p className="mb-2 rounded-lg bg-error/10 px-3 py-2 text-settings-meta text-error">
           {error}
         </p>
       ) : null}
 
       {schedules.isLoading ? (
-        <p className="text-sm text-fg-tertiary">{t("loading")}</p>
+        <SettingsListSkeleton rows={2} />
       ) : rows.length === 0 ? (
-        <p className="text-sm text-fg-tertiary">{t("ownSchedulesEmpty")}</p>
+        <p className="text-settings-desc text-fg-tertiary">{t("ownSchedulesEmpty")}</p>
       ) : (
         <div className="flex flex-col gap-2">
           {rows.map((row) => (
@@ -115,14 +116,14 @@ export function CustomSchedulesPanel() {
               className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border-light bg-bg-secondary p-3"
             >
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-fg-primary">
+                <p className="text-settings-body font-medium text-fg-primary">
                   {row.name}
                 </p>
-                <p className="mt-0.5 text-xs italic text-fg-tertiary">
+                <p className="mt-0.5 text-settings-meta italic text-fg-tertiary">
                   &ldquo;{row.prompt}&rdquo;
                 </p>
                 {row.lastError ? (
-                  <p className="mt-1 text-xs text-error">
+                  <p className="mt-1 text-settings-meta text-error">
                     {t("lastFailed", { error: row.lastError })}
                   </p>
                 ) : null}
@@ -141,7 +142,7 @@ export function CustomSchedulesPanel() {
                       dayOfWeek: value < 0 ? null : value,
                     });
                   }}
-                  className="rounded-md border border-border-medium bg-bg-elevated px-2 py-1 text-xs text-fg-primary disabled:opacity-50"
+                  className="rounded-md border border-border-medium bg-bg-elevated px-2 py-1 text-settings-small text-fg-primary disabled:opacity-50"
                 >
                   <option value={-1}>{t("everyDay")}</option>
                   {WEEKDAY_KEYS.map((key, index) => (
@@ -160,7 +161,7 @@ export function CustomSchedulesPanel() {
                       hourLocal: Number(e.target.value),
                     })
                   }
-                  className="rounded-md border border-border-medium bg-bg-elevated px-2 py-1 text-xs text-fg-primary disabled:opacity-50"
+                  className="rounded-md border border-border-medium bg-bg-elevated px-2 py-1 text-settings-small text-fg-primary disabled:opacity-50"
                 >
                   {HOURS.map((h) => (
                     <option key={h} value={h}>
@@ -178,7 +179,7 @@ export function CustomSchedulesPanel() {
                       channel: e.target.value as "app" | "email" | "both",
                     })
                   }
-                  className="rounded-md border border-border-medium bg-bg-elevated px-2 py-1 text-xs text-fg-primary disabled:opacity-50"
+                  className="rounded-md border border-border-medium bg-bg-elevated px-2 py-1 text-settings-small text-fg-primary disabled:opacity-50"
                 >
                   <option value="app">{t("channelApp")}</option>
                   <option value="email">{t("channelEmail")}</option>
@@ -191,7 +192,7 @@ export function CustomSchedulesPanel() {
                     update.mutate({ id: row.id, enabled: !row.enabled })
                   }
                   disabled={update.isPending}
-                  className="rounded-md border border-border-medium px-2 py-1 text-xs text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
+                  className="rounded-md border border-border-medium px-2 py-1 text-settings-small font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
                 >
                   {row.enabled ? t("pause") : t("resume")}
                 </button>
@@ -200,7 +201,7 @@ export function CustomSchedulesPanel() {
                   type="button"
                   onClick={() => remove.mutate({ id: row.id })}
                   disabled={remove.isPending}
-                  className="rounded-md px-2 py-1 text-xs text-error transition-colors hover:bg-error/10 disabled:opacity-50"
+                  className="rounded-md px-2 py-1 text-settings-small font-medium text-error transition-colors hover:bg-error/10 disabled:opacity-50"
                 >
                   {t("removeSchedule")}
                 </button>
@@ -211,7 +212,7 @@ export function CustomSchedulesPanel() {
       )}
 
       {atCap ? (
-        <p className="mt-3 text-xs text-fg-tertiary">
+        <p className="mt-3 text-settings-meta text-fg-tertiary">
           {allowance === 0
             ? t("ownSchedulesProOnly")
             : t("ownSchedulesLimit", { max: allowance })}
@@ -232,21 +233,21 @@ export function CustomSchedulesPanel() {
             onChange={(e) => setName(e.target.value)}
             maxLength={80}
             placeholder={t("schedulePlaceholderName")}
-            className="w-full rounded-md border border-border-medium bg-bg-elevated px-3 py-1.5 text-sm text-fg-primary sm:w-48"
+            className="w-full rounded-md border border-border-medium bg-bg-elevated px-3 py-1.5 text-settings-body text-fg-primary sm:w-48"
           />
           <input
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             maxLength={500}
             placeholder={t("schedulePlaceholderPrompt")}
-            className="min-w-0 flex-1 rounded-md border border-border-medium bg-bg-elevated px-3 py-1.5 text-sm text-fg-primary"
+            className="min-w-0 flex-1 rounded-md border border-border-medium bg-bg-elevated px-3 py-1.5 text-settings-body text-fg-primary"
           />
           <button
             type="submit"
             disabled={
               create.isPending || name.trim().length < 2 || prompt.trim().length < 5
             }
-            className="shrink-0 rounded-lg border border-border-medium px-3 py-1.5 text-sm font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
+            className="shrink-0 rounded-lg border border-border-medium px-3 py-1.5 text-settings-small font-medium text-fg-primary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
           >
             {create.isPending ? t("sending") : t("addSchedule")}
           </button>

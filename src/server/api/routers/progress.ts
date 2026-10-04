@@ -52,10 +52,19 @@ type Ctx = Parameters<Parameters<typeof protectedProcedure.query>[0]>[0]["ctx"];
 
 type Scope = {
   mode: "organization" | "personal";
+  /** The active organisation, when there is one. */
+  organizationId: number | null;
   /** Non-archived projects the caller may read. */
   projectIds: number[];
   /** People whose record the caller may open. */
   memberIds: string[];
+  /**
+   * Whether the caller may read the whole team at once: an admin of the active
+   * organisation. Opening one teammate's record stays open to any member, as it
+   * always was; tallying everyone side by side is not, and a personal
+   * workspace has no admin to be.
+   */
+  canViewTeam: boolean;
 };
 
 /**
@@ -87,7 +96,10 @@ async function resolveScope(ctx: Ctx): Promise<Scope> {
 
   const [membership] = activeOrganizationId
     ? await ctx.db
-        .select({ organizationId: organizationMembers.organizationId })
+        .select({
+          organizationId: organizationMembers.organizationId,
+          role: organizationMembers.role,
+        })
         .from(organizationMembers)
         .where(
           and(
@@ -117,8 +129,10 @@ async function resolveScope(ctx: Ctx): Promise<Scope> {
 
     return {
       mode: "organization",
+      organizationId: membership.organizationId,
       projectIds: projectRows.map((p) => p.id),
       memberIds: Array.from(new Set([me, ...memberRows.map((m) => m.userId)])),
+      canViewTeam: membership.role === "admin",
     };
   }
 
@@ -151,10 +165,12 @@ async function resolveScope(ctx: Ctx): Promise<Scope> {
 
   return {
     mode: "personal",
+    organizationId: null,
     projectIds,
     memberIds: Array.from(
       new Set([me, ...projectRows.map((p) => p.createdById), ...peers.map((p) => p.userId)]),
     ),
+    canViewTeam: false,
   };
 }
 
@@ -168,7 +184,7 @@ export const progressRouter = createTRPCRouter({
     const me = ctx.session.user.id;
 
     if (!scope.projectIds.length) {
-      return { scope: scope.mode, people: [] as LeaderboardPerson[] };
+      return { scope: scope.mode, canViewTeam: scope.canViewTeam, people: [] as LeaderboardPerson[] };
     }
 
     const tallies = await ctx.db
@@ -196,7 +212,7 @@ export const progressRouter = createTRPCRouter({
       .map((p) => ({ ...p, completed: byUser.get(p.id) ?? 0, isSelf: p.id === me }))
       .sort((a, b) => b.completed - a.completed || (a.name ?? "").localeCompare(b.name ?? ""));
 
-    return { scope: scope.mode, people: ranked };
+    return { scope: scope.mode, canViewTeam: scope.canViewTeam, people: ranked };
   }),
 
   /**
@@ -360,6 +376,176 @@ export const progressRouter = createTRPCRouter({
     }),
 
   /**
+   * Everyone's record at once, for the team view of /progress.
+   *
+   * Admins only, and by role rather than by flag. `canViewAnalytics` looks like
+   * the natural gate, but the contributor template grants it to every ordinary
+   * member (see `~/lib/permissions`), and a team view that every member can
+   * open is a view of each other rather than of the team. Should that template
+   * change, this is the line to move onto the flag.
+   *
+   * Completions come back as bare `{ userId, finishedAt }` pairs and are
+   * bucketed by the client, for the same reason `getRecord` does it — which
+   * day a 23:40 completion belongs to depends on the reader's clock. Only
+   * current members are counted: work credited to someone who has since left
+   * would otherwise inflate a team they are no longer on.
+   */
+  getTeam: protectedProcedure
+    .input(
+      z
+        .object({
+          /** How far back the grid reaches. 18 weeks plus a day of slack. */
+          days: z.number().int().min(7).max(400).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const scope = await resolveScope(ctx);
+      const me = ctx.session.user.id;
+      const days = input?.days ?? 133;
+
+      if (!scope.canViewTeam || scope.organizationId === null) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only an admin of this organization can see the whole team",
+        });
+      }
+
+      const memberRows = await ctx.db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          image: users.image,
+          role: organizationMembers.role,
+          displayRole: organizationMembers.displayRole,
+        })
+        .from(organizationMembers)
+        .innerJoin(users, eq(organizationMembers.userId, users.id))
+        .where(eq(organizationMembers.organizationId, scope.organizationId));
+
+      const memberIds = memberRows.map((m) => m.id);
+      const empty = {
+        days,
+        members: memberRows.map((m) => ({
+          ...m,
+          isSelf: m.id === me,
+          open: 0,
+          overdue: 0,
+          lastFinishedAt: null as Date | null,
+          workload: [] as { projectId: number; projectTitle: string; open: number }[],
+        })),
+        completions: [] as { userId: string; finishedAt: Date }[],
+        projects: [] as TeamProjectRow[],
+      };
+      if (!scope.projectIds.length || !memberIds.length) return empty;
+
+      const inScope = inArray(tasks.projectId, scope.projectIds);
+      const byMember = inArray(finishedBy, memberIds);
+      // ISO text rather than a Date — see the note in `getRecord`.
+      const since = new Date(Date.now() - days * 86_400_000).toISOString();
+
+      const [completionRows, lastRows, openRows, touchRows] = await Promise.all([
+        ctx.db
+          .select({ userId: finishedBy, finishedAt })
+          .from(tasks)
+          .where(
+            and(
+              inScope,
+              eq(tasks.status, "completed"),
+              byMember,
+              sql`coalesce(${tasks.completedAt}, ${tasks.updatedAt}) >= ${since}`,
+            ),
+          )
+          .limit(20_000),
+
+        // "Last finished 40 days ago" has to reach past the grid's window.
+        ctx.db
+          .select({
+            userId: finishedBy,
+            lastFinishedAt: sql`max(coalesce(${tasks.completedAt}, ${tasks.updatedAt}))`.mapWith(
+              tasks.completedAt,
+            ),
+          })
+          .from(tasks)
+          .where(and(inScope, eq(tasks.status, "completed"), byMember))
+          .groupBy(finishedBy),
+
+        ctx.db
+          .select({
+            userId: tasks.assignedToId,
+            projectId: tasks.projectId,
+            projectTitle: projects.title,
+            open: count(),
+            overdue:
+              sql<number>`count(*) FILTER (WHERE ${tasks.dueDate} < current_date)`.mapWith(
+                Number,
+              ),
+          })
+          .from(tasks)
+          .innerJoin(projects, eq(tasks.projectId, projects.id))
+          .where(and(inScope, ne(tasks.status, "completed")))
+          .groupBy(tasks.assignedToId, tasks.projectId, projects.title),
+
+        // Quiet is a fact about the project, as in `getRecord`.
+        ctx.db
+          .select({ projectId: tasks.projectId, lastTouchedAt: max(tasks.updatedAt) })
+          .from(tasks)
+          .where(inScope)
+          .groupBy(tasks.projectId),
+      ]);
+
+      const lastFinished = new Map(
+        lastRows.map((row) => [row.userId, row.lastFinishedAt ?? null] as const),
+      );
+
+      const workloadByMember = new Map<string, { projectId: number; projectTitle: string; open: number }[]>();
+      const overdueByMember = new Map<string, number>();
+      const projectsById = new Map<number, TeamProjectRow>();
+      const touched = new Map(touchRows.map((row) => [row.projectId, row.lastTouchedAt ?? null] as const));
+
+      for (const row of openRows) {
+        const open = Number(row.open);
+        const project = projectsById.get(row.projectId) ?? {
+          projectId: row.projectId,
+          projectTitle: row.projectTitle,
+          open: 0,
+          people: 0,
+          lastTouchedAt: touched.get(row.projectId) ?? null,
+        };
+        project.open += open;
+        // Unassigned work belongs to the project but to no one's load.
+        if (row.userId) {
+          project.people += 1;
+          const list = workloadByMember.get(row.userId) ?? [];
+          list.push({ projectId: row.projectId, projectTitle: row.projectTitle, open });
+          workloadByMember.set(row.userId, list);
+          overdueByMember.set(row.userId, (overdueByMember.get(row.userId) ?? 0) + row.overdue);
+        }
+        projectsById.set(row.projectId, project);
+      }
+
+      return {
+        ...empty,
+        members: memberRows.map((m) => {
+          const workload = (workloadByMember.get(m.id) ?? []).sort((a, b) => b.open - a.open);
+          return {
+            ...m,
+            isSelf: m.id === me,
+            open: workload.reduce((total, entry) => total + entry.open, 0),
+            overdue: overdueByMember.get(m.id) ?? 0,
+            lastFinishedAt: lastFinished.get(m.id) ?? null,
+            workload,
+          };
+        }),
+        completions: completionRows
+          .filter((row): row is typeof row & { finishedAt: Date } => !!row.finishedAt && !!row.userId)
+          .map((row) => ({ userId: row.userId, finishedAt: row.finishedAt })),
+        projects: Array.from(projectsById.values()),
+      };
+    }),
+
+  /**
    * The dashboard's two people-shaped panels, in one round trip.
    *
    * "Your momentum" and "Team today" both want facts that no other endpoint
@@ -518,6 +704,16 @@ type TeamMemberRow = {
   open: number;
   overdue: number;
   lastActiveAt: Date | null;
+};
+
+type TeamProjectRow = {
+  projectId: number;
+  projectTitle: string;
+  /** Open tasks in the project, assigned or not. */
+  open: number;
+  /** How many people hold at least one of them. */
+  people: number;
+  lastTouchedAt: Date | null;
 };
 
 type NextTaskRow = {

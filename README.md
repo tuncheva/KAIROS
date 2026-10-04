@@ -70,7 +70,7 @@ Supporting machinery: per-user memory with agent scoping, conversation history w
 - **Database:** PostgreSQL (Supabase) with Drizzle ORM
 - **Real-time:** Socket.IO in a standalone server process, optional Redis fan-out for multi-instance
 - **AI:** any OpenAI-compatible endpoint with native tool calling, configured per environment
-- **Services:** Resend (email), UploadThing (uploads), Google Maps (region picker)
+- **Services:** Resend (email), UploadThing (uploads), OpenStreetMap (event map + Nominatim geocoding, no key)
 - **i18n:** next-intl — English and Bulgarian offered; German, Spanish and French message files exist but are incomplete and not exposed
 - **Testing:** Vitest, Testing Library, plus a separate integration suite
 

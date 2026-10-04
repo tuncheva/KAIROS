@@ -17,7 +17,9 @@ import { UserPlus } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { ProfileLink } from "~/components/profile/ProfileLink";
+import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { eventDateParts, regionLabel } from "./feedData";
+import { AsideListSkeleton } from "./PublishSkeleton";
 import { PersonAvatar, Stamp, TitledPanel } from "./publishUi";
 
 /** Workspace invitations — the one inbound request this app actually models. */
@@ -73,7 +75,7 @@ function InviteInbox() {
                 type="button"
                 onClick={() => decline.mutate({ inviteId: invite.id })}
                 disabled={accept.isPending || decline.isPending}
-                className="h-8 rounded-lg border border-slate-200 px-3 text-xs text-fg-secondary transition-colors hover:bg-slate-100 disabled:opacity-50 dark:border-white/10 dark:hover:bg-white/5"
+                className="h-8 rounded-lg border border-border-medium px-3 text-xs text-fg-secondary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
               >
                 {t("declineInvite")}
               </button>
@@ -97,7 +99,7 @@ function WhoToFollow() {
   const utils = api.useUtils();
   const { data: session } = useSession();
 
-  const { data: suggestions } = api.profile.getSuggestions.useQuery(
+  const { data: suggestions, isLoading: suggestionsLoading } = api.profile.getSuggestions.useQuery(
     { limit: 4 },
     { enabled: !!session },
   );
@@ -109,6 +111,9 @@ function WhoToFollow() {
     },
   });
 
+  const showSkeleton = useSkeletonHold(!!session && suggestionsLoading);
+
+  if (showSkeleton) return <AsideListSkeleton title={t("whoToFollow")} rows={4} />;
   if (!suggestions || suggestions.length === 0) return null;
 
   const reasonFor = (reason: (typeof suggestions)[number]["reason"]) => {
@@ -148,7 +153,7 @@ function WhoToFollow() {
               type="button"
               onClick={() => follow.mutate({ userId: person.id })}
               disabled={follow.isPending}
-              className="kairos-stamp flex h-7 shrink-0 items-center gap-1 rounded-lg bg-accent-primary/10 px-2.5 text-[9.5px] tracking-[0.12em] text-accent-primary transition-colors hover:bg-accent-primary/20 disabled:opacity-50"
+              className="kairos-stamp flex h-control-sm shrink-0 items-center gap-1 rounded-lg bg-accent-primary/10 px-2.5 text-[9.5px] tracking-[0.12em] text-accent-primary transition-colors hover:bg-accent-primary/20 disabled:opacity-50"
             >
               <UserPlus size={11} />
               {t("follow")}
@@ -164,9 +169,13 @@ function WhoToFollow() {
 function Agenda() {
   const t = useTranslations("publish");
   const locale = useLocale();
-  const { data: summary } = api.event.getMySummary.useQuery();
+  const { data: summary, isLoading } = api.event.getMySummary.useQuery();
+  const showSkeleton = useSkeletonHold(isLoading);
 
   const agenda = summary?.agenda ?? [];
+  if (showSkeleton) {
+    return <AsideListSkeleton title={t("yourAgenda")} rows={3} avatar={false} />;
+  }
   if (agenda.length === 0) return null;
 
   return (

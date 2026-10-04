@@ -17,6 +17,8 @@
  */
 import type { TRPCContext } from "~/server/api/trpc";
 
+import { TRPCError } from "@trpc/server";
+
 import { assertProjectAccess } from "~/server/api/authz";
 import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
@@ -52,10 +54,18 @@ export async function buildA1Context(
   ctx: TRPCContext,
   scope?: { orgId?: string | number; projectId?: string | number },
 ): Promise<A1ContextPack> {
-  const sessionResult = await A1_READ_TOOLS.getSessionContext.execute(
-    ctx,
-    {} as never,
-  );
+  // The user id is on the session already. Reading it from `getSessionContext`
+  // and *then* starting the rest meant four independent queries ran as two
+  // sequential rounds, on a path the user is waiting on before the first model
+  // token is even requested. `getSessionContext` is still called — it returns
+  // the email, name and active org the prompt needs — it just no longer gates
+  // the others.
+  // Read inline rather than through `orchestrator/shared`'s `requireUserId`:
+  // that module also carries the confirmation-token codec and its `crypto` and
+  // `~/env` dependencies, which is a lot of module graph to pull in here for one
+  // field off the session.
+  const userId = ctx.session?.user?.id;
+  if (!userId) throw new TRPCError({ code: "UNAUTHORIZED" });
 
   const rawProjectId = scope?.projectId;
   const projectId =
@@ -65,18 +75,22 @@ export async function buildA1Context(
         ? rawProjectId
         : null;
 
-  // `scope.projectId` is caller-supplied. Authorize it before it reaches the
-  // prompt so an unauthorized id fails closed rather than being echoed back.
   const scopedProjectId =
     projectId !== null && Number.isFinite(projectId) ? projectId : null;
-  if (scopedProjectId !== null) {
-    await assertProjectAccess(ctx, scopedProjectId, "read");
-  }
 
-  const [projects, memory, locale] = await Promise.all([
+  // `scope.projectId` is caller-supplied, so it is authorized before it reaches
+  // the prompt — an unauthorized id must fail closed rather than be echoed back.
+  // Running inside the same batch does not weaken that: `Promise.all` rejects on
+  // the first failure, so an access denial still aborts the whole build before
+  // anything is returned. The other queries are the caller's own rows either way.
+  const [sessionResult, projects, memory, locale] = await Promise.all([
+    A1_READ_TOOLS.getSessionContext.execute(ctx, {} as never),
     A1_READ_TOOLS.listProjects.execute(ctx, { limit: 25 }),
-    loadUserMemory(ctx, sessionResult.userId, "workspace_concierge"),
-    resolveUserLocale(ctx, sessionResult.userId),
+    loadUserMemory(ctx, userId, "workspace_concierge"),
+    resolveUserLocale(ctx, userId),
+    scopedProjectId !== null
+      ? assertProjectAccess(ctx, scopedProjectId, "read")
+      : Promise.resolve(),
   ]);
 
   return {

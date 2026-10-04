@@ -93,7 +93,7 @@ import {
 const rateLimitedProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   await consumeRateLimit(
     ctx.session.user.id,
-    entitlementsFor(ctx).aiRequestsPerDay,
+    (await entitlementsFor(ctx)).aiRequestsPerDay,
   );
   return next();
 });
@@ -135,7 +135,7 @@ export const agentRouter = createTRPCRouter({
   rateLimitStatus: protectedProcedure.query(async ({ ctx }) => {
     return checkRateLimit(
       ctx.session.user.id,
-      entitlementsFor(ctx).aiRequestsPerDay,
+      (await entitlementsFor(ctx)).aiRequestsPerDay,
     );
   }),
   /**
@@ -728,7 +728,7 @@ export const agentRouter = createTRPCRouter({
     return {
       schedules: rows,
       /** So the UI can say "2 of 3 used" rather than only refusing at the limit. */
-      allowance: entitlementsFor(ctx).maxSchedules,
+      allowance: (await entitlementsFor(ctx)).maxSchedules,
     };
   }),
 
@@ -743,7 +743,7 @@ export const agentRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const allowance = entitlementsFor(ctx).maxSchedules;
+      const allowance = (await entitlementsFor(ctx)).maxSchedules;
 
       const [{ count } = { count: 0 }] = await ctx.db
         .select({ count: sql<number>`count(*)`.mapWith(Number) })
@@ -949,6 +949,12 @@ export const agentRouter = createTRPCRouter({
   undoAvailability: protectedProcedure
     .input(z.object({ draftId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
+      // Reported as unavailable rather than refused, so the button simply does
+      // not appear for a plan that did not buy it. The mutation below is the
+      // rule; this is what keeps the UI from offering an action that would be.
+      if (!(await entitlementsFor(ctx)).undoApply) {
+        return { available: false, expiresAt: null };
+      }
       return undoAvailability(ctx, ctx.session.user.id, input.draftId);
     }),
 
@@ -960,6 +966,17 @@ export const agentRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // "Undo applied changes" is a Pro line on the pricing page and was
+      // reachable by any authenticated caller over tRPC — the client never
+      // gated it either. Checked here because this is the one that matters:
+      // the query above is a hint, and this is the guarantee.
+      if (!(await entitlementsFor(ctx)).undoApply) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Undoing an applied change is a Pro feature.",
+        });
+      }
+
       return input.kind === "tasks"
         ? undoTaskApply(ctx, ctx.session.user.id, input.draftId)
         : undoNoteApply(ctx, ctx.session.user.id, input.draftId);
@@ -974,12 +991,13 @@ export const agentRouter = createTRPCRouter({
       z.object({ days: z.number().int().min(1).max(90).optional() }).optional(),
     )
     .query(async ({ ctx, input }) => {
+      // Resolved before the Promise.all rather than inside it: the ceiling is an
+      // argument to the rate-limit read, not a peer of it.
+      const { aiRequestsPerDay } = await entitlementsFor(ctx);
+
       const [metrics, interactive, system] = await Promise.all([
         getAiMetrics(ctx, ctx.session.user.id, input?.days ?? 30),
-        checkRateLimit(
-          ctx.session.user.id,
-          entitlementsFor(ctx).aiRequestsPerDay,
-        ),
+        checkRateLimit(ctx.session.user.id, aiRequestsPerDay),
         checkSystemRateLimit(ctx.session.user.id),
       ]);
       return { ...metrics, quota: { interactive, system } };

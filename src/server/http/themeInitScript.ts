@@ -50,12 +50,12 @@ export const THEME_INIT_SCRIPT = `
     document.documentElement.dataset.kairosIntro =
       motionOk && !introSeen ? 'play' : 'seen';
 
-    // Nav rail: the pin feeds --rail-w, and every page's .rail-offset takes its
-    // margin from that. Read after hydration instead, the rail opened and the
-    // whole page slid sideways a frame after each load. Setting it here means
-    // the first paint already has the right width.
-    document.documentElement.dataset.railPinned =
-      localStorage.getItem('kairos:railPinned') === 'true' ? 'true' : 'false';
+    // Nav sidebar: collapsing it feeds --rail-w, and every page's .rail-offset
+    // takes its margin from that. Read after hydration instead, a collapsed
+    // sidebar would paint open and the whole page would slide sideways a frame
+    // after each load. Setting it here means the first paint is the right width.
+    document.documentElement.dataset.railCollapsed =
+      localStorage.getItem('kairos:railCollapsed') === 'true' ? 'true' : 'false';
 
     // Notification/toast anchors. One preference: the popups take the chosen
     // corner and the toasts take the diagonally opposite one, except that
@@ -104,7 +104,7 @@ export const THEME_INIT_SCRIPT = `
  * Regenerate by running the CSP test — it prints the expected value on failure.
  */
 export const THEME_INIT_SCRIPT_HASH =
-  "sha256-FN/ks45esil8S0zaGHI2xW14cBUa+QAMqX09mzQE0OQ=";
+  "sha256-EMhZ7ps+X4Igtdo6X1v1NhgSNJEcP4mK1927B/l7jTA=";
 
 /**
  * The same hash as a `script-src` source expression.

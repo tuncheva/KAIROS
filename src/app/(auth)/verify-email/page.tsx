@@ -78,18 +78,18 @@ function VerifyEmailContent() {
             {resend.isPending ? "Sending…" : "Send link"}
           </button>
           {resend.isError ? (
-            <p className="text-xs text-red-500">{resend.error.message}</p>
+            <p className="text-xs text-status-danger-ink">{resend.error.message}</p>
           ) : null}
         </form>
   );
 
   return (
     <div className="min-h-dvh bg-bg-primary flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-bg-secondary/60 border border-border-light/40 rounded-2xl p-8">
+      <div className="w-full max-w-md bg-bg-secondary/60 border border-border-light/40 rounded-lg p-8">
         {!token ? (
           <div className="space-y-3 text-center">
-            <AlertCircle className="mx-auto text-amber-500" size={32} />
-            <h1 className="text-xl font-semibold text-fg-primary">
+            <AlertCircle className="mx-auto text-status-warning-ink" size={32} />
+            <h1 className="font-display text-[22px] leading-tight font-normal text-fg-primary">
               Nothing to confirm
             </h1>
             <p className="text-sm text-fg-secondary">
@@ -101,14 +101,14 @@ function VerifyEmailContent() {
         ) : verify.isPending ? (
           <div className="space-y-3 text-center">
             <Mail className="mx-auto text-fg-secondary animate-pulse" size={32} />
-            <h1 className="text-xl font-semibold text-fg-primary">
+            <h1 className="font-display text-[22px] leading-tight font-normal text-fg-primary">
               Confirming your email…
             </h1>
           </div>
         ) : isVerified ? (
           <div className="space-y-4 text-center">
-            <CheckCircle className="mx-auto text-emerald-500" size={32} />
-            <h1 className="text-xl font-semibold text-fg-primary">
+            <CheckCircle className="mx-auto text-status-success-ink" size={32} />
+            <h1 className="font-display text-[22px] leading-tight font-normal text-fg-primary">
               Email confirmed
             </h1>
             <p className="text-sm text-fg-secondary">
@@ -124,8 +124,8 @@ function VerifyEmailContent() {
         ) : (
           <div className="space-y-4">
             <div className="space-y-3 text-center">
-              <AlertCircle className="mx-auto text-red-500" size={32} />
-              <h1 className="text-xl font-semibold text-fg-primary">
+              <AlertCircle className="mx-auto text-status-danger-ink" size={32} />
+              <h1 className="font-display text-[22px] leading-tight font-normal text-fg-primary">
                 This link didn&apos;t work
               </h1>
               <p className="text-sm text-fg-secondary">

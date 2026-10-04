@@ -28,12 +28,41 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { AlertCircle, Eye, EyeOff, X } from "~/components/ui/icons";
+import { AlertCircle, Eye, EyeOff } from "~/components/ui/icons";
+import { toNotePassword } from "~/lib/notePassword";
 
-import { Modal } from "~/components/ui/Modal";
+import { Modal, ModalDismiss } from "~/components/ui/Modal";
 
 import { DIALOG_EXIT_MS, exitMs } from "./notesMotion";
-import { DIALOG_SURFACE, FIELD, FIELD_INPUT, FIELD_LABEL, FIELD_TALL, ICON_BTN_BARE } from "./notesUi";
+import { DIALOG_SURFACE } from "./notesUi";
+
+/* ── The dialog dialect ───────────────────────────────────────────────────
+   The front door's language rather than a component kit's: a mono eyebrow in
+   the accent over a display-serif title, fields drawn as a single underline,
+   a text-only cancel, and a destructive action in danger ink on a danger
+   hairline — never a solid red fill. The icon tile, the boxed inputs and the
+   tinted call-out cards these dialogs used to wear were the generic look this
+   replaces. See `SignInModal` and `ui/Modal`'s shell for the originals. */
+
+/** The field shell: an underline that warms to the accent on focus. */
+export const DIALOG_FIELD =
+  "flex h-[44px] items-center gap-3 border-b border-fg-primary/[0.14] transition-colors duration-300 focus-within:border-accent-primary";
+const DIALOG_FIELD_TALL =
+  "flex items-start gap-3 border-b border-fg-primary/[0.14] py-2.5 transition-colors duration-300 focus-within:border-accent-primary";
+/** The input itself, inside a `DIALOG_FIELD`. */
+export const DIALOG_INPUT =
+  "min-w-0 flex-1 border-0 bg-transparent p-0 text-[15px] text-fg-primary caret-accent-primary outline-none placeholder:text-fg-primary/30";
+const DIALOG_LABEL = "block text-[12px] font-medium text-fg-tertiary";
+
+const DIALOG_BTN =
+  "inline-flex h-10 items-center justify-center gap-2 rounded-lg px-5 text-[13.5px] font-semibold transition-[opacity,background-color,border-color,color,transform] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-35";
+/** The one that does the thing: ink on ground, the accent left for meaning. */
+export const DIALOG_PRIMARY = `${DIALOG_BTN} bg-fg-primary text-bg-primary hover:opacity-90`;
+/** The one that destroys something. */
+export const DIALOG_DANGER = `${DIALOG_BTN} border border-status-danger-border bg-status-danger-surface text-status-danger-ink hover:border-status-danger-ink`;
+/** The one that leaves: a text link, so there is only ever one button to find. */
+export const DIALOG_QUIET =
+  "inline-flex h-10 items-center justify-center px-2 text-[13.5px] font-medium text-fg-tertiary transition-colors hover:text-fg-primary disabled:pointer-events-none disabled:opacity-35";
 
 /**
  * Keeps a dialog mounted while it animates out.
@@ -72,23 +101,22 @@ export function useDialogExit(onClose: () => void) {
 }
 
 const SIZES = {
-  sm: "max-w-[360px]",
-  md: "max-w-[420px]",
-  lg: "max-w-[480px]",
+  sm: "max-w-[400px]",
+  md: "max-w-[440px]",
+  lg: "max-w-[500px]",
 } as const;
 
 /**
- * The shell: a header with an outlined icon tile, a body, and a footer holding
- * the actions.
+ * The shell: an eyebrow and a serif title, a body, and a footer holding the
+ * actions.
  *
  * The footer matters more than it looks. Every one of the five dialogs used to
  * end with `flex gap-3 mt-5` inline after whatever its last field was, so the
  * primary action landed in a different place in each. Here it is always in the
- * same corner of the same tinted strip.
+ * same corner, under the same hairline.
  */
 export function NotesDialog({
-  icon,
-  tone = "accent",
+  eyebrow,
   title,
   subtitle,
   size = "md",
@@ -102,8 +130,8 @@ export function NotesDialog({
   initialFocusRef,
   children,
 }: {
-  icon: ReactNode;
-  tone?: "accent" | "error" | "warning";
+  /** A mono stamp above the title naming what the dialog is about. */
+  eyebrow?: string;
   title: string;
   subtitle?: string;
   size?: keyof typeof SIZES;
@@ -128,43 +156,34 @@ export function NotesDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const tones = {
-    accent: "border-accent-primary/30 text-accent-primary",
-    error: "border-error/35 text-error",
-    warning: "border-warning/40 text-warning",
-  } as const;
-
   const inner = (
     <>
-      <div className="flex items-start gap-3 px-4 pt-4">
-        <span
-          aria-hidden="true"
-          className={`grid h-8 w-8 flex-none place-items-center rounded-[9px] border ${tones[tone]}`}
-        >
-          {icon}
-        </span>
-        <span className="min-w-0 flex-1">
-          <h2 id={titleId} className="text-[15.5px] font-bold tracking-[-0.014em] text-fg-primary">
+      <header className="flex items-start justify-between gap-4 px-6 pt-6">
+        <div className="min-w-0">
+          {eyebrow && (
+            <p className="mb-2.5 font-mono text-[10.5px] tracking-[0.2em] text-accent-primary uppercase">
+              {eyebrow}
+            </p>
+          )}
+          <h2
+            id={titleId}
+            className="font-display text-[26px] leading-[1.1] font-normal tracking-[-0.01em] text-fg-primary"
+          >
             {title}
           </h2>
-          {subtitle && <p className="mt-0.5 text-[12.5px] leading-relaxed text-fg-tertiary">{subtitle}</p>}
-        </span>
-        <button
-          type="button"
-          onClick={requestClose}
-          aria-label={t("common.close")}
-          className={ICON_BTN_BARE}
-        >
-          <X size={15} />
-        </button>
-      </div>
+          {subtitle && (
+            <p className="mt-2 text-[13.5px] leading-relaxed text-fg-tertiary">{subtitle}</p>
+          )}
+        </div>
+        <ModalDismiss onDismiss={requestClose} label={t("common.close")} className="-mr-1" />
+      </header>
 
-      <div className="px-4 py-4">{children}</div>
+      <div className="px-6 pt-6 pb-6">{children}</div>
 
-      <div className="flex items-center gap-2.5 border-t border-border-light/50 bg-bg-surface px-4 py-3">
+      <footer className="flex items-center gap-3 border-t border-border-light/70 px-6 py-4">
         {footerNote ? <span className="mr-auto min-w-0">{footerNote}</span> : <span className="mr-auto" />}
         {actions({ close: requestClose })}
-      </div>
+      </footer>
     </>
   );
 
@@ -173,8 +192,12 @@ export function NotesDialog({
       role={role}
       labelledBy={titleId}
       onDismiss={requestClose}
-      overlayClassName={`bg-black/40 backdrop-blur-sm ${closing ? "notes-scrim--out" : "notes-scrim"}`}
-      className={`w-full ${SIZES[size]} ${DIALOG_SURFACE} ${closing ? "notes-dialog--out" : "notes-dialog"}`}
+      overlayClassName={`bg-black/55 backdrop-blur-[3px] ${closing ? "notes-scrim--out" : "notes-scrim"}`}
+      /* The dialog is portalled to <body>, outside the workspace's `.notes-quiet`
+         wrapper, so it re-declares the scope here to keep the warm palette. The
+         `.dark .notes-quiet` rule still matches — `.dark` sits on <html>, above
+         the portal. */
+      className={`notes-quiet w-full ${SIZES[size]} ${DIALOG_SURFACE} ${closing ? "notes-dialog--out" : "notes-dialog"}`}
     >
       {onSubmit ? (
         <form
@@ -192,7 +215,7 @@ export function NotesDialog({
   );
 }
 
-/** A labelled field. The label is mono and quiet; the value is not. */
+/** A labelled field. The label is small and quiet; the value is not. */
 export function DialogField({
   id,
   label,
@@ -211,16 +234,16 @@ export function DialogField({
   children: ReactNode;
 }) {
   return (
-    <div className="mb-3.5 last:mb-0">
-      <label htmlFor={id} className={FIELD_LABEL}>
+    <div className="mb-6 last:mb-0">
+      <label htmlFor={id} className={DIALOG_LABEL}>
         {label}
       </label>
       <div
-        className={`${multiline ? FIELD_TALL : FIELD} ${invalid ? "notes-shake border-error/55" : ""}`}
+        className={`${multiline ? DIALOG_FIELD_TALL : DIALOG_FIELD} ${invalid ? "notes-shake border-error" : ""}`}
       >
         {children}
       </div>
-      {hint && <p className="mt-1.5 text-[11.5px] text-fg-quaternary">{hint}</p>}
+      {hint && <p className="mt-2 text-[11.5px] text-fg-quaternary">{hint}</p>}
     </div>
   );
 }
@@ -246,6 +269,8 @@ export function DialogPasswordField({
   onEnter,
   /** Adds the shake when a submitted password came back rejected. */
   invalid = false,
+  /** A password being set: digits only, with the numeric keypad on touch. */
+  numeric = false,
 }: {
   id: string;
   label: string;
@@ -257,22 +282,26 @@ export function DialogPasswordField({
   inputRef?: React.RefObject<HTMLInputElement | null>;
   onEnter?: () => void;
   invalid?: boolean;
+  numeric?: boolean;
 }) {
   const t = useTranslations("notes");
   const [reveal, setReveal] = useState(false);
 
   return (
-    <div className="mb-3.5 last:mb-0">
-      <label htmlFor={id} className={FIELD_LABEL}>
+    <div className="mb-6 last:mb-0">
+      <label htmlFor={id} className={DIALOG_LABEL}>
         {label}
       </label>
-      <div className={`${FIELD} ${invalid ? "notes-shake border-error/55" : ""}`}>
+      <div className={`${DIALOG_FIELD} ${invalid ? "notes-shake border-error" : ""}`}>
         <input
           id={id}
           ref={inputRef}
           type={reveal ? "text" : "password"}
+          inputMode={numeric ? "numeric" : undefined}
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) =>
+            onChange(numeric ? toNotePassword(event.target.value) : event.target.value)
+          }
           onKeyDown={(event) => {
             if (event.key === "Enter" && onEnter) {
               event.preventDefault();
@@ -282,24 +311,25 @@ export function DialogPasswordField({
           placeholder={placeholder}
           autoComplete={autoComplete}
           aria-invalid={invalid ? "true" : undefined}
-          className={FIELD_INPUT}
+          className={DIALOG_INPUT}
         />
         <button
           type="button"
           onClick={() => setReveal((previous) => !previous)}
           aria-label={reveal ? t("password.hide") : t("password.show")}
-          className="kairos-tap grid h-6 w-6 flex-none place-items-center rounded-md text-fg-tertiary transition-colors hover:text-fg-primary"
+          className="kairos-tap grid h-6 w-6 flex-none place-items-center rounded-md text-fg-quaternary transition-colors hover:text-fg-primary"
         >
           {reveal ? <EyeOff size={14} /> : <Eye size={14} />}
         </button>
       </div>
-      {hint && <p className="mt-1.5 text-[11.5px] text-fg-quaternary">{hint}</p>}
+      {hint && <p className="mt-2 text-[11.5px] text-fg-quaternary">{hint}</p>}
     </div>
   );
 }
 
 /**
- * A block of consequence.
+ * A block of consequence, set as a marginal note — a rule down its left edge
+ * rather than a tinted card, so it reads as part of the page it sits on.
  *
  * The three tones are the three things these dialogs have to say: something is
  * missing and must be dealt with here (`warning`), something is about to stop
@@ -324,26 +354,22 @@ export function DialogBlock({
   children?: ReactNode;
   reveal?: boolean;
 }) {
-  const tones = {
-    calm: "border-border-light/70 bg-bg-secondary",
-    warning: "border-warning/30 bg-warning/[0.06]",
-    danger: "border-error/30 bg-error/[0.06]",
+  const rules = {
+    calm: "border-fg-primary/15",
+    warning: "border-warning/70",
+    danger: "border-error/70",
   } as const;
   const heads = {
-    calm: "text-fg-secondary",
+    calm: "text-fg-primary",
     warning: "text-warning",
     danger: "text-error",
   } as const;
 
   return (
-    <div
-      className={`mt-4 rounded-[10px] border p-3.5 ${tones[tone]} ${reveal ? "notes-strip" : ""}`}
-    >
-      {title && (
-        <p className={`text-[12.5px] font-bold tracking-[-0.005em] ${heads[tone]}`}>{title}</p>
-      )}
+    <div className={`mt-6 border-l-[1.5px] pl-4 ${rules[tone]} ${reveal ? "notes-strip" : ""}`}>
+      {title && <p className={`text-[13px] font-semibold ${heads[tone]}`}>{title}</p>}
       {children && (
-        <div className={`text-[12px] leading-relaxed text-fg-tertiary ${title ? "mt-1.5" : ""}`}>
+        <div className={`text-[12.5px] leading-relaxed text-fg-secondary ${title ? "mt-1.5" : ""}`}>
           {children}
         </div>
       )}
@@ -361,5 +387,68 @@ export function DialogError({ children }: { children: ReactNode }) {
       <AlertCircle size={12} className="flex-none" />
       {children}
     </p>
+  );
+}
+
+/**
+ * "Are you sure", in this surface's own chrome.
+ *
+ * The rest of the app asks through `ui/ConfirmDialog`, whose card is the app
+ * shell rather than this one — so deleting a note used to open a dialog that
+ * looked nothing like the lock dialog beside it. This is the same question in
+ * the same frame as every other notes dialog. It does not stay open on failure
+ * the way `ConfirmDialog` can: every caller here closes it on confirm and lets
+ * the mutation report through a toast.
+ */
+export function NotesConfirmDialog({
+  eyebrow,
+  title,
+  message,
+  confirmLabel,
+  cancelLabel,
+  destructive = false,
+  isPending,
+  onCancel,
+  onConfirm,
+}: {
+  eyebrow?: string;
+  title: string;
+  message: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  destructive?: boolean;
+  isPending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const confirmRef = useRef<HTMLButtonElement | null>(null);
+
+  return (
+    <NotesDialog
+      eyebrow={eyebrow}
+      title={title}
+      size="sm"
+      role="alertdialog"
+      onClose={onCancel}
+      initialFocusRef={confirmRef}
+      actions={({ close }) => (
+        <>
+          <button type="button" onClick={close} className={DIALOG_QUIET}>
+            {cancelLabel}
+          </button>
+          <button
+            ref={confirmRef}
+            type="button"
+            onClick={onConfirm}
+            disabled={isPending}
+            className={destructive ? DIALOG_DANGER : DIALOG_PRIMARY}
+          >
+            {confirmLabel}
+          </button>
+        </>
+      )}
+    >
+      <p className="text-[14px] leading-relaxed text-fg-secondary">{message}</p>
+    </NotesDialog>
   );
 }
