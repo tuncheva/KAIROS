@@ -1,0 +1,43 @@
+/*
+ * Self-hosted fonts (Fontsource), in place of next/font/google.
+ *
+ * next/font/google fetches Google's CSS at build time, and Google sometimes
+ * answers with extensionless `/l/font?kit=…&skey=…` URLs that Turbopack cannot
+ * resolve ("next/font/google queries have exactly one entry",
+ * vercel/next.js#99114) — a deploy then fails for reasons that have nothing to
+ * do with the code. The files now ship in node_modules, so the build makes no
+ * network request for fonts.
+ *
+ * The @font-face rules come from the package imports in `app/layout.tsx` and
+ * `(app)/settings/page.tsx`; each carries unicode-range, so a browser only
+ * downloads the subsets (latin, cyrillic, …) a page actually renders. These
+ * classes only map the families onto the custom properties the theme already
+ * reads, keeping the names the next/font `variable` options used.
+ */
+
+.font-vars {
+  --font-geist-sans: "Nunito Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-source-serif: "Source Serif 4 Variable", Georgia, serif;
+}
+
+/* Instrument Serif has no Cyrillic, so Bulgarian gets Playfair for display. */
+.font-display-latin {
+  --font-display: "Instrument Serif", Georgia, serif;
+}
+
+.font-display-cyrillic {
+  --font-display: "Playfair Display Variable", Georgia, serif;
+}
+
+/* Settings' own type. Bulgarian keeps only the mono, as before: Newsreader and
+   Hanken Grotesk were loaded without Cyrillic there. */
+.settings-fonts {
+  --font-newsreader: "Newsreader Variable", Georgia, serif;
+  --font-hanken: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-settings-mono: "Geist Mono Variable", ui-monospace, monospace;
+}
+
+.settings-fonts-mono-only {
+  --font-settings-mono: "Geist Mono Variable", ui-monospace, monospace;
+}

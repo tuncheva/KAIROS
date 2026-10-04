@@ -1,7 +1,17 @@
 import "~/styles/globals.css";
 
 import { type Metadata, type Viewport } from "next";
-import { Nunito_Sans, Instrument_Serif, Playfair_Display, IBM_Plex_Mono, Source_Serif_4 } from "next/font/google";
+// Self-hosted (see styles/fonts.css for why not next/font/google).
+import "@fontsource-variable/nunito-sans/wght.css";
+import "@fontsource/instrument-serif/400.css";
+import "@fontsource/instrument-serif/400-italic.css";
+import "@fontsource-variable/playfair-display/wght.css";
+import "@fontsource-variable/playfair-display/wght-italic.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
+import "@fontsource-variable/source-serif-4/wght.css";
+import "@fontsource-variable/source-serif-4/wght-italic.css";
+import "~/styles/fonts.css";
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 
@@ -58,53 +68,6 @@ export const viewport: Viewport = {
   ],
 };
 
-const sans = Nunito_Sans({
-  subsets: ["latin", "cyrillic"],
-  weight: ["200", "300", "400", "600", "700", "800", "900"],
-  variable: "--font-geist-sans",
-  display: "swap",
-});
-
-// Display face for the landing page and headings. Instrument Serif has no
-// Cyrillic, so the Bulgarian locale gets Playfair Display instead — both are
-// bound to `--font-display`, and only one class lands on <html> per request.
-const displayLatin = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-// The dashboard leans on a mono face for its labels and stamps; IBM Plex Mono
-// carries Cyrillic, so the Bulgarian locale gets the same treatment.
-const mono = IBM_Plex_Mono({
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500"],
-  variable: "--font-mono",
-  display: "swap",
-});
-
-const displayCyrillic = Playfair_Display({
-  subsets: ["latin", "cyrillic"],
-  weight: ["400"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-// The "quiet" notes surface sets the note itself in a text serif on a bare
-// ground. Source Serif 4 is a body serif (unlike the display faces above, which
-// are meant for headings) and carries Cyrillic, so it reads the same for the
-// `bg` locale. Bound to `--font-source-serif` and used only within `.notes-quiet`.
-const quietSerif = Source_Serif_4({
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-source-serif",
-  display: "swap",
-});
-
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -119,10 +82,10 @@ export default async function RootLayout({
 
   // Instrument Serif carries no Cyrillic glyphs; `bg` falls back to a serif
   // that does rather than to whatever the OS picks.
-  const display = locale === "bg" ? displayCyrillic : displayLatin;
+  const display = locale === "bg" ? "font-display-cyrillic" : "font-display-latin";
 
   return (
-    <html lang={locale} className={`${sans.variable} ${display.variable} ${mono.variable} ${quietSerif.variable}`} suppressHydrationWarning>
+    <html lang={locale} className={`font-vars ${display}`} suppressHydrationWarning>
       <head>
         {/* Applies the saved theme before first paint. Allowed by hash rather
             than nonce; the script text and its hash live together in
