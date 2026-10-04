@@ -21,7 +21,12 @@ import { THEME_INIT_SCRIPT } from "~/server/http/themeInitScript";
 export const metadata: Metadata = {
   title: "KAIROS",
   description: "Coordinate events, manage projects, and collaborate with your team",
-  icons: [{ rel: "icon", url: "/logo_white.png" }],
+  icons: {
+    icon: [{ url: "/logo_white.png" }],
+    // iOS uses this for the Home Screen tile; the transparent logo rendered as
+    // white-on-black-on-nothing without it.
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
   // Lets iOS render the app full-screen when it is saved to the home screen,
   // which is the only way the status-bar area is ours to paint.
   appleWebApp: { capable: true, title: "KAIROS", statusBarStyle: "black-translucent" },

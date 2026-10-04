@@ -35,6 +35,8 @@ const EXTENSIONS = new Set([".ts", ".tsx"]);
 const HEX_ALLOWED: Record<string, string> = {
   "src/app/layout.tsx":
     "themeColor meta values — browser chrome, read before any CSS",
+  "src/app/manifest.ts":
+    "web app manifest splash/theme colours — JSON read by the OS, no CSS",
   "src/components/auth/SignInModal.tsx":
     "the four Google brand colours inside the provider SVG",
   "src/server/http/themeInitScript.ts": "runs before the stylesheet exists",

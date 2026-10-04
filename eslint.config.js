@@ -9,7 +9,8 @@ import reactHooks from "eslint-plugin-react-hooks";
 
 export default tseslint.config(
   {
-    ignores: [".next"],
+    // .kilo holds agent worktrees: whole copies of src/ that would be linted twice.
+    ignores: [".next", ".kilo"],
   },
   nextPlugin.configs.recommended,
   nextPlugin.configs["core-web-vitals"],

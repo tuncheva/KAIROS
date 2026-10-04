@@ -7,5 +7,6 @@ export * from "./notes";
 export * from "./events";
 export * from "./chat";
 export * from "./notifications";
+export * from "./pushSubscriptions";
 export * from "./agents";
 export * from "./relations";

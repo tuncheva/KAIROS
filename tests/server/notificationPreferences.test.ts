@@ -21,6 +21,7 @@ import path from "path";
 // import wants DATABASE_URL.
 vi.mock("~/server/db", () => ({ db: {} }));
 vi.mock("~/server/ws/emit", () => ({ emitNotification: vi.fn() }));
+vi.mock("~/server/notifications/push", () => ({ sendPushToUsers: vi.fn() }));
 
 const { isDeliverable } = await import("~/server/notifications/dispatch");
 
@@ -161,6 +162,30 @@ describe("notification producers — no bypasses", () => {
       .filter((f) => !f.endsWith(path.join("notifications", "dispatch.ts")))
       .filter((f) => !f.endsWith(path.join("ws", "emit.ts")))
       .filter((f) => /\bemitNotification\s*\(/.test(fs.readFileSync(f, "utf-8")))
+      .map((f) => path.relative(srcDir, f));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("the dispatcher pushes every notification it emits", () => {
+    // Push rides on the same gate as the bell: it is sent from the two places a
+    // row is created, after the emit, so a muted category never reaches a phone.
+    const dispatch = fs.readFileSync(
+      path.join(srcDir, "server/notifications/dispatch.ts"),
+      "utf-8",
+    );
+    const emits = [...dispatch.matchAll(/\bemitNotification\s*\(/g)].length;
+    const pushes = [...dispatch.matchAll(/\bsendPushToUsers\s*\(/g)].length;
+    expect(emits).toBe(2);
+    expect(pushes).toBe(emits);
+  });
+
+  it("only the dispatcher and the test procedure send pushes", () => {
+    const offenders = files
+      .filter((f) => !f.endsWith(path.join("notifications", "dispatch.ts")))
+      .filter((f) => !f.endsWith(path.join("notifications", "push.ts")))
+      .filter((f) => !f.endsWith(path.join("routers", "notification.ts")))
+      .filter((f) => /\bsendPushToUsers\s*\(/.test(fs.readFileSync(f, "utf-8")))
       .map((f) => path.relative(srcDir, f));
 
     expect(offenders).toEqual([]);

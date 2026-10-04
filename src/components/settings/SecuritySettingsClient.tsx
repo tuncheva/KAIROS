@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useEntitlements } from "~/hooks/useEntitlements";
+import { useReleasePush } from "~/hooks/useReleasePush";
 import { api } from "~/trpc/react";
 
 import {
@@ -51,6 +52,7 @@ export function SecuritySettingsClient() {
   const enabled = status === "authenticated";
 
   const utils = api.useUtils();
+  const releasePush = useReleasePush();
 
   const { data, isLoading } = api.settings.get.useQuery(undefined, {
     enabled,
@@ -162,6 +164,7 @@ export function SecuritySettingsClient() {
 
   const onSignOut = async () => {
     await utils.settings.get.cancel();
+    await releasePush();
     await signOut({ callbackUrl: "/" });
   };
 

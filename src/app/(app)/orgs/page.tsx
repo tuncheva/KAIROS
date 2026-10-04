@@ -11,13 +11,14 @@ export default async function OrgsPage() {
   }
 
   /* The Team page's panes scroll internally against a definite height on wide
-     screens, the way `/chat` does; on phones they stack and the page scrolls. */
+     screens, the way `/chat` does. Below `xl` the person pane drops to its own
+     row, so the page has to scroll or that row is clipped away. */
   return (
-    <div className="min-h-dvh bg-bg-primary lg:h-[100dvh] lg:overflow-hidden">
-      <div className="rail-offset kairos-topbar-gap kairos-bottomnav-gap flex min-h-dvh flex-col lg:h-[100dvh] lg:overflow-hidden">
+    <div className="min-h-dvh bg-bg-primary xl:h-[100dvh] xl:overflow-hidden">
+      <div className="rail-offset kairos-topbar-gap kairos-bottomnav-gap flex min-h-dvh flex-col xl:h-[100dvh] xl:overflow-hidden">
         <TopBar />
 
-        <main id="main-content" className="kairos-page-enter flex w-full flex-1 flex-col lg:min-h-0 lg:overflow-hidden">
+        <main id="main-content" className="kairos-page-enter flex w-full flex-1 flex-col xl:min-h-0 xl:overflow-hidden">
           <TeamClient />
         </main>
       </div>

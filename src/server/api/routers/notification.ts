@@ -1,8 +1,23 @@
 
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { notifications } from "~/server/db/schema";
+import { notifications, pushSubscriptions } from "~/server/db/schema";
+import { isPushConfigured, sendPushToUsers } from "~/server/notifications/push";
 import { eq, and, desc, count } from "drizzle-orm";
+
+/**
+ * A browser's PushSubscription, as `subscription.toJSON()` serialises it. The
+ * endpoint is always https on every push service we would talk to; rejecting
+ * anything else stops this route being used to make the server POST elsewhere.
+ */
+const pushSubscriptionInput = z.object({
+  endpoint: z.string().url().max(2048).startsWith("https://"),
+  keys: z.object({
+    p256dh: z.string().min(1).max(256),
+    auth: z.string().min(1).max(256),
+  }),
+  userAgent: z.string().max(512).optional(),
+});
 
 /**
  * Cap on `getAll`. The notification bell shows a short list, so there is no
@@ -133,4 +148,66 @@ export const notificationRouter = createTRPCRouter({
 
     return { success: true, message: "All notifications deleted" };
   }),
+
+  /** Whether this deployment has VAPID keys, i.e. whether push can work at all. */
+  pushStatus: protectedProcedure.query(async ({ ctx }) => {
+    const [row] = await ctx.db
+      .select({ count: count() })
+      .from(pushSubscriptions)
+      .where(eq(pushSubscriptions.userId, ctx.session.user.id));
+    return { configured: isPushConfigured(), devices: row?.count ?? 0 };
+  }),
+
+  /**
+   * Upsert on endpoint. An endpoint names a browser install, so if another
+   * account had it (same phone, different sign-in) it moves to this one.
+   */
+  pushSubscribe: protectedProcedure
+    .input(pushSubscriptionInput)
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .insert(pushSubscriptions)
+        .values({
+          userId: ctx.session.user.id,
+          endpoint: input.endpoint,
+          p256dh: input.keys.p256dh,
+          auth: input.keys.auth,
+          userAgent: input.userAgent ?? null,
+        })
+        .onConflictDoUpdate({
+          target: pushSubscriptions.endpoint,
+          set: {
+            userId: ctx.session.user.id,
+            p256dh: input.keys.p256dh,
+            auth: input.keys.auth,
+            userAgent: input.userAgent ?? null,
+          },
+        });
+      return { success: true };
+    }),
+
+  pushUnsubscribe: protectedProcedure
+    .input(z.object({ endpoint: z.string().url().max(2048) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(pushSubscriptions)
+        .where(
+          and(
+            eq(pushSubscriptions.userId, ctx.session.user.id),
+            eq(pushSubscriptions.endpoint, input.endpoint),
+          ),
+        );
+      return { success: true };
+    }),
+
+  /** A push to every device of the caller, without adding a row to the bell. */
+  pushTest: protectedProcedure
+    .input(z.object({ title: z.string().max(120), message: z.string().max(400) }))
+    .mutation(async ({ ctx, input }) => {
+      return sendPushToUsers(
+        ctx.db,
+        [{ userId: ctx.session.user.id, title: input.title, message: input.message, link: "/settings?section=notifications" }],
+        { badge: false },
+      );
+    }),
 });

@@ -10,6 +10,7 @@ import { useTranslations } from"next-intl";
 import { onAvatarUpdate } from"~/lib/avatarEvents";
 import { Skeleton } from "~/components/ui/Skeleton";
 import { useSkeletonHold } from "~/hooks/useSkeletonHold";
+import { useReleasePush } from "~/hooks/useReleasePush";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -42,6 +43,7 @@ export function UserDisplay() {
  const enabled = status ==="authenticated";
 
  const utils = api.useUtils();
+ const releasePush = useReleasePush();
 
  const { data: user, isLoading } = api.user.getCurrentUser.useQuery(undefined, {
  enabled,
@@ -127,6 +129,7 @@ export function UserDisplay() {
  await utils.user.getCurrentUser.cancel();
  await utils.organization.getActive.cancel();
  await utils.organization.listMine.cancel();
+ await releasePush();
  await signOut({ callbackUrl:"/" });
  };
 
@@ -135,6 +138,7 @@ export function UserDisplay() {
  await utils.user.getCurrentUser.cancel();
  await utils.organization.getActive.cancel();
  await utils.organization.listMine.cancel();
+ await releasePush();
  await signOut({ callbackUrl:"/?switchAccount=1" });
  };
 
@@ -158,6 +162,7 @@ export function UserDisplay() {
   */
  const switchViaFullSignIn = async (account: StoredAccount) => {
  const encoded = encodeURIComponent(account.email);
+ await releasePush();
  await signOut({ callbackUrl: `/?switchAccount=1&email=${encoded}` });
  };
 

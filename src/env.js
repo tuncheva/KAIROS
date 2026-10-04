@@ -135,6 +135,15 @@ export const env = createEnv({
     REDIS_NATIVE_URL: z.string().optional(),
 
     /**
+     * Web Push (VAPID). Unset, push is off and notifications stay in-app only.
+     * Generate a pair with `pnpm dlx web-push generate-vapid-keys`; the public
+     * half is `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. The subject must be `mailto:` or a
+     * real `https:` URL — Apple answers a localhost subject with 403 BadJwtToken.
+     */
+    VAPID_PRIVATE_KEY: blankAsUnset(),
+    VAPID_SUBJECT: blankAsUnset(),
+
+    /**
      * silent | error | warn | info | debug. Unset: debug in dev, info in prod.
      *
      * Declared here for validation and discoverability, but `~/server/logger`
@@ -214,6 +223,7 @@ export const env = createEnv({
     // variable was checking it in the wrong scope. Client vars stay readable on
     // the server, so existing server-side reads are unaffected.
     NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: blankAsUnset(),
   },
 
 
@@ -254,6 +264,9 @@ export const env = createEnv({
     WS_SECRET: process.env.WS_SECRET,
     WS_INTERNAL_URL: process.env.WS_INTERNAL_URL,
     REDIS_NATIVE_URL: process.env.REDIS_NATIVE_URL,
+    VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+    VAPID_SUBJECT: process.env.VAPID_SUBJECT,
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     LOG_LEVEL: process.env.LOG_LEVEL,
     CSP_REPORT_ONLY: process.env.CSP_REPORT_ONLY,
 

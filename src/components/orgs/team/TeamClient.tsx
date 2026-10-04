@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -102,6 +102,15 @@ export function TeamClient() {
   }, [org, members, meId, selectedId]);
 
   const selected = members.find((m) => m.id === selectedId) ?? null;
+
+  /* Below `xl` the person pane sits under the roster, so picking someone would
+     change nothing on screen — bring their role and ticks into view instead. */
+  const personRef = useRef<HTMLDivElement>(null);
+  const selectPerson = (id: string) => {
+    setSelectedId(id);
+    if (window.matchMedia("(min-width: 1280px)").matches) return;
+    requestAnimationFrame(() => personRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   const viewWorkspace = (id: WorkspaceId) => {
     if (id === view) return;
@@ -303,7 +312,7 @@ export function TeamClient() {
       <div
         className={cn(
           "grid w-full gap-4 p-2 sm:px-6 sm:pt-5 sm:pb-6",
-          "grid-cols-1 lg:min-h-0 lg:grid-cols-[300px_minmax(0,1fr)]",
+          "grid-cols-1 xl:min-h-0 lg:grid-cols-[300px_minmax(0,1fr)]",
           (!!org || noTeam || loading) && "xl:grid-cols-[300px_minmax(0,1fr)_320px]",
         )}
       >
@@ -351,7 +360,7 @@ export function TeamClient() {
             tab={tab}
             onTab={setTab}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={selectPerson}
             onSetActive={() => setActive.mutate({ organizationId: org.id })}
             onInvite={() => setDialog("invite")}
             onLeave={() => setDialog("leave")}
@@ -392,13 +401,14 @@ export function TeamClient() {
         ) : null}
 
         {org && !loading ? (
-          <div className="flex min-h-0 lg:col-span-2 xl:col-span-1">
+          <div ref={personRef} className="flex min-h-0 scroll-mt-20 lg:col-span-2 xl:col-span-1">
             <div className="flex min-h-0 w-full flex-col [&>aside]:flex-1">
               <TeamPerson
                 member={selected}
                 isMe={selected?.id === meId}
                 online={selected ? isOnline(selected.id) : false}
                 customRoles={customRoles}
+                viewerIsAdmin={isAdmin}
                 canManage={canManage}
                 canRemove={canKick && !!selected && selected.id !== meId}
                 messaging={startChat.isPending}

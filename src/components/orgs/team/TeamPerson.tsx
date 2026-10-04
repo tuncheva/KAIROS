@@ -77,6 +77,7 @@ export function TeamPerson({
   isMe,
   online,
   customRoles,
+  viewerIsAdmin,
   canManage,
   canRemove,
   onMessage,
@@ -90,6 +91,8 @@ export function TeamPerson({
   isMe: boolean;
   online: boolean;
   customRoles: readonly CustomRole[];
+  /** Whether the viewer is an admin of this organization at all. */
+  viewerIsAdmin: boolean;
   canManage: boolean;
   canRemove: boolean;
   onMessage: () => void;
@@ -127,6 +130,7 @@ export function TeamPerson({
     ? new Date(member.joinedAt).toLocaleDateString(locale, { month: "short", year: "numeric" })
     : null;
   const name = member.name ?? member.email ?? "—";
+  const lockedReason = isMe ? t("lockedSelf") : viewerIsAdmin ? t("lockedOther") : t("lockedNotAdmin");
 
   const rolePill = (key: string, text: string, on: boolean, toneOn: string, onPick: () => void) => (
     <button
@@ -182,6 +186,21 @@ export function TeamPerson({
           </div>
         </div>
 
+        {/* Said up front, before the pills and ticks, so a locked pane never
+            reads as a broken one. */}
+        {!editable ? (
+          <div
+            role="note"
+            className="mx-6 mt-5 flex items-start gap-2.5 rounded-lg border border-tui-ink/16 bg-tui-ink/[0.025] px-3.5 py-[11px]"
+          >
+            <Lock size={14} className="mt-px flex-none text-tui-ink3" />
+            <span className="flex flex-col gap-0.5">
+              <span className="text-[13px] font-medium text-tui-ink">{t("viewOnlyTitle")}</span>
+              <span className="text-[12.5px] leading-normal text-tui-ink2">{lockedReason}</span>
+            </span>
+          </div>
+        ) : null}
+
         <div className="flex flex-col gap-3 border-b border-tui-ink/8 px-6 py-5">
           <span className={TEAM_EYEBROW}>{t("role")}</span>
           <div className="flex flex-wrap gap-1.5">
@@ -216,11 +235,6 @@ export function TeamPerson({
               />
             ))}
           </div>
-          {!editable ? (
-            <span className="text-[12.5px] leading-normal text-tui-ink3">
-              {isMe ? t("lockedSelf") : t("lockedOther")}
-            </span>
-          ) : null}
         </div>
 
         {joined ? (
