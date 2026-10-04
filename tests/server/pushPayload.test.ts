@@ -24,7 +24,7 @@ const webpush = vi.hoisted(() => ({
 }));
 vi.mock("web-push", () => ({ default: webpush }));
 
-const { absoluteUrl, buildPushPayload, resetPushConfigForTests, sendPushToUsers } = await import(
+const { absoluteUrl, buildPushPayload, pushConfigProblem, resetPushConfigForTests, sendPushToUsers } = await import(
   "~/server/notifications/push"
 );
 
@@ -122,6 +122,28 @@ describe("sendPushToUsers", () => {
     const { db } = fakeDb([]);
     await sendPushToUsers(db, [{ userId: "u1", title: "t", message: "m" }]);
     expect(webpush.setVapidDetails).toHaveBeenCalledWith("https://kairos.test", "pub", "priv");
+  });
+
+  it("forgives a bare-domain subject and quoted, padded keys from a dashboard paste", async () => {
+    env.VAPID_SUBJECT = "www.kairosonline.net";
+    env.VAPID_PRIVATE_KEY = ' "priv"\n';
+    env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = "'pub' ";
+    const { db } = fakeDb([]);
+    await sendPushToUsers(db, [{ userId: "u1", title: "t", message: "m" }]);
+    expect(webpush.setVapidDetails).toHaveBeenCalledWith("https://www.kairosonline.net", "pub", "priv");
+    expect(pushConfigProblem()).toBeNull();
+  });
+
+  it("names the missing key", () => {
+    env.VAPID_PRIVATE_KEY = undefined;
+    expect(pushConfigProblem()).toBe("missing-private-key");
+  });
+
+  it("reports keys the library rejects", () => {
+    webpush.setVapidDetails.mockImplementationOnce(() => {
+      throw new Error("Vapid private key should be 32 bytes long when decoded.");
+    });
+    expect(pushConfigProblem()).toBe("invalid-keys");
   });
 
   it("sends to every device of the recipient only, with TTL and urgency", async () => {

@@ -13,15 +13,12 @@ import {
 } from "~/lib/permissions";
 import {
   generateInviteToken,
-  grantedLabelsEn,
   hashInviteToken,
   inviteGrantSchema,
   permissionFlagsSchema,
   resolveGrant,
-  roleLabelEn,
   storedGrantFlags,
 } from "~/server/orgs/inviteGrants";
-import { sendOrganizationInvite } from "~/server/email/email";
 import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/security/authRateLimit";
 import { getClientIp } from "~/server/http/clientIp";
 import { assertSeatAvailable } from "~/server/billing/seats";
@@ -49,6 +46,16 @@ function canInvite(membership: {
 
 import { eq, and, or, isNull, gt, lte, desc, sql, inArray, count } from "drizzle-orm";
 import { notify } from "~/server/notifications/dispatch";
+import {
+  deliverOrgInvite,
+  noticeInviteCancelled,
+  noticeMemberLeft,
+  noticeMemberRemoved,
+  noticeOrganizationDeleted,
+  noticePermissionsChanged,
+  noticeRoleChanged,
+  permissionDiff,
+} from "~/server/notifications/orgNotices";
 import { createLogger } from "~/server/logger";
 import {
   cancelSubscriptionFor,
@@ -503,11 +510,7 @@ async function assertRoleNameFree(
 
 /**
  * Tell the invitee: by email always, and in-app when they already have an
- * account.
- *
- * A failed email does not undo the invite — the admin is told instead, and can
- * resend or share a link — because the invite is still valid and an invitee
- * who already has an account will see it in the app.
+ * account. Shared with the A5 org-admin agent — see `deliverOrgInvite`.
  */
 async function deliverInvite(
   ctx: AuthedContext,
@@ -515,54 +518,13 @@ async function deliverInvite(
   token: string,
   existingUserId: string | null,
 ): Promise<{ emailSent: boolean; emailError: string | null }> {
-  const [org] = await ctx.db
-    .select({ name: organizations.name })
-    .from(organizations)
-    .where(eq(organizations.id, invite.organizationId))
-    .limit(1);
-  const [inviter] = await ctx.db
-    .select({ name: users.name, email: users.email })
-    .from(users)
-    .where(eq(users.id, ctx.session.user.id))
-    .limit(1);
-
-  const inviterName = inviter?.name ?? inviter?.email ?? "Someone";
-  const orgName = org?.name ?? "a workspace";
-  const roleLabel = roleLabelEn(invite.role, invite.displayRole);
-  const flags = storedGrantFlags(invite.permissions, flagsForRole(invite.role));
-
-  let emailSent = false;
-  let emailError: string | null = null;
-  try {
-    await sendOrganizationInvite({
-      email: invite.email,
-      inviterName,
-      organizationName: orgName,
-      roleLabel,
-      permissionLabels: grantedLabelsEn(flags),
-      token,
-      expiresAt: invite.expiresAt ?? new Date(Date.now() + INVITE_TTL_MS),
-    });
-    emailSent = true;
-  } catch (error) {
-    emailError = error instanceof Error ? error.message : "Email could not be sent";
-    log.error("invite email failed", { err: error, inviteId: invite.id });
-  }
-
-  if (existingUserId) {
-    await notify({
-      db: ctx.db,
-      userId: existingUserId,
-      actorId: ctx.session.user.id,
-      category: "invite",
-      type: "system",
-      title: "Workspace Invitation",
-      message: `${inviterName} invited you to join "${orgName}" as ${roleLabel}`,
-      link: `/invite/${encodeURIComponent(token)}`,
-    });
-  }
-
-  return { emailSent, emailError };
+  return deliverOrgInvite({
+    db: ctx.db,
+    invite,
+    token,
+    inviterId: ctx.session.user.id,
+    existingUserId,
+  });
 }
 
 /** The shape of every join code: 26 characters of the token alphabet. */
@@ -1166,6 +1128,12 @@ export const organizationRouter = createTRPCRouter({
         }
       }
 
+      await noticeMemberLeft({
+        db: ctx.db,
+        organizationId: input.organizationId,
+        leaverId: ctx.session.user.id,
+      });
+
       return { success: true };
     }),
 
@@ -1288,6 +1256,14 @@ export const organizationRouter = createTRPCRouter({
           .where(eq(users.id, member.userId));
       }
 
+      /* `members` was read before the cascade; the owner is skipped as actor. */
+      await noticeOrganizationDeleted({
+        db: ctx.db,
+        organizationName: organization.name,
+        memberIds: members.map((m) => m.userId),
+        actorId: ctx.session.user.id,
+      });
+
       return { success: true, name: organization.name };
     }),
 
@@ -1336,6 +1312,18 @@ export const organizationRouter = createTRPCRouter({
         });
       }
 
+      // Read the current flags so the member can be told what actually changed.
+      const [before] = await ctx.db
+        .select()
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, input.organizationId),
+            eq(organizationMembers.userId, input.userId),
+          ),
+        )
+        .limit(1);
+
       // Update the member's permissions
       await ctx.db
         .update(organizationMembers)
@@ -1357,6 +1345,27 @@ export const organizationRouter = createTRPCRouter({
             eq(organizationMembers.userId, input.userId)
           )
         );
+
+      if (before) {
+        const { granted, revoked } = permissionDiff(pickPermissionFlags(before), {
+          canAddMembers: input.canAddMembers,
+          canAssignTasks: input.canAssignTasks,
+          canCreateProjects: input.canCreateProjects,
+          canDeleteTasks: input.canDeleteTasks,
+          canKickMembers: input.canKickMembers,
+          canManageRoles: input.canManageRoles,
+          canEditProjects: input.canEditProjects,
+          canViewAnalytics: input.canViewAnalytics,
+        });
+        await noticePermissionsChanged({
+          db: ctx.db,
+          organizationId: input.organizationId,
+          userId: input.userId,
+          actorId: ctx.session.user.id,
+          granted,
+          revoked,
+        });
+      }
 
       return { success: true };
     }),
@@ -1467,6 +1476,15 @@ export const organizationRouter = createTRPCRouter({
             eq(organizationMembers.userId, input.userId),
           ),
         );
+
+      await noticeRoleChanged({
+        db: ctx.db,
+        organizationId: input.organizationId,
+        userId: input.userId,
+        actorId: ctx.session.user.id,
+        from: { role: targetMember.role, displayRole: targetMember.displayRole },
+        to: { role, displayRole },
+      });
 
       return { success: true };
     }),
@@ -1587,6 +1605,13 @@ export const organizationRouter = createTRPCRouter({
             .where(eq(users.id, input.userId));
         }
       }
+
+      await noticeMemberRemoved({
+        db: ctx.db,
+        organizationId: input.organizationId,
+        userId: input.userId,
+        actorId: ctx.session.user.id,
+      });
 
       return { success: true };
     }),
@@ -2427,6 +2452,13 @@ export const organizationRouter = createTRPCRouter({
         .update(organizationInvites)
         .set({ status: "cancelled" })
         .where(eq(organizationInvites.id, input.inviteId));
+
+      await noticeInviteCancelled({
+        db: ctx.db,
+        organizationId: input.organizationId,
+        email: invite.email,
+        actorId: ctx.session.user.id,
+      });
 
       return { success: true };
     }),

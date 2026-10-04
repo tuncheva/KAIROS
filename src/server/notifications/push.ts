@@ -46,8 +46,21 @@ function truncate(text: string, max: number): string {
   return chars.length <= max ? text : `${chars.slice(0, max - 1).join("")}…`;
 }
 
+/**
+ * The origin push links point at. Declarative Web Push (iOS 18.4+) opens
+ * `navigate` itself, so a wrong origin here is a dead tap on the phone: fall
+ * back to Vercel's production domain, then the https VAPID subject, before
+ * the localhost default that only makes sense in development.
+ */
 function appOrigin(): string {
-  return (env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const subject = clean(env.VAPID_SUBJECT);
+  const origin =
+    env.NEXT_PUBLIC_APP_URL ??
+    (vercel ? `https://${vercel}` : undefined) ??
+    (subject?.startsWith("https://") ? subject : undefined) ??
+    "http://localhost:3000";
+  return origin.replace(/\/+$/, "");
 }
 
 /** `link` is always an in-app path; anything else falls back to the app root. */
@@ -84,37 +97,68 @@ export function buildPushPayload(
   };
 }
 
+/**
+ * Dashboard-pasted secrets arrive with quotes, spaces or a trailing newline
+ * often enough that rejecting them outright made push silently "unavailable"
+ * on a deploy whose keys were otherwise right.
+ */
+function clean(value: string | undefined): string | undefined {
+  const v = value?.trim().replace(/^["']|["']$/g, "").trim();
+  return v?.length ? v : undefined;
+}
+
+/** web-push wants `mailto:` or an absolute https URL; accept a bare domain too. */
 function vapidSubject(): string {
-  if (env.VAPID_SUBJECT) return env.VAPID_SUBJECT;
+  const raw = clean(env.VAPID_SUBJECT);
+  if (raw) {
+    if (/^(mailto:|https?:\/\/)/i.test(raw)) return raw;
+    if (raw.includes("@")) return `mailto:${raw}`;
+    return `https://${raw.replace(/^\/+/, "")}`;
+  }
   const origin = env.NEXT_PUBLIC_APP_URL;
   return origin?.startsWith("https://") ? origin : "mailto:push@kairos.invalid";
 }
 
 let configured: boolean | null = null;
 
+/** Why push is off, for the settings screen and the logs. Null when it is on. */
+export type PushConfigProblem = "missing-public-key" | "missing-private-key" | "invalid-keys" | null;
+let problem: PushConfigProblem = null;
+
 /** Whether push is set up on this deployment. Unset keys mean "in-app only". */
 export function isPushConfigured(): boolean {
   if (configured !== null) return configured;
-  const publicKey = env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const privateKey = env.VAPID_PRIVATE_KEY;
-  const subject = vapidSubject();
+  const publicKey = clean(env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
+  const privateKey = clean(env.VAPID_PRIVATE_KEY);
   if (!publicKey || !privateKey) {
+    problem = publicKey ? "missing-private-key" : "missing-public-key";
+    log.warn("push disabled: VAPID key not set", { problem });
     configured = false;
     return configured;
   }
   try {
-    webpush.setVapidDetails(subject, publicKey, privateKey);
+    webpush.setVapidDetails(vapidSubject(), publicKey, privateKey);
+    problem = null;
     configured = true;
   } catch (err) {
-    log.error("invalid VAPID configuration; push disabled", { err });
+    problem = "invalid-keys";
+    log.error("invalid VAPID configuration; push disabled", {
+      message: err instanceof Error ? err.message : String(err),
+    });
     configured = false;
   }
   return configured;
 }
 
+export function pushConfigProblem(): PushConfigProblem {
+  isPushConfigured();
+  return problem;
+}
+
 /** Test hook: forget the cached configuration so env changes take effect. */
 export function resetPushConfigForTests() {
   configured = null;
+  problem = null;
 }
 
 async function unreadCounts(db: Db, userIds: string[]): Promise<Map<string, number>> {

@@ -22,18 +22,25 @@
  *    this app does not care about eventually disables the endpoint.
  */
 
+import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 
 import { stripe } from "~/server/billing/stripe";
 import {
+  billingStateOf,
   clearSubscriptionIfCurrent,
   customerIdOf,
   ownerFromMetadata,
+  ownerFromSubscriptionId,
   rememberCustomer,
   syncSubscription,
+  type BillingOwner,
 } from "~/server/billing/subscriptions";
 import { env } from "~/env";
+import { db } from "~/server/db";
+import { organizations } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
+import { notify, type NotificationCategory } from "~/server/notifications/dispatch";
 
 const log = createLogger("billing:webhook");
 
@@ -206,7 +213,23 @@ async function handle(event: Stripe.Event, client: Stripe): Promise<void> {
     case "customer.subscription.created":
     case "customer.subscription.updated":
     case "customer.subscription.trial_will_end": {
-      await syncSubscription(event.data.object);
+      const owner = await syncSubscription(event.data.object);
+
+      // The trial notice is the one of the three a person needs to hear about.
+      // After the sync, so the billing screen the link opens already agrees.
+      if (event.type === "customer.subscription.trial_will_end" && owner) {
+        const trialEnd = event.data.object.trial_end;
+        const days =
+          typeof trialEnd === "number"
+            ? Math.max(1, Math.ceil((trialEnd * 1000 - Date.now()) / 86_400_000))
+            : null;
+        await notifyBillingOwner(owner, {
+          category: "workspace",
+          title: "Your trial is ending",
+          message: (subject) =>
+            `${subject} trial ends ${days === null ? "soon" : `in ${days} day${days === 1 ? "" : "s"}`}. Add a payment method to keep your plan.`,
+        });
+      }
       return;
     }
 
@@ -215,7 +238,28 @@ async function handle(event: Stripe.Event, client: Stripe): Promise<void> {
       // Stripe's object still describes the plan that just ended — and guarded
       // on the subscription id, because a late `deleted` for a subscription the
       // owner has already replaced would revoke a plan they are paying for.
-      await clearSubscriptionIfCurrent(event.data.object);
+      //
+      // Whether it *was* current is read before clearing, so the notice goes out
+      // only when a plan actually ended — not for a superseded subscription, and
+      // not a second time when Stripe redelivers an event already applied.
+      const subscription = event.data.object;
+      const owner =
+        ownerFromMetadata(subscription.metadata) ??
+        (await ownerFromSubscriptionId(subscription.id));
+      const wasCurrent = owner
+        ? (await billingStateOf(owner)).subscriptionId === subscription.id
+        : false;
+
+      await clearSubscriptionIfCurrent(subscription);
+
+      if (owner && wasCurrent) {
+        await notifyBillingOwner(owner, {
+          category: "workspace",
+          title: "Your subscription has ended",
+          message: (subject) =>
+            `${subject} subscription has ended and the plan is back on Free. You can resubscribe from billing settings.`,
+        });
+      }
       return;
     }
 
@@ -229,13 +273,77 @@ async function handle(event: Stripe.Event, client: Stripe): Promise<void> {
       const subscriptionId = subscriptionIdOf(invoice);
       if (subscriptionId) {
         const subscription = await client.subscriptions.retrieve(subscriptionId);
-        await syncSubscription(subscription);
+        const owner = await syncSubscription(subscription);
+
+        // Security, not workspace: a failed charge is about to cost someone
+        // their plan, and that must not be something a preference can hide.
+        if (event.type === "invoice.payment_failed" && owner) {
+          await notifyBillingOwner(owner, {
+            category: "security",
+            title: "Payment failed",
+            message: (subject) =>
+              `${subject} latest subscription payment failed. Update your payment method to keep your plan.`,
+          });
+        }
       }
       return;
     }
 
     default:
       log.debug("ignoring webhook event", { type: event.type });
+  }
+}
+
+/**
+ * Tell the person who pays.
+ *
+ * A personal subscription belongs to its user; a Team subscription is addressed
+ * to the organization's creator, the account that owns the workspace. Called
+ * only after the event's database writes and never throws, so a lost notice
+ * cannot turn a delivered event into a 500 and a retry.
+ */
+async function notifyBillingOwner(
+  owner: BillingOwner,
+  notice: {
+    category: NotificationCategory;
+    title: string;
+    /** Given "Your" or "The <workspace> workspace's". */
+    message: (subject: string) => string;
+  },
+): Promise<void> {
+  try {
+    let userId: string;
+    let subject = "Your";
+
+    if (owner.kind === "organization") {
+      const org = await db.query.organizations.findFirst({
+        where: eq(organizations.id, owner.id),
+        columns: { createdById: true, name: true },
+      });
+      if (!org) return;
+      userId = org.createdById;
+      subject = `The ${org.name} workspace's`;
+    } else {
+      userId = owner.id;
+    }
+
+    await notify({
+      db,
+      userId,
+      category: notice.category,
+      type: "system",
+      title: notice.title,
+      message: notice.message(subject),
+      link: "/settings?section=billing",
+    });
+  } catch (err) {
+    // The owner lookup is ours, not `notify`'s, so it gets its own guard: the
+    // plan has already been written, and a retry would only re-send the notice.
+    log.error("billing notification failed", {
+      ownerKind: owner.kind,
+      ownerId: String(owner.id),
+      err,
+    });
   }
 }
 

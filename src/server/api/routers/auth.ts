@@ -23,6 +23,7 @@ import {
 import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/security/authRateLimit";
 import { getClientIp } from "~/server/http/clientIp";
 import { createLogger } from "~/server/logger";
+import { notify } from "~/server/notifications/dispatch";
 
 const log = createLogger("auth.router");
 
@@ -415,6 +416,19 @@ export const authRouter = createTRPCRouter({
             isNull(twoFactorChallenges.consumedAt),
           ),
         );
+
+      // Security category: not mutable, so a reset nobody asked for is always
+      // visible on the account's next sign-in (and on any subscribed device).
+      await notify({
+        db: ctx.db,
+        userId: user.id,
+        category: "security",
+        type: "system",
+        title: "Your password was changed",
+        message:
+          "Your password was just reset. If this wasn't you, secure your account immediately.",
+        link: "/settings?section=security",
+      });
 
       return { success: true };
     }),

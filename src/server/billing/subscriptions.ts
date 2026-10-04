@@ -362,7 +362,7 @@ async function resolvePlan(
  * whoever edited it preserved it. Only works after a first successful sync, which
  * is why it is the last resort rather than the first.
  */
-async function ownerFromSubscriptionId(
+export async function ownerFromSubscriptionId(
   subscriptionId: string,
 ): Promise<BillingOwner | null> {
   const org = await db.query.organizations.findFirst({

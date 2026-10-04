@@ -13,6 +13,12 @@ import {
 import { projects, tasks, projectCollaborators, users, organizationMembers } from "~/server/db/schema";
 import { eq, and, desc, inArray, isNull, sql, ne, or } from "drizzle-orm";
 import { notify } from "~/server/notifications/dispatch";
+import { projectAudience } from "~/server/notifications/audience";
+import {
+  notifyCollaboratorPermissionChanged,
+  notifyCollaboratorRemoved,
+  notifyProjectLifecycle,
+} from "~/server/notifications/workNotices";
 import { createLogger } from "~/server/logger";
 
 const log = createLogger("project");
@@ -693,14 +699,25 @@ export const projectRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN", message: "Only project owner can remove collaborators" });
       }
 
-      await ctx.db
+      const removed = await ctx.db
         .delete(projectCollaborators)
         .where(
           and(
             eq(projectCollaborators.projectId, input.projectId),
             eq(projectCollaborators.collaboratorId, input.collaboratorId)
           )
-        );
+        )
+        .returning({ collaboratorId: projectCollaborators.collaboratorId });
+
+      // Only when a row actually went away: removing someone who was not on the
+      // project is a no-op, not news.
+      if (removed.length > 0) {
+        await notifyCollaboratorRemoved(ctx.db, {
+          actorId: ctx.session.user.id,
+          userId: input.collaboratorId,
+          projectTitle: project.title,
+        });
+      }
 
       return { success: true };
     }),
@@ -725,6 +742,17 @@ export const projectRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN", message: "Only project owner can update permissions" });
       }
 
+      const [previous] = await ctx.db
+        .select({ permission: projectCollaborators.permission })
+        .from(projectCollaborators)
+        .where(
+          and(
+            eq(projectCollaborators.projectId, input.projectId),
+            eq(projectCollaborators.collaboratorId, input.collaboratorId)
+          )
+        )
+        .limit(1);
+
       await ctx.db
         .update(projectCollaborators)
         .set({ permission: input.permission })
@@ -734,6 +762,16 @@ export const projectRouter = createTRPCRouter({
             eq(projectCollaborators.collaboratorId, input.collaboratorId)
           )
         );
+
+      if (previous && previous.permission !== input.permission) {
+        await notifyCollaboratorPermissionChanged(ctx.db, {
+          actorId: ctx.session.user.id,
+          userId: input.collaboratorId,
+          projectId: input.projectId,
+          projectTitle: project.title,
+          permission: input.permission,
+        });
+      }
 
       return { success: true };
     }),
@@ -764,7 +802,18 @@ export const projectRouter = createTRPCRouter({
       // role matrix and the client-side shape in `~/lib/permissions`.
       await assertProjectPermission(ctx, input.id, "canDeleteTasks");
 
+      // Read before the delete: collaborator rows go with the project.
+      const audience = await projectAudience(ctx.db, input.id);
+
       await ctx.db.delete(projects).where(eq(projects.id, input.id));
+
+      await notifyProjectLifecycle(ctx.db, {
+        actorId: ctx.session.user.id,
+        projectId: input.id,
+        projectTitle: project.title,
+        change: "deleted",
+        audience,
+      });
 
       return { success: true };
     }),
@@ -792,6 +841,15 @@ export const projectRouter = createTRPCRouter({
         .set({ status: "archived" })
         .where(eq(projects.id, input.projectId));
 
+      if (project.status !== "archived") {
+        await notifyProjectLifecycle(ctx.db, {
+          actorId: ctx.session.user.id,
+          projectId: input.projectId,
+          projectTitle: project.title,
+          change: "archived",
+        });
+      }
+
       return { success: true };
     }),
 
@@ -817,6 +875,15 @@ export const projectRouter = createTRPCRouter({
         .update(projects)
         .set({ status: "active" })
         .where(eq(projects.id, input.projectId));
+
+      if (project.status === "archived") {
+        await notifyProjectLifecycle(ctx.db, {
+          actorId: ctx.session.user.id,
+          projectId: input.projectId,
+          projectTitle: project.title,
+          change: "reopened",
+        });
+      }
 
       return { success: true };
     }),

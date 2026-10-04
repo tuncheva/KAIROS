@@ -1229,6 +1229,7 @@ export const chatRouter = createTRPCRouter({
         .select({
           id: directMessages.id,
           conversationId: directMessages.conversationId,
+          senderId: directMessages.senderId,
           deletedAt: directMessages.deletedAt,
         })
         .from(directMessages)
@@ -1287,6 +1288,47 @@ export const chatRouter = createTRPCRouter({
           userIds: rows.filter((r) => r.emoji === emoji).map((r) => r.userId),
         })),
       });
+
+      /* Tell the author, but only when a reaction was added — taking one back
+         is not news. Same conversation-mute gate as sendMessage, and the same
+         coalescing window, so a flurry of reactions is one bell entry. Reacting
+         to your own message is dropped by the dispatcher (actorId === userId). */
+      if (deleted.length === 0) {
+        const [authorParticipant] = await ctx.db
+          .select({ mutedUntil: conversationParticipants.mutedUntil })
+          .from(conversationParticipants)
+          .where(
+            and(
+              eq(conversationParticipants.conversationId, message.conversationId),
+              eq(conversationParticipants.userId, message.senderId),
+            ),
+          )
+          .limit(1);
+
+        const authorMuted = authorParticipant?.mutedUntil !== null && authorParticipant?.mutedUntil !== undefined
+          ? authorParticipant.mutedUntil.getTime() > Date.now()
+          : false;
+
+        if (!authorMuted && message.senderId !== selfId) {
+          const [reactor] = await ctx.db
+            .select({ name: users.name })
+            .from(users)
+            .where(eq(users.id, selfId))
+            .limit(1);
+
+          await notify({
+            db: ctx.db,
+            userId: message.senderId,
+            actorId: selfId,
+            category: "social",
+            type: "like",
+            title: "New reaction",
+            message: `${reactor?.name ?? "Someone"} reacted ${input.emoji} to your message`,
+            link: `/chat/${message.conversationId}`,
+            coalesceWindowMs: NOTIFICATION_COALESCE_MS,
+          });
+        }
+      }
 
       return { messageId: input.messageId, reactions: aggregate };
     }),

@@ -19,27 +19,16 @@ import {
   emitEventDeleted,
   emitEventUpdated,
 } from "~/server/ws/emit";
-import { notify, notifyMany } from "~/server/notifications/dispatch";
 import { eventSubscribers } from "~/server/notifications/audience";
+import {
+  notifyCoHostsAdded,
+  notifyEventCancelled,
+  notifyEventChanged,
+  notifyEventComment,
+  notifyEventLike,
+  notifyEventRsvp,
+} from "~/server/notifications/eventNotices";
 import { geocodePlace } from "~/server/geo/geocode";
-
-/**
- * How an RSVP reads to the person who owns the event.
- *
- * A decline is worth telling the owner about — it changes their headcount — but
- * it is framed as information rather than as good news.
- */
-const RSVP_TITLES: Record<"going" | "maybe" | "not_going", string> = {
-  going: "New attendee",
-  maybe: "A tentative reply",
-  not_going: "Someone can't make it",
-};
-
-const RSVP_PHRASES: Record<"going" | "maybe" | "not_going", string> = {
-  going: "is going to",
-  maybe: "might attend",
-  not_going: "can't make",
-};
 
 /** The ten towns the region enum knows. */
 const REGION_VALUES = [
@@ -360,15 +349,11 @@ export const eventRouter = createTRPCRouter({
           .values(invited.map((userId) => ({ eventId: created.id, userId })))
           .onConflictDoNothing();
 
-        await notifyMany({
-          db: ctx.db,
-          userIds: invited,
+        await notifyCoHostsAdded(ctx.db, {
+          eventId: created.id,
+          eventTitle: fields.title,
           actorId: createdById,
-          category: "eventUpdate",
-          type: "event",
-          title: "You are co-hosting an event",
-          message: `You were added as a co-host of "${fields.title}".`,
-          link: `/events/${created.id}`,
+          userIds: invited,
         });
       }
 
@@ -910,31 +895,14 @@ export const eventRouter = createTRPCRouter({
         createdById: currentUserId,
       });
 
-      // Notify event owner about the comment (unless they're the commenter)
-      const [eventRow] = await ctx.db
-        .select({ createdById: events.createdById, title: events.title })
-        .from(events)
-        .where(eq(events.id, input.eventId))
-        .limit(1);
-
-      if (eventRow && eventRow.createdById !== currentUserId) {
-        const commenter = await ctx.db.query.users.findFirst({
-          where: eq(users.id, currentUserId),
-          columns: { name: true },
-        });
-        const commenterName = commenter?.name ?? "Someone";
-
-        await notify({
-          db: ctx.db,
-          userId: eventRow.createdById,
-          actorId: currentUserId,
-          category: "social",
-          type: "comment",
-          title: "New comment on your event",
-          message: `${commenterName} commented on "${eventRow.title}"`,
-          link: `/events/${input.eventId}`,
-        });
-      }
+      /* The hosts (owner and co-hosts) hear about every comment; the author of
+         the comment being answered hears about the reply. A host whose own
+         comment was answered gets the reply only — see `notifyEventComment`. */
+      await notifyEventComment(ctx.db, {
+        eventId: input.eventId,
+        actorId: currentUserId,
+        replyToCommentId: input.parentId ?? null,
+      });
 
       // Real-time update for all clients viewing the event feed
       emitEventUpdated(input.eventId);
@@ -977,33 +945,10 @@ export const eventRouter = createTRPCRouter({
         });
 
         // Notify event owner about the like (unless they liked their own post)
-        const [eventRow] = await ctx.db
-          .select({ createdById: events.createdById, title: events.title })
-          .from(events)
-          .where(eq(events.id, input.eventId))
-          .limit(1);
-
-        if (eventRow && eventRow.createdById !== currentUserId) {
-          const liker = await ctx.db.query.users.findFirst({
-            where: eq(users.id, currentUserId),
-            columns: { name: true },
-          });
-          const likerName = liker?.name ?? "Someone";
-
-          await notify({
-            db: ctx.db,
-            userId: eventRow.createdById,
-            actorId: currentUserId,
-            category: "social",
-            type: "like",
-            title: "New like on your event",
-            message: `${likerName} liked your event "${eventRow.title}"`,
-            link: `/events/${input.eventId}`,
-            // Likes arrive in bursts on a popular post; one bell entry per
-            // unread window is enough to make the point.
-            coalesceWindowMs: 10 * 60 * 1000,
-          });
-        }
+        await notifyEventLike(ctx.db, {
+          eventId: input.eventId,
+          actorId: currentUserId,
+        });
 
         emitEventUpdated(input.eventId);
         return { action: 'liked', hasLiked: true };
@@ -1095,30 +1040,12 @@ export const eventRouter = createTRPCRouter({
       const statusChanged = previousStatus !== input.status;
 
       if (statusChanged) {
-        const [eventRow] = await ctx.db
-          .select({ createdById: events.createdById, title: events.title })
-          .from(events)
-          .where(eq(events.id, input.eventId))
-          .limit(1);
-
-        if (eventRow) {
-          const responder = await ctx.db.query.users.findFirst({
-            where: eq(users.id, currentUserId),
-            columns: { name: true },
-          });
-          const responderName = responder?.name ?? "Someone";
-
-          await notify({
-            db: ctx.db,
-            userId: eventRow.createdById,
-            actorId: currentUserId,
-            category: "eventRsvp",
-            type: "event",
-            title: RSVP_TITLES[input.status],
-            message: `${responderName} ${RSVP_PHRASES[input.status]} "${eventRow.title}"`,
-            link: `/events/${input.eventId}`,
-          });
-        }
+        // The owner and every co-host: they share the headcount.
+        await notifyEventRsvp(ctx.db, {
+          eventId: input.eventId,
+          actorId: currentUserId,
+          status: input.status,
+        });
       }
 
       emitEventUpdated(input.eventId);
@@ -1151,16 +1078,10 @@ export const eventRouter = createTRPCRouter({
 
       await ctx.db.delete(events).where(eq(events.id, input.eventId));
 
-      await notifyMany({
-        db: ctx.db,
-        userIds: subscribers,
+      await notifyEventCancelled(ctx.db, {
+        eventTitle: title,
         actorId: ctx.session.user.id,
-        category: "eventUpdate",
-        type: "event",
-        title: "Event cancelled",
-        message: `"${title}" has been cancelled by the organiser.`,
-        // No anchor: the event is gone, so a deep link would land on nothing.
-        link: "/publish",
+        subscribers,
       });
 
       // Notify all connected clients about the deletion in real-time
@@ -1228,6 +1149,15 @@ export const eventRouter = createTRPCRouter({
         const wanted = [...new Set(updates.coHostIds)].filter(
           (id) => id !== event.createdById,
         );
+        /* Read before the delete-and-reinsert below, so only people who were
+           not co-hosting already are told they now are. Saving the edit form
+           re-sends the whole list, and that must not re-notify everyone on it. */
+        const previous = await ctx.db
+          .select({ userId: eventCoHosts.userId })
+          .from(eventCoHosts)
+          .where(eq(eventCoHosts.eventId, eventId));
+        const already = new Set(previous.map((row) => row.userId));
+
         await ctx.db.delete(eventCoHosts).where(eq(eventCoHosts.eventId, eventId));
         if (wanted.length > 0) {
           await ctx.db
@@ -1235,6 +1165,13 @@ export const eventRouter = createTRPCRouter({
             .values(wanted.map((userId) => ({ eventId, userId })))
             .onConflictDoNothing();
         }
+
+        await notifyCoHostsAdded(ctx.db, {
+          eventId,
+          eventTitle: updates.title ?? event.title,
+          actorId: ctx.session.user.id,
+          userIds: wanted.filter((id) => !already.has(id)),
+        });
       }
 
       /* The pin follows the place. Re-geocoded only when what it was computed
@@ -1281,8 +1218,16 @@ export const eventRouter = createTRPCRouter({
         updateFields.eventDate.getTime() !== event.eventDate.getTime();
       const regionMoved =
         typeof updateFields.region === "string" && updateFields.region !== event.region;
+      /* A new venue or street address in the same town is as much a reason to
+         be told as a new town — a guest who turns up at the old door has missed
+         the event either way. Blank and missing read the same, so clearing an
+         already-empty field is not a move. */
+      const placeText = (value: string | null | undefined) => value?.trim() ?? "";
+      const venueMoved =
+        (updates.venue !== undefined && placeText(updates.venue) !== placeText(event.venue)) ||
+        (updates.address !== undefined && placeText(updates.address) !== placeText(event.address));
 
-      if (dateMoved || regionMoved) {
+      if (dateMoved || regionMoved || venueMoved) {
         if (dateMoved) {
           await ctx.db
             .update(eventRsvps)
@@ -1290,20 +1235,14 @@ export const eventRouter = createTRPCRouter({
             .where(eq(eventRsvps.eventId, eventId));
         }
 
-        const changes = [
-          dateMoved ? "a new date" : null,
-          regionMoved ? "a new location" : null,
-        ].filter(Boolean);
-
-        await notifyMany({
-          db: ctx.db,
-          userIds: await eventSubscribers(ctx.db, eventId),
+        // One notification for the whole edit, however many things moved.
+        await notifyEventChanged(ctx.db, {
+          eventId,
+          eventTitle: event.title,
           actorId: ctx.session.user.id,
-          category: "eventUpdate",
-          type: "event",
-          title: "Event updated",
-          message: `"${event.title}" now has ${changes.join(" and ")}.`,
-          link: `/events/${eventId}`,
+          subscribers: await eventSubscribers(ctx.db, eventId),
+          dateMoved,
+          locationMoved: regionMoved || venueMoved,
         });
       }
 

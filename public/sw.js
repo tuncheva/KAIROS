@@ -41,7 +41,10 @@ self.addEventListener("push", (event) => {
       body: n.body || "",
       data: { ...(n.data || {}), url },
       icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
+      // Android draws the badge in the status bar as a silhouette (every opaque
+      // pixel turns white), so it must be a white mark on transparency — the
+      // full-colour icon would show up as a solid square.
+      badge: "/icons/badge-96.png",
       tag: n.data && n.data.notificationId ? `n-${n.data.notificationId}` : undefined,
     }),
   ];
@@ -59,11 +62,13 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  // Only ever navigate within this origin, whatever the payload says.
+  // Always navigate within this origin, keeping the payload's path. The server
+  // builds absolute URLs from its configured app URL; if that is missing or
+  // stale (a localhost default on a deployed site), the path is still right.
   let target = new URL("/", self.location.origin);
   try {
     const candidate = new URL((event.notification.data && event.notification.data.url) || "/", self.location.origin);
-    if (candidate.origin === self.location.origin) target = candidate;
+    target = new URL(candidate.pathname + candidate.search + candidate.hash, self.location.origin);
   } catch {
     /* keep the root */
   }

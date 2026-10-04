@@ -38,29 +38,42 @@ const sweepPath = path.resolve(
 );
 const sweepSource = fs.readFileSync(sweepPath, "utf-8");
 
+// The wording lives in a module shared with the AI events agent, so the router
+// and the agent cannot drift apart; the router only calls into it.
+const noticesSource = fs.readFileSync(
+  path.resolve(__dirname, "../../src/server/notifications/eventNotices.ts"),
+  "utf-8",
+);
+
 describe("Event Router – Notifications", () => {
-  it("imports notifications table", () => {
-    expect(eventRouterSource).toContain("notifications");
+  it("routes event notices through the shared helpers", () => {
+    expect(eventRouterSource).toContain("notifyEventComment(");
+    expect(eventRouterSource).toContain("notifyEventLike(");
   });
 
   it("creates a notification on comment (for event owner)", () => {
-    expect(eventRouterSource).toContain("New comment on your event");
+    expect(noticesSource).toContain("New comment on your event");
+  });
+
+  it("notifies the author of the comment being replied to", () => {
+    expect(noticesSource).toContain('type: "reply"');
+    expect(noticesSource).toContain("New reply to your comment");
   });
 
   it("creates a notification on like (for event owner)", () => {
-    expect(eventRouterSource).toContain("New like on your event");
+    expect(noticesSource).toContain("New like on your event");
   });
 
   it("does not notify when liking own post", () => {
-    expect(eventRouterSource).toContain("eventRow.createdById !== currentUserId");
+    expect(noticesSource).toContain("eventRow.createdById === input.actorId");
   });
 
   it("uses 'comment' notification type for comments", () => {
-    expect(eventRouterSource).toContain('type: "comment"');
+    expect(noticesSource).toContain('type: "comment"');
   });
 
   it("uses 'like' notification type for likes", () => {
-    expect(eventRouterSource).toContain('type: "like"');
+    expect(noticesSource).toContain('type: "like"');
   });
 });
 

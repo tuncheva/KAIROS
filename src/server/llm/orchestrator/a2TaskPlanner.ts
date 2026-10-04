@@ -53,6 +53,137 @@ import {
   mintConfirmationToken,
   readConfirmationToken,
 } from "./shared";
+import {
+  notifyTaskAssignmentChanged,
+  notifyTaskCreated,
+  notifyTaskDeleted,
+  notifyTaskDetailsChanged,
+  notifyTaskStatusChanged,
+} from "~/server/notifications/workNotices";
+
+type TaskRowForNotice = {
+  id: number;
+  title: string;
+  status: "pending" | "in_progress" | "completed" | "blocked";
+  priority: "low" | "medium" | "high" | "urgent";
+  dueDate: Date | null;
+  assignedToId: string | null;
+  createdById: string | null;
+};
+
+/**
+ * The rows an apply is about to touch, as the notices need them, read *before*
+ * the writes — a deleted task cannot be named afterwards, and "reassigned away
+ * from you" needs to know who had it.
+ */
+async function loadTasksForNotice(
+  ctx: TRPCContext,
+  projectId: number,
+  plan: Pick<TaskPlanDraft, "updates" | "statusChanges" | "deletes">,
+): Promise<Map<number, TaskRowForNotice>> {
+  const ids = [
+    ...plan.updates.map((u) => u.taskId),
+    ...plan.statusChanges.map((s) => s.taskId),
+    ...plan.deletes.filter((d) => d.dangerous).map((d) => d.taskId),
+  ];
+  if (ids.length === 0) return new Map();
+
+  const rows = await ctx.db
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      status: tasks.status,
+      priority: tasks.priority,
+      dueDate: tasks.dueDate,
+      assignedToId: tasks.assignedToId,
+      createdById: tasks.createdById,
+    })
+    .from(tasks)
+    .where(and(inArray(tasks.id, [...new Set(ids)]), eq(tasks.projectId, projectId)));
+
+  return new Map(rows.map((r) => [r.id, r]));
+}
+
+/**
+ * The same notices `task.create` / `task.update` / `task.updateStatus` /
+ * `task.delete` send, for the writes an approved plan just made. Without this
+ * the assistant was a way to assign, reschedule or delete someone's work without
+ * them ever hearing about it.
+ *
+ * `actorId` is the user the agent acted for, so their own changes stay silent
+ * for them exactly as they would from the UI.
+ */
+async function notifyAppliedTaskOps(
+  ctx: TRPCContext,
+  input: {
+    actorId: string;
+    projectId: number;
+    before: Map<number, TaskRowForNotice>;
+    created: Array<{ title: string; assignedToId: string | null }>;
+    updates: TaskPlanDraft["updates"];
+    statusChanges: TaskPlanDraft["statusChanges"];
+    deletes: TaskPlanDraft["deletes"];
+  },
+): Promise<void> {
+  const { actorId, projectId, before } = input;
+
+  for (const task of input.created) {
+    await notifyTaskCreated(ctx.db, { actorId, projectId, task });
+  }
+
+  for (const u of input.updates) {
+    const prev = before.get(u.taskId);
+    if (!prev) continue;
+    const taskTitle = u.patch.title ?? prev.title;
+    const nextAssignee =
+      "assignedToId" in u.patch ? (u.patch.assignedToId ?? null) : prev.assignedToId;
+
+    if (nextAssignee !== prev.assignedToId) {
+      await notifyTaskAssignmentChanged(ctx.db, {
+        actorId,
+        projectId,
+        taskTitle,
+        previousAssigneeId: prev.assignedToId,
+        newAssigneeId: nextAssignee,
+      });
+    } else {
+      await notifyTaskDetailsChanged(ctx.db, {
+        actorId,
+        projectId,
+        taskTitle,
+        assigneeId: prev.assignedToId,
+        dueDate:
+          "dueDate" in u.patch
+            ? { from: prev.dueDate, to: u.patch.dueDate ? new Date(u.patch.dueDate) : null }
+            : undefined,
+        priority:
+          u.patch.priority !== undefined
+            ? { from: prev.priority, to: u.patch.priority }
+            : undefined,
+      });
+    }
+  }
+
+  for (const s of input.statusChanges) {
+    const prev = before.get(s.taskId);
+    if (!prev) continue;
+    await notifyTaskStatusChanged(ctx.db, {
+      actorId,
+      projectId,
+      task: prev,
+      oldStatus: prev.status,
+      newStatus: s.status,
+    });
+  }
+
+  for (const d of input.deletes) {
+    if (!d.dangerous) continue;
+    const prev = before.get(d.taskId);
+    if (!prev) continue;
+    await notifyTaskDeleted(ctx.db, { actorId, projectId, task: prev });
+  }
+}
+
 /**
  * The plan a refinement is revising, as JSON, or null.
  *
@@ -567,6 +698,9 @@ export const a2TaskPlanner = {
           continue;
         }
 
+        const noticeBefore = await loadTasksForNotice(input.ctx, pid, group);
+        const noticeCreated: Array<{ title: string; assignedToId: string | null }> = [];
+
         // Apply creates for this project
         for (const c of group.creates) {
           const existing = await input.ctx.db
@@ -604,6 +738,7 @@ export const a2TaskPlanner = {
 
           if (inserted[0]?.id) {
             createdTaskIds.push(inserted[0].id);
+            noticeCreated.push({ title: c.title, assignedToId: c.assignedToId ?? null });
             await input.ctx.db.insert(taskActivityLog).values({
               taskId: inserted[0].id,
               userId,
@@ -666,6 +801,16 @@ export const a2TaskPlanner = {
             .where(and(eq(tasks.id, d.taskId), eq(tasks.projectId, pid)));
           deletedTaskIds.push(d.taskId);
         }
+
+        await notifyAppliedTaskOps(input.ctx, {
+          actorId: userId,
+          projectId: pid,
+          before: noticeBefore,
+          created: noticeCreated,
+          updates: group.updates,
+          statusChanges: group.statusChanges,
+          deletes: group.deletes,
+        });
       }
     } else {
       // Single-project apply — original path
@@ -763,6 +908,9 @@ export const a2TaskPlanner = {
       })),
     });
 
+    const noticeBefore = await loadTasksForNotice(input.ctx, singleProjectId, plan);
+    const noticeCreated: Array<{ title: string; assignedToId: string | null }> = [];
+
     // Apply creates with idempotency.
     for (const c of plan.creates) {
       // idempotency: if a task already exists with this clientRequestId, skip create.
@@ -801,6 +949,7 @@ export const a2TaskPlanner = {
 
       if (inserted[0]?.id) {
         createdTaskIds.push(inserted[0].id);
+        noticeCreated.push({ title: c.title, assignedToId: c.assignedToId ?? null });
         await input.ctx.db.insert(taskActivityLog).values({
           taskId: inserted[0].id,
           userId,
@@ -877,6 +1026,16 @@ export const a2TaskPlanner = {
         );
       deletedTaskIds.push(d.taskId);
     }
+
+    await notifyAppliedTaskOps(input.ctx, {
+      actorId: userId,
+      projectId: singleProjectId,
+      before: noticeBefore,
+      created: noticeCreated,
+      updates: plan.updates,
+      statusChanges: plan.statusChanges,
+      deletes: plan.deletes,
+    });
 
     // Apply comments. Each comment is verified to belong to the target project
     // before insertion — the model should only reference task ids it was shown in

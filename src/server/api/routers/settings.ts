@@ -21,6 +21,7 @@ import {
   createAuthRateLimitKey,
 } from "~/server/security/authRateLimit";
 import { createLogger } from "~/server/logger";
+import { notify } from "~/server/notifications/dispatch";
 import {
   cancelSubscriptionFor,
   SubscriptionCancellationError,
@@ -457,6 +458,23 @@ export const settingsRouter = createTRPCRouter({
         .where(eq(users.id, user.id));
 
       log.info("two-factor sign-in changed", { userId: user.id, enabled: input.enable });
+
+      // No actorId: the user did this themselves, and that is exactly the case
+      // a security notice exists for — the other sessions on the account need
+      // to see it too.
+      await notify({
+        db: ctx.db,
+        userId: user.id,
+        category: "security",
+        type: "system",
+        title: input.enable
+          ? "Two-step sign-in turned on"
+          : "Two-step sign-in turned off",
+        message: input.enable
+          ? "Signing in now requires a code sent to your email. If this wasn't you, secure your account immediately."
+          : "Signing in no longer requires an emailed code. If this wasn't you, change your password and turn it back on.",
+        link: "/settings?section=security",
+      });
 
       return { success: true };
     }),

@@ -35,6 +35,7 @@ import {
   type ProjectManagerDraft,
 } from "~/server/llm/schemas/a6ProjectManagerSchemas";
 import { createLogger } from "~/server/logger";
+import { notifyProjectLifecycle } from "~/server/notifications/workNotices";
 
 import {
   computePlanHash,
@@ -390,6 +391,8 @@ export const a6ProjectManager = {
 
       results.created += 1;
       log.info("A6 created project", { title: op.title });
+      // No notice: a project that did not exist a moment ago has no audience
+      // besides its creator — the same reason `project.create` sends none.
     }
 
     // ---- updates
@@ -397,6 +400,8 @@ export const a6ProjectManager = {
       const [project] = await db
         .select({
           id: projects.id,
+          title: projects.title,
+          status: projects.status,
           createdById: projects.createdById,
           organizationId: projects.organizationId,
         })
@@ -437,6 +442,18 @@ export const a6ProjectManager = {
       await db.update(projects).set(patch).where(eq(projects.id, op.projectId));
 
       results.updated += 1;
+
+      // A status patch is an archive or a reopen by another name; the audience
+      // hears about it exactly as they would from `project.archiveProject` /
+      // `project.reopenProject`.
+      if (patch.status !== undefined && patch.status !== project.status) {
+        await notifyProjectLifecycle(db, {
+          actorId: userId,
+          projectId: op.projectId,
+          projectTitle: patch.title ?? project.title,
+          change: patch.status === "archived" ? "archived" : "reopened",
+        });
+      }
     }
 
     // ---- archives
@@ -444,6 +461,8 @@ export const a6ProjectManager = {
       const [project] = await db
         .select({
           id: projects.id,
+          title: projects.title,
+          status: projects.status,
           createdById: projects.createdById,
           organizationId: projects.organizationId,
         })
@@ -477,6 +496,15 @@ export const a6ProjectManager = {
         .where(eq(projects.id, op.projectId));
 
       results.archived += 1;
+
+      if (project.status !== "archived") {
+        await notifyProjectLifecycle(db, {
+          actorId: userId,
+          projectId: op.projectId,
+          projectTitle: project.title,
+          change: "archived",
+        });
+      }
     }
 
     await db.insert(agentProjectManagerApplies).values({

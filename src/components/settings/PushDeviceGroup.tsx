@@ -113,7 +113,13 @@ export function PushDeviceGroup() {
 
   switch (state) {
     case "unconfigured":
-      desc = t("pushUnconfiguredDesc");
+      // Name the missing piece: "not set up" alone sent a correctly configured
+      // deploy hunting through every variable when only one was wrong.
+      desc = status.data?.problem
+        ? `${t("pushUnconfiguredDesc")} (${status.data.problem})`
+        : !publicKey && configured
+          ? `${t("pushUnconfiguredDesc")} (missing-public-key-in-build)`
+          : t("pushUnconfiguredDesc");
       control = <LedgerValue tone="dim">{t("pushUnavailable")}</LedgerValue>;
       break;
     case "needs-install":
