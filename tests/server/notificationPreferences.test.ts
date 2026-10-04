@@ -21,7 +21,7 @@ import path from "path";
 // import wants DATABASE_URL.
 vi.mock("~/server/db", () => ({ db: {} }));
 vi.mock("~/server/ws/emit", () => ({ emitNotification: vi.fn() }));
-vi.mock("~/server/notifications/push", () => ({ sendPushToUsers: vi.fn() }));
+vi.mock("~/server/notifications/push", () => ({ schedulePush: vi.fn() }));
 
 const { isDeliverable } = await import("~/server/notifications/dispatch");
 
@@ -175,7 +175,7 @@ describe("notification producers — no bypasses", () => {
       "utf-8",
     );
     const emits = [...dispatch.matchAll(/\bemitNotification\s*\(/g)].length;
-    const pushes = [...dispatch.matchAll(/\bsendPushToUsers\s*\(/g)].length;
+    const pushes = [...dispatch.matchAll(/\bschedulePush\s*\(/g)].length;
     expect(emits).toBe(2);
     expect(pushes).toBe(emits);
   });

@@ -21,7 +21,7 @@ import type { db as Database } from "~/server/db";
 import { notifications, users } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
 import { emitNotification } from "~/server/ws/emit";
-import { sendPushToUsers } from "./push";
+import { schedulePush } from "./push";
 
 const log = createLogger("notifications.dispatch");
 
@@ -237,9 +237,9 @@ export async function notify(input: NotifyInput): Promise<NotifyResult> {
       link: input.link ?? null,
     });
 
-    // Fire-and-forget: the lock-screen copy must never hold up the mutation
-    // that caused it, and `sendPushToUsers` never rejects.
-    void sendPushToUsers(input.db, [
+    // After the response: the lock-screen copy must never hold up the mutation
+    // that caused it (see `schedulePush` for why not a bare `void`).
+    schedulePush(input.db, [
       {
         userId: input.userId,
         notificationId: row.id,
@@ -312,7 +312,7 @@ export async function notifyMany(input: {
       });
     }
 
-    void sendPushToUsers(
+    schedulePush(
       input.db,
       rows.map((row) => ({
         userId: row.userId,

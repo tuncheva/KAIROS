@@ -13,6 +13,7 @@
  */
 
 import { and, count, eq, inArray } from "drizzle-orm";
+import { after } from "next/server";
 import webpush, { type WebPushError } from "web-push";
 
 import { env } from "~/env";
@@ -204,4 +205,23 @@ export async function sendPushToUsers(
   }
 
   return result;
+}
+
+/**
+ * Send after the response, without losing the send on serverless hosts.
+ *
+ * A bare `void sendPushToUsers(...)` is fine on a long-lived Node server, but on
+ * Vercel the function is frozen once the response is sent, and a push still in
+ * flight to Apple simply never goes out. `after` keeps the invocation alive
+ * until it settles while still not delaying the response. Outside a request
+ * (scripts, tests) `after` throws, and plain fire-and-forget is the right
+ * behaviour there anyway.
+ */
+export function schedulePush(db: Db, items: PushItem[]): void {
+  if (items.length === 0) return;
+  try {
+    after(() => sendPushToUsers(db, items));
+  } catch {
+    void sendPushToUsers(db, items);
+  }
 }
