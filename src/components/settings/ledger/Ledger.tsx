@@ -597,9 +597,8 @@ export function LedgerSection({
             {Icon ? (
               <span
                 aria-hidden
-                className={`flex h-11 w-11 flex-none items-center justify-center rounded-md ${
-                  flagged ? "bg-warning/12 text-warning" : "bg-accent-primary/10 text-accent-primary"
-                }`}
+                data-flagged={flagged || undefined}
+                className="settings-medallion h-[46px] w-[46px]"
               >
                 <Icon size={21} />
               </span>

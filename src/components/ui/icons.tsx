@@ -12,8 +12,9 @@
  * counterpart, so client and server render the same glyph.
  */
 
-import type { Icon, IconWeight } from "@phosphor-icons/react";
+import type { Icon, IconProps as PhosphorIconProps, IconWeight } from "@phosphor-icons/react";
 import {
+  IconContext,
   ArchiveIcon as PhosphorArchive,
   ArrowBendUpLeftIcon as PhosphorArrowBendUpLeft,
   ArrowClockwiseIcon as PhosphorArrowClockwise,
@@ -140,11 +141,25 @@ export type IconProps = Omit<React.ComponentPropsWithoutRef<Icon>, "weight"> & {
   weight?: IconWeight;
 };
 
-function weightFor(strokeWidth: number | undefined): IconWeight {
-  if (strokeWidth === undefined) return "regular";
+/**
+ * No stroke width means no opinion: the weight is left to Phosphor's
+ * `IconContext` (regular unless a surface such as /settings provides another).
+ */
+function weightFor(strokeWidth: number | undefined): IconWeight | undefined {
+  if (strokeWidth === undefined) return undefined;
   if (strokeWidth <= 1.75) return "light";
   if (strokeWidth >= 2.2) return "bold";
   return "regular";
+}
+
+const LIGHT = { weight: "light" } as const satisfies PhosphorIconProps;
+
+/**
+ * Draws every icon inside at Phosphor's light weight, except those given an
+ * explicit `weight` or `strokeWidth`. /settings uses it for its finer line.
+ */
+export function LightIcons({ children }: { children: React.ReactNode }) {
+  return <IconContext.Provider value={LIGHT}>{children}</IconContext.Provider>;
 }
 
 function lucideCompat(Base: Icon) {

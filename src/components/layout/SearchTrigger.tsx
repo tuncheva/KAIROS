@@ -17,12 +17,20 @@
  * second implementation to keep in step.
  */
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { Search } from "~/components/ui/icons";
+import { Search, Sparkles } from "~/components/ui/icons";
 
 export function SearchTrigger() {
   const t = useTranslations("ai.palette");
+  // "Ctrl" until mounted, so the server and first client render agree — the
+  // same dance as the rail's shortcut hints in `SideNav`.
+  const [modKey, setModKey] = useState("Ctrl");
+
+  useEffect(() => {
+    if (/Mac|iPhone|iPad/.test(navigator.userAgent)) setModKey("⌘");
+  }, []);
 
   const open = () => window.dispatchEvent(new CustomEvent("kairos:openPalette"));
 
@@ -34,13 +42,32 @@ export function SearchTrigger() {
          looks like it behaves rather than leaving the user typing into a
          button. */
       onFocus={open}
-      className="group flex h-8 min-w-0 items-center gap-2 rounded-sm border border-border-light/70 bg-bg-secondary/50 px-2.5 text-left text-fg-quaternary transition-colors hover:border-border-medium hover:text-fg-tertiary focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:outline-none sm:w-56 lg:w-72"
+      aria-keyshortcuts="Control+K Meta+K"
+      /* A pill rather than a field, and it says ⌘K out loud: the shortcut is
+         the fast way in, and the bar was the only place that could teach it.
+         Below `sm` it folds to a round door — a phone has no keyboard to hint
+         at. */
+      className="group flex h-9 w-9 min-w-0 shrink-0 items-center justify-center gap-2 rounded-full border border-tui-ink/10 text-left text-tui-ink3 transition-colors hover:border-tui-ink/16 hover:text-tui-ink2 focus-visible:ring-2 focus-visible:ring-tui-accent focus-visible:outline-none sm:w-64 sm:shrink sm:justify-start sm:border-tui-ink/8 sm:bg-tui-ink/[0.035] sm:pr-1.5 sm:pl-3.5 sm:hover:bg-tui-pane lg:w-[340px]"
     >
-      <Search size={14} className="shrink-0" aria-hidden="true" />
+      <Search size={15} className="shrink-0" aria-hidden="true" />
       <span className="hidden min-w-0 flex-1 truncate text-[13px] sm:block">
         {t("triggerLabel")}
       </span>
       <span className="sr-only sm:hidden">{t("triggerLabel")}</span>
+      {/* The palette's AI fallback, hinted before you open it. */}
+      <span
+        aria-hidden="true"
+        className="hidden h-6 shrink-0 items-center gap-1 rounded-full bg-tui-accent/10 px-2 text-[11.5px] font-medium text-tui-accent lg:inline-flex"
+      >
+        <Sparkles size={12} />
+        AI
+      </span>
+      <kbd
+        aria-hidden="true"
+        className="hidden h-[22px] shrink-0 items-center rounded-full border border-tui-ink/12 bg-tui-pane px-2 font-mono text-[11px] text-tui-ink3 sm:inline-flex"
+      >
+        {modKey === "⌘" ? "⌘K" : "Ctrl K"}
+      </kbd>
     </button>
   );
 }

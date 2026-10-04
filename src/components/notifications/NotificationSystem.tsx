@@ -478,14 +478,17 @@ export function NotificationSystem() {
         setFilter(value);
         setExpanded(false);
       }}
-      className={`${label} rounded-sm px-2.5 py-1.5 transition-colors ${
+      aria-pressed={filter === value}
+      className={`flex h-[26px] items-center rounded-full border px-3 text-[12px] transition-colors ${
         filter === value
-          ? "bg-bg-secondary text-fg-primary"
-          : "text-fg-tertiary hover:text-fg-primary"
+          ? "border-transparent bg-tui-ink text-tui-bg"
+          : "border-tui-ink/12 text-tui-ink2 hover:border-tui-ink/20 hover:text-tui-ink"
       }`}
     >
       {text}
-      <span className="ml-1.5 text-fg-quaternary">{count}</span>
+      <span className={`ml-1.5 ${filter === value ? "opacity-60" : "text-tui-ink3"}`}>
+        {count}
+      </span>
     </button>
   );
 
@@ -549,10 +552,10 @@ export function NotificationSystem() {
           ref={bellRef}
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className={`relative flex h-8 w-8 items-center justify-center rounded-sm transition-colors ${
+          className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-tui-accent focus-visible:outline-none ${
             isOpen
-              ? "bg-accent-primary/12 text-accent-primary"
-              : "text-fg-secondary hover:bg-bg-secondary/60 hover:text-fg-primary"
+              ? "bg-tui-ink/[0.05] text-tui-ink"
+              : "text-tui-ink2 hover:bg-tui-ink/[0.05] hover:text-tui-ink"
           }`}
           aria-label={unreadCount > 0 ? t("openUnread", { count: unreadCount }) : t("open")}
           aria-expanded={isOpen}
@@ -560,11 +563,19 @@ export function NotificationSystem() {
         >
           <Bell size={19} strokeWidth={1.6} />
           {/*
-            A dot, not a number. The count is one tap away in the panel header,
-            and a two-digit badge on a 19px glyph was the loudest thing in the bar.
+            A small count pill in the refined violet, capped at 9+ so it never
+            grows wider than the glyph it sits on — the old two-digit badge was
+            the loudest thing in the bar, and the dot that replaced it hid how
+            much was waiting. The pane-coloured ring cuts it cleanly out of the
+            bell's outline.
           */}
           {unreadCount > 0 && (
-            <span className="absolute right-[5px] top-[5px] h-[7px] w-[7px] rounded-full bg-accent-primary ring-2 ring-bg-primary" />
+            <span
+              aria-hidden="true"
+              className="absolute -right-px top-[3px] flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-tui-accent px-[5px] text-[10px] font-semibold leading-none tabular-nums text-tui-on-accent ring-2 ring-tui-pane"
+            >
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
           )}
         </button>
 
@@ -585,14 +596,14 @@ export function NotificationSystem() {
               ref={panelRef}
               role="dialog"
               aria-label={t("title")}
-              className="animate-in slide-in-from-top-2 absolute inset-x-3 z-50 mt-2 overflow-hidden rounded-lg border border-border-light bg-bg-elevated shadow-2xl duration-200 sm:inset-x-auto sm:right-0 sm:w-[380px]"
+              className="animate-in slide-in-from-top-2 absolute inset-x-3 z-50 mt-2 overflow-hidden rounded-xl border border-tui-ink/12 bg-tui-pane shadow-[var(--tui-lift)] duration-200 sm:inset-x-auto sm:right-0 sm:w-[380px]"
             >
               <div className="flex items-baseline gap-2.5 px-[18px] pb-3 pt-4">
-                <h3 className="font-display text-[17px] leading-tight font-normal text-fg-primary">
+                <h3 className="font-display text-[22px] leading-tight font-normal text-tui-ink">
                   {t("title")}
                 </h3>
                 {unreadCount > 0 && (
-                  <span className={`${label} text-accent-primary`}>
+                  <span className={`${label} text-tui-accent`}>
                     {t("unreadBadge", { count: unreadCount })}
                   </span>
                 )}
@@ -602,7 +613,7 @@ export function NotificationSystem() {
                     type="button"
                     onClick={() => markAllAsReadMutation.mutate()}
                     disabled={markAllAsReadMutation.isPending}
-                    className="text-[12px] text-fg-tertiary transition-colors hover:text-fg-primary disabled:opacity-50"
+                    className="text-[12px] text-tui-ink3 transition-colors hover:text-tui-ink disabled:opacity-50"
                   >
                     {t("markAllRead")}
                   </button>
@@ -633,7 +644,7 @@ export function NotificationSystem() {
               )}
 
               {notifications.length > 0 && (
-                <div className="flex gap-1 px-3.5 pb-3">
+                <div className="flex gap-1.5 px-[18px] pb-3">
                   {segment("all", t("filterAll"), notifications.length)}
                   {segment("unread", t("filterUnread"), localUnread)}
                   {segment("mentions", t("filterMentions"), mentionCount)}
@@ -653,7 +664,7 @@ export function NotificationSystem() {
               >
                 {notifications.length === 0 ? (
                   <div className="px-6 pb-14 pt-[52px] text-center">
-                    <span className="mx-auto mb-3.5 flex h-10 w-10 items-center justify-center rounded-full border border-border-light text-fg-quaternary">
+                    <span className="mx-auto mb-3.5 flex h-10 w-10 items-center justify-center rounded-full border border-tui-ink/12 text-tui-ink3">
                       <Bell size={17} strokeWidth={1.6} />
                     </span>
                     <strong className="block text-[13.5px] font-bold text-fg-primary">
@@ -674,7 +685,7 @@ export function NotificationSystem() {
                   grouped.map((group) => (
                     <div key={group.label}>
                       <div
-                        className={`${label} border-t border-border-light px-[18px] pb-1.5 pt-3 text-fg-quaternary`}
+                        className={`${label} border-t border-tui-ink/8 px-[18px] pb-1.5 pt-3 text-tui-ink3`}
                       >
                         {group.label}
                       </div>
@@ -682,14 +693,14 @@ export function NotificationSystem() {
                         <div
                           key={notification.id}
                           onClick={() => handleNotificationClick(notification)}
-                          className={`group relative flex cursor-pointer gap-3 border-t border-border-light/60 px-[18px] py-3.5 transition-colors hover:bg-bg-secondary/60 ${
+                          className={`group relative flex cursor-pointer gap-3 border-t border-tui-ink/6 px-[18px] py-3.5 transition-colors hover:bg-tui-ink/[0.035] ${
                             notification.read ? "opacity-[0.62]" : ""
                           }`}
                         >
                           {!notification.read && (
                             <span
                               aria-hidden="true"
-                              className="absolute left-2 top-[21px] h-1 w-1 rounded-full bg-accent-primary"
+                              className="absolute left-[7px] top-[20px] h-1.5 w-1.5 rounded-full bg-tui-accent"
                             />
                           )}
                           <span className="mt-px flex h-[22px] w-[22px] flex-none items-center justify-center">
@@ -752,7 +763,7 @@ export function NotificationSystem() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between border-t border-border-light px-[18px] py-2.5">
+              <div className="flex items-center justify-between border-t border-tui-ink/8 px-[18px] py-2.5">
                 {hiddenCount > 0 ? (
                   <button
                     type="button"

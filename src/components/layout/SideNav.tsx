@@ -54,8 +54,8 @@ const RAIL_LABEL = "kairos-rail-label";
 
 function railRowTone(active: boolean): string {
   return active
-    ? "bg-fg-primary/[0.055] font-semibold text-fg-primary"
-    : "font-medium text-fg-secondary hover:bg-fg-primary/[0.055] hover:text-fg-primary";
+    ? "bg-tui-ink/[0.055] font-semibold text-tui-ink"
+    : "font-medium text-tui-ink2 hover:bg-tui-ink/[0.055] hover:text-tui-ink";
 }
 
 /**
@@ -103,7 +103,7 @@ function RailCount({ count, active }: { count: number; active: boolean }) {
   return (
     <span
       className={`${RAIL_LABEL} text-[11.5px] tabular-nums ${
-        active ? "text-accent-primary" : "text-fg-tertiary"
+        active ? "text-tui-accent" : "text-tui-ink3"
       }`}
     >
       {count > 99 ? "99+" : count}
@@ -142,7 +142,7 @@ function RailLink({
     >
       <Icon
         size={16}
-        className={`shrink-0 ${active ? "text-accent-primary" : "text-fg-tertiary"}`}
+        className={`shrink-0 ${active ? "text-tui-accent" : "text-tui-ink3"}`}
       />
       <span className={`${RAIL_LABEL} min-w-0 flex-1`}>{label}</span>
       <RailCount count={count} active={active} />
@@ -177,12 +177,12 @@ function RailButton({
       onMouseEnter={() => tip.show(ref.current)}
       onMouseLeave={tip.hide}
       aria-label={label}
-      className={`${railRowClass} font-medium text-fg-primary hover:bg-fg-primary/[0.055]`}
+      className={`${railRowClass} font-medium text-tui-ink hover:bg-tui-ink/[0.055]`}
     >
-      <Icon size={16} className="shrink-0 text-accent-primary" />
+      <Icon size={16} className="shrink-0 text-tui-accent" />
       <span className={`${RAIL_LABEL} min-w-0 flex-1`}>{label}</span>
       {hint ? (
-        <kbd className={`${RAIL_LABEL} font-mono text-[10.5px] text-fg-tertiary`}>{hint}</kbd>
+        <kbd className={`${RAIL_LABEL} font-mono text-[10.5px] text-tui-ink3`}>{hint}</kbd>
       ) : null}
       <RailTip top={tip.top} label={label} />
     </button>
@@ -441,7 +441,7 @@ export function SideNav() {
 
   return (
     <>
-      <div className="kairos-mobile-topbar lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-bg-primary/95 pb-3 shadow-sm backdrop-blur-md">
+      <div className="kairos-mobile-topbar lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-tui-pane/95 pb-3 shadow-sm backdrop-blur-md">
         <div className="flex items-center gap-2.5">
           <button
             type="button"
@@ -450,21 +450,21 @@ export function SideNav() {
             className="flex items-center gap-2.5 rounded-lg transition-opacity hover:opacity-70"
           >
             <KairosMark size={28} />
-            <h1 className="text-lg font-semibold text-fg-primary font-display tracking-[-0.02em]">KAIROS</h1>
+            <h1 className="text-lg font-semibold text-tui-ink font-display tracking-[-0.02em]">KAIROS</h1>
           </button>
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="-mr-2 flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-bg-secondary/60"
+          className="-mr-2 flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-tui-ink/[0.055]"
           aria-label={isMobileMenuOpen ? tCommon("close") : tCommon("menu")}
           aria-expanded={isMobileMenuOpen}
           aria-controls={mobileNavId}
           title={isMobileMenuOpen ? tCommon("close") : tCommon("menu")}
         >
           {isMobileMenuOpen ? (
-            <X size={24} className="text-fg-primary" />
+            <X size={24} className="text-tui-ink" />
           ) : (
-            <Menu size={24} className="text-fg-primary" />
+            <Menu size={24} className="text-tui-ink" />
           )}
         </button>
       </div>
@@ -484,7 +484,7 @@ export function SideNav() {
                page behind it as a 32px sliver you could not actually aim at.
                The sheet also scrolls: eleven rows plus the quick-actions block
                is taller than a landscape phone. */
-            className="kairos-topbar-gap kairos-sheet-left kairos-scroll-area animate-slideIn fixed bottom-0 left-0 top-0 z-50 w-[min(18rem,85vw)] overflow-y-auto bg-bg-primary shadow-2xl lg:hidden"
+            className="kairos-topbar-gap kairos-sheet-left kairos-scroll-area animate-slideIn fixed bottom-0 left-0 top-0 z-50 w-[min(18rem,85vw)] overflow-y-auto bg-tui-pane shadow-2xl lg:hidden"
           >
             <nav className="kairos-safe-bottom flex flex-col gap-1 p-3 pb-6" aria-label="Primary">
               {mainNavItems.map((item) => {
@@ -498,8 +498,8 @@ export function SideNav() {
                     }}
                     className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-colors font-medium ${
                       isActive
-                        ? "bg-accent-primary/10 text-accent-primary ring-1 ring-accent-primary/25 shadow-sm font-semibold"
-                        : "text-fg-secondary hover:bg-bg-secondary/60 hover:text-fg-primary"
+                        ? "bg-tui-accent/10 text-tui-accent ring-1 ring-tui-accent/25 shadow-sm font-semibold"
+                        : "text-tui-ink2 hover:bg-tui-ink/[0.055] hover:text-tui-ink"
                     }`}
                   >
                     <item.icon size={20} />
@@ -514,7 +514,7 @@ export function SideNav() {
                   setIsMobileMenuOpen(false);
                   window.dispatchEvent(new CustomEvent("kairos:openAI"));
                 }}
-                className="flex items-center gap-3 px-4 py-3.5 rounded-xl transition-colors font-medium text-fg-secondary hover:bg-bg-secondary/60 hover:text-fg-primary w-full"
+                className="flex items-center gap-3 px-4 py-3.5 rounded-xl transition-colors font-medium text-tui-ink2 hover:bg-tui-ink/[0.055] hover:text-tui-ink w-full"
               >
                 <Sparkles size={20} />
                 <span>Kairos AI</span>
@@ -523,7 +523,7 @@ export function SideNav() {
               <Link
                 href={profileItem.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-colors font-medium text-fg-secondary hover:bg-bg-secondary/60 hover:text-fg-primary`}
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-colors font-medium text-tui-ink2 hover:bg-tui-ink/[0.055] hover:text-tui-ink`}
                 title={profileItem.label}
               >
                 <profileItem.icon size={20} />
@@ -535,8 +535,8 @@ export function SideNav() {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-colors font-medium ${
                   pathname === "/settings"
-                    ? "bg-accent-primary/10 text-accent-primary ring-1 ring-accent-primary/25 shadow-sm font-semibold"
-                    : "text-fg-secondary hover:bg-bg-secondary/60 hover:text-fg-primary"
+                    ? "bg-tui-accent/10 text-tui-accent ring-1 ring-tui-accent/25 shadow-sm font-semibold"
+                    : "text-tui-ink2 hover:bg-tui-ink/[0.055] hover:text-tui-ink"
                 }`}
                 title={settingsItem.label}
               >
@@ -545,13 +545,13 @@ export function SideNav() {
               </Link>
               
               <div className="mt-6 pt-6">
-                <p className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3 px-4">
+                <p className="text-xs font-semibold text-tui-ink2 uppercase tracking-wider mb-3 px-4">
                   {t("quickActions")}
                 </p>
                 <Link
                   href="/projects?new=1"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-accent-primary hover:bg-accent-primary/10 transition-colors shadow-sm font-medium"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-tui-accent hover:bg-tui-accent/10 transition-colors shadow-sm font-medium"
                   title={t("newProject")}
                 >
                   <Plus size={20} />
@@ -567,7 +567,7 @@ export function SideNav() {
           renders later in the tree, so it won every time — covering the last
           item on every phone. The launcher also lifts to `bottom-24` to clear
           this bar; the toast viewport uses the same clearance. */}
-      <nav className={`kairos-mobile-bottomnav fixed bottom-0 left-0 right-0 z-50 border-t border-border-medium bg-bg-primary/95 pt-2 backdrop-blur-md lg:hidden ${isMobileMenuOpen ? "hidden" : ""}`} aria-label="Primary">
+      <nav className={`kairos-mobile-bottomnav fixed bottom-0 left-0 right-0 z-50 border-t border-tui-ink/8 bg-tui-pane/95 pt-2 backdrop-blur-md lg:hidden ${isMobileMenuOpen ? "hidden" : ""}`} aria-label="Primary">
         <div className="flex items-center justify-around gap-1">
           {mobileBottomItems.map((item) => {
             const isActive = isItemActive(item.href);
@@ -582,16 +582,16 @@ export function SideNav() {
                 aria-current={isActive ? "page" : undefined}
                 className={`flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 transition-colors ${
                   item.primary
-                    ? "text-accent-primary"
+                    ? "text-tui-accent"
                     : isActive
-                      ? "text-accent-primary"
-                      : "text-fg-tertiary hover:text-fg-primary"
+                      ? "text-tui-accent"
+                      : "text-tui-ink3 hover:text-tui-ink"
                 }`}
               >
                 <span
                   className={
                     item.primary
-                      ? "grid h-7 w-9 place-items-center rounded-lg bg-accent-primary text-white"
+                      ? "grid h-7 w-9 place-items-center rounded-full bg-tui-accent text-tui-on-accent"
                       : "grid h-7 w-9 place-items-center"
                   }
                 >
@@ -610,7 +610,7 @@ export function SideNav() {
           globals.css) and feeds `--rail-w`, so the page narrows and widens in
           step with the rail instead of being covered by it. */}
       <aside
-        className="kairos-rail hidden lg:flex fixed left-0 top-0 bottom-0 z-40 w-[248px] flex-col overflow-hidden border-r border-border-light/60 bg-bg-elevated px-3.5 pt-[18px] pb-4 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+        className="kairos-rail hidden lg:flex fixed left-0 top-0 bottom-0 z-40 w-[248px] flex-col overflow-hidden border-r border-tui-ink/8 bg-tui-pane px-3.5 pt-[18px] pb-4 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
         aria-label="Primary"
       >
         <div className="kairos-rail-head mb-[18px] flex h-9 shrink-0 items-center gap-2.5 pr-1.5 pl-2">
@@ -628,8 +628,8 @@ export function SideNav() {
             title={tOrg("switchWorkspace")}
             className={`${RAIL_LABEL} flex min-w-0 flex-1 flex-col gap-px whitespace-nowrap transition-opacity hover:opacity-75`}
           >
-            <span className="truncate text-[13.5px] font-semibold text-fg-primary">{workspaceName}</span>
-            <span className="truncate text-[11.5px] text-fg-tertiary">{workspaceSubtitle}</span>
+            <span className="truncate text-[13.5px] font-semibold text-tui-ink">{workspaceName}</span>
+            <span className="truncate text-[11.5px] text-tui-ink3">{workspaceSubtitle}</span>
           </Link>
           <button
             type="button"
@@ -637,7 +637,7 @@ export function SideNav() {
             aria-expanded={!isRailCollapsed}
             aria-label={toggleLabel}
             title={`${toggleLabel} (${hint("\\")})`}
-            className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-fg-primary/[0.055] hover:text-fg-primary"
+            className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md text-tui-ink3 transition-colors hover:bg-tui-ink/[0.055] hover:text-tui-ink"
           >
             {isRailCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
           </button>
@@ -649,11 +649,11 @@ export function SideNav() {
           onClick={openPalette}
           aria-label={tCommon("search")}
           title={`${tCommon("search")} (${hint("K")})`}
-          className="mb-[22px] flex h-[34px] w-full shrink-0 items-center gap-2.5 rounded-lg bg-fg-primary/[0.055] pr-2.5 pl-3 text-left text-[13px] whitespace-nowrap text-fg-tertiary transition-colors hover:text-fg-primary"
+          className="mb-[22px] flex h-[34px] w-full shrink-0 items-center gap-2.5 rounded-lg bg-tui-ink/[0.055] pr-2.5 pl-3 text-left text-[13px] whitespace-nowrap text-tui-ink3 transition-colors hover:text-tui-ink"
         >
           <Search size={14} className="shrink-0" />
           <span className={`${RAIL_LABEL} flex-1`}>{tCommon("search")}</span>
-          <kbd className={`${RAIL_LABEL} rounded border border-border-light px-[5px] font-mono text-[10.5px] leading-4`}>
+          <kbd className={`${RAIL_LABEL} rounded border border-tui-ink/12 px-[5px] font-mono text-[10.5px] leading-4`}>
             {hint("K")}
           </kbd>
         </button>
@@ -661,7 +661,7 @@ export function SideNav() {
         <div className="kairos-scroll-area -mx-3.5 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overflow-x-hidden px-3.5">
           {railGroups.map((group) => (
             <div key={group.label} className="flex flex-col gap-0.5">
-              <span className={`${RAIL_LABEL} px-3 pb-1.5 text-[10.5px] font-medium tracking-[0.18em] whitespace-nowrap text-fg-tertiary uppercase`}>
+              <span className={`${RAIL_LABEL} px-3 pb-1.5 text-[10.5px] font-medium tracking-[0.18em] whitespace-nowrap text-tui-ink3 uppercase`}>
                 {group.label}
               </span>
               {group.items.map((item) => (
@@ -678,7 +678,7 @@ export function SideNav() {
           ))}
         </div>
 
-        <div className="mt-3 flex shrink-0 flex-col gap-0.5 border-t border-border-light/60 pt-3">
+        <div className="mt-3 flex shrink-0 flex-col gap-0.5 border-t border-tui-ink/8 pt-3">
           <RailButton onClick={openAI} icon={Sparkles} label="Kairos AI" hint={hint("J")} />
           <RailLink
             href={settingsItem.href}
@@ -695,7 +695,7 @@ export function SideNav() {
                   width={30}
                   height={30}
                   unoptimized
-                  className="h-[30px] w-[30px] shrink-0 rounded-full border border-border-light object-cover"
+                  className="h-[30px] w-[30px] shrink-0 rounded-full border border-tui-ink/12 object-cover"
                 />
               ) : (
                 <span
@@ -707,9 +707,9 @@ export function SideNav() {
                 </span>
               )}
               <span className={`${RAIL_LABEL} flex min-w-0 flex-col gap-px`}>
-                <span className="truncate text-[13px] font-medium text-fg-primary">{user.name ?? user.email}</span>
+                <span className="truncate text-[13px] font-medium text-tui-ink">{user.name ?? user.email}</span>
                 {user.name && user.email ? (
-                  <span className="truncate text-[11.5px] text-fg-tertiary">{user.email}</span>
+                  <span className="truncate text-[11.5px] text-tui-ink3">{user.email}</span>
                 ) : null}
               </span>
             </div>

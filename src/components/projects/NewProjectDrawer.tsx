@@ -147,7 +147,7 @@ export function NewProjectDrawer({
       <button
         type="button"
         onClick={openDrawer}
-        className="bg-tui-accent text-tui-on-accent flex h-9 items-center gap-2 rounded-full px-4 text-[13px] font-semibold transition-opacity hover:opacity-90"
+        className="flex h-[34px] items-center gap-[7px] rounded-full bg-tui-accent px-3 text-[13px] font-medium whitespace-nowrap text-tui-on-accent transition-opacity hover:opacity-90 sm:px-3.5"
       >
         <Plus size={15} aria-hidden />
         <span className="hidden sm:inline">{t("open")}</span>
