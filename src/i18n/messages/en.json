@@ -768,6 +768,8 @@
       "emailNote": "Email cannot be changed",
       "imageFormats": "JPG, PNG or GIF.",
       "imageMaxSize": "Max size {size}.",
+      "imageTooLarge": "That image is too large. Try one under 4MB.",
+      "imageNotImage": "Please choose an image file.",
       "bioPlaceholder": "Tell us about yourself...",
       "characters": "characters",
       "memberSince": "Member since",

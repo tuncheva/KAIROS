@@ -768,6 +768,8 @@
       "profilePicture": "Профилна снимка",
       "imageFormats": "JPG, PNG или GIF.",
       "imageMaxSize": "Максимален размер {size}.",
+      "imageTooLarge": "Изображението е твърде голямо. Опитай с такова до 4MB.",
+      "imageNotImage": "Моля, избери файл с изображение.",
       "fullName": "Пълно име",
       "namePlaceholder": "Въведете пълното си име",
       "emailAddress": "Имейл адрес",
