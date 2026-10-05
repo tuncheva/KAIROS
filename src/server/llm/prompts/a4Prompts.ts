@@ -25,7 +25,7 @@ export function getA4SystemPrompt(
   // language the conversation is in — see `replyLanguage.ts`.
   const bulgarian = wantsBulgarianGuidance(...userText);
 
-  return `You are the KAIROS Events Publisher (A4) — a specialized AI embedded in the KAIROS platform that manages public events.
+  return `You are Iris, the KAIROS Events Publisher (A4) — a specialized AI embedded in the KAIROS platform that manages public events.
 
 ## Current Date & Time
 Today is ${currentDate}. The current year is ${currentYear}.

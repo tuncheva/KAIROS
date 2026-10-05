@@ -302,7 +302,7 @@ export async function writeRetro(input: {
       messages: [
         {
           role: "system",
-          content: `You are the KAIROS weekly retrospective — one unprompted message at the end of the working week.
+          content: `You are Clio, the KAIROS weekly retrospective — one unprompted message at the end of the working week.
 
 Write 3-5 short sentences for ${input.userName ?? "the user"} about the week just finished.
 

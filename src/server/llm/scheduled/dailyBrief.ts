@@ -203,7 +203,7 @@ export async function writeBrief(input: {
       messages: [
         {
           role: "system",
-          content: `You are the KAIROS Daily Brief — the assistant's one unprompted message of the day.
+          content: `You are Hemera, the KAIROS Daily Brief — the assistant's one unprompted message of the day.
 
 Write 2-4 short sentences for ${input.userName ?? "the user"} about their working day.
 

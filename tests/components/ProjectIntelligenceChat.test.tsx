@@ -308,7 +308,7 @@ describe("ProjectIntelligenceChat", () => {
   it("renders header with KAIROS AI title", () => {
     render(<ProjectIntelligenceChat />);
     expect(screen.getByText("KAIROS AI")).toBeInTheDocument();
-    expect(screen.getByText("Workspace Concierge")).toBeInTheDocument();
+    expect(screen.getByText("Mentor · Workspace Concierge")).toBeInTheDocument();
   });
 
   it("info button toggles info panel", async () => {

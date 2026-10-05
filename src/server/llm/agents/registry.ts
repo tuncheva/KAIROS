@@ -35,8 +35,15 @@ export type AgentKind = "conversational" | "scheduled";
 
 export interface AgentDescriptor {
   id: string;
-  /** Untranslated fallback. The UI prefers `agents.<id>.name` from the message files. */
+  /**
+   * The agent's persona — a figure from Greek myth or history, picked to fit the
+   * job (Mnemosyne keeps the notes, Solon writes the membership rules). Untranslated
+   * fallback: the UI prefers `agents.names.<id>`, which carries the locale's
+   * spelling (Мнемозина, Mnémosyne).
+   */
   name: string;
+  /** What the agent does, in plain words: "Notes Vault", "Task Planner". */
+  role: string;
   description: string;
   kind: AgentKind;
   /**
@@ -63,7 +70,8 @@ export const HANDOFF_TARGETS = TargetAgentSchema.options;
 export const AGENTS: readonly AgentDescriptor[] = [
   {
     id: "workspace_concierge",
-    name: a1WorkspaceConciergeProfile.name,
+    name: "Mentor",
+    role: a1WorkspaceConciergeProfile.name,
     description:
       "Answers questions about your workspace and routes anything that needs a change to the right specialist. Reads only — it cannot alter workspace data.",
     kind: "conversational",
@@ -73,7 +81,8 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "task_planner",
-    name: "Task Planner",
+    name: "Odysseus",
+    role: "Task Planner",
     description:
       "Turns a goal into a backlog, and revises a plan already on screen. Every change is drafted for your approval before anything is written.",
     kind: "conversational",
@@ -83,7 +92,8 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "notes_vault",
-    name: "Notes Vault",
+    name: "Mnemosyne",
+    role: "Notes Vault",
     description:
       "Creates, edits and deletes notes. Locked notes are excluded before their content is ever loaded.",
     kind: "conversational",
@@ -93,7 +103,8 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "events_publisher",
-    name: "Events Publisher",
+    name: "Iris",
+    role: "Events Publisher",
     description:
       "Manages public events end to end: the event itself, its comments, RSVPs and likes.",
     kind: "conversational",
@@ -113,7 +124,8 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "org_admin",
-    name: "Organization Admin",
+    name: "Solon",
+    role: "Organization Admin",
     description:
       "Changes membership, roles and permissions. Each operation is authorized on its own against your live membership, so a plan never rides in on one strong permission.",
     kind: "conversational",
@@ -128,7 +140,8 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "project_manager",
-    name: "Project Manager",
+    name: "Daedalus",
+    role: "Project Manager",
     description:
       "Creates, renames, updates and archives projects. Each operation is confirmed before anything is written, and permission is checked live at apply time.",
     kind: "conversational",
@@ -138,7 +151,8 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "daily_brief",
-    name: "Daily Brief",
+    name: "Hemera",
+    role: "Daily Brief",
     description:
       "Runs on a schedule you set and summarises what needs your attention. Nothing fires until you opt in under Settings → AI assistant.",
     kind: "scheduled",
@@ -148,7 +162,8 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "risk_radar",
-    name: "Risk Radar",
+    name: "Argus",
+    role: "Risk Radar",
     description:
       "Watches for overdue work and stalled projects on a schedule. Detection is a database count, not a model call, so a finding is reproducible and still appears when your AI budget is spent.",
     kind: "scheduled",
@@ -158,7 +173,8 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "weekly_retro",
-    name: "Weekly Retro",
+    name: "Clio",
+    role: "Weekly Retro",
     description:
       "Sends a brief retrospective once a week describing how the week went — tasks closed, created, carried over and stalled — in your saved interface language.",
     kind: "scheduled",
@@ -168,7 +184,8 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "meeting_prep",
-    name: "Meeting Prep",
+    name: "Nestor",
+    role: "Meeting Prep",
     description:
       "Sends a short brief before upcoming meetings from your connected calendar, including any related open tasks. Fires automatically when a meeting is within the prep horizon.",
     kind: "scheduled",

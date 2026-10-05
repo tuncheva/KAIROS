@@ -15,6 +15,7 @@ import {
 import { useTranslations } from "next-intl";
 
 import { AUTO_AGENT } from "~/components/agents/AgentPicker";
+import { useAgentLabel } from "~/components/agents/useAgentLabel";
 import { MemoryPanel } from "~/components/agents/MemoryPanel";
 import { ToolInspector } from "~/components/agents/ToolInspector";
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
@@ -49,6 +50,7 @@ export function AIChatPageClient() {
   const t = useTranslations("aiConsole");
   const tChat = useTranslations("chat");
   const tAgents = useTranslations("agents");
+  const agentLabels = useAgentLabel();
   const tDocs = useTranslations("documents");
 
   const searchParams = useSearchParams();
@@ -140,7 +142,9 @@ export function AIChatPageClient() {
   const activeAgentLabel =
     selectedAgent === AUTO_AGENT
       ? tAgents("auto")
-      : (agents.find((a) => a.id === selectedAgent)?.name ?? tAgents("auto"));
+      : agents.some((a) => a.id === selectedAgent)
+        ? agentLabels.name(selectedAgent)
+        : tAgents("auto");
 
   useEffect(() => {
     if (!threadsDrawerOpen) return;
@@ -226,8 +230,8 @@ export function AIChatPageClient() {
             .filter((a) => a.kind === "conversational")
             .map((a) => ({
               id: a.id,
-              label: a.name,
-              description: a.description,
+              label: agentLabels.name(a.id, a.name),
+              description: `${agentLabels.role(a.id, a.role)} — ${a.description}`,
             })),
           // Scheduled agents are listed but not selectable: they have no chat
           // surface, and hiding them leaves a user wondering where the daily
@@ -236,8 +240,8 @@ export function AIChatPageClient() {
             .filter((a) => a.kind === "scheduled")
             .map((a) => ({
               id: a.id,
-              label: a.name,
-              description: a.description,
+              label: agentLabels.name(a.id, a.name),
+              description: `${agentLabels.role(a.id, a.role)} — ${a.description}`,
               disabled: true,
             })),
         ]}

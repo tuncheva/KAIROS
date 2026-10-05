@@ -238,7 +238,7 @@ export async function writePrep(input: {
       messages: [
         {
           role: "system",
-          content: `You are the KAIROS meeting prep — a short message sent shortly before a meeting starts.
+          content: `You are Nestor, the KAIROS meeting prep — a short message sent shortly before a meeting starts.
 
 Write 1-3 short sentences for ${input.userName ?? "the user"}.
 

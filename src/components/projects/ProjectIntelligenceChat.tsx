@@ -12,6 +12,7 @@ import {
   type AgentTurnPayload,
 } from "~/hooks/useAgentStream";
 import { useTranslations } from "next-intl";
+import { useAgentLabel } from "~/components/agents/useAgentLabel";
 import { api } from "~/trpc/react";
 
 import { PlanDiffCard } from "./PlanDiffCard";
@@ -852,6 +853,7 @@ export function ProjectIntelligenceChat(props: {
   // keeping it out of the `chat` namespace stops the widget's message catalogue
   // from growing keys it never renders.
   const tc = useTranslations("aiConsole");
+  const agentLabels = useAgentLabel();
   const utils = api.useUtils();
 
   const [draft, setDraft] = useState("");
@@ -1432,7 +1434,7 @@ export function ProjectIntelligenceChat(props: {
       pushTrail({ kind: "tool", label: humanizeToolName(name), code: name });
     },
     onSubAgent: (agent) => {
-      setProgressLabel(t("subAgentWorking", { agent }));
+      setProgressLabel(t("subAgentWorking", { agent: agentLabels.name(agent) }));
       pushTrail({ kind: "handoff", label: tc("trailHandoff"), code: agent });
       // Swap the dots for the sub-agent bar: a handoff has actually happened.
       setMessages((prev) =>
@@ -2207,9 +2209,12 @@ export function ProjectIntelligenceChat(props: {
                               : "kairos-stamp text-[9.5px] text-accent-primary"
                           }
                         >
-                          {rosterQuery.data?.find(
-                            (a) => a.id === (m as { agentId?: string }).agentId,
-                          )?.name ?? t("title")}
+                          {(() => {
+                            const agentId = (m as { agentId?: string }).agentId;
+                            return agentId && rosterQuery.data?.some((a) => a.id === agentId)
+                              ? agentLabels.name(agentId)
+                              : t("title");
+                          })()}
                         </span>
                         <span
                           className={`kairos-stamp text-fg-tertiary ${

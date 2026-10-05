@@ -75,11 +75,11 @@ describe("HomeClient", () => {
     render(<HomeClient />);
     const names = [...document.querySelectorAll("#agents li .font-display")].map((n) => n.textContent);
     expect(names).toEqual([
-      "Workspace Concierge",
-      "Task Planner",
-      "Notes Vault",
-      "Events Publisher",
-      "Daily Brief",
+      "Mentor",
+      "Odysseus",
+      "Mnemosyne",
+      "Iris",
+      "Hemera",
     ]);
   });
 

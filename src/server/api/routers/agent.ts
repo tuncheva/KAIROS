@@ -456,6 +456,7 @@ export const agentRouter = createTRPCRouter({
     return AGENTS.map((agent) => ({
       id: agent.id,
       name: agent.name,
+      role: agent.role,
       description: agent.description,
       kind: agent.kind,
       writes: agent.writes,
