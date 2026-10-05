@@ -2,7 +2,7 @@ import "~/styles/globals.css";
 
 import { type Metadata, type Viewport } from "next";
 // Self-hosted (see styles/fonts.css for why not next/font/google).
-import "@fontsource-variable/nunito-sans/wght.css";
+import "@fontsource-variable/inter/wght.css";
 import "@fontsource/instrument-serif/400.css";
 import "@fontsource/instrument-serif/400-italic.css";
 import "@fontsource-variable/playfair-display/wght.css";

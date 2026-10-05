@@ -530,7 +530,7 @@ function SettingsShell({ activeSection, user }: Props) {
               >
                 <div
                   ref={columnRef}
-                  className="mx-auto min-h-full max-w-[720px] bg-bg-elevated px-5 pb-[220px] pt-24 sm:border-x sm:border-border-light sm:px-10 sm:shadow-[var(--tui-pane-shadow)] lg:px-14 lg:pt-28"
+                  className="min-h-full w-full bg-bg-elevated px-5 pb-[220px] pt-24 sm:px-10 lg:px-14 lg:pt-28"
                 >
                   {/* On a phone the index has nowhere to live, so the search and
                       a strip of sections sit at the top of the column instead. */}

@@ -1,8 +1,3 @@
-import "@fontsource-variable/newsreader/wght.css";
-import "@fontsource-variable/newsreader/wght-italic.css";
-import "@fontsource-variable/hanken-grotesk/wght.css";
-import "@fontsource-variable/geist-mono/wght.css";
-import { getLocale } from "next-intl/server";
 import { auth } from "~/server/auth";
 import { signInHref } from "~/lib/routes";
 import { redirect } from "next/navigation";
@@ -29,14 +24,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       ? sectionParam
       : "profile";
 
-  const locale = await getLocale();
-  const fonts = locale === "bg" ? "settings-fonts-mono-only" : "settings-fonts";
-
   // The workspace covers the viewport itself (settings opens over the app, rail
-  // and all); this wrapper only carries the font variables and a ground for the
-  // frame before it paints.
+  // and all); this wrapper only gives the frame a ground before it paints.
   return (
-    <main id="main-content" className={`min-h-dvh bg-bg-primary ${fonts}`}>
+    <main id="main-content" className="min-h-dvh bg-bg-primary">
       <SettingsWorkspace activeSection={activeSection} user={session.user} />
     </main>
   );

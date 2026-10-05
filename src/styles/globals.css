@@ -643,8 +643,8 @@
    /settings as its own quiet space, on the dashboard's palette: the `tui-*`
    ground and panes, ink at three strengths, the soft violet accent, and the
    same 135° hatch (`.tui-screen`) behind a solid paper column. Hairlines are
-   the ink at low opacity, a serif for the headings and a grotesk for
-   everything else. Carried the same way as `.notes-quiet` — the semantic
+   the ink at low opacity, the app's display serif for the headings and its
+   sans for everything else. Carried the same way as `.notes-quiet` — the semantic
    tokens are remapped on the wrapper, so the section components keep their
    `bg-*` / `fg-*` / `border-*` classes.
 
@@ -656,10 +656,9 @@
    an accent there still shows which one is chosen; the change itself is seen
    once you leave settings.
 
-   The two faces are loaded by the settings page only (see its `page.tsx`); for
-   Bulgarian, which neither covers, the page leaves their variables unset and
-   these fall back to the app's own sans and the quiet serif. See the Kairos
-   Settings Elegant design. */
+   Settings speaks in the app's own faces (`--font-sans`, `--font-display`,
+   `--font-mono`) rather than a set of its own, so leaving it does not change
+   the voice of the page. See the Kairos Settings Elegant design. */
 .settings-elegant {
   --bg-primary: var(--tui-bg);
   --bg-secondary: 252 251 248;
@@ -690,7 +689,7 @@
 
   background-color: rgb(var(--bg-primary));
   color: rgb(var(--fg-primary));
-  font-family: var(--font-hanken, var(--font-geist-sans)), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -733,37 +732,14 @@
 }
 
 .settings-elegant .settings-serif {
-  font-family: var(--font-newsreader, var(--font-quiet-serif)), ui-serif, Georgia, serif;
+  font-family: var(--font-display), Georgia, serif;
   font-variant-numeric: lining-nums;
 }
 
-/* Three families and nothing else. Components shared with the rest of the app
-   (the invite builder, the permission grid, image upload) still ask for the
-   app's own `font-sans` / `font-display` / `font-mono`; inside settings those
-   resolve to this page's faces, so a borrowed panel does not read in a
-   different voice from the row it sits in. The same goes for weight: only 300
-   (serif), 400, 500 and 600 are loaded, so a stray `font-bold` would be
-   synthesised — it is held at 600 instead. */
-.settings-elegant .font-sans {
-  font-family: var(--font-hanken, var(--font-geist-sans)), ui-sans-serif, system-ui, sans-serif;
-}
-
-.settings-elegant .font-display {
-  font-family: var(--font-newsreader, var(--font-quiet-serif)), ui-serif, Georgia, serif;
-  font-weight: 300;
-}
-
-.settings-elegant .font-mono,
 .settings-elegant code,
 .settings-elegant kbd {
-  font-family: var(--font-settings-mono, var(--font-mono)), ui-monospace, monospace;
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-ligatures: none;
-}
-
-.settings-elegant .font-bold,
-.settings-elegant b,
-.settings-elegant strong {
-  font-weight: 600;
 }
 
 /* Figures in a column line up. */
@@ -1644,13 +1620,6 @@ summary,
   }
 }
 
-@font-face {
-  font-family: "Zalando Sans Expanded";
-  src: url("/fonts/ZalandoSansExpanded-Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-}
-
 .radial-progress {
   position: relative;
   display: inline-flex;
@@ -1778,36 +1747,6 @@ summary,
 /* ============================================================================
    KAIROS DESIGN SYSTEM - Kairos Settings Style
    ============================================================================ */
-
-/* Kairos Font Stack - Elegant, clean, modern */
-.kairos-font-display {
-  font-family:
-    "Inter", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif;
-  font-feature-settings: "ss01", "ss02", "cv01", "cv02";
-  font-optical-sizing: auto;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-.kairos-font-body {
-  font-family:
-    "Inter", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif;
-  font-feature-settings:
-    "kern" 1,
-    "liga" 1,
-    "calt" 1;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
-.kairos-font-caption {
-  font-family:
-    "Inter", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif;
-  font-feature-settings: "kern" 1;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
 
 /* Light Theme - Default */
 .kairos-bg-secondary {
@@ -2578,7 +2517,7 @@ summary,
   border-radius: var(--radius-sm);
   padding: 0.15em 0.4em;
   font-size: 0.9em;
-  font-family: "SF Mono", "Fira Code", "JetBrains Mono", monospace;
+  font-family: var(--font-mono), ui-monospace, monospace;
 }
 
 .kairos-chat-response pre {
