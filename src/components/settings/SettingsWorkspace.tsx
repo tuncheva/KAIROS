@@ -473,7 +473,7 @@ function SettingsShell({ activeSection, user }: Props) {
             {/* --------------------------------------------------------- column */}
             <div className="relative flex min-w-0 flex-1 flex-col">
               <div
-                className={`absolute inset-x-0 top-0 z-[4] flex h-16 items-center gap-3 border-b bg-bg-primary/85 pl-4 pr-4 backdrop-blur-[10px] transition-colors duration-300 sm:pr-7 lg:pl-14 ${
+                className={`absolute inset-x-0 top-0 z-[4] flex h-16 items-center gap-3 border-b tui-screen pl-4 pr-4 transition-colors duration-300 sm:pr-7 lg:pl-14 ${
                   scrolled ? "border-border-light" : "border-transparent"
                 }`}
               >
@@ -530,7 +530,7 @@ function SettingsShell({ activeSection, user }: Props) {
               >
                 <div
                   ref={columnRef}
-                  className="min-h-full w-full bg-bg-elevated px-5 pb-[220px] pt-24 sm:px-10 lg:px-14 lg:pt-28"
+                  className="min-h-full w-full px-5 pb-[220px] pt-24 sm:px-10 lg:px-14 lg:pt-28"
                 >
                   {/* On a phone the index has nowhere to live, so the search and
                       a strip of sections sit at the top of the column instead. */}

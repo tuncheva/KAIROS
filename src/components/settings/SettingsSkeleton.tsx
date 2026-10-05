@@ -187,7 +187,7 @@ export function SettingsSkeleton() {
         <div className="relative flex min-w-0 flex-1 flex-col">
           <div
             aria-hidden
-            className="absolute inset-x-0 top-0 z-[4] flex h-16 items-center gap-3 border-b border-transparent bg-bg-primary/85 pl-4 pr-4 backdrop-blur-[10px] sm:pr-7 lg:pl-14"
+            className="absolute inset-x-0 top-0 z-[4] flex h-16 items-center gap-3 border-b border-transparent tui-screen pl-4 pr-4 sm:pr-7 lg:pl-14"
           >
             <span className="flex h-8 w-8 items-center justify-center rounded-[7px] text-fg-secondary lg:hidden">
               <ArrowLeft size={15} />
@@ -206,7 +206,7 @@ export function SettingsSkeleton() {
           </div>
 
           <div className="tui-screen relative min-h-0 flex-1 overflow-hidden">
-            <div className="flex min-h-full w-full flex-col bg-bg-elevated px-5 pb-10 pt-24 sm:px-10 lg:px-14 lg:pt-28">
+            <div className="flex min-h-full w-full flex-col px-5 pb-10 pt-24 sm:px-10 lg:px-14 lg:pt-28">
               <div aria-hidden className="mb-8 flex flex-col gap-3 lg:hidden">
                 {search}
                 <div className="scrollbar-hide -mx-5 flex gap-1 overflow-hidden px-5 sm:-mx-10 sm:px-10">
