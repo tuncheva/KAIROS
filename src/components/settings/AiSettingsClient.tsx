@@ -8,9 +8,11 @@ import {
   INSTRUCTION_SCOPE,
   MAX_INSTRUCTIONS,
 } from "~/lib/memoryScopes";
+import { AgentCrew } from "./AgentCrew";
 import { CalendarConnectionPanel } from "./CalendarConnectionPanel";
 import { CustomSchedulesPanel } from "./CustomSchedulesPanel";
 import { api } from "~/trpc/react";
+import { useAgentLabel } from "~/components/agents/useAgentLabel";
 
 import {
   LedgerAction,
@@ -106,12 +108,8 @@ export function AiSettingsClient() {
   const [draftRule, setDraftRule] = useState("");
 
   const memory = api.agent.memory.useQuery(undefined, { retry: false });
-  // Only to turn a stored scope id into an agent name. Static, so it is fetched
-  // once and never refetched.
-  const agents = api.agent.agents.useQuery(undefined, {
-    retry: false,
-    staleTime: Infinity,
-  });
+  // Turns a stored scope id into the name the workspace calls that agent.
+  const agentLabel = useAgentLabel();
   const schedules = api.agent.schedules.useQuery(undefined, { retry: false });
   const metrics = api.agent.metrics.useQuery({ days: 30 }, { retry: false });
   const stats = api.agent.findingStats.useQuery(undefined, { retry: false });
@@ -346,6 +344,9 @@ export function AiSettingsClient() {
 
   return (
     <LedgerSection sectionId="ai" crumb={crumb} title={t("title")} subtitle={t("subtitle")}>
+      {/* First: who the agents are frames every setting below it. */}
+      <LedgerGroup label={t("crew.title")} hint={t("crew.hint")} block={<AgentCrew />} />
+
       {/* Calendar first: meeting prep below is inert without one, and a user who
           enables it should be able to see why nothing arrives. */}
       <LedgerGroup
@@ -431,8 +432,7 @@ export function AiSettingsClient() {
                         <span>
                           {fact.scope === GLOBAL_SCOPE
                             ? tAgents("scopeGlobal")
-                            : (agents.data?.find((a) => a.id === fact.scope)?.name ??
-                              fact.scope)}
+                            : agentLabel.name(fact.scope)}
                         </span>
                         <span className="px-1">·</span>
                         <span className="font-mono">{fact.key}</span>
@@ -483,7 +483,7 @@ export function AiSettingsClient() {
                 <tbody>
                   {metrics.data?.latencyByAgent.map((row) => (
                     <tr key={row.agentId} className="border-t border-border-light">
-                      <td className="py-1.5 text-fg-secondary">{row.agentId}</td>
+                      <td className="py-1.5 text-fg-secondary">{agentLabel.name(row.agentId)}</td>
                       <td className="py-1.5 text-right tabular-nums text-fg-primary">
                         {(row.p50Ms / 1000).toFixed(1)}s
                       </td>

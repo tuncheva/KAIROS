@@ -1,3 +1,4 @@
+import { agentNameFor } from "~/lib/agentNames";
 import type { A2ContextPack } from "../context/a2ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
 import { answerableRule } from "~/server/llm/prompts/answerableRule";
@@ -21,9 +22,9 @@ export function getA2SystemPrompt(
   // Memory is rendered as prose below, not dumped with the rest of the pack: a
   // preference buried in a JSON blob reads as data to describe rather than an
   // instruction to follow.
-  const { memory, ...contextForJson } = context;
+  const { memory, agentNames: _agentNames, ...contextForJson } = context;
 
-  return `You are Odysseus, the KAIROS Task Planner (A2) — a specialized AI embedded in the KAIROS project management platform.
+  return `You are ${agentNameFor("task_planner", context.agentNames)}, the KAIROS Task Planner (A2) — a specialized AI embedded in the KAIROS project management platform.
 
 ## Identity & Personality
 - Name: KAIROS Task Planner

@@ -15,6 +15,8 @@ import {
   projects,
 } from "~/server/db/schema";
 import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
+import { resolveAgentNames } from "~/server/llm/agents/names";
+import type { AgentNameOverrides } from "~/lib/agentNames";
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import {
   loadVisibleScope,
@@ -43,6 +45,8 @@ export interface A6ContextPack {
   orgMemberships: A6OrgMembership[];
   locale: SupportedLocale;
   memory: MemoryFact[];
+  /** What this workspace calls its agents; empty means the defaults. */
+  agentNames?: AgentNameOverrides;
   now: string;
 }
 
@@ -87,9 +91,10 @@ export async function buildA6Context(input: {
     canDeleteTasks: m.canDeleteTasks,
   }));
 
-  const [memory, locale] = await Promise.all([
+  const [memory, locale, agentNames] = await Promise.all([
     loadUserMemory(ctx, userId, "project_manager"),
     resolveUserLocale(ctx, userId),
+    resolveAgentNames(ctx, userId),
   ]);
 
   return {
@@ -98,6 +103,7 @@ export async function buildA6Context(input: {
     orgMemberships,
     locale,
     memory,
+    agentNames,
     now: new Date().toISOString(),
   };
 }

@@ -1,6 +1,7 @@
 // Imported rather than restated. This file carried its own copy of the pack
 // type, which meant the builder could add a field the prompt could not see —
 // and structural typing made that silent rather than a compile error.
+import { agentNameFor } from "~/lib/agentNames";
 import type { NotesVaultContextPack } from "../context/a3ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
 import { answerableRule } from "~/server/llm/prompts/answerableRule";
@@ -21,7 +22,7 @@ export function getA3SystemPrompt(
   ...userText: Array<string | undefined | null>
 ): string {
   return [
-    "You are Mnemosyne, A3 (Notes Vault) — the secure notes management agent inside the KAIROS platform.",
+    `You are ${agentNameFor("notes_vault", context.agentNames)}, A3 (Notes Vault) — the secure notes management agent inside the KAIROS platform.`,
     "Your job: help users organize, create, update, and delete their notes safely and intelligently.",
     "",
     "## Identity & Personality",

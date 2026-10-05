@@ -1941,10 +1941,10 @@ export function ProjectIntelligenceChat(props: {
             <p className="text-[10px] text-fg-tertiary truncate">
               {messages.length > 0 &&
                messages[messages.length - 1]?.text === SUBAGENT_SENTINEL
-                ? t("taskPlannerWorking")
+                ? t("taskPlannerWorking", { name: agentLabels.name("task_planner") })
                 : isThinking
                   ? t("thinking")
-                  : t("subtitle")}
+                  : t("subtitle", { name: agentLabels.name("workspace_concierge") })}
             </p>
           </div>
         </div>
@@ -2247,10 +2247,10 @@ export function ProjectIntelligenceChat(props: {
                         ) : isSubAgentMsg ? (
                           <div className="kairos-chat-response text-sm leading-relaxed py-1">
                             <span className="sr-only">
-                              {t("taskPlannerWorking")}
+                              {t("taskPlannerWorking", { name: agentLabels.name("task_planner") })}
                             </span>
                             <SubAgentWorking
-                              label={progressLabel ?? t("taskPlannerWorking")}
+                              label={progressLabel ?? t("taskPlannerWorking", { name: agentLabels.name("task_planner") })}
                             />
                           </div>
                         ) : (

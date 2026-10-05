@@ -309,6 +309,13 @@
       "when": 1790676740141,
       "tag": "0051_push_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1791229148857,
+      "tag": "0052_agent_names",
+      "breakpoints": true
     }
   ]
 }

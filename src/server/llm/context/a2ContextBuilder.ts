@@ -3,6 +3,8 @@ import { eq, desc, inArray } from "drizzle-orm";
 import type { TRPCContext } from "~/server/api/trpc";
 import { projects, tasks, projectCollaborators, users } from "~/server/db/schema";
 import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
+import { resolveAgentNames } from "~/server/llm/agents/names";
+import type { AgentNameOverrides } from "~/lib/agentNames";
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import { loadVisibleScope, visibleProjectsWhere } from "~/server/llm/tools/a1/scope";
 import { loadAssigneeWorkload, type AssigneeWorkload } from "~/server/llm/context/assigneeWorkload";
@@ -54,6 +56,8 @@ export interface A2ContextPack {
   locale: SupportedLocale;
   /** Global facts plus any the user set for the Task Planner specifically. */
   memory: MemoryFact[];
+  /** What this workspace calls its agents; empty means the defaults. */
+  agentNames?: AgentNameOverrides;
 }
 
 export async function buildA2Context(input: {
@@ -73,9 +77,10 @@ export async function buildA2Context(input: {
   const scope = input.scope ?? {};
   const projectId = scope.projectId;
 
-  const [memory, locale] = await Promise.all([
+  const [memory, locale, agentNames] = await Promise.all([
     loadUserMemory(input.ctx, userId, "task_planner"),
     resolveUserLocale(input.ctx, userId),
+    resolveAgentNames(input.ctx, userId),
   ]);
 
   // Minimal pack when projectId missing; include available projects so A2 can reference them.
@@ -137,6 +142,7 @@ export async function buildA2Context(input: {
         handoffContext: input.handoffContext,
         locale,
         memory,
+        agentNames,
       };
     }
 
@@ -154,6 +160,7 @@ export async function buildA2Context(input: {
       handoffContext: input.handoffContext,
       locale,
       memory,
+      agentNames,
     };
   }
 
@@ -256,5 +263,6 @@ export async function buildA2Context(input: {
     handoffContext: input.handoffContext,
     locale,
     memory,
+    agentNames,
   };
 }

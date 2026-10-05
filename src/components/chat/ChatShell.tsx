@@ -330,6 +330,21 @@ export function ChatShell({
         (old) => (old ? appendMessage(old, optimistic) : seedPage(optimistic)),
       );
 
+      /* The server brings a thread out of the archive when you write into it.
+         Mirror that now and follow it to "All" — otherwise the refetch after
+         the send pulls the open thread out from under the Archived filter and
+         the rail jumps to "Nothing archived". */
+      const target = utils.chat.listAllConversations
+        .getData()
+        ?.find((c) => c.id === cid);
+      if (target?.archived) {
+        await utils.chat.listAllConversations.cancel();
+        utils.chat.listAllConversations.setData(undefined, (old) =>
+          old?.map((c) => (c.id === cid ? { ...c, archived: false } : c)),
+        );
+        setFilter((f) => (f === "archived" ? "all" : f));
+      }
+
       return { optimisticId, cid };
     },
     onError: (_err, variables, context) => {
@@ -384,7 +399,10 @@ export function ChatShell({
         },
       );
 
-      await utils.chat.listAllConversations.invalidate();
+      /* Not awaited: an awaited invalidate keeps the mutation pending until the
+         whole rail has been refetched, a second round trip the message itself
+         does not need. */
+      void utils.chat.listAllConversations.invalidate();
     },
   });
 
@@ -1037,7 +1055,6 @@ export function ChatShell({
               onTyping={notifyTyping}
               onStopTyping={stopTyping}
               disabled={false}
-              isSending={sendMessage.isPending}
               isUploading={isUploading}
               hasDraft={draft.trim().length > 0}
               placeholder={t("messageSomeone", { name: peerFirst })}

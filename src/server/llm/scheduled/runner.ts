@@ -70,6 +70,8 @@ import {
   writeRetro,
 } from "./weeklyRetro";
 import { loadSystemUser, systemContextFor } from "./systemContext";
+import { resolveAgentNames } from "~/server/llm/agents/names";
+import { agentNameFor } from "~/lib/agentNames";
 
 const log = createLogger("llm.scheduled");
 
@@ -367,6 +369,7 @@ async function runDailyBrief(target: RunTarget): Promise<number> {
         findings,
         userName: user.name,
         locale: user.language as SupportedLocale,
+        agentName: agentNameFor("daily_brief", await resolveAgentNames(ctx, userId)),
       })
     : // Budget spent: send the facts without the prose rather than nothing.
       fallbackBrief(facts, findings);
@@ -475,6 +478,7 @@ async function runWeeklyRetro(target: RunTarget): Promise<number> {
         facts,
         userName: user.name,
         locale: user.language as SupportedLocale,
+        agentName: agentNameFor("weekly_retro", await resolveAgentNames(ctx, userId)),
       })
     : fallbackRetro(facts);
 
@@ -548,6 +552,7 @@ async function runDueMeetingPreps(now: Date): Promise<CustomReport> {
             facts,
             userName: user.name,
             locale: user.language as SupportedLocale,
+            agentName: agentNameFor("meeting_prep", await resolveAgentNames(ctx, row.userId)),
           })
         : fallbackPrep(facts);
 

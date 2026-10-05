@@ -25,6 +25,7 @@ import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { TRPCContext } from "~/server/api/trpc";
 import { events, projects, tasks } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
+import { DEFAULT_AGENT_NAMES } from "~/lib/agentNames";
 import { chatCompletion } from "~/server/llm/core/modelClient";
 import { LOCALE_NAMES, type SupportedLocale } from "~/server/llm/context/a1ContextBuilder";
 import {
@@ -189,6 +190,8 @@ export async function writeBrief(input: {
   findings: Finding[];
   userName: string | null;
   locale: SupportedLocale;
+  /** What the workspace calls this agent. Defaults to the Greek persona. */
+  agentName?: string;
 }): Promise<string> {
   const { facts, findings, locale } = input;
 
@@ -203,7 +206,7 @@ export async function writeBrief(input: {
       messages: [
         {
           role: "system",
-          content: `You are Hemera, the KAIROS Daily Brief — the assistant's one unprompted message of the day.
+          content: `You are ${input.agentName ?? DEFAULT_AGENT_NAMES.daily_brief}, the KAIROS Daily Brief — the assistant's one unprompted message of the day.
 
 Write 2-4 short sentences for ${input.userName ?? "the user"} about their working day.
 

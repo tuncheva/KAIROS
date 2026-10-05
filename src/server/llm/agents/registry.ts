@@ -25,6 +25,7 @@ import "server-only";
 import { TargetAgentSchema } from "~/server/llm/schemas/a1WorkspaceConciergeSchemas";
 import { a1WorkspaceConciergeProfile } from "~/server/llm/profiles/a1WorkspaceConcierge";
 import type { A1ReadToolName } from "~/server/llm/tools/a1/readTools";
+import { DEFAULT_AGENT_NAMES } from "~/lib/agentNames";
 
 /**
  * Conversational agents take a message and answer or draft. Scheduled agents run
@@ -39,7 +40,8 @@ export interface AgentDescriptor {
    * The agent's persona — a figure from Greek myth or history, picked to fit the
    * job (Mnemosyne keeps the notes, Solon writes the membership rules). Untranslated
    * fallback: the UI prefers `agents.names.<id>`, which carries the locale's
-   * spelling (Мнемозина, Mnémosyne).
+   * spelling (Мнемозина, Mnémosyne). A workspace can rename any agent; that
+   * override lives on the workspace, not here — see `~/lib/agentNames`.
    */
   name: string;
   /** What the agent does, in plain words: "Notes Vault", "Task Planner". */
@@ -70,7 +72,7 @@ export const HANDOFF_TARGETS = TargetAgentSchema.options;
 export const AGENTS: readonly AgentDescriptor[] = [
   {
     id: "workspace_concierge",
-    name: "Mentor",
+    name: DEFAULT_AGENT_NAMES.workspace_concierge,
     role: a1WorkspaceConciergeProfile.name,
     description:
       "Answers questions about your workspace and routes anything that needs a change to the right specialist. Reads only — it cannot alter workspace data.",
@@ -81,7 +83,7 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "task_planner",
-    name: "Odysseus",
+    name: DEFAULT_AGENT_NAMES.task_planner,
     role: "Task Planner",
     description:
       "Turns a goal into a backlog, and revises a plan already on screen. Every change is drafted for your approval before anything is written.",
@@ -92,7 +94,7 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "notes_vault",
-    name: "Mnemosyne",
+    name: DEFAULT_AGENT_NAMES.notes_vault,
     role: "Notes Vault",
     description:
       "Creates, edits and deletes notes. Locked notes are excluded before their content is ever loaded.",
@@ -103,7 +105,7 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "events_publisher",
-    name: "Iris",
+    name: DEFAULT_AGENT_NAMES.events_publisher,
     role: "Events Publisher",
     description:
       "Manages public events end to end: the event itself, its comments, RSVPs and likes.",
@@ -124,7 +126,7 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "org_admin",
-    name: "Solon",
+    name: DEFAULT_AGENT_NAMES.org_admin,
     role: "Organization Admin",
     description:
       "Changes membership, roles and permissions. Each operation is authorized on its own against your live membership, so a plan never rides in on one strong permission.",
@@ -140,7 +142,7 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "project_manager",
-    name: "Daedalus",
+    name: DEFAULT_AGENT_NAMES.project_manager,
     role: "Project Manager",
     description:
       "Creates, renames, updates and archives projects. Each operation is confirmed before anything is written, and permission is checked live at apply time.",
@@ -151,7 +153,7 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "daily_brief",
-    name: "Hemera",
+    name: DEFAULT_AGENT_NAMES.daily_brief,
     role: "Daily Brief",
     description:
       "Runs on a schedule you set and summarises what needs your attention. Nothing fires until you opt in under Settings → AI assistant.",
@@ -162,7 +164,7 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "risk_radar",
-    name: "Argus",
+    name: DEFAULT_AGENT_NAMES.risk_radar,
     role: "Risk Radar",
     description:
       "Watches for overdue work and stalled projects on a schedule. Detection is a database count, not a model call, so a finding is reproducible and still appears when your AI budget is spent.",
@@ -173,7 +175,7 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "weekly_retro",
-    name: "Clio",
+    name: DEFAULT_AGENT_NAMES.weekly_retro,
     role: "Weekly Retro",
     description:
       "Sends a brief retrospective once a week describing how the week went — tasks closed, created, carried over and stalled — in your saved interface language.",
@@ -184,7 +186,7 @@ export const AGENTS: readonly AgentDescriptor[] = [
   },
   {
     id: "meeting_prep",
-    name: "Nestor",
+    name: DEFAULT_AGENT_NAMES.meeting_prep,
     role: "Meeting Prep",
     description:
       "Sends a short brief before upcoming meetings from your connected calendar, including any related open tasks. Fires automatically when a meeting is within the prep horizon.",

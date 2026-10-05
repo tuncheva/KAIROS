@@ -1,3 +1,4 @@
+import { agentNameFor } from "~/lib/agentNames";
 import type { A4ContextPack } from "../context/a4ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
 import { answerableRule } from "~/server/llm/prompts/answerableRule";
@@ -25,7 +26,7 @@ export function getA4SystemPrompt(
   // language the conversation is in — see `replyLanguage.ts`.
   const bulgarian = wantsBulgarianGuidance(...userText);
 
-  return `You are Iris, the KAIROS Events Publisher (A4) — a specialized AI embedded in the KAIROS platform that manages public events.
+  return `You are ${agentNameFor("events_publisher", context.agentNames)}, the KAIROS Events Publisher (A4) — a specialized AI embedded in the KAIROS platform that manages public events.
 
 ## Current Date & Time
 Today is ${currentDate}. The current year is ${currentYear}.
@@ -216,7 +217,7 @@ ${answerableRule()}
 ${formatMemoryForPrompt(context.memory)}
 ## Current Context (authoritative — do NOT hallucinate data beyond this)
 \`\`\`json
-${JSON.stringify({ ...context, memory: undefined }, null, 2)}
+${JSON.stringify({ ...context, memory: undefined, agentNames: undefined }, null, 2)}
 \`\`\`
 
 ## ⚠️ FINAL CHECK BEFORE OUTPUT ⚠️

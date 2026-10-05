@@ -162,6 +162,8 @@ vi.mock("next-intl", async () => {
       const message = resolve(namespaced) ?? resolve(key) ?? namespaced;
       return format(message, values ?? {});
     };
+    // next-intl's own `t.has`: whether the key exists in this namespace.
+    t.has = (key: string) => resolve(namespace ? `${namespace}.${key}` : key) !== undefined;
     return t;
   };
 

@@ -7,8 +7,10 @@ import {
   varchar,
   integer,
   boolean,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
+import type { AgentNameOverrides } from "~/lib/agentNames";
 import crypto from "node:crypto";
 import {
   createTable,
@@ -59,6 +61,12 @@ export const users = createTable("user", (d) => ({
     image: d.text(),
     usageMode: usageModeEnum("usage_mode"),
     activeOrganizationId: integer("active_organization_id"),
+    /**
+     * Agent names for someone working without a workspace. With an active
+     * workspace its own `organizations.agentNames` applies instead, since
+     * names are shared by everyone in it. Overrides only; see `~/lib/agentNames`.
+     */
+    agentNames: jsonb("agent_names").$type<AgentNameOverrides>().default({}).notNull(),
     password: varchar("password", { length: 255 }),
 
     resetPinHash: varchar("reset_pin_hash", { length: 255 }),

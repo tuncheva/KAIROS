@@ -1,6 +1,7 @@
 import { type InferInsertModel, type InferSelectModel, sql } from "drizzle-orm";
 import { index, timestamp, varchar, integer, boolean, text, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
 import type { MemberPermissionFlags } from "~/lib/permissions";
+import type { AgentNameOverrides } from "~/lib/agentNames";
 import { createTable, orgRoleEnum, planEnum, subscriptionStatusEnum } from "./enums";
 import { users } from "./users";
 
@@ -12,6 +13,12 @@ export const organizations = createTable(
     accessCode: varchar("access_code", { length: 14 }).notNull().unique(),
     /** Org logo/pfp URL. Null falls back to the same gradient monogram profiles use. */
     image: text("image"),
+    /**
+     * What this workspace calls its agents — overrides of the Greek defaults,
+     * keyed by agent id. Shared by every member and used by the agents
+     * themselves in chat. Only admins write it; see `agent.setName`.
+     */
+    agentNames: jsonb("agent_names").$type<AgentNameOverrides>().default({}).notNull(),
     createdById: varchar("created_by_id", { length: 255 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

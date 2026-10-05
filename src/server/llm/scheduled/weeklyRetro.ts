@@ -29,6 +29,7 @@ import { and, desc, eq, gte, inArray, isNull, lt, lte, or, sql } from "drizzle-o
 import type { TRPCContext } from "~/server/api/trpc";
 import { aiFindings, events, projects, tasks } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
+import { DEFAULT_AGENT_NAMES } from "~/lib/agentNames";
 import { chatCompletion } from "~/server/llm/core/modelClient";
 import {
   LOCALE_NAMES,
@@ -291,6 +292,8 @@ export async function writeRetro(input: {
   facts: RetroFacts;
   userName: string | null;
   locale: SupportedLocale;
+  /** What the workspace calls this agent. Defaults to the Greek persona. */
+  agentName?: string;
 }): Promise<string> {
   const { facts, locale } = input;
 
@@ -302,7 +305,7 @@ export async function writeRetro(input: {
       messages: [
         {
           role: "system",
-          content: `You are Clio, the KAIROS weekly retrospective — one unprompted message at the end of the working week.
+          content: `You are ${input.agentName ?? DEFAULT_AGENT_NAMES.weekly_retro}, the KAIROS weekly retrospective — one unprompted message at the end of the working week.
 
 Write 3-5 short sentences for ${input.userName ?? "the user"} about the week just finished.
 

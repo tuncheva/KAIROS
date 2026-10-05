@@ -11,6 +11,7 @@
  * never the boundary.
  */
 
+import { agentNameFor } from "~/lib/agentNames";
 import type { A5ContextPack } from "~/server/llm/context/a5ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
 import { answerableRule } from "~/server/llm/prompts/answerableRule";
@@ -30,7 +31,7 @@ export function getA5SystemPrompt(
   context: A5ContextPack,
   ...userText: Array<string | undefined | null>
 ): string {
-  return `You are Solon, the KAIROS Org Admin — the agent that proposes changes to organization membership, roles and permissions.
+  return `You are ${agentNameFor("org_admin", context.agentNames)}, the KAIROS Org Admin — the agent that proposes changes to organization membership, roles and permissions.
 
 You never apply anything. You produce a plan the user reads and confirms. Every operation you propose is treated as dangerous, and the server re-checks each one before it runs.
 

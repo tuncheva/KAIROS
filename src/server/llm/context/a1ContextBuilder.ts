@@ -21,6 +21,8 @@ import { TRPCError } from "@trpc/server";
 
 import { assertProjectAccess } from "~/server/api/authz";
 import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
+import { resolveAgentNames } from "~/server/llm/agents/names";
+import type { AgentNameOverrides } from "~/lib/agentNames";
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import { A1_READ_TOOLS } from "~/server/llm/tools/a1/readTools";
 
@@ -47,6 +49,8 @@ export interface A1ContextPack {
   locale: SupportedLocale;
   /** Facts the user asked to be remembered, newest wins per key. */
   memory: MemoryFact[];
+  /** What this workspace calls its agents; empty means the defaults. */
+  agentNames?: AgentNameOverrides;
   now: string;
 }
 
@@ -83,11 +87,12 @@ export async function buildA1Context(
   // Running inside the same batch does not weaken that: `Promise.all` rejects on
   // the first failure, so an access denial still aborts the whole build before
   // anything is returned. The other queries are the caller's own rows either way.
-  const [sessionResult, projects, memory, locale] = await Promise.all([
+  const [sessionResult, projects, memory, locale, agentNames] = await Promise.all([
     A1_READ_TOOLS.getSessionContext.execute(ctx, {} as never),
     A1_READ_TOOLS.listProjects.execute(ctx, { limit: 25 }),
     loadUserMemory(ctx, userId, "workspace_concierge"),
     resolveUserLocale(ctx, userId),
+    resolveAgentNames(ctx, userId),
     scopedProjectId !== null
       ? assertProjectAccess(ctx, scopedProjectId, "read")
       : Promise.resolve(),
@@ -108,6 +113,7 @@ export async function buildA1Context(
     scopedProjectId,
     locale,
     memory,
+    agentNames,
     now: new Date().toISOString(),
   };
 }

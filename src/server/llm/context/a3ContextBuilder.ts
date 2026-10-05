@@ -2,6 +2,8 @@ import type { TRPCContext } from "~/server/api/trpc";
 import { stickyNotes } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
+import { resolveAgentNames } from "~/server/llm/agents/names";
+import type { AgentNameOverrides } from "~/lib/agentNames";
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 
 export type NotesVaultHandoffContext = {
@@ -29,6 +31,8 @@ export type NotesVaultContextPack = {
   locale: SupportedLocale;
   /** Global facts plus any the user set for the Notes Vault specifically. */
   memory: MemoryFact[];
+  /** What this workspace calls its agents; empty means the defaults. */
+  agentNames?: AgentNameOverrides;
 };
 
 function normalizeHandoff(handoffContext?: Record<string, unknown>): NotesVaultHandoffContext {
@@ -77,15 +81,17 @@ export async function buildA3Context(input: {
     },
   });
 
-  const [memory, locale] = await Promise.all([
+  const [memory, locale, agentNames] = await Promise.all([
     loadUserMemory(input.ctx, userId, "notes_vault"),
     resolveUserLocale(input.ctx, userId),
+    resolveAgentNames(input.ctx, userId),
   ]);
 
   return {
     userId,
     locale,
     memory,
+    agentNames,
     notes: notes.map((n) => {
       const isLocked = Boolean(n.passwordHash);
       if (!isLocked) {

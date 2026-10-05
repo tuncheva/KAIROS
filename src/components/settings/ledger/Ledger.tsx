@@ -469,7 +469,7 @@ export function LedgerGroup({ label, hint, note, rows = [], block }: LedgerGroup
  * (`.settings-row-flash`) has room around the text, while the text itself
  * still lines up with the group label above it.
  */
-function LedgerRowView({ row, first }: { row: LedgerRow; first: boolean }) {
+export function LedgerRowView({ row, first }: { row: LedgerRow; first: boolean }) {
   return (
     <div
       data-row={row.id}

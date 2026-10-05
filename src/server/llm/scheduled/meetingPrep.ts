@@ -24,6 +24,7 @@ import { and, asc, eq, gte, inArray, isNull, lte, ne, or, sql } from "drizzle-or
 import type { TRPCContext } from "~/server/api/trpc";
 import { externalEvents, projects, tasks } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
+import { DEFAULT_AGENT_NAMES } from "~/lib/agentNames";
 import { chatCompletion } from "~/server/llm/core/modelClient";
 import { toPlainText } from "~/server/llm/core/plainText";
 import {
@@ -227,6 +228,8 @@ export async function writePrep(input: {
   facts: PrepFacts;
   userName: string | null;
   locale: SupportedLocale;
+  /** What the workspace calls this agent. Defaults to the Greek persona. */
+  agentName?: string;
 }): Promise<string> {
   const { facts, locale } = input;
 
@@ -238,7 +241,7 @@ export async function writePrep(input: {
       messages: [
         {
           role: "system",
-          content: `You are Nestor, the KAIROS meeting prep — a short message sent shortly before a meeting starts.
+          content: `You are ${input.agentName ?? DEFAULT_AGENT_NAMES.meeting_prep}, the KAIROS meeting prep — a short message sent shortly before a meeting starts.
 
 Write 1-3 short sentences for ${input.userName ?? "the user"}.
 

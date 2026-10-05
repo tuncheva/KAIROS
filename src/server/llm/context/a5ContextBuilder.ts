@@ -9,6 +9,8 @@
  */
 
 import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
+import { resolveAgentNames } from "~/server/llm/agents/names";
+import type { AgentNameOverrides } from "~/lib/agentNames";
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import "server-only";
 
@@ -53,6 +55,8 @@ export interface A5ContextPack {
   locale: SupportedLocale;
   /** Global facts plus any the user set for the Organization Admin specifically. */
   memory: MemoryFact[];
+  /** What this workspace calls its agents; empty means the defaults. */
+  agentNames?: AgentNameOverrides;
   now: string;
 }
 
@@ -161,9 +165,10 @@ export async function buildA5Context(input: {
     });
   }
 
-  const [memory, locale] = await Promise.all([
+  const [memory, locale, agentNames] = await Promise.all([
     loadUserMemory(ctx, userId, "org_admin"),
     resolveUserLocale(ctx, userId),
+    resolveAgentNames(ctx, userId),
   ]);
 
   return {
@@ -172,5 +177,6 @@ export async function buildA5Context(input: {
     now: new Date().toISOString(),
     locale,
     memory,
+    agentNames,
   };
 }

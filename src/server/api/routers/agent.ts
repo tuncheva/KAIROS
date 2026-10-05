@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure, type TRPCContext } from "~/server/api/trpc";
 import { agentOrchestrator } from "~/server/llm/orchestrator/agentOrchestrator";
 import { runAgentTurn } from "~/server/llm/orchestrator/handoff";
 import {
@@ -30,6 +30,8 @@ import {
   upsertFact,
 } from "~/server/llm/memory";
 import { AGENTS, getAgent } from "~/server/llm/agents/registry";
+import { loadAgentNamesSource } from "~/server/llm/agents/names";
+import { AGENT_IDS, AGENT_NAME_MAX, agentNameProblem, normalizeAgentName } from "~/lib/agentNames";
 import { toolDefinitionsFor } from "~/server/llm/tools/a1/toolDefinitions";
 import { getAiMetrics } from "~/server/llm/observability";
 import {
@@ -54,6 +56,8 @@ import {
   agentTaskPlannerDrafts,
   aiCustomSchedules,
   aiSchedules,
+  organizationMembers,
+  organizations,
   tasks,
   users,
 } from "~/server/db/schema";
@@ -126,6 +130,29 @@ const SCHEDULE_DEFAULTS: Record<
   // values are stored so the row has a shape, and the runner ignores them.
   meeting_prep: { hourLocal: 0, dayOfWeek: null },
 };
+
+/**
+ * Whether `userId` may rename the agents their names come from: anyone for
+ * their own (no workspace), only an admin for a workspace's.
+ */
+async function canRenameAgents(
+  ctx: TRPCContext,
+  userId: string,
+  organizationId: number | null,
+): Promise<boolean> {
+  if (organizationId === null) return true;
+  const [membership] = await ctx.db
+    .select({ role: organizationMembers.role })
+    .from(organizationMembers)
+    .where(
+      and(
+        eq(organizationMembers.userId, userId),
+        eq(organizationMembers.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  return membership?.role === "admin";
+}
 
 export const agentRouter = createTRPCRouter({
 
@@ -468,6 +495,73 @@ export const agentRouter = createTRPCRouter({
       })),
     }));
   }),
+
+  /**
+   * What this workspace calls its agents, and whether the caller may change it.
+   *
+   * Overrides only — the client fills the gaps with the locale's spelling of
+   * the defaults. `canEdit` is a hint for the form; `setName` checks again.
+   */
+  names: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const source = await loadAgentNamesSource(ctx, userId);
+    return {
+      overrides: source.overrides,
+      scope: source.organizationId === null ? ("personal" as const) : ("workspace" as const),
+      canEdit: await canRenameAgents(ctx, userId, source.organizationId),
+    };
+  }),
+
+  /**
+   * Rename one agent for the whole workspace, or put its default back with
+   * `name: null`.
+   *
+   * Admin-only in a workspace: the name is what every member sees and what the
+   * agent calls itself in their chats. Written as a single-key jsonb update so
+   * two admins renaming different agents at once cannot undo each other.
+   */
+  setName: protectedProcedure
+    .input(
+      z.object({
+        agentId: z.enum(AGENT_IDS),
+        name: z.string().max(AGENT_NAME_MAX * 2).nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const source = await loadAgentNamesSource(ctx, userId);
+
+      if (!(await canRenameAgents(ctx, userId, source.organizationId))) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only a workspace admin can rename agents.",
+        });
+      }
+
+      const name = input.name === null ? null : normalizeAgentName(input.name);
+      if (name !== null) {
+        const problem = agentNameProblem(input.agentId, name, source.overrides);
+        if (problem) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `agentName.${problem}` });
+        }
+      }
+
+      const next =
+        name === null
+          ? sql`${sql.identifier("agent_names")} - ${input.agentId}::text`
+          : sql`${sql.identifier("agent_names")} || jsonb_build_object(${input.agentId}::text, ${name}::text)`;
+
+      if (source.organizationId !== null) {
+        await ctx.db
+          .update(organizations)
+          .set({ agentNames: next, updatedAt: new Date() })
+          .where(eq(organizations.id, source.organizationId));
+      } else {
+        await ctx.db.update(users).set({ agentNames: next }).where(eq(users.id, userId));
+      }
+
+      return { agentId: input.agentId, name };
+    }),
 
   // -------------------------------------------------------------------------
   // C-2 Assistant memory

@@ -11,6 +11,7 @@
  * the intent is ambiguous rather than guessing.
  */
 
+import { agentNameFor } from "~/lib/agentNames";
 import type { A6ContextPack } from "~/server/llm/context/a6ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
 import { answerableRule } from "~/server/llm/prompts/answerableRule";
@@ -29,7 +30,7 @@ export function getA6SystemPrompt(
   context: A6ContextPack,
   ...userText: Array<string | undefined | null>
 ): string {
-  return `You are Daedalus, the KAIROS Project Manager — the agent that creates, renames, updates and archives projects.
+  return `You are ${agentNameFor("project_manager", context.agentNames)}, the KAIROS Project Manager — the agent that creates, renames, updates and archives projects.
 
 You never apply anything. You produce a plan the user reads and confirms. Every operation is treated as consequential, and the server re-checks each one before it runs.
 
