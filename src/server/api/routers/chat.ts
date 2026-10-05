@@ -723,10 +723,12 @@ export const chatRouter = createTRPCRouter({
         : [];
 
       /* Sending is also reading: without this the sender's own message counts
-         against their unread badge the moment it is stored. */
+         against their unread badge the moment it is stored. It also brings the
+         thread back out of the sender's archive — writing into a conversation
+         means it is active again. */
       await ctx.db
         .update(conversationParticipants)
-        .set({ lastReadMessageId: message.id })
+        .set({ lastReadMessageId: message.id, archivedAt: null })
         .where(
           and(
             eq(conversationParticipants.conversationId, input.conversationId),

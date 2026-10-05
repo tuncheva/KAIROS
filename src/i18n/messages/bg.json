@@ -3154,7 +3154,19 @@
     "clearAllTitle": "Изчистване на всички известия",
     "clearAllBody": "Всички известия ще бъдат изтрити, включително непрочетените. Действието е необратимо.",
     "clearAllConfirm": "Изчисти всички",
-    "clearAllCancel": "Отказ"
+    "clearAllCancel": "Отказ",
+    "openLink": "Отвори",
+    "kind": {
+      "event": "Събитие",
+      "event_reminder": "Напомняне",
+      "task": "Задача",
+      "project": "Проект",
+      "system": "Kairos",
+      "like": "Харесване",
+      "comment": "Коментар",
+      "reply": "Отговор",
+      "message": "Съобщение"
+    }
   },
   "onboardingSheet": {
     "eyebrow": "Kairos · Помощ",

@@ -4076,6 +4076,118 @@ input[type="search"]::-webkit-search-results-decoration {
   flex-direction: column-reverse;
 }
 
+/* ─── Notification popup card ──────────────────────────────────────────────
+   The "ledger" card: a round medallion in the type's colour (the same device
+   as the settings icons), a mono eyebrow naming the kind, Open / Mark read,
+   and a hairline along the bottom that drains over the card's lifetime and
+   stops while the pointer or focus is on it. Built on the `--tui-*` tokens so
+   it matches the dashboard in both themes. */
+.notif-card {
+  --notif-tone: rgb(var(--tui-ink3));
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(var(--tui-ink) / 0.09);
+  border-radius: 12px;
+  background: rgb(var(--tui-pane));
+  color: rgb(var(--tui-ink));
+  box-shadow: var(--tui-lift);
+  animation: notif-card-in 0.38s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.notif-card[data-tone="event"] { --notif-tone: rgb(var(--tui-day)); }
+.notif-card[data-tone="event_reminder"],
+.notif-card[data-tone="project"] { --notif-tone: rgb(var(--tui-warn)); }
+.notif-card[data-tone="task"] { --notif-tone: rgb(var(--tui-ok)); }
+.notif-card[data-tone="like"] { --notif-tone: rgb(var(--tui-danger)); }
+.notif-card[data-tone="message"],
+.notif-card[data-tone="comment"],
+.notif-card[data-tone="reply"],
+.notif-card[data-tone="system"] { --notif-tone: rgb(var(--tui-accent)); }
+
+.notif-card-medallion {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  color: var(--notif-tone);
+  background: color-mix(in srgb, var(--notif-tone) 13%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--notif-tone) 22%, transparent);
+}
+
+.notif-card-kind {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--notif-tone);
+}
+
+.notif-card-act {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--tui-ink) / 0.16);
+  font-size: 11.5px;
+  color: rgb(var(--tui-ink2));
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.notif-card-act:hover {
+  color: rgb(var(--tui-ink));
+  border-color: rgb(var(--tui-ink3));
+}
+
+.notif-card-act[data-primary] {
+  border-color: transparent;
+  background: rgb(var(--tui-ink));
+  color: rgb(var(--tui-bg));
+}
+
+.notif-card-act:focus-visible {
+  outline: 2px solid rgb(var(--tui-accent));
+  outline-offset: 2px;
+}
+
+.notif-card-timer {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  background: var(--notif-tone);
+  opacity: 0.55;
+  transform-origin: left;
+  animation: notif-card-drain var(--notif-ttl, 6s) linear forwards;
+}
+
+.notif-card[data-paused] .notif-card-timer {
+  animation-play-state: paused;
+}
+
+@keyframes notif-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+:root[data-notif-block="end"] .notif-card {
+  animation-name: notif-card-in-up;
+}
+
+@keyframes notif-card-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes notif-card-drain {
+  to {
+    transform: scaleX(0);
+  }
+}
+
 /* ─── Both regions on a phone ──────────────────────────────────────────────
    Corners are meaningless at 375px: there is one column and it is the width
    of the screen. Below `lg` the horizontal half of the preference is dropped
@@ -4112,6 +4224,8 @@ input[type="search"]::-webkit-search-results-decoration {
 .toast-stack {
   display: flex;
   flex-direction: column;
+  /* Pills size to their text, so they hug the anchored side of the stack. */
+  align-items: var(--toast-anchor-inline, flex-start);
   gap: 0.5rem;
   width: min(22rem, 100%);
   list-style: none;
@@ -4125,32 +4239,34 @@ input[type="search"]::-webkit-search-results-decoration {
   flex-direction: column-reverse;
 }
 
+/* An inverted pill — ink on the page colour — so an action toast can never be
+   mistaken for a notification card. Status lives in the solid dot. The radius
+   stops short of a full pill so a two-line error still reads as one shape. */
 .toast-item {
   pointer-events: auto;
   display: flex;
   align-items: flex-start;
   gap: 0.5625rem;
-  padding: 0.625rem 0.6875rem;
-  border-radius: var(--radius-lg);
-  background: rgb(var(--bg-elevated));
-  color: rgb(var(--fg-primary));
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.5rem 0.5rem 0.5rem 0.625rem;
+  border-radius: 1.125rem;
+  background: rgb(var(--tui-ink));
+  color: rgb(var(--tui-bg));
   font-size: 0.8125rem;
   line-height: 1.45;
-  box-shadow:
-    var(--shadow-lg),
-    inset 2px 0 0 var(--toast-rule, rgb(var(--info))),
-    inset 0 0 0 0.5px rgb(var(--border-light) / 0.6);
-  animation: toast-in 0.22s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+  box-shadow: 0 12px 30px -16px rgb(0 0 0 / 0.5);
+  animation: toast-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .toast-item[data-kind="success"] {
-  --toast-rule: rgb(var(--success));
+  --toast-rule: rgb(var(--tui-ok));
 }
 .toast-item[data-kind="error"] {
-  --toast-rule: rgb(var(--error));
+  --toast-rule: rgb(var(--tui-danger));
 }
 .toast-item[data-kind="info"] {
-  --toast-rule: rgb(var(--info));
+  --toast-rule: rgb(var(--tui-accent));
 }
 
 .toast-item .toast-icon {
@@ -4158,11 +4274,21 @@ input[type="search"]::-webkit-search-results-decoration {
   width: 1.125rem;
   height: 1.125rem;
   margin-top: 0.0625rem;
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
   display: grid;
   place-items: center;
-  color: var(--toast-rule);
-  background: color-mix(in srgb, var(--toast-rule) 15%, transparent);
+  color: rgb(var(--tui-pane));
+  background: var(--toast-rule);
+}
+
+.toast-item .toast-dismiss {
+  color: inherit;
+  opacity: 0.55;
+}
+
+.toast-item .toast-dismiss:hover {
+  opacity: 1;
+  background: rgb(127 127 127 / 0.2);
 }
 
 .toast-item .toast-text {

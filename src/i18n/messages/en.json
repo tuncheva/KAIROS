@@ -3154,7 +3154,19 @@
     "clearAllTitle": "Clear all notifications",
     "clearAllBody": "Every notification is deleted, including any you have not read. This cannot be undone.",
     "clearAllConfirm": "Clear all",
-    "clearAllCancel": "Cancel"
+    "clearAllCancel": "Cancel",
+    "openLink": "Open",
+    "kind": {
+      "event": "Event",
+      "event_reminder": "Reminder",
+      "task": "Task",
+      "project": "Project",
+      "system": "Kairos",
+      "like": "Like",
+      "comment": "Comment",
+      "reply": "Reply",
+      "message": "Message"
+    }
   },
   "onboardingSheet": {
     "eyebrow": "Kairos · Help",
