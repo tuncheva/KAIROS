@@ -43,8 +43,16 @@ describe("Event Router – the feed", () => {
   });
 
   it("binds timestamps as timestamps rather than handing over a Date", () => {
-    expect(source).toContain("::timestamptz");
-    expect(source).toContain("function ts(value: Date)");
+    // The helper is shared (the assignee workload needed it too); the router
+    // must use it rather than interpolating a Date into raw SQL.
+    const helper = fs.readFileSync(
+      path.resolve(__dirname, "../../src/server/db/timestamp.ts"),
+      "utf-8",
+    );
+    expect(helper).toContain("::timestamptz");
+    expect(helper).toContain("export function ts(value: Date)");
+    expect(source).toContain('import { ts } from "~/server/db/timestamp"');
+    expect(source).toContain("${ts(now)}");
   });
 
   it("decides upcoming against the end time, not the start", () => {

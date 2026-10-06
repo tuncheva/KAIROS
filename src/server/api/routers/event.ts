@@ -13,6 +13,7 @@ import {
 import { eq, desc, asc, and, or, sql, inArray, gte, type SQL } from "drizzle-orm";
 import { type NewEvent } from "~/server/db/schema";
 import type { db as Database } from "~/server/db";
+import { ts } from "~/server/db/timestamp";
 import { TRPCError } from "@trpc/server";
 import {
   emitEventCreated,
@@ -65,18 +66,6 @@ const FEED_SOURCES = ["following", "discover"] as const;
  * opening morning.
  */
 const eventEndsAt = sql`COALESCE(${events.endsAt}, ${events.eventDate})`;
-
-/**
- * A timestamp, bound as one.
- *
- * Inside a raw `sql` template a `Date` never reaches drizzle's column mapper —
- * it goes straight to postgres-js, which cannot infer a type for it and throws
- * ("Received an instance of Date") the moment the statement is bound. An ISO
- * string with an explicit cast is unambiguous to both.
- */
-function ts(value: Date) {
-  return sql`${value.toISOString()}::timestamptz`;
-}
 
 /**
  * The events `userId` hosts — their own, and any they were made a co-host of.
