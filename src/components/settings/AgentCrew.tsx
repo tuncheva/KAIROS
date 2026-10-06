@@ -11,11 +11,21 @@ import {
   type AgentId,
   type AgentNameProblem,
 } from "~/lib/agentNames";
+import {
+  AGENT_SETTINGS,
+  NAMING_PLACEHOLDERS,
+  type ProjectScope,
+  type AgentSettingDef,
+  type AgentSettingId,
+} from "~/lib/agentSettings";
 import { api } from "~/trpc/react";
 
 import {
   LedgerAction,
+  LedgerCheck,
   LedgerInput,
+  LedgerSelect,
+  LedgerToggle,
   LedgerRowView,
   LedgerValue,
   useSettingsSave,
@@ -27,9 +37,9 @@ import {
  *
  * The agents drawn as what they are to the user: one they talk to, five that
  * draft changes for approval, four that run on a clock. Picking one opens what
- * it does and what can be tuned about it — its name now, and the settings that
- * are planned, marked as such rather than hidden, so the panel doubles as the
- * roadmap for per-agent customisation.
+ * it does and what can be tuned about it: its name, and the settings from
+ * `~/lib/agentSettings` that apply to it. A row whose setting is declared but
+ * not yet `live` reads "Soon" rather than being hidden.
  *
  * The orbit is decoration over a plain list of buttons: every agent is
  * reachable by keyboard, the motion stops under the pointer so a moving target
@@ -86,23 +96,65 @@ type OptionKey =
   | "taskDefaults"
   | "noteTemplate"
   | "eventDefaults"
-  | "secondApprover"
   | "namingPattern"
   | "briefSections"
   | "stalledAfter"
   | "leadTime";
 
+/** Rows that show something real today without being an `agentSettings` entry. */
 const LIVE: ReadonlySet<OptionKey> = new Set(["effort", "memory", "schedule"]);
 
-const SPECIALIST_COMMON: OptionKey[] = ["approval", "scope"];
+/**
+ * Rows backed by an entry in `~/lib/agentSettings`. Such a row gets a real
+ * control as soon as its entry is `live`; until then it reads "Soon".
+ */
+const SETTING_FOR: Partial<Record<OptionKey, AgentSettingId | readonly AgentSettingId[]>> = {
+  tone: "workspace_concierge.tone",
+  language: "workspace_concierge.replyLanguage",
+  briefSections: "daily_brief.sections",
+  stalledAfter: "risk_radar.stalledAfterDays",
+  leadTime: "meeting_prep.leadMinutes",
+  // Grouped rows: several settings under one title, each with its own small label.
+  taskDefaults: ["task_planner.priority", "task_planner.dueInDays", "task_planner.assignee"],
+  noteTemplate: "notes_vault.template",
+  eventDefaults: [
+    "events_publisher.lengthMinutes",
+    "events_publisher.enableRsvp",
+    "events_publisher.sendReminders",
+  ],
+  namingPattern: "project_manager.namingPattern",
+};
+
+
+/** Rows whose setting differs per agent, like each specialist's own scope. */
+const SETTING_FOR_AGENT: Partial<
+  Record<AgentId, Partial<Record<OptionKey, AgentSettingId | readonly AgentSettingId[]>>>
+> = {
+  task_planner: {
+    scope: "task_planner.scope",
+    approval: ["task_planner.approval", "task_planner.allowAutoApply"],
+  },
+  notes_vault: { approval: ["notes_vault.approval", "notes_vault.allowAutoApply"] },
+  project_manager: { scope: "project_manager.scope" },
+};
+
+/** Settings that only do anything where undo is available (`canAutoApply`). */
+const NEEDS_UNDO: ReadonlySet<AgentSettingId> = new Set([
+  "task_planner.approval",
+  "notes_vault.approval",
+]);
 
 const OPTIONS: Record<AgentId, OptionKey[]> = {
   workspace_concierge: ["effort", "memory", "tone", "language"],
-  task_planner: ["memory", "taskDefaults", ...SPECIALIST_COMMON],
-  notes_vault: ["memory", "noteTemplate", ...SPECIALIST_COMMON],
-  events_publisher: ["memory", "eventDefaults", ...SPECIALIST_COMMON],
-  org_admin: ["memory", "secondApprover", ...SPECIALIST_COMMON],
-  project_manager: ["memory", "namingPattern", ...SPECIALIST_COMMON],
+  // Scope only where the agent works inside projects: notes, events and members
+  // do not belong to one.
+  // Approval only where a change can be undone: tasks and notes. Events,
+  // members and projects always ask first.
+  task_planner: ["memory", "taskDefaults", "scope", "approval"],
+  notes_vault: ["memory", "noteTemplate", "approval"],
+  events_publisher: ["memory", "eventDefaults"],
+  org_admin: ["memory"],
+  project_manager: ["memory", "namingPattern", "scope"],
   daily_brief: ["schedule", "briefSections"],
   risk_radar: ["schedule", "stalledAfter"],
   weekly_retro: ["schedule"],
@@ -404,6 +456,10 @@ function AgentDetail({ id, reduced, t }: { id: AgentId; reduced: boolean; t: Tra
   const setName = api.agent.setName.useMutation({
     onSuccess: () => utils.agent.names.invalidate(),
   });
+  const settings = api.agent.settings.useQuery(undefined, { staleTime: 60_000, retry: false });
+  const setSetting = api.agent.setSetting.useMutation({
+    onSuccess: () => utils.agent.settings.invalidate(),
+  });
 
   const kind = CREW.find((a) => a.id === id)?.kind ?? "specialist";
   const overrides = names.data?.overrides ?? {};
@@ -456,9 +512,54 @@ function AgentDetail({ id, reduced, t }: { id: AgentId; reduced: boolean; t: Tra
   );
 
   const optionRow = (key: OptionKey): LedgerRow => {
-    const live = LIVE.has(key);
+    // The naming pattern's description lists its placeholders; braces cannot be
+    // written into a message literally, so they arrive as a value.
+    const desc = t(`${key}Desc`, { list: NAMING_PLACEHOLDERS.map((p) => `{${p}}`).join(", ") });
+    const mapped = SETTING_FOR_AGENT[id]?.[key] ?? SETTING_FOR[key];
+    const ids: readonly AgentSettingId[] =
+      mapped === undefined ? [] : typeof mapped === "string" ? [mapped] : mapped;
+    const grouped = ids.length > 1;
+    // A row's settings share a scope, so the first one speaks for the row.
+    const def = ids[0] ? (AGENT_SETTINGS[ids[0]] as AgentSettingDef) : undefined;
+    const live = LIVE.has(key) || Boolean(def?.live);
+    // A project picker needs the full width under the text, like a group does.
+    const wide = grouped || def?.control.kind === "projects";
+    // Per setting, since one row can mix a personal choice with a workspace one.
+    const editableSetting = (settingId: AgentSettingId) =>
+      ((AGENT_SETTINGS[settingId] as AgentSettingDef).scope === "personal" ||
+        Boolean(settings.data?.canEditWorkspace)) &&
+      (!NEEDS_UNDO.has(settingId) || Boolean(settings.data?.canAutoApply));
+    const editable = ids.every(editableSetting);
+    const needsUndo = ids.some((sid) => NEEDS_UNDO.has(sid)) && settings.data?.canAutoApply === false;
+    const settingControl = (settingId: AgentSettingId) => {
+      const entry = AGENT_SETTINGS[settingId] as AgentSettingDef;
+      const label = grouped ? t(`settingLabels.${entry.agent}.${entry.key}`) : t(`${key}Title`);
+      const control = (
+        <AgentSettingControl
+          key={settingId}
+          def={entry}
+          value={settings.data?.values[settingId] ?? entry.default}
+          disabled={!editableSetting(settingId) || setSetting.isPending || !settings.data}
+          label={label}
+          t={t}
+          onChange={(value) => save.run(() => setSetting.mutateAsync({ id: settingId, value }))}
+        />
+      );
+      return grouped ? (
+        <span key={settingId} className="flex items-center gap-2">
+          <span aria-hidden className="text-settings-small text-fg-tertiary">
+            {label}
+          </span>
+          {control}
+        </span>
+      ) : (
+        control
+      );
+    };
     const control =
-      key === "effort" ? (
+      def?.live ? (
+        grouped ? <>{ids.map(settingControl)}</> : settingControl(ids[0]!)
+      ) : key === "effort" ? (
         <LedgerValue tone="dim">{t("effortValue")}</LedgerValue>
       ) : key === "memory" ? (
         <LedgerValue>{t("memoryValue", { count: facts.length })}</LedgerValue>
@@ -470,9 +571,21 @@ function AgentDetail({ id, reduced, t }: { id: AgentId; reduced: boolean; t: Tra
     return {
       id: `crew-${id}-${key}`,
       title: t(`${key}Title`),
-      desc: t(`${key}Desc`),
+      desc:
+        def?.live && !editable && settings.data ? (
+          <>
+            {desc}
+            <span className="mt-1 block italic">
+              {needsUndo ? t("autoApplyNeedsUndo") : t("settingAdminOnly")}
+            </span>
+          </>
+        ) : (
+          desc
+        ),
+      descText: desc,
       control,
       dim: !live,
+      stack: wide && Boolean(def?.live),
     };
   };
 
@@ -579,6 +692,244 @@ function AgentDetail({ id, reduced, t }: { id: AgentId; reduced: boolean; t: Tra
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Setting control
+// ---------------------------------------------------------------------------
+
+/**
+ * The control for one catalog entry, chosen by its `control.kind`. Option
+ * labels live under `values.<agent>.<key>.<option>`, so a new setting needs
+ * only its catalog entry and its strings to appear here.
+ */
+export function AgentSettingControl({
+  def,
+  value,
+  disabled,
+  label,
+  onChange,
+  t,
+}: {
+  def: AgentSettingDef;
+  value: unknown;
+  disabled: boolean;
+  label: string;
+  onChange: (next: unknown) => Promise<unknown> | void;
+  t: Translator;
+}) {
+  const optionLabel = (option: string | number) => t(`values.${def.agent}.${def.key}.${String(option)}`);
+
+  switch (def.control.kind) {
+    case "choice": {
+      const options = def.control.options;
+      return (
+        <LedgerSelect
+          width="w-[180px]"
+          value={String(value)}
+          ariaLabel={label}
+          disabled={disabled}
+          onChange={(next) => {
+            // Options may be numbers; the select only speaks strings.
+            const picked = options.find((o) => String(o) === next);
+            if (picked !== undefined) void onChange(picked);
+          }}
+          options={options.map((o) => ({ value: String(o), label: optionLabel(o) }))}
+        />
+      );
+    }
+    case "multi": {
+      const picked = new Set(Array.isArray(value) ? (value as string[]) : []);
+      // The last ones a `min` requires cannot be unticked.
+      const atMin = picked.size <= (def.control.min ?? 0);
+      return (
+        <div role="group" aria-label={label} className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {def.control.options.map((option) => (
+            <LedgerCheck
+              key={option}
+              multi
+              showLabel
+              checked={picked.has(option)}
+              disabled={disabled || (atMin && picked.has(option))}
+              label={optionLabel(option)}
+              onClick={() => {
+                const next = new Set(picked);
+                if (next.has(option)) next.delete(option);
+                else next.add(option);
+                void onChange([...next]);
+              }}
+            />
+          ))}
+        </div>
+      );
+    }
+    case "toggle":
+      return (
+        <LedgerToggle
+          checked={value === true}
+          disabled={disabled}
+          label={label}
+          onChange={(next) => onChange(next)}
+        />
+      );
+    case "projects":
+      return (
+        <ProjectScopeControl
+          value={value as ProjectScope}
+          disabled={disabled}
+          label={label}
+          t={t}
+          onChange={onChange}
+        />
+      );
+    case "text":
+      return (
+        <TextSettingControl
+          value={typeof value === "string" ? value : ""}
+          maxLength={def.control.maxLength}
+          placeholder={def.control.placeholder}
+          disabled={disabled}
+          label={label}
+          t={t}
+          onSave={onChange}
+        />
+      );
+  }
+}
+
+/**
+ * A text setting: edited locally, saved on Enter or blur, so a pattern is not
+ * written to the workspace keystroke by keystroke. A value the server refuses
+ * shows why and stays in the field to be fixed.
+ */
+function TextSettingControl({
+  value,
+  maxLength,
+  placeholder,
+  disabled,
+  label,
+  t,
+  onSave,
+}: {
+  value: string;
+  maxLength: number;
+  placeholder?: string;
+  disabled: boolean;
+  label: string;
+  t: Translator;
+  onSave: (next: string) => Promise<unknown> | void;
+}) {
+  const [draft, setDraft] = useState(value);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setDraft(value), [value]);
+
+  const commit = () => {
+    if (draft.trim() === value) return;
+    setFailed(false);
+    // `save.run` reports a refused write by resolving to undefined rather than throwing.
+    void Promise.resolve(onSave(draft.trim())).then(
+      (result) => result === undefined && setFailed(true),
+      () => setFailed(true),
+    );
+  };
+
+  return (
+    <span className="flex flex-col items-end gap-1">
+      <LedgerInput
+        value={draft}
+        onChange={(next) => {
+          setDraft(next);
+          if (failed) setFailed(false);
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") setDraft(value);
+        }}
+        ariaLabel={label}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        disabled={disabled}
+        width="w-[240px]"
+      />
+      {failed ? <span className="text-settings-small text-error">{t("settingInvalid")}</span> : null}
+    </span>
+  );
+}
+
+/**
+ * Which of the workspace's projects an agent may touch.
+ *
+ * "Chosen projects" with nothing ticked is held locally until the first tick:
+ * an empty choice is not a scope, so it is never saved, and the last ticked
+ * project cannot be unticked — "All projects" is how to widen it again.
+ */
+function ProjectScopeControl({
+  value,
+  disabled,
+  label,
+  t,
+  onChange,
+}: {
+  value: ProjectScope;
+  disabled: boolean;
+  label: string;
+  t: Translator;
+  onChange: (next: unknown) => Promise<unknown> | void;
+}) {
+  const projects = api.project.getMyProjects.useQuery(undefined, { retry: false });
+  const [choosing, setChoosing] = useState(value.mode === "only");
+  useEffect(() => setChoosing(value.mode === "only"), [value.mode]);
+
+  const picked = new Set(value.mode === "only" ? value.projectIds : []);
+  const list = (projects.data ?? []).map((p) => ({ id: p.id, title: p.title }));
+
+  return (
+    <div className="flex w-full flex-col gap-3">
+      <LedgerSelect
+        width="w-[200px]"
+        value={choosing ? "only" : "all"}
+        ariaLabel={label}
+        disabled={disabled}
+        onChange={(mode) => {
+          if (mode === "all") {
+            setChoosing(false);
+            void onChange({ mode: "all" });
+          } else {
+            setChoosing(true);
+          }
+        }}
+        options={[
+          { value: "all", label: t("scopeAll") },
+          { value: "only", label: t("scopeOnly") },
+        ]}
+      />
+      {choosing ? (
+        list.length ? (
+          <div role="group" aria-label={t("scopeOnly")} className="flex flex-wrap gap-x-5 gap-y-2.5">
+            {list.map((project) => (
+              <LedgerCheck
+                key={project.id}
+                multi
+                showLabel
+                checked={picked.has(project.id)}
+                disabled={disabled || (picked.size === 1 && picked.has(project.id))}
+                label={project.title}
+                onClick={() => {
+                  const next = new Set(picked);
+                  if (next.has(project.id)) next.delete(project.id);
+                  else next.add(project.id);
+                  if (next.size) void onChange({ mode: "only", projectIds: [...next] });
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <span className="text-settings-small text-fg-tertiary">{t("scopeEmpty")}</span>
+        )
+      ) : null}
     </div>
   );
 }

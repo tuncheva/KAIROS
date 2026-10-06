@@ -113,6 +113,7 @@ type ChatMsg =
         | { type: "events_direct_apply"; draftId: string } // Combined confirm+apply
         | { type: "task_confirm"; draftId: string }
         | { type: "task_undo"; draftId: string }
+        | { type: "notes_undo"; draftId: string }
         | { type: "task_apply"; draftId: string; confirmationToken: string }
         | { type: "task_direct_apply"; draftId: string } // Combined confirm+apply
         /*
@@ -1026,6 +1027,30 @@ export function ProjectIntelligenceChat(props: {
         return { text: text || t("noResponse"), createdAt: new Date(), msgId };
       }
 
+      // A small plan the user lets apply on its own arrives already applied: a
+      // receipt with Undo stands where the confirm card would have been.
+      if (plan.autoApplied && (plan.kind === "tasks" || plan.kind === "notes")) {
+        const agent = plan.kind === "tasks" ? "task_planner" : "notes_vault";
+        return {
+          text: [
+            summary,
+            t("autoApplied", {
+              name: agentLabels.name(agent),
+              count: plan.autoApplied.changed,
+            }),
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          createdAt: new Date(),
+          msgId,
+          actions: [
+            plan.kind === "tasks"
+              ? { type: "task_undo" as const, draftId: plan.draftId }
+              : { type: "notes_undo" as const, draftId: plan.draftId },
+          ],
+        };
+      }
+
       if (plan.kind === "tasks") {
         const p = plan.plan as TaskPlannerDraftResponse["plan"];
         const questions = p?.questionsForUser ?? [];
@@ -1420,7 +1445,7 @@ export function ProjectIntelligenceChat(props: {
         eventPreviews: eventPreviews.length > 0 ? eventPreviews : undefined,
       };
     },
-    [generateMsgId, t],
+    [agentLabels, generateMsgId, t],
   );
 
   const { send: sendTurn, cancel: cancelTurn } = useAgentStream({
@@ -1487,6 +1512,12 @@ export function ProjectIntelligenceChat(props: {
         }),
       );
       if (payload.plan?.kind === "tasks") void utils.task.invalidate();
+      // An auto-applied plan already changed the workspace; refresh what shows it.
+      if (payload.plans?.some((p) => p.autoApplied)) {
+        void utils.task.invalidate();
+        void utils.project.invalidate();
+        void utils.note.invalidate();
+      }
     },
     onError: (message, isRateLimit) => {
       setProgressLabel(null);
@@ -2519,18 +2550,22 @@ export function ProjectIntelligenceChat(props: {
                                     })) as ConfirmResponse;
                                     
                                     // Step 2: Apply immediately
-                                    const applyRes = (await notesApplyMutation.mutateAsync({
+                                    await notesApplyMutation.mutateAsync({
                                       draftId: a.draftId,
                                       confirmationToken: confirmRes.confirmationToken,
-                                    })) as ApplyResponse;
+                                    });
                                     
-                                    const results = applyRes.results;
+                                    // The results used to be counted by their keys,
+                                    // which reported the number of result *fields*, not
+                                    // of changes. The receipt says what happened and
+                                    // carries the undo the server has always supported.
                                     setMessages((prev) => [
                                       ...prev,
                                       {
                                         role: "agent",
-                                        text: `✅ Done! ${results ? `(${typeof results === "object" ? Object.keys(results as Record<string, unknown>).length : 1} operations applied)` : "Changes applied successfully."}`,
+                                        text: t("notesDone"),
                                         createdAt: new Date(),
+                                        actions: [{ type: "notes_undo" as const, draftId: a.draftId }],
                                       },
                                     ]);
                                     // Clear edits for this message
@@ -3254,6 +3289,18 @@ export function ProjectIntelligenceChat(props: {
                                   void utils.task.invalidate();
                                   void utils.project.invalidate();
                                 }}
+                              />
+                            );
+                          }
+
+                          /* ---- Notes Undo ---- */
+                          if (a.type === "notes_undo") {
+                            return (
+                              <UndoApplyButton
+                                key={`${a.type}-${a.draftId}-${aIdx}`}
+                                draftId={a.draftId}
+                                kind="notes"
+                                onUndone={() => void utils.note.invalidate()}
                               />
                             );
                           }

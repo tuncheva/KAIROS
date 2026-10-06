@@ -25,6 +25,7 @@ import type { TRPCContext } from "~/server/api/trpc";
 import { externalEvents, projects, tasks } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
 import { DEFAULT_AGENT_NAMES } from "~/lib/agentNames";
+import { agentSetting } from "~/lib/agentSettings";
 import { chatCompletion } from "~/server/llm/core/modelClient";
 import { toPlainText } from "~/server/llm/core/plainText";
 import {
@@ -39,14 +40,15 @@ import {
 const log = createLogger("llm.meetingPrep");
 
 /**
- * How far ahead a run looks.
+ * How far ahead a run looks when the user has not chosen: the default of their
+ * "Lead time" setting.
  *
- * Ninety minutes rather than thirty. A sweep runs hourly, so a thirty-minute
- * horizon would miss any meeting whose lead time fell between two ticks — the
- * brief would arrive after the meeting started, or not at all. Ninety covers the
- * gap with margin, and the message says when each meeting actually is.
+ * The horizon is the lead time. The scheduler ticks every five minutes, so a
+ * brief lands between the chosen lead and five minutes inside it, and the
+ * message says when each meeting actually is. The shortest choice, fifteen,
+ * still gives a meeting three ticks to be caught in.
  */
-export const PREP_HORIZON_MINUTES = 90;
+export const PREP_HORIZON_MINUTES = agentSetting(undefined, "meeting_prep.leadMinutes");
 
 /** Meetings named in one message. Beyond this it is an agenda, not a brief. */
 const MAX_MEETINGS = 4;
@@ -96,16 +98,18 @@ export function keywordsFrom(title: string): string[] {
 /**
  * Meetings starting inside the horizon, with whatever context relates to them.
  *
- * `alreadyPrepped` excludes meetings a previous run covered, which is what stops
- * an hourly sweep sending the same brief twice for a meeting two hours out.
+ * A meeting a previous run covered (`preppedAt` set) is never picked again —
+ * without that, every five-minute tick inside the horizon would send the same
+ * brief once more. `alreadyPrepped` additionally excludes ids the caller knows
+ * about but has not written yet.
  */
 export async function collectPrepFacts(
   ctx: TRPCContext,
   userId: string,
-  input: { now?: Date; alreadyPrepped?: number[] } = {},
+  input: { now?: Date; alreadyPrepped?: number[]; leadMinutes?: number } = {},
 ): Promise<PrepFacts> {
   const now = input.now ?? new Date();
-  const horizon = new Date(now.getTime() + PREP_HORIZON_MINUTES * 60_000);
+  const horizon = new Date(now.getTime() + (input.leadMinutes ?? PREP_HORIZON_MINUTES) * 60_000);
   const skip = input.alreadyPrepped ?? [];
 
   const upcoming = await ctx.db
@@ -122,6 +126,8 @@ export async function collectPrepFacts(
         eq(externalEvents.userId, userId),
         gte(externalEvents.startsAt, now),
         lte(externalEvents.startsAt, horizon),
+        // Covered by an earlier run.
+        isNull(externalEvents.preppedAt),
         // A cancelled meeting needs no preparation.
         ne(externalEvents.status, "cancelled"),
         // All-day entries are not meetings — they are holidays, travel, birthdays.

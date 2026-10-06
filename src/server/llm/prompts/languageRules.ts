@@ -33,6 +33,24 @@
  */
 
 import { LOCALE_NAMES, type SupportedLocale } from "~/server/llm/locale";
+import { agentSetting, type ResolvedAgentSettings } from "~/lib/agentSettings";
+
+/**
+ * The language the user pinned replies to in Settings → AI, or undefined when
+ * they left it on "match my message" — the default, and the behaviour the rest
+ * of this module describes.
+ *
+ * It is set on the concierge but applies to every conversational agent: the
+ * reply language is deliberately decided in one place so a handoff cannot change
+ * it, and a pinned language that only the first reply honoured would be exactly
+ * that kind of change.
+ */
+export function fixedReplyLanguage(
+  settings: Partial<ResolvedAgentSettings> | undefined,
+): SupportedLocale | undefined {
+  const value = agentSetting(settings, "workspace_concierge.replyLanguage");
+  return value === "auto" ? undefined : value;
+}
 
 /**
  * Bulgarian terms worth naming for a given agent's domain.
@@ -97,6 +115,11 @@ export interface LanguageRuleOptions {
    * awkward sentence.
    */
   writesStoredContent?: boolean;
+  /**
+   * A language the user pinned in their settings (see `fixedReplyLanguage`).
+   * Replaces mirroring outright: their choice beats the language of the message.
+   */
+  fixedLanguage?: SupportedLocale;
 }
 
 /**
@@ -111,10 +134,18 @@ export function languageRule(options: LanguageRuleOptions): string {
     locale,
     fields,
     bulgarianTerms = [],
-    bulgarianGuidance = true,
     localeFallback = true,
     writesStoredContent = false,
+    fixedLanguage,
   } = options;
+  // With a pinned language the guidance follows it rather than the message:
+  // needed when Bulgarian is pinned, and Cyrillic contamination when it is not.
+  const bulgarianGuidance =
+    fixedLanguage !== undefined ? fixedLanguage === "bg" : (options.bulgarianGuidance ?? true);
+
+  if (fixedLanguage) {
+    return pinnedLanguageRule({ fixedLanguage, fields, bulgarianTerms, bulgarianGuidance, writesStoredContent });
+  }
 
   // `LOCALE_NAMES.bg` is "Bulgarian (български)", and that parenthetical is Cyrillic — the
   // same contamination `bulgarianGuidance` exists to avoid, hiding in the one
@@ -160,6 +191,46 @@ export function languageRule(options: LanguageRuleOptions): string {
     "Write complete, correctly punctuated sentences in whichever language you are in — not keywords or fragments.",
   );
 
+  return lines.join("\n");
+}
+
+/** The `## Language` section when the user pinned a language. */
+function pinnedLanguageRule(options: {
+  fixedLanguage: SupportedLocale;
+  fields: readonly string[];
+  bulgarianTerms: BulgarianTerms;
+  bulgarianGuidance: boolean;
+  writesStoredContent: boolean;
+}): string {
+  const { fixedLanguage, fields, bulgarianTerms, bulgarianGuidance, writesStoredContent } = options;
+  const name = bulgarianGuidance
+    ? LOCALE_NAMES[fixedLanguage]
+    : (LOCALE_NAMES[fixedLanguage].split(" (")[0] ?? LOCALE_NAMES[fixedLanguage]);
+
+  const lines = [
+    "## Language",
+    `Always reply in ${name}. The user chose it in their settings, so it holds whatever language their message is written in — do not mirror the message.`,
+    "Understand a message in any language; only your reply is fixed. Never refuse or ask the user to resend a request because of the language it arrived in.",
+    `Every string you output is in ${name}, including ${fields.join(", ")}. Do not mix two languages in one response.`,
+  ];
+
+  if (writesStoredContent) {
+    lines.push(
+      `Content you are drafting for storage is in ${name} too, unless the user asks for a specific language in this request.`,
+    );
+  }
+
+  if (bulgarianGuidance) {
+    lines.push(
+      bulgarianTerms.length
+        ? `Bulgarian is not Russian. Use Bulgarian vocabulary (${bulgarianTerms.join(", ")}), correct definite articles (членуване: -ът/-а, -та, -то, -те) and correct verb conjugation — never Russian words or Russian endings.`
+        : "Bulgarian is not Russian. Use Bulgarian vocabulary, correct definite articles (членуване: -ът/-а, -та, -то, -те) and correct verb conjugation — never Russian words or Russian endings.",
+    );
+  }
+
+  lines.push(
+    "Write complete, correctly punctuated sentences — not keywords or fragments.",
+  );
   return lines.join("\n");
 }
 

@@ -94,7 +94,9 @@ describe("EventCreateSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("defaults enableRsvp to false when omitted", () => {
+  // Left unset by the schema since the workspace default (`applyEventDefaults`)
+  // fills it at draft time; a schema default would hide the omission.
+  it("leaves enableRsvp unset when omitted", () => {
     const result = EventCreateSchema.safeParse({
       title: validCreate.title,
       description: validCreate.description,
@@ -105,7 +107,7 @@ describe("EventCreateSchema", () => {
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.enableRsvp).toBe(false);
+      expect(result.data.enableRsvp).toBeUndefined();
     }
   });
 });

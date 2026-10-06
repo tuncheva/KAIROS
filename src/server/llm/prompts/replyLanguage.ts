@@ -344,6 +344,22 @@ export function replyLanguageDirective(language: ReplyLanguage): {
   return { role: "system", content: lines.join("\n") };
 }
 
+/** The directive when the user pinned a reply language in their settings. */
+export function pinnedLanguageDirective(language: SupportedLocale): {
+  role: "system";
+  content: string;
+} {
+  const name = LOCALE_NAMES[language].split(" (")[0] ?? LOCALE_NAMES[language];
+  return {
+    role: "system",
+    content: [
+      "## Reply language",
+      `Write this response in ${name}. The user chose ${name} in their settings, so it applies whatever language the message below is in.`,
+      `Every string you output is in ${name} — prose, list items, questions, and any title, description or note body you draft.`,
+    ].join("\n"),
+  };
+}
+
 /**
  * The trailing system messages every agent appends before the user's message.
  *
@@ -365,8 +381,16 @@ export function replyLanguageMessages(options: {
   locale?: SupportedLocale;
   message: string;
   originalMessage?: string;
+  /**
+   * A language the user pinned in their settings (`fixedReplyLanguage`). When
+   * set there is nothing to detect and nothing to anchor: the directive names
+   * that language and the user's own words stop deciding it.
+   */
+  fixed?: SupportedLocale;
 }): Array<{ role: "system"; content: string }> {
-  const { locale = DEFAULT_AGENT_LOCALE, message, originalMessage } = options;
+  const { locale = DEFAULT_AGENT_LOCALE, message, originalMessage, fixed } = options;
+
+  if (fixed) return [pinnedLanguageDirective(fixed)];
 
   const anchor = languageAnchorMessages(originalMessage, message);
   // On the handoff path the paraphrase is A1's English-leaning restatement of

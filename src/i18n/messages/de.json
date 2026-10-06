@@ -556,21 +556,19 @@
         "toneTitle": "Ton",
         "toneDesc": "Wie er antwortet: direkt, freundlich oder ausführlich.",
         "languageTitle": "Antwortsprache",
-        "languageDesc": "Wie die Oberfläche oder immer in einer Sprache.",
+        "languageDesc": "In der Sprache Ihrer Nachricht oder immer in einer Sprache. Gilt für alle Agenten im Chat.",
         "approvalTitle": "Freigabe",
-        "approvalDesc": "Immer vor dem Schreiben fragen oder kleine Änderungen selbst anwenden.",
+        "approvalDesc": "Vor jeder Änderung fragen oder kleine Änderungen selbst speichern lassen, mit Rückgängig — bis zu 3 Änderungen, nichts gelöscht, nichts jemand anderem zugewiesen.",
         "scopeTitle": "Bereich",
-        "scopeDesc": "Welche Projekte er bearbeiten darf.",
+        "scopeDesc": "Welche Projekte dieses Arbeitsbereichs er ändern darf. Alles andere bleibt ihm verborgen und wird abgelehnt.",
         "taskDefaultsTitle": "Aufgaben-Standards",
         "taskDefaultsDesc": "Standard-Zuständige, Priorität und wie weit Fälligkeiten in der Zukunft liegen.",
         "noteTemplateTitle": "Notizvorlage",
         "noteTemplateDesc": "Die Struktur, mit der neue Notizen beginnen.",
         "eventDefaultsTitle": "Event-Standards",
-        "eventDefaultsDesc": "Standarddauer, Sichtbarkeit und Erinnerung.",
-        "secondApproverTitle": "Zweite Freigabe",
-        "secondApproverDesc": "Ein weiterer Admin bestätigt Rollenänderungen, bevor sie gelten.",
+        "eventDefaultsDesc": "Standarddauer, Zusagen und Erinnerungen für neue Events.",
         "namingPatternTitle": "Namensmuster",
-        "namingPatternDesc": "Eine Vorlage für neue Projektnamen.",
+        "namingPatternDesc": "Eine Vorlage für neue Projektnamen. Platzhalter: {list}.",
         "briefSectionsTitle": "Inhalt",
         "briefSectionsDesc": "Wählen Sie die Abschnitte des Briefings.",
         "stalledAfterTitle": "Stillstand nach",
@@ -588,7 +586,116 @@
           "risk_radar": "Achtet auf überfällige Arbeit und stockende Projekte. Er zählt statt zu raten und arbeitet daher auch bei aufgebrauchtem KI-Budget.",
           "weekly_retro": "Einmal pro Woche ein Rückblick: was abgeschlossen, hinzugekommen, übertragen und ins Stocken geraten ist.",
           "meeting_prep": "Ein kurzes Briefing vor jedem Meeting aus Ihrem verbundenen Kalender, mit den zugehörigen offenen Aufgaben."
-        }
+        },
+        "settingAdminOnly": "Nur Administratoren des Arbeitsbereichs können das ändern.",
+        "values": {
+          "workspace_concierge": {
+            "tone": {
+              "balanced": "Ausgewogen",
+              "direct": "Direkt",
+              "friendly": "Freundlich",
+              "detailed": "Ausführlich"
+            },
+            "replyLanguage": {
+              "auto": "Wie meine Nachricht",
+              "en": "English",
+              "bg": "Български",
+              "de": "Deutsch",
+              "es": "Español",
+              "fr": "Français"
+            }
+          },
+          "daily_brief": {
+            "sections": {
+              "dueToday": "Heute fällig",
+              "events": "Events",
+              "risks": "Risiken"
+            }
+          },
+          "risk_radar": {
+            "stalledAfterDays": {
+              "7": "7 Tage",
+              "14": "14 Tage",
+              "30": "30 Tage"
+            }
+          },
+          "meeting_prep": {
+            "leadMinutes": {
+              "15": "15 Minuten",
+              "30": "30 Minuten",
+              "60": "1 Stunde",
+              "90": "1½ Stunden"
+            }
+          },
+          "task_planner": {
+            "priority": {
+              "low": "Niedrig",
+              "medium": "Mittel",
+              "high": "Hoch",
+              "urgent": "Dringend"
+            },
+            "dueInDays": {
+              "none": "Kein Fälligkeitsdatum",
+              "1": "In 1 Tag",
+              "3": "In 3 Tagen",
+              "7": "In einer Woche",
+              "14": "In 2 Wochen",
+              "30": "In 30 Tagen"
+            },
+            "assignee": {
+              "none": "Niemand",
+              "requester": "Die anfragende Person"
+            },
+            "approval": {
+              "ask": "Immer fragen",
+              "autoSmall": "Kleine Änderungen speichern"
+            }
+          },
+          "notes_vault": {
+            "template": {
+              "blank": "Leer",
+              "meeting": "Besprechungsnotizen",
+              "decision": "Entscheidungsprotokoll"
+            },
+            "approval": {
+              "ask": "Immer fragen",
+              "autoSmall": "Kleine Änderungen speichern"
+            }
+          },
+          "events_publisher": {
+            "lengthMinutes": {
+              "none": "Keine feste Dauer",
+              "30": "30 Minuten",
+              "60": "1 Stunde",
+              "90": "1½ Stunden",
+              "120": "2 Stunden",
+              "240": "4 Stunden"
+            }
+          }
+        },
+        "settingLabels": {
+          "task_planner": {
+            "priority": "Priorität",
+            "dueInDays": "Fällig",
+            "assignee": "Zuständig",
+            "approval": "Sie",
+            "allowAutoApply": "Im Arbeitsbereich erlaubt"
+          },
+          "events_publisher": {
+            "lengthMinutes": "Dauer",
+            "enableRsvp": "Zusagen",
+            "sendReminders": "Erinnerungen"
+          },
+          "notes_vault": {
+            "approval": "Sie",
+            "allowAutoApply": "Im Arbeitsbereich erlaubt"
+          }
+        },
+        "settingInvalid": "Dieses Muster kann nicht gespeichert werden. Verwenden Sie Buchstaben, Ziffern, einfache Satzzeichen und die genannten Platzhalter.",
+        "scopeAll": "Alle Projekte",
+        "scopeOnly": "Ausgewählte Projekte",
+        "scopeEmpty": "In diesem Arbeitsbereich gibt es noch keine aktiven Projekte.",
+        "autoApplyNeedsUndo": "Benötigt Rückgängig, das in Pro enthalten ist."
       }
     },
     "developer": {
@@ -1341,7 +1448,8 @@
       "yourself": "dir selbst",
       "oneSidedNoteNamed": "Beides betrifft nur deine Seite. {name} behält den vollständigen Verlauf.",
       "deleteForEveryone": "Für alle löschen"
-    }
+    },
+    "autoApplied": "{name} hat {count, plural, one {# Änderung} other {# Änderungen}} ohne Rückfrage gespeichert, wie unter Einstellungen → KI gewählt. In den nächsten 10 Minuten können Sie sie rückgängig machen."
   },
   "staticPages": {
     "backHome": "Zurück zur Startseite",

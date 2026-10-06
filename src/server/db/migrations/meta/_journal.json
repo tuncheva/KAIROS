@@ -316,6 +316,13 @@
       "when": 1791229148857,
       "tag": "0052_agent_names",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1791230923351,
+      "tag": "0053_agent_settings",
+      "breakpoints": true
     }
   ]
 }

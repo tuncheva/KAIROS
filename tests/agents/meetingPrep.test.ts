@@ -13,6 +13,8 @@
 
 import { describe, expect, it } from "vitest";
 
+import { AGENT_SETTINGS } from "~/lib/agentSettings";
+
 import {
   PREP_HORIZON_MINUTES,
   fallbackPrep,
@@ -146,11 +148,20 @@ describe("fallbackPrep", () => {
   });
 });
 
-describe("PREP_HORIZON_MINUTES", () => {
-  it("is wider than the hourly sweep interval", () => {
-    // The reason it is 90 and not 30: a sweep runs hourly, so a thirty-minute
-    // horizon would miss any meeting whose lead time fell between two ticks —
-    // the brief would arrive after the meeting started, or never.
-    expect(PREP_HORIZON_MINUTES).toBeGreaterThan(60);
+describe("lead time", () => {
+  it("defaults to the catalog's lead time", () => {
+    expect(PREP_HORIZON_MINUTES).toBe(AGENT_SETTINGS["meeting_prep.leadMinutes"].default);
+  });
+
+  it("never offers a lead shorter than three scheduler ticks", () => {
+    // The scheduler (ws-server/scheduler.ts) ticks every 5 minutes. A lead
+    // shorter than a few ticks could fall between two of them, and the brief
+    // would arrive after the meeting started, or never.
+    const TICK_MINUTES = 5;
+    const control = AGENT_SETTINGS["meeting_prep.leadMinutes"].control;
+    if (control.kind !== "choice") throw new Error("lead time is a choice");
+    for (const option of control.options) {
+      expect(Number(option)).toBeGreaterThanOrEqual(3 * TICK_MINUTES);
+    }
   });
 });

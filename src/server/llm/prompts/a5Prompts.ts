@@ -16,6 +16,7 @@ import type { A5ContextPack } from "~/server/llm/context/a5ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
 import { answerableRule } from "~/server/llm/prompts/answerableRule";
 import {
+  fixedReplyLanguage,
   languageRule,
   wantsBulgarianGuidance,
   wantsLocaleFallback,
@@ -68,6 +69,7 @@ Every operation carries a \`rationale\`: one sentence, in the user's terms, that
 
 ${languageRule({
   locale: context.locale,
+  fixedLanguage: fixedReplyLanguage(context.agentSettings),
   bulgarianGuidance: wantsBulgarianGuidance(...userText),
   localeFallback: wantsLocaleFallback(...userText),
   fields: ["summary", "rationale", "warnings", "questions"],

@@ -24,6 +24,7 @@ import { chatCompletion } from "~/server/llm/core/modelClient";
 import { toPlainText } from "~/server/llm/core/plainText";
 
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
+import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
 
 import {
   stickyNotes,
@@ -67,6 +68,7 @@ export const a3NotesVault = {
         { role: "system", content: systemPrompt },
         ...replyLanguageMessages({
           locale: contextPack.locale,
+          fixed: fixedReplyLanguage(contextPack.agentSettings),
           message: input.message,
           originalMessage: input.originalMessage,
         }),

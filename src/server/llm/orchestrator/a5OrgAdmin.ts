@@ -35,6 +35,7 @@ import { buildA5Context } from "~/server/llm/context/a5ContextBuilder";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 import { getA5SystemPrompt } from "~/server/llm/prompts/a5Prompts";
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
+import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
 import { localized, type LocalizedText } from "~/server/llm/locale";
 import {
   OrgAdminDraftSchema,
@@ -208,6 +209,7 @@ export const a5OrgAdmin = {
         { role: "system", content: systemPrompt },
         ...replyLanguageMessages({
           locale: contextPack.locale,
+          fixed: fixedReplyLanguage(contextPack.agentSettings),
           message: input.message,
           originalMessage: input.originalMessage,
         }),

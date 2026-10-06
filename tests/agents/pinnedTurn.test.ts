@@ -39,6 +39,13 @@ vi.mock("~/server/llm/orchestrator/a5OrgAdmin", () => ({
 vi.mock("~/server/llm/orchestrator/a6ProjectManager", () => ({
   a6ProjectManager: { projectManagerDraft },
 }));
+// Auto-apply reads settings and entitlements from the database; this file is
+// about routing, so every plan is left for confirmation as a user who never
+// opted in would see it. `tests/integration/autoApply.test.ts` covers the rest.
+vi.mock("~/server/llm/orchestrator/autoApply", () => ({
+  autoApplyTaskPlan: vi.fn(async () => null),
+  autoApplyNotesPlan: vi.fn(async () => null),
+}));
 
 const { runAgentTurn } = await import("~/server/llm/orchestrator/handoff");
 const { HANDOFF_TARGETS } = await import("~/server/llm/agents/registry");

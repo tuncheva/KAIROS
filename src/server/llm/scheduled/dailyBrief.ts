@@ -26,6 +26,7 @@ import type { TRPCContext } from "~/server/api/trpc";
 import { events, projects, tasks } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
 import { DEFAULT_AGENT_NAMES } from "~/lib/agentNames";
+import type { AgentSettingValue } from "~/lib/agentSettings";
 import { chatCompletion } from "~/server/llm/core/modelClient";
 import { LOCALE_NAMES, type SupportedLocale } from "~/server/llm/context/a1ContextBuilder";
 import {
@@ -137,6 +138,33 @@ export async function collectBriefFacts(
     completedYesterday: completedRow?.count ?? 0,
     eventsToday: eventRows,
     openFindings: findings.length,
+  };
+}
+
+/**
+ * Keep only the sections the user asked their brief to cover.
+ *
+ * Applied before the empty check, so a morning whose only news sits in a
+ * section they switched off stays quiet rather than sending an empty brief.
+ * Findings are still detected and recorded by the radar either way — "risks"
+ * off only keeps them out of this message.
+ */
+export function narrowBriefToSections(
+  facts: BriefFacts,
+  findings: Finding[],
+  sections: AgentSettingValue<"daily_brief.sections">,
+): { facts: BriefFacts; findings: Finding[] } {
+  const keep = new Set<string>(sections);
+  const risks = keep.has("risks");
+  return {
+    facts: {
+      ...facts,
+      dueToday: keep.has("dueToday") ? facts.dueToday : [],
+      overdue: keep.has("dueToday") ? facts.overdue : 0,
+      eventsToday: keep.has("events") ? facts.eventsToday : [],
+      openFindings: risks ? facts.openFindings : 0,
+    },
+    findings: risks ? findings : [],
   };
 }
 

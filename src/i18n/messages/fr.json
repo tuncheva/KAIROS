@@ -556,21 +556,19 @@
         "toneTitle": "Ton",
         "toneDesc": "Sa façon de répondre : direct, chaleureux ou détaillé.",
         "languageTitle": "Langue des réponses",
-        "languageDesc": "Suivre l’interface ou répondre toujours dans une langue.",
+        "languageDesc": "Dans la langue de votre message, ou toujours dans une seule langue. S’applique à tous les agents du chat.",
         "approvalTitle": "Validation",
-        "approvalDesc": "Toujours demander avant d’écrire, ou appliquer seul les petits changements.",
+        "approvalDesc": "Demander avant chaque changement, ou laisser les petits s’enregistrer seuls avec Annuler — 3 changements au plus, rien de supprimé, rien d’assigné à quelqu’un d’autre.",
         "scopeTitle": "Périmètre",
-        "scopeDesc": "Les projets qu’il peut modifier.",
+        "scopeDesc": "Les projets de cet espace de travail qu’il peut modifier. Le reste lui est caché et refusé.",
         "taskDefaultsTitle": "Valeurs des tâches",
         "taskDefaultsDesc": "Responsable, priorité et échéance par défaut.",
         "noteTemplateTitle": "Modèle de note",
         "noteTemplateDesc": "La structure de départ des nouvelles notes.",
         "eventDefaultsTitle": "Valeurs des événements",
-        "eventDefaultsDesc": "Durée, visibilité et rappel par défaut.",
-        "secondApproverTitle": "Double validation",
-        "secondApproverDesc": "Un autre administrateur confirme les changements de rôle avant application.",
+        "eventDefaultsDesc": "Durée, participation et rappels par défaut pour les nouveaux événements.",
         "namingPatternTitle": "Modèle de nom",
-        "namingPatternDesc": "Un modèle pour les noms des nouveaux projets.",
+        "namingPatternDesc": "Un modèle pour les noms des nouveaux projets. Marqueurs : {list}.",
         "briefSectionsTitle": "Contenu",
         "briefSectionsDesc": "Choisissez les rubriques du point quotidien.",
         "stalledAfterTitle": "Bloqué après",
@@ -588,7 +586,116 @@
           "risk_radar": "Surveille le travail en retard et les projets bloqués. Il compte au lieu de deviner, donc il fonctionne même quand le budget IA est épuisé.",
           "weekly_retro": "Un regard en arrière chaque semaine : ce qui est terminé, ajouté, reporté et bloqué.",
           "meeting_prep": "Un court brief avant chaque réunion de votre calendrier connecté, avec les tâches ouvertes liées."
-        }
+        },
+        "settingAdminOnly": "Seul un administrateur de l’espace de travail peut modifier ceci.",
+        "values": {
+          "workspace_concierge": {
+            "tone": {
+              "balanced": "Équilibré",
+              "direct": "Direct",
+              "friendly": "Chaleureux",
+              "detailed": "Détaillé"
+            },
+            "replyLanguage": {
+              "auto": "Comme mon message",
+              "en": "English",
+              "bg": "Български",
+              "de": "Deutsch",
+              "es": "Español",
+              "fr": "Français"
+            }
+          },
+          "daily_brief": {
+            "sections": {
+              "dueToday": "À faire aujourd’hui",
+              "events": "Événements",
+              "risks": "Risques"
+            }
+          },
+          "risk_radar": {
+            "stalledAfterDays": {
+              "7": "7 jours",
+              "14": "14 jours",
+              "30": "30 jours"
+            }
+          },
+          "meeting_prep": {
+            "leadMinutes": {
+              "15": "15 minutes",
+              "30": "30 minutes",
+              "60": "1 heure",
+              "90": "1 h 30"
+            }
+          },
+          "task_planner": {
+            "priority": {
+              "low": "Basse",
+              "medium": "Moyenne",
+              "high": "Haute",
+              "urgent": "Urgente"
+            },
+            "dueInDays": {
+              "none": "Sans échéance",
+              "1": "Dans 1 jour",
+              "3": "Dans 3 jours",
+              "7": "Dans une semaine",
+              "14": "Dans 2 semaines",
+              "30": "Dans 30 jours"
+            },
+            "assignee": {
+              "none": "Non assignée",
+              "requester": "La personne qui demande"
+            },
+            "approval": {
+              "ask": "Toujours demander",
+              "autoSmall": "Enregistrer les petits changements"
+            }
+          },
+          "notes_vault": {
+            "template": {
+              "blank": "Vide",
+              "meeting": "Notes de réunion",
+              "decision": "Compte rendu de décision"
+            },
+            "approval": {
+              "ask": "Toujours demander",
+              "autoSmall": "Enregistrer les petits changements"
+            }
+          },
+          "events_publisher": {
+            "lengthMinutes": {
+              "none": "Sans durée fixe",
+              "30": "30 minutes",
+              "60": "1 heure",
+              "90": "1 h 30",
+              "120": "2 heures",
+              "240": "4 heures"
+            }
+          }
+        },
+        "settingLabels": {
+          "task_planner": {
+            "priority": "Priorité",
+            "dueInDays": "Échéance",
+            "assignee": "Responsable",
+            "approval": "Vous",
+            "allowAutoApply": "Autorisé dans l’espace"
+          },
+          "events_publisher": {
+            "lengthMinutes": "Durée",
+            "enableRsvp": "Participation",
+            "sendReminders": "Rappels"
+          },
+          "notes_vault": {
+            "approval": "Vous",
+            "allowAutoApply": "Autorisé dans l’espace"
+          }
+        },
+        "settingInvalid": "Ce modèle ne peut pas être enregistré. Utilisez des lettres, des chiffres, une ponctuation simple et les marqueurs indiqués.",
+        "scopeAll": "Tous les projets",
+        "scopeOnly": "Projets choisis",
+        "scopeEmpty": "Aucun projet actif dans cet espace de travail pour l’instant.",
+        "autoApplyNeedsUndo": "Nécessite Annuler, inclus dans Pro."
       }
     },
     "developer": {
@@ -1341,7 +1448,8 @@
       "yourself": "vous-même",
       "oneSidedNoteNamed": "Les deux n’affectent que votre côté. {name} garde l’historique complet.",
       "deleteForEveryone": "Supprimer pour tous"
-    }
+    },
+    "autoApplied": "{name} a enregistré {count, plural, one {# changement} other {# changements}} sans demander, comme choisi dans Paramètres → IA. Vous pouvez l’annuler pendant les 10 prochaines minutes."
   },
   "staticPages": {
     "backHome": "Retour à l'accueil",

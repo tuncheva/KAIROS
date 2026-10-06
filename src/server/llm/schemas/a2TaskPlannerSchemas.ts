@@ -40,7 +40,9 @@ export const TaskCreateModelSchema = z
   .object({
     title: plainString(z.string().min(1).max(256)),
     description: z.string().max(5000).default(""),
-    priority: TaskPrioritySchema.default("medium"),
+    // Optional for the model: left out, the workspace default fills it at draft
+    // time (see `applyTaskDefaults`), which a schema default here would hide.
+    priority: TaskPrioritySchema.optional(),
     assignedToId: z.string().min(1).optional(),
     acceptanceCriteria: z
       .array(plainString(z.string().min(1).max(200)))
@@ -54,6 +56,8 @@ export const TaskCreateModelSchema = z
 
 /** A created task as persisted: the model's fields plus the server's idempotency key. */
 export const TaskCreateDraftSchema = TaskCreateModelSchema.extend({
+  /** Always set on a draft. The default only covers drafts stored before it was filled in. */
+  priority: TaskPrioritySchema.default("medium"),
   /** Required for idempotency; unique per project for a given plan. Server-assigned. */
   clientRequestId: z.string().min(8).max(128),
 }).strip();

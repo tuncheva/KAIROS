@@ -12,14 +12,31 @@
  */
 
 import { agentNameFor } from "~/lib/agentNames";
+import { agentSetting, type ResolvedAgentSettings } from "~/lib/agentSettings";
 import type { A6ContextPack } from "~/server/llm/context/a6ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
 import { answerableRule } from "~/server/llm/prompts/answerableRule";
 import {
+  fixedReplyLanguage,
   languageRule,
   wantsBulgarianGuidance,
   wantsLocaleFallback,
 } from "~/server/llm/prompts/languageRules";
+
+/**
+ * The workspace's naming pattern as a rule for new projects, or "" when there
+ * is none. The pattern was validated on save (`NAMING_PATTERN` in
+ * `~/lib/agentSettings`), so it carries no quotes or newlines to break out of
+ * the quoted string it is placed in.
+ */
+function namingPatternRule(settings: Partial<ResolvedAgentSettings> | undefined): string {
+  const pattern = agentSetting(settings, "project_manager.namingPattern");
+  if (!pattern) return "";
+  return `
+## Naming new projects
+This workspace names projects to a pattern: "${pattern}". Fill each placeholder from the request — {client} the client or customer, {topic} what the project is about, {year} the four-digit year, {quarter} Q1–Q4, {month} the month. Keep the literal parts exactly as written. If a part the pattern needs is not in the request and cannot be inferred, ask in questionsForUser rather than inventing it. If the user gives a name that does not fit, use their name — the draft will point out the difference.
+`;
+}
 
 /**
  * @param userText - The user's own words this turn (and on the handoff path the
@@ -41,6 +58,7 @@ You never apply anything. You produce a plan the user reads and confirms. Every 
 
 Everything else — managing tasks, notes, events or members — is out of scope. Say so plainly and suggest the right agent.
 
+${namingPatternRule(context.agentSettings)}
 ## Authorization rules
 The caller's permissions depend on whether a project belongs to an organization:
 
@@ -69,6 +87,7 @@ Every operation carries a \`rationale\`: one sentence in the user's terms, shown
 
 ${languageRule({
   locale: context.locale,
+  fixedLanguage: fixedReplyLanguage(context.agentSettings),
   bulgarianGuidance: wantsBulgarianGuidance(...userText),
   localeFallback: wantsLocaleFallback(...userText),
   fields: ["summary", "rationale", "warnings", "questions"],

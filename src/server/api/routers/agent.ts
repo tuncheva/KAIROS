@@ -30,8 +30,14 @@ import {
   upsertFact,
 } from "~/server/llm/memory";
 import { AGENTS, getAgent } from "~/server/llm/agents/registry";
-import { loadAgentNamesSource } from "~/server/llm/agents/names";
+import { loadAgentConfigSource } from "~/server/llm/agents/config";
 import { AGENT_IDS, AGENT_NAME_MAX, agentNameProblem, normalizeAgentName } from "~/lib/agentNames";
+import {
+  AGENT_SETTINGS,
+  AGENT_SETTING_IDS,
+  parseAgentSettingValue,
+  type AgentSettingId,
+} from "~/lib/agentSettings";
 import { toolDefinitionsFor } from "~/server/llm/tools/a1/toolDefinitions";
 import { getAiMetrics } from "~/server/llm/observability";
 import {
@@ -132,10 +138,11 @@ const SCHEDULE_DEFAULTS: Record<
 };
 
 /**
- * Whether `userId` may rename the agents their names come from: anyone for
- * their own (no workspace), only an admin for a workspace's.
+ * Whether `userId` may rename or tune the agents for the workspace their names
+ * and workspace settings come from: anyone for their own (no workspace), only
+ * an admin for a workspace's. Personal settings need no such check.
  */
-async function canRenameAgents(
+async function canManageWorkspaceAgents(
   ctx: TRPCContext,
   userId: string,
   organizationId: number | null,
@@ -504,11 +511,11 @@ export const agentRouter = createTRPCRouter({
    */
   names: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
-    const source = await loadAgentNamesSource(ctx, userId);
+    const source = await loadAgentConfigSource(ctx, userId);
     return {
-      overrides: source.overrides,
+      overrides: source.names,
       scope: source.organizationId === null ? ("personal" as const) : ("workspace" as const),
-      canEdit: await canRenameAgents(ctx, userId, source.organizationId),
+      canEdit: await canManageWorkspaceAgents(ctx, userId, source.organizationId),
     };
   }),
 
@@ -529,9 +536,9 @@ export const agentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const source = await loadAgentNamesSource(ctx, userId);
+      const source = await loadAgentConfigSource(ctx, userId);
 
-      if (!(await canRenameAgents(ctx, userId, source.organizationId))) {
+      if (!(await canManageWorkspaceAgents(ctx, userId, source.organizationId))) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only a workspace admin can rename agents.",
@@ -540,7 +547,7 @@ export const agentRouter = createTRPCRouter({
 
       const name = input.name === null ? null : normalizeAgentName(input.name);
       if (name !== null) {
-        const problem = agentNameProblem(input.agentId, name, source.overrides);
+        const problem = agentNameProblem(input.agentId, name, source.names);
         if (problem) {
           throw new TRPCError({ code: "BAD_REQUEST", message: `agentName.${problem}` });
         }
@@ -561,6 +568,85 @@ export const agentRouter = createTRPCRouter({
       }
 
       return { agentId: input.agentId, name };
+    }),
+
+  /**
+   * The agent settings in force for the caller, and whether they may change
+   * the workspace-scoped ones. Personal settings are always theirs to change.
+   */
+  settings: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const source = await loadAgentConfigSource(ctx, userId);
+    return {
+      values: source.settings,
+      scope: source.organizationId === null ? ("personal" as const) : ("workspace" as const),
+      canEditWorkspace: await canManageWorkspaceAgents(ctx, userId, source.organizationId),
+      // Auto-apply only happens where undo exists (see `autoApply.ts`), so the
+      // panel can say why the choice is locked instead of offering a dead switch.
+      canAutoApply: (await entitlementsFor(ctx)).undoApply,
+    };
+  }),
+
+  /**
+   * Change one agent setting, or put its default back with `value: null`.
+   *
+   * The value is validated against the catalog entry, so nothing reaches the
+   * column — or, through it, a prompt — that the entry does not allow. A
+   * setting that is declared but not yet `live` is refused: saving it would
+   * store a choice no agent honours. Written as a single-key jsonb update, like
+   * names, so two concurrent changes to different settings both survive.
+   */
+  setSetting: protectedProcedure
+    .input(
+      z.object({
+        id: z.enum(AGENT_SETTING_IDS as [AgentSettingId, ...AgentSettingId[]]),
+        value: z.unknown(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const def = AGENT_SETTINGS[input.id];
+
+      if (!def.live) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "agentSetting.notAvailable" });
+      }
+
+      let stored: unknown = null;
+      if (input.value !== null) {
+        const parsed = parseAgentSettingValue(input.id, input.value);
+        if (!parsed.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "agentSetting.invalid" });
+        }
+        stored = parsed.value;
+      }
+
+      const next =
+        input.value === null
+          ? sql`${sql.identifier("agent_settings")} - ${input.id}::text`
+          : sql`${sql.identifier("agent_settings")} || jsonb_build_object(${input.id}::text, ${JSON.stringify(stored)}::jsonb)`;
+
+      // Workspace settings land on the organization; everything else, and
+      // workspace settings for someone without one, on the user.
+      const organizationId =
+        def.scope === "workspace" ? (await loadAgentConfigSource(ctx, userId)).organizationId : null;
+
+      if (def.scope === "workspace" && !(await canManageWorkspaceAgents(ctx, userId, organizationId))) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only a workspace admin can change this agent setting.",
+        });
+      }
+
+      if (organizationId !== null) {
+        await ctx.db
+          .update(organizations)
+          .set({ agentSettings: next, updatedAt: new Date() })
+          .where(eq(organizations.id, organizationId));
+      } else {
+        await ctx.db.update(users).set({ agentSettings: next }).where(eq(users.id, userId));
+      }
+
+      return { id: input.id, value: stored };
     }),
 
   // -------------------------------------------------------------------------

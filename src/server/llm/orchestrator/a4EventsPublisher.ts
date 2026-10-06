@@ -19,6 +19,8 @@ import { getA4SystemPrompt } from "~/server/llm/prompts/a4Prompts";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
+import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
+import { applyEventDefaults } from "~/server/llm/agents/defaults";
 
 import {
   events as eventsTable,
@@ -108,6 +110,7 @@ export const a4EventsPublisher = {
         { role: "system", content: systemPrompt },
         ...replyLanguageMessages({
           locale: contextPack.locale,
+          fixed: fixedReplyLanguage(contextPack.agentSettings),
           message: input.message,
           originalMessage: input.originalMessage,
         }),
@@ -132,6 +135,11 @@ export const a4EventsPublisher = {
     );
     const guardedPlan: EventsPublisherDraft = {
       ...parseResult.data,
+      // The workspace's event defaults for whatever the model left open, filled
+      // here so the draft the user reviews shows them.
+      creates: parseResult.data.creates.map((c) =>
+        applyEventDefaults(c, contextPack.agentSettings),
+      ),
       deletes: parseResult.data.deletes.filter((d) =>
         ownedEventIds.has(d.eventId),
       ),
@@ -345,9 +353,10 @@ export const a4EventsPublisher = {
           title: create.title,
           description: create.description,
           eventDate: new Date(create.eventDate),
+          endsAt: create.endsAt ? new Date(create.endsAt) : null,
           region: create.region,
-          enableRsvp: create.enableRsvp,
-          sendReminders: create.sendReminders,
+          enableRsvp: create.enableRsvp ?? false,
+          sendReminders: create.sendReminders ?? false,
           imageUrl: create.imageUrl ?? null,
           createdById: userId,
         })

@@ -23,9 +23,13 @@ export const EventCreateSchema = z
     title: plainString(z.string().min(1).max(256)),
     description: z.string().min(1).max(5000),
     eventDate: z.string().describe("ISO-8601 UTC datetime"),
+    /** When it ends. Filled from the workspace's default length when left out. */
+    endsAt: z.string().optional(),
     region: RegionEnum,
-    enableRsvp: z.boolean().default(false),
-    sendReminders: z.boolean().default(false),
+    // Optional so a left-out value can take the workspace default at draft time
+    // (`applyEventDefaults`); a schema default here would hide the omission.
+    enableRsvp: z.boolean().optional(),
+    sendReminders: z.boolean().optional(),
     imageUrl: z.preprocess(
       (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
       z.string().url().optional(),

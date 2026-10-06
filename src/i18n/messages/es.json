@@ -556,21 +556,19 @@
         "toneTitle": "Tono",
         "toneDesc": "Cómo suena al responder: directo, cercano o detallado.",
         "languageTitle": "Idioma de respuesta",
-        "languageDesc": "Seguir la interfaz o responder siempre en un idioma.",
+        "languageDesc": "En el idioma en que escribes o siempre en uno. Se aplica a todos los agentes del chat.",
         "approvalTitle": "Aprobación",
-        "approvalDesc": "Preguntar siempre antes de escribir, o aplicar solo los cambios pequeños.",
+        "approvalDesc": "Preguntar antes de cada cambio o dejar que los pequeños se guarden solos, con Deshacer: hasta 3 cambios, nada eliminado, nada asignado a otra persona.",
         "scopeTitle": "Alcance",
-        "scopeDesc": "Qué proyectos puede tocar.",
+        "scopeDesc": "Qué proyectos de este espacio de trabajo puede cambiar. Lo demás queda oculto para él y se rechaza.",
         "taskDefaultsTitle": "Valores de tareas",
         "taskDefaultsDesc": "Responsable, prioridad y a qué distancia caen las fechas por defecto.",
         "noteTemplateTitle": "Plantilla de notas",
         "noteTemplateDesc": "La estructura con la que empiezan las notas nuevas.",
         "eventDefaultsTitle": "Valores de eventos",
-        "eventDefaultsDesc": "Duración, visibilidad y recordatorio por defecto.",
-        "secondApproverTitle": "Segunda aprobación",
-        "secondApproverDesc": "Otro administrador confirma los cambios de rol antes de aplicarlos.",
+        "eventDefaultsDesc": "Duración, asistencia y recordatorios por defecto para eventos nuevos.",
         "namingPatternTitle": "Patrón de nombres",
-        "namingPatternDesc": "Una plantilla para los nombres de proyectos nuevos.",
+        "namingPatternDesc": "Una plantilla para los nombres de proyectos nuevos. Marcadores: {list}.",
         "briefSectionsTitle": "Qué incluir",
         "briefSectionsDesc": "Elige las secciones del resumen.",
         "stalledAfterTitle": "Estancado tras",
@@ -588,7 +586,116 @@
           "risk_radar": "Vigila el trabajo vencido y los proyectos estancados. Cuenta en lugar de adivinar, así que sigue funcionando aunque se agote el presupuesto de IA.",
           "weekly_retro": "Una mirada atrás cada semana: lo cerrado, lo añadido, lo arrastrado y lo estancado.",
           "meeting_prep": "Un resumen breve antes de cada reunión de tu calendario conectado, con las tareas abiertas relacionadas."
-        }
+        },
+        "settingAdminOnly": "Solo un administrador del espacio de trabajo puede cambiar esto.",
+        "values": {
+          "workspace_concierge": {
+            "tone": {
+              "balanced": "Equilibrado",
+              "direct": "Directo",
+              "friendly": "Cercano",
+              "detailed": "Detallado"
+            },
+            "replyLanguage": {
+              "auto": "Igual que mi mensaje",
+              "en": "English",
+              "bg": "Български",
+              "de": "Deutsch",
+              "es": "Español",
+              "fr": "Français"
+            }
+          },
+          "daily_brief": {
+            "sections": {
+              "dueToday": "Para hoy",
+              "events": "Eventos",
+              "risks": "Riesgos"
+            }
+          },
+          "risk_radar": {
+            "stalledAfterDays": {
+              "7": "7 días",
+              "14": "14 días",
+              "30": "30 días"
+            }
+          },
+          "meeting_prep": {
+            "leadMinutes": {
+              "15": "15 minutos",
+              "30": "30 minutos",
+              "60": "1 hora",
+              "90": "1 hora y media"
+            }
+          },
+          "task_planner": {
+            "priority": {
+              "low": "Baja",
+              "medium": "Media",
+              "high": "Alta",
+              "urgent": "Urgente"
+            },
+            "dueInDays": {
+              "none": "Sin fecha límite",
+              "1": "En 1 día",
+              "3": "En 3 días",
+              "7": "En una semana",
+              "14": "En 2 semanas",
+              "30": "En 30 días"
+            },
+            "assignee": {
+              "none": "Sin asignar",
+              "requester": "Quien lo pide"
+            },
+            "approval": {
+              "ask": "Preguntar siempre",
+              "autoSmall": "Guardar cambios pequeños"
+            }
+          },
+          "notes_vault": {
+            "template": {
+              "blank": "En blanco",
+              "meeting": "Notas de reunión",
+              "decision": "Registro de decisión"
+            },
+            "approval": {
+              "ask": "Preguntar siempre",
+              "autoSmall": "Guardar cambios pequeños"
+            }
+          },
+          "events_publisher": {
+            "lengthMinutes": {
+              "none": "Sin duración fija",
+              "30": "30 minutos",
+              "60": "1 hora",
+              "90": "1 hora y media",
+              "120": "2 horas",
+              "240": "4 horas"
+            }
+          }
+        },
+        "settingLabels": {
+          "task_planner": {
+            "priority": "Prioridad",
+            "dueInDays": "Vence",
+            "assignee": "Responsable",
+            "approval": "Tú",
+            "allowAutoApply": "Permitido en el espacio"
+          },
+          "events_publisher": {
+            "lengthMinutes": "Duración",
+            "enableRsvp": "Asistencia",
+            "sendReminders": "Recordatorios"
+          },
+          "notes_vault": {
+            "approval": "Tú",
+            "allowAutoApply": "Permitido en el espacio"
+          }
+        },
+        "settingInvalid": "No se puede guardar ese patrón. Usa letras, números, puntuación sencilla y los marcadores indicados.",
+        "scopeAll": "Todos los proyectos",
+        "scopeOnly": "Proyectos elegidos",
+        "scopeEmpty": "Aún no hay proyectos activos en este espacio de trabajo.",
+        "autoApplyNeedsUndo": "Requiere Deshacer, incluido en Pro."
       }
     },
     "developer": {
@@ -1341,7 +1448,8 @@
       "yourself": "ti mismo",
       "oneSidedNoteNamed": "Ambas acciones solo afectan a tu lado. {name} conserva el historial completo.",
       "deleteForEveryone": "Eliminar para todos"
-    }
+    },
+    "autoApplied": "{name} guardó {count, plural, one {# cambio} other {# cambios}} sin preguntar, como elegiste en Ajustes → IA. Puedes deshacerlo durante los próximos 10 minutos."
   },
   "staticPages": {
     "backHome": "Volver al inicio",

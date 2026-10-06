@@ -30,6 +30,8 @@ export interface AgentPlan {
   kind: "tasks" | "notes" | "events" | "org" | "project_manager";
   draftId: string;
   plan: Record<string, unknown>;
+  /** Set when a small task or notes plan was applied without waiting for Confirm. */
+  autoApplied?: { changed: number };
 }
 
 export interface AgentCitation {

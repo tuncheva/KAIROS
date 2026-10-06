@@ -67,6 +67,12 @@ export const users = createTable("user", (d) => ({
      * names are shared by everyone in it. Overrides only; see `~/lib/agentNames`.
      */
     agentNames: jsonb("agent_names").$type<AgentNameOverrides>().default({}).notNull(),
+    /**
+     * This user's agent settings, keyed by setting id: their personal ones,
+     * and — while they have no workspace — the workspace-scoped ones too.
+     * See `~/lib/agentSettings`.
+     */
+    agentSettings: jsonb("agent_settings").$type<Record<string, unknown>>().default({}).notNull(),
     password: varchar("password", { length: 255 }),
 
     resetPinHash: varchar("reset_pin_hash", { length: 255 }),

@@ -34,8 +34,13 @@ import { A1_READ_TOOLS } from "~/server/llm/tools/a1/readTools";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
+import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
+import { applyTaskDefaults } from "~/server/llm/agents/defaults";
 
-import { localized, type LocalizedText } from "~/server/llm/locale";
+import { localized, resolveUserLocale, type LocalizedText } from "~/server/llm/locale";
+import { loadAgentConfigSource } from "~/server/llm/agents/config";
+import { agentNameFor } from "~/lib/agentNames";
+import { inProjectScope } from "~/lib/agentSettings";
 
 import {
   tasks,
@@ -220,6 +225,15 @@ async function loadRefinablePlan(
  * Only used when the model asked nothing of its own; its own question is already
  * in the right language.
  */
+/** Shown instead of a plan when the project is outside the scope a workspace admin set. */
+const OUT_OF_SCOPE: LocalizedText = {
+  en: "In this workspace, {name} can only work in the projects chosen for it in Settings → AI, and this project isn’t one of them.",
+  bg: "В това работно пространство {name} може да работи само в проектите, избрани за него в Настройки → AI, а този проект не е сред тях.",
+  de: "In diesem Arbeitsbereich darf {name} nur in den unter Einstellungen → KI ausgewählten Projekten arbeiten, und dieses Projekt gehört nicht dazu.",
+  es: "En este espacio de trabajo, {name} solo puede trabajar en los proyectos elegidos para él en Ajustes → IA, y este proyecto no es uno de ellos.",
+  fr: "Dans cet espace de travail, {name} ne peut travailler que dans les projets choisis pour lui dans Paramètres → IA, et ce projet n’en fait pas partie.",
+};
+
 const NEEDS_PROJECT_QUESTION: LocalizedText = {
   en: "Which project should I add these tasks to? Please specify the project name.",
   bg: "В кой проект да добавя тези задачи? Моля, укажете името на проекта.",
@@ -330,6 +344,29 @@ export const a2TaskPlanner = {
       );
     }
 
+    // The workspace may have narrowed which projects Odysseus works in. Checked
+    // before the context is built, so an out-of-scope project's tasks never
+    // reach the prompt and no model call is spent on a plan that would be refused.
+    const agentSource = await loadAgentConfigSource(input.ctx, userId);
+    const taskScope = agentSource.settings["task_planner.scope"];
+    if (typeof resolvedProjectId === "number" && !inProjectScope(taskScope, resolvedProjectId)) {
+      const locale = await resolveUserLocale(input.ctx, userId);
+      const language = fixedReplyLanguage(agentSource.settings) ?? locale;
+      return {
+        draftId: createDraftId(),
+        plan: TaskPlanDraftSchema.parse({
+          agentId: "task_planner",
+          scope: { projectId: resolvedProjectId },
+          questionsForUser: [
+            localized(OUT_OF_SCOPE, language).replace(
+              "{name}",
+              agentNameFor("task_planner", agentSource.names),
+            ),
+          ],
+        }),
+      };
+    }
+
     // Cross-project mode: verify the user is actually a member of the org
     const resolvedOrgId = input.scope?.orgId
       ? typeof input.scope.orgId === "string"
@@ -392,6 +429,7 @@ export const a2TaskPlanner = {
           : []),
         ...replyLanguageMessages({
           locale: contextPack.locale,
+          fixed: fixedReplyLanguage(contextPack.agentSettings),
           message: input.message,
           originalMessage: input.originalMessage,
         }),
@@ -411,8 +449,10 @@ export const a2TaskPlanner = {
     }
 
     // Everything the model must not be trusted to produce is filled in here:
-    // the project the plan applies to (already resolved and authorized above)
-    // and one idempotency key per created task.
+    // the project the plan applies to (already resolved and authorized above),
+    // the workspace's task defaults for whatever the model left open, and one
+    // idempotency key per created task.
+    const now = new Date();
     const draftPlan: TaskPlanDraft = {
       ...parseResult.data,
       scope: {
@@ -420,10 +460,22 @@ export const a2TaskPlanner = {
         projectId: resolvedProjectId,
       },
       creates: parseResult.data.creates.map((c) => ({
-        ...c,
+        ...applyTaskDefaults(c, contextPack.agentSettings, { requesterId: userId, now }),
         clientRequestId: crypto.randomUUID(),
       })),
     };
+
+    // Cross-project plans name a project per operation; anything aimed outside
+    // the scope is dropped here so the draft the user reviews is the one that
+    // can actually be applied.
+    if (taskScope.mode === "only") {
+      const inScope = (op: { projectId?: number }) =>
+        op.projectId === undefined || inProjectScope(taskScope, op.projectId);
+      draftPlan.creates = draftPlan.creates.filter(inScope);
+      draftPlan.updates = draftPlan.updates.filter(inScope);
+      draftPlan.statusChanges = draftPlan.statusChanges.filter(inScope);
+      draftPlan.deletes = draftPlan.deletes.filter(inScope);
+    }
 
     const planHash = computePlanHash(draftPlan);
     const plan: TaskPlanDraft = { ...draftPlan, planHash };
@@ -613,6 +665,13 @@ export const a2TaskPlanner = {
     // Determine if this is a cross-project draft (orgId is set, projectId is null).
     const isCrossProject = draft.orgId !== null && draft.projectId === null;
 
+    // Scope is enforced again here, against the settings as they are now — an
+    // admin may have narrowed it after the draft was made. Loaded with the
+    // throwing variant: if the scope cannot be read, nothing is written.
+    const taskScope = (await loadAgentConfigSource(input.ctx, userId)).settings[
+      "task_planner.scope"
+    ];
+
     // `plan.scope.projectId` round-trips through the LLM's JSON output, so it is
     // not a trusted value. `draft.projectId` is the column this server wrote at
     // draft time and is the only authority for where writes may land. They should
@@ -669,6 +728,17 @@ export const a2TaskPlanner = {
       }
 
       for (const [pid, group] of projectGroups) {
+        if (!inProjectScope(taskScope, pid)) {
+          const reason = `Project ${pid} is outside the projects this agent may change`;
+          for (const _create of group.creates) refused.push({ kind: "create", reason });
+          for (const u of group.updates) refused.push({ kind: "update", taskId: u.taskId, reason });
+          for (const s of group.statusChanges) {
+            refused.push({ kind: "statusChange", taskId: s.taskId, reason });
+          }
+          for (const d of group.deletes) refused.push({ kind: "delete", taskId: d.taskId, reason });
+          continue;
+        }
+
         // Per-project permission check
         try {
           if (group.creates.length > 0) {
@@ -824,6 +894,13 @@ export const a2TaskPlanner = {
       }
       // Safe to narrow after the guard above.
       const singleProjectId: number = targetProjectId;
+
+    if (!inProjectScope(taskScope, singleProjectId)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "This project is outside the projects this agent may change.",
+      });
+    }
 
     // Re-check access at apply time: membership or collaborator permission may
     // have been revoked between draft and apply.

@@ -863,12 +863,17 @@ export function LedgerCheck({
   label,
   showLabel,
   readOnly,
+  multi,
+  disabled,
 }: {
   checked: boolean;
   onClick?: () => void;
   label: string;
   showLabel?: boolean;
   readOnly?: boolean;
+  /** One of several that can be on together: announced as a checkbox, not a radio. */
+  multi?: boolean;
+  disabled?: boolean;
 }) {
   const body = (
     <>
@@ -912,11 +917,12 @@ export function LedgerCheck({
   return (
     <button
       type="button"
-      role="radio"
+      role={multi ? "checkbox" : "radio"}
       aria-checked={checked}
       aria-label={label}
       onClick={onClick}
-      className="flex cursor-pointer items-center gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/50"
+      disabled={disabled}
+      className="flex cursor-pointer items-center gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/50 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {body}
     </button>

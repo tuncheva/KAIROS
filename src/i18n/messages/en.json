@@ -1278,21 +1278,19 @@
         "toneTitle": "Tone",
         "toneDesc": "How it sounds when it replies: direct, friendly or detailed.",
         "languageTitle": "Reply language",
-        "languageDesc": "Follow the interface, or always answer in one language.",
+        "languageDesc": "Answer in the language you write in, or always in one language. Applies to every agent in the chat.",
         "approvalTitle": "Approval",
-        "approvalDesc": "Always ask before writing, or let small changes apply on their own.",
+        "approvalDesc": "Ask before every change, or let small ones save on their own with Undo — up to 3 changes, nothing deleted, nothing assigned to someone else.",
         "scopeTitle": "Scope",
-        "scopeDesc": "Which projects it may touch.",
+        "scopeDesc": "Which of this workspace’s projects it may change. Anything outside is hidden from it and refused.",
         "taskDefaultsTitle": "Task defaults",
         "taskDefaultsDesc": "Default assignee, priority and how far out due dates land.",
         "noteTemplateTitle": "Note template",
         "noteTemplateDesc": "The structure new notes start from.",
         "eventDefaultsTitle": "Event defaults",
-        "eventDefaultsDesc": "Default length, visibility and reminder.",
-        "secondApproverTitle": "Second approver",
-        "secondApproverDesc": "Another admin confirms role changes before they apply.",
+        "eventDefaultsDesc": "Default length, RSVP and reminders for new events.",
         "namingPatternTitle": "Naming pattern",
-        "namingPatternDesc": "A template for new project names.",
+        "namingPatternDesc": "A template for new project names. Placeholders: {list}.",
         "briefSectionsTitle": "What to include",
         "briefSectionsDesc": "Choose the sections the brief covers.",
         "stalledAfterTitle": "Stalled after",
@@ -1310,7 +1308,116 @@
           "risk_radar": "Watches for overdue work and stalled projects. It counts rather than guesses, so it keeps working when the AI budget is spent.",
           "weekly_retro": "A look back once a week: what closed, what was added, what carried over and what stalled.",
           "meeting_prep": "A short brief before each meeting on your connected calendar, with the open tasks that relate to it."
-        }
+        },
+        "settingAdminOnly": "Only a workspace admin can change this.",
+        "values": {
+          "workspace_concierge": {
+            "tone": {
+              "balanced": "Balanced",
+              "direct": "Direct",
+              "friendly": "Friendly",
+              "detailed": "Detailed"
+            },
+            "replyLanguage": {
+              "auto": "Match my message",
+              "en": "English",
+              "bg": "Български",
+              "de": "Deutsch",
+              "es": "Español",
+              "fr": "Français"
+            }
+          },
+          "daily_brief": {
+            "sections": {
+              "dueToday": "Due today",
+              "events": "Events",
+              "risks": "Risks"
+            }
+          },
+          "risk_radar": {
+            "stalledAfterDays": {
+              "7": "7 days",
+              "14": "14 days",
+              "30": "30 days"
+            }
+          },
+          "meeting_prep": {
+            "leadMinutes": {
+              "15": "15 minutes",
+              "30": "30 minutes",
+              "60": "1 hour",
+              "90": "1½ hours"
+            }
+          },
+          "task_planner": {
+            "priority": {
+              "low": "Low",
+              "medium": "Medium",
+              "high": "High",
+              "urgent": "Urgent"
+            },
+            "dueInDays": {
+              "none": "No due date",
+              "1": "In 1 day",
+              "3": "In 3 days",
+              "7": "In a week",
+              "14": "In 2 weeks",
+              "30": "In 30 days"
+            },
+            "assignee": {
+              "none": "Unassigned",
+              "requester": "The person asking"
+            },
+            "approval": {
+              "ask": "Always ask",
+              "autoSmall": "Save small changes"
+            }
+          },
+          "notes_vault": {
+            "template": {
+              "blank": "Blank",
+              "meeting": "Meeting notes",
+              "decision": "Decision record"
+            },
+            "approval": {
+              "ask": "Always ask",
+              "autoSmall": "Save small changes"
+            }
+          },
+          "events_publisher": {
+            "lengthMinutes": {
+              "none": "No set length",
+              "30": "30 minutes",
+              "60": "1 hour",
+              "90": "1½ hours",
+              "120": "2 hours",
+              "240": "4 hours"
+            }
+          }
+        },
+        "settingLabels": {
+          "task_planner": {
+            "priority": "Priority",
+            "dueInDays": "Due",
+            "assignee": "Assignee",
+            "approval": "You",
+            "allowAutoApply": "Allowed in workspace"
+          },
+          "events_publisher": {
+            "lengthMinutes": "Length",
+            "enableRsvp": "RSVP",
+            "sendReminders": "Reminders"
+          },
+          "notes_vault": {
+            "approval": "You",
+            "allowAutoApply": "Allowed in workspace"
+          }
+        },
+        "settingInvalid": "That pattern can’t be saved. Use letters, numbers, simple punctuation and the placeholders listed.",
+        "scopeAll": "All projects",
+        "scopeOnly": "Chosen projects",
+        "scopeEmpty": "No active projects in this workspace yet.",
+        "autoApplyNeedsUndo": "Needs Undo, which comes with Pro."
       }
     },
     "developer": {
@@ -2479,7 +2586,8 @@
     "projectDone": "Project changes applied.",
     "projectRefused": "{count} operation(s) were refused by the server:",
     "confirmProjectChanges": "Confirm Project Changes",
-    "applyProjectChanges": "Apply Project Changes"
+    "applyProjectChanges": "Apply Project Changes",
+    "autoApplied": "{name} saved {count, plural, one {# change} other {# changes}} without asking, as you chose in Settings → AI. You can undo it for the next 10 minutes."
   },
   "onboarding": {
     "welcome": {

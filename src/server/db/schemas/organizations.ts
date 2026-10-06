@@ -19,6 +19,11 @@ export const organizations = createTable(
      * themselves in chat. Only admins write it; see `agent.setName`.
      */
     agentNames: jsonb("agent_names").$type<AgentNameOverrides>().default({}).notNull(),
+    /**
+     * Workspace-scoped agent settings, keyed by setting id. Only what an admin
+     * changed; validated and defaulted through `~/lib/agentSettings`.
+     */
+    agentSettings: jsonb("agent_settings").$type<Record<string, unknown>>().default({}).notNull(),
     createdById: varchar("created_by_id", { length: 255 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

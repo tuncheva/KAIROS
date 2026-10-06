@@ -2,14 +2,34 @@
 // type, which meant the builder could add a field the prompt could not see —
 // and structural typing made that silent rather than a compile error.
 import { agentNameFor } from "~/lib/agentNames";
+import { agentSetting, type ResolvedAgentSettings } from "~/lib/agentSettings";
 import type { NotesVaultContextPack } from "../context/a3ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
 import { answerableRule } from "~/server/llm/prompts/answerableRule";
 import {
+  fixedReplyLanguage,
   languageRule,
   wantsBulgarianGuidance,
   wantsLocaleFallback,
 } from "~/server/llm/prompts/languageRules";
+
+/**
+ * Headings for each note template. English here; the model writes them in the
+ * reply language like the rest of the note.
+ */
+const NOTE_TEMPLATES = {
+  meeting: ["Attendees", "Agenda", "Notes", "Decisions", "Action items"],
+  decision: ["Context", "Options considered", "Decision", "Consequences"],
+} as const;
+
+/** The workspace's note template as a CREATE rule, or nothing for "blank". */
+function noteTemplateRule(settings: Partial<ResolvedAgentSettings> | undefined): string[] {
+  const template = agentSetting(settings, "notes_vault.template");
+  if (template === "blank") return [];
+  return [
+    `- New notes in this workspace start from a template: give a note you create these sections, in this order — ${NOTE_TEMPLATES[template].join(", ")} — written as headers in the reply language. Leave a section short rather than inventing content for it. When the user dictates the note's content or asks for another structure, follow them instead.`,
+  ];
+}
 
 /**
  * @param userText - The user's own words this turn (the message, and on the
@@ -67,6 +87,7 @@ export function getA3SystemPrompt(
     "",
     languageRule({
       locale: context.locale,
+      fixedLanguage: fixedReplyLanguage(context.agentSettings),
       bulgarianGuidance: wantsBulgarianGuidance(...userText),
       localeFallback: wantsLocaleFallback(...userText),
       fields: ["summary", "reason", "content", "nextContent"],
@@ -90,6 +111,7 @@ export function getA3SystemPrompt(
     "",
     "## Response Quality Guidelines",
     "- For CREATE: write well-structured content. Use bullet points, headers, or numbered lists where appropriate.",
+    ...noteTemplateRule(context.agentSettings),
     "- For UPDATE: only change what the user asked for. Preserve the rest of the note content.",
     "- For DELETE: always ask for explicit confirmation context and set dangerous=true.",
     "- For ORGANIZE: suggest logical groupings, tag suggestions, or content restructuring.",
