@@ -172,7 +172,7 @@ export function NewProjectDrawer({
             />
 
             <aside
-              className={`border-tui-ink/12 bg-tui-pane text-tui-ink relative m-3 flex h-[calc(100%-1.5rem)] w-full max-w-[540px] flex-col overflow-hidden rounded-2xl border shadow-[var(--tui-pane-shadow)] ${
+              className={`border-tui-ink/10 bg-tui-pane text-tui-ink relative m-2 flex h-[calc(100%-1rem)] w-full max-w-[520px] flex-col overflow-hidden rounded-[16px] border shadow-[var(--tui-pane-shadow)] sm:m-3 sm:h-[calc(100%-1.5rem)] ${
                 closing ? "projects-drawer-out" : "projects-drawer"
               }`}
             >
@@ -183,213 +183,187 @@ export function NewProjectDrawer({
                 }}
                 className="flex min-h-0 flex-1 flex-col"
               >
-                {/* Header + title */}
-                <div className="flex flex-col gap-5 px-9 pt-8 pb-7 sm:px-11">
-                  <div className="flex items-center gap-3">
-                    <span
-                      id={titleId}
-                      className="text-tui-ink3 text-[11px] font-medium tracking-[0.2em] uppercase"
-                    >
+                {/* Header: what this is, and the name — the one field that matters. */}
+                <div className={`flex flex-col pt-6 pb-6 ${PAD}`}>
+                  <div className="flex items-center justify-between">
+                    <span id={titleId} className={EYEBROW}>
                       {t("title")}
                     </span>
-                    <span className="bg-tui-ink/8 h-px flex-1" />
                     <button
                       type="button"
                       onClick={close}
                       aria-label={t("close")}
-                      className="border-tui-ink/16 text-tui-ink2 hover:text-tui-ink flex h-[34px] w-[34px] items-center justify-center rounded-full border text-[17px] leading-none transition-colors"
+                      className="text-tui-ink3 hover:bg-tui-ink/[0.055] hover:text-tui-ink -mr-2 flex h-8 w-8 items-center justify-center rounded-full text-[18px] leading-none transition-colors"
                     >
                       ×
                     </button>
                   </div>
 
-                  <div className="flex flex-col gap-3">
-                    <textarea
-                      ref={nameRef}
-                      value={title}
-                      onChange={(event) =>
-                        setTitle(event.target.value.replace(/\n/g, ""))
-                      }
-                      rows={1}
-                      maxLength={256}
-                      placeholder={t("untitled")}
-                      aria-label={t("name")}
-                      className="border-tui-accent font-display text-tui-ink placeholder:text-tui-ink3 resize-none border-0 border-b bg-transparent pb-3 text-[36px] leading-[1.1] font-light tracking-[-0.015em] outline-none sm:text-[44px]"
-                    />
-                    <span className="text-tui-ink3 text-[13.5px] leading-[1.6]">
-                      {t("nameHint")}
-                    </span>
-                  </div>
+                  <textarea
+                    ref={nameRef}
+                    value={title}
+                    onChange={(event) =>
+                      setTitle(event.target.value.replace(/\n/g, ""))
+                    }
+                    rows={1}
+                    maxLength={256}
+                    placeholder={t("untitled")}
+                    aria-label={t("name")}
+                    className="font-display text-tui-ink placeholder:text-tui-ink3/70 mt-5 resize-none overflow-hidden bg-transparent [field-sizing:content] text-[38px] leading-[1.05] tracking-[-0.02em] outline-none sm:text-[44px]"
+                  />
+                  <span className="text-tui-ink3 mt-2 text-[13px] leading-[1.6]">
+                    {t("nameHint")}
+                  </span>
                 </div>
 
-                {/* Body */}
-                <div className="flex min-h-0 flex-1 flex-col overflow-auto px-9 sm:px-11">
-                  <Section n="i">
-                    <label className="flex flex-1 flex-col gap-3">
-                      <SectionLabel
-                        text={t("description")}
-                        optional={t("optional")}
-                      />
-                      <textarea
-                        rows={2}
-                        value={description}
-                        onChange={(event) => setDescription(event.target.value)}
-                        placeholder={t("descriptionPlaceholder")}
-                        className="border-tui-ink/16 text-tui-ink placeholder:text-tui-ink3 focus:border-tui-accent/60 resize-none border-0 border-b bg-transparent pb-2.5 text-[15px] leading-[1.6] transition-colors outline-none"
-                      />
-                    </label>
-                  </Section>
+                <div className="bg-tui-ink/8 mx-6 h-px sm:mx-8" />
 
-                  <Section n="ii">
-                    <div className="flex flex-1 flex-col gap-2.5">
-                      <SectionLabel text={t("whoCanSee")} />
+                {/* Body */}
+                <div
+                  className={`scrollbar-hide kairos-scroll-area flex min-h-0 flex-1 flex-col overflow-y-auto ${PAD}`}
+                >
+                  <Field label={t("description")} optional={t("optional")}>
+                    <textarea
+                      rows={2}
+                      value={description}
+                      onChange={(event) => setDescription(event.target.value)}
+                      placeholder={t("descriptionPlaceholder")}
+                      className="border-tui-ink/10 text-tui-ink placeholder:text-tui-ink3 focus:border-tui-ink/30 w-full resize-none rounded-[10px] border bg-transparent px-3.5 py-2.5 text-[14px] leading-[1.6] transition-colors outline-none"
+                    />
+                  </Field>
+
+                  <Field label={t("whoCanSee")}>
+                    <div
+                      role="radiogroup"
+                      aria-label={t("whoCanSee")}
+                      className="border-tui-ink/10 flex flex-col overflow-hidden rounded-[10px] border"
+                    >
+                      {VISIBILITY.map((option) => {
+                        const active = visibility === option.key;
+                        return (
+                          <button
+                            key={option.key}
+                            type="button"
+                            role="radio"
+                            aria-checked={active}
+                            aria-label={t(option.label)}
+                            onClick={() => setVisibility(option.key)}
+                            className={`border-tui-ink/8 flex items-center gap-3 border-t px-3.5 py-3 text-left transition-colors first:border-t-0 ${
+                              active
+                                ? "bg-tui-ink/[0.045]"
+                                : "hover:bg-tui-ink/[0.025]"
+                            }`}
+                          >
+                            <span
+                              className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border transition-colors ${
+                                active ? "border-tui-ink" : "border-tui-ink/25"
+                              }`}
+                            >
+                              {active && (
+                                <span className="bg-tui-ink h-2 w-2 rounded-full" />
+                              )}
+                            </span>
+                            <span className="flex min-w-0 flex-col">
+                              <span className="text-tui-ink text-[14px] font-medium">
+                                {t(option.label)}
+                              </span>
+                              <span className="text-tui-ink3 text-[12.5px]">
+                                {t(option.hint)}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Field>
+
+                  <Field
+                    label={t("inviteSomeone")}
+                    optional={t("optional")}
+                    hint={t("inviteHint")}
+                  >
+                    <div className="border-tui-ink/10 focus-within:border-tui-ink/30 flex items-center gap-2 rounded-[10px] border py-1 pr-1 pl-3.5 transition-colors">
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        placeholder={t("invitePlaceholder")}
+                        className="text-tui-ink placeholder:text-tui-ink3 h-8 min-w-0 flex-1 bg-transparent text-[14px] outline-none"
+                      />
                       <div
                         role="radiogroup"
-                        aria-label={t("whoCanSee")}
-                        className="flex flex-col"
+                        aria-label={t("permission")}
+                        className="bg-tui-ink/[0.045] flex flex-none gap-0.5 rounded-[8px] p-0.5"
                       >
-                        {VISIBILITY.map((option) => {
-                          const active = visibility === option.key;
+                        {PERMISSIONS.map((option) => {
+                          const active = permission === option.key;
                           return (
                             <button
                               key={option.key}
                               type="button"
                               role="radio"
                               aria-checked={active}
-                              aria-label={t(option.label)}
-                              onClick={() => setVisibility(option.key)}
-                              className={`-mx-3 flex items-center gap-3.5 rounded-lg p-3 text-left transition-colors ${
+                              onClick={() => setPermission(option.key)}
+                              className={`h-7 rounded-[6px] px-2.5 text-[12px] font-medium whitespace-nowrap transition-colors ${
                                 active
-                                  ? "bg-tui-accent/[0.08]"
-                                  : "hover:bg-tui-ink/[0.03]"
+                                  ? "bg-tui-pane text-tui-ink shadow-[var(--tui-pane-shadow)]"
+                                  : "text-tui-ink3 hover:text-tui-ink2"
                               }`}
                             >
-                              <span
-                                className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border ${
-                                  active
-                                    ? "border-tui-accent"
-                                    : "border-tui-ink/25"
-                                }`}
-                              >
-                                {active && (
-                                  <span className="bg-tui-accent h-2 w-2 rounded-full" />
-                                )}
-                              </span>
-                              <span className="flex flex-col gap-0.5">
-                                <span className="text-tui-ink text-[14.5px] font-medium">
-                                  {t(option.label)}
-                                </span>
-                                <span className="text-tui-ink3 text-[13px]">
-                                  {t(option.hint)}
-                                </span>
-                              </span>
+                              {t(option.label)}
                             </button>
                           );
                         })}
                       </div>
                     </div>
-                  </Section>
+                  </Field>
 
-                  <Section n="iii">
-                    <div className="flex flex-1 flex-col gap-3">
-                      <SectionLabel
-                        text={t("inviteSomeone")}
-                        optional={t("optional")}
-                      />
-                      <div className="border-tui-ink/16 flex items-end gap-3.5 border-b pb-2">
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(event) => setEmail(event.target.value)}
-                          placeholder={t("invitePlaceholder")}
-                          className="text-tui-ink placeholder:text-tui-ink3 min-w-0 flex-1 border-0 bg-transparent text-[15px] outline-none"
-                        />
-                        <div
-                          role="radiogroup"
-                          aria-label={t("permission")}
-                          className="border-tui-ink/12 flex flex-none gap-1 rounded-full border p-0.5"
-                        >
-                          {PERMISSIONS.map((option) => {
-                            const active = permission === option.key;
-                            return (
-                              <button
-                                key={option.key}
-                                type="button"
-                                role="radio"
-                                aria-checked={active}
-                                onClick={() => setPermission(option.key)}
-                                className={`h-7 rounded-full px-3 text-[12.5px] font-medium whitespace-nowrap transition-colors ${
-                                  active
-                                    ? "bg-tui-accent/[0.16] text-tui-ink"
-                                    : "text-tui-ink3 hover:text-tui-ink2"
-                                }`}
-                              >
-                                {t(option.label)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <span className="text-tui-ink3 text-[12.5px] leading-[1.6]">
-                        {t("inviteHint")}
-                      </span>
-                    </div>
-                  </Section>
-
-                  {/* Live preview of the project row */}
-                  <div className="border-tui-ink/8 flex flex-col gap-3 border-t py-6">
-                    <span className="text-tui-ink3 text-[11px] font-medium tracking-[0.16em] uppercase">
-                      {t("howItAppears")}
-                    </span>
-                    <div className="border-tui-ink/8 bg-tui-bg grid grid-cols-[minmax(0,1fr)_90px_44px_28px] items-center gap-4 rounded-lg border px-4 py-4">
+                  {/* A live preview, drawn as the dashboard's project row. */}
+                  <Field label={t("howItAppears")}>
+                    <div className="border-tui-ink/8 bg-tui-bg grid grid-cols-[minmax(0,1fr)_minmax(0,120px)] items-center gap-5 rounded-[10px] border px-4 py-3.5">
                       <span className="flex min-w-0 flex-col gap-0.5">
                         <span
-                          className={`font-display truncate text-[19px] ${
+                          className={`truncate text-[14.5px] font-medium ${
                             title.trim() ? "text-tui-ink" : "text-tui-ink3"
                           }`}
                         >
                           {title.trim() || t("untitled")}
                         </span>
-                        <span className="text-tui-ink3 text-[12.5px]">
+                        <span className="text-tui-ink3 text-[12px]">
                           {t("noTasksYet")}
                         </span>
                       </span>
-                      <span className="bg-tui-ink/12 h-[3px] rounded-sm" />
-                      <span className="text-tui-ink3 text-right text-[13.5px] font-semibold">
-                        —
-                      </span>
-                      <span className="border-tui-ink/16 font-display text-tui-ink2 flex h-[26px] w-[26px] items-center justify-center rounded-full border text-[13px]">
-                        {title.trim().charAt(0).toUpperCase() || "·"}
-                      </span>
+                      <span className="bg-tui-ink/8 block h-[3px] rounded-full" />
                     </div>
-                  </div>
+                  </Field>
+                  <span className="h-6 flex-none" />
                 </div>
 
                 {/* Footer */}
-                <div className="border-tui-ink/8 flex items-center gap-4 border-t px-9 py-5 sm:px-11">
-                  <span className="text-tui-ink3 hidden items-center gap-2 text-[12.5px] sm:flex">
-                    <span className="border-tui-ink/16 rounded-[5px] border px-1.5 py-0.5 text-[11px]">
+                <div
+                  className={`border-tui-ink/8 flex items-center gap-2 border-t py-4 ${PAD}`}
+                >
+                  <span className="text-tui-ink3 hidden items-center gap-2 text-[12px] sm:flex">
+                    <kbd className="border-tui-ink/12 rounded-[4px] border px-1.5 font-mono text-[10.5px] leading-4">
                       ⌘ ↵
-                    </span>
+                    </kbd>
                     {t("toCreate")}
                   </span>
                   <span className="flex-1" />
                   <button
                     type="button"
                     onClick={close}
-                    className="text-tui-ink2 hover:text-tui-ink h-11 px-3 text-[14px] font-medium transition-colors"
+                    className="text-tui-ink2 hover:text-tui-ink h-9 rounded-full px-3.5 text-[13.5px] transition-colors"
                   >
                     {t("cancel")}
                   </button>
                   <button
                     type="submit"
                     disabled={!canSubmit}
-                    className="bg-tui-accent text-tui-on-accent flex h-11 items-center gap-2.5 rounded-full px-6 text-[14px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                    className="bg-tui-accent text-tui-on-accent disabled:bg-tui-ink/[0.07] disabled:text-tui-ink3 flex h-9 items-center gap-2 rounded-full px-4 text-[13.5px] font-medium transition-colors hover:opacity-90 disabled:hover:opacity-100"
                   >
                     {pending ? t("creating") : t("submit")}
-                    <span aria-hidden className="text-[15px]">
-                      →
-                    </span>
+                    <span aria-hidden>→</span>
                   </button>
                 </div>
               </form>
@@ -401,27 +375,39 @@ export function NewProjectDrawer({
   );
 }
 
-/** A numbered step: a serif-italic accent numeral beside its field. */
-function Section({ n, children }: { n: string; children: React.ReactNode }) {
+/** Side padding shared by the header, body and footer, so their edges line up. */
+const PAD = "px-6 sm:px-8";
+
+/** The small spaced capitals the dashboard labels with. */
+const EYEBROW =
+  "text-tui-ink3 text-[10.5px] font-medium tracking-[0.18em] uppercase";
+
+/** One form field: a spaced-capitals label, the control, an optional note. */
+function Field({
+  label,
+  optional,
+  hint,
+  children,
+}: {
+  label: string;
+  optional?: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="border-tui-ink/8 flex gap-4 border-t py-6 first:border-t-0">
-      <span className="font-display text-tui-accent w-7 flex-none text-[20px] leading-none italic">
-        {n}
+    <div className="flex flex-col gap-2.5 pt-6">
+      <span className={EYEBROW}>
+        {label}
+        {optional && (
+          <span className="text-tui-ink3/80 ml-2 tracking-[0.02em] normal-case">
+            {optional}
+          </span>
+        )}
       </span>
       {children}
-    </div>
-  );
-}
-
-function SectionLabel({ text, optional }: { text: string; optional?: string }) {
-  return (
-    <span className="text-tui-ink2 text-[11px] font-medium tracking-[0.16em] uppercase">
-      {text}
-      {optional && (
-        <span className="text-tui-ink3 ml-2 tracking-[0.04em] normal-case">
-          {optional}
-        </span>
+      {hint && (
+        <span className="text-tui-ink3 text-[12px] leading-[1.6]">{hint}</span>
       )}
-    </span>
+    </div>
   );
 }

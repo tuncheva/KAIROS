@@ -2661,13 +2661,17 @@
       "dueToday": "Due today",
       "overdue": "Overdue",
       "openThisWeek": "Open this week",
-      "completed": "Completed",
       "notes": {
-        "doneToday": "{count} done",
-        "oldest": "oldest {days}d",
-        "across": "across {count}",
-        "allTime": "all time"
-      }
+        "left": "{count, plural, =0 {all done} one {one left} other {# left}}",
+        "nothingDue": "nothing due today",
+        "oldestDays": "oldest {days, plural, one {one day} other {# days}} late",
+        "onTime": "nothing late",
+        "acrossProjects": "across {count, plural, one {one project} other {# projects}}",
+        "more": "{count} more than last week",
+        "fewer": "{count} fewer than last week",
+        "same": "same as last week"
+      },
+      "doneThisWeek": "Done this week"
     },
     "activity": {
       "title": "Recent activity",
@@ -2680,19 +2684,6 @@
         "updated": "{user} updated {task} in {project}",
         "deleted": "{user} deleted {task} in {project}"
       }
-    },
-    "workspace": {
-      "title": "Workspace progress",
-      "done": "{count} done",
-      "active": "{count} active",
-      "todo": "{count} to do",
-      "dayGone": "{percent}% of today gone",
-      "ofTasksDone": "of tasks done",
-      "ofTodayGone": "of today gone",
-      "doneLabel": "done",
-      "activeLabel": "active",
-      "todoLabel": "to do",
-      "dayGoneLabel": "day gone"
     },
     "projects": {
       "untitled": "Untitled project",
@@ -2721,7 +2712,7 @@
       "welcomeLabel": "welcome",
       "newWorkspace": "a new workspace",
       "headline": "Nothing on the board yet",
-      "howItFills": "how it fills in",
+      "howItFills": "How it fills in",
       "steps3": "3 steps",
       "stepCreateTitle": "Create a project",
       "stepTeamTitle": "Bring the team in",
@@ -2746,7 +2737,7 @@
       "radarIdleBody": "Nothing to watch yet. The radar starts reading due dates and workload as soon as the first task exists."
     },
     "radar": {
-      "title": "What the radar found",
+      "title": "From the radar",
       "count": "{count, plural, =0 {nothing flagged} one {# finding} other {# findings}}",
       "loading": "checking…",
       "checked": "Checked {ago} ago",
@@ -2761,33 +2752,24 @@
       }
     },
     "projectStatus": {
-      "title": "Project status",
+      "title": "Projects",
       "count": "{count, plural, =0 {none active} other {# active}}",
       "action": "All projects",
       "ends": "Ends {date}",
       "noDate": "No date",
-      "columns": {
-        "project": "Project",
-        "team": "Team",
-        "open": "Open",
-        "overdue": "Overdue",
-        "completion": "Completion",
-        "health": "Health"
-      }
-    },
-    "momentum": {
-      "title": "Your momentum",
-      "streak": "{count, plural, one {1-day streak} other {#-day streak}}",
-      "noStreak": "No streak yet",
-      "line": "{total, plural, =0 {Nothing finished in the last fortnight.} one {You finished one task in the last fortnight.} other {You finished # tasks in the last fortnight}}{today, plural, =0 {} other {, {today} of them today}}."
+      "openCount": "{count} open",
+      "done": "{percent}% done",
+      "timeUsed": "{percent}% of time",
+      "noDeadline": "no end date"
     },
     "teamToday": {
-      "title": "Team today",
+      "title": "Team",
       "open": "{count} open",
       "active": "Active {ago} ago",
       "neverActive": "No activity yet",
       "you": "{name} (you)",
-      "empty": "Nobody else is on these projects yet."
+      "empty": "Nobody else is on these projects yet.",
+      "meta": "open tasks"
     },
     "tui": {
       "briefing": "briefing",
@@ -2812,6 +2794,40 @@
       "booting": "booting dashboard",
       "waitingCounts": "waiting on task counts",
       "today": "today"
+    },
+    "brief": {
+      "signed": "<agent>{name}</agent>, your morning brief · {time}",
+      "ask": "Ask Kairos AI",
+      "planWeek": "Plan my week",
+      "planPrompt": "Help me plan my week: look at what is due and overdue, and suggest what to do first."
+    },
+    "nextUp": {
+      "title": "Next up",
+      "meta": "yours first, by due date and priority",
+      "replan": "Re-plan with {name}",
+      "empty": "Nothing dated is waiting on you in the next three weeks.",
+      "overdue": "{days, plural, one {one day overdue} other {# days overdue}}",
+      "today": "Today",
+      "markDone": "Mark “{task}” done",
+      "priority": {
+        "high": "High priority",
+        "urgent": "Urgent"
+      }
+    },
+    "week": {
+      "title": "This week",
+      "action": "Calendar",
+      "tasks": "{count, plural, =0 {no tasks} one {one task} other {# tasks}}",
+      "events": "{count, plural, =0 {no events} one {one event} other {# events}}"
+    },
+    "crew": {
+      "title": "The crew",
+      "today": "today at {time}",
+      "tomorrow": "tomorrow at {time}",
+      "day": "{day} at {time}",
+      "meetings": "before each meeting",
+      "off": "No scheduled agents are on.",
+      "settings": "AI settings"
     }
   },
   "agents": {

@@ -807,6 +807,7 @@ export const taskRouter = createTRPCRouter({
           status: tasks.status,
           priority: tasks.priority,
           dueDate: tasks.dueDate,
+          assignedToId: tasks.assignedToId,
           projectId: tasks.projectId,
           projectTitle: projects.title,
         })

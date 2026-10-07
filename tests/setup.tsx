@@ -49,6 +49,7 @@ vi.mock("next/image", () => ({
 // Async factory so the JSON import happens inside it — vi.mock is hoisted, so a
 // top-level import couldn't be referenced here.
 vi.mock("next-intl", async () => {
+  const { createElement, Fragment } = await import("react");
   const messages = (
     (await import("../src/i18n/messages/en.json")) as {
       default: Record<string, unknown>;
@@ -164,6 +165,27 @@ vi.mock("next-intl", async () => {
     };
     // next-intl's own `t.has`: whether the key exists in this namespace.
     t.has = (key: string) => resolve(namespace ? `${namespace}.${key}` : key) !== undefined;
+    // `t.rich`: `<tag>chunks</tag>` in the message is handed to the matching
+    // function in `values`; everything else formats as `t` does.
+    t.rich = (key: string, values: Record<string, unknown> = {}) => {
+      const text = t(key, values);
+      const parts: React.ReactNode[] = [];
+      let last = 0;
+      for (const match of text.matchAll(/<(\w+)>(.*?)<\/\1>/g)) {
+        parts.push(text.slice(last, match.index));
+        const render = values[match[1]!];
+        parts.push(
+          typeof render === "function"
+            ? (render as (chunks: string) => React.ReactNode)(match[2]!)
+            : match[2],
+        );
+        last = match.index + match[0].length;
+      }
+      parts.push(text.slice(last));
+      // Spread as children rather than passed as an array, so React does not
+      // ask for keys on what is really one run of text.
+      return createElement(Fragment, null, ...parts);
+    };
     return t;
   };
 

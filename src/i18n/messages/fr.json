@@ -1483,13 +1483,17 @@
       "dueToday": "Dues aujourd'hui",
       "overdue": "En retard",
       "openThisWeek": "Ouvertes cette semaine",
-      "completed": "Terminées",
       "notes": {
-        "doneToday": "{count} faites",
-        "oldest": "la plus ancienne {days}j",
-        "across": "sur {count}",
-        "allTime": "au total"
-      }
+        "left": "",
+        "nothingDue": "",
+        "oldestDays": "",
+        "onTime": "",
+        "acrossProjects": "",
+        "more": "",
+        "fewer": "",
+        "same": ""
+      },
+      "doneThisWeek": ""
     },
     "activity": {
       "title": "Activité récente",
@@ -1502,19 +1506,6 @@
         "updated": "{user} a mis à jour {task} dans {project}",
         "deleted": "{user} a supprimé {task} dans {project}"
       }
-    },
-    "workspace": {
-      "title": "Progression de l'espace",
-      "done": "{count} terminées",
-      "active": "{count} en cours",
-      "todo": "{count} à faire",
-      "dayGone": "{percent}% de la journée écoulée",
-      "ofTasksDone": "des tâches faites",
-      "ofTodayGone": "de la journée écoulée",
-      "doneLabel": "",
-      "activeLabel": "",
-      "todoLabel": "",
-      "dayGoneLabel": ""
     },
     "projects": {
       "untitled": "Projet sans titre",
@@ -1588,20 +1579,10 @@
       "action": "Tous les projets",
       "ends": "Fin le {date}",
       "noDate": "Sans date",
-      "columns": {
-        "project": "Projet",
-        "team": "Équipe",
-        "open": "Ouvertes",
-        "overdue": "En retard",
-        "completion": "Avancement",
-        "health": "État"
-      }
-    },
-    "momentum": {
-      "title": "Votre rythme",
-      "streak": "{count, plural, one {1 jour d'affilée} other {# jours d'affilée}}",
-      "noStreak": "Pas encore de série",
-      "line": "{total, plural, =0 {Rien de terminé ces deux dernières semaines.} one {Vous avez terminé une tâche ces deux dernières semaines.} other {Vous avez terminé # tâches ces deux dernières semaines}}{today, plural, =0 {} other {, dont {today} aujourd'hui}}."
+      "openCount": "",
+      "done": "",
+      "timeUsed": "",
+      "noDeadline": ""
     },
     "teamToday": {
       "title": "L'équipe aujourd'hui",
@@ -1609,7 +1590,8 @@
       "active": "Actif il y a {ago}",
       "neverActive": "Aucune activité encore",
       "you": "{name} (vous)",
-      "empty": "Personne d'autre sur ces projets pour l'instant."
+      "empty": "Personne d'autre sur ces projets pour l'instant.",
+      "meta": ""
     },
     "tui": {
       "briefing": "",
@@ -1634,6 +1616,40 @@
       "booting": "",
       "waitingCounts": "",
       "today": ""
+    },
+    "brief": {
+      "signed": "",
+      "ask": "",
+      "planWeek": "",
+      "planPrompt": ""
+    },
+    "nextUp": {
+      "title": "",
+      "meta": "",
+      "replan": "",
+      "empty": "",
+      "overdue": "",
+      "today": "",
+      "markDone": "",
+      "priority": {
+        "high": "",
+        "urgent": ""
+      }
+    },
+    "week": {
+      "title": "",
+      "action": "",
+      "tasks": "",
+      "events": ""
+    },
+    "crew": {
+      "title": "",
+      "today": "",
+      "tomorrow": "",
+      "day": "",
+      "meetings": "",
+      "off": "",
+      "settings": ""
     }
   },
   "agents": {

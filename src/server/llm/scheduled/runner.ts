@@ -235,6 +235,12 @@ interface RunTarget {
  *   Settings kept receiving briefs by email. It is checked here rather than at
  *   each caller because every delivery path funnels through this function.
  */
+/**
+ * The in-app brief is a notification with this title. The dashboard reads the
+ * latest one back by it (`agent.latestBrief`), so the two must not drift apart.
+ */
+export const DAILY_BRIEF_TITLE = "Your daily brief";
+
 async function deliver(
   target: RunTarget,
   input: { email: string | null; userName: string | null; title: string; message: string },
@@ -388,7 +394,7 @@ async function runDailyBrief(target: RunTarget): Promise<number> {
   await deliver(target, {
     email: user.email,
     userName: user.name,
-    title: "Your daily brief",
+    title: DAILY_BRIEF_TITLE,
     message,
   });
 

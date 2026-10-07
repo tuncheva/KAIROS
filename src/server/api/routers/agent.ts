@@ -55,13 +55,14 @@ import {
 import { diffTaskPlan } from "~/server/llm/beforeImage";
 import { MAX_PROMPT_CHARS } from "~/server/llm/scheduled/customSchedules";
 import { searchMessages } from "~/server/llm/retention";
-import { runBriefNow } from "~/server/llm/scheduled/runner";
+import { DAILY_BRIEF_TITLE, runBriefNow } from "~/server/llm/scheduled/runner";
 import { DEFAULT_TIME_ZONE } from "~/lib/timezone";
 import { entitlementsFor } from "~/server/billing/entitlements";
 import {
   agentTaskPlannerDrafts,
   aiCustomSchedules,
   aiSchedules,
+  notifications,
   organizationMembers,
   organizations,
   tasks,
@@ -69,7 +70,7 @@ import {
 } from "~/server/db/schema";
 import { assertProjectAccess } from "~/server/api/authz";
 import { TRPCError } from "@trpc/server";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import {
   GenerateTaskDraftsInputSchema,
   ExtractTasksFromPdfInputSchema,
@@ -794,6 +795,28 @@ export const agentRouter = createTRPCRouter({
    */
   findingStats: protectedProcedure.query(async ({ ctx }) => {
     return findingStats(ctx, ctx.session.user.id);
+  }),
+
+  /**
+   * The brief Hemera delivered in-app most recently, if it is from the last
+   * twenty hours — the dashboard sets it as its headline. Older than that it
+   * describes a different day and the page falls back to its own summary.
+   */
+  latestBrief: protectedProcedure.query(async ({ ctx }) => {
+    const since = new Date(Date.now() - 20 * 3_600_000);
+    const [row] = await ctx.db
+      .select({ message: notifications.message, createdAt: notifications.createdAt })
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, ctx.session.user.id),
+          eq(notifications.title, DAILY_BRIEF_TITLE),
+          gte(notifications.createdAt, since),
+        ),
+      )
+      .orderBy(desc(notifications.createdAt))
+      .limit(1);
+    return row ?? null;
   }),
 
   // -------------------------------------------------------------------------

@@ -29,7 +29,7 @@ export default async function DashboardLoading() {
 
         <main
           id="main-content"
-          className="flex-1 w-full overflow-auto kairos-bottomnav-gap"
+          className="tui-screen flex-1 w-full overflow-auto kairos-bottomnav-gap"
           aria-busy="true"
         >
           <DashboardSkeleton />

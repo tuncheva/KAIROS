@@ -13,22 +13,22 @@ import { SkeletonSlow } from "~/components/ui/SkeletonSlow";
  * The dashboard before its data lands — the route `loading.tsx` and the
  * client-side boot both render this.
  *
- * Same grid, cards, paddings and row heights as `DashboardClient`'s loaded
+ * Same frame, cards, paddings and row heights as `DashboardClient`'s loaded
  * state. What the page already knows renders for real: the date eyebrow, the
- * greeting, every card title, stat label, column header and legend. Only the
- * numbers, findings, project rows, activity and team turn to hatch.
+ * greeting, every card title and figure label, the weekday letters. Only the
+ * numbers, tasks, findings, projects, team and activity turn to hatch.
  */
 
 /** Mirrors `CARD` in `DashboardClient`. */
 const CARD =
-  "overflow-hidden rounded-lg border border-tui-ink/12 bg-tui-pane shadow-[var(--tui-pane-shadow)]";
+  "overflow-hidden rounded-[14px] border border-tui-ink/10 bg-tui-pane shadow-[var(--tui-pane-shadow)]";
 
-/** Mirrors `TABLE_GRID` in `DashboardClient`. */
-const TABLE_GRID =
-  "grid grid-cols-[minmax(0,1fr)_90px_50px_64px_minmax(0,190px)_52px_110px] items-center gap-4";
+/** Mirrors `PAD` in `DashboardClient`. */
+const PAD = "px-[18px] sm:px-7";
 
-/** A control drawn as its outline — inert, only its value hatches. */
-const OUTLINE = "border border-tui-ink/16 rounded-full";
+/** Mirrors `EYEBROW` in `DashboardClient`. */
+const EYEBROW =
+  "text-tui-ink3 text-[10.5px] font-medium tracking-[0.18em] uppercase";
 
 function CardHeadSkeleton({
   title,
@@ -42,79 +42,83 @@ function CardHeadSkeleton({
   row?: number;
 }) {
   return (
-    <div className="border-tui-ink/8 flex items-baseline gap-3 border-b px-7 pt-5 pb-4">
-      <h2 className="font-display text-tui-ink m-0 text-[22px] leading-none">
-        {title}
-      </h2>
-      {metaWidth ? (
-        <Skeleton className="h-[8px] self-center" row={row} style={{ width: metaWidth }} />
-      ) : null}
-      <span className="flex-1" />
-      {actionLabel ? (
-        <span aria-hidden="true" className="text-tui-ink2 text-[13px]">
-          {actionLabel} →
-        </span>
-      ) : null}
-    </div>
+    <>
+      <div className={`flex items-baseline gap-3 ${PAD} pt-[22px] pb-4`}>
+        <h2 className="font-display text-tui-ink m-0 text-[24px] leading-none tracking-[-0.005em]">
+          {title}
+        </h2>
+        {metaWidth ? (
+          <Skeleton
+            className="hidden h-[8px] self-center sm:block"
+            row={row}
+            style={{ width: metaWidth }}
+          />
+        ) : null}
+        <span className="flex-1" />
+        {actionLabel ? (
+          <span aria-hidden="true" className="text-tui-ink3 text-[12.5px]">
+            {actionLabel} →
+          </span>
+        ) : null}
+      </div>
+      <div className="bg-tui-ink/8 mx-[18px] h-px sm:mx-7" />
+    </>
   );
 }
 
 /**
- * The radar's three findings, hatched. Exported so `RadarFindings` shows the
+ * The radar's findings as hatched rows. Exported so `RadarFindings` shows the
  * same body while its own query is still in flight.
  */
 export function RadarFindingsSkeletonBody({ row = 0 }: { row?: number }) {
   const t = useTranslations("dashboard");
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3" aria-hidden="true">
+    <div className="py-1" aria-hidden="true">
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className={`flex flex-col gap-3 px-7 py-6 ${
-            i > 0 ? "border-tui-ink/8 border-t md:border-t-0 md:border-l" : ""
-          }`}
+          className={`border-tui-ink/6 grid grid-cols-1 items-center gap-3 border-t py-[18px] first:border-t-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-6 ${PAD}`}
         >
-          {/* severity · project */}
-          <div className="flex h-[19px] items-center gap-2">
-            <Skeleton className="h-1.5 w-1.5" shape="circle" row={row} />
-            <Skeleton className="h-[8px] w-[46px]" row={row} />
-            <span className="flex-1" />
-            <Skeleton
-              className="h-[8px]"
-              row={row}
-              style={{ width: skeletonWidth(i + 3, 28, 44) }}
-            />
-          </div>
-          {/* title — two lines of 21px display */}
-          <div className="flex flex-col justify-around" style={{ height: 52 }}>
-            <Skeleton className="h-[14px] w-[92%]" shape="title" row={row + 1} />
-            <Skeleton
-              className="h-[14px]"
-              shape="title"
-              row={row + 1}
-              style={{ width: skeletonWidth(i + 11, 40, 62) }}
-            />
-          </div>
-          {/* detail — two lines of 14px body */}
-          <div className="flex flex-col justify-around" style={{ height: 45 }}>
-            <Skeleton className="h-[9px] w-full" row={row + 2} />
-            <Skeleton
-              className="h-[9px]"
-              row={row + 2}
-              style={{ width: skeletonWidth(i + 21, 48, 72) }}
-            />
-          </div>
-          {/* the fix pill and dismiss */}
-          <div className="mt-1.5 flex items-center gap-4 text-[13px]">
-            <span className={`${OUTLINE} flex h-[34px] items-center px-3.5`}>
+          <div className="flex min-w-0 flex-col">
+            {/* severity · project */}
+            <div className="flex h-[16px] items-center gap-2">
+              <Skeleton className="h-1.5 w-1.5" shape="circle" row={row + i} />
+              <Skeleton className="h-[7px] w-[52px]" row={row + i} />
+              <Skeleton
+                className="h-[7px]"
+                row={row + i}
+                style={{ width: skeletonWidth(i + 3, 40, 70) }}
+              />
+            </div>
+            {/* title */}
+            <div className="mt-1.5 mb-1 flex h-[20px] items-center">
+              <Skeleton
+                className="h-[10px]"
+                row={row + i}
+                style={{ width: skeletonWidth(i + 11, 48, 74) }}
+              />
+            </div>
+            {/* detail */}
+            <div className="flex h-[20px] items-center">
               <Skeleton
                 className="h-[8px]"
-                row={row + 3}
-                style={{ width: i === 0 ? 96 : 74 }}
+                row={row + i}
+                style={{ width: skeletonWidth(i + 21, 58, 86) }}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="border-tui-ink/16 flex h-[30px] items-center rounded-full border px-3.5">
+              <Skeleton
+                className="h-[7px]"
+                row={row + i}
+                style={{ width: i === 0 ? 90 : 70 }}
               />
             </span>
-            <span className="text-tui-ink3">{t("radar.dismiss")}</span>
+            <span className="text-tui-ink3 px-2.5 text-[12.5px]">
+              {t("radar.dismiss")}
+            </span>
           </div>
         </div>
       ))}
@@ -122,44 +126,36 @@ export function RadarFindingsSkeletonBody({ row = 0 }: { row?: number }) {
   );
 }
 
-function TodayStatSkeleton({
+function FigureSkeleton({
+  index,
   label,
-  noteWidth,
-  row,
+  bar = false,
 }: {
+  index: number;
   label: string;
-  noteWidth?: number;
-  row: number;
+  bar?: boolean;
 }) {
-  return (
-    <div className="flex h-[26px] items-center gap-2.5 text-[14px]">
-      <span className="text-tui-ink2">{label}</span>
-      <span className="border-tui-ink/16 flex-1 translate-y-[4px] border-b border-dotted" />
-      {noteWidth ? (
-        <Skeleton className="h-[8px]" row={row} style={{ width: noteWidth }} />
-      ) : null}
-      <span className="flex min-w-[34px] justify-end">
-        <Skeleton className="h-[20px] w-[24px]" shape="title" row={row} />
-      </span>
-    </div>
-  );
-}
+  const divider =
+    index === 0
+      ? ""
+      : index % 2 === 1
+        ? "border-l pl-5 sm:pl-7 lg:px-7"
+        : "pr-5 lg:border-l lg:px-7";
 
-function RingLegendSkeleton({
-  dot,
-  label,
-  row,
-}: {
-  dot: string;
-  label: string;
-  row: number;
-}) {
   return (
-    <div className="flex h-[28px] items-center gap-2.5">
-      <span className={`h-2 w-2 rounded-full ${dot}`} aria-hidden />
-      <span className="text-tui-ink2">{label}</span>
-      <span className="border-tui-ink/16 flex-1 translate-y-[4px] border-b border-dotted" />
-      <Skeleton className="h-[14px] w-[22px]" shape="title" row={row} />
+    <div className={`border-tui-ink/10 flex min-w-0 flex-col gap-2 ${divider}`}>
+      <span className={EYEBROW}>{label}</span>
+      <span className="flex h-[37.8px] items-end sm:h-[46.8px]">
+        <Skeleton className="h-[30px] w-[46px] sm:h-[38px]" shape="title" row={2} />
+      </span>
+      {bar && <span className="bg-tui-ink/8 mt-1 h-[2px] max-w-[200px] rounded-full" />}
+      <span className="flex h-[18.75px] items-center">
+        <Skeleton
+          className="h-[7px]"
+          row={2}
+          style={{ width: [96, 84, 112, 128][index] }}
+        />
+      </span>
     </div>
   );
 }
@@ -189,21 +185,27 @@ export function DashboardSkeleton({
       ? undefined
       : ((userName ?? "").trim().split(" ")[0] ?? "");
 
+  const narrow = new Intl.DateTimeFormat(locale, { weekday: "narrow" });
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+
   return (
-    <div className="tui-screen text-tui-ink min-h-full">
+    <div className="text-tui-ink min-h-full">
       <SkeletonStatus label={tSkel("status")} />
-      <div className="mx-auto grid max-w-[1440px] grid-cols-1 gap-6 px-4 pt-10 pb-12 sm:px-8 xl:grid-cols-[minmax(0,1fr)_380px]">
-        {/* Hero — the date and greeting are real, the summary is data. */}
-        <div className={`${CARD} xl:order-1`}>
-          <div className="flex flex-col gap-4 px-8 py-9 sm:px-10">
-            <span
-              className="text-tui-ink3 text-[11px] font-medium tracking-[0.18em] uppercase"
-              suppressHydrationWarning
-            >
+      <div className="mx-auto max-w-[1240px] px-4 pt-8 pb-16 sm:px-8 sm:pt-14 lg:px-12 lg:pb-24">
+        {/* Headline — the date and greeting are real, the brief is data. */}
+        <section className="border-tui-ink/10 grid grid-cols-1 items-end gap-6 border-b pb-7 sm:pb-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-12">
+          <div className="min-w-0">
+            <span className={EYEBROW} suppressHydrationWarning>
               {dateLine}
             </span>
             <h1
-              className="font-display m-0 text-[40px] leading-[1.02] font-light tracking-[-0.02em] sm:text-[58px]"
+              className="font-display mt-3.5 mb-5 text-[44px] leading-[0.98] font-normal tracking-[-0.025em] sm:text-[60px] lg:text-[72px]"
               suppressHydrationWarning
             >
               {t(`greetingPlain.${greeting}`)}
@@ -219,239 +221,188 @@ export function DashboardSkeleton({
                 </>
               ) : firstName ? (
                 <>
-                  ,{" "}
-                  <span className="text-tui-accent italic">{firstName}.</span>
+                  , <em className="text-tui-accent">{firstName}.</em>
                 </>
               ) : null}
             </h1>
-            <div className="flex h-[25.6px] max-w-[640px] items-center">
-              <Skeleton className="h-[10px] w-[86%]" row={1} />
+            <div className="flex max-w-[620px] flex-col gap-[14px] py-[7px]">
+              <Skeleton className="h-[10px] w-[94%]" row={1} />
+              <Skeleton className="h-[10px] w-[62%]" row={1} />
             </div>
           </div>
-        </div>
-
-        {/* Today — the four stat labels are real, the counts hatch. */}
-        <div className={`${CARD} xl:order-2`}>
-          <div className="flex flex-col gap-3.5 px-7 py-6">
-            <span className="font-display text-[21px] capitalize">
-              {t("tui.today")}
+          <div className="flex flex-wrap items-center gap-2.5 lg:flex-col lg:items-end" aria-hidden="true">
+            <span className="border-tui-ink/14 text-tui-ink3 flex h-[34px] items-center rounded-full border px-3.5 text-[13px]">
+              {t("brief.ask")}
             </span>
-            <TodayStatSkeleton label={t("stats.dueToday")} row={1} />
-            <TodayStatSkeleton label={t("stats.overdue")} noteWidth={52} row={2} />
-            <TodayStatSkeleton label={t("stats.openThisWeek")} noteWidth={64} row={3} />
-            <TodayStatSkeleton label={t("stats.completed")} noteWidth={40} row={4} />
+            <span className="border-tui-ink/14 text-tui-ink3 flex h-[34px] items-center rounded-full border px-3.5 text-[13px]">
+              {t("brief.planWeek")}
+            </span>
           </div>
-        </div>
+        </section>
 
-        {/* Left column */}
-        <div className="flex min-w-0 flex-col gap-6 xl:order-3">
-          <section className={CARD}>
-            <CardHeadSkeleton title={t("radar.title")} metaWidth={64} row={2} />
-            <RadarFindingsSkeletonBody row={3} />
-          </section>
+        {/* Figures — the labels are real, the numbers hatch. */}
+        <section className="grid grid-cols-2 gap-y-6 pt-6 pb-9 sm:pt-7 sm:pb-14 lg:grid-cols-4">
+          <FigureSkeleton index={0} label={t("stats.dueToday")} bar />
+          <FigureSkeleton index={1} label={t("stats.overdue")} />
+          <FigureSkeleton index={2} label={t("stats.openThisWeek")} />
+          <FigureSkeleton index={3} label={t("stats.doneThisWeek")} />
+        </section>
 
-          <section className={CARD}>
-            <CardHeadSkeleton
-              title={t("projectStatus.title")}
-              metaWidth={48}
-              actionLabel={t("projectStatus.action")}
-              row={6}
-            />
-            <div className="overflow-x-auto">
-              <div className="min-w-[720px]">
-                <div
-                  className={`${TABLE_GRID} border-tui-ink/8 text-tui-ink3 border-b px-7 py-3 text-[11px] font-medium tracking-[0.14em] uppercase`}
-                >
-                  <span>{t("projectStatus.columns.project")}</span>
-                  <span>{t("projectStatus.columns.team")}</span>
-                  <span className="text-right">{t("projectStatus.columns.open")}</span>
-                  <span className="text-right">
-                    {t("projectStatus.columns.overdue")}
-                  </span>
-                  <span>{t("projectStatus.columns.completion")}</span>
-                  <span className="text-right">%</span>
-                  <span className="text-right">
-                    {t("projectStatus.columns.health")}
-                  </span>
-                </div>
-                {[0, 1, 2, 3].map((i) => {
-                  const row = 7 + i;
-                  const owners = (i % 3) + 1;
-                  return (
-                    <div
-                      key={i}
-                      className={`${TABLE_GRID} border-tui-ink/8 border-b px-7 py-4 text-[14px] last:border-b-0`}
-                    >
-                      <span className="flex min-w-0 flex-col gap-0.5">
-                        <span className="flex h-[28.5px] items-center">
-                          <Skeleton
-                            className="h-[13px]"
-                            shape="title"
-                            row={row}
-                            style={{ width: skeletonWidth(i + 31, 42, 74) }}
-                          />
-                        </span>
-                        <span className="flex h-[18.75px] items-center">
-                          <Skeleton className="h-[8px] w-[64px]" row={row} />
-                        </span>
-                      </span>
-                      <span className="flex">
-                        {Array.from({ length: owners }, (_, j) => (
-                          <span key={j} className="-mr-1.5">
-                            <Skeleton
-                              className="border-tui-pane h-[26px] w-[26px] border-2"
-                              shape="circle"
-                              row={row}
-                            />
-                          </span>
-                        ))}
-                      </span>
-                      <span className="flex justify-end">
-                        <Skeleton className="h-[9px] w-[14px]" row={row} />
-                      </span>
-                      <span className="flex justify-end">
-                        <Skeleton className="h-[9px] w-[10px]" row={row} />
-                      </span>
-                      <Skeleton className="h-[3px] w-full" row={row} />
-                      <span className="flex justify-end">
-                        <Skeleton className="h-[9px] w-[28px]" row={row} />
-                      </span>
-                      <span className="flex items-center justify-end gap-2">
-                        <Skeleton className="h-1.5 w-1.5" shape="circle" row={row} />
-                        <Skeleton className="h-[8px] w-[54px]" row={row} />
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <SkeletonSlow what="projects" onRetry={onRetry} className="px-7 pb-4" />
-          </section>
-
-          <section className={CARD}>
-            <CardHeadSkeleton
-              title={t("activity.title")}
-              actionLabel={t("activity.action")}
-            />
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="border-tui-ink/8 grid grid-cols-[30px_minmax(0,1fr)_auto] items-center gap-4 border-b px-7 py-3.5 last:border-b-0"
-              >
-                <Skeleton className="h-[30px] w-[30px]" shape="circle" row={8 + i} />
-                <span className="flex h-[21.75px] items-center">
-                  <Skeleton
-                    className="h-[9px]"
-                    row={8 + i}
-                    style={{ width: skeletonWidth(i + 41, 48, 82) }}
-                  />
-                </span>
-                <Skeleton className="h-[8px] w-[24px]" row={8 + i} />
-              </div>
-            ))}
-          </section>
-        </div>
-
-        {/* Right column */}
-        <div className="flex flex-col gap-6 xl:order-4">
-          <section className={CARD}>
-            <div className="flex flex-col gap-[18px] px-7 pt-6 pb-6">
-              <div className="flex items-baseline">
-                <span className="font-display text-[21px]">
-                  {t("workspace.title")}
-                </span>
-                <span className="flex-1" />
-                <Skeleton className="h-[8px] w-[44px] self-center" row={1} />
-              </div>
-
-              {/* The ring: a hatched annulus where the 120 segments will be. */}
-              <div className="relative mx-auto flex h-[240px] w-[240px] items-center justify-center">
-                <Skeleton
-                  className="h-[228px] w-[228px] items-center justify-center"
-                  shape="circle"
-                  row={2}
-                  style={{ display: "flex" }}
-                >
-                  <span className="bg-tui-pane block h-[204px] w-[204px] rounded-full" />
-                </Skeleton>
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
-                  <Skeleton className="h-[44px] w-[84px]" shape="title" row={3} />
-                  <span className="text-tui-ink3 text-[12.5px]">
-                    {t("workspace.ofTasksDone")}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2.5 text-[14px]">
-                <RingLegendSkeleton dot="bg-tui-accent" label={t("workspace.doneLabel")} row={4} />
-                <RingLegendSkeleton dot="bg-tui-warn" label={t("workspace.activeLabel")} row={5} />
-                <RingLegendSkeleton dot="bg-tui-ink/25" label={t("workspace.todoLabel")} row={6} />
-                <RingLegendSkeleton dot="bg-tui-day" label={t("workspace.dayGoneLabel")} row={7} />
-              </div>
-            </div>
-          </section>
-
-          <section className={CARD}>
-            <div className="flex flex-col gap-4 px-7 py-6">
-              <div className="flex items-baseline">
-                <span className="font-display text-[21px]">
-                  {t("momentum.title")}
-                </span>
-                <span className="flex-1" />
-                <Skeleton className="h-[8px] w-[30px] self-center" row={8} />
-              </div>
-              <span className="flex h-[34px] items-center">
-                <Skeleton className="h-[26px] w-[58%]" shape="title" row={8} />
-              </span>
-              <div className="flex h-16 items-end gap-[7px]" aria-hidden>
-                {Array.from({ length: 14 }, (_, i) => (
-                  <Skeleton
-                    key={i}
-                    className="min-w-0 flex-1"
-                    shape="line"
-                    row={9}
-                    style={{ height: skeletonWidth(i + 51, 12, 100) }}
-                  />
-                ))}
-              </div>
-              <div className="text-tui-ink3 flex items-center justify-between text-[12px]">
-                <Skeleton className="h-[8px] w-[36px]" row={10} />
-                <span className="capitalize">{t("tui.today")}</span>
-              </div>
-              <span className="flex h-[21.6px] items-center">
-                <Skeleton className="h-[9px] w-[78%]" row={10} />
-              </span>
-            </div>
-          </section>
-
-          <section className={CARD}>
-            <div className="px-7 pt-6 pb-3">
-              <span className="font-display text-[21px]">{t("teamToday.title")}</span>
-              <div className="mt-2 flex flex-col">
+        <div className="grid grid-cols-1 items-start gap-7 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="flex min-w-0 flex-col gap-7">
+            <section className={CARD}>
+              <CardHeadSkeleton title={t("nextUp.title")} metaWidth={150} row={3} />
+              <div className="py-1 pb-2.5" aria-hidden="true">
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
-                    className="border-tui-ink/8 grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 border-t py-[11px] first:border-t-0"
+                    className={`border-tui-ink/6 grid grid-cols-[24px_minmax(0,1fr)_auto] items-start gap-2.5 border-t py-4 first:border-t-0 sm:grid-cols-[34px_minmax(0,1fr)_auto] sm:gap-3.5 ${PAD}`}
                   >
-                    <Skeleton className="h-8 w-8" shape="circle" row={11 + i} />
-                    <span className="flex min-w-0 flex-col gap-0.5">
-                      <span className="flex h-[21px] items-center">
+                    <span className="font-display text-tui-ink3 text-[20px] leading-[1.2] italic">
+                      {["i.", "ii.", "iii."][i]}
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="flex h-[22.5px] items-center">
                         <Skeleton
-                          className="h-[9px]"
-                          row={11 + i}
-                          style={{ width: skeletonWidth(i + 61, 40, 66) }}
+                          className="h-[10px]"
+                          row={4 + i}
+                          style={{ width: skeletonWidth(i + 41, 40, 66) }}
                         />
                       </span>
-                      <span className="flex h-[18.75px] items-center">
-                        <Skeleton className="h-[7px] w-[72px]" row={11 + i} />
+                      <span className="mt-1 flex h-[18.75px] items-center">
+                        <Skeleton className="h-[7px] w-[180px]" row={4 + i} />
                       </span>
                     </span>
-                    <Skeleton className="h-[9px] w-[42px]" row={11 + i} />
+                    <span className="border-tui-ink/20 mt-0.5 h-5 w-5 rounded-full border-[1.25px]" />
                   </div>
                 ))}
               </div>
-            </div>
-          </section>
+            </section>
+
+            <section className={CARD}>
+              <CardHeadSkeleton title={t("radar.title")} metaWidth={64} row={6} />
+              <RadarFindingsSkeletonBody row={7} />
+            </section>
+
+            <section className={CARD}>
+              <CardHeadSkeleton
+                title={t("projectStatus.title")}
+                metaWidth={48}
+                actionLabel={t("projectStatus.action")}
+                row={9}
+              />
+              <div className="py-1 pb-2" aria-hidden="true">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className={`border-tui-ink/6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 border-t py-4 first:border-t-0 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.5fr)_110px] sm:gap-x-7 ${PAD}`}
+                  >
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="flex h-[21.75px] items-center">
+                        <Skeleton
+                          className="h-[10px]"
+                          row={10 + i}
+                          style={{ width: skeletonWidth(i + 51, 50, 80) }}
+                        />
+                      </span>
+                      <span className="flex h-[18px] items-center">
+                        <Skeleton className="h-[7px] w-[110px]" row={10 + i} />
+                      </span>
+                    </span>
+                    <span className="order-3 col-span-full sm:order-none sm:col-span-1">
+                      <span className="bg-tui-ink/8 block h-[3px] rounded-full" />
+                      <span className="mt-2 flex h-[17px] justify-between">
+                        <Skeleton className="h-[7px] w-[52px]" row={10 + i} />
+                        <Skeleton className="h-[7px] w-[64px]" row={10 + i} />
+                      </span>
+                    </span>
+                    <span className="flex justify-end">
+                      <Skeleton className="h-[8px] w-[64px]" row={10 + i} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <SkeletonSlow what="projects" onRetry={onRetry} className="px-7 pb-4" />
+            </section>
+          </div>
+
+          <div className="grid min-w-0 grid-cols-1 gap-7 sm:grid-cols-2 xl:grid-cols-1">
+            <section className={CARD}>
+              <CardHeadSkeleton title={t("week.title")} actionLabel={t("week.action")} />
+              <div className="grid grid-cols-7 px-2 pt-1.5 pb-5 sm:px-5" aria-hidden="true">
+                {week.map((d) => (
+                  <div key={d.toISOString()} className="flex flex-col items-center gap-1.5 py-2.5">
+                    <span className="text-tui-ink3 text-[10px] tracking-[0.12em] uppercase">
+                      {narrow.format(d)}
+                    </span>
+                    <span className="font-display text-[21px] leading-none" suppressHydrationWarning>
+                      {d.getDate()}
+                    </span>
+                    <span className="flex h-[16.5px] items-center">
+                      <Skeleton className="h-[7px] w-[10px]" row={4} />
+                    </span>
+                    <span className="h-1.5" />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className={CARD}>
+              <CardHeadSkeleton title={t("teamToday.title")} metaWidth={56} />
+              <div className="pt-1.5 pb-3" aria-hidden="true">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="grid grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-3 px-[18px] py-2.5 sm:px-6"
+                  >
+                    <Skeleton className="h-[26px] w-[26px]" shape="circle" row={6 + i} />
+                    <span className="flex min-w-0 flex-col">
+                      <span className="flex h-[20px] items-center">
+                        <Skeleton
+                          className="h-[9px]"
+                          row={6 + i}
+                          style={{ width: skeletonWidth(i + 61, 40, 66) }}
+                        />
+                      </span>
+                      <span className="flex h-[17px] items-center">
+                        <Skeleton className="h-[7px] w-[72px]" row={6 + i} />
+                      </span>
+                    </span>
+                    <Skeleton className="h-[12px] w-[58px]" row={6 + i} />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className={CARD}>
+              <CardHeadSkeleton
+                title={t("activity.title")}
+                actionLabel={t("activity.action")}
+              />
+              <div className="py-1.5 pb-3.5" aria-hidden="true">
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="grid grid-cols-[26px_minmax(0,1fr)] gap-3 px-[18px] py-[9px] sm:px-6"
+                  >
+                    <Skeleton className="h-[26px] w-[26px]" shape="circle" row={9 + i} />
+                    <span className="flex min-w-0 flex-col">
+                      <span className="flex h-[18.85px] items-center">
+                        <Skeleton
+                          className="h-[8px]"
+                          row={9 + i}
+                          style={{ width: skeletonWidth(i + 71, 60, 92) }}
+                        />
+                      </span>
+                      <span className="flex h-[17px] items-center">
+                        <Skeleton className="h-[6px] w-[40px]" row={9 + i} />
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </div>

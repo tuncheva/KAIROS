@@ -25,24 +25,16 @@ import { RadarFindingsSkeletonBody } from "./DashboardSkeleton";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
-/** Severity is a dot, a label tone and — on the lead card — a filled fix pill. */
+/** Severity is a dot and a label tone; the rest of the row stays ink. */
 const SEVERITY = {
-  critical: {
-    tone: "text-tui-danger",
-    dot: "bg-tui-danger",
-    pill: "border-tui-danger/50 bg-tui-danger/10",
-  },
-  warning: {
-    tone: "text-tui-warn",
-    dot: "bg-tui-warn",
-    pill: "border-tui-warn/50 bg-tui-warn/10",
-  },
-  info: {
-    tone: "text-tui-day",
-    dot: "bg-tui-day",
-    pill: "border-tui-day/50 bg-tui-day/10",
-  },
+  critical: { tone: "text-tui-danger", dot: "bg-tui-danger" },
+  warning: { tone: "text-tui-warn", dot: "bg-tui-warn" },
+  info: { tone: "text-tui-day", dot: "bg-tui-day" },
 } as const;
+
+/** The fix and "open project" share one outline pill that fills with ink on hover. */
+const ACTION =
+  "border-tui-ink/16 text-tui-ink hover:border-tui-ink hover:bg-tui-ink hover:text-tui-pane flex h-[30px] items-center rounded-full border px-3.5 text-[12.5px] font-medium whitespace-nowrap transition-colors";
 
 type Severity = keyof typeof SEVERITY;
 
@@ -54,10 +46,13 @@ export function RadarFindings({
   style,
   now,
   projectTitles,
+  agentName,
 }: {
   className?: string;
   style?: CSSProperties;
   now: Date;
+  /** What the workspace calls the radar agent — it signs the card. */
+  agentName?: string;
   /** Findings carry a project id; the dashboard already knows the titles. */
   projectTitles: Map<number, string | null>;
 }) {
@@ -86,11 +81,11 @@ export function RadarFindings({
 
   return (
     <section
-      className={`border-tui-ink/12 bg-tui-pane overflow-hidden rounded-lg border shadow-[var(--tui-pane-shadow)] ${className}`}
+      className={`border-tui-ink/10 bg-tui-pane overflow-hidden rounded-[14px] border shadow-[var(--tui-pane-shadow)] ${className}`}
       style={style}
     >
-      <div className="border-tui-ink/8 flex items-baseline gap-3 border-b px-7 pt-5 pb-4">
-        <h2 className="font-display text-tui-ink m-0 text-[22px] leading-none">
+      <div className="flex items-baseline gap-3 px-[18px] pt-[22px] pb-4 sm:px-7">
+        <h2 className="font-display text-tui-ink m-0 text-[24px] leading-none tracking-[-0.005em]">
           {t("radar.title")}
         </h2>
         {loading ? (
@@ -103,10 +98,12 @@ export function RadarFindings({
         <span className="flex-1" />
         {checked && (
           <span className="text-tui-ink3 hidden text-[12.5px] sm:block">
+            {agentName ? `${agentName} · ` : ""}
             {t("radar.checked", { ago: relativeShort(checked, now) })}
           </span>
         )}
       </div>
+      <div className="bg-tui-ink/8 mx-[18px] h-px sm:mx-7" />
 
       {/* Nothing found is the good case; it should look calm rather than empty. */}
       {loading ? (
@@ -115,13 +112,14 @@ export function RadarFindings({
           <RadarFindingsSkeletonBody row={1} />
         </>
       ) : rows.length === 0 ? (
-        <p className="text-tui-ink2 px-7 py-6 text-[14px]">
+        <p className="text-tui-ink2 m-0 px-[18px] py-6 text-[14px] sm:px-7">
           {t("radar.allClear")}
         </p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3">
-          {rows.slice(0, 3).map((finding, index) => {
-            const tone = SEVERITY[severityOf(finding.severity)];
+        <div className="py-1">
+          {rows.slice(0, 3).map((finding) => {
+            const severity = severityOf(finding.severity);
+            const tone = SEVERITY[severity];
             const project = finding.projectId
               ? (projectTitles.get(finding.projectId) ?? null)
               : null;
@@ -129,34 +127,30 @@ export function RadarFindings({
             return (
               <article
                 key={finding.id}
-                className={`flex flex-col gap-3 px-7 py-6 ${
-                  index > 0
-                    ? "border-tui-ink/8 border-t md:border-t-0 md:border-l"
-                    : ""
-                }`}
+                className="border-tui-ink/6 grid grid-cols-1 items-center gap-3 border-t px-[18px] py-[18px] first:border-t-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-6 sm:px-7"
               >
-                <div className="flex items-center gap-2 text-[12.5px] font-medium">
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${tone.dot}`}
-                    aria-hidden
-                  />
-                  <span className={tone.tone}>
-                    {t(`radar.severity.${severityOf(finding.severity)}`)}
-                  </span>
-                  <span className="flex-1" />
-                  <span className="font-display text-tui-ink3 truncate text-[14px] italic">
-                    {project ?? t("radar.workspaceWide")}
-                  </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-[10.5px] font-medium tracking-[0.16em] uppercase">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${tone.dot}`}
+                      aria-hidden
+                    />
+                    <span className={tone.tone}>
+                      {t(`radar.severity.${severity}`)}
+                    </span>
+                    <span className="text-tui-ink3 truncate tracking-normal normal-case">
+                      · {project ?? t("radar.workspaceWide")}
+                    </span>
+                  </div>
+                  <h3 className="text-tui-ink m-0 mt-1.5 mb-1 text-[14.5px] leading-[1.4] font-medium text-pretty">
+                    {finding.title}
+                  </h3>
+                  <p className="text-tui-ink3 m-0 text-[13px] leading-[1.55] text-pretty">
+                    {finding.detail}
+                  </p>
                 </div>
 
-                <h3 className="font-display text-tui-ink m-0 text-[21px] leading-[1.25] font-normal text-pretty">
-                  {finding.title}
-                </h3>
-                <p className="text-tui-ink2 m-0 text-[14px] leading-[1.6] text-pretty">
-                  {finding.detail}
-                </p>
-
-                <div className="mt-1.5 flex items-center gap-4 text-[13px]">
+                <div className="flex items-center gap-1">
                   {finding.suggestedFix ? (
                     <button
                       type="button"
@@ -165,11 +159,9 @@ export function RadarFindings({
                           `/chat/ai?prefill=${encodeURIComponent(finding.suggestedFix!.prompt)}`,
                         )
                       }
-                      className={`text-tui-ink flex h-[34px] items-center rounded-full border px-3.5 font-medium transition-opacity hover:opacity-80 ${
-                        index === 0 ? tone.pill : "border-tui-ink/16"
-                      }`}
+                      className={ACTION}
                     >
-                      {finding.suggestedFix.label} →
+                      {finding.suggestedFix.label}
                     </button>
                   ) : finding.projectId ? (
                     <button
@@ -177,7 +169,7 @@ export function RadarFindings({
                       onClick={() =>
                         router.push(`/projects?projectId=${finding.projectId}`)
                       }
-                      className="border-tui-ink/16 text-tui-ink hover:bg-tui-ink/[0.04] flex h-[34px] items-center rounded-full border px-3.5 font-medium transition-colors"
+                      className={ACTION}
                     >
                       {t("radar.openProject")}
                     </button>
@@ -187,7 +179,7 @@ export function RadarFindings({
                     type="button"
                     onClick={() => dismiss.mutate({ findingId: finding.id })}
                     disabled={dismiss.isPending}
-                    className="text-tui-ink3 hover:text-tui-ink2 transition-colors disabled:opacity-50"
+                    className="text-tui-ink3 hover:text-tui-ink h-[30px] px-2.5 text-[12.5px] transition-colors disabled:opacity-50"
                   >
                     {t("radar.dismiss")}
                   </button>

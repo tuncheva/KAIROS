@@ -2661,13 +2661,17 @@
       "dueToday": "За днес",
       "overdue": "Просрочени",
       "openThisWeek": "Отворени тази седмица",
-      "completed": "Завършени",
       "notes": {
-        "doneToday": "{count} готови",
-        "oldest": "най-стара {days}д",
-        "across": "в {count}",
-        "allTime": "общо"
-      }
+        "left": "{count, plural, =0 {всичко е готово} one {остава една} other {остават #}}",
+        "nothingDue": "нищо за днес",
+        "oldestDays": "най-старата закъснява {days, plural, one {един ден} other {# дни}}",
+        "onTime": "нищо не закъснява",
+        "acrossProjects": "в {count, plural, one {един проект} other {# проекта}}",
+        "more": "с {count} повече от миналата седмица",
+        "fewer": "с {count} по-малко от миналата седмица",
+        "same": "колкото миналата седмица"
+      },
+      "doneThisWeek": "Завършени тази седмица"
     },
     "activity": {
       "title": "Скорошна активност",
@@ -2680,19 +2684,6 @@
         "updated": "{user} обнови {task} в {project}",
         "deleted": "{user} изтри {task} в {project}"
       }
-    },
-    "workspace": {
-      "title": "Напредък в работното пространство",
-      "done": "{count} завършени",
-      "active": "{count} активни",
-      "todo": "{count} предстоящи",
-      "dayGone": "{percent}% от деня изтекоха",
-      "ofTasksDone": "от задачите са готови",
-      "ofTodayGone": "от деня изтекоха",
-      "doneLabel": "готови",
-      "activeLabel": "в ход",
-      "todoLabel": "за правене",
-      "dayGoneLabel": "от деня"
     },
     "projects": {
       "untitled": "Проект без име",
@@ -2721,7 +2712,7 @@
       "welcomeLabel": "начало",
       "newWorkspace": "ново работно пространство",
       "headline": "Още нищо на дъската",
-      "howItFills": "как се запълва",
+      "howItFills": "Как се запълва",
       "steps3": "3 стъпки",
       "stepCreateTitle": "Създайте проект",
       "stepTeamTitle": "Поканете екипа",
@@ -2746,7 +2737,7 @@
       "radarIdleBody": "Още няма какво да се следи. Радарът започва да чете крайни срокове и натовареност веднага щом се появи първата задача."
     },
     "radar": {
-      "title": "Какво откри радарът",
+      "title": "От радара",
       "count": "{count, plural, =0 {нищо не е открито} one {# находка} other {# находки}}",
       "loading": "проверка…",
       "checked": "Проверено преди {ago}",
@@ -2761,33 +2752,24 @@
       }
     },
     "projectStatus": {
-      "title": "Състояние на проектите",
+      "title": "Проекти",
       "count": "{count, plural, =0 {няма активни} other {# активни}}",
       "action": "Всички проекти",
       "ends": "Край {date}",
       "noDate": "Без дата",
-      "columns": {
-        "project": "Проект",
-        "team": "Екип",
-        "open": "Отворени",
-        "overdue": "Забавени",
-        "completion": "Завършеност",
-        "health": "Състояние"
-      }
-    },
-    "momentum": {
-      "title": "Твоето темпо",
-      "streak": "{count, plural, one {1 ден подред} other {# дни подред}}",
-      "noStreak": "Още няма серия",
-      "line": "{total, plural, =0 {Нищо завършено през последните две седмици.} one {Завърши една задача през последните две седмици.} other {Завърши # задачи през последните две седмици}}{today, plural, =0 {} other {, {today} от тях днес}}."
+      "openCount": "{count} отворени",
+      "done": "{percent}% готово",
+      "timeUsed": "{percent}% от времето",
+      "noDeadline": "без краен срок"
     },
     "teamToday": {
-      "title": "Екипът днес",
+      "title": "Екип",
       "open": "{count} отворени",
       "active": "Активен преди {ago}",
       "neverActive": "Още няма активност",
       "you": "{name} (ти)",
-      "empty": "Още няма други хора в тези проекти."
+      "empty": "Още няма други хора в тези проекти.",
+      "meta": "отворени задачи"
     },
     "tui": {
       "briefing": "обзор",
@@ -2812,6 +2794,40 @@
       "booting": "зареждане на таблото",
       "waitingCounts": "изчакване на бройки",
       "today": "днес"
+    },
+    "brief": {
+      "signed": "<agent>{name}</agent>, сутрешният ти брифинг · {time}",
+      "ask": "Попитай Kairos AI",
+      "planWeek": "Планирай седмицата ми",
+      "planPrompt": "Помогни ми да планирам седмицата: виж какво предстои и какво е просрочено и предложи с какво да започна."
+    },
+    "nextUp": {
+      "title": "Следващи",
+      "meta": "първо твоите, по срок и приоритет",
+      "replan": "Препланирай с {name}",
+      "empty": "Нищо със срок не те чака през следващите три седмици.",
+      "overdue": "{days, plural, one {просрочена с един ден} other {просрочена с # дни}}",
+      "today": "Днес",
+      "markDone": "Отбележи „{task}“ като завършена",
+      "priority": {
+        "high": "Висок приоритет",
+        "urgent": "Спешна"
+      }
+    },
+    "week": {
+      "title": "Тази седмица",
+      "action": "Календар",
+      "tasks": "{count, plural, =0 {без задачи} one {една задача} other {# задачи}}",
+      "events": "{count, plural, =0 {без събития} one {едно събитие} other {# събития}}"
+    },
+    "crew": {
+      "title": "Екипажът",
+      "today": "днес в {time}",
+      "tomorrow": "утре в {time}",
+      "day": "{day} в {time}",
+      "meetings": "преди всяка среща",
+      "off": "Няма включени планирани агенти.",
+      "settings": "Настройки на AI"
     }
   },
   "agents": {

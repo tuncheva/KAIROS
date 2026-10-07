@@ -6,10 +6,10 @@ import userEvent from "@testing-library/user-event";
  * The dashboard, rendered.
  *
  * `tests/setup.tsx` mocks every tRPC query to `null`, which is the first-run
- * path — useful, but it never exercises the four blocks the page is actually
- * made of. This file overrides that mock with real-shaped data so the redesign
- * is checked as a rendered page: the stat row, the radar cards, the project
- * status table and the aside's ring, momentum and team panels.
+ * path — useful, but it never exercises the blocks the page is actually made
+ * of. This file overrides that mock with real-shaped data so the redesign is
+ * checked as a rendered page: the brief, the figures, next up, the radar, the
+ * project pace lines, the week, the team and the crew line.
  */
 
 const HOUR = 3_600_000;
@@ -27,6 +27,7 @@ const PROJECTS = [
     id: 1,
     title: "Redesign sprint",
     description: null,
+    createdAt: daysFromToday(-7),
     createdById: "me",
     createdByUser: { id: "me", name: "Teodora", email: null, image: null },
     collaborators: [
@@ -76,7 +77,20 @@ const CALENDAR = {
       projectTitle: "Redesign sprint",
     },
   ],
+  events: [],
 };
+
+const BRIEF = {
+  message: "Two tasks on the redesign sprint are late; start with the audit.",
+  createdAt: new Date(new Date().setHours(7, 2, 0, 0)),
+};
+
+const SCHEDULES = [
+  { kind: "daily_brief", enabled: true, hourLocal: 7, dayOfWeek: null },
+  { kind: "risk_radar", enabled: false, hourLocal: 7, dayOfWeek: null },
+  { kind: "weekly_retro", enabled: false, hourLocal: 16, dayOfWeek: 5 },
+  { kind: "meeting_prep", enabled: true, hourLocal: 0, dayOfWeek: null },
+];
 
 const ACTIVITY = {
   rows: [
@@ -176,6 +190,7 @@ const FINDINGS = [
 ];
 
 const dismissMutate = vi.fn();
+const statusMutate = vi.fn();
 
 vi.mock("~/trpc/react", () => {
   const query = (data: unknown) => ({
@@ -194,9 +209,15 @@ vi.mock("~/trpc/react", () => {
       task: {
         getOrgActivity: query(ACTIVITY),
         getForCalendar: query(CALENDAR),
+        updateStatus: {
+          useMutation: () => ({ mutate: statusMutate, isPending: false }),
+        },
       },
       progress: { getPulse: query(PULSE) },
       agent: {
+        latestBrief: query(BRIEF),
+        schedules: query(SCHEDULES),
+        names: query({ overrides: {} }),
         findings: query(FINDINGS),
         dismissFinding: {
           useMutation: () => ({ mutate: dismissMutate, isPending: false }),
@@ -216,39 +237,78 @@ const { DashboardClient } = await import(
 const setup = () => render(<DashboardClient userName="Teodora Tuncheva" />);
 
 describe("the dashboard headline", () => {
-  it("greets by first name and says what the day holds", () => {
+  it("greets by first name and sets the morning brief under it, signed", () => {
     setup();
     // The name is set in italic accent and closes with a full stop.
     expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(
       /Teodora\.$/,
     );
-    expect(
-      screen.getByText(
-        /tasks are due today|task is due today|Nothing is due today/,
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText(BRIEF.message)).toBeInTheDocument();
+    expect(screen.getByText(/, your morning brief · /)).toBeInTheDocument();
   });
 
-  it("carries the four stats with their footnotes", () => {
+  it("hands off to the crew from the headline", () => {
     setup();
-    for (const label of ["Due today", "Open this week", "Completed"]) {
+    expect(
+      screen.getByRole("button", { name: "Ask Kairos AI" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Plan my week" }).getAttribute("href"),
+    ).toMatch(/^\/chat\/ai\?prefill=/);
+  });
+
+  it("carries the four figures with their footnotes", () => {
+    setup();
+    for (const label of [
+      "Due today",
+      "Overdue",
+      "Open this week",
+      "Done this week",
+    ]) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
-    // "Overdue" is also a column heading further down the page.
-    expect(screen.getAllByText("Overdue").length).toBeGreaterThan(0);
-    // Two tasks are late, the oldest by four days; one of today's is finished.
-    expect(screen.getByText("oldest 4d")).toBeInTheDocument();
-    expect(screen.getByText("1 done")).toBeInTheDocument();
-    expect(screen.getByText("across 2")).toBeInTheDocument();
+    // Today's one task is finished; two are late, the oldest by four days.
+    expect(screen.getByText("all done")).toBeInTheDocument();
+    expect(screen.getByText("oldest 4 days late")).toBeInTheDocument();
+    expect(screen.getByText("across 2 projects")).toBeInTheDocument();
+    // Six completions this week, none the week before.
+    expect(screen.getByText("6 more than last week")).toBeInTheDocument();
+  });
+
+  it("no longer reports how much of the day has gone", () => {
+    setup();
+    expect(screen.queryByText(/of today gone|day gone/)).not.toBeInTheDocument();
+  });
+});
+
+describe("next up", () => {
+  it("lists the oldest open task first, with how late it is", () => {
+    setup();
+    const card = screen
+      .getByRole("heading", { name: "Next up" })
+      .closest("section")!;
+    expect(within(card).getByText("Audit the empty states")).toBeInTheDocument();
+    expect(within(card).getByText("4 days overdue")).toBeInTheDocument();
+  });
+
+  it("completes a task in place", async () => {
+    setup();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Mark “Audit the empty states” done" }),
+    );
+    expect(statusMutate).toHaveBeenCalledWith({
+      taskId: 1,
+      status: "completed",
+    });
   });
 });
 
 describe("what the radar found", () => {
   it("shows each finding with its severity, and dates the check", () => {
     setup();
-    expect(screen.getByText("What the radar found")).toBeInTheDocument();
+    expect(screen.getByText("From the radar")).toBeInTheDocument();
     expect(screen.getByText("2 findings")).toBeInTheDocument();
-    expect(screen.getByText("Checked 14m ago")).toBeInTheDocument();
+    expect(screen.getByText(/Checked 14m ago/)).toBeInTheDocument();
     expect(screen.getByText("Critical")).toBeInTheDocument();
     expect(
       screen.getByText("Four days behind on the sprint"),
@@ -260,12 +320,11 @@ describe("what the radar found", () => {
     const card = screen
       .getByText("Reviews are the bottleneck")
       .closest("article")!;
-    expect(within(card).getByText("Across the workspace")).toBeInTheDocument();
+    expect(within(card).getByText(/Across the workspace/)).toBeInTheDocument();
   });
 
   it("offers the drafted fix, and a dismissal beside it", async () => {
     setup();
-    // The fix pill reads "Draft a rebalance →".
     expect(
       screen.getByRole("button", { name: /Draft a rebalance/ }),
     ).toBeInTheDocument();
@@ -281,8 +340,8 @@ describe("what the radar found", () => {
 });
 
 /**
- * The status row a project's title link sits in — the link no longer wraps the
- * row, and the same title also appears in the activity feed below.
+ * The row a project's title link sits in — the same title also appears in the
+ * activity feed and next up, outside any row.
  */
 const rowFor = (title: RegExp) =>
   screen
@@ -290,22 +349,7 @@ const rowFor = (title: RegExp) =>
     .map((link) => link.closest("div.group"))
     .find((row): row is HTMLElement => row !== null)!;
 
-describe("the project status table", () => {
-  it("heads every column the design lists", () => {
-    setup();
-    const header = screen.getByText("Project").parentElement!;
-    for (const column of [
-      "Project",
-      "Team",
-      "Open",
-      "Overdue",
-      "Completion",
-      "Health",
-    ]) {
-      expect(within(header).getByText(column)).toBeInTheDocument();
-    }
-  });
-
+describe("the project list", () => {
   it("puts the at-risk project first and links each row to the project", () => {
     setup();
     const titles = screen
@@ -317,14 +361,16 @@ describe("the project status table", () => {
     ).toBeInTheDocument();
   });
 
-  it("reads open, overdue and completion off the tasks", () => {
+  it("reads open work, completion and time gone off the project", () => {
     setup();
     const row = rowFor(/Redesign sprint/);
-    expect(within(row).getByText("3")).toBeInTheDocument(); // open
-    expect(within(row).getByText("2")).toBeInTheDocument(); // overdue
-    // The bar and its figure sweep up from zero over the entrance, so the
-    // number this early is the start of that sweep rather than the total.
-    expect(within(row).getByText(/^\d+%$/)).toBeInTheDocument();
+    expect(within(row).getByText(/· 3 open$/)).toBeInTheDocument();
+    // The line sweeps up from zero over the entrance, so the figure this early
+    // is the start of that sweep rather than the total.
+    expect(within(row).getByText(/^\d+% done$/)).toBeInTheDocument();
+    // Started a week ago, last open task due in three days: about 70% of the
+    // span, give or take the hour the test runs at.
+    expect(within(row).getByText(/^(6|7)\d% of time$/)).toBeInTheDocument();
   });
 
   it("dates a project by the last of its open tasks", () => {
@@ -332,6 +378,19 @@ describe("the project status table", () => {
     const row = rowFor(/Docs refresh/);
     expect(within(row).getByText(/^Ends /)).toBeInTheDocument();
     expect(within(row).getByText("On track")).toBeInTheDocument();
+  });
+});
+
+describe("the week", () => {
+  it("lays out seven days and reads today's load", () => {
+    setup();
+    const card = screen
+      .getByRole("heading", { name: "This week" })
+      .closest("section")!;
+    expect(within(card).getAllByRole("listitem")).toHaveLength(7);
+    expect(
+      within(card).getByLabelText(/, one task, no events$/),
+    ).toBeInTheDocument();
   });
 });
 
@@ -343,33 +402,28 @@ describe("team activity", () => {
   });
 });
 
-describe("the aside", () => {
-  it("reports workspace completion on the ring", () => {
-    setup();
-    expect(screen.getByText("Workspace progress")).toBeInTheDocument();
-    expect(screen.getByText("4 / 8")).toBeInTheDocument();
-    expect(screen.getByText("of tasks done")).toBeInTheDocument();
-  });
-
-  it("shows the streak, the pace and what the fortnight came to", () => {
-    setup();
-    expect(screen.getByText("Your momentum")).toBeInTheDocument();
-    expect(screen.getByText("2-day streak")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /You finished 6 tasks in the last fortnight, 4 of them today\./,
-      ),
-    ).toBeInTheDocument();
-  });
-
+describe("the team", () => {
   it("lists the team by load, marking the reader and the quiet ones", () => {
     setup();
-    expect(screen.getByText("Team today")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Team" })).toBeInTheDocument();
     expect(screen.getByText("Ivan Petrov")).toBeInTheDocument();
-    expect(screen.getByText("9 open")).toBeInTheDocument();
+    expect(screen.getByLabelText("9 open")).toBeInTheDocument();
     expect(screen.getByText("Active 20m ago")).toBeInTheDocument();
     expect(screen.getByText("Teodora (you)")).toBeInTheDocument();
     expect(screen.getByText("No activity yet")).toBeInTheDocument();
+  });
+});
+
+describe("the crew line", () => {
+  it("names each scheduled agent that is on, and when it next runs", () => {
+    setup();
+    const footer = screen.getByText("The crew").closest("footer")!;
+    expect(within(footer).getByText(/^(today|tomorrow) at /)).toBeInTheDocument();
+    expect(within(footer).getByText("before each meeting")).toBeInTheDocument();
+    // Schedules that are off stay off the line.
+    expect(
+      within(footer).getAllByText(/ at |before each meeting/),
+    ).toHaveLength(2);
   });
 });
 
@@ -395,6 +449,9 @@ describe("first run", () => {
           },
           progress: { getPulse: query(null) },
           agent: {
+            latestBrief: query(null),
+            schedules: query([]),
+            names: query({ overrides: {} }),
             findings: query([]),
             dismissFinding: {
               useMutation: () => ({ mutate: vi.fn(), isPending: false }),
@@ -415,9 +472,11 @@ describe("first run", () => {
     render(<Empty userName="Teodora" />);
 
     expect(screen.getByText(/Nothing on the board yet/)).toBeInTheDocument();
+    // Creating is left to the top bar's button; joining by code is offered here.
     expect(
-      screen.getByRole("link", { name: /Create a project/ }),
-    ).toHaveAttribute("href", "/projects?new=1");
+      screen.queryByRole("link", { name: /Create a project/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Access code")).toBeInTheDocument();
     vi.doUnmock("~/trpc/react");
   });
 });

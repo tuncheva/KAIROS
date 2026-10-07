@@ -7,27 +7,46 @@ import { Plus } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
+import { useAgentLabel } from "~/components/agents/useAgentLabel";
 import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { DashboardSkeleton } from "./DashboardSkeleton";
 import { RadarFindings } from "./RadarFindings";
 import {
-  dayFraction,
+  daysLate,
   headlineStats,
-  momentum,
+  nextRunAt,
+  nextUp,
   projectStatusRows,
   relativeShort,
   startOfDay,
+  weekOutput,
+  weekStrip,
+  type CalendarEvent,
   type CalendarTask,
-  type Momentum,
   type ProjectStatusRow,
+  type WeekDay,
 } from "./dashboardData";
 
 /** Project detail lives behind the create flow — see `ProjectsWorkspace`. */
 const projectHref = (id: number) => `/projects?projectId=${id}`;
 
+/** A chat with its first message already typed — how the page hands off to the crew. */
+const chatHref = (prompt: string) =>
+  `/chat/ai?prefill=${encodeURIComponent(prompt)}`;
+
 /** The card shell shared by every panel on the page. */
 const CARD =
-  "overflow-hidden rounded-lg border border-tui-ink/12 bg-tui-pane shadow-[var(--tui-pane-shadow)]";
+  "overflow-hidden rounded-[14px] border border-tui-ink/10 bg-tui-pane shadow-[var(--tui-pane-shadow)]";
+
+/** Side padding every card row shares, so their contents line up. */
+const PAD = "px-[18px] sm:px-7";
+
+/** The small spaced capitals used for labels across the page. */
+const EYEBROW =
+  "text-tui-ink3 text-[10.5px] font-medium tracking-[0.18em] uppercase";
+
+/** A day with this many open tasks is called out in the week strip. */
+const HEAVY_DAY = 6;
 
 type ActivityRow = {
   id: number;
@@ -41,7 +60,7 @@ type ActivityRow = {
 };
 
 /**
- * Eased 0 → 1 over the entrance, driving both the counting numbers and the ring
+ * Eased 0 → 1 over the entrance, driving both the counting numbers and the bar
  * sweeps so they land together. Reduced-motion users get the final frame.
  */
 function useEntrance(active: boolean): number {
@@ -120,14 +139,7 @@ function useTween(target: number, duration = 700): number {
 /** Blocks stage in on a shared curve; the delay is what separates them. */
 const rise = (delay: number) => ({ animationDelay: `${delay}s` });
 
-/** Health is a tone; it paints text and a dot, never a fill. */
-const HEALTH_TONE = {
-  onTrack: "text-tui-ok",
-  inProgress: "text-tui-warn",
-  atRisk: "text-tui-danger",
-  empty: "text-tui-ink3",
-} as const;
-
+/** Health is a dot beside a word; colour stays off everything else. */
 const HEALTH_DOT = {
   onTrack: "bg-tui-ok",
   inProgress: "bg-tui-warn",
@@ -136,10 +148,22 @@ const HEALTH_DOT = {
 } as const;
 
 /** A serif monogram in a bordered circle — the refined edition's avatar. */
-function Initial({ label, size = 26 }: { label: string; size?: number }) {
+function Initial({
+  label,
+  size = 26,
+  agent = false,
+}: {
+  label: string;
+  size?: number;
+  agent?: boolean;
+}) {
   return (
     <span
-      className="border-tui-ink/16 bg-tui-pane font-display text-tui-ink2 flex items-center justify-center rounded-full border"
+      className={`font-display flex shrink-0 items-center justify-center rounded-full border ${
+        agent
+          ? "border-tui-accent/35 text-tui-accent bg-tui-pane italic"
+          : "border-tui-ink/14 bg-tui-pane text-tui-ink2"
+      }`}
       style={{ width: size, height: size, fontSize: size * 0.5 }}
     >
       {label.trim().charAt(0).toUpperCase() || "?"}
@@ -147,7 +171,7 @@ function Initial({ label, size = 26 }: { label: string; size?: number }) {
   );
 }
 
-/** The header row a card wears: a serif title, a caption, and an optional link. */
+/** The header row a card wears: a serif title, a caption, an optional link, a hairline. */
 function CardHead({
   title,
   meta,
@@ -160,27 +184,42 @@ function CardHead({
   actionHref?: string;
 }) {
   return (
-    <div className="border-tui-ink/8 flex items-baseline gap-3 border-b px-7 pt-5 pb-4">
-      <h2 className="font-display text-tui-ink m-0 text-[22px] leading-none">
-        {title}
-      </h2>
-      {meta && <span className="text-tui-ink3 text-[12.5px]">{meta}</span>}
-      <span className="flex-1" />
-      {actionLabel && actionHref && (
-        <Link
-          href={actionHref}
-          className="text-tui-ink2 hover:text-tui-ink text-[13px] transition-colors"
-        >
-          {actionLabel} →
-        </Link>
-      )}
-    </div>
+    <>
+      <div className={`flex items-baseline gap-3 ${PAD} pt-[22px] pb-4`}>
+        <h2 className="font-display text-tui-ink m-0 text-[24px] leading-none tracking-[-0.005em]">
+          {title}
+        </h2>
+        {meta && (
+          <span className="text-tui-ink3 hidden truncate text-[12.5px] sm:inline">
+            {meta}
+          </span>
+        )}
+        <span className="flex-1" />
+        {actionLabel && actionHref && (
+          <Link
+            href={actionHref}
+            className="text-tui-ink3 hover:text-tui-ink shrink-0 text-[12.5px] transition-colors"
+          >
+            {actionLabel} →
+          </Link>
+        )}
+      </div>
+      <div className="bg-tui-ink/8 mx-[18px] h-px sm:mx-7" />
+    </>
   );
 }
 
-export function DashboardClient({ userName }: { userName: string | null }) {
+export function DashboardClient({
+  userName,
+  userId = null,
+}: {
+  userName: string | null;
+  /** Whose "next up" this is — tasks assigned to anyone else are left out. */
+  userId?: string | null;
+}) {
   const t = useTranslations("dashboard");
   const locale = useLocale();
+  const agents = useAgentLabel();
 
   const projectsQuery = api.project.getMyProjects.useQuery();
   const activityQuery = api.task.getOrgActivity.useQuery({
@@ -188,6 +227,10 @@ export function DashboardClient({ userName }: { userName: string | null }) {
     scope: "all",
   });
   const pulseQuery = api.progress.getPulse.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
+  const briefQuery = api.agent.latestBrief.useQuery(undefined, {
+    retry: false,
     refetchOnWindowFocus: false,
   });
 
@@ -210,24 +253,32 @@ export function DashboardClient({ userName }: { userName: string | null }) {
     () => calendarQuery.data?.tasks ?? [],
     [calendarQuery.data],
   );
+  const calendarEvents = useMemo<CalendarEvent[]>(
+    () => calendarQuery.data?.events ?? [],
+    [calendarQuery.data],
+  );
 
   const stats = useMemo(() => headlineStats(projects, now), [projects, now]);
   const rows = useMemo(() => projectStatusRows(projects, now), [projects, now]);
-  const dayGone = useMemo(() => dayFraction(now), [now]);
-  const pace = useMemo(
-    () => momentum(pulseQuery.data?.completions ?? [], now),
+  const output = useMemo(
+    () => weekOutput(pulseQuery.data?.completions ?? [], now),
     [pulseQuery.data, now],
+  );
+  const queue = useMemo(
+    () => nextUp(calendarTasks, userId),
+    [calendarTasks, userId],
+  );
+  const week = useMemo(
+    () => weekStrip(calendarTasks, calendarEvents, now),
+    [calendarTasks, calendarEvents, now],
   );
   const team = pulseQuery.data?.team ?? [];
 
   const oldestOverdueDays = useMemo(() => {
-    const today = startOfDay(now).getTime();
     let oldest = 0;
     for (const task of calendarTasks) {
-      if (task.status === "completed" || !task.dueDate) continue;
-      const due = startOfDay(new Date(task.dueDate)).getTime();
-      if (due >= today) continue;
-      oldest = Math.max(oldest, Math.round((today - due) / 86_400_000));
+      if (task.status === "completed") continue;
+      oldest = Math.max(oldest, daysLate(task.dueDate, now));
     }
     return oldest;
   }, [calendarTasks, now]);
@@ -265,6 +316,11 @@ export function DashboardClient({ userName }: { userName: string | null }) {
     day: "numeric",
     month: "long",
   }).format(now);
+  const clock = (d: Date) =>
+    new Intl.DateTimeFormat(locale, {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(d);
 
   const hour = now.getHours();
   const greeting = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
@@ -283,9 +339,8 @@ export function DashboardClient({ userName }: { userName: string | null }) {
   }
   if (isFirstRun) {
     return (
-      <div className="tui-screen min-h-full">
+      <div className="min-h-full">
         <FirstRun
-          dayGone={dayGone}
           now={now}
           locale={locale}
           userName={userName}
@@ -294,371 +349,576 @@ export function DashboardClient({ userName }: { userName: string | null }) {
     );
   }
 
+  const brief = briefQuery.data?.message?.trim() ?? "";
+  const briefAt = briefQuery.data?.createdAt
+    ? new Date(briefQuery.data.createdAt)
+    : null;
+
+  const dueTotal = stats.dueToday + doneToday;
+  const weekDiff = output.thisWeek - output.lastWeek;
+
   return (
-    <div className="tui-screen text-tui-ink min-h-full">
-      <div className="mx-auto grid max-w-[1440px] grid-cols-1 gap-6 px-4 pt-10 pb-12 sm:px-8 xl:grid-cols-[minmax(0,1fr)_380px]">
-        {/* Hero */}
-        <div className={`dash-rise ${CARD} xl:order-1`} style={rise(0.05)}>
-          <div className="flex flex-col gap-4 px-8 py-9 sm:px-10">
-            <span className="text-tui-ink3 text-[11px] font-medium tracking-[0.18em] uppercase">
-              {dateLine}
-            </span>
-            <h1 className="font-display m-0 text-[40px] leading-[1.02] font-light tracking-[-0.02em] sm:text-[58px]">
+    <div className="text-tui-ink min-h-full">
+      <div className="mx-auto max-w-[1240px] px-4 pt-8 pb-16 sm:px-8 sm:pt-14 lg:px-12 lg:pb-24">
+        {/* The headline: open on the page, no card. */}
+        <section
+          className="dash-rise border-tui-ink/10 grid grid-cols-1 items-end gap-6 border-b pb-7 sm:pb-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-12"
+          style={rise(0.04)}
+        >
+          <div className="min-w-0">
+            <span className={EYEBROW}>{dateLine}</span>
+            <h1 className="font-display mt-3.5 mb-5 text-[44px] leading-[0.98] font-normal tracking-[-0.025em] sm:text-[60px] lg:text-[72px]">
               {firstName ? (
                 <>
                   {t(`greetingPlain.${greeting}`)},{" "}
-                  <span className="text-tui-accent italic">{firstName}.</span>
+                  <em className="text-tui-accent">{firstName}.</em>
                 </>
               ) : (
                 t(`greetingPlain.${greeting}`)
               )}
             </h1>
-            <p className="text-tui-ink2 m-0 max-w-[640px] text-[16px] leading-[1.6] text-pretty">
-              {stats.totalTasks === 0
-                ? t("summaryEmpty")
-                : t("summary", {
-                    due: stats.dueToday,
-                    overdue: stats.overdue,
-                    projects: stats.projectCount,
-                  })}
+            <p className="text-tui-ink2 m-0 max-w-[620px] text-[16px] leading-[1.7] text-pretty">
+              {brief ||
+                (stats.totalTasks === 0
+                  ? t("summaryEmpty")
+                  : t("summary", {
+                      due: stats.dueToday,
+                      overdue: stats.overdue,
+                      projects: stats.projectCount,
+                    }))}
             </p>
+            {brief && briefAt && (
+              <div className="text-tui-ink3 mt-5 flex items-center gap-2.5 text-[12.5px]">
+                <span className="bg-tui-ink/25 h-px w-6" aria-hidden />
+                <span>
+                  {t.rich("brief.signed", {
+                    name: agents.name("daily_brief"),
+                    time: clock(briefAt),
+                    agent: (chunks) => (
+                      <i className="font-display text-tui-ink2 text-[15px]">
+                        {chunks}
+                      </i>
+                    ),
+                  })}
+                </span>
+              </div>
+            )}
           </div>
-        </div>
 
-        {/* Today */}
-        <div className={`dash-rise ${CARD} xl:order-2`} style={rise(0.1)}>
-          <div className="flex flex-col gap-3.5 px-7 py-6">
-            <span className="font-display text-[21px] capitalize">
-              {t("tui.today")}
-            </span>
-            <TodayStat
-              label={t("stats.dueToday")}
-              value={stats.dueToday}
-              note={
-                doneToday > 0
-                  ? t("stats.notes.doneToday", { count: doneToday })
-                  : ""
+          <div className="flex flex-wrap items-center gap-2.5 lg:flex-col lg:items-end">
+            <button
+              type="button"
+              onClick={() =>
+                window.dispatchEvent(new CustomEvent("kairos:openAI"))
               }
-              progress={p}
-            />
-            <TodayStat
-              label={t("stats.overdue")}
-              value={stats.overdue}
-              tone="danger"
-              note={
-                oldestOverdueDays > 0
-                  ? t("stats.notes.oldest", { days: oldestOverdueDays })
-                  : ""
-              }
-              progress={p}
-            />
-            <TodayStat
-              label={t("stats.openThisWeek")}
-              value={stats.openThisWeek}
-              note={t("stats.notes.across", { count: stats.projectCount })}
-              progress={p}
-            />
-            <TodayStat
-              label={t("stats.completed")}
-              value={stats.completed}
-              tone="ok"
-              note={t("stats.notes.allTime")}
-              progress={p}
-            />
+              className="border-tui-ink/14 text-tui-ink2 hover:border-tui-ink/30 hover:text-tui-ink flex h-[34px] items-center rounded-full border px-3.5 text-[13px] whitespace-nowrap transition-colors"
+            >
+              {t("brief.ask")}
+            </button>
+            <Link
+              href={chatHref(t("brief.planPrompt"))}
+              className="border-tui-ink/14 text-tui-ink2 hover:border-tui-ink/30 hover:text-tui-ink flex h-[34px] items-center rounded-full border px-3.5 text-[13px] whitespace-nowrap transition-colors"
+            >
+              {t("brief.planWeek")}
+            </Link>
           </div>
-        </div>
+        </section>
 
-        {/* Left column */}
-        <div className="flex min-w-0 flex-col gap-6 xl:order-3">
-          <RadarFindings
-            className="dash-rise"
-            style={rise(0.16)}
-            now={now}
-            projectTitles={projectTitles}
-          />
-
-          <section className={`dash-rise ${CARD}`} style={rise(0.22)}>
-            <CardHead
-              title={t("projectStatus.title")}
-              meta={t("projectStatus.count", { count: rows.length })}
-              actionLabel={t("projectStatus.action")}
-              actionHref="/projects"
-            />
-            <ProjectStatusTable rows={rows} progress={p} locale={locale} />
-          </section>
-
-          {activity.length > 0 && (
-            <section className={`dash-rise ${CARD}`} style={rise(0.28)}>
-              <CardHead
-                title={t("activity.title")}
-                actionLabel={t("activity.action")}
-                actionHref="/progress"
-              />
-              {activity.map((row) => (
-                <ActivityItem key={row.id} row={row} now={now} />
-              ))}
-            </section>
-          )}
-        </div>
-
-        {/* Right column */}
-        <div className="flex flex-col gap-6 xl:order-4">
-          <WorkspaceRing
+        {/* The day in four figures, set like a printed report. */}
+        <section
+          className="dash-rise grid grid-cols-2 gap-y-6 pt-6 pb-9 sm:pt-7 sm:pb-14 lg:grid-cols-4"
+          style={rise(0.1)}
+        >
+          <Figure
+            index={0}
+            label={t("stats.dueToday")}
+            value={doneToday}
+            of={dueTotal}
+            note={
+              dueTotal === 0
+                ? t("stats.notes.nothingDue")
+                : t("stats.notes.left", { count: stats.dueToday })
+            }
             progress={p}
-            percent={stats.percent}
-            completed={stats.completed}
-            total={stats.totalTasks}
-            inProgress={stats.inProgress}
-            todo={stats.todo}
-            dayGone={dayGone}
           />
-          <MomentumCard momentum={pace} locale={locale} />
-          <TeamToday members={team} now={now} />
+          <Figure
+            index={1}
+            label={t("stats.overdue")}
+            value={stats.overdue}
+            tone={stats.overdue > 0 ? "danger" : undefined}
+            note={
+              stats.overdue > 0 && oldestOverdueDays > 0
+                ? t("stats.notes.oldestDays", { days: oldestOverdueDays })
+                : t("stats.notes.onTime")
+            }
+            progress={p}
+          />
+          <Figure
+            index={2}
+            label={t("stats.openThisWeek")}
+            value={stats.openThisWeek}
+            note={t("stats.notes.acrossProjects", {
+              count: stats.projectCount,
+            })}
+            progress={p}
+          />
+          <Figure
+            index={3}
+            label={t("stats.doneThisWeek")}
+            value={output.thisWeek}
+            note={
+              weekDiff > 0
+                ? t("stats.notes.more", { count: weekDiff })
+                : weekDiff < 0
+                  ? t("stats.notes.fewer", { count: -weekDiff })
+                  : t("stats.notes.same")
+            }
+            progress={p}
+          />
+        </section>
+
+        <div className="grid grid-cols-1 items-start gap-7 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="flex min-w-0 flex-col gap-7">
+            <NextUpCard
+              tasks={queue}
+              now={now}
+              locale={locale}
+              plannerName={agents.name("task_planner")}
+            />
+
+            <RadarFindings
+              className="dash-rise"
+              style={rise(0.2)}
+              now={now}
+              projectTitles={projectTitles}
+              agentName={agents.name("risk_radar")}
+            />
+
+            <section className={`dash-rise ${CARD}`} style={rise(0.26)}>
+              <CardHead
+                title={t("projectStatus.title")}
+                meta={t("projectStatus.count", { count: rows.length })}
+                actionLabel={t("projectStatus.action")}
+                actionHref="/projects"
+              />
+              <ProjectList rows={rows} progress={p} locale={locale} />
+            </section>
+          </div>
+
+          <div className="grid min-w-0 grid-cols-1 gap-7 sm:grid-cols-2 xl:grid-cols-1">
+            <WeekCard days={week} locale={locale} />
+            <TeamCard members={team} now={now} />
+            {activity.length > 0 && (
+              <section className={`dash-rise ${CARD}`} style={rise(0.3)}>
+                <CardHead
+                  title={t("activity.title")}
+                  actionLabel={t("activity.action")}
+                  actionHref="/progress"
+                />
+                <ul className="m-0 list-none py-1.5 pb-3.5">
+                  {activity.map((row) => (
+                    <ActivityItem key={row.id} row={row} now={now} />
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
         </div>
+
+        <CrewLine now={now} locale={locale} />
       </div>
     </div>
   );
 }
 
-/** One dotted-leader stat: label · note · big serif number. */
-function TodayStat({
+/** One of the four headline figures: a label, a big serif number, a footnote. */
+function Figure({
+  index,
   label,
   value,
+  of,
   note,
   tone,
   progress,
 }: {
+  index: number;
   label: string;
   value: number;
+  /** Set for a "done of total" figure: prints `/total` and draws a hairline bar. */
+  of?: number;
   note: string;
-  tone?: "danger" | "ok";
+  tone?: "danger";
   progress: number;
 }) {
-  const shown = useTween(value);
-  const toneClass =
-    tone === "danger"
-      ? "text-tui-danger"
-      : tone === "ok"
-        ? "text-tui-ok"
-        : "text-tui-ink";
+  const shown = Math.round(useTween(value) * progress);
+  // Hairlines between figures: every other one on a phone, all but the first wide.
+  const divider =
+    index === 0
+      ? ""
+      : index % 2 === 1
+        ? "border-l pl-5 sm:pl-7 lg:px-7"
+        : "pr-5 lg:border-l lg:px-7";
 
   return (
-    <div className="flex items-baseline gap-2.5 text-[14px]">
-      <span className="text-tui-ink2">{label}</span>
-      <span className="border-tui-ink/16 flex-1 -translate-y-1 border-b border-dotted" />
-      {note && <span className="text-tui-ink3 text-[12px]">{note}</span>}
-      <span
-        className={`font-display min-w-[34px] text-right text-[26px] leading-none tabular-nums ${toneClass}`}
+    <div
+      className={`border-tui-ink/10 flex min-w-0 flex-col gap-2 ${divider}`}
+    >
+      <span className={EYEBROW}>{label}</span>
+      <b
+        className={`font-display text-[42px] leading-[0.9] font-normal tracking-[-0.02em] tabular-nums sm:text-[52px] ${
+          tone === "danger" ? "text-tui-danger" : ""
+        }`}
       >
-        {Math.round(shown * progress)}
+        {shown}
+        {of !== undefined && of > 0 && (
+          <span className="text-tui-ink3 text-[24px] tracking-normal">
+            /{of}
+          </span>
+        )}
+      </b>
+      {of !== undefined && (
+        <span className="bg-tui-ink/8 mt-1 h-[2px] max-w-[200px] overflow-hidden rounded-full">
+          <span
+            className="bg-tui-ink block h-full rounded-full"
+            style={{
+              width: `${of > 0 ? (value / of) * 100 * progress : 0}%`,
+            }}
+          />
+        </span>
+      )}
+      <small className="text-tui-ink3 text-[12.5px]">{note}</small>
+    </div>
+  );
+}
+
+const ROMAN = ["i.", "ii.", "iii.", "iv.", "v."];
+
+/** The reader's next few tasks, checkable in place. */
+function NextUpCard({
+  tasks,
+  now,
+  locale,
+  plannerName,
+}: {
+  tasks: CalendarTask[];
+  now: Date;
+  locale: string;
+  plannerName: string;
+}) {
+  const t = useTranslations("dashboard");
+  const toast = useToast();
+  const utils = api.useUtils();
+  // Ticked tasks strike through at once and stay until the refetch drops them.
+  const [ticked, setTicked] = useState<Set<number>>(() => new Set());
+
+  const complete = api.task.updateStatus.useMutation({
+    onSuccess: () =>
+      Promise.all([
+        utils.task.getForCalendar.invalidate(),
+        utils.project.getMyProjects.invalidate(),
+        utils.progress.getPulse.invalidate(),
+      ]),
+    onError: (error, input) => {
+      setTicked((prev) => {
+        const next = new Set(prev);
+        next.delete(input.taskId);
+        return next;
+      });
+      toast.error(error.message);
+    },
+  });
+
+  const dueLabel = (task: CalendarTask) => {
+    const late = daysLate(task.dueDate, now);
+    if (late > 0)
+      return { tone: "bg-tui-danger", text: t("nextUp.overdue", { days: late }) };
+    const due = new Date(task.dueDate!);
+    if (startOfDay(due).getTime() === startOfDay(now).getTime())
+      return { tone: "bg-tui-warn", text: t("nextUp.today") };
+    return {
+      tone: "bg-tui-day",
+      text: new Intl.DateTimeFormat(locale, {
+        weekday: "long",
+        day: "numeric",
+        month: "short",
+      }).format(due),
+    };
+  };
+
+  return (
+    <section className={`dash-rise ${CARD}`} style={rise(0.14)}>
+      <CardHead
+        title={t("nextUp.title")}
+        meta={t("nextUp.meta")}
+        actionLabel={t("nextUp.replan", { name: plannerName })}
+        actionHref={chatHref(t("brief.planPrompt"))}
+      />
+      {tasks.length === 0 ? (
+        <p className={`text-tui-ink2 m-0 ${PAD} py-6 text-[14px]`}>
+          {t("nextUp.empty")}
+        </p>
+      ) : (
+        <ol className="m-0 list-none py-1 pb-2.5">
+          {tasks.map((task, index) => {
+            const done = ticked.has(task.id);
+            const due = dueLabel(task);
+            const urgent =
+              task.priority === "urgent" || task.priority === "high";
+
+            return (
+              <li
+                key={task.id}
+                className={`border-tui-ink/6 hover:bg-tui-ink/[0.022] relative grid grid-cols-[24px_minmax(0,1fr)_auto] items-start gap-2.5 border-t py-4 transition-colors first:border-t-0 sm:grid-cols-[34px_minmax(0,1fr)_auto] sm:gap-3.5 ${PAD}`}
+              >
+                <span className="font-display text-tui-ink3 text-[20px] leading-[1.2] italic">
+                  {ROMAN[index]}
+                </span>
+                <div className="min-w-0">
+                  <Link
+                    href={projectHref(task.projectId)}
+                    className={`block truncate text-[15px] font-medium tracking-[-0.005em] ${
+                      done
+                        ? "text-tui-ink3 decoration-tui-ink/30 line-through"
+                        : ""
+                    }`}
+                  >
+                    {task.title}
+                  </Link>
+                  <div className="text-tui-ink3 mt-1 flex flex-wrap gap-x-3.5 gap-y-1 text-[12.5px]">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${due.tone}`}
+                        aria-hidden
+                      />
+                      {due.text}
+                    </span>
+                    <span>
+                      {(task.projectTitle?.trim() ?? "") ||
+                        t("projects.untitled")}
+                    </span>
+                    {urgent && (
+                      <span>{t(`nextUp.priority.${task.priority}`)}</span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  aria-label={t("nextUp.markDone", { task: task.title })}
+                  aria-pressed={done}
+                  disabled={done}
+                  onClick={() => {
+                    setTicked((prev) => new Set(prev).add(task.id));
+                    complete.mutate({ taskId: task.id, status: "completed" });
+                  }}
+                  className={`mt-0.5 grid h-5 w-5 place-items-center rounded-full border-[1.25px] transition-colors ${
+                    done
+                      ? "border-tui-ink bg-tui-ink"
+                      : "border-tui-ink/28 hover:border-tui-ink/60"
+                  }`}
+                >
+                  {done && (
+                    <svg
+                      viewBox="0 0 12 12"
+                      className="stroke-tui-pane h-2.5 w-2.5"
+                      fill="none"
+                      strokeWidth="1.8"
+                      aria-hidden
+                    >
+                      <path d="M2.5 6.2 5 8.5l4.5-5" />
+                    </svg>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+/** Each project as a pace line: how much is done against how much time has gone. */
+function ProjectList({
+  rows,
+  progress,
+  locale,
+}: {
+  rows: ProjectStatusRow[];
+  progress: number;
+  locale: string;
+}) {
+  const t = useTranslations("dashboard");
+
+  if (rows.length === 0) {
+    return (
+      <div className={`${PAD} py-6`}>
+        <Link
+          href="/projects?new=1"
+          className="border-tui-ink/16 text-tui-ink2 hover:border-tui-accent/50 hover:text-tui-ink flex items-center gap-2 rounded-lg border border-dashed px-4 py-5 text-[13px] transition-colors"
+        >
+          <Plus size={16} />
+          {t("projects.empty")}
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="py-1 pb-2">
+      {rows.map((row) => (
+        <ProjectRow
+          key={row.id}
+          row={row}
+          progress={progress}
+          locale={locale}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ProjectRow({
+  row,
+  progress,
+  locale,
+}: {
+  row: ProjectStatusRow;
+  progress: number;
+  locale: string;
+}) {
+  const t = useTranslations("dashboard");
+  const percent = Math.round(useTween(row.percent) * progress);
+  const behind = row.elapsed !== null && row.percent + 5 < row.elapsed;
+
+  return (
+    <div
+      className={`group border-tui-ink/6 hover:bg-tui-ink/[0.022] relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 border-t py-4 transition-colors first:border-t-0 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.5fr)_110px] sm:gap-x-7 ${PAD}`}
+    >
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <Link
+          href={projectHref(row.id)}
+          className="truncate text-[14.5px] font-medium after:absolute after:inset-0 after:content-['']"
+        >
+          {(row.title?.trim() ?? "") || t("projects.untitled")}
+        </Link>
+        <span className="text-tui-ink3 truncate text-[12px]">
+          {row.endsAt
+            ? t("projectStatus.ends", {
+                date: new Intl.DateTimeFormat(locale, {
+                  day: "numeric",
+                  month: "short",
+                }).format(row.endsAt),
+              })
+            : t("projectStatus.noDate")}
+          {" · "}
+          {t("projectStatus.openCount", { count: row.open })}
+        </span>
+      </span>
+
+      <span className="order-3 col-span-full sm:order-none sm:col-span-1">
+        <span className="bg-tui-ink/8 relative block h-[3px] rounded-full">
+          <span
+            className={`absolute inset-y-0 left-0 rounded-full ${
+              behind ? "bg-tui-danger" : "bg-tui-ink/75"
+            }`}
+            style={{ width: `${percent}%` }}
+          />
+          {row.elapsed !== null && (
+            <span
+              className="bg-tui-accent absolute -top-[5px] h-[13px] w-px"
+              style={{ left: `${row.elapsed}%` }}
+              aria-hidden
+            />
+          )}
+        </span>
+        <span className="text-tui-ink3 mt-2 flex justify-between text-[11.5px] tabular-nums">
+          <span>{t("projectStatus.done", { percent })}</span>
+          <span>
+            {!row.endsAt
+              ? t("projectStatus.noDeadline")
+              : row.elapsed !== null
+                ? t("projectStatus.timeUsed", { percent: row.elapsed })
+                : null}
+          </span>
+        </span>
+      </span>
+
+      <span className="text-tui-ink2 flex items-center justify-end gap-2 text-[12.5px]">
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${HEALTH_DOT[row.health]}`}
+          aria-hidden
+        />
+        {t(`projects.health.${row.health}`)}
       </span>
     </div>
   );
 }
 
-const RING_CX = 120;
-type Seg = { x1: number; y1: number; x2: number; y2: number; lit: boolean };
-
-function ringSegments(n: number, r1: number, r2: number, frac: number): Seg[] {
-  return Array.from({ length: n }, (_, i) => {
-    const a = (i / n) * Math.PI * 2 - Math.PI / 2;
-    return {
-      x1: RING_CX + Math.cos(a) * r1,
-      y1: RING_CX + Math.sin(a) * r1,
-      x2: RING_CX + Math.cos(a) * r2,
-      y2: RING_CX + Math.sin(a) * r2,
-      lit: (i + 0.5) / n < frac,
-    };
+/** Monday to Sunday: what is due each day, and what is on the calendar. */
+function WeekCard({ days, locale }: { days: WeekDay[]; locale: string }) {
+  const t = useTranslations("dashboard");
+  const narrow = new Intl.DateTimeFormat(locale, { weekday: "narrow" });
+  const long = new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
   });
-}
-
-/** Completion on the outer ring, the day on the thin inner one — fine segments. */
-function WorkspaceRing({
-  progress,
-  percent,
-  completed,
-  total,
-  inProgress,
-  todo,
-  dayGone,
-}: {
-  progress: number;
-  percent: number;
-  completed: number;
-  total: number;
-  inProgress: number;
-  todo: number;
-  dayGone: number;
-}) {
-  const t = useTranslations("dashboard");
-  const shown = useTween(percent);
-  const outer = ringSegments(120, 102, 114, (shown / 100) * progress);
-  const inner = total > 0 ? ringSegments(60, 88, 93, dayGone * progress) : [];
 
   return (
-    <section className={`dash-fade ${CARD}`} style={rise(0.12)}>
-      <div className="flex flex-col gap-[18px] px-7 pt-6 pb-6">
-        <div className="flex items-baseline">
-          <span className="font-display text-[21px]">
-            {t("workspace.title")}
-          </span>
-          <span className="flex-1" />
-          <span className="text-tui-ink3 text-[12.5px]">
-            {completed} / {total}
-          </span>
-        </div>
-
-        <div className="relative mx-auto h-[240px] w-[240px]">
-          <svg viewBox="0 0 240 240" width="240" height="240" className="block">
-            {outer.map((s, i) => (
-              <line
-                key={`o${i}`}
-                x1={s.x1}
-                y1={s.y1}
-                x2={s.x2}
-                y2={s.y2}
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                className={s.lit ? "stroke-tui-accent" : "stroke-tui-ink/16"}
-              />
-            ))}
-            {inner.map((s, i) => (
-              <line
-                key={`i${i}`}
-                x1={s.x1}
-                y1={s.y1}
-                x2={s.x2}
-                y2={s.y2}
-                strokeWidth="1.2"
-                strokeLinecap="round"
-                className={s.lit ? "stroke-tui-day" : "stroke-tui-ink/12"}
-              />
-            ))}
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
-            <span className="font-display text-tui-ok text-[60px] leading-none font-light tracking-[-0.03em] tabular-nums">
-              {Math.round(shown * progress)}
-              <span className="text-[26px]">%</span>
-            </span>
-            <span className="text-tui-ink3 text-[12.5px]">
-              {t("workspace.ofTasksDone")}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2.5 text-[14px]">
-          <RingLegend
-            dot="bg-tui-accent"
-            label={t("workspace.doneLabel")}
-            value={completed}
-          />
-          <RingLegend
-            dot="bg-tui-warn"
-            label={t("workspace.activeLabel")}
-            value={inProgress}
-          />
-          <RingLegend
-            dot="bg-tui-ink/25"
-            label={t("workspace.todoLabel")}
-            value={todo}
-          />
-          <RingLegend
-            dot="bg-tui-day"
-            label={t("workspace.dayGoneLabel")}
-            value={`${Math.round(dayGone * 100)}%`}
-          />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function RingLegend({
-  dot,
-  label,
-  value,
-}: {
-  dot: string;
-  label: string;
-  value: number | string;
-}) {
-  return (
-    <div className="flex items-baseline gap-2.5">
-      <span
-        className={`h-2 w-2 -translate-y-px rounded-full ${dot}`}
-        aria-hidden
+    <section className={`dash-rise ${CARD}`} style={rise(0.18)}>
+      <CardHead
+        title={t("week.title")}
+        actionLabel={t("week.action")}
+        actionHref="/calendar"
       />
-      <span className="text-tui-ink2">{label}</span>
-      <span className="border-tui-ink/16 flex-1 -translate-y-1 border-b border-dotted" />
-      <span className="font-display text-[19px] tabular-nums">{value}</span>
-    </div>
-  );
-}
+      <ol className="m-0 grid list-none grid-cols-7 px-2 pt-1.5 pb-5 sm:px-5">
+        {days.map((day) => {
+          const heavy = day.open >= HEAVY_DAY;
+          const missed = day.isPast && day.open > 0;
+          const label = [
+            long.format(day.date),
+            t("week.tasks", { count: day.total }),
+            t("week.events", { count: day.events }),
+          ].join(", ");
 
-/** A fortnight of finished work as soft bars, the streak, and the pace. */
-function MomentumCard({
-  momentum: data,
-  locale,
-}: {
-  momentum: Momentum;
-  locale: string;
-}) {
-  const t = useTranslations("dashboard");
-  const max = Math.max(1, ...data.bars.map((day) => day.count));
-  const last = data.bars.length - 1;
-  const dayMonth = (d: Date) =>
-    new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(
-      d,
-    );
-
-  return (
-    <section className={`dash-fade ${CARD}`} style={rise(0.18)}>
-      <div className="flex flex-col gap-4 px-7 py-6">
-        <div className="flex items-baseline">
-          <span className="font-display text-[21px]">
-            {t("momentum.title")}
-          </span>
-          <span className="flex-1" />
-          {data.pace !== null && (
-            <span
-              className={`text-[12.5px] font-semibold ${
-                data.pace < 0 ? "text-tui-ink3" : "text-tui-ok"
+          return (
+            <li
+              key={day.date.toISOString()}
+              aria-label={label}
+              title={label}
+              className={`flex flex-col items-center gap-1.5 rounded-[10px] py-2.5 ${
+                day.isToday ? "bg-tui-ink/[0.045]" : ""
               }`}
             >
-              {data.pace > 0 ? "+" : ""}
-              {data.pace}%
-            </span>
-          )}
-        </div>
-
-        <span className="font-display text-[34px] leading-none font-light">
-          {data.streak > 0
-            ? t("momentum.streak", { count: data.streak })
-            : t("momentum.noStreak")}
-        </span>
-
-        <div className="flex h-16 items-end gap-[7px]" aria-hidden>
-          {data.bars.map((day, index) => (
-            <span
-              key={day.date.toISOString()}
-              className={`flex-1 rounded-[3px] ${
-                index >= last - 1 ? "bg-tui-accent" : "bg-tui-accent/[0.32]"
-              }`}
-              style={{
-                height: `${Math.max(4, Math.round((day.count / max) * 64))}px`,
-              }}
-            />
-          ))}
-        </div>
-
-        <div className="text-tui-ink3 flex justify-between text-[12px]">
-          <span>{data.bars[0] ? dayMonth(data.bars[0].date) : ""}</span>
-          <span className="capitalize">{t("tui.today")}</span>
-        </div>
-        <span className="text-tui-ink2 text-[13.5px] leading-[1.6]">
-          {t("momentum.line", { total: data.total, today: data.today })}
-        </span>
-      </div>
+              <span className="text-tui-ink3 text-[10px] tracking-[0.12em] uppercase">
+                {narrow.format(day.date)}
+              </span>
+              <span
+                className={`font-display text-[21px] leading-none ${
+                  day.isToday ? "text-tui-accent" : ""
+                } ${day.isPast ? "opacity-45" : ""}`}
+              >
+                {day.date.getDate()}
+              </span>
+              <span
+                className={`text-[11px] tabular-nums ${
+                  heavy ? "text-tui-danger" : "text-tui-ink3"
+                } ${day.isPast ? "opacity-45" : ""}`}
+              >
+                {day.total || "–"}
+              </span>
+              <span className="flex h-1.5 gap-[3px]" aria-hidden>
+                {missed && (
+                  <span className="bg-tui-danger h-1.5 w-1.5 rounded-full" />
+                )}
+                {Array.from({ length: Math.min(3, day.events) }, (_, i) => (
+                  <span key={i} className="bg-tui-ink/30 h-1.5 w-1.5 rounded-full" />
+                ))}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }
@@ -673,197 +933,73 @@ type TeamMember = {
   lastActiveAt: Date | string | null;
 };
 
-/** Who is carrying what, right now. Heaviest load first. */
-function TeamToday({ members, now }: { members: TeamMember[]; now: Date }) {
+/** Who is carrying what: open tasks as ten ticks, red only when some are late. */
+function TeamCard({ members, now }: { members: TeamMember[]; now: Date }) {
   const t = useTranslations("dashboard");
   const shown = members.slice(0, 5);
 
   return (
-    <section className={`dash-fade ${CARD}`} style={rise(0.24)}>
-      <div className="px-7 pt-6 pb-3">
-        <span className="font-display text-[21px]">{t("teamToday.title")}</span>
-        {shown.length === 0 ? (
-          <p className="text-tui-ink2 pt-3 text-[13px]">
-            {t("teamToday.empty")}
-          </p>
-        ) : (
-          <div className="mt-2 flex flex-col">
-            {shown.map((member) => {
-              const who = member.name ?? member.email ?? t("activity.someone");
-              const ago = relativeShort(member.lastActiveAt, now);
-              const active = ago === "now" || (!!ago && ago.endsWith("m"));
-              const dot =
-                member.overdue > 0
-                  ? "bg-tui-danger"
-                  : active
-                    ? "bg-tui-ok"
-                    : "bg-tui-warn";
+    <section className={`dash-rise ${CARD}`} style={rise(0.24)}>
+      <CardHead title={t("teamToday.title")} meta={t("teamToday.meta")} />
+      {shown.length === 0 ? (
+        <p className={`text-tui-ink2 m-0 ${PAD} py-5 text-[13px]`}>
+          {t("teamToday.empty")}
+        </p>
+      ) : (
+        <ul className="m-0 list-none pt-1.5 pb-3">
+          {shown.map((member) => {
+            const who = member.name ?? member.email ?? t("activity.someone");
+            const ago = relativeShort(member.lastActiveAt, now);
+            const late = member.overdue > 0;
 
-              return (
-                <div
-                  key={member.id}
-                  className="border-tui-ink/8 grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 border-t py-[11px] first:border-t-0"
+            return (
+              <li
+                key={member.id}
+                className="grid grid-cols-[26px_minmax(0,1fr)_auto] items-center gap-3 px-[18px] py-2.5 sm:px-6"
+              >
+                <Initial label={who} />
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-[13.5px] font-medium">
+                    {member.isSelf ? t("teamToday.you", { name: who }) : who}
+                  </span>
+                  <span className="text-tui-ink3 truncate text-[11.5px]">
+                    {ago
+                      ? t("teamToday.active", { ago })
+                      : t("teamToday.neverActive")}
+                  </span>
+                </span>
+                <span
+                  className="flex flex-col items-end gap-1"
+                  aria-label={t("teamToday.open", { count: member.open })}
+                  title={t("teamToday.open", { count: member.open })}
                 >
-                  <Initial label={who} size={32} />
-                  <span className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-tui-ink truncate text-[14px] font-medium">
-                      {member.isSelf ? t("teamToday.you", { name: who }) : who}
-                    </span>
-                    <span className="text-tui-ink3 flex items-center gap-1.5 text-[12.5px]">
-                      <span
-                        className={`h-[5px] w-[5px] rounded-full ${dot}`}
-                        aria-hidden
-                      />
-                      {ago
-                        ? t("teamToday.active", { ago })
-                        : t("teamToday.neverActive")}
-                    </span>
-                  </span>
                   <span
-                    className={`text-[13.5px] font-semibold ${
-                      member.overdue > 0 ? "text-tui-danger" : "text-tui-ink"
-                    }`}
+                    className={`text-[13px] tabular-nums ${late ? "text-tui-danger" : "text-tui-ink2"}`}
+                    aria-hidden
                   >
-                    {t("teamToday.open", { count: member.open })}
+                    {member.open}
                   </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                  <span className="flex gap-0.5" aria-hidden>
+                    {Array.from({ length: 10 }, (_, i) => (
+                      <span
+                        key={i}
+                        className={`h-3 w-1 rounded-[1px] ${
+                          i < member.open
+                            ? late
+                              ? "bg-tui-danger"
+                              : "bg-tui-ink/60"
+                            : "bg-tui-ink/10"
+                        }`}
+                      />
+                    ))}
+                  </span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
-  );
-}
-
-const TABLE_GRID =
-  "grid grid-cols-[minmax(0,1fr)_90px_50px_64px_minmax(0,190px)_52px_110px] items-center gap-4";
-
-/** Project status: eight readings of every project in one row. */
-function ProjectStatusTable({
-  rows,
-  progress,
-  locale,
-}: {
-  rows: ProjectStatusRow[];
-  progress: number;
-  locale: string;
-}) {
-  const t = useTranslations("dashboard");
-
-  if (rows.length === 0) {
-    return (
-      <div className="px-7 py-6">
-        <Link
-          href="/projects?new=1"
-          className="border-tui-ink/16 text-tui-ink2 hover:border-tui-accent/50 hover:text-tui-ink flex items-center gap-2 rounded-lg border border-dashed px-4 py-5 text-[13px] transition-colors"
-        >
-          <Plus size={16} />
-          {t("projects.empty")}
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[720px]">
-        <div
-          className={`${TABLE_GRID} border-tui-ink/8 text-tui-ink3 border-b px-7 py-3 text-[11px] font-medium tracking-[0.14em] uppercase`}
-        >
-          <span>{t("projectStatus.columns.project")}</span>
-          <span>{t("projectStatus.columns.team")}</span>
-          <span className="text-right">{t("projectStatus.columns.open")}</span>
-          <span className="text-right">
-            {t("projectStatus.columns.overdue")}
-          </span>
-          <span>{t("projectStatus.columns.completion")}</span>
-          <span className="text-right">%</span>
-          <span className="text-right">
-            {t("projectStatus.columns.health")}
-          </span>
-        </div>
-        {rows.map((row) => (
-          <ProjectStatusRowView
-            key={row.id}
-            row={row}
-            progress={progress}
-            locale={locale}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ProjectStatusRowView({
-  row,
-  progress,
-  locale,
-}: {
-  row: ProjectStatusRow;
-  progress: number;
-  locale: string;
-}) {
-  const t = useTranslations("dashboard");
-  const shown = useTween(row.percent);
-  const percent = Math.round(shown * progress);
-
-  return (
-    <div
-      className={`group relative ${TABLE_GRID} border-tui-ink/8 hover:bg-tui-accent/[0.05] border-b px-7 py-4 text-[14px] transition-colors last:border-b-0`}
-    >
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <Link
-          href={projectHref(row.id)}
-          className="font-display truncate text-[19px] after:absolute after:inset-0 after:content-['']"
-        >
-          {(row.title?.trim() ?? "") || t("projects.untitled")}
-        </Link>
-        <span className="text-tui-ink3 truncate text-[12.5px]">
-          {row.endsAt
-            ? t("projectStatus.ends", {
-                date: new Intl.DateTimeFormat(locale, {
-                  day: "numeric",
-                  month: "short",
-                }).format(row.endsAt),
-              })
-            : t("projectStatus.noDate")}
-        </span>
-      </span>
-      <span className="relative z-10 flex">
-        {row.owners.slice(0, 3).map((owner) => (
-          <span key={owner.id} className="-mr-1.5">
-            <Initial label={owner.name ?? "?"} />
-          </span>
-        ))}
-        {row.owners.length === 0 && <Initial label="—" />}
-      </span>
-      <span className="text-tui-ink2 text-right tabular-nums">{row.open}</span>
-      <span
-        className={`text-right tabular-nums ${row.overdue > 0 ? "text-tui-danger" : "text-tui-ink3"}`}
-      >
-        {row.overdue}
-      </span>
-      <span className="bg-tui-ink/12 relative h-[3px] overflow-hidden rounded-sm">
-        <span
-          className="bg-tui-accent absolute inset-y-0 left-0 rounded-sm"
-          style={{ width: `${percent}%` }}
-        />
-      </span>
-      <span
-        className={`text-right font-semibold tabular-nums ${HEALTH_TONE[row.health]}`}
-      >
-        {percent}%
-      </span>
-      <span className="text-tui-ink2 flex items-center justify-end gap-2 text-[13px]">
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${HEALTH_DOT[row.health]}`}
-          aria-hidden
-        />
-        {t(`projects.health.${row.health}`)}
-      </span>
-    </div>
   );
 }
 
@@ -887,38 +1023,103 @@ function ActivityItem({ row, now }: { row: ActivityRow; now: Date }) {
   });
 
   return (
-    <div className="border-tui-ink/8 relative grid grid-cols-[30px_minmax(0,1fr)_auto] items-center gap-4 border-b px-7 py-3.5 last:border-b-0">
-      <Initial label={who} size={30} />
-      {row.projectId ? (
-        <Link
-          href={projectHref(row.projectId)}
-          className="text-tui-ink2 truncate text-[14.5px] after:absolute after:inset-0 after:content-['']"
-        >
-          {message}
-        </Link>
-      ) : (
-        <span className="text-tui-ink2 truncate text-[14.5px]">{message}</span>
-      )}
-      <span className="text-tui-ink3 text-right text-[12.5px]">
-        {relativeShort(row.createdAt, now)}
+    <li className="relative grid grid-cols-[26px_minmax(0,1fr)] gap-3 px-[18px] py-[9px] sm:px-6">
+      <Initial label={who} />
+      <span className="min-w-0">
+        {row.projectId ? (
+          <Link
+            href={projectHref(row.projectId)}
+            className="text-tui-ink2 hover:text-tui-ink block text-[13px] leading-[1.45] transition-colors after:absolute after:inset-0 after:content-['']"
+          >
+            {message}
+          </Link>
+        ) : (
+          <span className="text-tui-ink2 block text-[13px] leading-[1.45]">
+            {message}
+          </span>
+        )}
+        <time className="text-tui-ink3 mt-px block text-[11.5px]">
+          {relativeShort(row.createdAt, now)}
+        </time>
       </span>
-    </div>
+    </li>
   );
 }
 
-const TAU = Math.PI * 2;
+/** The scheduled agents and when each next runs — one quiet line, not a card. */
+function CrewLine({ now, locale }: { now: Date; locale: string }) {
+  const t = useTranslations("dashboard");
+  const agents = useAgentLabel();
+  const schedules = api.agent.schedules.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const on = (schedules.data ?? []).filter((row) => row.enabled);
+  if (schedules.isLoading) return null;
+
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" });
+  const tomorrow = startOfDay(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const when = (hourLocal: number, dayOfWeek: number | null) => {
+    const at = nextRunAt(hourLocal, dayOfWeek, now);
+    const day = startOfDay(at).getTime();
+    if (day === startOfDay(now).getTime())
+      return t("crew.today", { time: time.format(at) });
+    if (day === tomorrow.getTime())
+      return t("crew.tomorrow", { time: time.format(at) });
+    return t("crew.day", { day: weekday.format(at), time: time.format(at) });
+  };
+
+  return (
+    <footer
+      className="dash-rise border-tui-ink/10 text-tui-ink3 mt-10 flex flex-wrap items-center gap-x-[22px] gap-y-2 border-t pt-[18px] text-[12.5px]"
+      style={rise(0.36)}
+    >
+      <span className={EYEBROW}>{t("crew.title")}</span>
+      {on.length === 0 ? (
+        <span>{t("crew.off")}</span>
+      ) : (
+        on.map((row) => (
+          <span key={row.kind} className="inline-flex items-center gap-1.5">
+            {row.kind === "risk_radar" && (
+              <span className="bg-tui-ok h-1.5 w-1.5 rounded-full" aria-hidden />
+            )}
+            <b className="text-tui-ink2 font-medium">{agents.name(row.kind)}</b>
+            <span>
+              {row.kind === "meeting_prep"
+                ? t("crew.meetings")
+                : when(row.hourLocal, row.dayOfWeek)}
+            </span>
+          </span>
+        ))
+      )}
+      <span className="flex-1" />
+      <Link
+        href="/settings?section=ai"
+        className="hover:text-tui-ink transition-colors"
+      >
+        {t("crew.settings")} →
+      </Link>
+    </footer>
+  );
+}
 
 /**
- * First run: no projects at all. The welcome — how the page fills in, and the
- * day dial, which runs and carries the screen until there is work.
+ * First run: no projects at all. Same frame as the populated page — the open
+ * headline, then how the page fills in, then the crew — so the first thing a
+ * new workspace sees is the dashboard it is about to get, not a different one.
  */
 function FirstRun({
-  dayGone,
   now,
   locale,
   userName,
 }: {
-  dayGone: number;
   now: Date;
   locale: string;
   userName?: string | null;
@@ -926,7 +1127,6 @@ function FirstRun({
   const t = useTranslations("dashboard");
   const toast = useToast();
   const [code, setCode] = useState("");
-  const p = useEntrance(true);
   const utils = api.useUtils();
 
   const join = api.organization.join.useMutation({
@@ -941,202 +1141,106 @@ function FirstRun({
     onError: (error) => toast.error(error.message),
   });
 
-  const clockShort = new Intl.DateTimeFormat(locale, {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(now);
   const dateLine = new Intl.DateTimeFormat(locale, {
     weekday: "long",
     day: "numeric",
     month: "long",
   }).format(now);
-
-  const hours = Array.from({ length: 24 }, (_, i) => {
-    const a = (i / 24) * TAU - Math.PI / 2;
-    return {
-      x1: 150 + Math.cos(a) * 132,
-      y1: 150 + Math.sin(a) * 132,
-      x2: 150 + Math.cos(a) * 140,
-      y2: 150 + Math.sin(a) * 140,
-      quarter: i % 6 === 0,
-    };
-  });
-  const fine = Array.from({ length: 144 }, (_, i) => {
-    const a = (i / 144) * TAU - Math.PI / 2;
-    return {
-      x1: 150 + Math.cos(a) * 112,
-      y1: 150 + Math.sin(a) * 112,
-      x2: 150 + Math.cos(a) * 124,
-      y2: 150 + Math.sin(a) * 124,
-      lit: (i + 0.5) / 144 < dayGone * p,
-    };
-  });
-  const nowAngle = dayGone * p * TAU - Math.PI / 2;
+  const firstName = (userName ?? "").trim().split(" ")[0] ?? "";
 
   const STEPS = [
-    { n: "i", title: t("firstRun.stepCreateTitle"), body: t("firstRun.step1") },
-    { n: "ii", title: t("firstRun.stepTeamTitle"), body: t("firstRun.step2") },
-    {
-      n: "iii",
-      title: t("firstRun.stepRadarTitle"),
-      body: t("firstRun.step3"),
-    },
+    { title: t("firstRun.stepCreateTitle"), body: t("firstRun.step1") },
+    { title: t("firstRun.stepTeamTitle"), body: t("firstRun.step2") },
+    { title: t("firstRun.stepRadarTitle"), body: t("firstRun.step3") },
   ];
 
   return (
-    <div className="text-tui-ink mx-auto grid max-w-[1440px] grid-cols-1 items-start gap-6 px-4 pt-12 pb-14 sm:px-8 xl:grid-cols-[minmax(0,1fr)_420px]">
-      <div className="flex flex-col gap-6">
-        <div className={`dash-rise ${CARD}`} style={rise(0.05)}>
-          <div className="flex flex-col gap-5 px-8 py-10 sm:px-12">
-            <span className="text-tui-ink3 text-[11px] font-medium tracking-[0.18em] uppercase">
-              {t("firstRun.newWorkspace")}
-            </span>
-            <h1 className="font-display m-0 max-w-[720px] text-[40px] leading-[1.03] font-light tracking-[-0.02em] text-pretty sm:text-[58px]">
-              {t("firstRun.headline")}
-              {userName?.trim() ? (
-                <>
-                  ,{" "}
-                  <span className="text-tui-accent italic">
-                    {userName.trim().split(" ")[0]}.
-                  </span>
-                </>
-              ) : (
-                "."
-              )}
-            </h1>
-            <p className="text-tui-ink2 m-0 max-w-[580px] text-[16px] leading-[1.65] text-pretty">
-              {t("firstRun.body")}
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-4">
-              <Link
-                href="/projects?new=1"
-                className="bg-tui-accent text-tui-on-accent flex h-12 items-center gap-2.5 rounded-full px-[22px] text-[14.5px] font-semibold transition-transform hover:-translate-y-0.5"
-              >
-                <Plus size={16} />
-                {t("firstRun.createProject")}
-              </Link>
-              <span className="text-tui-ink3 text-[13px]">
-                {t("firstRun.or")}
-              </span>
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const trimmed = code.trim();
-                  if (trimmed) join.mutate({ code: trimmed });
-                }}
-                className="border-tui-ink/16 bg-tui-bg flex h-12 items-center overflow-hidden rounded-full border"
-              >
-                <input
-                  value={code}
-                  onChange={(event) =>
-                    setCode(event.target.value.toUpperCase())
-                  }
-                  aria-label={t("firstRun.codeLabel")}
-                  placeholder={t("firstRun.codePlaceholder")}
-                  className="text-tui-ink placeholder:text-tui-ink3 h-full w-[170px] bg-transparent px-5 text-[14px] tracking-[0.12em] outline-none"
-                />
-                <span className="bg-tui-ink/16 h-6 w-px" aria-hidden />
-                <button
-                  type="submit"
-                  disabled={join.isPending || code.trim().length === 0}
-                  className="text-tui-ink h-full px-5 text-[14px] font-medium transition-opacity disabled:opacity-50"
-                >
-                  {t("firstRun.joinCode")}
-                </button>
-              </form>
-            </div>
-          </div>
+    <div className="text-tui-ink mx-auto max-w-[1240px] px-4 pt-8 pb-16 sm:px-8 sm:pt-14 lg:px-12 lg:pb-24">
+      <section
+        className="dash-rise border-tui-ink/10 grid grid-cols-1 items-end gap-6 border-b pb-7 sm:pb-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-12"
+        style={rise(0.04)}
+      >
+        <div className="min-w-0">
+          <span className={EYEBROW}>
+            {t("firstRun.newWorkspace")} · {dateLine}
+          </span>
+          <h1 className="font-display mt-3.5 mb-5 text-[44px] leading-[0.98] font-normal tracking-[-0.025em] text-pretty sm:text-[60px] lg:text-[72px]">
+            {t("firstRun.headline")}
+            {firstName ? (
+              <>
+                , <em className="text-tui-accent">{firstName}.</em>
+              </>
+            ) : (
+              "."
+            )}
+          </h1>
+          <p className="text-tui-ink2 m-0 max-w-[620px] text-[16px] leading-[1.7] text-pretty">
+            {t("firstRun.body")}
+          </p>
         </div>
 
-        <div
-          className={`dash-rise ${CARD} grid grid-cols-1 sm:grid-cols-3`}
-          style={rise(0.12)}
-        >
+        <div className="flex flex-wrap items-center gap-3 lg:flex-col lg:items-end">
+          {/* Creating a project is the top bar's "New Project" — one button for
+              it on the page, not two. Joining has no other way in. */}
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const trimmed = code.trim();
+              if (trimmed) join.mutate({ code: trimmed });
+            }}
+            className="border-tui-ink/14 flex h-[38px] items-center overflow-hidden rounded-full border"
+          >
+            <input
+              value={code}
+              onChange={(event) => setCode(event.target.value.toUpperCase())}
+              aria-label={t("firstRun.codeLabel")}
+              placeholder={t("firstRun.codePlaceholder")}
+              className="text-tui-ink placeholder:text-tui-ink3 h-full w-[120px] bg-transparent px-4 text-[13px] tracking-[0.12em] outline-none"
+            />
+            <span className="bg-tui-ink/14 h-5 w-px" aria-hidden />
+            <button
+              type="submit"
+              disabled={join.isPending || code.trim().length === 0}
+              className="text-tui-ink2 hover:text-tui-ink h-full px-4 text-[13px] whitespace-nowrap transition-colors disabled:opacity-50"
+            >
+              {t("firstRun.joinCode")}
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section className={`dash-rise mt-9 sm:mt-14 ${CARD}`} style={rise(0.12)}>
+        <CardHead
+          title={t("firstRun.howItFills")}
+          meta={t("firstRun.steps3")}
+        />
+        <ol className="m-0 grid list-none grid-cols-1 py-1 sm:grid-cols-3 sm:py-0">
           {STEPS.map((step, index) => (
-            <div
-              key={step.n}
-              className={`flex flex-col gap-2.5 px-7 py-7 ${
+            <li
+              key={step.title}
+              className={`grid grid-cols-[24px_minmax(0,1fr)] gap-2.5 py-5 sm:grid-cols-[34px_minmax(0,1fr)] sm:gap-3.5 sm:py-7 ${PAD} ${
                 index > 0
-                  ? "border-tui-ink/8 border-t sm:border-t-0 sm:border-l"
+                  ? "border-tui-ink/6 border-t sm:border-t-0 sm:border-l"
                   : ""
               }`}
             >
-              <span className="font-display text-tui-accent text-[24px] leading-none italic">
-                {step.n}
+              <span className="font-display text-tui-ink3 text-[20px] leading-[1.2] italic">
+                {ROMAN[index]}
               </span>
-              <span className="font-display text-[21px]">{step.title}</span>
-              <span className="text-tui-ink2 text-[14px] leading-[1.6]">
-                {step.body}
+              <span className="flex min-w-0 flex-col gap-1">
+                <span className="text-[15px] font-medium tracking-[-0.005em]">
+                  {step.title}
+                </span>
+                <span className="text-tui-ink3 text-[13px] leading-[1.55]">
+                  {step.body}
+                </span>
               </span>
-            </div>
+            </li>
           ))}
-        </div>
-      </div>
+        </ol>
+      </section>
 
-      <div className={`dash-fade ${CARD}`} style={rise(0.16)}>
-        <div className="flex flex-col gap-[22px] px-8 py-7">
-          <div className="flex items-baseline">
-            <span className="font-display text-[21px] capitalize">
-              {t("tui.today")}
-            </span>
-            <span className="flex-1" />
-            <span className="text-tui-ink3 text-[12.5px]">{dateLine}</span>
-          </div>
-          <div className="relative mx-auto h-[300px] w-[300px]">
-            <svg
-              viewBox="0 0 300 300"
-              width="300"
-              height="300"
-              className="block"
-            >
-              {hours.map((h, i) => (
-                <line
-                  key={`h${i}`}
-                  x1={h.x1}
-                  y1={h.y1}
-                  x2={h.x2}
-                  y2={h.y2}
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  className={
-                    h.quarter ? "stroke-tui-ink3" : "stroke-tui-ink/16"
-                  }
-                />
-              ))}
-              {fine.map((f, i) => (
-                <line
-                  key={`f${i}`}
-                  x1={f.x1}
-                  y1={f.y1}
-                  x2={f.x2}
-                  y2={f.y2}
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  className={f.lit ? "stroke-tui-accent" : "stroke-tui-ink/10"}
-                />
-              ))}
-              <circle
-                cx={150 + Math.cos(nowAngle) * 104}
-                cy={150 + Math.sin(nowAngle) * 104}
-                r="4"
-                className="fill-tui-accent"
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-              <span className="font-display text-[58px] leading-none font-light tracking-[-0.02em] tabular-nums">
-                {clockShort}
-              </span>
-              <span className="text-tui-ink3 text-[13px]">
-                {t("workspace.dayGone", { percent: Math.round(dayGone * 100) })}
-              </span>
-            </div>
-          </div>
-          <p className="text-tui-ink3 m-0 text-center text-[13.5px] leading-[1.65] text-pretty">
-            {t("firstRun.dayCaption")}
-          </p>
-        </div>
-      </div>
+      <CrewLine now={now} locale={locale} />
     </div>
   );
 }
