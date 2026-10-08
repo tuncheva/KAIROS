@@ -3136,7 +3136,11 @@
         "medium": "MEDIUM",
         "high": "HIGH",
         "urgent": "URGENT"
-      }
+      },
+      "addSubtask": "Add subtask",
+      "subtaskCount": "{done}/{total} subtasks",
+      "subtaskOf": "Subtask of {title}",
+      "discardConfirmWithSubtasks": "Click again to discard it and its {count, plural, one {# subtask} other {# subtasks}}"
     },
     "team": {
       "label": "Team",
@@ -3196,7 +3200,10 @@
       },
       "history": {
         "label": "History"
-      }
+      },
+      "subtaskTitle": "New subtask",
+      "parent": "Subtask of",
+      "noParent": "None — a top-level task"
     },
     "archive": {
       "title": "Archive project",

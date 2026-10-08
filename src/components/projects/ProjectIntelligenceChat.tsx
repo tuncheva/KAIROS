@@ -2063,7 +2063,13 @@ export function ProjectIntelligenceChat(props: {
              */
             <div className="flex h-full flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <p className="text-[17px] font-semibold tracking-[-0.015em] text-fg-primary">
+                <p
+                  className={
+                    isConsole
+                      ? "font-display text-[34px] leading-[1.08] font-light tracking-[-0.02em] text-fg-primary"
+                      : "text-[17px] font-semibold tracking-[-0.015em] text-fg-primary"
+                  }
+                >
                   {t("emptyTitle")}
                 </p>
                 <p className="text-[13px] leading-relaxed text-fg-tertiary">
@@ -2195,7 +2201,9 @@ export function ProjectIntelligenceChat(props: {
                             // accent belongs to the assistant's identity and to
                             // the controls that change the workspace, not to
                             // every line the user has ever typed.
-                            "group max-w-[520px] rounded-xl rounded-br-sm border border-border-medium/60 bg-bg-tertiary px-4 py-3 text-fg-primary"
+                            isConsole
+                            ? "group max-w-[520px] rounded-[14px] border border-tui-accent/30 bg-tui-accent/10 px-[15px] py-[11px] text-tui-ink"
+                            : "group max-w-[520px] rounded-xl rounded-br-sm border border-border-medium/60 bg-bg-tertiary px-4 py-3 text-fg-primary"
                           : "group w-full max-w-[720px] text-fg-primary"
                         : m.role === "user"
                           ? "group max-w-[85%] rounded-lg rounded-br-md text-white px-4 py-2.5 shadow-sm"
@@ -2229,7 +2237,7 @@ export function ProjectIntelligenceChat(props: {
                         }`}
                       >
                         {isConsole && (
-                          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-sm bg-accent-primary/15 text-accent-primary">
+                          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border border-tui-accent/45 text-tui-accent">
                             <Sparkles size={13} />
                           </span>
                         )}
@@ -3535,7 +3543,13 @@ export function ProjectIntelligenceChat(props: {
               isConsole ? "w-full px-6 pt-4 pb-5 lg:px-10" : "w-full p-3"
             }
           >
-            <div className="flex flex-col gap-3 rounded-md border border-border-medium/70 bg-bg-secondary px-3 py-2.5 transition-colors focus-within:border-accent-primary">
+            <div
+              className={
+                isConsole
+                  ? "flex flex-col gap-3 rounded-xl border border-tui-ink/16 bg-tui-bg pt-3 pr-3 pb-2.5 pl-4 transition-colors focus-within:border-tui-accent/45"
+                  : "flex flex-col gap-3 rounded-md border border-border-medium/70 bg-bg-secondary px-3 py-2.5 transition-colors focus-within:border-accent-primary"
+              }
+            >
               <textarea
                 ref={composerRef}
                 value={draft}
@@ -3557,15 +3571,27 @@ export function ProjectIntelligenceChat(props: {
                 <button
                   type="submit"
                   aria-label={t("send")}
-                  className={`kairos-tap ${
-                    isConsole ? "ml-auto " : "ml-auto "
-                  }flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
-                  style={{
-                    backgroundColor:
-                      !isThinking && draft.trim()
-                        ? "rgb(var(--accent-primary))"
-                        : "rgb(var(--bg-tertiary))",
-                  }}
+                  className={
+                    isConsole
+                      ? // The direct chats' send: a filled accent disc when
+                        // there is something to send, an outline when not.
+                        `kairos-tap ml-auto flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed ${
+                          !isThinking && draft.trim()
+                            ? "border-tui-accent bg-tui-accent text-tui-on-accent"
+                            : "border-tui-ink/16 bg-transparent text-tui-ink3"
+                        }`
+                      : "kairos-tap ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                  }
+                  style={
+                    isConsole
+                      ? undefined
+                      : {
+                          backgroundColor:
+                            !isThinking && draft.trim()
+                              ? "rgb(var(--accent-primary))"
+                              : "rgb(var(--bg-tertiary))",
+                        }
+                  }
                   disabled={isThinking || !draft.trim()}
                 >
                   <ArrowUp size={15} />

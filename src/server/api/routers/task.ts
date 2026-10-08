@@ -6,6 +6,7 @@ import { assertProjectPermission } from "~/server/api/authz";
 import { tasks, projects, projectCollaborators, taskActivityLog, organizationMembers, users, organizations, events } from "~/server/db/schema";
 import { eq, and, desc, sql, isNull, gte, lte, isNotNull, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import type { db as Database } from "~/server/db";
 import {
   notifyTaskAssignmentChanged,
   notifyTaskCreated,
@@ -13,6 +14,51 @@ import {
   notifyTaskDetailsChanged,
   notifyTaskStatusChanged,
 } from "~/server/notifications/workNotices";
+
+/**
+ * Check that `parentTaskId` may hold subtasks in `projectId`.
+ *
+ * Subtasks go one level deep: the parent must be a top-level task in the same
+ * project. `childId` is the task being moved under it, if it already exists —
+ * it cannot become its own parent, and a task that has subtasks of its own
+ * cannot become one.
+ */
+async function assertValidParent(
+  db: typeof Database,
+  projectId: number,
+  parentTaskId: number,
+  childId?: number,
+) {
+  if (childId !== undefined && parentTaskId === childId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "A task cannot be its own subtask" });
+  }
+
+  const [parent] = await db
+    .select({ projectId: tasks.projectId, parentTaskId: tasks.parentTaskId })
+    .from(tasks)
+    .where(eq(tasks.id, parentTaskId));
+
+  if (parent?.projectId !== projectId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Parent task not found in this project" });
+  }
+  if (parent.parentTaskId !== null) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Subtasks cannot have subtasks" });
+  }
+
+  if (childId !== undefined) {
+    const [child] = await db
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(eq(tasks.parentTaskId, childId))
+      .limit(1);
+    if (child) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "A task with subtasks cannot become a subtask",
+      });
+    }
+  }
+}
 
 export const taskRouter = createTRPCRouter({
  
@@ -27,6 +73,8 @@ export const taskRouter = createTRPCRouter({
         status: z.enum(["pending", "in_progress", "completed", "blocked"]).default("pending"),
         dueDate: z.date().optional(),
         clientRequestId: z.string().max(128).optional(),
+        /** Create as a subtask of this top-level task. */
+        parentTaskId: z.number().int().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -34,6 +82,10 @@ export const taskRouter = createTRPCRouter({
       // This replaces ~40 lines of inline checks that were copy-pasted into four
       // mutations in this file and had drifted apart; see `~/server/api/authz`.
       await assertProjectPermission(ctx, input.projectId, "canAssignTasks");
+
+      if (input.parentTaskId !== undefined) {
+        await assertValidParent(ctx.db, input.projectId, input.parentTaskId);
+      }
 
       
       // PERF + correctness: avoid loading all tasks and avoid race conditions on orderIndex.
@@ -65,6 +117,7 @@ export const taskRouter = createTRPCRouter({
         .insert(tasks)
         .values({
           projectId: input.projectId,
+          parentTaskId: input.parentTaskId ?? null,
           title: input.title,
           description: input.description ?? "",
           assignedToId: input.assignedToId,
@@ -192,6 +245,8 @@ export const taskRouter = createTRPCRouter({
         assignedToId: z.string().optional().nullable(),
         priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
         dueDate: z.date().optional().nullable(),
+        /** Move under this top-level task, or `null` to make it top-level. */
+        parentTaskId: z.number().int().optional().nullable(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -206,6 +261,12 @@ export const taskRouter = createTRPCRouter({
 
       await assertProjectPermission(ctx, task.projectId, "canEditProjects");
 
+      const parentChanged =
+        input.parentTaskId !== undefined && input.parentTaskId !== task.parentTaskId;
+      if (parentChanged && input.parentTaskId != null) {
+        await assertValidParent(ctx.db, task.projectId, input.parentTaskId, task.id);
+      }
+
       const updateData: {
         updatedAt: Date;
         lastEditedById: string;
@@ -215,6 +276,7 @@ export const taskRouter = createTRPCRouter({
         assignedToId?: string | null;
         priority?: "low" | "medium" | "high" | "urgent";
         dueDate?: Date | null;
+        parentTaskId?: number | null;
       } = {
         updatedAt: new Date(),
         lastEditedById: ctx.session.user.id,
@@ -226,6 +288,7 @@ export const taskRouter = createTRPCRouter({
       if (input.assignedToId !== undefined) updateData.assignedToId = input.assignedToId;
       if (input.priority !== undefined) updateData.priority = input.priority;
       if (input.dueDate !== undefined) updateData.dueDate = input.dueDate;
+      if (parentChanged) updateData.parentTaskId = input.parentTaskId ?? null;
 
       await ctx.db
         .update(tasks)
@@ -485,6 +548,7 @@ export const taskRouter = createTRPCRouter({
           status: tasks.status,
           priority: tasks.priority,
           dueDate: tasks.dueDate,
+          parentTaskId: tasks.parentTaskId,
           orderIndex: tasks.orderIndex,
           createdAt: tasks.createdAt,
           creator: {

@@ -22,6 +22,8 @@ import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligen
 import { useEntitlement } from "~/hooks/useEntitlements";
 import { api } from "~/trpc/react";
 
+import { ChatDialog } from "./ChatDialog";
+import { CHAT_ICON_BUTTON, CHAT_PANE, chatPill } from "./chatUi";
 import { ComposerMenu } from "./ComposerMenu";
 import { EffortMenu, useReasoningEffort } from "./EffortMenu";
 import { AiThreadRail } from "./AiThreadRail";
@@ -264,9 +266,9 @@ export function AIChatPageClient() {
   );
 
   return (
-    <div className="flex h-full min-h-0 w-full">
+    <div className="chat-refined tui-screen flex h-full w-full gap-4 overflow-hidden p-2 text-tui-ink sm:px-6 sm:pt-5 sm:pb-6">
       {railOpen && (
-        <div className="hidden lg:flex">
+        <div className="hidden min-h-0 w-[312px] flex-none lg:flex">
           <AiThreadRail
             conversations={conversations}
             loading={conversationsQuery.isLoading}
@@ -284,7 +286,7 @@ export function AIChatPageClient() {
       {threadsDrawerOpen && (
         <>
           <div
-            className="lg:hidden fixed inset-0 z-40 bg-black/40"
+            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
             onClick={() => setThreadsDrawerOpen(false)}
             aria-hidden="true"
           />
@@ -292,7 +294,7 @@ export function AIChatPageClient() {
             role="dialog"
             aria-modal="true"
             aria-label={t("showConversations")}
-            className="lg:hidden fixed inset-y-0 left-0 z-50 flex max-w-[85vw]"
+            className="fixed inset-y-2 left-2 z-50 flex w-[312px] max-w-[85vw] lg:hidden"
           >
             <AiThreadRail
               conversations={conversations}
@@ -312,63 +314,76 @@ export function AIChatPageClient() {
         </>
       )}
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <section
+        className={`${CHAT_PANE} flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden`}
+      >
         {/* ---- Header ---- */}
-        <header className="flex h-[60px] shrink-0 items-center justify-between gap-3 border-b border-border-medium/60 bg-bg-surface px-4 sm:gap-5 sm:px-5">
-          <div className="flex min-w-0 items-center gap-3">
+        <header className="flex flex-none items-center gap-3 border-b border-tui-ink/8 py-[18px] pr-4 pl-3 sm:gap-3.5 sm:pr-5 sm:pl-6">
+          <button
+            type="button"
+            onClick={() => setThreadsDrawerOpen(true)}
+            title={t("showConversations")}
+            aria-label={t("showConversations")}
+            className={`${CHAT_ICON_BUTTON} h-9 w-9 lg:hidden`}
+          >
+            <PanelLeftOpen size={15} />
+          </button>
+          {!railOpen && (
             <button
               type="button"
-              onClick={() => setThreadsDrawerOpen(true)}
+              onClick={() => setRailOpen(true)}
               title={t("showConversations")}
               aria-label={t("showConversations")}
-              className="kairos-tap flex shrink-0 items-center gap-2 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-bg-tertiary lg:hidden"
+              className={`${CHAT_ICON_BUTTON} hidden h-9 w-9 lg:grid`}
             >
-              <PanelLeftOpen className="h-[15px] w-[15px]" />
-              <span className="kairos-stamp text-[10px]">
-                {conversations.length}
-              </span>
+              <PanelLeftOpen size={15} />
             </button>
-            {!railOpen && (
-              <button
-                type="button"
-                onClick={() => setRailOpen(true)}
-                title={t("showConversations")}
-                aria-label={t("showConversations")}
-                className="hidden items-center gap-2 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-bg-tertiary lg:flex"
-              >
-                <PanelLeftOpen className="h-[15px] w-[15px]" />
-                <span className="kairos-stamp text-[10px]">
-                  {conversations.length}
-                </span>
-              </button>
-            )}
+          )}
 
-            <h1 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-fg-primary">
+          {/* The assistant's mark, where a person's face sits in a direct chat. */}
+          <span
+            className="grid h-[42px] w-[42px] flex-none place-items-center rounded-full border border-tui-accent/45 text-tui-accent"
+            aria-hidden="true"
+          >
+            <Sparkles size={17} />
+          </span>
+
+          <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+            <h1 className="truncate font-display text-[23px] leading-[1.1] tracking-[-0.01em]">
               {activeRow?.title?.trim() ?? t("newConversation")}
             </h1>
-
-            {scopeProject && (
-              <span className="kairos-stamp hidden shrink-0 rounded-sm border border-border-medium/70 px-2 py-1 text-[10px] text-fg-tertiary sm:inline">
-                {scopeProject.title}
-              </span>
-            )}
+            <p className={`truncate text-[12.5px] ${busy ? "text-tui-accent" : "text-tui-ink3"}`}>
+              {activeAgentLabel}
+              {activeRow ? (
+                <>
+                  <span aria-hidden> · </span>
+                  {t("messageCount", { count: activeRow.messageCount })}
+                </>
+              ) : null}
+            </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2.5">
-            <button
-              type="button"
-              data-testid="delete-conversation"
-              onClick={() => {
-                setDeleteError(null);
-                setConfirmDelete(true);
-              }}
-              disabled={!activeId}
-              className="kairos-tap kairos-stamp flex items-center gap-1.5 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-[10px] text-fg-secondary transition-colors hover:border-status-danger-border hover:text-status-danger-ink disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Trash2 className="h-3 w-3" />
-              <span className="hidden sm:inline">{t("delete")}</span>
-            </button>
-          </div>
+          {scopeProject && (
+            <span className="hidden h-7 max-w-[220px] items-center gap-[7px] rounded-full border border-tui-ink/16 px-3 text-[12.5px] text-tui-ink2 md:flex">
+              <FolderKanban size={12} className="flex-none text-tui-ink3" />
+              <span className="truncate">{scopeProject.title}</span>
+            </span>
+          )}
+
+          <button
+            type="button"
+            data-testid="delete-conversation"
+            onClick={() => {
+              setDeleteError(null);
+              setConfirmDelete(true);
+            }}
+            disabled={!activeId}
+            title={t("delete")}
+            aria-label={t("delete")}
+            className={`${CHAT_ICON_BUTTON} h-9 w-9 enabled:hover:border-tui-danger/40 enabled:hover:bg-tui-danger/8 enabled:hover:text-tui-danger disabled:cursor-not-allowed`}
+          >
+            <Trash2 size={15} />
+          </button>
         </header>
 
         {/* ---- Thread ---- */}
@@ -397,33 +412,35 @@ export function AIChatPageClient() {
             composerControls={composerControls}
           />
         </div>
-      </main>
+      </section>
 
       {/* ---- Right rail ---- */}
-      <aside className="kairos-console-rail hidden w-[332px] shrink-0 flex-col border-l border-border-medium/60 bg-bg-surface xl:flex">
-        <div className="flex shrink-0 gap-1.5 px-4 pt-3.5">
+      <aside
+        className={`${CHAT_PANE} kairos-console-rail hidden min-h-0 w-[332px] flex-none flex-col overflow-hidden xl:flex`}
+      >
+        <div
+          className="flex flex-none flex-wrap gap-1.5 border-b border-tui-ink/8 px-4 pt-4 pb-3.5"
+          role="tablist"
+        >
           {(
             [
               ["trail", t("tabTrail"), ListTree],
               ["memory", tAgents("memory"), Brain],
               ["tools", tAgents("tools"), Wrench],
               // Short label deliberately: four tabs share a 332px rail, and
-              // "Documents" at 10px would wrap or squeeze the other three.
+              // "Documents" would wrap or squeeze the other three.
               ["documents", tDocs("tabShort"), FileText],
             ] as const
           ).map(([id, label, Icon]) => (
             <button
               key={id}
               type="button"
+              role="tab"
               onClick={() => setRightTab(id)}
-              aria-pressed={rightTab === id}
-              className={`kairos-stamp flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[10px] transition-colors ${
-                rightTab === id
-                  ? "bg-accent-primary/10 text-accent-primary"
-                  : "text-fg-tertiary hover:bg-bg-tertiary"
-              }`}
+              aria-selected={rightTab === id}
+              className={`flex h-7 items-center gap-1.5 rounded-full border px-[11px] text-[12.5px] font-medium whitespace-nowrap transition-colors ${chatPill(rightTab === id)}`}
             >
-              <Icon className="h-3 w-3" />
+              <Icon size={12} />
               {label}
             </button>
           ))}
@@ -448,50 +465,36 @@ export function AIChatPageClient() {
 
       {/* ---- Delete confirmation ---- */}
       {confirmDelete && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+        <ChatDialog
+          role="alertdialog"
+          icon={<Trash2 size={17} />}
+          tone="danger"
+          eyebrow={activeRow?.title?.trim() ?? t("newConversation")}
+          title={tChat("deleteChatTitle")}
+          sub={tChat("deleteChatConfirmMessage")}
+          cancelLabel={tChat("cancel")}
+          closeLabel={tChat("cancel")}
+          onDismiss={() => {
+            setConfirmDelete(false);
+            setDeleteError(null);
+          }}
+          primary={{
+            label: deleteConversation.isPending
+              ? tChat("deleting")
+              : tChat("deleteAndStartOver"),
+            onClick: () => void deleteActiveThread(),
+            disabled: deleteConversation.isPending,
+          }}
         >
-          <div className="w-full max-w-md rounded-xl border border-border-medium bg-bg-primary p-6 shadow-2xl">
-            <h2 className="font-display text-[19px] leading-tight font-normal text-fg-primary">
-              {tChat("deleteChatTitle")}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-fg-secondary">
-              {tChat("deleteChatConfirmMessage")}
+          {deleteError && (
+            <p
+              className="mx-5 mt-4 text-[13px] text-tui-danger sm:mx-[26px]"
+              role="alert"
+            >
+              {tChat("deleteChatFailed")} {deleteError}
             </p>
-
-            {deleteError && (
-              <p className="mt-3 text-sm text-status-danger-ink">
-                {tChat("deleteChatFailed")} {deleteError}
-              </p>
-            )}
-
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setConfirmDelete(false);
-                  setDeleteError(null);
-                }}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-surface"
-              >
-                {tChat("cancel")}
-              </button>
-              <button
-                type="button"
-                data-testid="delete-conversation-confirm"
-                onClick={() => void deleteActiveThread()}
-                disabled={deleteConversation.isPending}
-                className="rounded-lg border border-status-danger-border bg-status-danger-surface px-4 py-2 text-sm font-medium text-status-danger-ink transition-colors hover:border-status-danger-ink disabled:opacity-50"
-              >
-                {deleteConversation.isPending
-                  ? tChat("deleting")
-                  : tChat("deleteAndStartOver")}
-              </button>
-            </div>
-          </div>
-        </div>
+          )}
+        </ChatDialog>
       )}
     </div>
   );

@@ -747,6 +747,55 @@
   font-variant-numeric: tabular-nums lining-nums;
 }
 
+/* ─── AI chat · refined edition ───
+   /chat/ai on the same panes as the direct chats: `tui-*` panes on the hatched
+   ground, ink hairlines, the pinned violet accent. The console's inner pieces
+   (the thread, the trail, memory, tools, documents) are shared with the
+   widget, so instead of forking their classes the semantic tokens are
+   remapped on the page wrapper, the same way `.settings-elegant` does it.
+   `--bg-primary` is the pane, because that is what the thread is drawn on;
+   fields sit a step down on the ground, like the direct-chat composer. */
+.chat-refined {
+  --bg-primary: var(--tui-pane);
+  --bg-secondary: var(--tui-bg);
+  --bg-tertiary: 236 235 231;
+  --bg-elevated: var(--tui-pane);
+  --bg-surface: var(--tui-pane);
+  --bg-overlay: var(--tui-ink);
+
+  --fg-primary: var(--tui-ink);
+  --fg-secondary: var(--tui-ink2);
+  --fg-tertiary: var(--tui-ink3);
+  --fg-quaternary: 179 177 171;
+
+  --border-light: 228 227 223;
+  --border-medium: 211 210 206;
+  --border-strong: 190 189 185;
+
+  --success: var(--tui-ok);
+  --warning: var(--tui-warn);
+  --error: var(--tui-danger);
+
+  --accent-primary: var(--tui-accent);
+  --accent-secondary: var(--tui-accent);
+  --accent-tertiary: var(--tui-accent);
+  --accent-hover: var(--tui-accent);
+  --accent-glow: var(--tui-accent);
+
+  color: rgb(var(--fg-primary));
+}
+
+.dark .chat-refined,
+.chat-refined.dark {
+  --bg-tertiary: 29 29 33;
+  --bg-overlay: 6 6 7;
+  --fg-quaternary: 79 78 74;
+
+  --border-light: 30 30 31;
+  --border-medium: 49 48 49;
+  --border-strong: 70 69 68;
+}
+
 @keyframes kairos-settings-rise {
   from {
     opacity: 0;

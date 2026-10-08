@@ -20,8 +20,10 @@ import { Skeleton, skeletonWidth } from "~/components/ui/Skeleton";
 import { SkeletonSlow } from "~/components/ui/SkeletonSlow";
 import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import {
+  PRIORITY_DOT,
   TaskDrawer,
   type EditableTask,
+  type ParentOption,
   type TaskMember,
   type TaskPriority,
   type TaskStatus,
@@ -34,6 +36,7 @@ type ProjectTask = {
   status: TaskStatus;
   priority: TaskPriority;
   dueDate: Date | string | null;
+  parentTaskId: number | null;
   completedAt: Date | string | null;
   completionNote: string | null;
   assignedTo: { id: string; name: string | null; image: string | null } | null;
@@ -59,14 +62,6 @@ const STATUS_TEXT: Record<TaskStatus, string> = {
   in_progress: "text-tui-warn",
   completed: "text-tui-ok",
   blocked: "text-tui-danger",
-};
-
-/** Priority as a dot, in the terminal-refined palette. */
-const PRIORITY_DOT: Record<TaskPriority, string> = {
-  low: "bg-tui-ink3",
-  medium: "bg-tui-ok",
-  high: "bg-tui-warn",
-  urgent: "bg-tui-danger",
 };
 
 /** Clicking the marker walks the common path; `blocked` is set in the drawer. */
@@ -122,6 +117,54 @@ function Initial({ label, size = 26 }: { label: string; size?: number }) {
   );
 }
 
+/** One line of the list: a task, and where it sits in the hierarchy. */
+type TaskRow = {
+  task: ProjectTask;
+  /** Set on a subtask; shown on its row only when its parent is not above it. */
+  parent: ProjectTask | null;
+  /** Whether the parent row is directly above, so the row is drawn indented. */
+  nested: boolean;
+};
+
+/**
+ * Order tasks for the list: each top-level task, then its subtasks.
+ *
+ * Under a status filter the hierarchy is dropped — a parent in another status
+ * would otherwise hide its matching subtasks — and each subtask names its
+ * parent instead. A subtask whose parent is missing reads as top-level.
+ */
+function orderTaskRows(tasks: ProjectTask[], filter: StatusFilter): TaskRow[] {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const parentOf = (task: ProjectTask) =>
+    task.parentTaskId == null ? null : (byId.get(task.parentTaskId) ?? null);
+
+  if (filter !== "all") {
+    return tasks
+      .filter((task) => task.status === filter)
+      .map((task) => ({ task, parent: parentOf(task), nested: false }));
+  }
+
+  const children = new Map<number, ProjectTask[]>();
+  for (const task of tasks) {
+    const parent = parentOf(task);
+    if (!parent) continue;
+    const bucket = children.get(parent.id) ?? [];
+    bucket.push(task);
+    children.set(parent.id, bucket);
+  }
+
+  return tasks
+    .filter((task) => parentOf(task) === null)
+    .flatMap((task) => [
+      { task, parent: null, nested: false },
+      ...(children.get(task.id) ?? []).map((child) => ({
+        task: child,
+        parent: task,
+        nested: true,
+      })),
+    ]);
+}
+
 function asDate(value: Date | string | null | undefined): Date | null {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
@@ -151,6 +194,7 @@ export function ProjectTasksPanel({
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<EditableTask | null>(null);
+  const [newParentId, setNewParentId] = useState<number | null>(null);
   const [noteFor, setNoteFor] = useState<number | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [confirmDiscard, setConfirmDiscard] = useState<number | null>(null);
@@ -290,11 +334,34 @@ export function ProjectTasksPanel({
 
   const removing = deleteTask.isPending || discardTask.isPending;
 
-  const shown =
-    filter === "all" ? tasks : tasks.filter((task) => task.status === filter);
+  const rows = useMemo(() => orderTaskRows(tasks, filter), [tasks, filter]);
 
-  const openCreate = () => {
+  /** Subtask counts per parent, as `[done, total]`. */
+  const subtaskCounts = useMemo(() => {
+    const counts = new Map<number, [number, number]>();
+    for (const task of tasks) {
+      if (task.parentTaskId == null) continue;
+      const [done, total] = counts.get(task.parentTaskId) ?? [0, 0];
+      counts.set(task.parentTaskId, [
+        done + (task.status === "completed" ? 1 : 0),
+        total + 1,
+      ]);
+    }
+    return counts;
+  }, [tasks]);
+
+  /** Top-level tasks, which are the only ones that can take subtasks. */
+  const parentOptions: ParentOption[] = useMemo(
+    () =>
+      tasks
+        .filter((task) => task.parentTaskId == null && task.id !== editing?.id)
+        .map((task) => ({ id: task.id, title: task.title })),
+    [tasks, editing],
+  );
+
+  const openCreate = (parentId: number | null = null) => {
     setEditing(null);
+    setNewParentId(parentId);
     setDrawerOpen(true);
   };
 
@@ -307,7 +374,9 @@ export function ProjectTasksPanel({
       status: task.status,
       dueDate: task.dueDate,
       assignedTo: task.assignedTo ? { id: task.assignedTo.id } : null,
+      parentTaskId: task.parentTaskId,
     });
+    setNewParentId(null);
     setDrawerOpen(true);
   };
 
@@ -341,7 +410,7 @@ export function ProjectTasksPanel({
         {canWrite && (
           <button
             type="button"
-            onClick={openCreate}
+            onClick={() => openCreate()}
             className="bg-tui-accent text-tui-on-accent flex h-9 items-center gap-2 rounded-full px-4 text-[13px] font-semibold transition-opacity hover:opacity-90"
           >
             <Plus size={15} aria-hidden />
@@ -353,13 +422,14 @@ export function ProjectTasksPanel({
       <div className={CARD}>
         {loading ? (
           <TaskRowsSkeleton onRetry={() => void projectQuery.refetch()} />
-        ) : shown.length === 0 ? (
+        ) : rows.length === 0 ? (
           <p className="text-tui-ink2 px-7 py-8 text-[14px]">
             {tasks.length === 0 ? t("empty") : t("noneInFilter")}
           </p>
         ) : (
-          shown.map((task) => {
+          rows.map(({ task, parent, nested }) => {
             const due = asDate(task.dueDate);
+            const subtasks = subtaskCounts.get(task.id);
             const overdue =
               due !== null &&
               task.status !== "completed" &&
@@ -368,7 +438,9 @@ export function ProjectTasksPanel({
             return (
               <div
                 key={task.id}
-                className="group border-tui-ink/8 hover:bg-tui-accent/[0.05] grid grid-cols-[22px_minmax(0,1fr)_auto] items-start gap-3.5 border-b px-7 py-4 transition-colors last:border-b-0"
+                className={`group border-tui-ink/8 hover:bg-tui-accent/[0.05] grid grid-cols-[22px_minmax(0,1fr)_auto] items-start gap-3.5 border-b pr-7 transition-colors last:border-b-0 ${
+                  nested ? "py-3 pl-[64px]" : "py-4 pl-7"
+                }`}
               >
                 <button
                   type="button"
@@ -406,7 +478,9 @@ export function ProjectTasksPanel({
                 <div className="flex min-w-0 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <span
-                      className={`min-w-0 max-w-full text-[15px] font-medium tracking-[-0.01em] break-words ${
+                      className={`min-w-0 max-w-full font-medium tracking-[-0.01em] break-words ${
+                        nested ? "text-[14px]" : "text-[15px]"
+                      } ${
                         task.status === "completed"
                           ? "text-tui-ink3 line-through"
                           : "text-tui-ink"
@@ -426,7 +500,21 @@ export function ProjectTasksPanel({
                     <span className={`${STAMP} ${STATUS_TEXT[task.status]}`}>
                       {t(`statuses.${task.status}`)}
                     </span>
+                    {subtasks && (
+                      <span className={`${STAMP} tabular-nums`}>
+                        {t("subtaskCount", {
+                          done: subtasks[0],
+                          total: subtasks[1],
+                        })}
+                      </span>
+                    )}
                   </div>
+
+                  {parent && !nested && (
+                    <span className="text-tui-ink3 truncate text-[12px]">
+                      {t("subtaskOf", { title: parent.title })}
+                    </span>
+                  )}
 
                   {task.description && (
                     <span className="text-tui-ink2 text-[13px] leading-[1.45]">
@@ -519,6 +607,17 @@ export function ProjectTasksPanel({
 
                 {canWrite && (
                   <div className="flex items-center gap-1">
+                    {task.parentTaskId == null && (
+                      <button
+                        type="button"
+                        onClick={() => openCreate(task.id)}
+                        aria-label={t("addSubtask")}
+                        title={t("addSubtask")}
+                        className="text-tui-ink3 hover:bg-tui-ink/[0.06] hover:text-tui-ink flex h-8 w-8 items-center justify-center rounded-full transition-colors"
+                      >
+                        <Plus size={15} strokeWidth={1.6} aria-hidden />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => openEdit(task)}
@@ -545,7 +644,11 @@ export function ProjectTasksPanel({
                         aria-label={t("discard")}
                         title={
                           confirmDiscard === task.id
-                            ? t("discardConfirm")
+                            ? subtasks
+                              ? t("discardConfirmWithSubtasks", {
+                                  count: subtasks[1],
+                                })
+                              : t("discardConfirm")
                             : t("discard")
                         }
                         className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
@@ -569,10 +672,14 @@ export function ProjectTasksPanel({
         projectId={projectId}
         members={members}
         task={editing}
+        parents={parentOptions}
+        defaultParentId={newParentId}
+        canNest={!editing || !subtaskCounts.has(editing.id)}
         open={drawerOpen}
         onClose={() => {
           setDrawerOpen(false);
           setEditing(null);
+          setNewParentId(null);
         }}
       />
     </div>

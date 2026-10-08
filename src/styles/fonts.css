@@ -19,13 +19,6 @@
   --font-geist-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --font-source-serif: "Source Serif 4 Variable", Georgia, serif;
-}
-
-/* Instrument Serif has no Cyrillic, so Bulgarian gets Playfair for display. */
-.font-display-latin {
-  --font-display: "Instrument Serif", Georgia, serif;
-}
-
-.font-display-cyrillic {
-  --font-display: "Playfair Display Variable", Georgia, serif;
+  /* Headings are set in the app sans; `--font-display` stays as the hook. */
+  --font-display: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 }

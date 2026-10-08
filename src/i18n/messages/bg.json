@@ -3136,7 +3136,11 @@
         "medium": "СРЕДЕН",
         "high": "ВИСОК",
         "urgent": "СПЕШЕН"
-      }
+      },
+      "addSubtask": "Добави подзадача",
+      "subtaskCount": "{done}/{total} подзадачи",
+      "subtaskOf": "Подзадача на {title}",
+      "discardConfirmWithSubtasks": "Натисни пак, за да я изтриеш заедно с {count, plural, one {# подзадача} other {# подзадачи}}"
     },
     "team": {
       "label": "Екип",
@@ -3196,7 +3200,10 @@
       },
       "history": {
         "label": "История"
-      }
+      },
+      "subtaskTitle": "Нова подзадача",
+      "parent": "Подзадача на",
+      "noParent": "Няма — задача от първо ниво"
     },
     "archive": {
       "title": "Архивиране на проект",

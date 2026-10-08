@@ -119,6 +119,7 @@ const DETAIL = {
       dueDate: new Date(now + 3 * DAY),
       completedAt: null,
       completionNote: null,
+      parentTaskId: null,
       assignedTo: { id: "u1", name: "Мартин", image: null },
       completedBy: null,
     },
@@ -131,6 +132,8 @@ const DETAIL = {
       dueDate: null,
       completedAt: new Date(now - HOUR),
       completionNote: null,
+      // A subtask of "Chapter 2 review".
+      parentTaskId: 21,
       assignedTo: null,
       completedBy: { id: "me", name: "Теодора", image: null },
     },
@@ -554,6 +557,67 @@ describe("ProjectsWorkspace — tasks", () => {
         priority: "medium",
       }),
     );
+  });
+
+  it("nests a subtask under its parent and counts it there", async () => {
+    const user = setup();
+    await open(user);
+    expect(screen.getByText("1/1 subtasks")).toBeInTheDocument();
+    // Its parent is right above it, so the row does not name it again.
+    expect(screen.queryByText("Subtask of Chapter 2 review")).not.toBeInTheDocument();
+  });
+
+  it("names a subtask's parent once a filter splits them up", async () => {
+    const user = setup();
+    await open(user);
+    await user.click(screen.getByRole("button", { name: /^Done ?1$/ }));
+    expect(screen.getByText("Subtask of Chapter 2 review")).toBeInTheDocument();
+  });
+
+  it("adds a subtask from its parent's row", async () => {
+    const user = setup();
+    await open(user);
+    // Only the top-level task offers it; subtasks go one level deep.
+    const add = screen.getAllByRole("button", { name: "Add subtask" });
+    expect(add).toHaveLength(1);
+    await user.click(add[0]!);
+
+    const drawer = screen.getByRole("dialog");
+    expect(within(drawer).getByText("New subtask")).toBeInTheDocument();
+    await user.type(
+      within(drawer).getByRole("textbox", { name: /Task/ }),
+      "Check the footnotes",
+    );
+    await user.click(
+      within(drawer).getByRole("button", { name: "Create task" }),
+    );
+
+    expect(createTaskMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: 1,
+        title: "Check the footnotes",
+        parentTaskId: 21,
+      }),
+    );
+  });
+
+  it("starts closing the drawer on Create, before the save answers", async () => {
+    const user = setup();
+    await open(user);
+    // A save that never answers: the drawer must not wait for it.
+    createTaskMutate.mockReturnValueOnce(new Promise(() => undefined));
+    await user.click(screen.getAllByRole("button", { name: "Add subtask" })[0]!);
+
+    const drawer = screen.getByRole("dialog");
+    await user.type(
+      within(drawer).getByRole("textbox", { name: /Task/ }),
+      "Check the footnotes",
+    );
+    await user.click(
+      within(drawer).getByRole("button", { name: "Create task" }),
+    );
+
+    expect(drawer.querySelector("aside")).toHaveClass("projects-drawer-out");
   });
 
   it("lists the team and who owns the project", async () => {

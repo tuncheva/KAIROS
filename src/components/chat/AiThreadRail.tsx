@@ -8,7 +8,7 @@ import { useTranslations } from "next-intl";
 import { useDateFormat } from "~/hooks/useDateFormat";
 import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { api } from "~/trpc/react";
-import { Stamp } from "./chatUi";
+import { CHAT_EYEBROW, CHAT_ICON_BUTTON, CHAT_PANE } from "./chatUi";
 import { AiThreadRowsSkeleton } from "./ChatSkeletons";
 
 export interface ConversationRow {
@@ -124,44 +124,57 @@ export function AiThreadRail({
   }, [messageHits.data, groups]);
 
   return (
-    <aside className="kairos-console-rail flex h-full w-[284px] max-w-full shrink-0 flex-col border-r border-border-medium/60 bg-bg-surface">
-      <div className="flex flex-col gap-3.5 border-b border-border-medium/60 px-[18px] pt-5 pb-3.5">
-        <div className="flex items-center justify-between gap-2.5">
-          <Stamp>{t("conversations")}</Stamp>
-          <span className="flex items-center gap-2.5">
-            <span className="kairos-mono text-[10px] text-fg-tertiary">
+    <aside
+      className={`${CHAT_PANE} kairos-console-rail flex h-full min-h-0 w-full flex-col`}
+      aria-label={t("conversations")}
+    >
+      {/* The collapse sits on the eyebrow line so the title keeps the width;
+          the one loud control, a new thread, sits beside the title. */}
+      <div className="flex flex-none flex-col gap-2.5 px-[22px] pt-[22px] pb-[18px]">
+        <div className="flex items-center gap-2">
+          <span className={`${CHAT_EYEBROW} min-w-0 flex-1 truncate`}>{t("askKairos")}</span>
+          <button
+            type="button"
+            onClick={onCollapse}
+            title={t("hideConversations")}
+            aria-label={t("hideConversations")}
+            className="kairos-tap -my-1 grid h-7 w-7 flex-none place-items-center rounded-full text-tui-ink3 transition-colors hover:bg-tui-accent/6 hover:text-tui-ink"
+          >
+            <PanelLeftClose size={14} />
+          </button>
+        </div>
+        <div className="flex items-end gap-3">
+          <div className="flex min-w-0 flex-1 items-baseline gap-2.5">
+            <h2 className="m-0 truncate font-display text-[28px] leading-none font-light tracking-[-0.02em] text-tui-ink">
+              {t("conversations")}
+            </h2>
+            <span className="flex-none font-display text-[18px] text-tui-ink3 tabular-nums">
               {conversations.length}
             </span>
-            <button
-              type="button"
-              onClick={onCollapse}
-              title={t("hideConversations")}
-              aria-label={t("hideConversations")}
-              className="kairos-tap flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-primary"
-            >
-              <PanelLeftClose className="h-[15px] w-[15px]" />
-            </button>
-          </span>
-        </div>
-
+          </div>
         <button
           type="button"
           onClick={onNew}
           data-testid="new-conversation"
-          className="flex items-center justify-center gap-2 rounded-lg bg-accent-primary px-3 py-2.5 text-[13px] font-semibold text-white transition-[filter] hover:brightness-110"
+          title={t("newConversation")}
+          aria-label={t("newConversation")}
+          className={`${CHAT_ICON_BUTTON} h-9 w-9 text-tui-accent`}
         >
-          <Plus className="h-[15px] w-[15px]" />
-          {t("newConversation")}
+          <Plus size={15} />
         </button>
+        </div>
+      </div>
 
-        <label className="flex items-center gap-2.5 rounded-lg border border-border-medium/60 bg-bg-secondary px-2.5 py-2 focus-within:border-accent-primary/50">
-          <Search className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
+      <div className="flex-none px-4 pb-3.5">
+        <label className="flex h-[38px] items-center gap-2.5 rounded-full border border-tui-ink/16 bg-tui-bg pr-2 pl-3.5 transition-colors focus-within:border-tui-accent/45">
+          <Search size={14} className="flex-none text-tui-ink3" />
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("searchConversations")}
-            className="min-w-0 flex-1 bg-transparent text-[13px] text-fg-primary placeholder:text-fg-tertiary focus:outline-none"
+            aria-label={t("searchConversations")}
+            className="min-w-0 flex-1 border-0 bg-transparent text-[13.5px] text-tui-ink outline-none placeholder:text-tui-ink3"
           />
           {/* The only search box in the app that had no clear of its own, and
               was relying on WebKit's — which is now suppressed for being
@@ -171,31 +184,33 @@ export function AiThreadRail({
               type="button"
               onClick={() => setQuery("")}
               aria-label={t("clearSearch")}
-              className="kairos-tap shrink-0 rounded-sm p-0.5 text-fg-tertiary transition-colors hover:text-fg-primary"
+              className="kairos-tap grid h-6 w-6 flex-none place-items-center rounded-full text-tui-ink3 transition-colors hover:text-tui-ink"
             >
-              <X className="h-3.5 w-3.5" />
+              <X size={12} />
             </button>
           )}
         </label>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2.5 py-3.5">
+      <div className="mx-4 h-px flex-none bg-tui-ink/8" />
+
+      <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pt-1 pb-3.5">
         {showSkeleton && conversations.length === 0 ? (
           <AiThreadRowsSkeleton />
         ) : groups.length === 0 ? (
-          <p className="px-2 py-4 text-xs leading-relaxed text-fg-tertiary">
+          <p className="px-3.5 py-7 text-center text-[13.5px] leading-[1.55] text-tui-ink3">
             {query ? t("noMatches") : t("noConversations")}
           </p>
         ) : (
           groups.map((group) => (
             <section key={group.key} className="contents">
-              <Stamp className="px-2 pt-3 pb-1.5 first:pt-1.5">
+              <p className={`${CHAT_EYEBROW} px-3 pt-[18px] pb-2`}>
                 {group.key === "today"
                   ? t("today")
                   : group.key === "yesterday"
                     ? t("yesterday")
                     : t("earlier")}
-              </Stamp>
+              </p>
 
               {group.rows.map((row) => {
                 const active = row.id === activeId;
@@ -205,27 +220,21 @@ export function AiThreadRail({
                     type="button"
                     onClick={() => onSelect(row.id)}
                     aria-current={active ? "true" : undefined}
-                    className={`flex flex-col gap-1.5 rounded-sm px-2.5 py-2.5 text-left transition-colors ${
-                      active
-                        ? "border-l-2 border-accent-primary bg-accent-primary/10"
-                        : "border-l-2 border-transparent hover:bg-bg-tertiary/70"
+                    className={`flex w-full flex-col gap-[3px] rounded-lg px-3 py-2.5 text-left text-tui-ink transition-colors ${
+                      active ? "bg-tui-accent/15" : "hover:bg-tui-accent/6"
                     }`}
                   >
                     <span
-                      className={`line-clamp-2 text-[13.5px] leading-snug ${
-                        active
-                          ? "font-semibold text-fg-primary"
-                          : "font-medium text-fg-secondary"
+                      className={`line-clamp-2 text-[14px] leading-snug ${
+                        active ? "font-semibold" : "font-medium"
                       }`}
                     >
                       {row.title?.trim() ?? t("untitledConversation")}
                     </span>
-                    <span className="kairos-stamp flex items-center gap-1.5 text-[9.5px] text-fg-tertiary">
+                    <span className="flex items-center gap-1.5 text-[11.5px] text-tui-ink3 tabular-nums">
                       {t("messageCount", { count: row.messageCount })}
                       <span aria-hidden>·</span>
-                      <span className="normal-case tracking-normal">
-                        {formatTimestamp(row.updatedAt, formatDate)}
-                      </span>
+                      {formatTimestamp(row.updatedAt, formatDate)}
                     </span>
                   </button>
                 );
@@ -240,28 +249,28 @@ export function AiThreadRail({
           reads as a duplicate rather than as two kinds of match.
         */}
         {inMessages.length > 0 ? (
-          <section className="contents">
-            <Stamp className="px-2 pt-4 pb-1.5">{t("inMessages")}</Stamp>
+          <div className="mt-2 flex flex-col border-t border-tui-ink/8">
+            <p className={`${CHAT_EYEBROW} px-3 pt-[18px] pb-2`}>{t("inMessages")}</p>
             {inMessages.map((hit) => (
               <button
                 key={`${hit.conversationId}-${hit.createdAt.toISOString()}`}
                 type="button"
                 onClick={() => onSelect(hit.conversationId)}
-                className="flex flex-col gap-1 rounded-sm border-l-2 border-transparent px-2.5 py-2.5 text-left transition-colors hover:bg-bg-tertiary/70"
+                className="flex w-full flex-col gap-1 rounded-lg px-3 py-2.5 text-left text-tui-ink transition-colors hover:bg-tui-accent/6"
               >
-                <span className="line-clamp-1 text-[12.5px] font-medium text-fg-secondary">
+                <span className="line-clamp-1 text-[12.5px] font-medium text-tui-ink2">
                   {hit.conversationTitle?.trim() ?? t("untitledConversation")}
                 </span>
-                <span className="line-clamp-2 text-[12px] leading-snug text-fg-tertiary">
+                <span className="line-clamp-2 text-[13px] leading-normal text-tui-ink2">
                   {snippetAround(hit.content, query)}
                 </span>
               </button>
             ))}
-          </section>
+          </div>
         ) : null}
       </div>
 
-      <div className="kairos-stamp flex shrink-0 items-center justify-between gap-2 border-t border-border-medium/60 px-[18px] py-3.5 text-[10px] text-fg-tertiary">
+      <div className="flex flex-none items-center justify-between gap-2 border-t border-tui-ink/8 px-[22px] py-3.5 text-[12px] text-tui-ink3 tabular-nums">
         <span>
           {quota.data
             ? t("requestsToday", {
@@ -272,7 +281,7 @@ export function AiThreadRail({
         </span>
         <Link
           href="/settings"
-          className="text-accent-primary transition-opacity hover:opacity-80"
+          className="font-medium text-tui-accent transition-opacity hover:opacity-80"
         >
           {t("settings")}
         </Link>

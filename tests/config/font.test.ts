@@ -41,8 +41,6 @@ describe("Font configuration", () => {
     const layout = read("src/app/layout.tsx");
     expect(layout).toContain('import "~/styles/fonts.css"');
     expect(layout).toContain("font-vars");
-    expect(layout).toContain("font-display-cyrillic");
-    expect(layout).toContain("font-display-latin");
   });
 
   it("fonts.css binds every variable the theme reads", () => {
