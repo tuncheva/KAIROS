@@ -103,6 +103,44 @@ class SignInRefused extends CredentialsSignin {
 const MAX_LOGIN_FAILURES = 10;
 const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
 
+/**
+ * Microsoft sign-in is optional: without both keys the provider is not
+ * registered at all, rather than registered with an undefined client id that
+ * fails only once someone clicks it.
+ */
+export const isMicrosoftSignInEnabled = Boolean(
+  env.AUTH_MICROSOFT_ID && env.AUTH_MICROSOFT_SECRET,
+);
+
+/**
+ * The tenant id every personal Microsoft account (outlook.com, hotmail.com,
+ * live.com) signs in under. Microsoft owns those mailboxes, so the address on
+ * such a token is proven. Not a secret, and not a client id.
+ */
+const MICROSOFT_CONSUMER_TENANT = "9188040d-6c67-4c5b-b112-36a304b66dad";
+
+/**
+ * Whether the provider proves the signed-in person owns the address.
+ *
+ * Google sends `email_verified` (a boolean; some providers send the string).
+ * Entra on the `common` tenant sends no such claim, and a work tenant's admin
+ * can put any address on a user — so an Entra address counts only from a
+ * personal account, or when Entra marks the domain as verified by the tenant
+ * (`xms_edov`, an optional claim that has to be enabled on the app
+ * registration).
+ */
+function providerProvesEmail(provider: string | undefined, profile: unknown): boolean {
+  const claims = (profile ?? {}) as {
+    email_verified?: unknown;
+    tid?: unknown;
+    xms_edov?: unknown;
+  };
+  if (provider === "microsoft-entra-id") {
+    return claims.tid === MICROSOFT_CONSUMER_TENANT || claims.xms_edov === true;
+  }
+  return claims.email_verified === true || claims.email_verified === "true";
+}
+
 declare module "next-auth" {
   interface Session extends DefaultSession {
     user: {
@@ -135,19 +173,34 @@ export const authConfig = {
       // credentials account and attempts Google sign-in with the same email.
       allowDangerousEmailAccountLinking: true,
     }),
-    MicrosoftEntraID({
-      clientId: env.AUTH_MICROSOFT_ID,
-      clientSecret: env.AUTH_MICROSOFT_SECRET,
-      // Use "common" tenant to allow personal MS accounts + work/school accounts
-      issuer: "https://login.microsoftonline.com/common/v2.0",
-      authorization: {
-        params: {
-          scope: "openid profile email User.Read",
-        },
-      },
-      checks: ["state"],
-      allowDangerousEmailAccountLinking: true,
-    }),
+    ...(isMicrosoftSignInEnabled
+      ? [
+          MicrosoftEntraID({
+            clientId: env.AUTH_MICROSOFT_ID,
+            clientSecret: env.AUTH_MICROSOFT_SECRET,
+            // Use "common" tenant to allow personal MS accounts + work/school accounts
+            issuer: "https://login.microsoftonline.com/common/v2.0",
+            authorization: {
+              params: {
+                scope: "openid profile email User.Read",
+              },
+            },
+            checks: ["state"],
+            allowDangerousEmailAccountLinking: true,
+            // The default profile fetches the Graph photo and returns it as a
+            // base64 data URL, which then rides in the JWT cookie on every
+            // request — large enough to push it past the browser's cookie limit.
+            profile(profile) {
+              return {
+                id: profile.sub,
+                name: profile.name ?? null,
+                email: profile.email ?? null,
+                image: null,
+              };
+            },
+          }),
+        ]
+      : []),
     Credentials({
       id: "account-switch",
       name: "account-switch",
@@ -503,6 +556,7 @@ export const authConfig = {
       if (typeof email !== "string" || email.length === 0) return false;
 
       const isOAuth = account?.type === "oauth" || account?.type === "oidc";
+      const emailProven = isOAuth && providerProvesEmail(account?.provider, profile);
 
       if (isOAuth) {
         // ── OAuth account linking ────────────────────────────────────────────
@@ -518,17 +572,9 @@ export const authConfig = {
         // opens their account. It works only because the row you created was never
         // confirmed to be yours.
         //
-        // So: a provider identity may only attach to a row that is already
-        // verified, and the provider must itself assert the address is verified.
-        // Anything else is refused rather than linked.
-        const providerVerifiesEmail = (() => {
-          const claim = (profile as { email_verified?: unknown } | undefined)
-            ?.email_verified;
-          // Google sends a boolean; some providers send the string "true"; Entra on
-          // the `common` tenant sends nothing at all, which counts as "not
-          // asserted" and therefore only ever links to already-verified rows.
-          return claim === true || claim === "true";
-        })();
+        // So: a provider identity may only attach to an existing row when the
+        // provider itself proves the address. Anything else is refused rather
+        // than linked.
 
         // A provider account already stored for this identity means this is a
         // returning user, not a new link, so there is nothing to decide.
@@ -548,6 +594,17 @@ export const authConfig = {
           columns: { id: true, emailVerified: true },
         });
 
+        // Into any existing row, verified or not. A verified row is exactly the
+        // one somebody owns, and an Entra work tenant can put any address on a
+        // token — linking on its word would hand that tenant the account.
+        if (!linkedAlready && existingByEmail && !emailProven) {
+          log.warn("refused OAuth link without a proven address", {
+            email,
+            provider: account?.provider,
+          });
+          return false;
+        }
+
         if (!linkedAlready && existingByEmail && !existingByEmail.emailVerified) {
           // The row exists but was never confirmed. Refusing outright was a dead
           // end for the ordinary case that produces it: someone signs up with a
@@ -563,16 +620,6 @@ export const authConfig = {
           // any outstanding confirmation code. Whoever created that password is
           // left with nothing; the person the provider vouched for gets in, and
           // can set a new password through the normal reset flow.
-          if (!providerVerifiesEmail) {
-            // Provider says nothing about the address (e.g. Entra on the `common`
-            // tenant), so there is no proof to substitute and the refusal stands.
-            log.warn("refused OAuth link into unverified account", {
-              email,
-              provider: account?.provider,
-            });
-            return false;
-          }
-
           const claimedAt = new Date();
           await db
             .update(users)
@@ -592,6 +639,10 @@ export const authConfig = {
               loginLastFailedAt: null,
             })
             .where(eq(users.id, existingByEmail.id));
+
+          // Whoever created the unproven row may also have attached their own
+          // provider identity to it; it must not survive the claim either.
+          await db.delete(accounts).where(eq(accounts.userId, existingByEmail.id));
 
           // Consume any live confirmation code for the address: it was minted for
           // the signup that is now superseded, and the address is already proven.
@@ -614,7 +665,7 @@ export const authConfig = {
 
         // The provider vouching for the address is proof, so record it. This also
         // upgrades rows created before verification existed.
-        if (providerVerifiesEmail) {
+        if (emailProven) {
           const target = linkedAlready?.userId ?? existingByEmail?.id;
           if (target) {
             await db
@@ -641,12 +692,14 @@ export const authConfig = {
               email,
               name: typeof name === "string" ? name : null,
               image: typeof image === "string" ? image : null,
-              // A provider-created account is verified by the provider; a
+              // Verified only when the provider proved the address; a
               // credentials account gets here only after redeeming a token, and
               // `auth.signup` has already written the row by then.
-              emailVerified: isOAuth ? new Date() : null,
+              emailVerified: emailProven ? new Date() : null,
             })
-            .onConflictDoNothing({ target: users.id });
+            // No target: on a first OAuth link the row that owns this email has
+            // a different id, and a conflict on the email index must not throw.
+            .onConflictDoNothing();
         }
       }
 

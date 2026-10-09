@@ -388,8 +388,16 @@ describe("the week", () => {
       .getByRole("heading", { name: "This week" })
       .closest("section")!;
     expect(within(card).getAllByRole("listitem")).toHaveLength(7);
+    // Today's cell by its full label: the fixtures' overdue task lands earlier
+    // in the same week on some weekdays, so ", one task, no events" alone can
+    // match two days.
+    const today = new Intl.DateTimeFormat("en", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }).format(new Date());
     expect(
-      within(card).getByLabelText(/, one task, no events$/),
+      within(card).getByRole("listitem", { name: `${today}, one task, no events` }),
     ).toBeInTheDocument();
   });
 });
