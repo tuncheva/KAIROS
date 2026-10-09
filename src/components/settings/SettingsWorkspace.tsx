@@ -41,6 +41,7 @@ import {
   ArrowLeft,
   ChevronRight,
   History,
+  LightIcons,
   Search,
   X,
 } from "~/components/ui/icons";
@@ -376,222 +377,232 @@ function SettingsShell({ activeSection, user }: Props) {
   return (
     <SettingsFilterProvider query={query}>
       <FlaggedSectionsContext.Provider value={flagged}>
-        <div className="settings-elegant fixed inset-0 z-[55] flex bg-bg-primary text-fg-primary">
-          {/* ---------------------------------------------------------- index */}
-          <aside className="hidden w-[300px] flex-none flex-col border-r border-border-light bg-settings-side lg:flex">
-            <div className="px-7 pt-[26px]">
-              <button
-                type="button"
-                onClick={leave}
-                className="-ml-1.5 flex h-[30px] cursor-pointer items-center gap-2.5 rounded-[6px] pl-1.5 pr-2.5 text-settings-desc text-fg-secondary transition-colors hover:bg-fg-primary/5 hover:text-fg-primary"
-              >
-                <ArrowLeft size={14} />
-                {t("elegant.back")}
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3.5 px-7 pb-[26px] pt-[34px]">
-              <Avatar user={user} size={44} />
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="truncate text-settings-row font-medium">
-                  {user.name?.trim() ? user.name : user.email}
-                </span>
-                {user.name && user.email ? (
-                  <span className="truncate text-settings-small text-fg-tertiary">{user.email}</span>
-                ) : null}
+        <LightIcons>
+          <div className="settings-elegant fixed inset-0 z-[55] flex bg-bg-primary text-fg-primary">
+            {/* ---------------------------------------------------------- index */}
+            <aside className="hidden w-[300px] flex-none flex-col border-r border-border-light bg-settings-side lg:flex">
+              <div className="px-7 pt-[26px]">
+                <button
+                  type="button"
+                  onClick={leave}
+                  className="-ml-1.5 flex h-[30px] cursor-pointer items-center gap-2.5 rounded-[6px] pl-1.5 pr-2.5 text-settings-desc text-fg-secondary transition-colors hover:bg-fg-primary/5 hover:text-fg-primary"
+                >
+                  <ArrowLeft size={14} />
+                  {t("elegant.back")}
+                </button>
               </div>
-            </div>
 
-            <div className="px-5 pb-3.5">{search}</div>
-
-            <nav
-              aria-label={t("title")}
-              className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-3 pb-3 pt-1.5"
-            >
-              {SETTINGS_GROUPS.map((group) => (
-                <div key={group} className="flex flex-col gap-px">
-                  <span className="px-4 pb-2 text-settings-eyebrow font-medium uppercase tracking-[0.14em] text-fg-tertiary">
-                    {t(`elegant.group.${group}`)}
+              <div className="flex items-center gap-3.5 px-7 pb-[26px] pt-[34px]">
+                <Avatar user={user} size={44} />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-settings-row font-medium">
+                    {user.name?.trim() ? user.name : user.email}
                   </span>
-                  {SETTINGS_SECTIONS.filter((id) => SECTION_GROUP[id] === group).map((id) => {
-                    const Icon = SECTION_ICON[id];
-                    const on = !filtering && spy === id;
-                    const count = counts[id] ?? 0;
-                    const dim = filtering && count === 0;
-                    return (
-                      <a
-                        key={id}
-                        href={`/settings?section=${id}`}
-                        aria-current={on ? "location" : undefined}
-                        onClick={(e) => {
-                          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-                          e.preventDefault();
-                          goToSection(id);
-                        }}
-                        className={`flex h-9 items-center gap-3 rounded-[7px] pl-4 pr-3.5 transition-colors duration-[250ms] hover:bg-fg-primary/5 hover:text-fg-primary ${
-                          on ? "bg-fg-primary/5 text-fg-primary" : "text-fg-secondary"
-                        } ${dim ? "opacity-35" : ""}`}
-                      >
-                        <Icon
-                          size={15}
-                          className={`flex-none ${on ? "text-accent-primary" : "text-fg-tertiary"}`}
-                        />
-                        <span className={`flex-1 text-settings-body ${on ? "font-semibold" : "font-medium"}`}>
-                          {t(`nav.${id}`)}
-                        </span>
-                        {filtering ? (
+                  {user.name && user.email ? (
+                    <span className="truncate text-settings-small text-fg-tertiary">{user.email}</span>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="px-5 pb-3.5">{search}</div>
+
+              <nav
+                aria-label={t("title")}
+                className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-3 pb-3 pt-1.5"
+              >
+                {SETTINGS_GROUPS.map((group) => (
+                  <div key={group} className="flex flex-col gap-px">
+                    <span className="px-4 pb-2 text-settings-eyebrow font-medium uppercase tracking-[0.14em] text-fg-tertiary">
+                      {t(`elegant.group.${group}`)}
+                    </span>
+                    {SETTINGS_SECTIONS.filter((id) => SECTION_GROUP[id] === group).map((id) => {
+                      const Icon = SECTION_ICON[id];
+                      const on = !filtering && spy === id;
+                      const count = counts[id] ?? 0;
+                      const dim = filtering && count === 0;
+                      return (
+                        <a
+                          key={id}
+                          href={`/settings?section=${id}`}
+                          aria-current={on ? "location" : undefined}
+                          onClick={(e) => {
+                            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                            e.preventDefault();
+                            goToSection(id);
+                          }}
+                          className={`flex h-9 items-center gap-[7px] rounded-[7px] pl-3 pr-3.5 transition-colors duration-[250ms] hover:bg-fg-primary/5 hover:text-fg-primary ${
+                            on ? "bg-fg-primary/5 text-fg-primary" : "text-fg-secondary"
+                          } ${dim ? "opacity-35" : ""}`}
+                        >
+                          {/* The section's medallion in miniature: the ring only
+                              appears on the section you are reading. */}
                           <span
-                            className={`text-settings-micro tabular-nums ${
-                              count ? "text-accent-primary" : "text-fg-tertiary"
+                            aria-hidden
+                            className={`flex h-6 w-6 flex-none items-center justify-center rounded-full transition-[background-color,box-shadow] duration-[250ms] ${
+                              on
+                                ? "bg-bg-elevated text-accent-primary shadow-[0_0_0_1px_rgb(var(--accent-primary)/0.45)]"
+                                : "text-fg-tertiary"
                             }`}
                           >
-                            {count}
+                            <Icon size={15} />
                           </span>
-                        ) : flagged.has(id) ? (
-                          <span className="h-1.5 w-1.5 rounded-full bg-warning" />
-                        ) : null}
-                      </a>
-                    );
-                  })}
+                          <span className={`flex-1 text-settings-body ${on ? "font-semibold" : "font-medium"}`}>
+                            {t(`nav.${id}`)}
+                          </span>
+                          {filtering ? (
+                            <span
+                              className={`text-settings-micro tabular-nums ${
+                                count ? "text-accent-primary" : "text-fg-tertiary"
+                              }`}
+                            >
+                              {count}
+                            </span>
+                          ) : flagged.has(id) ? (
+                            <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+                          ) : null}
+                        </a>
+                      );
+                    })}
+                  </div>
+                ))}
+              </nav>
+
+              <SaveFooter />
+            </aside>
+
+            {/* --------------------------------------------------------- column */}
+            <div className="relative flex min-w-0 flex-1 flex-col">
+              <div
+                className={`absolute inset-x-0 top-0 z-[4] flex h-16 items-center gap-3 border-b tui-screen pl-4 pr-4 transition-colors duration-300 sm:pr-7 lg:pl-14 ${
+                  scrolled ? "border-border-light" : "border-transparent"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={leave}
+                  aria-label={t("elegant.back")}
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-[7px] text-fg-secondary hover:bg-fg-primary/5 hover:text-fg-primary lg:hidden"
+                >
+                  <ArrowLeft size={15} />
+                </button>
+                <div
+                  className={`flex min-w-0 items-center gap-3 text-settings-desc transition-opacity duration-300 ${
+                    scrolled || filtering ? "opacity-100" : "opacity-0"
+                  }`}
+                >
+                  <span className="text-fg-tertiary">{t("title")}</span>
+                  <span className="text-fg-quaternary">/</span>
+                  <span className="truncate text-fg-primary">{currentTitle}</span>
                 </div>
-              ))}
-            </nav>
-
-            <SaveFooter />
-          </aside>
-
-          {/* --------------------------------------------------------- column */}
-          <div className="relative flex min-w-0 flex-1 flex-col">
-            <div
-              className={`absolute inset-x-0 top-0 z-[4] flex h-16 items-center gap-3 border-b bg-bg-primary/85 pl-4 pr-4 backdrop-blur-[10px] transition-colors duration-300 sm:pr-7 lg:pl-14 ${
-                scrolled ? "border-border-light" : "border-transparent"
-              }`}
-            >
-              <button
-                type="button"
-                onClick={leave}
-                aria-label={t("elegant.back")}
-                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-[7px] text-fg-secondary hover:bg-fg-primary/5 hover:text-fg-primary lg:hidden"
-              >
-                <ArrowLeft size={15} />
-              </button>
-              <div
-                className={`flex min-w-0 items-center gap-3 text-settings-desc transition-opacity duration-300 ${
-                  scrolled || filtering ? "opacity-100" : "opacity-0"
-                }`}
-              >
-                <span className="text-fg-tertiary">{t("title")}</span>
-                <span className="text-fg-quaternary">/</span>
-                <span className="truncate text-fg-primary">{currentTitle}</span>
+                <span className="flex-1" />
+                <button
+                  type="button"
+                  onClick={() => setActivityOpen((open) => !open)}
+                  aria-expanded={activityOpen}
+                  aria-controls="settings-activity"
+                  className={`flex h-8 cursor-pointer items-center gap-2 rounded-[7px] px-3 text-settings-small font-medium text-fg-secondary transition-colors hover:bg-fg-primary/5 ${
+                    activityOpen ? "bg-fg-primary/5" : ""
+                  }`}
+                >
+                  <History size={14} />
+                  {t("elegant.activity")}
+                  <ActivityCount />
+                </button>
+                <button
+                  type="button"
+                  onClick={leave}
+                  title={t("elegant.close")}
+                  aria-label={t("elegant.close")}
+                  className="hidden h-8 cursor-pointer items-center gap-2 rounded-[7px] pl-2.5 pr-2 text-settings-meta text-fg-tertiary transition-colors hover:bg-fg-primary/5 hover:text-fg-primary sm:flex"
+                >
+                  <kbd className="rounded-[4px] border border-border-medium px-[5px] py-px font-mono text-settings-eyebrow leading-[14px]">
+                    esc
+                  </kbd>
+                  <X size={14} />
+                </button>
               </div>
-              <span className="flex-1" />
-              <button
-                type="button"
-                onClick={() => setActivityOpen((open) => !open)}
-                aria-expanded={activityOpen}
-                aria-controls="settings-activity"
-                className={`flex h-8 cursor-pointer items-center gap-2 rounded-[7px] px-3 text-settings-small font-medium text-fg-secondary transition-colors hover:bg-fg-primary/5 ${
-                  activityOpen ? "bg-fg-primary/5" : ""
-                }`}
-              >
-                <History size={14} />
-                {t("elegant.activity")}
-                <ActivityCount />
-              </button>
-              <button
-                type="button"
-                onClick={leave}
-                title={t("elegant.close")}
-                aria-label={t("elegant.close")}
-                className="hidden h-8 cursor-pointer items-center gap-2 rounded-[7px] pl-2.5 pr-2 text-settings-meta text-fg-tertiary transition-colors hover:bg-fg-primary/5 hover:text-fg-primary sm:flex"
-              >
-                <kbd className="rounded-[4px] border border-border-medium px-[5px] py-px font-mono text-settings-eyebrow leading-[14px]">
-                  esc
-                </kbd>
-                <X size={14} />
-              </button>
-            </div>
 
-            <div
-              ref={docRef}
-              onScroll={onDocScroll}
-              tabIndex={-1}
-              className="relative min-h-0 flex-1 overflow-y-auto outline-none"
-            >
               <div
-                ref={columnRef}
-                className="mx-auto max-w-[720px] px-5 pb-[220px] pt-24 sm:px-10 lg:px-14 lg:pt-28"
+                ref={docRef}
+                onScroll={onDocScroll}
+                tabIndex={-1}
+                className="tui-screen relative min-h-0 flex-1 overflow-y-auto outline-none"
               >
-                {/* On a phone the index has nowhere to live, so the search and
-                    a strip of sections sit at the top of the column instead. */}
-                <div className="mb-8 flex flex-col gap-3 lg:hidden">
-                  {search}
-                  <div className="scrollbar-hide -mx-5 flex gap-1 overflow-x-auto px-5 sm:-mx-10 sm:px-10">
+                <div
+                  ref={columnRef}
+                  className="min-h-full w-full px-5 pb-[220px] pt-24 sm:px-10 lg:px-14 lg:pt-28"
+                >
+                  {/* On a phone the index has nowhere to live, so the search and
+                      a strip of sections sit at the top of the column instead. */}
+                  <div className="mb-8 flex flex-col gap-3 lg:hidden">
+                    {search}
+                    <div className="scrollbar-hide -mx-5 flex gap-1 overflow-x-auto px-5 sm:-mx-10 sm:px-10">
+                      {SETTINGS_SECTIONS.map((id) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => goToSection(id)}
+                          className={`h-8 flex-none cursor-pointer whitespace-nowrap rounded-[7px] px-3 text-settings-small font-medium ${
+                            !filtering && spy === id
+                              ? "bg-fg-primary/5 text-fg-primary"
+                              : "text-fg-secondary"
+                          } ${filtering && !(counts[id] ?? 0) ? "opacity-35" : ""}`}
+                        >
+                          {t(`nav.${id}`)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {!filtering ? (
+                    <div className="settings-rise flex flex-col gap-2.5 pb-9">
+                      <h1 className="settings-serif m-0 text-settings-display font-light">
+                        {t("title")}
+                      </h1>
+                      <p className="m-0 text-settings-lead text-fg-secondary">
+                        {t("elegant.intro")}
+                      </p>
+                      <HealthSummary
+                        health={health}
+                        onReview={(check) => goToSection(check.section, check.row)}
+                      />
+                    </div>
+                  ) : null}
+
+                  <SectionMatchCollector onChange={setCounts}>
                     {SETTINGS_SECTIONS.map((id) => (
-                      <button
+                      <section
                         key={id}
-                        type="button"
-                        onClick={() => goToSection(id)}
-                        className={`h-8 flex-none cursor-pointer whitespace-nowrap rounded-[7px] px-3 text-settings-small font-medium ${
-                          !filtering && spy === id
-                            ? "bg-fg-primary/5 text-fg-primary"
-                            : "text-fg-secondary"
-                        } ${filtering && !(counts[id] ?? 0) ? "opacity-35" : ""}`}
+                        data-sec={id}
+                        aria-label={t(`nav.${id}`)}
+                        className={`border-t border-border-light pb-2 pt-[52px] ${
+                          filtering && !(counts[id] ?? 0) ? "hidden" : ""
+                        }`}
                       >
-                        {t(`nav.${id}`)}
-                      </button>
+                        <SettingsSectionScope sectionId={id}>
+                          <SectionBody id={id} user={user} />
+                        </SettingsSectionScope>
+                      </section>
                     ))}
-                  </div>
+                  </SectionMatchCollector>
+
+                  {filtering && totalMatches === 0 ? (
+                    <p className="py-10 text-settings-lead text-fg-secondary">{t("filterEmpty")}</p>
+                  ) : null}
                 </div>
-
-                {!filtering ? (
-                  <div className="settings-rise flex flex-col gap-2.5 pb-9">
-                    <h1 className="settings-serif m-0 text-settings-display font-light">
-                      {t("title")}
-                    </h1>
-                    <p className="m-0 text-settings-lead text-fg-secondary">
-                      {t("elegant.intro")}
-                    </p>
-                    <HealthSummary
-                      health={health}
-                      onReview={(check) => goToSection(check.section, check.row)}
-                    />
-                  </div>
-                ) : null}
-
-                <SectionMatchCollector onChange={setCounts}>
-                  {SETTINGS_SECTIONS.map((id) => (
-                    <section
-                      key={id}
-                      data-sec={id}
-                      aria-label={t(`nav.${id}`)}
-                      className={`border-t border-border-light pb-2 pt-[52px] ${
-                        filtering && !(counts[id] ?? 0) ? "hidden" : ""
-                      }`}
-                    >
-                      <SettingsSectionScope sectionId={id}>
-                        <SectionBody id={id} user={user} />
-                      </SettingsSectionScope>
-                    </section>
-                  ))}
-                </SectionMatchCollector>
-
-                {filtering && totalMatches === 0 ? (
-                  <p className="py-10 text-settings-lead text-fg-secondary">{t("filterEmpty")}</p>
-                ) : null}
               </div>
-            </div>
 
-            {activityOpen ? (
-              <ActivityDrawer
-                user={user}
-                onPick={(section) => {
-                  if (section) goToSection(section);
-                }}
-              />
-            ) : null}
+              {activityOpen ? (
+                <ActivityDrawer
+                  user={user}
+                  onPick={(section) => {
+                    if (section) goToSection(section);
+                  }}
+                />
+              ) : null}
+            </div>
           </div>
-        </div>
+        </LightIcons>
       </FlaggedSectionsContext.Provider>
     </SettingsFilterProvider>
   );

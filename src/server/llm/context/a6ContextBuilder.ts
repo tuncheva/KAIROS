@@ -15,6 +15,9 @@ import {
   projects,
 } from "~/server/db/schema";
 import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
+import { resolveAgentConfig } from "~/server/llm/agents/config";
+import type { AgentNameOverrides } from "~/lib/agentNames";
+import { inProjectScope, type ResolvedAgentSettings } from "~/lib/agentSettings";
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import {
   loadVisibleScope,
@@ -43,6 +46,10 @@ export interface A6ContextPack {
   orgMemberships: A6OrgMembership[];
   locale: SupportedLocale;
   memory: MemoryFact[];
+  /** What this workspace calls its agents; empty means the defaults. */
+  agentNames?: AgentNameOverrides;
+  /** Agent settings in force for this user; absent means the defaults. */
+  agentSettings?: ResolvedAgentSettings;
   now: string;
 }
 
@@ -87,17 +94,24 @@ export async function buildA6Context(input: {
     canDeleteTasks: m.canDeleteTasks,
   }));
 
-  const [memory, locale] = await Promise.all([
+  const [memory, locale, agentConfig] = await Promise.all([
     loadUserMemory(ctx, userId, "project_manager"),
     resolveUserLocale(ctx, userId),
+    resolveAgentConfig(ctx, userId),
   ]);
 
   return {
     userId,
-    projects: visibleProjects,
+    // Only projects inside Daedalus's scope. Creating new projects is not
+    // limited by it — scope is about which existing projects it may change.
+    projects: visibleProjects.filter((p) =>
+      inProjectScope(agentConfig.settings["project_manager.scope"], p.id),
+    ),
     orgMemberships,
     locale,
     memory,
+    agentNames: agentConfig.names,
+    agentSettings: agentConfig.settings,
     now: new Date().toISOString(),
   };
 }

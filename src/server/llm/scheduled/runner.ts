@@ -53,6 +53,7 @@ import type { SupportedLocale } from "~/server/llm/context/a1ContextBuilder";
 
 import {
   briefIsEmpty,
+  narrowBriefToSections,
   collectBriefFacts,
   fallbackBrief,
   writeBrief,
@@ -70,6 +71,8 @@ import {
   writeRetro,
 } from "./weeklyRetro";
 import { loadSystemUser, systemContextFor } from "./systemContext";
+import { resolveAgentConfig } from "~/server/llm/agents/config";
+import { agentNameFor } from "~/lib/agentNames";
 
 const log = createLogger("llm.scheduled");
 
@@ -232,6 +235,12 @@ interface RunTarget {
  *   Settings kept receiving briefs by email. It is checked here rather than at
  *   each caller because every delivery path funnels through this function.
  */
+/**
+ * The in-app brief is a notification with this title. The dashboard reads the
+ * latest one back by it (`agent.latestBrief`), so the two must not drift apart.
+ */
+export const DAILY_BRIEF_TITLE = "Your daily brief";
+
 async function deliver(
   target: RunTarget,
   input: { email: string | null; userName: string | null; title: string; message: string },
@@ -341,8 +350,11 @@ async function runDailyBrief(target: RunTarget): Promise<number> {
   if (!user) return 0;
 
   const ctx = systemContextFor(user);
+  const agents = await resolveAgentConfig(ctx, userId);
 
-  const { findings, projectNames } = await detectFindings(ctx, userId);
+  const { findings, projectNames } = await detectFindings(ctx, userId, {
+    stalledAfterDays: agents.settings["risk_radar.stalledAfterDays"],
+  });
   const fresh = await persistFindings(ctx, userId, findings);
   await resolveStaleFindings(
     ctx,
@@ -350,12 +362,19 @@ async function runDailyBrief(target: RunTarget): Promise<number> {
     findings.map((f) => f.fingerprint),
   );
 
-  const facts = await collectBriefFacts(ctx, userId, findings);
+  // Everything above is the radar and runs whatever the brief covers; from
+  // here on, only the sections the user kept.
+  const brief = narrowBriefToSections(
+    await collectBriefFacts(ctx, userId, findings),
+    findings,
+    agents.settings["daily_brief.sections"],
+  );
+  const facts = brief.facts;
 
   // Nothing to say. Staying quiet is a feature: an assistant that sends "all
   // clear" every morning is one people stop reading, and then they stop reading
   // the mornings that matter too.
-  if (briefIsEmpty(facts, findings)) {
+  if (briefIsEmpty(facts, brief.findings)) {
     log.debug("nothing to brief", { userId });
     return 0;
   }
@@ -364,17 +383,18 @@ async function runDailyBrief(target: RunTarget): Promise<number> {
   const message = allowed
     ? await writeBrief({
         facts,
-        findings,
+        findings: brief.findings,
         userName: user.name,
         locale: user.language as SupportedLocale,
+        agentName: agentNameFor("daily_brief", agents.names),
       })
     : // Budget spent: send the facts without the prose rather than nothing.
-      fallbackBrief(facts, findings);
+      fallbackBrief(facts, brief.findings);
 
   await deliver(target, {
     email: user.email,
     userName: user.name,
-    title: "Your daily brief",
+    title: DAILY_BRIEF_TITLE,
     message,
   });
 
@@ -407,7 +427,10 @@ async function runRiskRadar(target: RunTarget): Promise<number> {
   if (!user) return 0;
 
   const ctx = systemContextFor(user);
-  const { findings, projectNames } = await detectFindings(ctx, userId);
+  const agents = await resolveAgentConfig(ctx, userId);
+  const { findings, projectNames } = await detectFindings(ctx, userId, {
+    stalledAfterDays: agents.settings["risk_radar.stalledAfterDays"],
+  });
   let fresh = await persistFindings(ctx, userId, findings);
   await resolveStaleFindings(
     ctx,
@@ -475,6 +498,7 @@ async function runWeeklyRetro(target: RunTarget): Promise<number> {
         facts,
         userName: user.name,
         locale: user.language as SupportedLocale,
+        agentName: agentNameFor("weekly_retro", (await resolveAgentConfig(ctx, userId)).names),
       })
     : fallbackRetro(facts);
 
@@ -536,7 +560,11 @@ async function runDueMeetingPreps(now: Date): Promise<CustomReport> {
       if (!user) continue;
 
       const ctx = systemContextFor(user);
-      const facts = await collectPrepFacts(ctx, row.userId, { now });
+      const agents = await resolveAgentConfig(ctx, row.userId);
+      const facts = await collectPrepFacts(ctx, row.userId, {
+        now,
+        leadMinutes: agents.settings["meeting_prep.leadMinutes"],
+      });
 
       if (prepIsEmpty(facts)) continue;
 
@@ -548,6 +576,7 @@ async function runDueMeetingPreps(now: Date): Promise<CustomReport> {
             facts,
             userName: user.name,
             locale: user.language as SupportedLocale,
+            agentName: agentNameFor("meeting_prep", agents.names),
           })
         : fallbackPrep(facts);
 

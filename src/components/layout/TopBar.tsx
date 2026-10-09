@@ -12,6 +12,10 @@ import { WorkspaceMenu } from "~/components/orgs/WorkspaceMenu";
  * with the workspace on the left on one page and the right on another. The
  * order is now fixed — where you are, then actions, then you.
  *
+ * It wears the refined `tui-*` palette (warm pane, ink hairline, violet
+ * accent, pill controls) on every page, not just the reskinned ones, so it is
+ * the same bar wherever you are.
+ *
  * It deliberately does not restate the page name. Every page already opens with
  * its own heading, so the bar was rendering a second `h1` that said the same
  * thing in a display face nobody asked for.
@@ -37,21 +41,25 @@ export function TopBar({
     /* Pinned under the phone's fixed bar, whose height grows by the notch
        inset — a flat `top-16` slid this bar's top edge under it on every
        phone with a safe area. */
-    <header className="sticky top-[calc(var(--kairos-topbar-h)+var(--kairos-safe-top))] z-30 border-b border-border-light/50 topbar-solid lg:top-0">
-      <div className="flex items-center gap-3 px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3">
-        <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+    <header className="sticky top-[calc(var(--kairos-topbar-h)+var(--kairos-safe-top))] z-30 border-b border-tui-ink/8 bg-tui-pane lg:top-0">
+      <div className="flex h-[52px] items-center gap-2 pr-2.5 pl-2 sm:h-14 sm:gap-4 sm:pr-5 sm:pl-3.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <WorkspaceMenu />
+          <span
+            aria-hidden="true"
+            className="mx-1.5 hidden h-5 w-px shrink-0 bg-tui-ink/12 sm:block"
+          />
           {/* The palette's door. It had none — ⌘K was the only way in, and
               nothing in the interface said so. */}
           <SearchTrigger />
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
           {actions}
           {actions ? (
             <span
               aria-hidden="true"
-              className="mx-1 hidden h-6 w-px bg-border-light/70 sm:block"
+              className="mx-1.5 hidden h-5 w-px bg-tui-ink/12 sm:block"
             />
           ) : null}
           <NotificationSystem />
@@ -62,7 +70,7 @@ export function TopBar({
       {scrim ? (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-full h-5 bg-gradient-to-b from-bg-primary to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-full h-5 bg-gradient-to-b from-tui-pane to-transparent"
         />
       ) : null}
     </header>

@@ -29,8 +29,8 @@ describe("Font configuration", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("layout.tsx loads Nunito Sans from Fontsource", () => {
-    expect(read("src/app/layout.tsx")).toContain('import "@fontsource-variable/nunito-sans/wght.css"');
+  it("layout.tsx loads Inter from Fontsource", () => {
+    expect(read("src/app/layout.tsx")).toContain('import "@fontsource-variable/inter/wght.css"');
   });
 
   it("layout.tsx no longer imports Space_Grotesk", () => {
@@ -41,8 +41,6 @@ describe("Font configuration", () => {
     const layout = read("src/app/layout.tsx");
     expect(layout).toContain('import "~/styles/fonts.css"');
     expect(layout).toContain("font-vars");
-    expect(layout).toContain("font-display-cyrillic");
-    expect(layout).toContain("font-display-latin");
   });
 
   it("fonts.css binds every variable the theme reads", () => {
@@ -52,16 +50,28 @@ describe("Font configuration", () => {
       "--font-mono",
       "--font-source-serif",
       "--font-display",
-      "--font-newsreader",
-      "--font-hanken",
-      "--font-settings-mono",
     ]) {
       expect(css).toContain(`${v}:`);
     }
   });
 
+  it("settings uses the app's fonts rather than loading its own", () => {
+    expect(read("src/app/(app)/settings/page.tsx")).not.toContain("@fontsource");
+    const css = read("src/styles/globals.css");
+    for (const name of ["--font-hanken", "--font-newsreader", "--font-settings-mono"]) {
+      expect(css).not.toContain(name);
+    }
+  });
+
+  it("no stylesheet names a font the app does not load", () => {
+    const css = read("src/styles/globals.css");
+    for (const name of ['"Inter"', '"SF Mono"', "Zalando"]) {
+      expect(css, name).not.toContain(name);
+    }
+  });
+
   it("every Fontsource import resolves to an installed file", () => {
-    for (const file of ["src/app/layout.tsx", "src/app/(app)/settings/page.tsx"]) {
+    for (const file of ["src/app/layout.tsx"]) {
       for (const [, spec] of read(file).matchAll(/import "(@fontsource[^"]+)"/g)) {
         expect(fs.existsSync(path.resolve(__dirname, "../../node_modules", spec!)), spec).toBe(true);
       }

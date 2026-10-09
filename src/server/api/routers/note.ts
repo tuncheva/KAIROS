@@ -17,6 +17,9 @@ import { NOTE_PASSWORD_MESSAGE, NOTE_PASSWORD_PATTERN } from "~/lib/notePassword
 
 const log = createLogger("note");
 
+/** One "shared note edited" entry per owner per note per ten minutes of edits. */
+const NOTE_EDIT_COALESCE_MS = 10 * 60 * 1000;
+
 /** A password being *set* on a note. Checking one stays a plain string — see `~/lib/notePassword`. */
 const newNotePassword = z.string().regex(NOTE_PASSWORD_PATTERN, NOTE_PASSWORD_MESSAGE);
 
@@ -257,6 +260,22 @@ export const noteRouter = createTRPCRouter({
           .update(noteShares)
           .set({ permission: input.permission })
           .where(eq(noteShares.id, existing.id));
+
+        // Re-sharing at the same level changes nothing the collaborator can see.
+        if (existing.permission !== input.permission) {
+          const sharerName = ctx.session.user.name ?? ctx.session.user.email ?? "Someone";
+          const noteTitle = note.title ?? "Untitled note";
+          await notify({
+            db: ctx.db,
+            userId: targetUser.id,
+            actorId: ctx.session.user.id,
+            category: "invite",
+            type: "system",
+            title: "Note access changed",
+            message: `${sharerName} changed your access to "${noteTitle}" to ${input.permission === "write" ? "can edit" : "view only"}.`,
+            link: `/notes/${input.noteId}`,
+          });
+        }
         return { success: true, updated: true };
       }
 
@@ -304,12 +323,30 @@ export const noteRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't own this note." });
       }
 
-      await ctx.db
+      const removed = await ctx.db
         .delete(noteShares)
         .where(and(
           eq(noteShares.noteId, input.noteId),
           eq(noteShares.sharedWithId, input.userId),
-        ));
+        ))
+        .returning({ id: noteShares.id });
+
+      // Only someone who actually had access is told they lost it. The link is
+      // the notes list, not the note: they can no longer open it.
+      if (removed.length > 0) {
+        const ownerName = ctx.session.user.name ?? ctx.session.user.email ?? "Someone";
+        const noteTitle = note.title ?? "Untitled note";
+        await notify({
+          db: ctx.db,
+          userId: input.userId,
+          actorId: ctx.session.user.id,
+          category: "invite",
+          type: "system",
+          title: "Note no longer shared",
+          message: `${ownerName} stopped sharing "${noteTitle}" with you.`,
+          link: "/notes",
+        });
+      }
 
       // Check if any shares remain
       const remaining = await ctx.db
@@ -516,6 +553,28 @@ export const noteRouter = createTRPCRouter({
           ...(input.calendarDate !== undefined ? { calendarDate: input.calendarDate ?? null } : {}),
         })
         .where(eq(stickyNotes.id, input.id));
+
+      // A write-collaborator's edit is news to the owner. "social" rather than
+      // "projectUpdate": a note is the owner's own content, not project work, and
+      // "someone did something to a thing you made" is what the social toggle
+      // governs. Coalesced on the note's link so an editing session — which
+      // autosaves many times — arrives as one entry until the owner reads it.
+      if (note.createdById !== ctx.session.user.id) {
+        const editorName = ctx.session.user.name ?? ctx.session.user.email ?? "Someone";
+        const rawTitle = input.title ?? note.title ?? "";
+        const noteTitle = rawTitle.trim() === "" ? "Untitled note" : rawTitle;
+        await notify({
+          db: ctx.db,
+          userId: note.createdById,
+          actorId: ctx.session.user.id,
+          category: "social",
+          type: "system",
+          title: "Shared note edited",
+          message: `${editorName} edited "${noteTitle}".`,
+          link: `/notes/${input.id}`,
+          coalesceWindowMs: NOTE_EDIT_COALESCE_MS,
+        });
+      }
 
       return { success: true, message: "Note updated successfully" };
     }),

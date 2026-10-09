@@ -19,7 +19,7 @@ export default async function DashboardLoading() {
           actions={
             <Link
               href="/projects?new=1"
-              className="flex items-center gap-2 rounded-lg bg-accent-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="flex h-[34px] items-center gap-[7px] rounded-full bg-tui-accent px-3 text-[13px] font-medium whitespace-nowrap text-tui-on-accent transition-opacity hover:opacity-90 sm:px-3.5"
             >
               <Plus size={15} />
               <span className="hidden sm:inline">{tNav("newProject")}</span>
@@ -29,7 +29,7 @@ export default async function DashboardLoading() {
 
         <main
           id="main-content"
-          className="flex-1 w-full overflow-auto kairos-bottomnav-gap"
+          className="tui-screen flex-1 w-full overflow-auto kairos-bottomnav-gap"
           aria-busy="true"
         >
           <DashboardSkeleton />

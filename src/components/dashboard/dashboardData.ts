@@ -16,6 +16,8 @@ export type TaskRow = {
 export type DashboardProject = {
   id: number;
   title: string | null;
+  /** When the project began — the start of its pace line. */
+  createdAt?: Date | string | null;
   tasks: TaskRow[];
 };
 
@@ -26,6 +28,14 @@ export type CalendarTask = {
   dueDate: Date | string | null;
   projectId: number;
   projectTitle: string | null;
+  priority?: string | null;
+  assignedToId?: string | null;
+};
+
+export type CalendarEvent = {
+  id: number;
+  title: string;
+  eventDate: Date | string | null;
 };
 
 /** Where a project sits, read off its completion and its overdue work. */
@@ -47,6 +57,11 @@ export type ProjectStatusRow = {
   overdue: number;
   /** Percentage of tasks completed, 0-100. */
   percent: number;
+  /**
+   * How much of the project's span has passed, 0-100 — from its creation to
+   * `endsAt`. Null without an end date: there is no pace to be behind.
+   */
+  elapsed: number | null;
   health: ProjectHealth;
 };
 
@@ -60,27 +75,6 @@ export type ProjectOwner = {
 export type ProjectWithPeople = DashboardProject & {
   createdByUser?: ProjectOwner | null;
   collaborators?: ProjectOwner[];
-};
-
-/** One day of the momentum strip. */
-export type MomentumDay = {
-  date: Date;
-  count: number;
-};
-
-export type Momentum = {
-  /** Oldest day first, ending today. */
-  bars: MomentumDay[];
-  /** Consecutive days with at least one completion, counting back from today. */
-  streak: number;
-  /**
-   * Change in output, last week against the week before, as a percentage.
-   * Null when the earlier week is empty — there is no "+∞%".
-   */
-  pace: number | null;
-  /** Completions inside the whole window. */
-  total: number;
-  today: number;
 };
 
 export const startOfDay = (d: Date): Date =>
@@ -157,18 +151,6 @@ export function headlineStats(projects: DashboardProject[], now: Date): Headline
 }
 
 /**
- * How much of the local day has elapsed, 0-1.
- *
- * The workspace ring carries two readings: the outer arc is task completion,
- * the inner one is the day itself. That second arc is what makes an empty
- * dashboard still say something, so it is derived rather than fetched.
- */
-export function dayFraction(now: Date): number {
-  const minutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
-  return Math.min(1, Math.max(0, minutes / 1440));
-}
-
-/**
  * The project status table, one row per project.
  *
  * The list in the design carries six readings of a project — who is on it,
@@ -207,6 +189,20 @@ export function projectStatusRows(
     }
 
     const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+    const startedAt = asDate(project.createdAt ?? null);
+    const elapsed =
+      startedAt && endsAt && endsAt > startedAt
+        ? Math.round(
+            Math.min(
+              1,
+              Math.max(
+                0,
+                (now.getTime() - startedAt.getTime()) /
+                  (endsAt.getTime() - startedAt.getTime()),
+              ),
+            ) * 100,
+          )
+        : null;
     const health =
       total === 0
         ? "empty"
@@ -224,6 +220,7 @@ export function projectStatusRows(
       open: total - completed,
       overdue,
       percent,
+      elapsed,
       health,
     };
   });
@@ -237,69 +234,139 @@ export function projectStatusRows(
   });
 }
 
+/** Lower is more urgent; unknown priorities sit with medium. */
+const PRIORITY_RANK: Record<string, number> = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
 /**
- * Your momentum: the bar strip, the streak and the week-on-week pace.
+ * What to do next: the reader's open, dated tasks, earliest due first (so
+ * anything overdue leads), priority breaking ties within a day.
  *
- * Completion timestamps arrive raw from `progress.getPulse` and are bucketed
- * into *local* days here — the reader's midnight is the only one that matters
- * for "did I finish something today".
+ * Tasks assigned to someone else are never offered. Unassigned ones are, but
+ * only to fill the list once the reader's own run out — on a team that does not
+ * assign work, the list would otherwise always be empty.
  */
-export function momentum(
+export function nextUp(
+  tasks: CalendarTask[],
+  userId: string | null,
+  limit = 3,
+): CalendarTask[] {
+  const dated = tasks
+    .filter((task) => task.status !== "completed" && asDate(task.dueDate))
+    .sort((a, b) => {
+      const dayA = startOfDay(asDate(a.dueDate)!).getTime();
+      const dayB = startOfDay(asDate(b.dueDate)!).getTime();
+      if (dayA !== dayB) return dayA - dayB;
+      const rankA = PRIORITY_RANK[a.priority ?? "medium"] ?? 2;
+      const rankB = PRIORITY_RANK[b.priority ?? "medium"] ?? 2;
+      return rankA - rankB || a.id - b.id;
+    });
+
+  if (!userId) return dated.slice(0, limit);
+  const mine = dated.filter((task) => task.assignedToId === userId);
+  const open = dated.filter((task) => !task.assignedToId);
+  return [...mine, ...open].slice(0, limit);
+}
+
+/** One day of the week strip. */
+export type WeekDay = {
+  date: Date;
+  /** Tasks due that day, finished or not. */
+  total: number;
+  /** Of those, still open. */
+  open: number;
+  events: number;
+  isToday: boolean;
+  isPast: boolean;
+};
+
+/** Monday to Sunday of the week `now` falls in. */
+export function weekStrip(
+  tasks: CalendarTask[],
+  events: CalendarEvent[],
+  now: Date,
+): WeekDay[] {
+  const today = startOfDay(now);
+  const monday = new Date(today);
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(monday);
+    date.setDate(date.getDate() + i);
+    const onDay = (value: Date | string | null) => {
+      const d = asDate(value);
+      return !!d && isSameDay(d, date);
+    };
+    const due = tasks.filter((task) => onDay(task.dueDate));
+
+    return {
+      date,
+      total: due.length,
+      open: due.filter((task) => task.status !== "completed").length,
+      events: events.filter((event) => onDay(event.eventDate)).length,
+      isToday: date.getTime() === today.getTime(),
+      isPast: date < today,
+    };
+  });
+}
+
+/**
+ * Tasks finished in the last seven days against the seven before. Rolling
+ * rather than calendar weeks, so Monday morning does not read as a collapse.
+ */
+export function weekOutput(
   completions: (Date | string)[],
   now: Date,
-  span = 14,
-): Momentum {
-  const today = startOfDay(now);
-  const perDay = new Map<number, number>();
+): { thisWeek: number; lastWeek: number } {
+  const today = startOfDay(now).getTime();
+  const weekStart = today - 6 * 86_400_000;
+  const lastStart = weekStart - 7 * 86_400_000;
+  let thisWeek = 0;
+  let lastWeek = 0;
 
   for (const value of completions) {
     const when = asDate(value);
     if (!when) continue;
-    const key = startOfDay(when).getTime();
-    perDay.set(key, (perDay.get(key) ?? 0) + 1);
+    const day = startOfDay(when).getTime();
+    if (day > today) continue;
+    if (day >= weekStart) thisWeek += 1;
+    else if (day >= lastStart) lastWeek += 1;
   }
 
-  const bars: MomentumDay[] = [];
-  for (let back = span - 1; back >= 0; back -= 1) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - back);
-    bars.push({ date, count: perDay.get(date.getTime()) ?? 0 });
-  }
-
-  // A streak counts finished days, and today is not finished yet: a day with
-  // nothing done *so far* must not read as a broken streak until it is over.
-  let streak = 0;
-  for (let back = perDay.get(today.getTime()) ? 0 : 1; ; back += 1) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - back);
-    if (!perDay.get(date.getTime())) break;
-    streak += 1;
-  }
-
-  const half = Math.floor(span / 2);
-  const recent = bars.slice(span - half).reduce((n, day) => n + day.count, 0);
-  const earlier = bars.slice(span - half * 2, span - half).reduce((n, day) => n + day.count, 0);
-
-  return {
-    bars,
-    streak,
-    pace: earlier === 0 ? null : Math.round(((recent - earlier) / earlier) * 100),
-    total: bars.reduce((n, day) => n + day.count, 0),
-    today: perDay.get(today.getTime()) ?? 0,
-  };
+  return { thisWeek, lastWeek };
 }
 
-/** `2πr` for the two ring radii the design uses. */
-export const RING_TASKS = 2 * Math.PI * 82;
-export const RING_DAY = 2 * Math.PI * 62;
+/** Whole days between a past due date and today; 0 for today or later. */
+export function daysLate(value: Date | string | null, now: Date): number {
+  const due = asDate(value);
+  if (!due) return 0;
+  const diff = startOfDay(now).getTime() - startOfDay(due).getTime();
+  return Math.max(0, Math.round(diff / 86_400_000));
+}
 
 /**
- * `stroke-dashoffset` for an arc filled to `fraction`, scaled by `progress` so
- * the entrance animation can sweep every ring from empty to its real value.
+ * When a scheduled agent next runs: the first `hourLocal`:00 after `now`, on
+ * `dayOfWeek` (0 = Sunday) when it has one. Read in the browser's zone, which is
+ * the zone the schedule's hour was set in for anyone using the app where they live.
  */
-export function dashOffset(circumference: number, fraction: number, progress = 1): number {
-  const filled = Math.min(1, Math.max(0, fraction)) * Math.min(1, Math.max(0, progress));
-  return circumference * (1 - filled);
+export function nextRunAt(
+  hourLocal: number,
+  dayOfWeek: number | null,
+  now: Date,
+): Date {
+  for (let ahead = 0; ahead <= 7; ahead += 1) {
+    const at = startOfDay(now);
+    at.setDate(at.getDate() + ahead);
+    at.setHours(hourLocal, 0, 0, 0);
+    if (at <= now) continue;
+    if (dayOfWeek === null || at.getDay() === dayOfWeek) return at;
+  }
+  // Unreachable: some day in the next eight matches any weekday.
+  return now;
 }
 
 /**

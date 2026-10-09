@@ -36,7 +36,6 @@ import {
 } from "~/components/ui/icons";
 import { Skeleton, SkeletonStatus, skeletonWidth } from "~/components/ui/Skeleton";
 import { SkeletonSlow } from "~/components/ui/SkeletonSlow";
-import { Stamp } from "~/components/ui/Stamp";
 
 import { TurnTrailPanel } from "./TurnTrailPanel";
 
@@ -406,24 +405,21 @@ export function ChatShellSkeleton({ threadOpen }: { threadOpen: boolean }) {
 /* ================================================================== */
 
 /**
- * AI thread rows, as `AiThreadRail` draws them: the title (13.5px, snug) and
- * the stamp line under it. The day group is data, so its stamp hatches too.
+ * AI thread rows, as `AiThreadRail` draws them: the title (14px, snug) and
+ * the meta line under it. The day group is data, so its eyebrow hatches too.
  */
 export function AiThreadRowsSkeleton({ count = 8 }: { count?: number }) {
   return (
     <div aria-hidden="true" className="contents">
-      <span className="flex h-[15px] items-center px-2 pt-1.5 pb-1.5 box-content">
+      <span className="box-content flex h-[16.5px] items-center px-3 pt-[18px] pb-2">
         <Skeleton className="h-[6px] w-[44px]" />
       </span>
       {Array.from({ length: count }, (_, i) => (
-        <div
-          key={i}
-          className="flex flex-col gap-1.5 rounded-sm border-l-2 border-transparent px-2.5 py-2.5"
-        >
-          <span className="flex h-[18.5px] items-center">
+        <div key={i} className="flex flex-col gap-[3px] rounded-lg px-3 py-2.5">
+          <span className="flex h-[19.25px] items-center">
             <Skeleton row={i} className="h-[9px]" style={{ width: skeletonWidth(i + 31, 48, 90) }} />
           </span>
-          <span className="flex h-[14px] items-center">
+          <span className="flex h-[17px] items-center">
             <Skeleton row={i} className="h-[6px]" style={{ width: skeletonWidth(i + 41, 30, 46) }} />
           </span>
         </div>
@@ -432,48 +428,49 @@ export function AiThreadRowsSkeleton({ count = 8 }: { count?: number }) {
   );
 }
 
-/** The whole AI thread rail — heading, New conversation, search real. */
+/** The whole AI thread rail — heading, controls and search real, rows hatched. */
 export function AiThreadRailSkeleton() {
   const t = useTranslations("aiConsole");
   return (
-    <aside className="kairos-console-rail flex h-full w-[284px] max-w-full shrink-0 flex-col border-r border-border-medium/60 bg-bg-surface">
-      <div className="flex flex-col gap-3.5 border-b border-border-medium/60 px-[18px] pt-5 pb-3.5">
-        <div className="flex items-center justify-between gap-2.5">
-          <Stamp>{t("conversations")}</Stamp>
-          <span className="flex items-center gap-2.5" aria-hidden="true">
-            <Skeleton className="h-[7px] w-[14px]" />
-            <span className="flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary">
-              <PanelLeftClose className="h-[15px] w-[15px]" />
-            </span>
+    <aside className={`${CHAT_PANE} kairos-console-rail flex h-full min-h-0 w-full flex-col`}>
+      {/* The collapse sits on the eyebrow line so the title keeps the width;
+          the one loud control, a new thread, sits beside the title. */}
+      <div className="flex flex-none flex-col gap-2.5 px-[22px] pt-[22px] pb-[18px]">
+        <div className="flex items-center gap-2">
+          <span className={`${CHAT_EYEBROW} min-w-0 flex-1 truncate`}>{t("askKairos")}</span>
+          <span aria-hidden="true" className="-my-1 grid h-7 w-7 flex-none place-items-center rounded-full text-tui-ink3">
+            <PanelLeftClose size={14} />
           </span>
         </div>
-
-        {/* The real button is a filled accent; while loading it is its
-            outline, so the one loud thing on the page is not inert. */}
-        <span
-          aria-hidden="true"
-          className="flex items-center justify-center gap-2 rounded-lg border border-accent-primary/45 px-3 py-[9px] text-[13px] font-semibold text-accent-primary"
-        >
-          <Plus className="h-[15px] w-[15px]" />
-          {t("newConversation")}
+        <div className="flex items-end gap-3">
+          <div className="flex min-w-0 flex-1 items-baseline gap-2.5">
+            <h2 className="m-0 truncate font-display text-[28px] leading-none font-light tracking-[-0.02em] text-tui-ink">
+              {t("conversations")}
+            </h2>
+            <Skeleton shape="title" className="h-[12px] w-[16px] flex-none" />
+          </div>
+        <span aria-hidden="true" className={`${CHAT_ICON_BUTTON} h-9 w-9 text-tui-accent`}>
+          <Plus size={15} />
         </span>
+        </div>
+      </div>
 
-        <span
-          aria-hidden="true"
-          className="flex items-center gap-2.5 rounded-lg border border-border-medium/60 bg-bg-secondary px-2.5 py-2"
-        >
-          <Search className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
-          <span className="min-w-0 flex-1 truncate text-[13px] text-fg-tertiary">{t("searchConversations")}</span>
+      <div className="flex-none px-4 pb-3.5" aria-hidden="true">
+        <span className="flex h-[38px] items-center gap-2.5 rounded-full border border-tui-ink/16 bg-tui-bg pr-2 pl-3.5">
+          <Search size={14} className="flex-none text-tui-ink3" />
+          <span className="truncate text-[13.5px] text-tui-ink3">{t("searchConversations")}</span>
         </span>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden px-2.5 py-3.5">
+      <div className="mx-4 h-px flex-none bg-tui-ink/8" />
+
+      <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden px-2.5 pt-1 pb-3.5">
         <AiThreadRowsSkeleton />
       </div>
 
-      <div className="kairos-stamp flex shrink-0 items-center justify-between gap-2 border-t border-border-medium/60 px-[18px] py-3.5 text-[10px] text-fg-tertiary">
+      <div className="flex flex-none items-center justify-between gap-2 border-t border-tui-ink/8 px-[22px] py-3.5 text-[12px] text-tui-ink3">
         <Skeleton className="h-[6px] w-[96px]" />
-        <span className="text-accent-primary" aria-hidden="true">
+        <span className="font-medium text-tui-accent" aria-hidden="true">
           {t("settings")}
         </span>
       </div>
@@ -482,8 +479,8 @@ export function AiThreadRailSkeleton() {
 }
 
 /**
- * The console thread while it restores: your turn (the raised card, accent
- * hatch) and the answer under its byline. Same paddings and 28px turn gap as
+ * The console thread while it restores: your turn (the accent bubble) and the
+ * answer under its byline. Same paddings and 28px turn gap as
  * `ProjectIntelligenceChat` in its console variant.
  */
 export function AiAnswerSkeleton({ slow = false }: { slow?: boolean }) {
@@ -498,7 +495,7 @@ export function AiAnswerSkeleton({ slow = false }: { slow?: boolean }) {
         </div>
         <div className="w-full max-w-[720px]" aria-hidden="true">
           <div className="mb-3 flex items-center gap-2.5">
-            <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-sm bg-accent-primary/15 text-accent-primary">
+            <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border border-tui-accent/45 text-tui-accent">
               <Sparkles size={13} />
             </span>
             <Skeleton row={1} className="h-[9px] w-[96px]" />
@@ -523,9 +520,12 @@ function AiComposerSkeleton() {
   const t = useTranslations("chat");
   const tc = useTranslations("aiConsole");
   return (
-    <div className="w-full px-6 pt-4 pb-5 lg:px-10" aria-hidden="true">
-      <div className="flex flex-col gap-3 rounded-md border border-border-medium/70 bg-bg-secondary px-3 py-2.5 opacity-60">
-        <span className="block min-h-[24px] text-[14.5px] leading-relaxed text-fg-tertiary">
+    <div
+      className="w-full border-t border-tui-ink/8 px-6 pt-4 pb-5 lg:px-10"
+      aria-hidden="true"
+    >
+      <div className="flex flex-col gap-3 rounded-xl border border-tui-ink/16 bg-tui-bg pt-3 pr-3 pb-2.5 pl-4 opacity-60">
+        <span className="block min-h-[24px] text-[14.5px] leading-relaxed text-tui-ink3">
           {t("placeholder")}
         </span>
         <div className="flex flex-wrap items-center gap-2">
@@ -533,27 +533,24 @@ function AiComposerSkeleton() {
           {[64, 88, 52].map((w, i) => (
             <span
               key={i}
-              className="flex h-8 items-center rounded-md border border-border-medium/70 px-2.5"
+              className="flex h-[26px] items-center rounded-full border border-tui-ink/16 px-2.5"
             >
               <Skeleton row={i} className="h-[7px]" style={{ width: w }} />
             </span>
           ))}
-          <span
-            className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white"
-            style={{ backgroundColor: "rgb(var(--bg-tertiary))" }}
-          >
+          <span className="ml-auto flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-tui-ink/16 text-tui-ink3">
             <ArrowUp size={15} />
           </span>
         </div>
       </div>
-      <p className="mt-2.5 px-0.5 text-[11.5px] leading-relaxed text-fg-tertiary">
+      <p className="mt-2.5 px-0.5 text-[11.5px] leading-relaxed text-tui-ink3">
         {tc("composerDisclaimer")}
       </p>
     </div>
   );
 }
 
-/** The `/chat/ai` route skeleton: the same three columns `AIChatPageClient` draws. */
+/** The `/chat/ai` route skeleton: the same three panes `AIChatPageClient` draws. */
 export function AiConsoleSkeleton() {
   const t = useTranslations("aiConsole");
   const tAgents = useTranslations("agents");
@@ -568,41 +565,52 @@ export function AiConsoleSkeleton() {
   ] as const;
 
   return (
-    <div className="flex h-full min-h-0 w-full">
+    <div className="chat-refined tui-screen flex h-full w-full gap-4 overflow-hidden p-2 text-tui-ink sm:px-6 sm:pt-5 sm:pb-6">
       <SkeletonStatus label={tSkel("status")} />
-      <div className="hidden lg:flex">
+      <div className="hidden min-h-0 w-[312px] flex-none lg:flex">
         <AiThreadRailSkeleton />
       </div>
 
-      <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[60px] shrink-0 items-center justify-between gap-3 border-b border-border-medium/60 bg-bg-surface px-4 sm:gap-5 sm:px-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <Skeleton shape="title" className="h-[13px] w-[180px]" />
-          </div>
-          <div className="flex shrink-0 items-center gap-2.5" aria-hidden="true">
-            <span className="kairos-stamp flex items-center gap-1.5 rounded-sm border border-border-medium/70 px-2.5 py-1.5 text-[10px] text-fg-secondary opacity-40">
-              <Trash2 className="h-3 w-3" />
-              <span className="hidden sm:inline">{t("delete")}</span>
+      <section className={`${CHAT_PANE} flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden`}>
+        <header className="flex flex-none items-center gap-3 border-b border-tui-ink/8 py-[18px] pr-4 pl-3 sm:gap-3.5 sm:pr-5 sm:pl-6">
+          <span
+            className="grid h-[42px] w-[42px] flex-none place-items-center rounded-full border border-tui-accent/45 text-tui-accent"
+            aria-hidden="true"
+          >
+            <Sparkles size={17} />
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+            <span className="flex h-[25px] items-center">
+              <Skeleton className="h-[14px] w-[180px]" />
+            </span>
+            <span className="flex h-[19px] items-center">
+              <Skeleton className="h-[8px] w-[96px]" />
             </span>
           </div>
+          <span aria-hidden="true" className={`${CHAT_ICON_BUTTON} h-9 w-9 opacity-50`}>
+            <Trash2 size={15} />
+          </span>
         </header>
 
         <div className="flex min-h-0 flex-1 flex-col">
           <AiAnswerSkeleton slow />
           <AiComposerSkeleton />
         </div>
-      </main>
+      </section>
 
-      <aside className="kairos-console-rail hidden w-[332px] shrink-0 flex-col border-l border-border-medium/60 bg-bg-surface xl:flex">
-        <div className="flex shrink-0 gap-1.5 px-4 pt-3.5" aria-hidden="true">
+      <aside
+        className={`${CHAT_PANE} kairos-console-rail hidden min-h-0 w-[332px] flex-none flex-col overflow-hidden xl:flex`}
+      >
+        <div
+          className="flex flex-none flex-wrap gap-1.5 border-b border-tui-ink/8 px-4 pt-4 pb-3.5"
+          aria-hidden="true"
+        >
           {tabs.map(([label, Icon], i) => (
             <span
               key={label}
-              className={`kairos-stamp flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[10px] ${
-                i === 0 ? "bg-accent-primary/10 text-accent-primary" : "text-fg-tertiary"
-              }`}
+              className={`flex h-7 items-center gap-1.5 rounded-full border px-[11px] text-[12.5px] font-medium whitespace-nowrap ${chatPill(i === 0)}`}
             >
-              <Icon className="h-3 w-3" />
+              <Icon size={12} />
               {label}
             </span>
           ))}

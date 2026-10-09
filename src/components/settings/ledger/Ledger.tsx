@@ -469,7 +469,7 @@ export function LedgerGroup({ label, hint, note, rows = [], block }: LedgerGroup
  * (`.settings-row-flash`) has room around the text, while the text itself
  * still lines up with the group label above it.
  */
-function LedgerRowView({ row, first }: { row: LedgerRow; first: boolean }) {
+export function LedgerRowView({ row, first }: { row: LedgerRow; first: boolean }) {
   return (
     <div
       data-row={row.id}
@@ -597,9 +597,8 @@ export function LedgerSection({
             {Icon ? (
               <span
                 aria-hidden
-                className={`flex h-11 w-11 flex-none items-center justify-center rounded-md ${
-                  flagged ? "bg-warning/12 text-warning" : "bg-accent-primary/10 text-accent-primary"
-                }`}
+                data-flagged={flagged || undefined}
+                className="settings-medallion h-[46px] w-[46px]"
               >
                 <Icon size={21} />
               </span>
@@ -864,12 +863,17 @@ export function LedgerCheck({
   label,
   showLabel,
   readOnly,
+  multi,
+  disabled,
 }: {
   checked: boolean;
   onClick?: () => void;
   label: string;
   showLabel?: boolean;
   readOnly?: boolean;
+  /** One of several that can be on together: announced as a checkbox, not a radio. */
+  multi?: boolean;
+  disabled?: boolean;
 }) {
   const body = (
     <>
@@ -913,11 +917,12 @@ export function LedgerCheck({
   return (
     <button
       type="button"
-      role="radio"
+      role={multi ? "checkbox" : "radio"}
       aria-checked={checked}
       aria-label={label}
       onClick={onClick}
-      className="flex cursor-pointer items-center gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/50"
+      disabled={disabled}
+      className="flex cursor-pointer items-center gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/50 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {body}
     </button>

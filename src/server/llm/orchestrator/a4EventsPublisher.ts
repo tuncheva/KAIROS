@@ -19,6 +19,8 @@ import { getA4SystemPrompt } from "~/server/llm/prompts/a4Prompts";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
+import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
+import { applyEventDefaults } from "~/server/llm/agents/defaults";
 
 import {
   events as eventsTable,
@@ -36,6 +38,14 @@ import {
   readConfirmationToken,
 } from "./shared";
 import { getCalendarAccess } from "~/server/llm/calendar/calendarToken";
+import { eventSubscribers } from "~/server/notifications/audience";
+import {
+  notifyEventCancelled,
+  notifyEventChanged,
+  notifyEventComment,
+  notifyEventLike,
+  notifyEventRsvp,
+} from "~/server/notifications/eventNotices";
 import {
   createGoogleCalendarEvent,
   deleteGoogleCalendarEvent,
@@ -100,6 +110,7 @@ export const a4EventsPublisher = {
         { role: "system", content: systemPrompt },
         ...replyLanguageMessages({
           locale: contextPack.locale,
+          fixed: fixedReplyLanguage(contextPack.agentSettings),
           message: input.message,
           originalMessage: input.originalMessage,
         }),
@@ -124,6 +135,11 @@ export const a4EventsPublisher = {
     );
     const guardedPlan: EventsPublisherDraft = {
       ...parseResult.data,
+      // The workspace's event defaults for whatever the model left open, filled
+      // here so the draft the user reviews shows them.
+      creates: parseResult.data.creates.map((c) =>
+        applyEventDefaults(c, contextPack.agentSettings),
+      ),
       deletes: parseResult.data.deletes.filter((d) =>
         ownedEventIds.has(d.eventId),
       ),
@@ -337,9 +353,10 @@ export const a4EventsPublisher = {
           title: create.title,
           description: create.description,
           eventDate: new Date(create.eventDate),
+          endsAt: create.endsAt ? new Date(create.endsAt) : null,
           region: create.region,
-          enableRsvp: create.enableRsvp,
-          sendReminders: create.sendReminders,
+          enableRsvp: create.enableRsvp ?? false,
+          sendReminders: create.sendReminders ?? false,
           imageUrl: create.imageUrl ?? null,
           createdById: userId,
         })
@@ -354,7 +371,25 @@ export const a4EventsPublisher = {
     // relevance filter, not an authorization boundary: it runs before the plan
     // round-trips through storage, and it only ever saw a slice of the table.
     // A2 re-checks permissions at apply time for the same reason.
+    //
+    // The agent acts for the user, so its edits tell subscribers exactly what
+    // the same edit made by hand in the router would — and nothing more.
     for (const update of plan.updates) {
+      const [before] = await db
+        .select({
+          title: eventsTable.title,
+          eventDate: eventsTable.eventDate,
+          region: eventsTable.region,
+        })
+        .from(eventsTable)
+        .where(
+          and(
+            eq(eventsTable.id, update.eventId),
+            eq(eventsTable.createdById, userId),
+          ),
+        )
+        .limit(1);
+
       const patched = await db
         .update(eventsTable)
         .set({
@@ -384,11 +419,54 @@ export const a4EventsPublisher = {
           ),
         )
         .returning({ id: eventsTable.id });
-      if (patched[0]) results.updatedEventIds.push(update.eventId);
+      if (!patched[0] || !before) continue;
+      results.updatedEventIds.push(update.eventId);
+
+      // Same reading of "material" as `updateEvent` in the router.
+      const dateMoved =
+        update.patch.eventDate !== undefined &&
+        new Date(update.patch.eventDate).getTime() !== before.eventDate.getTime();
+      const regionMoved =
+        update.patch.region !== undefined && update.patch.region !== before.region;
+
+      if (dateMoved || regionMoved) {
+        // Every armed reminder is now measured against the wrong moment.
+        if (dateMoved) {
+          await db
+            .update(eventRsvps)
+            .set({ reminderSent: false })
+            .where(eq(eventRsvps.eventId, update.eventId));
+        }
+
+        await notifyEventChanged(db, {
+          eventId: update.eventId,
+          eventTitle: before.title,
+          actorId: userId,
+          subscribers: await eventSubscribers(db, update.eventId),
+          dateMoved,
+          locationMoved: regionMoved,
+        });
+      }
     }
 
     // Deletes
     for (const del of plan.deletes) {
+      /* Read the audience *before* the delete: the RSVP rows cascade away with
+         the event, so asking afterwards always returns nobody. */
+      const [target] = await db
+        .select({ title: eventsTable.title })
+        .from(eventsTable)
+        .where(
+          and(
+            eq(eventsTable.id, del.eventId),
+            eq(eventsTable.createdById, userId),
+          ),
+        )
+        .limit(1);
+      const subscribers = target
+        ? await eventSubscribers(db, del.eventId)
+        : [];
+
       const removed = await db
         .delete(eventsTable)
         .where(
@@ -398,7 +476,14 @@ export const a4EventsPublisher = {
           ),
         )
         .returning({ id: eventsTable.id });
-      if (removed[0]) results.deletedEventIds.push(del.eventId);
+      if (!removed[0] || !target) continue;
+      results.deletedEventIds.push(del.eventId);
+
+      await notifyEventCancelled(db, {
+        eventTitle: target.title,
+        actorId: userId,
+        subscribers,
+      });
     }
 
     // Comments add
@@ -409,6 +494,12 @@ export const a4EventsPublisher = {
         createdById: userId,
       });
       results.commentsAdded++;
+
+      // The plan has no replies, so this is always the top-level wording.
+      await notifyEventComment(db, {
+        eventId: comment.eventId,
+        actorId: userId,
+      });
     }
 
     // Comments remove
@@ -431,6 +522,15 @@ export const a4EventsPublisher = {
 
     // RSVPs
     for (const rsvp of plan.rsvps) {
+      // Read first: only a new or changed answer is news to the hosts.
+      const previous = await db.query.eventRsvps.findFirst({
+        where: and(
+          eq(eventRsvps.eventId, rsvp.eventId),
+          eq(eventRsvps.userId, userId),
+        ),
+        columns: { status: true },
+      });
+
       // Upsert: delete existing then insert
       await db
         .delete(eventRsvps)
@@ -446,6 +546,14 @@ export const a4EventsPublisher = {
         userId: userId,
       });
       results.rsvpsSet++;
+
+      if (previous?.status !== rsvp.status) {
+        await notifyEventRsvp(db, {
+          eventId: rsvp.eventId,
+          actorId: userId,
+          status: rsvp.status,
+        });
+      }
     }
 
     // Likes
@@ -469,6 +577,11 @@ export const a4EventsPublisher = {
         await db.insert(eventLikes).values({
           eventId: like.eventId,
           createdById: userId,
+        });
+        // An unlike is not news; a like is, to the owner.
+        await notifyEventLike(db, {
+          eventId: like.eventId,
+          actorId: userId,
         });
       }
       results.likesToggled++;

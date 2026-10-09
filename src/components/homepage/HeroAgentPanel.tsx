@@ -19,6 +19,7 @@ const TASKS = [
  */
 export function HeroAgentPanel() {
     const t = useTranslations("home");
+    const tAgents = useTranslations("agents");
 
     return (
         <figure
@@ -48,7 +49,7 @@ export function HeroAgentPanel() {
 
                 <div className="k-in-up flex flex-col gap-1.5 [animation-delay:3.1s]">
                     <span className="font-mono text-[10px] tracking-[0.18em] text-accent-primary uppercase">
-                        {t("agentPlannerName")}
+                        {tAgents("names.task_planner")} · {tAgents("roles.task_planner")}
                     </span>
                     <span className="text-[14.5px] leading-[1.6] text-fg-secondary">{t("panelReply")}</span>
                 </div>

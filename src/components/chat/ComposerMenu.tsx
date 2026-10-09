@@ -104,7 +104,7 @@ export function ComposerMenu({
          * this size, and it leaves the accent to mean one thing — who is
          * answering — instead of two.
          */
-        className={`kairos-tap flex max-w-[190px] items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] transition-colors ${
+        className={`kairos-tap flex max-w-[190px] items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] transition-colors ${
           tone === "accent"
             ? "bg-accent-primary/[0.08] text-accent-primary shadow-[0_0_0_0.5px_rgb(var(--accent-primary)/0.4)] hover:bg-accent-primary/15"
             : "text-fg-tertiary shadow-[0_0_0_0.5px_rgb(var(--border-medium)/0.8)] hover:text-fg-secondary"

@@ -20,7 +20,7 @@
  */
 
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { flagsForRole, type PermissionFlag } from "~/lib/permissions";
 import type { TRPCContext } from "~/server/api/trpc";
@@ -29,11 +29,13 @@ import {
   agentOrgAdminDrafts,
   organizationInvites,
   organizationMembers,
+  users,
 } from "~/server/db/schema";
 import { buildA5Context } from "~/server/llm/context/a5ContextBuilder";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 import { getA5SystemPrompt } from "~/server/llm/prompts/a5Prompts";
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
+import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
 import { localized, type LocalizedText } from "~/server/llm/locale";
 import {
   OrgAdminDraftSchema,
@@ -41,6 +43,14 @@ import {
   type OrgAdminDraft,
 } from "~/server/llm/schemas/a5OrgAdminSchemas";
 import { createLogger } from "~/server/logger";
+import { consumeInviteBudget } from "~/server/orgs/invitePolicy";
+import {
+  deliverOrgInvite,
+  noticeMemberRemoved,
+  noticePermissionsChanged,
+  noticeRoleChanged,
+} from "~/server/notifications/orgNotices";
+import { generateInviteToken, hashInviteToken } from "~/server/orgs/inviteGrants";
 
 import {
   computePlanHash,
@@ -200,6 +210,7 @@ export const a5OrgAdmin = {
         { role: "system", content: systemPrompt },
         ...replyLanguageMessages({
           locale: contextPack.locale,
+          fixed: fixedReplyLanguage(contextPack.agentSettings),
           message: input.message,
           originalMessage: input.originalMessage,
         }),
@@ -441,19 +452,24 @@ export const a5OrgAdmin = {
         continue;
       }
 
+      // Read up front: the lockout check below needs it, and so does the
+      // member's notice, which says what their role was.
+      const [target] = await db
+        .select({
+          role: organizationMembers.role,
+          displayRole: organizationMembers.displayRole,
+        })
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, op.organizationId),
+            eq(organizationMembers.userId, op.targetUserId),
+          ),
+        )
+        .limit(1);
+
       // Would this demote the last remaining administrator?
       if (!flagsForRole(op.newRole).canManageRoles) {
-        const [target] = await db
-          .select({ role: organizationMembers.role })
-          .from(organizationMembers)
-          .where(
-            and(
-              eq(organizationMembers.organizationId, op.organizationId),
-              eq(organizationMembers.userId, op.targetUserId),
-            ),
-          )
-          .limit(1);
-
         if (target && flagsForRole(target.role).canManageRoles) {
           const admins = await adminCount(input.ctx, op.organizationId);
           if (admins <= 1) {
@@ -476,8 +492,19 @@ export const a5OrgAdmin = {
         )
         .returning({ id: organizationMembers.id });
 
-      if (updated[0]) results.rolesChanged += 1;
-      else
+      if (updated[0]) {
+        results.rolesChanged += 1;
+        if (target) {
+          await noticeRoleChanged({
+            db,
+            organizationId: op.organizationId,
+            userId: op.targetUserId,
+            actorId: userId,
+            from: { role: target.role, displayRole: target.displayRole },
+            to: { role: op.newRole, displayRole: null },
+          });
+        }
+      } else
         results.refused.push(`${op.targetName}: they are no longer a member.`);
     }
 
@@ -527,8 +554,17 @@ export const a5OrgAdmin = {
         )
         .returning({ id: organizationMembers.id });
 
-      if (updated[0]) results.permissionsChanged += 1;
-      else
+      if (updated[0]) {
+        results.permissionsChanged += 1;
+        await noticePermissionsChanged({
+          db,
+          organizationId: op.organizationId,
+          userId: op.targetUserId,
+          actorId: userId,
+          granted: op.grant.filter((flag) => !op.revoke.includes(flag)),
+          revoked: op.revoke,
+        });
+      } else
         results.refused.push(`${op.targetName}: they are no longer a member.`);
     }
 
@@ -584,7 +620,15 @@ export const a5OrgAdmin = {
         )
         .returning({ id: organizationMembers.id });
 
-      if (removed[0]) results.membersRemoved += 1;
+      if (removed[0]) {
+        results.membersRemoved += 1;
+        await noticeMemberRemoved({
+          db,
+          organizationId: op.organizationId,
+          userId: op.targetUserId,
+          actorId: userId,
+        });
+      }
     }
 
     // ---- invites
@@ -607,15 +651,54 @@ export const a5OrgAdmin = {
         continue;
       }
 
-      await db.insert(organizationInvites).values({
-        organizationId: op.organizationId,
-        email: op.email.toLowerCase(),
-        role: op.role,
-        invitedById: userId,
-        status: "pending",
-        expiresAt: new Date(Date.now() + INVITE_TTL_MS),
-      });
+      // The same daily budget as the dialog: an agent is not a way around it.
+      try {
+        await consumeInviteBudget(userId, op.organizationId);
+      } catch {
+        results.refused.push(
+          `${op.email}: the daily invitation limit was reached. Try again tomorrow.`,
+        );
+        continue;
+      }
+
+      // Minted and delivered exactly as `organization.inviteMember` does: the
+      // row used to be written with no token hash and nobody told, so the
+      // invitee had no email, no bell entry and no link that could accept it.
+      const email = op.email.toLowerCase();
+      const token = generateInviteToken();
+      const [invite] = await db
+        .insert(organizationInvites)
+        .values({
+          organizationId: op.organizationId,
+          email,
+          role: op.role,
+          acceptTokenHash: hashInviteToken(token),
+          invitedById: userId,
+          status: "pending",
+          expiresAt: new Date(Date.now() + INVITE_TTL_MS),
+        })
+        .returning();
       results.invitesSent += 1;
+
+      if (invite) {
+        const [existingUser] = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(sql`lower(${users.email}) = ${email}`)
+          .limit(1);
+        // An existing member gets no "you're invited" bell entry for a
+        // workspace they are already in.
+        const alreadyMember = existingUser
+          ? await callerMembership(input.ctx, op.organizationId, existingUser.id)
+          : null;
+        await deliverOrgInvite({
+          db,
+          invite,
+          token,
+          inviterId: userId,
+          existingUserId: existingUser && !alreadyMember ? existingUser.id : null,
+        });
+      }
     }
 
     await db.insert(agentOrgAdminApplies).values({

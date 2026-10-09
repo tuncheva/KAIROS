@@ -49,3 +49,18 @@ export function avatarGradient(seed: string | null | undefined): string {
 export function avatarGradientStyle(seed: string | null | undefined): { background: string } {
   return { background: avatarGradient(seed) };
 }
+
+/**
+ * A quieter take on the same seeded gradient: the pair washed out to a tint
+ * over whatever surface sits behind it, with the darker stop (nudged toward
+ * the theme ink) as the text — so it keeps its identity without shouting.
+ */
+export function avatarSoftGradientStyle(
+  seed: string | null | undefined,
+): { background: string; color: string } {
+  const [from, to] = GRADIENTS[hash(seed?.trim().toLowerCase() ?? "") % GRADIENTS.length]!;
+  return {
+    background: `linear-gradient(135deg, color-mix(in srgb, ${from} 26%, transparent), color-mix(in srgb, ${to} 18%, transparent))`,
+    color: `color-mix(in srgb, ${to} 70%, rgb(var(--tui-ink)))`,
+  };
+}

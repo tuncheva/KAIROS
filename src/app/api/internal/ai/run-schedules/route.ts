@@ -32,7 +32,9 @@ import {
   reconcileSubscriptions,
   type ReconcileReport,
 } from "~/server/billing/reconcile";
+import { db } from "~/server/db";
 import { createLogger } from "~/server/logger";
+import { purgeStaleInvites } from "~/server/orgs/invitePolicy";
 import {
   cullExpiredHistory,
   type CullReport,
@@ -151,6 +153,18 @@ export async function POST(request: Request) {
       calendars = { error: "Calendar sweep failed" };
     }
 
+    // Finished invitations are deleted 30 days after they end — the address on
+    // an unanswered invite belongs to someone who never agreed to be here. See
+    // `~/server/orgs/invitePolicy`. Same reasoning as the cull: a missed purge
+    // is an hour of extra retention, not a reason to fail the tick.
+    let invitesPurged: number | { error: string };
+    try {
+      invitesPurged = await purgeStaleInvites(db);
+    } catch (err) {
+      log.error("invite purge failed", { err });
+      invitesPurged = { error: "Invite purge failed" };
+    }
+
     // Billing reconciliation rides this tick for the same reasons the cull and
     // the calendar sweep do — and for one of its own: it is the only thing that
     // repairs a lost Stripe webhook, and a repair nobody schedules is a repair
@@ -186,6 +200,7 @@ export async function POST(request: Request) {
       taskReminders,
       retention,
       calendars,
+      invitesPurged,
       billing,
       embeddings,
     });

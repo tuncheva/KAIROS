@@ -171,6 +171,9 @@ describe("invitation email", () => {
     permissionLabels: ["Create projects", "Edit projects"],
     acceptUrl: "https://kairos.example/invite/abc",
     expiresAt: new Date("2026-10-02T00:00:00Z"),
+    inviterEmail: "ana@acme.example",
+    optOutUrl: "https://kairos.example/invite-optout/tok",
+    privacyUrl: "https://kairos.example/privacy#invitations",
   };
 
   it("lists exactly the granted permissions and links to the invite", () => {
@@ -182,6 +185,28 @@ describe("invitation email", () => {
     expect(html).not.toContain("Delete tasks");
     expect(html).toContain("https://kairos.example/invite/abc");
     expect(text).toContain("- Create projects\n- Edit projects");
+  });
+
+  /* What keeps an invitation a transactional access grant rather than
+     advertising — see docs/invite-email-legal-research-2026-10-08.md §6.2. */
+  it("says who entered the address and how to ignore or stop it, in both versions", () => {
+    const { html, text } = renderOrganizationInviteEmailForTest(base);
+    for (const body of [html, text]) {
+      expect(body).toContain("ana@acme.example");
+      expect(body).toContain("entered your email address");
+      expect(body).toContain("Ignore this email");
+      expect(body).toContain("https://kairos.example/invite-optout/tok");
+      expect(body).toContain("https://kairos.example/privacy#invitations");
+    }
+    // Not the account-holder footer: the recipient may have no account.
+    expect(html).not.toContain("message about your account");
+  });
+
+  it("carries no promotional copy", () => {
+    const { html, text } = renderOrganizationInviteEmailForTest(base);
+    for (const body of [html, text]) {
+      expect(body).not.toMatch(/pricing|free trial|upgrade|thousands of teams/i);
+    }
   });
 
   it("says view-only when nothing is granted", () => {

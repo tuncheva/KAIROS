@@ -1,11 +1,24 @@
+import { agentNameFor } from "~/lib/agentNames";
+import { agentSetting, type ResolvedAgentSettings } from "~/lib/agentSettings";
 import type { A4ContextPack } from "../context/a4ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
 import { answerableRule } from "~/server/llm/prompts/answerableRule";
 import {
+  fixedReplyLanguage,
   languageRule,
   wantsBulgarianGuidance,
   wantsLocaleFallback,
 } from "~/server/llm/prompts/languageRules";
+
+/** The workspace's event defaults in one clause, for the model to know what leaving a field out means. */
+function eventDefaultsLine(settings: Partial<ResolvedAgentSettings> | undefined): string {
+  const length = agentSetting(settings, "events_publisher.lengthMinutes");
+  return [
+    `RSVP ${agentSetting(settings, "events_publisher.enableRsvp") ? "on" : "off"}`,
+    `reminders ${agentSetting(settings, "events_publisher.sendReminders") ? "on" : "off"}`,
+    length === "none" ? "no set length" : `${String(length)} minutes long`,
+  ].join(", ");
+}
 
 /**
  * @param userText - The user's own words this turn (the message, and on the
@@ -25,7 +38,7 @@ export function getA4SystemPrompt(
   // language the conversation is in — see `replyLanguage.ts`.
   const bulgarian = wantsBulgarianGuidance(...userText);
 
-  return `You are the KAIROS Events Publisher (A4) — a specialized AI embedded in the KAIROS platform that manages public events.
+  return `You are ${agentNameFor("events_publisher", context.agentNames)}, the KAIROS Events Publisher (A4) — a specialized AI embedded in the KAIROS platform that manages public events.
 
 ## Current Date & Time
 Today is ${currentDate}. The current year is ${currentYear}.
@@ -74,7 +87,7 @@ ${
    - If they mention details: incorporate them into a complete sentence
 5. ✅ Convert dates to ISO-8601 UTC format using the current year (${currentYear})
 6. ✅ DEFAULT to region "sofia" if not specified - do NOT ask via questionsForUser
-7. ✅ Default enableRsvp to true and sendReminders to false
+7. ✅ Set enableRsvp, sendReminders or endsAt only when the user asks for them — leave them out otherwise and the workspace defaults apply (${eventDefaultsLine(context.agentSettings)})
 8. ✅ Include a clientRequestId (e.g., "evt_001", "evt_002") for each create
 
 **IMAGE URLS:**
@@ -90,10 +103,10 @@ Before finalizing your JSON, ask yourself:
 
 **EXAMPLE VALID RESPONSES:**
 User: "create an event for April 17"
-→ creates: [{ title: "Event on April 17th", description: "Join us for this upcoming event!", eventDate: "2026-04-17T12:00:00.000Z", region: "sofia", enableRsvp: true, sendReminders: false, clientRequestId: "evt_001" }]
+→ creates: [{ title: "Event on April 17th", description: "Join us for this upcoming event!", eventDate: "2026-04-17T12:00:00.000Z", region: "sofia", clientRequestId: "evt_001" }]
 
 User: "make a team meeting next Friday"
-→ creates: [{ title: "Team Meeting", description: "Scheduled team meeting to discuss progress and upcoming tasks.", eventDate: "[calculated Friday date]", region: "sofia", enableRsvp: true, sendReminders: false, clientRequestId: "evt_001" }]
+→ creates: [{ title: "Team Meeting", description: "Scheduled team meeting to discuss progress and upcoming tasks.", eventDate: "[calculated Friday date]", region: "sofia", clientRequestId: "evt_001" }]
 
 **NEVER DO THIS:**
 User: "create an event for tomorrow"
@@ -152,6 +165,7 @@ ${
 
 ${languageRule({
   locale: context.locale,
+  fixedLanguage: fixedReplyLanguage(context.agentSettings),
   bulgarianGuidance: bulgarian,
   localeFallback: wantsLocaleFallback(...userText),
   fields: [
@@ -216,7 +230,7 @@ ${answerableRule()}
 ${formatMemoryForPrompt(context.memory)}
 ## Current Context (authoritative — do NOT hallucinate data beyond this)
 \`\`\`json
-${JSON.stringify({ ...context, memory: undefined }, null, 2)}
+${JSON.stringify({ ...context, memory: undefined, agentNames: undefined, agentSettings: undefined }, null, 2)}
 \`\`\`
 
 ## ⚠️ FINAL CHECK BEFORE OUTPUT ⚠️
@@ -242,9 +256,10 @@ Return ONLY a JSON object matching this exact shape:
       "title": "string (1-256 chars)",
       "description": "string (1-5000 chars)",
       "eventDate": "ISO-8601 UTC string",
+      "endsAt?": "ISO-8601 UTC string",
       "region": "sofia" | "plovdiv" | "varna" | "burgas" | "ruse" | "stara_zagora" | "pleven" | "sliven" | "dobrich" | "shumen",
-      "enableRsvp": boolean,
-      "sendReminders": boolean,
+      "enableRsvp?": boolean,
+      "sendReminders?": boolean,
       "imageUrl?": "valid URL string (optional)",
       "clientRequestId": "string (unique per create)"
     }

@@ -133,16 +133,16 @@ export function WorkspaceMenu() {
           onClick={() => setOpen((v) => !v)}
           aria-haspopup="menu"
           aria-expanded={open}
-          className={`group flex min-w-0 max-w-[min(15rem,100%)] items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors sm:max-w-[20rem] ${
-            open ? "bg-bg-elevated" : "hover:bg-bg-elevated"
+          className={`group flex h-[38px] min-w-0 max-w-[min(15rem,100%)] items-center gap-2.5 rounded-full border py-0 pr-2.5 pl-1 text-left transition-colors focus-visible:ring-2 focus-visible:ring-tui-accent focus-visible:outline-none sm:h-10 sm:max-w-[17rem] ${
+            open
+              ? "border-tui-ink/8 bg-tui-ink/[0.04]"
+              : "border-transparent hover:border-tui-ink/8 hover:bg-tui-ink/[0.04]"
           }`}
         >
           {isPersonal ? (
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-bg-secondary text-fg-tertiary">
-              <User size={15} />
-            </span>
+            <WorkspaceMark personal />
           ) : (
-            <OrgBadge
+            <WorkspaceMark
               id={active?.organization?.id ?? orgName ?? ""}
               name={orgName ?? ""}
               image={active?.organization?.image}
@@ -150,21 +150,28 @@ export function WorkspaceMenu() {
           )}
 
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold leading-tight text-fg-primary">
+            <span className="block truncate text-[13.5px] font-semibold leading-tight tracking-[-0.005em] text-tui-ink">
               {isPersonal ? t("personalWorkspace") : orgName}
             </span>
-            <span className="block truncate text-[11px] leading-tight text-fg-tertiary">
-              {isPersonal
-                ? t("personalHint")
-                : roleLabel
-                  ? `${t("organization")} · ${roleLabel}`
-                  : t("organization")}
+            {/* The role is the one coloured word, so "Admin" reads at a glance.
+                Hidden on phones, where the name needs every pixel. */}
+            <span className="hidden truncate text-[11px] leading-tight text-tui-ink3 sm:block">
+              {isPersonal ? (
+                t("personalHint")
+              ) : roleLabel ? (
+                <>
+                  {t("organization")} ·{" "}
+                  <span className="font-medium text-tui-accent">{roleLabel}</span>
+                </>
+              ) : (
+                t("organization")
+              )}
             </span>
           </span>
 
           <ChevronDown
-            size={15}
-            className={`shrink-0 text-fg-tertiary transition-transform ${open ? "rotate-180" : ""}`}
+            size={14}
+            className={`shrink-0 text-tui-ink3 transition-transform ${open ? "rotate-180" : ""}`}
           />
         </button>
 
@@ -172,13 +179,13 @@ export function WorkspaceMenu() {
           <div
             ref={menuRef}
             role="menu"
-            className="absolute left-0 z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border border-border-light/60 bg-bg-surface shadow-2xl"
+            className="absolute left-0 z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border border-tui-ink/12 bg-tui-pane shadow-[var(--tui-lift)]"
           >
-            <div className="px-3 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wider text-fg-tertiary">
+            <div className="px-4 pb-1.5 pt-3.5 text-[11px] font-medium uppercase tracking-[0.12em] text-tui-ink3">
               {t("switchWorkspace")}
             </div>
 
-            <div className="max-h-64 overflow-auto py-1">
+            <div className="max-h-64 overflow-auto px-1.5 py-1">
               {/* Your own space is a destination, not just the state you are in
                   before joining somewhere — so it belongs in the list you can
                   switch to, above the organisations. */}
@@ -187,30 +194,28 @@ export function WorkspaceMenu() {
                 role="menuitem"
                 disabled={isSwitching}
                 onClick={() => setPersonal.mutate()}
-                className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors ${
-                  isPersonal ? "bg-accent-primary/10" : "hover:bg-bg-elevated"
+                className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors ${
+                  isPersonal ? "bg-tui-accent/10" : "hover:bg-tui-ink/[0.045]"
                 }`}
               >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-bg-secondary text-fg-tertiary">
-                  <User size={14} />
-                </span>
+                <WorkspaceMark personal size={28} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm text-fg-primary">
+                  <span className="block truncate text-[13.5px] text-tui-ink">
                     {t("personalWorkspace")}
                   </span>
-                  <span className="block text-[11px] text-fg-tertiary">
+                  <span className="block text-[11.5px] text-tui-ink3">
                     {t("personalSubtitle")}
                   </span>
                 </span>
                 {isPersonal ? (
-                  <Check size={15} className="shrink-0 text-accent-primary" />
+                  <Check size={15} className="shrink-0 text-tui-accent" />
                 ) : null}
               </button>
 
               {(orgsQuery.data?.length ?? 0) > 0 ? (
                 <div
                   aria-hidden="true"
-                  className="my-1 border-t border-border-light/40"
+                  className="mx-2.5 my-1 border-t border-tui-ink/8"
                 />
               ) : null}
 
@@ -223,28 +228,28 @@ export function WorkspaceMenu() {
                     role="menuitem"
                     disabled={isSwitching}
                     onClick={() => setActive.mutate({ organizationId: org.id })}
-                    className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors ${
-                      isActive ? "bg-accent-primary/10" : "hover:bg-bg-elevated"
+                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors ${
+                      isActive ? "bg-tui-accent/10" : "hover:bg-tui-ink/[0.045]"
                     }`}
                   >
-                    <OrgBadge id={org.id} name={org.name} image={org.image} size={28} />
+                    <WorkspaceMark id={org.id} name={org.name} image={org.image} size={28} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-fg-primary">
+                      <span className="block truncate text-[13.5px] text-tui-ink">
                         {org.name}
                       </span>
-                      <span className="block text-[11px] capitalize text-fg-tertiary">
+                      <span className="block text-[11.5px] capitalize text-tui-ink3">
                         {roleLabels[org.role] ?? org.role}
                       </span>
                     </span>
                     {isActive ? (
-                      <Check size={15} className="shrink-0 text-accent-primary" />
+                      <Check size={15} className="shrink-0 text-tui-accent" />
                     ) : null}
                   </button>
                 );
               })}
 
               {orgsQuery.isLoading ? (
-                <div className="px-3 py-2 text-xs text-fg-tertiary">
+                <div className="px-2.5 py-2 text-xs text-tui-ink3">
                   {t("loadingOrgs")}
                 </div>
               ) : null}
@@ -256,7 +261,7 @@ export function WorkspaceMenu() {
               ) : null}
             </div>
 
-            <div className="border-t border-border-light/40 p-1.5">
+            <div className="border-t border-tui-ink/8 p-1.5">
               {canInvite ? (
                 <button
                   type="button"
@@ -265,7 +270,7 @@ export function WorkspaceMenu() {
                     setOpen(false);
                     setShowInvite(true);
                   }}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-accent-primary transition-colors hover:bg-accent-primary/10"
+                  className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-[13px] font-medium text-tui-accent transition-colors hover:bg-tui-accent/10"
                 >
                   <QrCode size={16} />
                   {t("inviteWithQr")}
@@ -276,7 +281,7 @@ export function WorkspaceMenu() {
                 href="/orgs"
                 role="menuitem"
                 onClick={() => setOpen(false)}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-fg-secondary transition-colors hover:bg-bg-elevated hover:text-fg-primary"
+                className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-[13px] text-tui-ink2 transition-colors hover:bg-tui-ink/[0.045] hover:text-tui-ink"
               >
                 <Building2 size={16} />
                 {t("yourOrgs")}
@@ -294,5 +299,37 @@ export function WorkspaceMenu() {
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * The workspace's face in the switcher: the org's `OrgBadge`, or a neutral
+ * person glyph for your own space.
+ */
+function WorkspaceMark({
+  personal = false,
+  id = "",
+  name = "",
+  image,
+  size = 32,
+}: {
+  personal?: boolean;
+  id?: number | string;
+  name?: string;
+  image?: string | null;
+  size?: number;
+}) {
+  if (!personal) {
+    return <OrgBadge id={id} name={name} image={image} size={size} rounded="rounded-full" />;
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className="flex shrink-0 items-center justify-center rounded-full bg-tui-ink/[0.06] text-tui-ink2"
+      style={{ width: size, height: size }}
+    >
+      <User size={Math.round(size * 0.45)} />
+    </span>
   );
 }

@@ -4,6 +4,7 @@ import { Bot, CalendarClock, FolderKanban, Radar, ShieldCheck, Sparkles, StickyN
 import { useTranslations } from "next-intl";
 
 import type { AgentSummary } from "./types";
+import { useAgentLabel } from "./useAgentLabel";
 
 /**
  * Which icon stands for which agent.
@@ -44,6 +45,7 @@ interface Props {
  */
 export function AgentPicker({ agents, selected, onSelect }: Props) {
   const t = useTranslations("agents");
+  const label = useAgentLabel();
 
   const conversational = agents.filter((a) => a.kind === "conversational");
   const scheduled = agents.filter((a) => a.kind === "scheduled");
@@ -103,7 +105,10 @@ export function AgentPicker({ agents, selected, onSelect }: Props) {
               <span className="min-w-0">
                 <span className="flex items-center gap-1.5">
                   <span className="text-sm font-medium text-fg-primary">
-                    {agent.name}
+                    {label.name(agent.id, agent.name)}
+                  </span>
+                  <span className="text-xs text-fg-tertiary">
+                    {label.role(agent.id, agent.role)}
                   </span>
                   {agent.writes ? (
                     <ShieldCheck
@@ -135,8 +140,13 @@ export function AgentPicker({ agents, selected, onSelect }: Props) {
               >
                 <Icon className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary" />
                 <span className="min-w-0">
-                  <span className="block text-sm font-medium text-fg-secondary">
-                    {agent.name}
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium text-fg-secondary">
+                      {label.name(agent.id, agent.name)}
+                    </span>
+                    <span className="text-xs text-fg-tertiary">
+                      {label.role(agent.id, agent.role)}
+                    </span>
                   </span>
                   <span className="block text-xs leading-snug text-fg-tertiary">
                     {agent.description}

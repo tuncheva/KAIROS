@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure, type TRPCContext } from "~/server/api/trpc";
 import { agentOrchestrator } from "~/server/llm/orchestrator/agentOrchestrator";
 import { runAgentTurn } from "~/server/llm/orchestrator/handoff";
 import {
@@ -30,6 +30,14 @@ import {
   upsertFact,
 } from "~/server/llm/memory";
 import { AGENTS, getAgent } from "~/server/llm/agents/registry";
+import { loadAgentConfigSource } from "~/server/llm/agents/config";
+import { AGENT_IDS, AGENT_NAME_MAX, agentNameProblem, normalizeAgentName } from "~/lib/agentNames";
+import {
+  AGENT_SETTINGS,
+  AGENT_SETTING_IDS,
+  parseAgentSettingValue,
+  type AgentSettingId,
+} from "~/lib/agentSettings";
 import { toolDefinitionsFor } from "~/server/llm/tools/a1/toolDefinitions";
 import { getAiMetrics } from "~/server/llm/observability";
 import {
@@ -47,19 +55,22 @@ import {
 import { diffTaskPlan } from "~/server/llm/beforeImage";
 import { MAX_PROMPT_CHARS } from "~/server/llm/scheduled/customSchedules";
 import { searchMessages } from "~/server/llm/retention";
-import { runBriefNow } from "~/server/llm/scheduled/runner";
+import { DAILY_BRIEF_TITLE, runBriefNow } from "~/server/llm/scheduled/runner";
 import { DEFAULT_TIME_ZONE } from "~/lib/timezone";
 import { entitlementsFor } from "~/server/billing/entitlements";
 import {
   agentTaskPlannerDrafts,
   aiCustomSchedules,
   aiSchedules,
+  notifications,
+  organizationMembers,
+  organizations,
   tasks,
   users,
 } from "~/server/db/schema";
 import { assertProjectAccess } from "~/server/api/authz";
 import { TRPCError } from "@trpc/server";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import {
   GenerateTaskDraftsInputSchema,
   ExtractTasksFromPdfInputSchema,
@@ -126,6 +137,30 @@ const SCHEDULE_DEFAULTS: Record<
   // values are stored so the row has a shape, and the runner ignores them.
   meeting_prep: { hourLocal: 0, dayOfWeek: null },
 };
+
+/**
+ * Whether `userId` may rename or tune the agents for the workspace their names
+ * and workspace settings come from: anyone for their own (no workspace), only
+ * an admin for a workspace's. Personal settings need no such check.
+ */
+async function canManageWorkspaceAgents(
+  ctx: TRPCContext,
+  userId: string,
+  organizationId: number | null,
+): Promise<boolean> {
+  if (organizationId === null) return true;
+  const [membership] = await ctx.db
+    .select({ role: organizationMembers.role })
+    .from(organizationMembers)
+    .where(
+      and(
+        eq(organizationMembers.userId, userId),
+        eq(organizationMembers.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  return membership?.role === "admin";
+}
 
 export const agentRouter = createTRPCRouter({
 
@@ -456,6 +491,7 @@ export const agentRouter = createTRPCRouter({
     return AGENTS.map((agent) => ({
       id: agent.id,
       name: agent.name,
+      role: agent.role,
       description: agent.description,
       kind: agent.kind,
       writes: agent.writes,
@@ -467,6 +503,152 @@ export const agentRouter = createTRPCRouter({
       })),
     }));
   }),
+
+  /**
+   * What this workspace calls its agents, and whether the caller may change it.
+   *
+   * Overrides only — the client fills the gaps with the locale's spelling of
+   * the defaults. `canEdit` is a hint for the form; `setName` checks again.
+   */
+  names: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const source = await loadAgentConfigSource(ctx, userId);
+    return {
+      overrides: source.names,
+      scope: source.organizationId === null ? ("personal" as const) : ("workspace" as const),
+      canEdit: await canManageWorkspaceAgents(ctx, userId, source.organizationId),
+    };
+  }),
+
+  /**
+   * Rename one agent for the whole workspace, or put its default back with
+   * `name: null`.
+   *
+   * Admin-only in a workspace: the name is what every member sees and what the
+   * agent calls itself in their chats. Written as a single-key jsonb update so
+   * two admins renaming different agents at once cannot undo each other.
+   */
+  setName: protectedProcedure
+    .input(
+      z.object({
+        agentId: z.enum(AGENT_IDS),
+        name: z.string().max(AGENT_NAME_MAX * 2).nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const source = await loadAgentConfigSource(ctx, userId);
+
+      if (!(await canManageWorkspaceAgents(ctx, userId, source.organizationId))) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only a workspace admin can rename agents.",
+        });
+      }
+
+      const name = input.name === null ? null : normalizeAgentName(input.name);
+      if (name !== null) {
+        const problem = agentNameProblem(input.agentId, name, source.names);
+        if (problem) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `agentName.${problem}` });
+        }
+      }
+
+      const next =
+        name === null
+          ? sql`${sql.identifier("agent_names")} - ${input.agentId}::text`
+          : sql`${sql.identifier("agent_names")} || jsonb_build_object(${input.agentId}::text, ${name}::text)`;
+
+      if (source.organizationId !== null) {
+        await ctx.db
+          .update(organizations)
+          .set({ agentNames: next, updatedAt: new Date() })
+          .where(eq(organizations.id, source.organizationId));
+      } else {
+        await ctx.db.update(users).set({ agentNames: next }).where(eq(users.id, userId));
+      }
+
+      return { agentId: input.agentId, name };
+    }),
+
+  /**
+   * The agent settings in force for the caller, and whether they may change
+   * the workspace-scoped ones. Personal settings are always theirs to change.
+   */
+  settings: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const source = await loadAgentConfigSource(ctx, userId);
+    return {
+      values: source.settings,
+      scope: source.organizationId === null ? ("personal" as const) : ("workspace" as const),
+      canEditWorkspace: await canManageWorkspaceAgents(ctx, userId, source.organizationId),
+      // Auto-apply only happens where undo exists (see `autoApply.ts`), so the
+      // panel can say why the choice is locked instead of offering a dead switch.
+      canAutoApply: (await entitlementsFor(ctx)).undoApply,
+    };
+  }),
+
+  /**
+   * Change one agent setting, or put its default back with `value: null`.
+   *
+   * The value is validated against the catalog entry, so nothing reaches the
+   * column — or, through it, a prompt — that the entry does not allow. A
+   * setting that is declared but not yet `live` is refused: saving it would
+   * store a choice no agent honours. Written as a single-key jsonb update, like
+   * names, so two concurrent changes to different settings both survive.
+   */
+  setSetting: protectedProcedure
+    .input(
+      z.object({
+        id: z.enum(AGENT_SETTING_IDS as [AgentSettingId, ...AgentSettingId[]]),
+        value: z.unknown(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const def = AGENT_SETTINGS[input.id];
+
+      if (!def.live) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "agentSetting.notAvailable" });
+      }
+
+      let stored: unknown = null;
+      if (input.value !== null) {
+        const parsed = parseAgentSettingValue(input.id, input.value);
+        if (!parsed.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "agentSetting.invalid" });
+        }
+        stored = parsed.value;
+      }
+
+      const next =
+        input.value === null
+          ? sql`${sql.identifier("agent_settings")} - ${input.id}::text`
+          : sql`${sql.identifier("agent_settings")} || jsonb_build_object(${input.id}::text, ${JSON.stringify(stored)}::jsonb)`;
+
+      // Workspace settings land on the organization; everything else, and
+      // workspace settings for someone without one, on the user.
+      const organizationId =
+        def.scope === "workspace" ? (await loadAgentConfigSource(ctx, userId)).organizationId : null;
+
+      if (def.scope === "workspace" && !(await canManageWorkspaceAgents(ctx, userId, organizationId))) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only a workspace admin can change this agent setting.",
+        });
+      }
+
+      if (organizationId !== null) {
+        await ctx.db
+          .update(organizations)
+          .set({ agentSettings: next, updatedAt: new Date() })
+          .where(eq(organizations.id, organizationId));
+      } else {
+        await ctx.db.update(users).set({ agentSettings: next }).where(eq(users.id, userId));
+      }
+
+      return { id: input.id, value: stored };
+    }),
 
   // -------------------------------------------------------------------------
   // C-2 Assistant memory
@@ -613,6 +795,28 @@ export const agentRouter = createTRPCRouter({
    */
   findingStats: protectedProcedure.query(async ({ ctx }) => {
     return findingStats(ctx, ctx.session.user.id);
+  }),
+
+  /**
+   * The brief Hemera delivered in-app most recently, if it is from the last
+   * twenty hours — the dashboard sets it as its headline. Older than that it
+   * describes a different day and the page falls back to its own summary.
+   */
+  latestBrief: protectedProcedure.query(async ({ ctx }) => {
+    const since = new Date(Date.now() - 20 * 3_600_000);
+    const [row] = await ctx.db
+      .select({ message: notifications.message, createdAt: notifications.createdAt })
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, ctx.session.user.id),
+          eq(notifications.title, DAILY_BRIEF_TITLE),
+          gte(notifications.createdAt, since),
+        ),
+      )
+      .orderBy(desc(notifications.createdAt))
+      .limit(1);
+    return row ?? null;
   }),
 
   // -------------------------------------------------------------------------

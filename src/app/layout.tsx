@@ -2,11 +2,7 @@ import "~/styles/globals.css";
 
 import { type Metadata, type Viewport } from "next";
 // Self-hosted (see styles/fonts.css for why not next/font/google).
-import "@fontsource-variable/nunito-sans/wght.css";
-import "@fontsource/instrument-serif/400.css";
-import "@fontsource/instrument-serif/400-italic.css";
-import "@fontsource-variable/playfair-display/wght.css";
-import "@fontsource-variable/playfair-display/wght-italic.css";
+import "@fontsource-variable/inter/wght.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "@fontsource-variable/source-serif-4/wght.css";
@@ -80,12 +76,8 @@ export default async function RootLayout({
   const messages = await getMessages();
 
 
-  // Instrument Serif carries no Cyrillic glyphs; `bg` falls back to a serif
-  // that does rather than to whatever the OS picks.
-  const display = locale === "bg" ? "font-display-cyrillic" : "font-display-latin";
-
   return (
-    <html lang={locale} className={`font-vars ${display}`} suppressHydrationWarning>
+    <html lang={locale} className="font-vars" suppressHydrationWarning>
       <head>
         {/* Applies the saved theme before first paint. Allowed by hash rather
             than nonce; the script text and its hash live together in

@@ -19,6 +19,7 @@ import {
 } from "~/server/llm/context/a1ContextBuilder";
 import { getA1SystemPrompt } from "~/server/llm/prompts/a1Prompts";
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
+import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
 import {
   parseAndValidate,
   type ParseError,
@@ -182,6 +183,7 @@ ${input.conversationSummary}`,
       // the model reads before that message.
       ...replyLanguageMessages({
         locale: input.contextPack.locale,
+        fixed: fixedReplyLanguage(input.contextPack.agentSettings),
         message: input.message,
       }),
       { role: "user", content: input.message },

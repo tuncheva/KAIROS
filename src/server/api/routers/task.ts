@@ -1,13 +1,64 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, type TRPCContext } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { assertProjectPermission } from "~/server/api/authz";
 import { tasks, projects, projectCollaborators, taskActivityLog, organizationMembers, users, organizations, events } from "~/server/db/schema";
 import { eq, and, desc, sql, isNull, gte, lte, isNotNull, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { notify, notifyMany } from "~/server/notifications/dispatch";
-import { projectAudience } from "~/server/notifications/audience";
+import type { db as Database } from "~/server/db";
+import {
+  notifyTaskAssignmentChanged,
+  notifyTaskCreated,
+  notifyTaskDeleted,
+  notifyTaskDetailsChanged,
+  notifyTaskStatusChanged,
+} from "~/server/notifications/workNotices";
+
+/**
+ * Check that `parentTaskId` may hold subtasks in `projectId`.
+ *
+ * Subtasks go one level deep: the parent must be a top-level task in the same
+ * project. `childId` is the task being moved under it, if it already exists —
+ * it cannot become its own parent, and a task that has subtasks of its own
+ * cannot become one.
+ */
+async function assertValidParent(
+  db: typeof Database,
+  projectId: number,
+  parentTaskId: number,
+  childId?: number,
+) {
+  if (childId !== undefined && parentTaskId === childId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "A task cannot be its own subtask" });
+  }
+
+  const [parent] = await db
+    .select({ projectId: tasks.projectId, parentTaskId: tasks.parentTaskId })
+    .from(tasks)
+    .where(eq(tasks.id, parentTaskId));
+
+  if (parent?.projectId !== projectId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Parent task not found in this project" });
+  }
+  if (parent.parentTaskId !== null) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Subtasks cannot have subtasks" });
+  }
+
+  if (childId !== undefined) {
+    const [child] = await db
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(eq(tasks.parentTaskId, childId))
+      .limit(1);
+    if (child) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "A task with subtasks cannot become a subtask",
+      });
+    }
+  }
+}
 
 export const taskRouter = createTRPCRouter({
  
@@ -22,6 +73,8 @@ export const taskRouter = createTRPCRouter({
         status: z.enum(["pending", "in_progress", "completed", "blocked"]).default("pending"),
         dueDate: z.date().optional(),
         clientRequestId: z.string().max(128).optional(),
+        /** Create as a subtask of this top-level task. */
+        parentTaskId: z.number().int().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -29,6 +82,10 @@ export const taskRouter = createTRPCRouter({
       // This replaces ~40 lines of inline checks that were copy-pasted into four
       // mutations in this file and had drifted apart; see `~/server/api/authz`.
       await assertProjectPermission(ctx, input.projectId, "canAssignTasks");
+
+      if (input.parentTaskId !== undefined) {
+        await assertValidParent(ctx.db, input.projectId, input.parentTaskId);
+      }
 
       
       // PERF + correctness: avoid loading all tasks and avoid race conditions on orderIndex.
@@ -60,6 +117,7 @@ export const taskRouter = createTRPCRouter({
         .insert(tasks)
         .values({
           projectId: input.projectId,
+          parentTaskId: input.parentTaskId ?? null,
           title: input.title,
           description: input.description ?? "",
           assignedToId: input.assignedToId,
@@ -81,7 +139,11 @@ export const taskRouter = createTRPCRouter({
           newValue: "Task created",
         });
 
-        await notifyTaskCreated(ctx, task, input.projectId);
+        await notifyTaskCreated(ctx.db, {
+          actorId: ctx.session.user.id,
+          projectId: input.projectId,
+          task,
+        });
       }
 
       return task;
@@ -162,6 +224,14 @@ export const taskRouter = createTRPCRouter({
         newValue: input.status,
       });
 
+      await notifyTaskStatusChanged(ctx.db, {
+        actorId: ctx.session.user.id,
+        projectId: task.projectId,
+        task,
+        oldStatus,
+        newStatus: input.status,
+      });
+
       return { success: true };
     }),
 
@@ -175,6 +245,8 @@ export const taskRouter = createTRPCRouter({
         assignedToId: z.string().optional().nullable(),
         priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
         dueDate: z.date().optional().nullable(),
+        /** Move under this top-level task, or `null` to make it top-level. */
+        parentTaskId: z.number().int().optional().nullable(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -189,6 +261,12 @@ export const taskRouter = createTRPCRouter({
 
       await assertProjectPermission(ctx, task.projectId, "canEditProjects");
 
+      const parentChanged =
+        input.parentTaskId !== undefined && input.parentTaskId !== task.parentTaskId;
+      if (parentChanged && input.parentTaskId != null) {
+        await assertValidParent(ctx.db, task.projectId, input.parentTaskId, task.id);
+      }
+
       const updateData: {
         updatedAt: Date;
         lastEditedById: string;
@@ -198,6 +276,7 @@ export const taskRouter = createTRPCRouter({
         assignedToId?: string | null;
         priority?: "low" | "medium" | "high" | "urgent";
         dueDate?: Date | null;
+        parentTaskId?: number | null;
       } = {
         updatedAt: new Date(),
         lastEditedById: ctx.session.user.id,
@@ -209,6 +288,7 @@ export const taskRouter = createTRPCRouter({
       if (input.assignedToId !== undefined) updateData.assignedToId = input.assignedToId;
       if (input.priority !== undefined) updateData.priority = input.priority;
       if (input.dueDate !== undefined) updateData.dueDate = input.dueDate;
+      if (parentChanged) updateData.parentTaskId = input.parentTaskId ?? null;
 
       await ctx.db
         .update(tasks)
@@ -224,34 +304,35 @@ export const taskRouter = createTRPCRouter({
       });
 
       /* Being handed somebody else's task is the one edit the new owner has to
-         know about. Scoped to an actual change of assignee: the task dialog sends
-         the current `assignedToId` back on every save, so comparing against the
-         stored value is what keeps a title tweak from re-notifying the assignee. */
-      if (
-        input.assignedToId !== undefined &&
-        input.assignedToId !== null &&
-        input.assignedToId !== task.assignedToId
-      ) {
-        const [project] = await ctx.db
-          .select({ title: projects.title })
-          .from(projects)
-          .where(eq(projects.id, task.projectId))
-          .limit(1);
+         know about — and losing one is the one the previous owner has to know
+         about. Scoped to an actual change of assignee: the task dialog sends the
+         current `assignedToId` back on every save, so comparing against the
+         stored value is what keeps a title tweak from re-notifying anyone. */
+      const taskTitle = input.title ?? task.title;
+      const assigneeChanged =
+        input.assignedToId !== undefined && input.assignedToId !== task.assignedToId;
 
-        const actor = await ctx.db.query.users.findFirst({
-          where: eq(users.id, ctx.session.user.id),
-          columns: { name: true },
-        });
-
-        await notify({
-          db: ctx.db,
-          userId: input.assignedToId,
+      if (assigneeChanged) {
+        await notifyTaskAssignmentChanged(ctx.db, {
           actorId: ctx.session.user.id,
-          category: "taskAssignment",
-          type: "task",
-          title: "Task assigned to you",
-          message: `${actor?.name ?? "Someone"} assigned you "${input.title ?? task.title}" in ${project?.title ?? "a project"}.`,
-          link: `/projects?projectId=${task.projectId}`,
+          projectId: task.projectId,
+          taskTitle,
+          previousAssigneeId: task.assignedToId,
+          newAssigneeId: input.assignedToId ?? null,
+        });
+      } else {
+        // A schedule or priority change matters to whoever owns the task. Skipped
+        // when the task also changed hands: the new owner's assignment notice
+        // already describes the task as it now is.
+        await notifyTaskDetailsChanged(ctx.db, {
+          actorId: ctx.session.user.id,
+          projectId: task.projectId,
+          taskTitle,
+          assigneeId: task.assignedToId,
+          dueDate:
+            input.dueDate !== undefined ? { from: task.dueDate, to: input.dueDate } : undefined,
+          priority:
+            input.priority !== undefined ? { from: task.priority, to: input.priority } : undefined,
         });
       }
 
@@ -281,6 +362,13 @@ export const taskRouter = createTRPCRouter({
       await assertProjectPermission(ctx, task.projectId, "canDeleteTasks");
 
       await ctx.db.delete(tasks).where(eq(tasks.id, input.taskId));
+
+      // `task` was read above, before the delete, so it can still be named.
+      await notifyTaskDeleted(ctx.db, {
+        actorId: ctx.session.user.id,
+        projectId: task.projectId,
+        task,
+      });
 
       return { success: true };
     }),
@@ -332,6 +420,13 @@ export const taskRouter = createTRPCRouter({
       }
 
       await ctx.db.delete(tasks).where(eq(tasks.id, input.taskId));
+
+      await notifyTaskDeleted(ctx.db, {
+        actorId: ctx.session.user.id,
+        projectId: task.projectId,
+        task,
+      });
+
       return { success: true };
     }),
 
@@ -453,6 +548,7 @@ export const taskRouter = createTRPCRouter({
           status: tasks.status,
           priority: tasks.priority,
           dueDate: tasks.dueDate,
+          parentTaskId: tasks.parentTaskId,
           orderIndex: tasks.orderIndex,
           createdAt: tasks.createdAt,
           creator: {
@@ -775,6 +871,7 @@ export const taskRouter = createTRPCRouter({
           status: tasks.status,
           priority: tasks.priority,
           dueDate: tasks.dueDate,
+          assignedToId: tasks.assignedToId,
           projectId: tasks.projectId,
           projectTitle: projects.title,
         })
@@ -822,65 +919,3 @@ export const taskRouter = createTRPCRouter({
       return { tasks: taskRows, events: eventRows };
     }),
 });
-
-/**
- * Tell a project's members that work was added, and tell an assignee it is theirs.
- *
- * "Somebody added something to a project" produced no notification at all before
- * this: the only project-related notification in the codebase was the
- * collaborator invite, so a project could fill up with work and every member
- * other than the author would learn about it by happening to look.
- *
- * The assignee gets the *assignment* notice and is excluded from the general
- * activity notice, so being given a task is one bell entry rather than two.
- */
-async function notifyTaskCreated(
-  ctx: TRPCContext & { session: { user: { id: string } } },
-  task: { id: number; title: string; assignedToId: string | null },
-  projectId: number,
-): Promise<void> {
-  const actorId = ctx.session.user.id;
-
-  const [project] = await ctx.db
-    .select({ title: projects.title })
-    .from(projects)
-    .where(eq(projects.id, projectId))
-    .limit(1);
-
-  const actor = await ctx.db.query.users.findFirst({
-    where: eq(users.id, actorId),
-    columns: { name: true },
-  });
-
-  const actorName = actor?.name ?? "Someone";
-  const projectTitle = project?.title ?? "a project";
-  const link = `/projects?projectId=${projectId}`;
-
-  if (task.assignedToId && task.assignedToId !== actorId) {
-    await notify({
-      db: ctx.db,
-      userId: task.assignedToId,
-      actorId,
-      category: "taskAssignment",
-      type: "task",
-      title: "New task assigned to you",
-      message: `${actorName} assigned you "${task.title}" in ${projectTitle}.`,
-      link,
-    });
-  }
-
-  const audience = (await projectAudience(ctx.db, projectId)).filter(
-    (id) => id !== task.assignedToId,
-  );
-
-  await notifyMany({
-    db: ctx.db,
-    userIds: audience,
-    actorId,
-    category: "projectUpdate",
-    type: "project",
-    title: "New task added",
-    message: `${actorName} added "${task.title}" to ${projectTitle}.`,
-    link,
-  });
-}

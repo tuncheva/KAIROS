@@ -1,11 +1,11 @@
 "use client";
 
 import { api } from"~/trpc/react";
-import { ChevronDown, LogIn, LogOut, Users } from "~/components/ui/icons";
+import { LogIn, LogOut, Users } from "~/components/ui/icons";
 import { signIn, signOut, useSession } from"next-auth/react";
 import { useState, useRef, useEffect } from"react";
 import Image from"next/image";
-import { avatarGradientStyle } from"~/lib/avatarGradient";
+import { useSocketConnected } from "~/components/providers/SocketProvider";
 import { useTranslations } from"next-intl";
 import { onAvatarUpdate } from"~/lib/avatarEvents";
 import { Skeleton } from "~/components/ui/Skeleton";
@@ -38,6 +38,10 @@ export function UserDisplay() {
  // here changes without waiting for the profile query to come back around.
  const [avatarOverride, setAvatarOverride] = useState<string | null>(null);
  const dropdownRef = useRef<HTMLDivElement>(null);
+ // The dot on the avatar is the live connection, not a status you set: green
+ // while the realtime socket is up, gone while it is not — so a quiet chat or
+ // a bell that stopped ringing has an explanation one glance away.
+ const isLive = useSocketConnected();
 
  const { status } = useSession();
  const enabled = status ==="authenticated";
@@ -208,19 +212,9 @@ export function UserDisplay() {
 
  if (showSkeleton) {
  return (
- <div className="flex items-center gap-3" aria-hidden="true">
- {/* Same boxes as the loaded button: a 20px name line and a 16px email
-     line, right-aligned, then the avatar and the (real, inert) chevron. */}
- <div className="hidden sm:flex flex-col items-end">
- <span className="flex h-5 items-center">
- <Skeleton className="h-[9px] w-24" />
- </span>
- <span className="flex h-4 items-center">
- <Skeleton className="h-[7px] w-32" row={1} />
- </span>
- </div>
- <Skeleton shape="circle" className="w-8 h-8" />
- <ChevronDown size={16} className="text-fg-secondary" />
+ <div className="flex items-center p-0.5" aria-hidden="true">
+ {/* Same box as the loaded button: the avatar alone. */}
+ <Skeleton shape="circle" className="w-[34px] h-[34px]" />
  </div>
  );
  }
@@ -240,82 +234,61 @@ export function UserDisplay() {
 
  return (
  <div className="relative" ref={dropdownRef}>
+ {/* Avatar only. The name + email stack was the widest thing in the bar
+     and said what the avatar already says; it now heads the menu. */}
  <button
  onClick={() => setIsOpen(!isOpen)}
- className="flex items-center gap-3 group rounded-xl focus-visible:outline-none"
+ className={`relative flex items-center rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tui-accent ${
+ isOpen ? "bg-tui-ink/[0.05]" : "hover:bg-tui-ink/[0.05]"
+ }`}
  aria-haspopup="menu"
  aria-expanded={isOpen}
+ aria-label={user.name ?? user.email ?? tSettings("title")}
+ title={user.email ?? undefined}
  >
- <div className="hidden sm:flex flex-col items-end">
- <div className="text-sm font-medium text-fg-primary group-hover:text-fg-primary transition-colors">
- {user.name ??"User"}
- </div>
- <div className="text-xs text-fg-secondary group-hover:text-fg-primary transition-colors">
- {user.email}
- </div>
- </div>
- 
- {avatarSrc ? (
- <Image src={avatarSrc} alt={user.name ??"User"} width={32} height={32} unoptimized className="w-8 h-8 rounded-full object-cover ring-2 ring-border-light/20 group-hover:ring-accent-primary/50 transition-all" />
- ) : (
- <div style={avatarGradientStyle(user.id ?? user.email ?? user.name)} className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold">
- {user.name?.charAt(0).toUpperCase() ??"U"}
- </div>
- )}
- 
- <ChevronDown 
- size={16} 
- className={`text-fg-secondary group-hover:text-fg-primary transition-transform ${isOpen ?"rotate-180" :""}`}
+ <Avatar src={avatarSrc} name={user.name} size={34} />
+ {isLive ? (
+ <span
+ aria-hidden="true"
+ className="absolute right-0.5 bottom-0.5 h-[9px] w-[9px] rounded-full bg-tui-ok ring-2 ring-tui-pane"
  />
+ ) : null}
  </button>
 
  {isOpen && (
  <div
- className="absolute right-0 mt-3 w-64 rounded-lg border border-border-medium shadow-2xl overflow-hidden z-50 bg-bg-elevated"
+ className="absolute right-0 mt-2 w-[268px] rounded-xl border border-tui-ink/12 shadow-[var(--tui-lift)] overflow-hidden z-50 bg-tui-pane"
  role="menu"
  aria-label={tSettings("title")}
  >
- <div className="p-4 border-b border-border-medium bg-bg-secondary">
+ <div className="px-4 pt-4 pb-3.5 border-b border-tui-ink/8">
  <div className="flex items-center gap-3">
- {avatarSrc ? (
- <Image
- src={avatarSrc}
- alt={user.name ??"User"}
- width={48}
- height={48}
- unoptimized
- className="w-12 h-12 rounded-full object-cover ring-2 ring-border-light/20"
- />
- ) : (
- <div style={avatarGradientStyle(user.id ?? user.email ?? user.name)} className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold">
- {user.name?.charAt(0).toUpperCase() ??"U"}
- </div>
- )}
+ <Avatar src={avatarSrc} name={user.name} size={42} />
  <div className="flex-1 min-w-0">
- <div className="text-sm font-semibold text-fg-primary truncate">
+ <div className="font-display text-[20px] leading-tight text-tui-ink truncate">
  {user.name ??"User"}
  </div>
- <div className="text-xs text-fg-secondary truncate">
+ <div className="text-xs text-tui-ink3 truncate">
  {user.email}
  </div>
  {profile?.role && (
- <div className="text-[10px] text-accent-primary font-medium mt-0.5 capitalize">
+ <div className="text-[11px] text-tui-accent font-medium mt-0.5 capitalize">
  {profile.role}{profile.organization ? ` · ${profile.organization.name}` : ""}
  </div>
  )}
  </div>
  </div>
  {user.bio && (
- <p className="text-xs text-fg-secondary mt-2 line-clamp-2">
+ <p className="text-xs text-tui-ink2 mt-2 line-clamp-2">
  {user.bio}
  </p>
  )}
  </div>
 
- <div className="p-2">
+ <div className="p-1.5">
  <a
  href="/orgs"
- className="flex items-center gap-3 px-3 py-2.5 text-sm text-fg-primary hover:bg-bg-secondary/60 rounded-xl transition-colors"
+ className="flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-lg transition-colors"
  onClick={() => setIsOpen(false)}
  role="menuitem"
  >
@@ -326,7 +299,7 @@ export function UserDisplay() {
  {otherAccounts.length === 0 ? (
  <button
  onClick={handleSwitchAccount}
- className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-fg-primary hover:bg-bg-secondary/60 rounded-xl transition-colors"
+ className="w-full flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-lg transition-colors"
  role="menuitem"
  >
  <LogIn size={16} />
@@ -334,7 +307,7 @@ export function UserDisplay() {
  </button>
  ) : (
  <div className="mt-1">
- <div className="px-3 pt-2 pb-1 text-xs font-medium text-fg-tertiary">
+ <div className="px-2.5 pt-2 pb-1 text-[11px] font-medium uppercase tracking-[0.12em] text-tui-ink3">
  {tSettings("security.changeAccount")}
  </div>
  {pendingAccount ? (
@@ -345,7 +318,7 @@ export function UserDisplay() {
  void handleSwitchToAccount(pendingAccount, switchPassword);
  }}
  >
- <div className="text-xs text-fg-secondary truncate">
+ <div className="text-xs text-tui-ink3 truncate">
  {tSettings("security.switchConfirmFor", { email: pendingAccount.email })}
  </div>
  <input
@@ -355,7 +328,7 @@ export function UserDisplay() {
  value={switchPassword}
  onChange={(e) => setSwitchPassword(e.target.value)}
  placeholder={tSettings("security.switchPasswordLabel")}
- className="w-full px-2.5 py-1.5 text-sm rounded-lg bg-bg-secondary/60 text-fg-primary border border-border-light/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary"
+ className="w-full px-2.5 py-1.5 text-sm rounded-lg bg-tui-ink/[0.035] text-tui-ink border border-tui-ink/12 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-tui-accent"
  />
  {switchError ? (
  <div className="text-xs text-status-danger-ink">{switchError}</div>
@@ -364,7 +337,7 @@ export function UserDisplay() {
  <button
  type="submit"
  disabled={isSwitching}
- className="flex-1 px-2.5 py-1.5 text-sm rounded-lg bg-accent-primary text-white disabled:opacity-60"
+ className="flex-1 px-2.5 py-1.5 text-sm rounded-full bg-tui-accent text-tui-on-accent disabled:opacity-60"
  >
  {isSwitching
  ? tSettings("security.switching")
@@ -373,7 +346,7 @@ export function UserDisplay() {
  <button
  type="button"
  onClick={cancelSwitch}
- className="px-2.5 py-1.5 text-sm rounded-lg text-fg-secondary hover:bg-bg-secondary/60"
+ className="px-2.5 py-1.5 text-sm rounded-full text-tui-ink2 hover:bg-tui-ink/[0.045]"
  >
  {tSettings("security.switchCancel")}
  </button>
@@ -381,7 +354,7 @@ export function UserDisplay() {
  <button
  type="button"
  onClick={() => void switchViaFullSignIn(pendingAccount)}
- className="w-full text-left text-xs text-fg-secondary hover:text-fg-primary underline"
+ className="w-full text-left text-xs text-tui-ink3 hover:text-tui-ink underline"
  >
  {tSettings("security.switchUseOtherMethod")}
  </button>
@@ -391,7 +364,7 @@ export function UserDisplay() {
  <button
  key={acct.email}
  onClick={() => beginSwitchToAccount(acct)}
- className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-fg-primary hover:bg-bg-secondary/60 rounded-xl transition-colors"
+ className="w-full flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-lg transition-colors"
  role="menuitem"
  >
  {acct.image ? (
@@ -403,7 +376,7 @@ export function UserDisplay() {
  className="w-5 h-5 rounded-full object-cover"
  />
  ) : (
- <div className="w-5 h-5 rounded-full bg-bg-tertiary/60" />
+ <div className="w-5 h-5 rounded-full bg-tui-ink/10" />
  )}
  <span className="truncate">{acct.name?.trim() ? acct.name : tSettings("security.account")}</span>
  </button>
@@ -412,7 +385,7 @@ export function UserDisplay() {
 
  <button
  onClick={handleSwitchAccount}
- className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-fg-primary hover:bg-bg-secondary/60 rounded-xl transition-colors"
+ className="w-full flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-lg transition-colors"
  role="menuitem"
  >
  <LogIn size={16} />
@@ -423,7 +396,7 @@ export function UserDisplay() {
 
  <a
  href="/settings"
- className="flex items-center gap-3 px-3 py-2.5 text-sm text-fg-primary hover:bg-bg-secondary/60 rounded-xl transition-colors"
+ className="flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-lg transition-colors"
  onClick={() => setIsOpen(false)}
  role="menuitem"
  >
@@ -443,9 +416,10 @@ export function UserDisplay() {
  {tSettings("profile.title")}
  </a>
  
+ <div aria-hidden="true" className="mx-2.5 my-1 border-t border-tui-ink/8" />
  <button
  onClick={handleSignOut}
- className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-accent-primary hover:bg-accent-primary/10 rounded-xl transition-colors"
+ className="w-full flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-danger hover:bg-tui-danger/10 rounded-lg transition-colors"
  role="menuitem"
  >
  <LogOut size={16} />
@@ -455,5 +429,43 @@ export function UserDisplay() {
  </div>
  )}
  </div>
+ );
+}
+
+/**
+ * The account's face: the uploaded picture, or a serif initial on a quiet ink
+ * wash — the refined edition's avatar, in place of the gradient disc.
+ */
+function Avatar({
+ src,
+ name,
+ size,
+}: {
+ src: string | null;
+ name?: string | null;
+ size: number;
+}) {
+ if (src) {
+ return (
+ <Image
+ src={src}
+ alt=""
+ width={size}
+ height={size}
+ unoptimized
+ className="rounded-full object-cover ring-1 ring-tui-ink/12"
+ style={{ width: size, height: size }}
+ />
+ );
+ }
+
+ return (
+ <span
+ aria-hidden="true"
+ className="flex items-center justify-center rounded-full border border-tui-ink/12 bg-tui-ink/[0.06] font-display leading-none text-tui-ink"
+ style={{ width: size, height: size, fontSize: Math.round(size * 0.5) }}
+ >
+ {name?.trim() ? name.trim().charAt(0).toUpperCase() : "U"}
+ </span>
  );
 }

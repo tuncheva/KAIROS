@@ -27,6 +27,7 @@ import "server-only";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 import type { TRPCContext } from "~/server/api/trpc";
+import { agentSetting } from "~/lib/agentSettings";
 import { aiFindings, projects, taskDependencies, tasks } from "~/server/db/schema";
 import { createLogger } from "~/server/logger";
 import { loadVisibleScope, visibleProjectsWhere } from "~/server/llm/tools/a1/scope";
@@ -63,8 +64,6 @@ export interface Finding {
   source?: "deterministic" | "ai_pattern";
 }
 
-/** How stale a project must be before "stalled" is worth saying. */
-const STALL_WINDOW_DAYS = 14;
 /** Below this, "3 tasks are overdue" is noise the user can already see. */
 const OVERDUE_CLUSTER_MIN = 3;
 const UNASSIGNED_MIN = 3;
@@ -87,7 +86,16 @@ function bucket(count: number): string {
 export async function detectFindings(
   ctx: TRPCContext,
   userId: string,
+  options: {
+    /**
+     * How long a project may go without a completed task before it counts as
+     * stalled. The user's "Stalled after" setting; the catalog default otherwise.
+     */
+    stalledAfterDays?: number;
+  } = {},
 ): Promise<{ findings: Finding[]; projectNames: Map<number, string> }> {
+  const stallDays =
+    options.stalledAfterDays ?? agentSetting(undefined, "risk_radar.stalledAfterDays");
   const scope = await loadVisibleScope(ctx, userId);
 
   const visible = await ctx.db
@@ -102,7 +110,7 @@ export async function detectFindings(
 
   const now = new Date();
   const stallCutoff = new Date(
-    now.getTime() - STALL_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+    now.getTime() - stallDays * 24 * 60 * 60 * 1000,
   );
 
   const rows = await ctx.db
@@ -164,8 +172,8 @@ export async function detectFindings(
         kind: "stalled_project",
         severity: "warning",
         projectId: project.id,
-        title: `${name} hasn't moved in ${String(STALL_WINDOW_DAYS)} days`,
-        detail: `Nothing has been completed in ${name} for ${STALL_WINDOW_DAYS} days, and ${open.length} tasks are still open.`,
+        title: `${name} hasn't moved in ${String(stallDays)} days`,
+        detail: `Nothing has been completed in ${name} for ${String(stallDays)} days, and ${open.length} tasks are still open.`,
         // No count in the fingerprint: a project either is stalled or it is not,
         // and re-raising it as the open count drifts would be nagging.
         fingerprint: `stalled:${String(project.id)}`,

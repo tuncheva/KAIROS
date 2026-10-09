@@ -3,6 +3,9 @@ import { eq, desc, inArray } from "drizzle-orm";
 import type { TRPCContext } from "~/server/api/trpc";
 import { projects, tasks, projectCollaborators, users } from "~/server/db/schema";
 import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
+import { resolveAgentConfig } from "~/server/llm/agents/config";
+import type { AgentNameOverrides } from "~/lib/agentNames";
+import { inProjectScope, type ResolvedAgentSettings } from "~/lib/agentSettings";
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import { loadVisibleScope, visibleProjectsWhere } from "~/server/llm/tools/a1/scope";
 import { loadAssigneeWorkload, type AssigneeWorkload } from "~/server/llm/context/assigneeWorkload";
@@ -54,6 +57,10 @@ export interface A2ContextPack {
   locale: SupportedLocale;
   /** Global facts plus any the user set for the Task Planner specifically. */
   memory: MemoryFact[];
+  /** What this workspace calls its agents; empty means the defaults. */
+  agentNames?: AgentNameOverrides;
+  /** Agent settings in force for this user; absent means the defaults. */
+  agentSettings?: ResolvedAgentSettings;
 }
 
 export async function buildA2Context(input: {
@@ -73,9 +80,10 @@ export async function buildA2Context(input: {
   const scope = input.scope ?? {};
   const projectId = scope.projectId;
 
-  const [memory, locale] = await Promise.all([
+  const [memory, locale, agentConfig] = await Promise.all([
     loadUserMemory(input.ctx, userId, "task_planner"),
     resolveUserLocale(input.ctx, userId),
+    resolveAgentConfig(input.ctx, userId),
   ]);
 
   // Minimal pack when projectId missing; include available projects so A2 can reference them.
@@ -83,12 +91,15 @@ export async function buildA2Context(input: {
     // Cross-project mode: when orgId is set and no projectId, load all visible projects
     if (scope.orgId) {
       const visibleScope = await loadVisibleScope(input.ctx, userId);
-      const allProjectRows = await input.ctx.db
-        .select({ id: projects.id, title: projects.title })
-        .from(projects)
-        .where(visibleProjectsWhere(visibleScope))
-        .orderBy(projects.id)
-        .limit(200);
+      // Only the projects inside Odysseus's scope: the rest are not its to plan in.
+      const allProjectRows = (
+        await input.ctx.db
+          .select({ id: projects.id, title: projects.title })
+          .from(projects)
+          .where(visibleProjectsWhere(visibleScope))
+          .orderBy(projects.id)
+          .limit(200)
+      ).filter((p) => inProjectScope(agentConfig.settings["task_planner.scope"], p.id));
 
       const allProjects: Array<{ id: number; title: string; collaborators: Array<{ id: string; name: string | null }> }> = [];
 
@@ -137,6 +148,8 @@ export async function buildA2Context(input: {
         handoffContext: input.handoffContext,
         locale,
         memory,
+        agentNames: agentConfig.names,
+        agentSettings: agentConfig.settings,
       };
     }
 
@@ -150,10 +163,14 @@ export async function buildA2Context(input: {
       scope,
       collaborators: [],
       existingTasks: [],
-      availableProjects: userProjects,
+      availableProjects: userProjects.filter((p) =>
+        inProjectScope(agentConfig.settings["task_planner.scope"], p.id),
+      ),
       handoffContext: input.handoffContext,
       locale,
       memory,
+      agentNames: agentConfig.names,
+      agentSettings: agentConfig.settings,
     };
   }
 
@@ -256,5 +273,7 @@ export async function buildA2Context(input: {
     handoffContext: input.handoffContext,
     locale,
     memory,
+    agentNames: agentConfig.names,
+    agentSettings: agentConfig.settings,
   };
 }

@@ -1,12 +1,35 @@
+import { agentNameFor } from "~/lib/agentNames";
+import { agentSetting, type ResolvedAgentSettings } from "~/lib/agentSettings";
 import type { A2ContextPack } from "../context/a2ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
 import { answerableRule } from "~/server/llm/prompts/answerableRule";
 import { ACTIVITY_WINDOW_DAYS } from "~/server/llm/context/assigneeWorkload";
 import {
+  fixedReplyLanguage,
   languageRule,
   wantsBulgarianGuidance,
   wantsLocaleFallback,
 } from "~/server/llm/prompts/languageRules";
+
+/**
+ * The workspace's task defaults, as the model needs to know them: which fields
+ * to leave out so the server fills them, rather than guessing a value.
+ */
+function taskDefaultsRule(settings: Partial<ResolvedAgentSettings> | undefined): string {
+  const priority = agentSetting(settings, "task_planner.priority");
+  const due = agentSetting(settings, "task_planner.dueInDays");
+  const assignee = agentSetting(settings, "task_planner.assignee");
+  return [
+    "## Workspace defaults",
+    `- Set \`priority\` only when the request gives a reason for one (urgency, a deadline, importance). Otherwise leave it out and the workspace default, "${priority}", is applied.`,
+    due === "none"
+      ? "- Set \`dueDate\` only when the request implies a date."
+      : `- Set \`dueDate\` only when the request implies a date. Leave it out and the task is due ${String(due)} day(s) from today, the workspace default.`,
+    assignee === "requester"
+      ? "- A task you leave unassigned is assigned to the person asking, the workspace default."
+      : "- A task you leave unassigned stays unassigned.",
+  ].join("\n");
+}
 
 /**
  * @param userText - The user's own words this turn (the message, and on the
@@ -21,9 +44,9 @@ export function getA2SystemPrompt(
   // Memory is rendered as prose below, not dumped with the rest of the pack: a
   // preference buried in a JSON blob reads as data to describe rather than an
   // instruction to follow.
-  const { memory, ...contextForJson } = context;
+  const { memory, agentNames: _agentNames, agentSettings: _agentSettings, ...contextForJson } = context;
 
-  return `You are the KAIROS Task Planner (A2) — a specialized AI embedded in the KAIROS project management platform.
+  return `You are ${agentNameFor("task_planner", context.agentNames)}, the KAIROS Task Planner (A2) — a specialized AI embedded in the KAIROS project management platform.
 
 ## Identity & Personality
 - Name: KAIROS Task Planner
@@ -71,6 +94,7 @@ You are in DRAFT mode.
 
 ${languageRule({
   locale: context.locale,
+  fixedLanguage: fixedReplyLanguage(context.agentSettings),
   bulgarianGuidance: wantsBulgarianGuidance(...userText),
   localeFallback: wantsLocaleFallback(...userText),
   fields: [
@@ -126,6 +150,8 @@ ${answerableRule()}
 - Provide ordering (orderIndex) guidance when useful.
 - Assign to a collaborator only if confident; otherwise leave assignedToId unset.
 
+${taskDefaultsRule(context.agentSettings)}
+
 ## Choosing an Assignee
 \`assigneeWorkload\` in the context lists every candidate's load across ALL of their projects, not just this one, lightest first. Use it whenever you pick who does the work — the user asks you to assign something, asks who has room, or leaves the assignee to you.
 - Prefer a candidate whose \`loadLevel\` is "light", then "moderate". Avoid "heavy" unless nobody else fits.
@@ -153,7 +179,7 @@ Return ONLY a JSON object matching:
     {
       "title": "string",
       "description": "string",
-      "priority": "low" | "medium" | "high" | "urgent",
+      "priority?": "low" | "medium" | "high" | "urgent",
       "assignedToId?": "string",
       "acceptanceCriteria": ["string"],
       "orderIndex?": number,

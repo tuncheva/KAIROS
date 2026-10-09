@@ -9,6 +9,7 @@ import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { api } from "~/trpc/react";
 
 import type { AgentSummary } from "./types";
+import { useAgentLabel } from "./useAgentLabel";
 
 const GLOBAL_SCOPE = "global";
 
@@ -36,6 +37,7 @@ interface Props {
  */
 export function MemoryPanel({ agents, activeAgentId }: Props) {
   const t = useTranslations("agents");
+  const label = useAgentLabel();
   const utils = api.useUtils();
 
   const memory = api.agent.memory.useQuery(undefined, { retry: false });
@@ -53,7 +55,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
   const scopeName = (s: string) =>
     s === GLOBAL_SCOPE
       ? t("scopeGlobal")
-      : (agents.find((a) => a.id === s)?.name ?? s);
+      : label.name(s, agents.find((a) => a.id === s)?.name);
 
   const reset = () => {
     setAdding(false);
@@ -142,7 +144,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
                 .filter((a) => a.kind === "conversational")
                 .map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.name}
+                    {label.name(a.id, a.name)}
                   </option>
                 ))}
             </select>

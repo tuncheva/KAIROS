@@ -34,8 +34,13 @@ import { A1_READ_TOOLS } from "~/server/llm/tools/a1/readTools";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
+import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
+import { applyTaskDefaults } from "~/server/llm/agents/defaults";
 
-import { localized, type LocalizedText } from "~/server/llm/locale";
+import { localized, resolveUserLocale, type LocalizedText } from "~/server/llm/locale";
+import { loadAgentConfigSource } from "~/server/llm/agents/config";
+import { agentNameFor } from "~/lib/agentNames";
+import { inProjectScope } from "~/lib/agentSettings";
 
 import {
   tasks,
@@ -53,6 +58,137 @@ import {
   mintConfirmationToken,
   readConfirmationToken,
 } from "./shared";
+import {
+  notifyTaskAssignmentChanged,
+  notifyTaskCreated,
+  notifyTaskDeleted,
+  notifyTaskDetailsChanged,
+  notifyTaskStatusChanged,
+} from "~/server/notifications/workNotices";
+
+type TaskRowForNotice = {
+  id: number;
+  title: string;
+  status: "pending" | "in_progress" | "completed" | "blocked";
+  priority: "low" | "medium" | "high" | "urgent";
+  dueDate: Date | null;
+  assignedToId: string | null;
+  createdById: string | null;
+};
+
+/**
+ * The rows an apply is about to touch, as the notices need them, read *before*
+ * the writes — a deleted task cannot be named afterwards, and "reassigned away
+ * from you" needs to know who had it.
+ */
+async function loadTasksForNotice(
+  ctx: TRPCContext,
+  projectId: number,
+  plan: Pick<TaskPlanDraft, "updates" | "statusChanges" | "deletes">,
+): Promise<Map<number, TaskRowForNotice>> {
+  const ids = [
+    ...plan.updates.map((u) => u.taskId),
+    ...plan.statusChanges.map((s) => s.taskId),
+    ...plan.deletes.filter((d) => d.dangerous).map((d) => d.taskId),
+  ];
+  if (ids.length === 0) return new Map();
+
+  const rows = await ctx.db
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      status: tasks.status,
+      priority: tasks.priority,
+      dueDate: tasks.dueDate,
+      assignedToId: tasks.assignedToId,
+      createdById: tasks.createdById,
+    })
+    .from(tasks)
+    .where(and(inArray(tasks.id, [...new Set(ids)]), eq(tasks.projectId, projectId)));
+
+  return new Map(rows.map((r) => [r.id, r]));
+}
+
+/**
+ * The same notices `task.create` / `task.update` / `task.updateStatus` /
+ * `task.delete` send, for the writes an approved plan just made. Without this
+ * the assistant was a way to assign, reschedule or delete someone's work without
+ * them ever hearing about it.
+ *
+ * `actorId` is the user the agent acted for, so their own changes stay silent
+ * for them exactly as they would from the UI.
+ */
+async function notifyAppliedTaskOps(
+  ctx: TRPCContext,
+  input: {
+    actorId: string;
+    projectId: number;
+    before: Map<number, TaskRowForNotice>;
+    created: Array<{ title: string; assignedToId: string | null }>;
+    updates: TaskPlanDraft["updates"];
+    statusChanges: TaskPlanDraft["statusChanges"];
+    deletes: TaskPlanDraft["deletes"];
+  },
+): Promise<void> {
+  const { actorId, projectId, before } = input;
+
+  for (const task of input.created) {
+    await notifyTaskCreated(ctx.db, { actorId, projectId, task });
+  }
+
+  for (const u of input.updates) {
+    const prev = before.get(u.taskId);
+    if (!prev) continue;
+    const taskTitle = u.patch.title ?? prev.title;
+    const nextAssignee =
+      "assignedToId" in u.patch ? (u.patch.assignedToId ?? null) : prev.assignedToId;
+
+    if (nextAssignee !== prev.assignedToId) {
+      await notifyTaskAssignmentChanged(ctx.db, {
+        actorId,
+        projectId,
+        taskTitle,
+        previousAssigneeId: prev.assignedToId,
+        newAssigneeId: nextAssignee,
+      });
+    } else {
+      await notifyTaskDetailsChanged(ctx.db, {
+        actorId,
+        projectId,
+        taskTitle,
+        assigneeId: prev.assignedToId,
+        dueDate:
+          "dueDate" in u.patch
+            ? { from: prev.dueDate, to: u.patch.dueDate ? new Date(u.patch.dueDate) : null }
+            : undefined,
+        priority:
+          u.patch.priority !== undefined
+            ? { from: prev.priority, to: u.patch.priority }
+            : undefined,
+      });
+    }
+  }
+
+  for (const s of input.statusChanges) {
+    const prev = before.get(s.taskId);
+    if (!prev) continue;
+    await notifyTaskStatusChanged(ctx.db, {
+      actorId,
+      projectId,
+      task: prev,
+      oldStatus: prev.status,
+      newStatus: s.status,
+    });
+  }
+
+  for (const d of input.deletes) {
+    if (!d.dangerous) continue;
+    const prev = before.get(d.taskId);
+    if (!prev) continue;
+    await notifyTaskDeleted(ctx.db, { actorId, projectId, task: prev });
+  }
+}
+
 /**
  * The plan a refinement is revising, as JSON, or null.
  *
@@ -89,6 +225,15 @@ async function loadRefinablePlan(
  * Only used when the model asked nothing of its own; its own question is already
  * in the right language.
  */
+/** Shown instead of a plan when the project is outside the scope a workspace admin set. */
+const OUT_OF_SCOPE: LocalizedText = {
+  en: "In this workspace, {name} can only work in the projects chosen for it in Settings → AI, and this project isn’t one of them.",
+  bg: "В това работно пространство {name} може да работи само в проектите, избрани за него в Настройки → AI, а този проект не е сред тях.",
+  de: "In diesem Arbeitsbereich darf {name} nur in den unter Einstellungen → KI ausgewählten Projekten arbeiten, und dieses Projekt gehört nicht dazu.",
+  es: "En este espacio de trabajo, {name} solo puede trabajar en los proyectos elegidos para él en Ajustes → IA, y este proyecto no es uno de ellos.",
+  fr: "Dans cet espace de travail, {name} ne peut travailler que dans les projets choisis pour lui dans Paramètres → IA, et ce projet n’en fait pas partie.",
+};
+
 const NEEDS_PROJECT_QUESTION: LocalizedText = {
   en: "Which project should I add these tasks to? Please specify the project name.",
   bg: "В кой проект да добавя тези задачи? Моля, укажете името на проекта.",
@@ -199,6 +344,29 @@ export const a2TaskPlanner = {
       );
     }
 
+    // The workspace may have narrowed which projects Odysseus works in. Checked
+    // before the context is built, so an out-of-scope project's tasks never
+    // reach the prompt and no model call is spent on a plan that would be refused.
+    const agentSource = await loadAgentConfigSource(input.ctx, userId);
+    const taskScope = agentSource.settings["task_planner.scope"];
+    if (typeof resolvedProjectId === "number" && !inProjectScope(taskScope, resolvedProjectId)) {
+      const locale = await resolveUserLocale(input.ctx, userId);
+      const language = fixedReplyLanguage(agentSource.settings) ?? locale;
+      return {
+        draftId: createDraftId(),
+        plan: TaskPlanDraftSchema.parse({
+          agentId: "task_planner",
+          scope: { projectId: resolvedProjectId },
+          questionsForUser: [
+            localized(OUT_OF_SCOPE, language).replace(
+              "{name}",
+              agentNameFor("task_planner", agentSource.names),
+            ),
+          ],
+        }),
+      };
+    }
+
     // Cross-project mode: verify the user is actually a member of the org
     const resolvedOrgId = input.scope?.orgId
       ? typeof input.scope.orgId === "string"
@@ -261,6 +429,7 @@ export const a2TaskPlanner = {
           : []),
         ...replyLanguageMessages({
           locale: contextPack.locale,
+          fixed: fixedReplyLanguage(contextPack.agentSettings),
           message: input.message,
           originalMessage: input.originalMessage,
         }),
@@ -280,8 +449,10 @@ export const a2TaskPlanner = {
     }
 
     // Everything the model must not be trusted to produce is filled in here:
-    // the project the plan applies to (already resolved and authorized above)
-    // and one idempotency key per created task.
+    // the project the plan applies to (already resolved and authorized above),
+    // the workspace's task defaults for whatever the model left open, and one
+    // idempotency key per created task.
+    const now = new Date();
     const draftPlan: TaskPlanDraft = {
       ...parseResult.data,
       scope: {
@@ -289,10 +460,22 @@ export const a2TaskPlanner = {
         projectId: resolvedProjectId,
       },
       creates: parseResult.data.creates.map((c) => ({
-        ...c,
+        ...applyTaskDefaults(c, contextPack.agentSettings, { requesterId: userId, now }),
         clientRequestId: crypto.randomUUID(),
       })),
     };
+
+    // Cross-project plans name a project per operation; anything aimed outside
+    // the scope is dropped here so the draft the user reviews is the one that
+    // can actually be applied.
+    if (taskScope.mode === "only") {
+      const inScope = (op: { projectId?: number }) =>
+        op.projectId === undefined || inProjectScope(taskScope, op.projectId);
+      draftPlan.creates = draftPlan.creates.filter(inScope);
+      draftPlan.updates = draftPlan.updates.filter(inScope);
+      draftPlan.statusChanges = draftPlan.statusChanges.filter(inScope);
+      draftPlan.deletes = draftPlan.deletes.filter(inScope);
+    }
 
     const planHash = computePlanHash(draftPlan);
     const plan: TaskPlanDraft = { ...draftPlan, planHash };
@@ -482,6 +665,13 @@ export const a2TaskPlanner = {
     // Determine if this is a cross-project draft (orgId is set, projectId is null).
     const isCrossProject = draft.orgId !== null && draft.projectId === null;
 
+    // Scope is enforced again here, against the settings as they are now — an
+    // admin may have narrowed it after the draft was made. Loaded with the
+    // throwing variant: if the scope cannot be read, nothing is written.
+    const taskScope = (await loadAgentConfigSource(input.ctx, userId)).settings[
+      "task_planner.scope"
+    ];
+
     // `plan.scope.projectId` round-trips through the LLM's JSON output, so it is
     // not a trusted value. `draft.projectId` is the column this server wrote at
     // draft time and is the only authority for where writes may land. They should
@@ -538,6 +728,17 @@ export const a2TaskPlanner = {
       }
 
       for (const [pid, group] of projectGroups) {
+        if (!inProjectScope(taskScope, pid)) {
+          const reason = `Project ${pid} is outside the projects this agent may change`;
+          for (const _create of group.creates) refused.push({ kind: "create", reason });
+          for (const u of group.updates) refused.push({ kind: "update", taskId: u.taskId, reason });
+          for (const s of group.statusChanges) {
+            refused.push({ kind: "statusChange", taskId: s.taskId, reason });
+          }
+          for (const d of group.deletes) refused.push({ kind: "delete", taskId: d.taskId, reason });
+          continue;
+        }
+
         // Per-project permission check
         try {
           if (group.creates.length > 0) {
@@ -566,6 +767,9 @@ export const a2TaskPlanner = {
           }
           continue;
         }
+
+        const noticeBefore = await loadTasksForNotice(input.ctx, pid, group);
+        const noticeCreated: Array<{ title: string; assignedToId: string | null }> = [];
 
         // Apply creates for this project
         for (const c of group.creates) {
@@ -604,6 +808,7 @@ export const a2TaskPlanner = {
 
           if (inserted[0]?.id) {
             createdTaskIds.push(inserted[0].id);
+            noticeCreated.push({ title: c.title, assignedToId: c.assignedToId ?? null });
             await input.ctx.db.insert(taskActivityLog).values({
               taskId: inserted[0].id,
               userId,
@@ -666,6 +871,16 @@ export const a2TaskPlanner = {
             .where(and(eq(tasks.id, d.taskId), eq(tasks.projectId, pid)));
           deletedTaskIds.push(d.taskId);
         }
+
+        await notifyAppliedTaskOps(input.ctx, {
+          actorId: userId,
+          projectId: pid,
+          before: noticeBefore,
+          created: noticeCreated,
+          updates: group.updates,
+          statusChanges: group.statusChanges,
+          deletes: group.deletes,
+        });
       }
     } else {
       // Single-project apply — original path
@@ -679,6 +894,13 @@ export const a2TaskPlanner = {
       }
       // Safe to narrow after the guard above.
       const singleProjectId: number = targetProjectId;
+
+    if (!inProjectScope(taskScope, singleProjectId)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "This project is outside the projects this agent may change.",
+      });
+    }
 
     // Re-check access at apply time: membership or collaborator permission may
     // have been revoked between draft and apply.
@@ -763,6 +985,9 @@ export const a2TaskPlanner = {
       })),
     });
 
+    const noticeBefore = await loadTasksForNotice(input.ctx, singleProjectId, plan);
+    const noticeCreated: Array<{ title: string; assignedToId: string | null }> = [];
+
     // Apply creates with idempotency.
     for (const c of plan.creates) {
       // idempotency: if a task already exists with this clientRequestId, skip create.
@@ -801,6 +1026,7 @@ export const a2TaskPlanner = {
 
       if (inserted[0]?.id) {
         createdTaskIds.push(inserted[0].id);
+        noticeCreated.push({ title: c.title, assignedToId: c.assignedToId ?? null });
         await input.ctx.db.insert(taskActivityLog).values({
           taskId: inserted[0].id,
           userId,
@@ -877,6 +1103,16 @@ export const a2TaskPlanner = {
         );
       deletedTaskIds.push(d.taskId);
     }
+
+    await notifyAppliedTaskOps(input.ctx, {
+      actorId: userId,
+      projectId: singleProjectId,
+      before: noticeBefore,
+      created: noticeCreated,
+      updates: plan.updates,
+      statusChanges: plan.statusChanges,
+      deletes: plan.deletes,
+    });
 
     // Apply comments. Each comment is verified to belong to the target project
     // before insertion — the model should only reference task ids it was shown in

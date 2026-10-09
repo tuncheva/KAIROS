@@ -1,5 +1,13 @@
 import { type InferInsertModel, type InferSelectModel, sql } from "drizzle-orm";
-import { index, text, timestamp, varchar, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  type AnyPgColumn,
+  index,
+  text,
+  timestamp,
+  varchar,
+  integer,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { createTable, taskStatusEnum, taskPriorityEnum } from "./enums";
 import { users } from "./users";
 import { projects } from "./projects";
@@ -13,6 +21,16 @@ export const tasks = createTable(
     projectId: integer("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
+    /**
+     * The task this one is a subtask of, or null for a top-level task.
+     *
+     * One level deep only — a subtask cannot have subtasks of its own. The
+     * router enforces that, and that parent and child share a project. Deleting
+     * a parent deletes its subtasks with it.
+     */
+    parentTaskId: integer("parent_task_id").references((): AnyPgColumn => tasks.id, {
+      onDelete: "cascade",
+    }),
     assignedToId: d
       .varchar({ length: 255 })
       .references(() => users.id, { onDelete: "set null" }),
@@ -57,6 +75,7 @@ export const tasks = createTable(
   }),
   (t) => [
     index("task_project_idx").on(t.projectId),
+    index("task_parent_idx").on(t.parentTaskId),
     index("task_assigned_to_idx").on(t.assignedToId),
     index("task_created_by_idx").on(t.createdById),
     index("task_completed_by_idx").on(t.completedById),

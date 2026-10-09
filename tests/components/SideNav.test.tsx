@@ -85,7 +85,7 @@ describe("SideNav", () => {
 
   it("uses design token classes for tooltips", () => {
     const { container } = render(<SideNav />);
-    const tooltipEls = container.querySelectorAll("[class*='bg-bg-elevated']");
+    const tooltipEls = container.querySelectorAll("[class*='bg-tui-pane']");
     expect(tooltipEls.length).toBeGreaterThan(0);
   });
 

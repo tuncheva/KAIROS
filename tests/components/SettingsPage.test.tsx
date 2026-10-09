@@ -32,6 +32,7 @@ const allSources = [
   { name: "LanguageSettingsClient", source: read("components/settings/LanguageSettingsClient.tsx") },
   { name: "AppearanceSettings", source: read("components/settings/AppearanceSettings.tsx") },
   { name: "AiSettingsClient", source: read("components/settings/AiSettingsClient.tsx") },
+  { name: "AgentCrew", source: read("components/settings/AgentCrew.tsx") },
   { name: "DeveloperSettingsClient", source: read("components/settings/DeveloperSettingsClient.tsx") },
 ];
 

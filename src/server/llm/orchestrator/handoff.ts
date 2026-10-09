@@ -34,6 +34,7 @@ import type { ProjectManagerDraft } from "~/server/llm/schemas/a6ProjectManagerS
 
 import { a1Concierge } from "./a1Concierge";
 import { a2TaskPlanner } from "./a2TaskPlanner";
+import { autoApplyNotesPlan, autoApplyTaskPlan, type AutoApplied } from "./autoApply";
 import { a3NotesVault } from "./a3NotesVault";
 import { a4EventsPublisher } from "./a4EventsPublisher";
 import { a5OrgAdmin } from "./a5OrgAdmin";
@@ -46,8 +47,13 @@ const log = createLogger("agent.handoff");
 const MAX_SUB_AGENTS = 3;
 
 export type AgentPlan =
-  | { kind: "tasks"; draftId: string; plan: TaskPlanDraft }
-  | { kind: "notes"; draftId: string; plan: NotesVaultDraft }
+  /**
+   * `autoApplied` is set when a small plan was applied without waiting for
+   * Confirm (see `autoApply.ts`); the chat shows a receipt with Undo instead of
+   * the confirm card.
+   */
+  | { kind: "tasks"; draftId: string; plan: TaskPlanDraft; autoApplied?: AutoApplied }
+  | { kind: "notes"; draftId: string; plan: NotesVaultDraft; autoApplied?: AutoApplied }
   | { kind: "events"; draftId: string; plan: EventsPublisherDraft }
   | { kind: "org"; draftId: string; plan: OrgAdminDraft }
   | { kind: "project_manager"; draftId: string; plan: ProjectManagerDraft };
@@ -136,7 +142,13 @@ async function runHandoff(
         originalMessage,
         priorDraftId: input.priorTaskDraftId,
       });
-      return { kind: "tasks", draftId: res.draftId, plan: res.plan };
+      const autoApplied = await autoApplyTaskPlan(input.ctx, res.draftId, res.plan);
+      return {
+        kind: "tasks",
+        draftId: res.draftId,
+        plan: res.plan,
+        ...(autoApplied ? { autoApplied } : {}),
+      };
     }
 
     case "notes_vault": {
@@ -147,7 +159,13 @@ async function runHandoff(
         handoffContext,
         originalMessage,
       });
-      return { kind: "notes", draftId: res.draftId, plan: res.plan };
+      const autoApplied = await autoApplyNotesPlan(input.ctx, res.draftId, res.plan);
+      return {
+        kind: "notes",
+        draftId: res.draftId,
+        plan: res.plan,
+        ...(autoApplied ? { autoApplied } : {}),
+      };
     }
 
     case "events_publisher": {

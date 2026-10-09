@@ -4,11 +4,11 @@ import { useTranslations } from "next-intl";
 import { Eyebrow, SectionHeading, Tag } from "~/components/homepage/landingParts";
 
 const AGENTS = [
-    { name: "agentConciergeName", body: "agentConciergeBody", tag: "agentTagReadOnly" },
-    { name: "agentPlannerName", body: "agentPlannerBody", tag: "agentTagDrafts" },
-    { name: "agentNotesName", body: "agentNotesBody", tag: "agentTagPrivate" },
-    { name: "agentEventsName", body: "agentEventsBody", tag: "agentTagDrafts" },
-    { name: "agentBriefName", body: "agentBriefBody", tag: "agentTagScheduled", accent: true },
+    { id: "workspace_concierge", body: "agentConciergeBody", tag: "agentTagReadOnly" },
+    { id: "task_planner", body: "agentPlannerBody", tag: "agentTagDrafts" },
+    { id: "notes_vault", body: "agentNotesBody", tag: "agentTagPrivate" },
+    { id: "events_publisher", body: "agentEventsBody", tag: "agentTagDrafts" },
+    { id: "daily_brief", body: "agentBriefBody", tag: "agentTagScheduled", accent: true },
 ] as const;
 
 const POINTS = ["agentsPoint1", "agentsPoint2", "agentsPoint3"] as const;
@@ -16,6 +16,7 @@ const POINTS = ["agentsPoint1", "agentsPoint2", "agentsPoint3"] as const;
 /** The agent roster on the left, the "asks first" promise on the right. Below `lg` the copy leads. */
 export function Agents() {
     const t = useTranslations("home");
+    const tAgents = useTranslations("agents");
 
     return (
         <section
@@ -25,13 +26,16 @@ export function Agents() {
             <ul data-reveal className="k-sheet m-0 list-none p-0 lg:col-span-6">
                 {AGENTS.map((agent, i) => (
                     <li
-                        key={agent.name}
+                        key={agent.id}
                         className={`k-item grid grid-cols-[1fr_auto] items-center gap-4 p-[22px] ${
                             i < AGENTS.length - 1 ? "border-b border-fg-primary/6" : ""
                         }`}
                     >
                         <span className="flex flex-col gap-1">
-                            <span className="font-display text-2xl text-fg-primary">{t(agent.name)}</span>
+                            <span className="flex items-baseline gap-2.5">
+                                <span className="font-display text-2xl text-fg-primary">{tAgents(`names.${agent.id}`)}</span>
+                                <span className="text-[13px] text-fg-tertiary">{tAgents(`roles.${agent.id}`)}</span>
+                            </span>
                             <span className="text-[13.5px] text-fg-quaternary">{t(agent.body)}</span>
                         </span>
                         <Tag accent={"accent" in agent}>{t(agent.tag)}</Tag>

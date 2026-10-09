@@ -85,11 +85,11 @@ function ToastIcon({ kind }: { kind: ToastKind }) {
     viewBox: "0 0 24 24",
     fill: "none",
     stroke: "currentColor",
-    strokeWidth: 2.8,
+    strokeWidth: 3.2,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
-    width: 11,
-    height: 11,
+    width: 10,
+    height: 10,
     "aria-hidden": true,
   };
 
@@ -109,7 +109,6 @@ function ToastIcon({ kind }: { kind: ToastKind }) {
   }
   return (
     <svg {...common}>
-      <circle cx="12" cy="12" r="9" strokeWidth={2} />
       <path d="M12 16v-4M12 8h.01" />
     </svg>
   );
@@ -134,7 +133,7 @@ function ToastItem({
         type="button"
         onClick={() => onDismiss(toast.id)}
         aria-label={dismissLabel}
-        className="-mr-0.5 -mt-0.5 flex-none rounded-md p-1 text-fg-quaternary transition-colors hover:text-fg-primary"
+        className="toast-dismiss flex-none rounded-full p-1 transition-[opacity,background-color]"
       >
         <svg
           viewBox="0 0 24 24"

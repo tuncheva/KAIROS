@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-import { avatarGradientStyle } from "~/lib/avatarGradient";
+import { avatarSoftGradientStyle } from "~/lib/avatarGradient";
 
 /**
  * Two-letter monogram for an organisation.
@@ -17,9 +17,9 @@ export function monogram(name: string): string {
 }
 
 /**
- * An org's identity badge: its logo when it has one, otherwise the same
- * seeded gradient + monogram fallback profiles use — seeded by id so the
- * colour survives a rename, not by name.
+ * An org's identity badge: its logo when it has one, otherwise a soft,
+ * low-contrast take on the seeded gradient profiles use, with a tinted
+ * monogram — seeded by id so the colour survives a rename, not by name.
  */
 export function OrgBadge({
   id,
@@ -50,8 +50,8 @@ export function OrgBadge({
 
   return (
     <span
-      className={`flex shrink-0 items-center justify-center ${rounded} text-[11px] font-semibold tracking-wide text-white`}
-      style={{ width: size, height: size, ...avatarGradientStyle(String(id)) }}
+      className={`flex shrink-0 items-center justify-center ${rounded} font-semibold tracking-wide`}
+      style={{ width: size, height: size, fontSize: Math.max(11, Math.round(size * 0.3)), ...avatarSoftGradientStyle(String(id)) }}
     >
       {monogram(name)}
     </span>

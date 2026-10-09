@@ -59,15 +59,10 @@ const requiredHomeKeys = [
   "agentsPoint1",
   "agentsPoint2",
   "agentsPoint3",
-  "agentConciergeName",
   "agentConciergeBody",
-  "agentPlannerName",
   "agentPlannerBody",
-  "agentNotesName",
   "agentNotesBody",
-  "agentEventsName",
   "agentEventsBody",
-  "agentBriefName",
   "agentBriefBody",
   "agentTagReadOnly",
   "agentTagDrafts",
@@ -117,6 +112,20 @@ const requiredHomeKeys = [
   "aboutKairos",
 ];
 
+/** Mirrors the ids in `src/server/llm/agents/registry.ts`. */
+const AGENT_IDS = [
+  "workspace_concierge",
+  "task_planner",
+  "notes_vault",
+  "events_publisher",
+  "org_admin",
+  "project_manager",
+  "daily_brief",
+  "risk_radar",
+  "weekly_retro",
+  "meeting_prep",
+] as const;
+
 describe("i18n locale files", () => {
   for (const locale of locales) {
     describe(`${locale}.json`, () => {
@@ -142,6 +151,19 @@ describe("i18n locale files", () => {
           expect(home).toHaveProperty(key);
           expect(typeof home[key]).toBe("string");
           expect((home[key] as string).length).toBeGreaterThan(0);
+        });
+      }
+
+      // Every agent in the registry is shown by its persona name and role, in the
+      // locale's own spelling. A missing entry silently falls back to English.
+      for (const group of ["names", "roles"] as const) {
+        it(`agents.${group} covers every agent`, () => {
+          data = loadLocale(locale);
+          const entries = (data.agents as Record<string, Record<string, unknown>>)[group] ?? {};
+          for (const id of AGENT_IDS) {
+            expect(typeof entries[id]).toBe("string");
+            expect((entries[id] as string).length).toBeGreaterThan(0);
+          }
         });
       }
 

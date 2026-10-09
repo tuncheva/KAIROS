@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { Check, Copy, Link2, Loader2, Mail, Trash2 } from "~/components/ui/icons";
+import { Check, Copy, Link2, Loader2, Mail, Trash2, Users } from "~/components/ui/icons";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useSettingsSave } from "~/components/settings/ledger/Ledger";
 import {
@@ -21,6 +21,7 @@ import {
   type MemberPermissionFlags,
   type OrgRole,
 } from "~/lib/permissions";
+import { InviteePreview, useInviteeLookup } from "~/components/orgs/InviteePreview";
 import { api } from "~/trpc/react";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
@@ -157,6 +158,7 @@ export function InviteBuilder({
     ]);
 
   const inviteMember = api.organization.inviteMember.useMutation();
+  const invitee = useInviteeLookup(organizationId, email);
   const createLink = api.organization.createInviteLink.useMutation();
   const revokeLink = api.organization.revokeInviteLink.useMutation({
     onSuccess: () => {
@@ -361,7 +363,7 @@ export function InviteBuilder({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSend();
+                  if (e.key === "Enter" && !invitee.blocked) handleSend();
                 }}
                 aria-label={t("members.emailPlaceholder")}
                 placeholder={t("members.emailPlaceholder")}
@@ -369,7 +371,7 @@ export function InviteBuilder({
               />
               <button
                 type="button"
-                disabled={!email.trim() || inviteMember.isPending || exceeds}
+                disabled={!email.trim() || inviteMember.isPending || exceeds || invitee.blocked}
                 onClick={handleSend}
                 className={primaryButton}
               >
@@ -377,13 +379,16 @@ export function InviteBuilder({
                 {t("inviteBuilder.sendInvitation")}
               </button>
             </div>
+            <InviteePreview email={email} lookup={invitee.result} loading={invitee.loading} />
             <p className="text-settings-micro text-fg-tertiary">{t("inviteBuilder.emailHint")}</p>
 
             <button
               type="button"
+              aria-expanded={bulkOpen}
               onClick={() => setBulkOpen((v) => !v)}
-              className="w-fit text-settings-small font-medium text-fg-tertiary transition hover:text-fg-secondary"
+              className="flex w-fit items-center gap-1.5 rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1 text-settings-small font-medium text-fg-secondary transition-colors hover:border-accent-primary/50 hover:text-fg-primary"
             >
+              <Users size={13} aria-hidden />
               {bulkOpen ? t("inviteBuilder.hideBulk") : t("inviteBuilder.showBulk")}
             </button>
             {bulkOpen ? (

@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
   // references worker files that bundlers cannot statically resolve.
   // redis is an optional peer dependency and should not be bundled
   serverExternalPackages: ["pdfjs-dist", "redis", "web-push"],
+  // Phosphor isn't on Next's default list, so without this dev compiled all
+  // ~4,500 icon modules per layer (cold `/` took ~70s) to render ~60 icons.
+  experimental: {
+    optimizePackageImports: ["@phosphor-icons/react"],
+  },
   // The service worker must never be served stale: a cached old worker keeps
   // handling pushes with old code until the browser's 24h update check.
   // The proxy skips dotted paths, so these are the only headers it gets.

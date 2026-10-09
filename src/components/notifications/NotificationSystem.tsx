@@ -82,6 +82,8 @@ interface Notification {
 
 interface FloatingNotif {
   id: string;
+  /** The stored row's id, when the socket payload carried one — what `Mark read` marks. */
+  serverId?: string;
   title: string;
   message: string;
   type: string;
@@ -106,8 +108,17 @@ const TONE: Record<NotificationType, string> = {
   system: "text-fg-quaternary",
 };
 
-function GlyphFor({ type, size = 16 }: { type: NotificationType; size?: number }) {
-  const className = TONE[type];
+function GlyphFor({
+  type,
+  size = 16,
+  toned = true,
+}: {
+  type: NotificationType;
+  size?: number;
+  /** Off when a surrounding medallion already carries the colour. */
+  toned?: boolean;
+}) {
+  const className = toned ? TONE[type] : undefined;
   switch (type) {
     case "event":
       return <Calendar className={className} size={size} strokeWidth={1.7} />;
@@ -170,6 +181,110 @@ const COLLAPSED_VISIBLE = 20;
  */
 const MAX_FLOATING = 3;
 
+/** How long a popup stays up. The drain line along its bottom edge shows it. */
+const FLOATING_TTL_MS = 6000;
+
+/**
+ * One floating popup. Owns its own auto-dismiss timer so hovering (or focusing
+ * into) the card can pause it — reaching for `Mark read` while the card slid
+ * away underneath the cursor was the failure this guards against. Unmounting,
+ * whether by timeout, dismissal or being pushed off the stack, clears it.
+ */
+function FloatingCard({
+  notif,
+  glyph,
+  kindLabel,
+  labels,
+  onDismiss,
+  onOpen,
+  onMarkRead,
+}: {
+  notif: FloatingNotif;
+  glyph: React.ReactNode;
+  kindLabel: string;
+  labels: { now: string; open: string; markRead: string; dismiss: string };
+  onDismiss: () => void;
+  onOpen?: () => void;
+  onMarkRead?: () => void;
+}) {
+  const [paused, setPaused] = useState(false);
+  const remaining = useRef(FLOATING_TTL_MS);
+  const startedAt = useRef(0);
+  /* The parent hands down a fresh closure every render; reading it through a
+     ref keeps a re-render from restarting the countdown. */
+  const dismissRef = useRef(onDismiss);
+  dismissRef.current = onDismiss;
+
+  useEffect(() => {
+    if (paused) return;
+    startedAt.current = Date.now();
+    const timer = setTimeout(() => dismissRef.current(), remaining.current);
+    return () => {
+      clearTimeout(timer);
+      // A short floor so leaving the card does not dismiss it out from under the cursor.
+      remaining.current = Math.max(800, remaining.current - (Date.now() - startedAt.current));
+    };
+  }, [paused]);
+
+  const tone = asNotificationType(notif.type);
+
+  return (
+    <div
+      className="notif-card pointer-events-auto"
+      data-tone={tone}
+      data-paused={paused || undefined}
+      style={{ "--notif-ttl": `${FLOATING_TTL_MS}ms` } as React.CSSProperties}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPaused(false);
+      }}
+    >
+      <div className="flex items-start gap-[11px] p-3 pb-[11px]">
+        <span className="notif-card-medallion">{glyph}</span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <span className="notif-card-kind">{kindLabel}</span>
+            <span className="ml-auto flex-none font-mono text-[10px] uppercase tracking-[0.1em] text-tui-ink3">
+              {labels.now}
+            </span>
+          </div>
+          <h4 className="truncate text-[13px] font-semibold tracking-[-0.01em] text-tui-ink">
+            {notif.title}
+          </h4>
+          {notif.message && (
+            <p className="line-clamp-2 text-[12.5px] leading-[1.45] text-tui-ink2">{notif.message}</p>
+          )}
+          {(onOpen ?? onMarkRead) && (
+            <div className="mt-2 flex gap-1.5">
+              {onOpen && (
+                <button type="button" onClick={onOpen} className="notif-card-act" data-primary>
+                  {labels.open}
+                </button>
+              )}
+              {onMarkRead && (
+                <button type="button" onClick={onMarkRead} className="notif-card-act">
+                  {labels.markRead}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[7px] text-tui-ink3 transition-colors hover:bg-tui-ink/5 hover:text-tui-ink"
+          aria-label={labels.dismiss}
+        >
+          <X size={11} strokeWidth={2.4} />
+        </button>
+      </div>
+      <span className="notif-card-timer" aria-hidden />
+    </div>
+  );
+}
+
 export function NotificationSystem() {
   const router = useRouter();
   const t = useTranslations("notifications");
@@ -183,7 +298,6 @@ export function NotificationSystem() {
   const [expanded, setExpanded] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [floatingNotifs, setFloatingNotifs] = useState<FloatingNotif[]>([]);
-  const floatingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const utils = api.useUtils();
 
@@ -229,24 +343,15 @@ export function NotificationSystem() {
         const floatId = `float-${Date.now()}-${Math.random()}`;
         const notif: FloatingNotif = {
           id: floatId,
+          serverId: data.id != null ? String(data.id) : undefined,
           title: data.title,
           message: data.message ?? "",
           type: data.type ?? "system",
           link: data.link ?? undefined,
         };
-        setFloatingNotifs((prev) => {
-          const next = [...prev, notif];
-          /* Cap the stack, and clear the timers of anything pushed off it so a
-             dropped card cannot fire a state update later. */
-          for (const stale of next.slice(0, Math.max(0, next.length - MAX_FLOATING))) {
-            const staleTimer = floatingTimers.current.get(stale.id);
-            if (staleTimer) {
-              clearTimeout(staleTimer);
-              floatingTimers.current.delete(stale.id);
-            }
-          }
-          return next.slice(-MAX_FLOATING);
-        });
+        // Each card runs its own timer (see `FloatingCard`), so a card pushed
+        // off the cap takes its timer with it when it unmounts.
+        setFloatingNotifs((prev) => [...prev, notif].slice(-MAX_FLOATING));
 
         // Optimistically add to notifications list so badge updates immediately
         setNotifications((prev) => [
@@ -261,34 +366,14 @@ export function NotificationSystem() {
           },
           ...prev,
         ]);
-
-        // Auto-dismiss after 5 seconds
-        const timer = setTimeout(() => {
-          setFloatingNotifs((prev) => prev.filter((n) => n.id !== floatId));
-          floatingTimers.current.delete(floatId);
-        }, 5000);
-        floatingTimers.current.set(floatId, timer);
       }
     },
     [refetch, utils.notification.getUnreadCount],
   );
   useSocketEvent("notification:new", handleNewNotification);
 
-  // Cleanup timers on unmount
-  useEffect(() => {
-    const timers = floatingTimers.current;
-    return () => {
-      timers.forEach((t) => clearTimeout(t));
-    };
-  }, []);
-
   const dismissFloating = (id: string) => {
     setFloatingNotifs((prev) => prev.filter((n) => n.id !== id));
-    const timer = floatingTimers.current.get(id);
-    if (timer) {
-      clearTimeout(timer);
-      floatingTimers.current.delete(id);
-    }
   };
 
   const invalidateBell = useCallback(() => {
@@ -461,12 +546,20 @@ export function NotificationSystem() {
 
   // The floating toast falls back to the bell rather than a warning triangle: an
   // unrecognised type popping up as an alert reads as an error.
+  // The medallion sets the colour, so the glyph inherits it rather than its own tone.
   const floatingGlyph = (type: string) =>
     type === "system" ? (
-      <Bell className="text-accent-primary" size={16} strokeWidth={1.7} />
+      <Bell size={15} strokeWidth={1.8} />
     ) : (
-      <GlyphFor type={asNotificationType(type)} />
+      <GlyphFor type={asNotificationType(type)} size={15} toned={false} />
     );
+
+  const floatingLabels = {
+    now: t("now"),
+    open: t("openLink"),
+    markRead: t("markRead"),
+    dismiss: t("dismiss"),
+  };
 
   const label = "font-mono text-[10px] uppercase tracking-[0.14em]";
 
@@ -478,14 +571,17 @@ export function NotificationSystem() {
         setFilter(value);
         setExpanded(false);
       }}
-      className={`${label} rounded-sm px-2.5 py-1.5 transition-colors ${
+      aria-pressed={filter === value}
+      className={`flex h-[26px] items-center rounded-full border px-3 text-[12px] transition-colors ${
         filter === value
-          ? "bg-bg-secondary text-fg-primary"
-          : "text-fg-tertiary hover:text-fg-primary"
+          ? "border-transparent bg-tui-ink text-tui-bg"
+          : "border-tui-ink/12 text-tui-ink2 hover:border-tui-ink/20 hover:text-tui-ink"
       }`}
     >
       {text}
-      <span className="ml-1.5 text-fg-quaternary">{count}</span>
+      <span className={`ml-1.5 ${filter === value ? "opacity-60" : "text-tui-ink3"}`}>
+        {count}
+      </span>
     </button>
   );
 
@@ -498,44 +594,39 @@ export function NotificationSystem() {
           which the pre-paint script sets before the first frame. */}
       <div className="notif-region">
         <div className="notif-stack">
-        {floatingNotifs.map((notif) => (
-          <div
-            key={notif.id}
-            className="animate-in fade-in pointer-events-auto flex w-full max-w-[calc(100vw-2rem)] cursor-pointer items-start gap-3 rounded-md border border-border-light bg-bg-elevated p-3.5 shadow-2xl duration-300 hover:bg-bg-secondary/60"
-            onClick={() => {
-              dismissFloating(notif.id);
-              if (notif.link) router.push(notif.link);
-            }}
-          >
-            <span className="mt-px flex h-[22px] w-[22px] flex-none items-center justify-center">
-              {floatingGlyph(notif.type)}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline gap-2">
-                <h4 className="truncate text-[13.5px] font-bold tracking-[-0.01em] text-fg-primary">
-                  {notif.title}
-                </h4>
-                <span className={`${label} ml-auto flex-none text-fg-quaternary`}>{t("now")}</span>
-              </div>
-              {notif.message && (
-                <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-[1.45] text-fg-tertiary">
-                  {notif.message}
-                </p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                dismissFloating(notif.id);
-              }}
-              className="flex h-5 w-5 flex-none items-center justify-center rounded-md text-fg-quaternary transition-colors hover:bg-error/10 hover:text-error"
-              aria-label={t("dismiss")}
-            >
-              <X size={12} strokeWidth={2.2} />
-            </button>
-          </div>
-        ))}
+        {floatingNotifs.map((notif) => {
+          const { link, serverId } = notif;
+          return (
+            <FloatingCard
+              key={notif.id}
+              notif={notif}
+              glyph={floatingGlyph(notif.type)}
+              kindLabel={t(`kind.${asNotificationType(notif.type)}`)}
+              labels={floatingLabels}
+              onDismiss={() => dismissFloating(notif.id)}
+              onOpen={
+                link
+                  ? () => {
+                      dismissFloating(notif.id);
+                      if (serverId) handleMarkAsRead(serverId);
+                      router.push(link);
+                    }
+                  : undefined
+              }
+              onMarkRead={
+                serverId
+                  ? () => {
+                      dismissFloating(notif.id);
+                      setNotifications((prev) =>
+                        prev.map((n) => (n.id === notif.id || n.id === serverId ? { ...n, read: true } : n)),
+                      );
+                      handleMarkAsRead(serverId);
+                    }
+                  : undefined
+              }
+            />
+          );
+        })}
         </div>
       </div>
 
@@ -549,10 +640,10 @@ export function NotificationSystem() {
           ref={bellRef}
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className={`relative flex h-8 w-8 items-center justify-center rounded-sm transition-colors ${
+          className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-tui-accent focus-visible:outline-none ${
             isOpen
-              ? "bg-accent-primary/12 text-accent-primary"
-              : "text-fg-secondary hover:bg-bg-secondary/60 hover:text-fg-primary"
+              ? "bg-tui-ink/[0.05] text-tui-ink"
+              : "text-tui-ink2 hover:bg-tui-ink/[0.05] hover:text-tui-ink"
           }`}
           aria-label={unreadCount > 0 ? t("openUnread", { count: unreadCount }) : t("open")}
           aria-expanded={isOpen}
@@ -560,11 +651,19 @@ export function NotificationSystem() {
         >
           <Bell size={19} strokeWidth={1.6} />
           {/*
-            A dot, not a number. The count is one tap away in the panel header,
-            and a two-digit badge on a 19px glyph was the loudest thing in the bar.
+            A small count pill in the refined violet, capped at 9+ so it never
+            grows wider than the glyph it sits on — the old two-digit badge was
+            the loudest thing in the bar, and the dot that replaced it hid how
+            much was waiting. The pane-coloured ring cuts it cleanly out of the
+            bell's outline.
           */}
           {unreadCount > 0 && (
-            <span className="absolute right-[5px] top-[5px] h-[7px] w-[7px] rounded-full bg-accent-primary ring-2 ring-bg-primary" />
+            <span
+              aria-hidden="true"
+              className="absolute -right-px top-[3px] flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-tui-accent px-[5px] text-[10px] font-semibold leading-none tabular-nums text-tui-on-accent ring-2 ring-tui-pane"
+            >
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
           )}
         </button>
 
@@ -585,14 +684,14 @@ export function NotificationSystem() {
               ref={panelRef}
               role="dialog"
               aria-label={t("title")}
-              className="animate-in slide-in-from-top-2 absolute inset-x-3 z-50 mt-2 overflow-hidden rounded-lg border border-border-light bg-bg-elevated shadow-2xl duration-200 sm:inset-x-auto sm:right-0 sm:w-[380px]"
+              className="animate-in slide-in-from-top-2 absolute inset-x-3 z-50 mt-2 overflow-hidden rounded-xl border border-tui-ink/12 bg-tui-pane shadow-[var(--tui-lift)] duration-200 sm:inset-x-auto sm:right-0 sm:w-[380px]"
             >
               <div className="flex items-baseline gap-2.5 px-[18px] pb-3 pt-4">
-                <h3 className="font-display text-[17px] leading-tight font-normal text-fg-primary">
+                <h3 className="font-display text-[22px] leading-tight font-normal text-tui-ink">
                   {t("title")}
                 </h3>
                 {unreadCount > 0 && (
-                  <span className={`${label} text-accent-primary`}>
+                  <span className={`${label} text-tui-accent`}>
                     {t("unreadBadge", { count: unreadCount })}
                   </span>
                 )}
@@ -602,7 +701,7 @@ export function NotificationSystem() {
                     type="button"
                     onClick={() => markAllAsReadMutation.mutate()}
                     disabled={markAllAsReadMutation.isPending}
-                    className="text-[12px] text-fg-tertiary transition-colors hover:text-fg-primary disabled:opacity-50"
+                    className="text-[12px] text-tui-ink3 transition-colors hover:text-tui-ink disabled:opacity-50"
                   >
                     {t("markAllRead")}
                   </button>
@@ -633,7 +732,7 @@ export function NotificationSystem() {
               )}
 
               {notifications.length > 0 && (
-                <div className="flex gap-1 px-3.5 pb-3">
+                <div className="flex gap-1.5 px-[18px] pb-3">
                   {segment("all", t("filterAll"), notifications.length)}
                   {segment("unread", t("filterUnread"), localUnread)}
                   {segment("mentions", t("filterMentions"), mentionCount)}
@@ -653,7 +752,7 @@ export function NotificationSystem() {
               >
                 {notifications.length === 0 ? (
                   <div className="px-6 pb-14 pt-[52px] text-center">
-                    <span className="mx-auto mb-3.5 flex h-10 w-10 items-center justify-center rounded-full border border-border-light text-fg-quaternary">
+                    <span className="mx-auto mb-3.5 flex h-10 w-10 items-center justify-center rounded-full border border-tui-ink/12 text-tui-ink3">
                       <Bell size={17} strokeWidth={1.6} />
                     </span>
                     <strong className="block text-[13.5px] font-bold text-fg-primary">
@@ -674,7 +773,7 @@ export function NotificationSystem() {
                   grouped.map((group) => (
                     <div key={group.label}>
                       <div
-                        className={`${label} border-t border-border-light px-[18px] pb-1.5 pt-3 text-fg-quaternary`}
+                        className={`${label} border-t border-tui-ink/8 px-[18px] pb-1.5 pt-3 text-tui-ink3`}
                       >
                         {group.label}
                       </div>
@@ -682,14 +781,14 @@ export function NotificationSystem() {
                         <div
                           key={notification.id}
                           onClick={() => handleNotificationClick(notification)}
-                          className={`group relative flex cursor-pointer gap-3 border-t border-border-light/60 px-[18px] py-3.5 transition-colors hover:bg-bg-secondary/60 ${
+                          className={`group relative flex cursor-pointer gap-3 border-t border-tui-ink/6 px-[18px] py-3.5 transition-colors hover:bg-tui-ink/[0.035] ${
                             notification.read ? "opacity-[0.62]" : ""
                           }`}
                         >
                           {!notification.read && (
                             <span
                               aria-hidden="true"
-                              className="absolute left-2 top-[21px] h-1 w-1 rounded-full bg-accent-primary"
+                              className="absolute left-[7px] top-[20px] h-1.5 w-1.5 rounded-full bg-tui-accent"
                             />
                           )}
                           <span className="mt-px flex h-[22px] w-[22px] flex-none items-center justify-center">
@@ -752,7 +851,7 @@ export function NotificationSystem() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between border-t border-border-light px-[18px] py-2.5">
+              <div className="flex items-center justify-between border-t border-tui-ink/8 px-[18px] py-2.5">
                 {hiddenCount > 0 ? (
                   <button
                     type="button"

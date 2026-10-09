@@ -16,6 +16,7 @@ import {
 import { useTranslations } from "next-intl";
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
 import { AUTO_AGENT } from "~/components/agents/AgentPicker";
+import { useAgentLabel } from "~/components/agents/useAgentLabel";
 import { ComposerMenu } from "~/components/chat/ComposerMenu";
 import {
   EffortMenu,
@@ -161,6 +162,7 @@ export function A1ChatWidgetOverlay(props: {
   const router = useRouter();
   const t = useTranslations("aiConsole");
   const tAgents = useTranslations("agents");
+  const agentLabels = useAgentLabel();
   const tCommon = useTranslations("common");
   const tChat = useTranslations("chat");
 
@@ -213,7 +215,9 @@ export function A1ChatWidgetOverlay(props: {
   const agentLabel =
     selectedAgent === AUTO_AGENT
       ? tAgents("auto")
-      : (agents.find((a) => a.id === selectedAgent)?.name ?? tAgents("auto"));
+      : agents.some((a) => a.id === selectedAgent)
+        ? agentLabels.name(selectedAgent)
+        : tAgents("auto");
 
   const panelRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
@@ -603,15 +607,15 @@ export function A1ChatWidgetOverlay(props: {
                     .filter((a) => a.kind === "conversational")
                     .map((a) => ({
                       id: a.id,
-                      label: a.name,
-                      description: a.description,
+                      label: agentLabels.name(a.id, a.name),
+                      description: `${agentLabels.role(a.id, a.role)} — ${a.description}`,
                     })),
                   ...agents
                     .filter((a) => a.kind === "scheduled")
                     .map((a) => ({
                       id: a.id,
-                      label: a.name,
-                      description: a.description,
+                      label: agentLabels.name(a.id, a.name),
+                      description: `${agentLabels.role(a.id, a.role)} — ${a.description}`,
                       disabled: true,
                     })),
                 ]}

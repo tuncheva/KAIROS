@@ -39,7 +39,6 @@ export function Composer({
   onTyping,
   onStopTyping,
   disabled,
-  isSending,
   isUploading,
   hasDraft,
   placeholder,
@@ -56,7 +55,6 @@ export function Composer({
   onTyping: () => void;
   onStopTyping: () => void;
   disabled: boolean;
-  isSending: boolean;
   isUploading: boolean;
   hasDraft: boolean;
   placeholder: string;
@@ -68,7 +66,7 @@ export function Composer({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [dragActive, setDragActive] = useState(false);
 
-  const canSend = (value.trim().length > 0 || attachments.length > 0) && !disabled && !isSending && !isUploading;
+  const canSend = (value.trim().length > 0 || attachments.length > 0) && !disabled && !isUploading;
 
   /* Resize on every value change, including when the parent swaps in another
      conversation's draft — not just on keystrokes, or a restored multi-line
@@ -239,7 +237,7 @@ export function Composer({
             }`}
           >
             {t("send")}
-            {isUploading || isSending ? (
+            {isUploading ? (
               <Loader2 size={13} className="animate-spin" />
             ) : (
               <ArrowUp size={13} />

@@ -308,7 +308,7 @@ describe("ProjectIntelligenceChat", () => {
   it("renders header with KAIROS AI title", () => {
     render(<ProjectIntelligenceChat />);
     expect(screen.getByText("KAIROS AI")).toBeInTheDocument();
-    expect(screen.getByText("Workspace Concierge")).toBeInTheDocument();
+    expect(screen.getByText("Mentor · Workspace Concierge")).toBeInTheDocument();
   });
 
   it("info button toggles info panel", async () => {
@@ -686,4 +686,53 @@ describe("ProjectIntelligenceChat", () => {
 
     expect(await screen.findByText("Apply Org Changes")).toBeInTheDocument();
   });
+
+  /* ---- Phase 5: small plans that saved on their own ---- */
+
+  it("shows a receipt instead of the confirm card for an auto-applied plan", async () => {
+    const plan = {
+      agentId: "task_planner",
+      scope: { projectId: 1 },
+      summary: "Added the release checklist.",
+      creates: [{ title: "Release checklist", priority: "medium", clientRequestId: "c1-request" }],
+      updates: [],
+      statusChanges: [],
+      deletes: [],
+      comments: [],
+      dependencies: [],
+      risks: [],
+      questionsForUser: [],
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockAgentStream([
+        ["start", { conversationId: "conv_auto" }],
+        [
+          "result",
+          {
+            draftId: "draft_auto",
+            conversationId: "conv_auto",
+            latencyMs: 10,
+            a1: {
+              intent: { type: "handoff" },
+              handoff: { targetAgent: "task_planner", userIntent: "add a release checklist" },
+            },
+            plan: { kind: "tasks", draftId: "draft_auto", plan, autoApplied: { changed: 1 } },
+            plans: [{ kind: "tasks", draftId: "draft_auto", plan, autoApplied: { changed: 1 } }],
+            handoffErrors: [],
+          },
+        ],
+      ]),
+    );
+
+    const user = userEvent.setup();
+    render(<ProjectIntelligenceChat />);
+    await user.type(screen.getByPlaceholderText(/Message KAIROS AI/), "add a release checklist");
+    await user.click(screen.getByText("Send"));
+
+    expect(await screen.findByText(/Odysseus saved 1 change without asking/)).toBeInTheDocument();
+    expect(screen.getByText(/Added the release checklist/)).toBeInTheDocument();
+    expect(screen.queryByText("Confirm Task Plan")).not.toBeInTheDocument();
+  });
 });
+

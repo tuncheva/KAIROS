@@ -1,5 +1,8 @@
 import { loadUserMemory, type MemoryFact } from "~/server/llm/memory";
 import { resolveUserLocale, type SupportedLocale } from "~/server/llm/locale";
+import { resolveAgentConfig } from "~/server/llm/agents/config";
+import type { AgentNameOverrides } from "~/lib/agentNames";
+import type { ResolvedAgentSettings } from "~/lib/agentSettings";
 import type { TRPCContext } from "~/server/api/trpc";
 import { events, eventComments, eventLikes, users, calendarConnections } from "~/server/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
@@ -30,6 +33,10 @@ export interface A4ContextPack {
   locale: SupportedLocale;
   /** Global facts plus any the user set for the Events Publisher specifically. */
   memory: MemoryFact[];
+  /** What this workspace calls its agents; empty means the defaults. */
+  agentNames?: AgentNameOverrides;
+  /** Agent settings in force for this user; absent means the defaults. */
+  agentSettings?: ResolvedAgentSettings;
   calendar: {
     connected: boolean;
     /** True only when the stored token has the events write scope. */
@@ -68,7 +75,7 @@ export async function buildA4Context(input: {
     .orderBy(desc(events.createdAt))
     .limit(30);
 
-  const [[calConn], [memory, locale]] = await Promise.all([
+  const [[calConn], [memory, locale, agentConfig]] = await Promise.all([
     input.ctx.db
       .select({ scope: calendarConnections.scope })
       .from(calendarConnections)
@@ -77,6 +84,7 @@ export async function buildA4Context(input: {
     Promise.all([
       loadUserMemory(input.ctx, userId, "events_publisher"),
       resolveUserLocale(input.ctx, userId),
+      resolveAgentConfig(input.ctx, userId),
     ]),
   ]);
 
@@ -88,6 +96,8 @@ export async function buildA4Context(input: {
     userId,
     locale,
     memory,
+    agentNames: agentConfig.names,
+    agentSettings: agentConfig.settings,
     calendar,
     events: rows.map((r) => ({
       id: r.id,

@@ -99,6 +99,11 @@ function isPublicPath(pathname: string): boolean {
   // session cookie would mean every shared link greeted the person who received
   // it with a sign-in wall, which is the opposite of what publishing is for.
   if (pathname.startsWith("/events/")) return true;
+  /* "Don't send me invitations again", from an invitation email. The person
+     clicking it usually has no account; the signed token in the path is the
+     credential, and it can only ever suppress, never read. */
+  if (pathname.startsWith("/invite-optout/")) return true;
+  if (pathname.startsWith("/api/invite-optout/")) return true;
   if (pathname.startsWith("/api/auth")) return true;
   if (pathname.startsWith("/api/trpc")) return true;
   if (pathname.startsWith("/api/account-switch")) return true;

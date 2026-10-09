@@ -215,15 +215,10 @@
     "agentsPoint1": "Une seule conversation — inutile de choisir un agent",
     "agentsPoint2": "Chaque modification arrive en brouillon à approuver",
     "agentsPoint3": "Les notes verrouillées restent privées, toujours",
-    "agentConciergeName": "Workspace Concierge",
     "agentConciergeBody": "Répond aux questions, repère les risques, montre la voie.",
-    "agentPlannerName": "Task Planner",
     "agentPlannerBody": "Transforme un objectif — ou un brief PDF — en un plan clair.",
-    "agentNotesName": "Notes Vault",
     "agentNotesBody": "Range et résume vos notes. Les notes verrouillées restent invisibles.",
-    "agentEventsName": "Events Publisher",
     "agentEventsBody": "Rédige la page de l’événement, prête pour votre dernière relecture.",
-    "agentBriefName": "Daily Brief",
     "agentBriefBody": "Un résumé court et calme de la journée à venir.",
     "agentTagReadOnly": "Lecture seule",
     "agentTagDrafts": "Brouillons",
@@ -524,7 +519,184 @@
       "calendarNoRefresh": "Google n’a pas accordé un accès durable. Reconnectez-vous et approuvez toutes les autorisations demandées.",
       "dismiss": "Fermer",
       "calendarGroup": "Agenda",
-      "calendarGroupHint": "La préparation de réunion ne fonctionne pas sans agenda connecté."
+      "calendarGroupHint": "La préparation de réunion ne fonctionne pas sans agenda connecté.",
+      "crew": {
+        "title": "Votre équipage",
+        "hint": "Dix agents travaillent pour vous. Vous parlez à celui du centre ; il confie les changements à un spécialiste, et rien de ce qu’un spécialiste prépare n’est enregistré avant votre accord. Choisissez un agent pour voir ce qu’il fait et comment le régler.",
+        "you": "Vous",
+        "orbitLabel": "Les agents, disposés autour de vous",
+        "legendTalks": "Vous parle",
+        "legendDrafts": "Prépare des changements",
+        "legendScheduled": "Planifié",
+        "tagReadOnly": "Lecture seule",
+        "tagWrites": "Écrit",
+        "tagScheduled": "Planifié",
+        "soon": "Bientôt",
+        "nameTitle": "Nom",
+        "nameDescWorkspace": "Tout l’espace de travail voit ce nom, et l’agent se présente avec lui dans le chat.",
+        "nameDescPersonal": "L’agent se présente avec ce nom dans le chat.",
+        "nameAdminOnly": "Seul un administrateur de l’espace de travail peut renommer les agents.",
+        "save": "Enregistrer",
+        "reset": "Réinitialiser",
+        "errorEmpty": "Donnez-lui un nom.",
+        "errorTooLong": "{max} caractères maximum.",
+        "errorCharacters": "Lettres, chiffres, espaces, apostrophes, points et tirets uniquement.",
+        "errorTaken": "Un autre agent porte déjà ce nom.",
+        "effortTitle": "Effort de réflexion",
+        "effortDesc": "Rapide, équilibré ou approfondi — choisi depuis la zone de saisie du chat, par conversation.",
+        "effortValue": "Dans le chat",
+        "memoryTitle": "Ce qu’il retient",
+        "memoryDesc": "Faits conservés pour cet agent. Consultez-les ou supprimez-les dans « Ce que l’assistant retient ».",
+        "memoryValue": "{count, plural, =0 {Rien pour l’instant} one {# fait} other {# faits}}",
+        "scheduleTitle": "Planification",
+        "scheduleDesc": "Quand il s’exécute et où il vous joint. À régler dans « Mises à jour proactives » ci-dessous.",
+        "scheduleOn": "Activé",
+        "scheduleOff": "Désactivé",
+        "meetingPrepOn": "Avant chaque réunion",
+        "toneTitle": "Ton",
+        "toneDesc": "Sa façon de répondre : direct, chaleureux ou détaillé.",
+        "languageTitle": "Langue des réponses",
+        "languageDesc": "Dans la langue de votre message, ou toujours dans une seule langue. S’applique à tous les agents du chat.",
+        "approvalTitle": "Validation",
+        "approvalDesc": "Demander avant chaque changement, ou laisser les petits s’enregistrer seuls avec Annuler — 3 changements au plus, rien de supprimé, rien d’assigné à quelqu’un d’autre.",
+        "scopeTitle": "Périmètre",
+        "scopeDesc": "Les projets de cet espace de travail qu’il peut modifier. Le reste lui est caché et refusé.",
+        "taskDefaultsTitle": "Valeurs des tâches",
+        "taskDefaultsDesc": "Responsable, priorité et échéance par défaut.",
+        "noteTemplateTitle": "Modèle de note",
+        "noteTemplateDesc": "La structure de départ des nouvelles notes.",
+        "eventDefaultsTitle": "Valeurs des événements",
+        "eventDefaultsDesc": "Durée, participation et rappels par défaut pour les nouveaux événements.",
+        "namingPatternTitle": "Modèle de nom",
+        "namingPatternDesc": "Un modèle pour les noms des nouveaux projets. Marqueurs : {list}.",
+        "briefSectionsTitle": "Contenu",
+        "briefSectionsDesc": "Choisissez les rubriques du point quotidien.",
+        "stalledAfterTitle": "Bloqué après",
+        "stalledAfterDesc": "Jours sans progrès avant de signaler un projet.",
+        "leadTimeTitle": "Délai",
+        "leadTimeDesc": "Combien de temps avant une réunion le brief arrive.",
+        "about": {
+          "workspace_concierge": "Celui à qui vous parlez. Il répond aux questions sur votre espace de travail et confie ce qui doit changer au bon spécialiste. Il peut regarder, jamais toucher.",
+          "task_planner": "Transforme un objectif en backlog et révise les plans à l’écran. Chaque changement est d’abord préparé pour votre accord.",
+          "notes_vault": "Crée, modifie et supprime des notes. Les notes verrouillées sont exclues avant que leur contenu ne soit chargé.",
+          "events_publisher": "Gère les événements de bout en bout : l’événement, ses commentaires, participations et j’aime.",
+          "org_admin": "Modifie membres, rôles et permissions. Chaque changement est vérifié contre votre propre accès, un par un.",
+          "project_manager": "Crée, renomme, met à jour et archive des projets, en revérifiant les droits au moment d’appliquer.",
+          "daily_brief": "Un court message chaque matin sur ce qui demande votre attention aujourd’hui.",
+          "risk_radar": "Surveille le travail en retard et les projets bloqués. Il compte au lieu de deviner, donc il fonctionne même quand le budget IA est épuisé.",
+          "weekly_retro": "Un regard en arrière chaque semaine : ce qui est terminé, ajouté, reporté et bloqué.",
+          "meeting_prep": "Un court brief avant chaque réunion de votre calendrier connecté, avec les tâches ouvertes liées."
+        },
+        "settingAdminOnly": "Seul un administrateur de l’espace de travail peut modifier ceci.",
+        "values": {
+          "workspace_concierge": {
+            "tone": {
+              "balanced": "Équilibré",
+              "direct": "Direct",
+              "friendly": "Chaleureux",
+              "detailed": "Détaillé"
+            },
+            "replyLanguage": {
+              "auto": "Comme mon message",
+              "en": "English",
+              "bg": "Български",
+              "de": "Deutsch",
+              "es": "Español",
+              "fr": "Français"
+            }
+          },
+          "daily_brief": {
+            "sections": {
+              "dueToday": "À faire aujourd’hui",
+              "events": "Événements",
+              "risks": "Risques"
+            }
+          },
+          "risk_radar": {
+            "stalledAfterDays": {
+              "7": "7 jours",
+              "14": "14 jours",
+              "30": "30 jours"
+            }
+          },
+          "meeting_prep": {
+            "leadMinutes": {
+              "15": "15 minutes",
+              "30": "30 minutes",
+              "60": "1 heure",
+              "90": "1 h 30"
+            }
+          },
+          "task_planner": {
+            "priority": {
+              "low": "Basse",
+              "medium": "Moyenne",
+              "high": "Haute",
+              "urgent": "Urgente"
+            },
+            "dueInDays": {
+              "none": "Sans échéance",
+              "1": "Dans 1 jour",
+              "3": "Dans 3 jours",
+              "7": "Dans une semaine",
+              "14": "Dans 2 semaines",
+              "30": "Dans 30 jours"
+            },
+            "assignee": {
+              "none": "Non assignée",
+              "requester": "La personne qui demande"
+            },
+            "approval": {
+              "ask": "Toujours demander",
+              "autoSmall": "Enregistrer les petits changements"
+            }
+          },
+          "notes_vault": {
+            "template": {
+              "blank": "Vide",
+              "meeting": "Notes de réunion",
+              "decision": "Compte rendu de décision"
+            },
+            "approval": {
+              "ask": "Toujours demander",
+              "autoSmall": "Enregistrer les petits changements"
+            }
+          },
+          "events_publisher": {
+            "lengthMinutes": {
+              "none": "Sans durée fixe",
+              "30": "30 minutes",
+              "60": "1 heure",
+              "90": "1 h 30",
+              "120": "2 heures",
+              "240": "4 heures"
+            }
+          }
+        },
+        "settingLabels": {
+          "task_planner": {
+            "priority": "Priorité",
+            "dueInDays": "Échéance",
+            "assignee": "Responsable",
+            "approval": "Vous",
+            "allowAutoApply": "Autorisé dans l’espace"
+          },
+          "events_publisher": {
+            "lengthMinutes": "Durée",
+            "enableRsvp": "Participation",
+            "sendReminders": "Rappels"
+          },
+          "notes_vault": {
+            "approval": "Vous",
+            "allowAutoApply": "Autorisé dans l’espace"
+          }
+        },
+        "settingInvalid": "Ce modèle ne peut pas être enregistré. Utilisez des lettres, des chiffres, une ponctuation simple et les marqueurs indiqués.",
+        "scopeAll": "Tous les projets",
+        "scopeOnly": "Projets choisis",
+        "scopeEmpty": "Aucun projet actif dans cet espace de travail pour l’instant.",
+        "autoApplyNeedsUndo": "Nécessite Annuler, inclus dans Pro."
+      }
     },
     "developer": {
       "title": "Développeur",
@@ -1118,7 +1290,7 @@
     "dailyLimitReached": "Vous avez atteint votre limite quotidienne de messages.",
     "editThenApply": "Vous pouvez modifier les détails ci-dessous, puis cliquer sur Appliquer.",
     "title": "KAIROS AI",
-    "subtitle": "Assistant d’espace de travail",
+    "subtitle": "{name} · Assistant d’espace de travail",
     "thinking": "Réflexion…",
     "info": "Info",
     "hide": "Masquer",
@@ -1129,12 +1301,12 @@
     "emptySubtitle": "Je peux analyser la progression, identifier les risques, planifier des tâches, gérer des notes et plus encore.",
     "infoDesc": "Assistant IA de projet. Les réponses sont approximatives basées sur les données disponibles — vérifiez les décisions critiques.",
     "infoCaps": "Capacités : questions sur l’espace de travail, analyse de projets, planification de tâches, gestion de notes, planification d’événements.",
-    "handoffTaskPlanner": "Je transmets cela à l’Agent de Planification des Tâches pour créer vos tâches. Un instant.",
-    "taskPlannerWorking": "Le Planificateur de Tâches travaille…",
+    "handoffTaskPlanner": "Je transmets cela à {name}, le Planificateur de tâches, pour créer vos tâches. Un instant.",
+    "taskPlannerWorking": "{name} travaille…",
     "taskPlannerDone": "Vos tâches ont été créées avec succès ! {count} tâches sont prêtes sur votre tableau de projet.",
     "taskPlannerDoneNoCount": "Vos modifications ont été appliquées avec succès ! Consultez votre tableau de projet pour les mises à jour.",
-    "taskPlannerPlanReady": "Le Planificateur de tâches a préparé un plan :",
-    "taskPlannerFailed": "Le Planificateur de tâches a rencontré un problème : {error}",
+    "taskPlannerPlanReady": "{name} a préparé un plan :",
+    "taskPlannerFailed": "{name} a rencontré un problème : {error}",
     "confirmTaskPlan": "Confirmer le plan",
     "applyTaskPlan": "Appliquer le plan",
     "confirm": "Confirmer",
@@ -1276,7 +1448,8 @@
       "yourself": "vous-même",
       "oneSidedNoteNamed": "Les deux n’affectent que votre côté. {name} garde l’historique complet.",
       "deleteForEveryone": "Supprimer pour tous"
-    }
+    },
+    "autoApplied": "{name} a enregistré {count, plural, one {# changement} other {# changements}} sans demander, comme choisi dans Paramètres → IA. Vous pouvez l’annuler pendant les 10 prochaines minutes."
   },
   "staticPages": {
     "backHome": "Retour à l'accueil",
@@ -1310,13 +1483,17 @@
       "dueToday": "Dues aujourd'hui",
       "overdue": "En retard",
       "openThisWeek": "Ouvertes cette semaine",
-      "completed": "Terminées",
       "notes": {
-        "doneToday": "{count} faites",
-        "oldest": "la plus ancienne {days}j",
-        "across": "sur {count}",
-        "allTime": "au total"
-      }
+        "left": "",
+        "nothingDue": "",
+        "oldestDays": "",
+        "onTime": "",
+        "acrossProjects": "",
+        "more": "",
+        "fewer": "",
+        "same": ""
+      },
+      "doneThisWeek": ""
     },
     "activity": {
       "title": "Activité récente",
@@ -1329,19 +1506,6 @@
         "updated": "{user} a mis à jour {task} dans {project}",
         "deleted": "{user} a supprimé {task} dans {project}"
       }
-    },
-    "workspace": {
-      "title": "Progression de l'espace",
-      "done": "{count} terminées",
-      "active": "{count} en cours",
-      "todo": "{count} à faire",
-      "dayGone": "{percent}% de la journée écoulée",
-      "ofTasksDone": "des tâches faites",
-      "ofTodayGone": "de la journée écoulée",
-      "doneLabel": "",
-      "activeLabel": "",
-      "todoLabel": "",
-      "dayGoneLabel": ""
     },
     "projects": {
       "untitled": "Projet sans titre",
@@ -1415,20 +1579,10 @@
       "action": "Tous les projets",
       "ends": "Fin le {date}",
       "noDate": "Sans date",
-      "columns": {
-        "project": "Projet",
-        "team": "Équipe",
-        "open": "Ouvertes",
-        "overdue": "En retard",
-        "completion": "Avancement",
-        "health": "État"
-      }
-    },
-    "momentum": {
-      "title": "Votre rythme",
-      "streak": "{count, plural, one {1 jour d'affilée} other {# jours d'affilée}}",
-      "noStreak": "Pas encore de série",
-      "line": "{total, plural, =0 {Rien de terminé ces deux dernières semaines.} one {Vous avez terminé une tâche ces deux dernières semaines.} other {Vous avez terminé # tâches ces deux dernières semaines}}{today, plural, =0 {} other {, dont {today} aujourd'hui}}."
+      "openCount": "",
+      "done": "",
+      "timeUsed": "",
+      "noDeadline": ""
     },
     "teamToday": {
       "title": "L'équipe aujourd'hui",
@@ -1436,7 +1590,8 @@
       "active": "Actif il y a {ago}",
       "neverActive": "Aucune activité encore",
       "you": "{name} (vous)",
-      "empty": "Personne d'autre sur ces projets pour l'instant."
+      "empty": "Personne d'autre sur ces projets pour l'instant.",
+      "meta": ""
     },
     "tui": {
       "briefing": "",
@@ -1461,9 +1616,67 @@
       "booting": "",
       "waitingCounts": "",
       "today": ""
+    },
+    "brief": {
+      "signed": "",
+      "ask": "",
+      "planWeek": "",
+      "planPrompt": ""
+    },
+    "nextUp": {
+      "title": "",
+      "meta": "",
+      "replan": "",
+      "empty": "",
+      "overdue": "",
+      "today": "",
+      "markDone": "",
+      "priority": {
+        "high": "",
+        "urgent": ""
+      }
+    },
+    "week": {
+      "title": "",
+      "action": "",
+      "tasks": "",
+      "events": ""
+    },
+    "crew": {
+      "title": "",
+      "today": "",
+      "tomorrow": "",
+      "day": "",
+      "meetings": "",
+      "off": "",
+      "settings": ""
     }
   },
   "agents": {
+    "names": {
+      "workspace_concierge": "Mentor",
+      "task_planner": "Ulysse",
+      "notes_vault": "Mnémosyne",
+      "events_publisher": "Iris",
+      "org_admin": "Solon",
+      "project_manager": "Dédale",
+      "daily_brief": "Héméra",
+      "risk_radar": "Argos",
+      "weekly_retro": "Clio",
+      "meeting_prep": "Nestor"
+    },
+    "roles": {
+      "workspace_concierge": "Concierge de l’espace de travail",
+      "task_planner": "Planificateur de tâches",
+      "notes_vault": "Coffre de notes",
+      "events_publisher": "Publication d’événements",
+      "org_admin": "Administration de l’organisation",
+      "project_manager": "Gestion de projets",
+      "daily_brief": "Point du jour",
+      "risk_radar": "Radar des risques",
+      "weekly_retro": "Rétro de la semaine",
+      "meeting_prep": "Préparation des réunions"
+    },
     "effort": {
       "title": "À quel point l'assistant réfléchit",
       "auto": "Auto",

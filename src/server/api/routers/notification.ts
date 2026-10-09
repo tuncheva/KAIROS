@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { notifications, pushSubscriptions } from "~/server/db/schema";
-import { isPushConfigured, sendPushToUsers } from "~/server/notifications/push";
+import { isPushConfigured, pushConfigProblem, sendPushToUsers } from "~/server/notifications/push";
 import { eq, and, desc, count } from "drizzle-orm";
 
 /**
@@ -155,7 +155,7 @@ export const notificationRouter = createTRPCRouter({
       .select({ count: count() })
       .from(pushSubscriptions)
       .where(eq(pushSubscriptions.userId, ctx.session.user.id));
-    return { configured: isPushConfigured(), devices: row?.count ?? 0 };
+    return { configured: isPushConfigured(), problem: pushConfigProblem(), devices: row?.count ?? 0 };
   }),
 
   /**

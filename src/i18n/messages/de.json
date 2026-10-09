@@ -215,15 +215,10 @@
     "agentsPoint1": "Ein Gespräch — kein Agent muss ausgewählt werden",
     "agentsPoint2": "Jede Änderung kommt als Entwurf zur Freigabe",
     "agentsPoint3": "Gesperrte Notizen bleiben privat, immer",
-    "agentConciergeName": "Workspace Concierge",
     "agentConciergeBody": "Beantwortet Fragen, erkennt Risiken, weist den Weg.",
-    "agentPlannerName": "Task Planner",
     "agentPlannerBody": "Macht aus einem Ziel — oder einem PDF-Briefing — einen klaren Plan.",
-    "agentNotesName": "Notes Vault",
     "agentNotesBody": "Ordnet und fasst Notizen zusammen. Gesperrte bleiben ungesehen.",
-    "agentEventsName": "Events Publisher",
     "agentEventsBody": "Entwirft die Eventseite, bereit für deinen letzten Blick.",
-    "agentBriefName": "Daily Brief",
     "agentBriefBody": "Eine kurze, ruhige Übersicht über den kommenden Tag.",
     "agentTagReadOnly": "Nur lesen",
     "agentTagDrafts": "Entwürfe",
@@ -524,7 +519,184 @@
       "calendarNoRefresh": "Google hat keinen dauerhaften Zugriff gewährt. Verbinden Sie erneut und bestätigen Sie alle angefragten Berechtigungen.",
       "dismiss": "Schließen",
       "calendarGroup": "Kalender",
-      "calendarGroupHint": "Meeting-Vorbereitung läuft ohne verbundenen Kalender ins Leere."
+      "calendarGroupHint": "Meeting-Vorbereitung läuft ohne verbundenen Kalender ins Leere.",
+      "crew": {
+        "title": "Ihre Crew",
+        "hint": "Zehn Agenten arbeiten für Sie. Sie sprechen mit dem in der Mitte; er gibt Änderungen an einen Spezialisten weiter, und nichts, was ein Spezialist entwirft, wird ohne Ihre Zustimmung gespeichert. Wählen Sie einen Agenten, um zu sehen, was er tut und wie Sie ihn anpassen.",
+        "you": "Sie",
+        "orbitLabel": "Die Agenten, um Sie herum angeordnet",
+        "legendTalks": "Spricht mit Ihnen",
+        "legendDrafts": "Entwirft Änderungen",
+        "legendScheduled": "Nach Zeitplan",
+        "tagReadOnly": "Nur lesen",
+        "tagWrites": "Schreibt",
+        "tagScheduled": "Geplant",
+        "soon": "Bald",
+        "nameTitle": "Name",
+        "nameDescWorkspace": "Alle in diesem Arbeitsbereich sehen diesen Namen, und der Agent stellt sich im Chat damit vor.",
+        "nameDescPersonal": "Der Agent stellt sich im Chat mit diesem Namen vor.",
+        "nameAdminOnly": "Nur Administratoren des Arbeitsbereichs können Agenten umbenennen.",
+        "save": "Speichern",
+        "reset": "Zurücksetzen",
+        "errorEmpty": "Geben Sie einen Namen ein.",
+        "errorTooLong": "Höchstens {max} Zeichen.",
+        "errorCharacters": "Nur Buchstaben, Ziffern, Leerzeichen, Apostrophe, Punkte und Bindestriche.",
+        "errorTaken": "Ein anderer Agent trägt diesen Namen bereits.",
+        "effortTitle": "Denkaufwand",
+        "effortDesc": "Schnell, ausgewogen oder gründlich — im Chat-Eingabefeld pro Unterhaltung gewählt.",
+        "effortValue": "Im Chat",
+        "memoryTitle": "Was er sich merkt",
+        "memoryDesc": "Für diesen Agenten gespeicherte Fakten. Unter „Was der Assistent sich merkt“ prüfen oder löschen.",
+        "memoryValue": "{count, plural, =0 {Noch nichts} one {# Fakt} other {# Fakten}}",
+        "scheduleTitle": "Zeitplan",
+        "scheduleDesc": "Wann er läuft und wo er Sie erreicht. Unten unter „Proaktive Updates“ einstellen.",
+        "scheduleOn": "An",
+        "scheduleOff": "Aus",
+        "meetingPrepOn": "Vor jedem Meeting",
+        "toneTitle": "Ton",
+        "toneDesc": "Wie er antwortet: direkt, freundlich oder ausführlich.",
+        "languageTitle": "Antwortsprache",
+        "languageDesc": "In der Sprache Ihrer Nachricht oder immer in einer Sprache. Gilt für alle Agenten im Chat.",
+        "approvalTitle": "Freigabe",
+        "approvalDesc": "Vor jeder Änderung fragen oder kleine Änderungen selbst speichern lassen, mit Rückgängig — bis zu 3 Änderungen, nichts gelöscht, nichts jemand anderem zugewiesen.",
+        "scopeTitle": "Bereich",
+        "scopeDesc": "Welche Projekte dieses Arbeitsbereichs er ändern darf. Alles andere bleibt ihm verborgen und wird abgelehnt.",
+        "taskDefaultsTitle": "Aufgaben-Standards",
+        "taskDefaultsDesc": "Standard-Zuständige, Priorität und wie weit Fälligkeiten in der Zukunft liegen.",
+        "noteTemplateTitle": "Notizvorlage",
+        "noteTemplateDesc": "Die Struktur, mit der neue Notizen beginnen.",
+        "eventDefaultsTitle": "Event-Standards",
+        "eventDefaultsDesc": "Standarddauer, Zusagen und Erinnerungen für neue Events.",
+        "namingPatternTitle": "Namensmuster",
+        "namingPatternDesc": "Eine Vorlage für neue Projektnamen. Platzhalter: {list}.",
+        "briefSectionsTitle": "Inhalt",
+        "briefSectionsDesc": "Wählen Sie die Abschnitte des Briefings.",
+        "stalledAfterTitle": "Stillstand nach",
+        "stalledAfterDesc": "Tage ohne Fortschritt, bevor ein Projekt markiert wird.",
+        "leadTimeTitle": "Vorlauf",
+        "leadTimeDesc": "Wie lange vor einem Meeting das Briefing kommt.",
+        "about": {
+          "workspace_concierge": "Mit ihm sprechen Sie. Er beantwortet Fragen zu Ihrem Arbeitsbereich und gibt alles, was geändert werden muss, an den richtigen Spezialisten weiter. Er kann schauen, aber nichts anfassen.",
+          "task_planner": "Macht aus einem Ziel einen Backlog und überarbeitet Pläne auf dem Bildschirm. Jede Änderung wird zuerst zur Freigabe entworfen.",
+          "notes_vault": "Erstellt, bearbeitet und löscht Notizen. Gesperrte Notizen werden ausgeschlossen, bevor ihr Inhalt geladen wird.",
+          "events_publisher": "Verwaltet Events vollständig: das Event, Kommentare, Zusagen und Likes.",
+          "org_admin": "Ändert Mitglieder, Rollen und Rechte. Jede Änderung wird einzeln gegen Ihren eigenen Zugriff geprüft.",
+          "project_manager": "Erstellt, benennt um, aktualisiert und archiviert Projekte; Rechte werden beim Anwenden erneut geprüft.",
+          "daily_brief": "Jeden Morgen eine kurze Nachricht darüber, was heute Ihre Aufmerksamkeit braucht.",
+          "risk_radar": "Achtet auf überfällige Arbeit und stockende Projekte. Er zählt statt zu raten und arbeitet daher auch bei aufgebrauchtem KI-Budget.",
+          "weekly_retro": "Einmal pro Woche ein Rückblick: was abgeschlossen, hinzugekommen, übertragen und ins Stocken geraten ist.",
+          "meeting_prep": "Ein kurzes Briefing vor jedem Meeting aus Ihrem verbundenen Kalender, mit den zugehörigen offenen Aufgaben."
+        },
+        "settingAdminOnly": "Nur Administratoren des Arbeitsbereichs können das ändern.",
+        "values": {
+          "workspace_concierge": {
+            "tone": {
+              "balanced": "Ausgewogen",
+              "direct": "Direkt",
+              "friendly": "Freundlich",
+              "detailed": "Ausführlich"
+            },
+            "replyLanguage": {
+              "auto": "Wie meine Nachricht",
+              "en": "English",
+              "bg": "Български",
+              "de": "Deutsch",
+              "es": "Español",
+              "fr": "Français"
+            }
+          },
+          "daily_brief": {
+            "sections": {
+              "dueToday": "Heute fällig",
+              "events": "Events",
+              "risks": "Risiken"
+            }
+          },
+          "risk_radar": {
+            "stalledAfterDays": {
+              "7": "7 Tage",
+              "14": "14 Tage",
+              "30": "30 Tage"
+            }
+          },
+          "meeting_prep": {
+            "leadMinutes": {
+              "15": "15 Minuten",
+              "30": "30 Minuten",
+              "60": "1 Stunde",
+              "90": "1½ Stunden"
+            }
+          },
+          "task_planner": {
+            "priority": {
+              "low": "Niedrig",
+              "medium": "Mittel",
+              "high": "Hoch",
+              "urgent": "Dringend"
+            },
+            "dueInDays": {
+              "none": "Kein Fälligkeitsdatum",
+              "1": "In 1 Tag",
+              "3": "In 3 Tagen",
+              "7": "In einer Woche",
+              "14": "In 2 Wochen",
+              "30": "In 30 Tagen"
+            },
+            "assignee": {
+              "none": "Niemand",
+              "requester": "Die anfragende Person"
+            },
+            "approval": {
+              "ask": "Immer fragen",
+              "autoSmall": "Kleine Änderungen speichern"
+            }
+          },
+          "notes_vault": {
+            "template": {
+              "blank": "Leer",
+              "meeting": "Besprechungsnotizen",
+              "decision": "Entscheidungsprotokoll"
+            },
+            "approval": {
+              "ask": "Immer fragen",
+              "autoSmall": "Kleine Änderungen speichern"
+            }
+          },
+          "events_publisher": {
+            "lengthMinutes": {
+              "none": "Keine feste Dauer",
+              "30": "30 Minuten",
+              "60": "1 Stunde",
+              "90": "1½ Stunden",
+              "120": "2 Stunden",
+              "240": "4 Stunden"
+            }
+          }
+        },
+        "settingLabels": {
+          "task_planner": {
+            "priority": "Priorität",
+            "dueInDays": "Fällig",
+            "assignee": "Zuständig",
+            "approval": "Sie",
+            "allowAutoApply": "Im Arbeitsbereich erlaubt"
+          },
+          "events_publisher": {
+            "lengthMinutes": "Dauer",
+            "enableRsvp": "Zusagen",
+            "sendReminders": "Erinnerungen"
+          },
+          "notes_vault": {
+            "approval": "Sie",
+            "allowAutoApply": "Im Arbeitsbereich erlaubt"
+          }
+        },
+        "settingInvalid": "Dieses Muster kann nicht gespeichert werden. Verwenden Sie Buchstaben, Ziffern, einfache Satzzeichen und die genannten Platzhalter.",
+        "scopeAll": "Alle Projekte",
+        "scopeOnly": "Ausgewählte Projekte",
+        "scopeEmpty": "In diesem Arbeitsbereich gibt es noch keine aktiven Projekte.",
+        "autoApplyNeedsUndo": "Benötigt Rückgängig, das in Pro enthalten ist."
+      }
     },
     "developer": {
       "title": "Entwickler",
@@ -1118,7 +1290,7 @@
     "dailyLimitReached": "Sie haben Ihr tägliches Nachrichtenlimit erreicht.",
     "editThenApply": "Sie können die Details unten bearbeiten und dann auf Übernehmen klicken.",
     "title": "KAIROS AI",
-    "subtitle": "Arbeitsbereich-Assistent",
+    "subtitle": "{name} · Arbeitsbereich-Assistent",
     "thinking": "Denke nach…",
     "info": "Info",
     "hide": "Ausblenden",
@@ -1129,12 +1301,12 @@
     "emptySubtitle": "Ich kann Fortschritt analysieren, Risiken identifizieren, Aufgaben planen, Notizen verwalten und mehr.",
     "infoDesc": "Projekt-KI-Assistent. Antworten basieren auf verfügbaren Daten — überprüfe kritische Entscheidungen.",
     "infoCaps": "Fähigkeiten: Arbeitsbereich-Fragen, Projektanalyse, Aufgabenplanung, Notizverwaltung, Terminplanung.",
-    "handoffTaskPlanner": "Ich übergebe das an den Aufgabenplanungs-Agenten, um Ihre Aufgaben zu erstellen. Einen Moment.",
-    "taskPlannerWorking": "Der Aufgabenplaner arbeitet…",
+    "handoffTaskPlanner": "Ich übergebe das an {name}, den Aufgabenplaner, um Ihre Aufgaben zu erstellen. Einen Moment.",
+    "taskPlannerWorking": "{name} arbeitet…",
     "taskPlannerDone": "Ihre Aufgaben wurden erfolgreich erstellt! {count} Aufgaben sind jetzt auf Ihrem Projektboard bereit.",
     "taskPlannerDoneNoCount": "Ihre Änderungen wurden erfolgreich angewendet! Prüfen Sie Ihr Projektboard für die Aktualisierungen.",
-    "taskPlannerPlanReady": "Der Aufgabenplaner hat einen Plan vorbereitet:",
-    "taskPlannerFailed": "Der Aufgabenplaner hat ein Problem festgestellt: {error}",
+    "taskPlannerPlanReady": "{name} hat einen Plan vorbereitet:",
+    "taskPlannerFailed": "{name} hat ein Problem festgestellt: {error}",
     "confirmTaskPlan": "Aufgabenplan bestätigen",
     "applyTaskPlan": "Aufgabenplan anwenden",
     "confirm": "Bestätigen",
@@ -1276,7 +1448,8 @@
       "yourself": "dir selbst",
       "oneSidedNoteNamed": "Beides betrifft nur deine Seite. {name} behält den vollständigen Verlauf.",
       "deleteForEveryone": "Für alle löschen"
-    }
+    },
+    "autoApplied": "{name} hat {count, plural, one {# Änderung} other {# Änderungen}} ohne Rückfrage gespeichert, wie unter Einstellungen → KI gewählt. In den nächsten 10 Minuten können Sie sie rückgängig machen."
   },
   "staticPages": {
     "backHome": "Zurück zur Startseite",
@@ -1310,13 +1483,17 @@
       "dueToday": "Heute fällig",
       "overdue": "Überfällig",
       "openThisWeek": "Diese Woche offen",
-      "completed": "Abgeschlossen",
       "notes": {
-        "doneToday": "{count} fertig",
-        "oldest": "älteste {days}T",
-        "across": "in {count}",
-        "allTime": "insgesamt"
-      }
+        "left": "",
+        "nothingDue": "",
+        "oldestDays": "",
+        "onTime": "",
+        "acrossProjects": "",
+        "more": "",
+        "fewer": "",
+        "same": ""
+      },
+      "doneThisWeek": ""
     },
     "activity": {
       "title": "Letzte Aktivität",
@@ -1329,19 +1506,6 @@
         "updated": "{user} hat {task} in {project} aktualisiert",
         "deleted": "{user} hat {task} in {project} gelöscht"
       }
-    },
-    "workspace": {
-      "title": "Fortschritt im Workspace",
-      "done": "{count} erledigt",
-      "active": "{count} aktiv",
-      "todo": "{count} offen",
-      "dayGone": "{percent}% des Tages vorbei",
-      "ofTasksDone": "der Aufgaben erledigt",
-      "ofTodayGone": "des Tages vorbei",
-      "doneLabel": "",
-      "activeLabel": "",
-      "todoLabel": "",
-      "dayGoneLabel": ""
     },
     "projects": {
       "untitled": "Unbenanntes Projekt",
@@ -1415,20 +1579,10 @@
       "action": "Alle Projekte",
       "ends": "Endet am {date}",
       "noDate": "Kein Datum",
-      "columns": {
-        "project": "Projekt",
-        "team": "Team",
-        "open": "Offen",
-        "overdue": "Überfällig",
-        "completion": "Fortschritt",
-        "health": "Zustand"
-      }
-    },
-    "momentum": {
-      "title": "Dein Tempo",
-      "streak": "{count, plural, one {1 Tag in Folge} other {# Tage in Folge}}",
-      "noStreak": "Noch keine Serie",
-      "line": "{total, plural, =0 {In den letzten zwei Wochen nichts erledigt.} one {Du hast in den letzten zwei Wochen eine Aufgabe erledigt.} other {Du hast in den letzten zwei Wochen # Aufgaben erledigt}}{today, plural, =0 {} other {, {today} davon heute}}."
+      "openCount": "",
+      "done": "",
+      "timeUsed": "",
+      "noDeadline": ""
     },
     "teamToday": {
       "title": "Team heute",
@@ -1436,7 +1590,8 @@
       "active": "Aktiv vor {ago}",
       "neverActive": "Noch keine Aktivität",
       "you": "{name} (du)",
-      "empty": "Noch ist niemand sonst in diesen Projekten."
+      "empty": "Noch ist niemand sonst in diesen Projekten.",
+      "meta": ""
     },
     "tui": {
       "briefing": "",
@@ -1461,9 +1616,67 @@
       "booting": "",
       "waitingCounts": "",
       "today": ""
+    },
+    "brief": {
+      "signed": "",
+      "ask": "",
+      "planWeek": "",
+      "planPrompt": ""
+    },
+    "nextUp": {
+      "title": "",
+      "meta": "",
+      "replan": "",
+      "empty": "",
+      "overdue": "",
+      "today": "",
+      "markDone": "",
+      "priority": {
+        "high": "",
+        "urgent": ""
+      }
+    },
+    "week": {
+      "title": "",
+      "action": "",
+      "tasks": "",
+      "events": ""
+    },
+    "crew": {
+      "title": "",
+      "today": "",
+      "tomorrow": "",
+      "day": "",
+      "meetings": "",
+      "off": "",
+      "settings": ""
     }
   },
   "agents": {
+    "names": {
+      "workspace_concierge": "Mentor",
+      "task_planner": "Odysseus",
+      "notes_vault": "Mnemosyne",
+      "events_publisher": "Iris",
+      "org_admin": "Solon",
+      "project_manager": "Dädalus",
+      "daily_brief": "Hemera",
+      "risk_radar": "Argus",
+      "weekly_retro": "Klio",
+      "meeting_prep": "Nestor"
+    },
+    "roles": {
+      "workspace_concierge": "Arbeitsbereich-Concierge",
+      "task_planner": "Aufgabenplaner",
+      "notes_vault": "Notiztresor",
+      "events_publisher": "Event-Veröffentlichung",
+      "org_admin": "Organisationsverwaltung",
+      "project_manager": "Projektmanager",
+      "daily_brief": "Tagesbriefing",
+      "risk_radar": "Risikoradar",
+      "weekly_retro": "Wochenrückblick",
+      "meeting_prep": "Meeting-Vorbereitung"
+    },
     "effort": {
       "title": "Wie gründlich der Assistent nachdenkt",
       "auto": "Auto",

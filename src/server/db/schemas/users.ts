@@ -7,8 +7,10 @@ import {
   varchar,
   integer,
   boolean,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
+import type { AgentNameOverrides } from "~/lib/agentNames";
 import crypto from "node:crypto";
 import {
   createTable,
@@ -59,6 +61,18 @@ export const users = createTable("user", (d) => ({
     image: d.text(),
     usageMode: usageModeEnum("usage_mode"),
     activeOrganizationId: integer("active_organization_id"),
+    /**
+     * Agent names for someone working without a workspace. With an active
+     * workspace its own `organizations.agentNames` applies instead, since
+     * names are shared by everyone in it. Overrides only; see `~/lib/agentNames`.
+     */
+    agentNames: jsonb("agent_names").$type<AgentNameOverrides>().default({}).notNull(),
+    /**
+     * This user's agent settings, keyed by setting id: their personal ones,
+     * and — while they have no workspace — the workspace-scoped ones too.
+     * See `~/lib/agentSettings`.
+     */
+    agentSettings: jsonb("agent_settings").$type<Record<string, unknown>>().default({}).notNull(),
     password: varchar("password", { length: 255 }),
 
     resetPinHash: varchar("reset_pin_hash", { length: 255 }),
@@ -166,6 +180,14 @@ export const users = createTable("user", (d) => ({
     allowFollowers: boolean("allow_followers").default(true).notNull(),
     /** Whether the drawer's Activity tab renders anything to other viewers. */
     showActivityFeed: boolean("show_activity_feed").default(true).notNull(),
+    /**
+     * Whether someone who types your exact email into a workspace invite sees
+     * your name and avatar. Off by default (GDPR Art. 25(2)): without it, only
+     * people who already share a workspace with you see who an address is, and
+     * everyone else gets the same answer for registered and unregistered
+     * addresses. See docs/invite-email-legal-research-2026-10-08.md §6.1.
+     */
+    discoverableByEmail: boolean("discoverable_by_email").default(false).notNull(),
     /** Last time this user was seen; drives the online dot. */
     lastSeenAt: timestamp("last_seen_at", { mode: "date", withTimezone: true }),
     activityTracking: boolean("activity_tracking").default(false).notNull(),

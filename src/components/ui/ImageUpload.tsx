@@ -1,9 +1,39 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Camera, Upload } from "~/components/ui/icons";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+
+/** Matches `imageUploader`'s maxFileSize in app/api/uploadthing/core.ts. */
+const MAX_BYTES = 4 * 1024 * 1024;
+const MAX_EDGE = 1024;
+
+/**
+ * Re-encodes an image at most MAX_EDGE px on its long side. Returns null when
+ * the browser cannot decode it (e.g. HEIC outside Safari), so the caller falls
+ * back to the size check on the original.
+ */
+async function downscaleImage(file: File): Promise<File | null> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.85),
+    );
+    if (!blob) return null;
+    const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+    return new File([blob], name, { type: "image/jpeg" });
+  } catch {
+    return null;
+  }
+}
 
 interface ImageUploadProps {
   imagePreview: string;
@@ -31,6 +61,7 @@ export function ImageUpload({
 }: ImageUploadProps) {
   const t = useTranslations("settings.profile");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,23 +69,32 @@ export function ImageUpload({
 
     // reset input so selecting the same file again triggers onChange
     e.target.value = "";
+    setError(null);
 
-    const maxBytes = 4 * 1024 * 1024;
-    if (file.size > maxBytes) {
-      throw new Error("File size must be 4MB or less");
+    // Errors are shown inline: throwing from an event handler only reaches the
+    // dev overlay, and in production the click just silently does nothing.
+    if (!file.type.startsWith("image/")) {
+      setError(t("imageNotImage"));
+      return;
     }
 
-    // Check file type
-    if (!file.type.startsWith("image/")) {
-      throw new Error("Please upload an image file");
+    // A phone photo is routinely over the 4MB upload cap, and an avatar never
+    // renders above 96px — so shrink it here rather than turn the user away.
+    let upload = file;
+    if (upload.size > MAX_BYTES) {
+      upload = (await downscaleImage(upload)) ?? upload;
+    }
+    if (upload.size > MAX_BYTES) {
+      setError(t("imageTooLarge"));
+      return;
     }
 
     // Local preview only (do NOT store base64 in DB)
     const reader = new FileReader();
     reader.onloadend = () => onImagePreviewChange(reader.result as string);
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(upload);
 
-    await onImageChange(file);
+    await onImageChange(upload);
   };
 
   const imageSize = size === "sm" ? "w-20 h-20" : "w-24 h-24";
@@ -94,6 +134,11 @@ export function ImageUpload({
         >
           {isUploading ? t("uploading") : t("uploadImage")}
         </button>
+        {error && (
+          <span role="alert" className="text-settings-small text-error">
+            {error}
+          </span>
+        )}
         {fileInput}
       </span>
     );
@@ -146,6 +191,11 @@ export function ImageUpload({
           <p className="text-settings-meta text-fg-secondary mt-2">
             {description}
           </p>
+          {error && (
+            <p role="alert" className="text-settings-meta text-error mt-1">
+              {error}
+            </p>
+          )}
         </div>
       </div>
       <input

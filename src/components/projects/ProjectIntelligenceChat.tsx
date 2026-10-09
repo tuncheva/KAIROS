@@ -12,6 +12,7 @@ import {
   type AgentTurnPayload,
 } from "~/hooks/useAgentStream";
 import { useTranslations } from "next-intl";
+import { useAgentLabel } from "~/components/agents/useAgentLabel";
 import { api } from "~/trpc/react";
 
 import { PlanDiffCard } from "./PlanDiffCard";
@@ -112,6 +113,7 @@ type ChatMsg =
         | { type: "events_direct_apply"; draftId: string } // Combined confirm+apply
         | { type: "task_confirm"; draftId: string }
         | { type: "task_undo"; draftId: string }
+        | { type: "notes_undo"; draftId: string }
         | { type: "task_apply"; draftId: string; confirmationToken: string }
         | { type: "task_direct_apply"; draftId: string } // Combined confirm+apply
         /*
@@ -852,6 +854,7 @@ export function ProjectIntelligenceChat(props: {
   // keeping it out of the `chat` namespace stops the widget's message catalogue
   // from growing keys it never renders.
   const tc = useTranslations("aiConsole");
+  const agentLabels = useAgentLabel();
   const utils = api.useUtils();
 
   const [draft, setDraft] = useState("");
@@ -1022,6 +1025,30 @@ export function ProjectIntelligenceChat(props: {
           .filter(Boolean)
           .join("\n");
         return { text: text || t("noResponse"), createdAt: new Date(), msgId };
+      }
+
+      // A small plan the user lets apply on its own arrives already applied: a
+      // receipt with Undo stands where the confirm card would have been.
+      if (plan.autoApplied && (plan.kind === "tasks" || plan.kind === "notes")) {
+        const agent = plan.kind === "tasks" ? "task_planner" : "notes_vault";
+        return {
+          text: [
+            summary,
+            t("autoApplied", {
+              name: agentLabels.name(agent),
+              count: plan.autoApplied.changed,
+            }),
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          createdAt: new Date(),
+          msgId,
+          actions: [
+            plan.kind === "tasks"
+              ? { type: "task_undo" as const, draftId: plan.draftId }
+              : { type: "notes_undo" as const, draftId: plan.draftId },
+          ],
+        };
       }
 
       if (plan.kind === "tasks") {
@@ -1418,7 +1445,7 @@ export function ProjectIntelligenceChat(props: {
         eventPreviews: eventPreviews.length > 0 ? eventPreviews : undefined,
       };
     },
-    [generateMsgId, t],
+    [agentLabels, generateMsgId, t],
   );
 
   const { send: sendTurn, cancel: cancelTurn } = useAgentStream({
@@ -1432,7 +1459,7 @@ export function ProjectIntelligenceChat(props: {
       pushTrail({ kind: "tool", label: humanizeToolName(name), code: name });
     },
     onSubAgent: (agent) => {
-      setProgressLabel(t("subAgentWorking", { agent }));
+      setProgressLabel(t("subAgentWorking", { agent: agentLabels.name(agent) }));
       pushTrail({ kind: "handoff", label: tc("trailHandoff"), code: agent });
       // Swap the dots for the sub-agent bar: a handoff has actually happened.
       setMessages((prev) =>
@@ -1485,6 +1512,12 @@ export function ProjectIntelligenceChat(props: {
         }),
       );
       if (payload.plan?.kind === "tasks") void utils.task.invalidate();
+      // An auto-applied plan already changed the workspace; refresh what shows it.
+      if (payload.plans?.some((p) => p.autoApplied)) {
+        void utils.task.invalidate();
+        void utils.project.invalidate();
+        void utils.note.invalidate();
+      }
     },
     onError: (message, isRateLimit) => {
       setProgressLabel(null);
@@ -1939,10 +1972,10 @@ export function ProjectIntelligenceChat(props: {
             <p className="text-[10px] text-fg-tertiary truncate">
               {messages.length > 0 &&
                messages[messages.length - 1]?.text === SUBAGENT_SENTINEL
-                ? t("taskPlannerWorking")
+                ? t("taskPlannerWorking", { name: agentLabels.name("task_planner") })
                 : isThinking
                   ? t("thinking")
-                  : t("subtitle")}
+                  : t("subtitle", { name: agentLabels.name("workspace_concierge") })}
             </p>
           </div>
         </div>
@@ -2030,7 +2063,13 @@ export function ProjectIntelligenceChat(props: {
              */
             <div className="flex h-full flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <p className="text-[17px] font-semibold tracking-[-0.015em] text-fg-primary">
+                <p
+                  className={
+                    isConsole
+                      ? "font-display text-[34px] leading-[1.08] font-light tracking-[-0.02em] text-fg-primary"
+                      : "text-[17px] font-semibold tracking-[-0.015em] text-fg-primary"
+                  }
+                >
                   {t("emptyTitle")}
                 </p>
                 <p className="text-[13px] leading-relaxed text-fg-tertiary">
@@ -2162,7 +2201,9 @@ export function ProjectIntelligenceChat(props: {
                             // accent belongs to the assistant's identity and to
                             // the controls that change the workspace, not to
                             // every line the user has ever typed.
-                            "group max-w-[520px] rounded-xl rounded-br-sm border border-border-medium/60 bg-bg-tertiary px-4 py-3 text-fg-primary"
+                            isConsole
+                            ? "group max-w-[520px] rounded-[14px] border border-tui-accent/30 bg-tui-accent/10 px-[15px] py-[11px] text-tui-ink"
+                            : "group max-w-[520px] rounded-xl rounded-br-sm border border-border-medium/60 bg-bg-tertiary px-4 py-3 text-fg-primary"
                           : "group w-full max-w-[720px] text-fg-primary"
                         : m.role === "user"
                           ? "group max-w-[85%] rounded-lg rounded-br-md text-white px-4 py-2.5 shadow-sm"
@@ -2196,7 +2237,7 @@ export function ProjectIntelligenceChat(props: {
                         }`}
                       >
                         {isConsole && (
-                          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-sm bg-accent-primary/15 text-accent-primary">
+                          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border border-tui-accent/45 text-tui-accent">
                             <Sparkles size={13} />
                           </span>
                         )}
@@ -2207,9 +2248,12 @@ export function ProjectIntelligenceChat(props: {
                               : "kairos-stamp text-[9.5px] text-accent-primary"
                           }
                         >
-                          {rosterQuery.data?.find(
-                            (a) => a.id === (m as { agentId?: string }).agentId,
-                          )?.name ?? t("title")}
+                          {(() => {
+                            const agentId = (m as { agentId?: string }).agentId;
+                            return agentId && rosterQuery.data?.some((a) => a.id === agentId)
+                              ? agentLabels.name(agentId)
+                              : t("title");
+                          })()}
                         </span>
                         <span
                           className={`kairos-stamp text-fg-tertiary ${
@@ -2242,10 +2286,10 @@ export function ProjectIntelligenceChat(props: {
                         ) : isSubAgentMsg ? (
                           <div className="kairos-chat-response text-sm leading-relaxed py-1">
                             <span className="sr-only">
-                              {t("taskPlannerWorking")}
+                              {t("taskPlannerWorking", { name: agentLabels.name("task_planner") })}
                             </span>
                             <SubAgentWorking
-                              label={progressLabel ?? t("taskPlannerWorking")}
+                              label={progressLabel ?? t("taskPlannerWorking", { name: agentLabels.name("task_planner") })}
                             />
                           </div>
                         ) : (
@@ -2514,18 +2558,22 @@ export function ProjectIntelligenceChat(props: {
                                     })) as ConfirmResponse;
                                     
                                     // Step 2: Apply immediately
-                                    const applyRes = (await notesApplyMutation.mutateAsync({
+                                    await notesApplyMutation.mutateAsync({
                                       draftId: a.draftId,
                                       confirmationToken: confirmRes.confirmationToken,
-                                    })) as ApplyResponse;
+                                    });
                                     
-                                    const results = applyRes.results;
+                                    // The results used to be counted by their keys,
+                                    // which reported the number of result *fields*, not
+                                    // of changes. The receipt says what happened and
+                                    // carries the undo the server has always supported.
                                     setMessages((prev) => [
                                       ...prev,
                                       {
                                         role: "agent",
-                                        text: `✅ Done! ${results ? `(${typeof results === "object" ? Object.keys(results as Record<string, unknown>).length : 1} operations applied)` : "Changes applied successfully."}`,
+                                        text: t("notesDone"),
                                         createdAt: new Date(),
+                                        actions: [{ type: "notes_undo" as const, draftId: a.draftId }],
                                       },
                                     ]);
                                     // Clear edits for this message
@@ -3253,6 +3301,18 @@ export function ProjectIntelligenceChat(props: {
                             );
                           }
 
+                          /* ---- Notes Undo ---- */
+                          if (a.type === "notes_undo") {
+                            return (
+                              <UndoApplyButton
+                                key={`${a.type}-${a.draftId}-${aIdx}`}
+                                draftId={a.draftId}
+                                kind="notes"
+                                onUndone={() => void utils.note.invalidate()}
+                              />
+                            );
+                          }
+
                           /* ---- Task Confirm ---- */
                           if (a.type === "task_confirm") {
                             return (
@@ -3483,7 +3543,13 @@ export function ProjectIntelligenceChat(props: {
               isConsole ? "w-full px-6 pt-4 pb-5 lg:px-10" : "w-full p-3"
             }
           >
-            <div className="flex flex-col gap-3 rounded-md border border-border-medium/70 bg-bg-secondary px-3 py-2.5 transition-colors focus-within:border-accent-primary">
+            <div
+              className={
+                isConsole
+                  ? "flex flex-col gap-3 rounded-xl border border-tui-ink/16 bg-tui-bg pt-3 pr-3 pb-2.5 pl-4 transition-colors focus-within:border-tui-accent/45"
+                  : "flex flex-col gap-3 rounded-md border border-border-medium/70 bg-bg-secondary px-3 py-2.5 transition-colors focus-within:border-accent-primary"
+              }
+            >
               <textarea
                 ref={composerRef}
                 value={draft}
@@ -3505,15 +3571,27 @@ export function ProjectIntelligenceChat(props: {
                 <button
                   type="submit"
                   aria-label={t("send")}
-                  className={`kairos-tap ${
-                    isConsole ? "ml-auto " : "ml-auto "
-                  }flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
-                  style={{
-                    backgroundColor:
-                      !isThinking && draft.trim()
-                        ? "rgb(var(--accent-primary))"
-                        : "rgb(var(--bg-tertiary))",
-                  }}
+                  className={
+                    isConsole
+                      ? // The direct chats' send: a filled accent disc when
+                        // there is something to send, an outline when not.
+                        `kairos-tap ml-auto flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed ${
+                          !isThinking && draft.trim()
+                            ? "border-tui-accent bg-tui-accent text-tui-on-accent"
+                            : "border-tui-ink/16 bg-transparent text-tui-ink3"
+                        }`
+                      : "kairos-tap ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                  }
+                  style={
+                    isConsole
+                      ? undefined
+                      : {
+                          backgroundColor:
+                            !isThinking && draft.trim()
+                              ? "rgb(var(--accent-primary))"
+                              : "rgb(var(--bg-tertiary))",
+                        }
+                  }
                   disabled={isThinking || !draft.trim()}
                 >
                   <ArrowUp size={15} />

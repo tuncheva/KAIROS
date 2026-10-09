@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { after } from "next/server";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, type TRPCContext } from "~/server/api/trpc";
@@ -20,6 +21,7 @@ import {
   users,
 } from "~/server/db/schema";
 import { and, asc, count, desc, eq, gt, ilike, inArray, lt, ne, or, sql, isNull } from "drizzle-orm";
+import { createLogger } from "~/server/logger";
 import { notify } from "~/server/notifications/dispatch";
 import {
   emitNewMessage,
@@ -28,6 +30,8 @@ import {
   emitMessageUpdated,
   emitMessageReaction,
 } from "~/server/ws/emit";
+
+const log = createLogger("chat");
 
 function normalizePair(a: string, b: string): { userOneId: string; userTwoId: string } {
   return a < b ? { userOneId: a, userTwoId: b } : { userOneId: b, userTwoId: a };
@@ -99,7 +103,12 @@ async function ensureParticipants(
     .where(eq(conversationParticipants.conversationId, conversationId));
 
   const missing = memberIds.filter((id) => !existing.some((p) => p.userId === id));
-  if (missing.length > 0) {
+  if (missing.length === 0) {
+    /* The common case: every row already exists, so the caller's is in hand
+       and a second read would only add a round trip to every chat call. */
+    const mine = existing.find((p) => p.userId === selfId);
+    if (mine) return mine;
+  } else {
     await ctx.db
       .insert(conversationParticipants)
       .values(missing.map((userId) => ({ conversationId, userId })))
@@ -659,24 +668,44 @@ export const chatRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { convo, selfId, otherId } = await assertParticipant(ctx, input.conversationId);
 
-      /* A reply must point at a message in this same conversation — otherwise
+      /* Independent reads, issued together: against a remote database every
+         sequential query is a full round trip the sender waits on.
+
+         A reply must point at a message in this same conversation — otherwise
          the quote block becomes a way to read a line out of someone else's
-         thread by guessing ids. */
-      if (input.replyToId !== undefined) {
-        const [target] = await ctx.db
-          .select({ id: directMessages.id })
-          .from(directMessages)
-          .where(
-            and(
-              eq(directMessages.id, input.replyToId),
-              eq(directMessages.conversationId, input.conversationId),
-            ),
-          )
-          .limit(1);
-        if (!target) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Can't reply to that message" });
-        }
+         thread by guessing ids. The same lookup also fetches the quote, so it
+         is one query rather than a check now and a fetch later. */
+      const [replyRows, senderRows] = await Promise.all([
+        input.replyToId !== undefined
+          ? ctx.db
+              .select({
+                id: directMessages.id,
+                body: directMessages.body,
+                deletedAt: directMessages.deletedAt,
+                senderName: users.name,
+              })
+              .from(directMessages)
+              .innerJoin(users, eq(users.id, directMessages.senderId))
+              .where(
+                and(
+                  eq(directMessages.id, input.replyToId),
+                  eq(directMessages.conversationId, input.conversationId),
+                ),
+              )
+              .limit(1)
+          : Promise.resolve([]),
+        ctx.db
+          .select({ name: users.name, image: users.image })
+          .from(users)
+          .where(eq(users.id, selfId))
+          .limit(1),
+      ]);
+
+      const replyTo = replyRows[0];
+      if (input.replyToId !== undefined && !replyTo) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Can't reply to that message" });
       }
+      const sender = senderRows[0];
 
       const [message] = await ctx.db
         .insert(directMessages)
@@ -697,8 +726,16 @@ export const chatRouter = createTRPCRouter({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to store message" });
       }
 
-      const storedAttachments = input.attachments?.length
-        ? await ctx.db
+      /* The three writes that follow the insert depend only on its id, not on
+         each other, so they go out together.
+
+         Sending is also reading: without the participant update the sender's own
+         message counts against their unread badge the moment it is stored. It
+         also brings the thread back out of the sender's archive — writing into a
+         conversation means it is active again. */
+      const [storedAttachments] = await Promise.all([
+        input.attachments?.length
+          ? ctx.db
             .insert(directMessageAttachments)
             .values(
               input.attachments.map((a) => ({
@@ -720,47 +757,21 @@ export const chatRouter = createTRPCRouter({
               width: directMessageAttachments.width,
               height: directMessageAttachments.height,
             })
-        : [];
-
-      /* Sending is also reading: without this the sender's own message counts
-         against their unread badge the moment it is stored. */
-      await ctx.db
-        .update(conversationParticipants)
-        .set({ lastReadMessageId: message.id })
-        .where(
-          and(
-            eq(conversationParticipants.conversationId, input.conversationId),
-            eq(conversationParticipants.userId, selfId),
+          : Promise.resolve([]),
+        ctx.db
+          .update(conversationParticipants)
+          .set({ lastReadMessageId: message.id, archivedAt: null })
+          .where(
+            and(
+              eq(conversationParticipants.conversationId, input.conversationId),
+              eq(conversationParticipants.userId, selfId),
+            ),
           ),
-        );
-
-      await ctx.db
-        .update(directConversations)
-        .set({ lastMessageAt: sql`CURRENT_TIMESTAMP`, updatedAt: sql`CURRENT_TIMESTAMP` })
-        .where(eq(directConversations.id, input.conversationId));
-
-      const [sender] = await ctx.db
-        .select({ name: users.name, image: users.image })
-        .from(users)
-        .where(eq(users.id, selfId))
-        .limit(1);
-
-      const replyTo =
-        input.replyToId !== undefined
-          ? (
-              await ctx.db
-                .select({
-                  id: directMessages.id,
-                  body: directMessages.body,
-                  deletedAt: directMessages.deletedAt,
-                  senderName: users.name,
-                })
-                .from(directMessages)
-                .innerJoin(users, eq(users.id, directMessages.senderId))
-                .where(eq(directMessages.id, input.replyToId))
-                .limit(1)
-            )[0]
-          : undefined;
+        ctx.db
+          .update(directConversations)
+          .set({ lastMessageAt: sql`CURRENT_TIMESTAMP`, updatedAt: sql`CURRENT_TIMESTAMP` })
+          .where(eq(directConversations.id, input.conversationId)),
+      ]);
 
       const result = {
         ...message,
@@ -805,25 +816,31 @@ export const chatRouter = createTRPCRouter({
          gates now stand in front of it: the recipient's own mute setting, and a
          coalescing window — the first message in a burst notifies, the rest ride
          along with it until the recipient reads the thread (which clears the
-         notification) or the window lapses. */
-      const [recipient] = await ctx.db
-        .select({
-          mutedUntil: conversationParticipants.mutedUntil,
-        })
-        .from(conversationParticipants)
-        .where(
-          and(
-            eq(conversationParticipants.conversationId, input.conversationId),
-            eq(conversationParticipants.userId, otherId),
-          ),
-        )
-        .limit(1);
+         notification) or the window lapses.
 
-      const muted = recipient?.mutedUntil !== null && recipient?.mutedUntil !== undefined
-        ? recipient.mutedUntil.getTime() > Date.now()
-        : false;
+         It is four more round trips (mute, preferences, coalesce, insert) that
+         the sender has no reason to wait on — the message is already stored and
+         fanned out — so it runs after the response. `after` rather than a bare
+         `void` for the reason given on `schedulePush`. */
+      const deliverNotification = async () => {
+        const [recipient] = await ctx.db
+          .select({
+            mutedUntil: conversationParticipants.mutedUntil,
+          })
+          .from(conversationParticipants)
+          .where(
+            and(
+              eq(conversationParticipants.conversationId, input.conversationId),
+              eq(conversationParticipants.userId, otherId),
+            ),
+          )
+          .limit(1);
 
-      if (!muted) {
+        const muted = recipient?.mutedUntil !== null && recipient?.mutedUntil !== undefined
+          ? recipient.mutedUntil.getTime() > Date.now()
+          : false;
+        if (muted) return;
+
         const senderName = sender?.name ?? "Someone";
         const preview =
           message.body.trim().length > 0
@@ -839,7 +856,7 @@ export const chatRouter = createTRPCRouter({
         await notify({
           db: ctx.db,
           userId: otherId,
-          actorId: ctx.session.user.id,
+          actorId: selfId,
           category: "directMessage",
           type: "message",
           title: "New message",
@@ -847,6 +864,13 @@ export const chatRouter = createTRPCRouter({
           link: `/chat/${input.conversationId}`,
           coalesceWindowMs: NOTIFICATION_COALESCE_MS,
         });
+      };
+      const logFailure = (err: unknown) =>
+        log.error("message notification failed", { err, conversationId: input.conversationId });
+      try {
+        after(() => deliverNotification().catch(logFailure));
+      } catch {
+        void deliverNotification().catch(logFailure);
       }
 
       return result;
@@ -1229,6 +1253,7 @@ export const chatRouter = createTRPCRouter({
         .select({
           id: directMessages.id,
           conversationId: directMessages.conversationId,
+          senderId: directMessages.senderId,
           deletedAt: directMessages.deletedAt,
         })
         .from(directMessages)
@@ -1287,6 +1312,47 @@ export const chatRouter = createTRPCRouter({
           userIds: rows.filter((r) => r.emoji === emoji).map((r) => r.userId),
         })),
       });
+
+      /* Tell the author, but only when a reaction was added — taking one back
+         is not news. Same conversation-mute gate as sendMessage, and the same
+         coalescing window, so a flurry of reactions is one bell entry. Reacting
+         to your own message is dropped by the dispatcher (actorId === userId). */
+      if (deleted.length === 0) {
+        const [authorParticipant] = await ctx.db
+          .select({ mutedUntil: conversationParticipants.mutedUntil })
+          .from(conversationParticipants)
+          .where(
+            and(
+              eq(conversationParticipants.conversationId, message.conversationId),
+              eq(conversationParticipants.userId, message.senderId),
+            ),
+          )
+          .limit(1);
+
+        const authorMuted = authorParticipant?.mutedUntil !== null && authorParticipant?.mutedUntil !== undefined
+          ? authorParticipant.mutedUntil.getTime() > Date.now()
+          : false;
+
+        if (!authorMuted && message.senderId !== selfId) {
+          const [reactor] = await ctx.db
+            .select({ name: users.name })
+            .from(users)
+            .where(eq(users.id, selfId))
+            .limit(1);
+
+          await notify({
+            db: ctx.db,
+            userId: message.senderId,
+            actorId: selfId,
+            category: "social",
+            type: "like",
+            title: "New reaction",
+            message: `${reactor?.name ?? "Someone"} reacted ${input.emoji} to your message`,
+            link: `/chat/${message.conversationId}`,
+            coalesceWindowMs: NOTIFICATION_COALESCE_MS,
+          });
+        }
+      }
 
       return { messageId: input.messageId, reactions: aggregate };
     }),

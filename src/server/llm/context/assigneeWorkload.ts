@@ -21,6 +21,7 @@ import { and, gte, inArray, sql } from "drizzle-orm";
 
 import type { TRPCContext } from "~/server/api/trpc";
 import { taskActivityLog, taskComments, tasks } from "~/server/db/schema";
+import { ts } from "~/server/db/timestamp";
 
 /** Window for "recently active" and "recently completed". */
 export const ACTIVITY_WINDOW_DAYS = 14;
@@ -183,10 +184,10 @@ export async function loadAssigneeWorkload(
         projectId: tasks.projectId,
         open: sql<number>`count(*) FILTER (WHERE ${tasks.status} <> 'completed')`.mapWith(Number),
         inProgress: sql<number>`count(*) FILTER (WHERE ${tasks.status} = 'in_progress')`.mapWith(Number),
-        overdue: sql<number>`count(*) FILTER (WHERE ${tasks.status} <> 'completed' AND ${tasks.dueDate} < ${now})`.mapWith(Number),
-        dueThisWeek: sql<number>`count(*) FILTER (WHERE ${tasks.status} <> 'completed' AND ${tasks.dueDate} >= ${now} AND ${tasks.dueDate} <= ${weekAhead})`.mapWith(Number),
+        overdue: sql<number>`count(*) FILTER (WHERE ${tasks.status} <> 'completed' AND ${tasks.dueDate} < ${ts(now)})`.mapWith(Number),
+        dueThisWeek: sql<number>`count(*) FILTER (WHERE ${tasks.status} <> 'completed' AND ${tasks.dueDate} >= ${ts(now)} AND ${tasks.dueDate} <= ${ts(weekAhead)})`.mapWith(Number),
         highPriorityOpen: sql<number>`count(*) FILTER (WHERE ${tasks.status} <> 'completed' AND ${tasks.priority} IN ('high', 'urgent'))`.mapWith(Number),
-        completedRecently: sql<number>`count(*) FILTER (WHERE ${tasks.status} = 'completed' AND ${tasks.completedAt} >= ${since})`.mapWith(Number),
+        completedRecently: sql<number>`count(*) FILTER (WHERE ${tasks.status} = 'completed' AND ${tasks.completedAt} >= ${ts(since)})`.mapWith(Number),
       })
       .from(tasks)
       .where(inArray(tasks.assignedToId, ids))

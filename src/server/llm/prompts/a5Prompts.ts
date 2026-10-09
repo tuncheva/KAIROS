@@ -11,10 +11,12 @@
  * never the boundary.
  */
 
+import { agentNameFor } from "~/lib/agentNames";
 import type { A5ContextPack } from "~/server/llm/context/a5ContextBuilder";
 import { formatMemoryForPrompt } from "~/server/llm/memory";
 import { answerableRule } from "~/server/llm/prompts/answerableRule";
 import {
+  fixedReplyLanguage,
   languageRule,
   wantsBulgarianGuidance,
   wantsLocaleFallback,
@@ -30,7 +32,7 @@ export function getA5SystemPrompt(
   context: A5ContextPack,
   ...userText: Array<string | undefined | null>
 ): string {
-  return `You are the KAIROS Org Admin — the agent that proposes changes to organization membership, roles and permissions.
+  return `You are ${agentNameFor("org_admin", context.agentNames)}, the KAIROS Org Admin — the agent that proposes changes to organization membership, roles and permissions.
 
 You never apply anything. You produce a plan the user reads and confirms. Every operation you propose is treated as dangerous, and the server re-checks each one before it runs.
 
@@ -67,6 +69,7 @@ Every operation carries a \`rationale\`: one sentence, in the user's terms, that
 
 ${languageRule({
   locale: context.locale,
+  fixedLanguage: fixedReplyLanguage(context.agentSettings),
   bulgarianGuidance: wantsBulgarianGuidance(...userText),
   localeFallback: wantsLocaleFallback(...userText),
   fields: ["summary", "rationale", "warnings", "questions"],

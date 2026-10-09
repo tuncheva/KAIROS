@@ -28,6 +28,7 @@ import { buildA6Context } from "~/server/llm/context/a6ContextBuilder";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 import { getA6SystemPrompt } from "~/server/llm/prompts/a6Prompts";
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
+import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
 import { localized, type LocalizedText } from "~/server/llm/locale";
 import {
   ProjectManagerDraftSchema,
@@ -35,6 +36,10 @@ import {
   type ProjectManagerDraft,
 } from "~/server/llm/schemas/a6ProjectManagerSchemas";
 import { createLogger } from "~/server/logger";
+import { namesOffPattern } from "~/server/llm/agents/defaults";
+import { agentSetting, inProjectScope } from "~/lib/agentSettings";
+import { loadAgentConfigSource } from "~/server/llm/agents/config";
+import { notifyProjectLifecycle } from "~/server/notifications/workNotices";
 
 import {
   computePlanHash,
@@ -75,6 +80,15 @@ function hashPlan(plan: ProjectManagerDraft): string {
 const NO_PROJECTS_SUMMARY: LocalizedText = {
   en: "You don't have any projects yet, and I couldn't find any organizations to create a project in. Create a personal project or join an organization first.",
   bg: "Все още нямате проекти и не намерих организации, в които да създадете такъв. Първо създайте личен проект или се присъединете към организация.",
+};
+
+/** Shown on a draft when a project name does not follow the workspace's pattern. */
+const OFF_PATTERN_WARNING: LocalizedText = {
+  en: "“{name}” doesn’t follow this workspace’s naming pattern “{pattern}”.",
+  bg: "„{name}“ не следва шаблона за имена в това работно пространство „{pattern}“.",
+  de: "„{name}“ folgt nicht dem Namensmuster dieses Arbeitsbereichs „{pattern}“.",
+  es: "«{name}» no sigue el patrón de nombres de este espacio de trabajo «{pattern}».",
+  fr: "« {name} » ne suit pas le modèle de nom de cet espace de travail « {pattern} ».",
 };
 
 export const a6ProjectManager = {
@@ -128,6 +142,7 @@ export const a6ProjectManager = {
         { role: "system", content: systemPrompt },
         ...replyLanguageMessages({
           locale: contextPack.locale,
+          fixed: fixedReplyLanguage(contextPack.agentSettings),
           message: input.message,
           originalMessage: input.originalMessage,
         }),
@@ -195,6 +210,28 @@ export const a6ProjectManager = {
         (op) => visibleProjectIds.has(op.projectId) && canArchiveProject(op.projectId),
       ),
     };
+
+    // Names that do not follow the workspace pattern are kept — the user may have
+    // a reason — but the draft says so before anything is created or renamed.
+    const offPattern = namesOffPattern(
+      [
+        ...guarded.creates.map((op) => op.title),
+        ...guarded.updates.flatMap((op) => (op.patch.title ? [op.patch.title] : [])),
+      ],
+      contextPack.agentSettings,
+    );
+    if (offPattern.length) {
+      const pattern = agentSetting(contextPack.agentSettings, "project_manager.namingPattern");
+      const language = fixedReplyLanguage(contextPack.agentSettings) ?? contextPack.locale;
+      guarded.warnings = [
+        ...offPattern.map((title) =>
+          localized(OFF_PATTERN_WARNING, language)
+            .replace("{name}", title)
+            .replace("{pattern}", pattern),
+        ),
+        ...guarded.warnings,
+      ].slice(0, 10);
+    }
 
     const planHash = hashPlan(guarded);
     const plan: ProjectManagerDraft = { ...guarded, planHash };
@@ -368,6 +405,12 @@ export const a6ProjectManager = {
       return membershipCache.get(orgId) ?? null;
     };
 
+    // Scope as it is now, read with the throwing loader: if it cannot be read,
+    // nothing is changed. Creates are not limited by it.
+    const projectScope = (await loadAgentConfigSource(input.ctx, userId)).settings[
+      "project_manager.scope"
+    ];
+
     // ---- creates
     for (const op of plan.creates) {
       if (op.organizationId !== undefined) {
@@ -390,6 +433,8 @@ export const a6ProjectManager = {
 
       results.created += 1;
       log.info("A6 created project", { title: op.title });
+      // No notice: a project that did not exist a moment ago has no audience
+      // besides its creator — the same reason `project.create` sends none.
     }
 
     // ---- updates
@@ -397,6 +442,8 @@ export const a6ProjectManager = {
       const [project] = await db
         .select({
           id: projects.id,
+          title: projects.title,
+          status: projects.status,
           createdById: projects.createdById,
           organizationId: projects.organizationId,
         })
@@ -406,6 +453,13 @@ export const a6ProjectManager = {
 
       if (!project) {
         results.refused.push(`"${op.projectTitle}": project not found.`);
+        continue;
+      }
+
+      if (!inProjectScope(projectScope, project.id)) {
+        results.refused.push(
+          `"${op.projectTitle}": outside the projects this agent may change.`,
+        );
         continue;
       }
 
@@ -437,6 +491,18 @@ export const a6ProjectManager = {
       await db.update(projects).set(patch).where(eq(projects.id, op.projectId));
 
       results.updated += 1;
+
+      // A status patch is an archive or a reopen by another name; the audience
+      // hears about it exactly as they would from `project.archiveProject` /
+      // `project.reopenProject`.
+      if (patch.status !== undefined && patch.status !== project.status) {
+        await notifyProjectLifecycle(db, {
+          actorId: userId,
+          projectId: op.projectId,
+          projectTitle: patch.title ?? project.title,
+          change: patch.status === "archived" ? "archived" : "reopened",
+        });
+      }
     }
 
     // ---- archives
@@ -444,6 +510,8 @@ export const a6ProjectManager = {
       const [project] = await db
         .select({
           id: projects.id,
+          title: projects.title,
+          status: projects.status,
           createdById: projects.createdById,
           organizationId: projects.organizationId,
         })
@@ -453,6 +521,13 @@ export const a6ProjectManager = {
 
       if (!project) {
         results.refused.push(`"${op.projectTitle}": project not found.`);
+        continue;
+      }
+
+      if (!inProjectScope(projectScope, project.id)) {
+        results.refused.push(
+          `"${op.projectTitle}": outside the projects this agent may change.`,
+        );
         continue;
       }
 
@@ -477,6 +552,15 @@ export const a6ProjectManager = {
         .where(eq(projects.id, op.projectId));
 
       results.archived += 1;
+
+      if (project.status !== "archived") {
+        await notifyProjectLifecycle(db, {
+          actorId: userId,
+          projectId: op.projectId,
+          projectTitle: project.title,
+          change: "archived",
+        });
+      }
     }
 
     await db.insert(agentProjectManagerApplies).values({

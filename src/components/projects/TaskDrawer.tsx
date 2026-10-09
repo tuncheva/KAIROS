@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { ModalDismiss } from "~/components/ui/Modal";
 import { FileText, Sparkles } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
@@ -33,10 +32,19 @@ export type EditableTask = {
   status: TaskStatus;
   dueDate: Date | string | null;
   assignedTo: { id: string } | null;
+  parentTaskId: number | null;
 };
 
+/** A top-level task a new or edited task can be filed under. */
+export type ParentOption = { id: number; title: string };
+
 const PRIORITIES: TaskPriority[] = ["low", "medium", "high", "urgent"];
-const STATUSES: TaskStatus[] = ["pending", "in_progress", "completed", "blocked"];
+const STATUSES: TaskStatus[] = [
+  "pending",
+  "in_progress",
+  "completed",
+  "blocked",
+];
 
 /**
  * Priority is the one place the task drawer carries colour. The dot is the
@@ -44,16 +52,26 @@ const STATUSES: TaskStatus[] = ["pending", "in_progress", "completed", "blocked"
  * the accent submit button.
  */
 export const PRIORITY_DOT: Record<TaskPriority, string> = {
-  low: "bg-fg-quaternary",
-  medium: "bg-success",
-  high: "bg-warning",
-  urgent: "bg-error",
+  low: "bg-tui-ink3",
+  medium: "bg-tui-ok",
+  high: "bg-tui-warn",
+  urgent: "bg-tui-danger",
 };
 
-const FIELD =
-  "rounded-sm border border-border-light/60 bg-bg-tertiary px-3.5 text-fg-primary outline-none transition-colors duration-300 placeholder:text-fg-quaternary focus:border-accent-primary/60";
+/** Side padding shared by the header, body and footer, so their edges line up. */
+const PAD = "px-6 sm:px-8";
 
-const STAMP = "kairos-stamp text-[10px] tracking-[0.14em] text-fg-tertiary";
+/** The small spaced capitals the dashboard labels with. */
+const EYEBROW =
+  "text-tui-ink3 text-[10.5px] font-medium tracking-[0.18em] uppercase";
+
+/** A bordered text control, as `NewProjectDrawer` draws its description. */
+const FIELD =
+  "border-tui-ink/10 text-tui-ink placeholder:text-tui-ink3 focus:border-tui-ink/30 w-full rounded-[10px] border bg-transparent px-3.5 text-[14px] transition-colors outline-none";
+
+/** A quiet bordered button, for the secondary actions in the body. */
+const GHOST_BUTTON =
+  "border-tui-ink/10 text-tui-ink2 hover:border-tui-ink/25 hover:text-tui-ink flex h-10 items-center justify-center gap-2 rounded-[10px] border text-[13.5px] font-medium transition-colors disabled:opacity-50 disabled:hover:border-tui-ink/10";
 
 /** `datetime-local` wants a local `YYYY-MM-DDTHH:mm`, not an ISO string. */
 function toLocalInput(value: Date | string | null | undefined): string {
@@ -66,23 +84,28 @@ function toLocalInput(value: Date | string | null | undefined): string {
   )}:${pad(date.getMinutes())}`;
 }
 
-function Pills<T extends string>({
+/** A segmented control, in the shape of the project drawer's permission toggle. */
+function Segmented<T extends string>({
   label,
   options,
   value,
   onChange,
-  className,
   render,
 }: {
   label: string;
   options: T[];
   value: T;
   onChange: (key: T) => void;
-  className: string;
   render: (key: T) => React.ReactNode;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className={className}>
+    <div
+      role="radiogroup"
+      aria-label={label}
+      // Four across leaves too little label on a 320px phone; two rows of two
+      // until there is room.
+      className="bg-tui-ink/[0.045] grid grid-cols-2 gap-0.5 rounded-[10px] p-0.5 sm:grid-cols-4"
+    >
       {options.map((option) => {
         const active = value === option;
         return (
@@ -92,10 +115,10 @@ function Pills<T extends string>({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(option)}
-            className={`flex items-center justify-center gap-1.5 rounded-sm border px-2.5 py-[11px] text-[13px] font-medium transition-colors duration-300 ${
+            className={`flex h-8 items-center justify-center gap-1.5 rounded-[8px] px-2 text-[12.5px] font-medium whitespace-nowrap transition-colors ${
               active
-                ? "border-accent-primary/55 bg-accent-primary/[0.14] text-fg-primary"
-                : "border-border-light/60 bg-transparent text-fg-tertiary hover:border-border-strong/60 hover:text-fg-secondary"
+                ? "bg-tui-pane text-tui-ink shadow-[var(--tui-pane-shadow)]"
+                : "text-tui-ink3 hover:text-tui-ink2"
             }`}
           >
             {render(option)}
@@ -117,11 +140,19 @@ function Pills<T extends string>({
  * The AI drafting pass lives here rather than in its own panel: it fills this
  * form, so splitting it out meant a second surface whose only output was this
  * one's inputs.
+ *
+ * A subtask is an ordinary task with a parent, so it gets this same drawer;
+ * "Subtask of" is the only field that differs. Nesting is one level deep, so
+ * the parent list holds top-level tasks only, and the field is hidden for a
+ * task that already has subtasks of its own.
  */
 export function TaskDrawer({
   projectId,
   members,
   task,
+  parents = [],
+  defaultParentId = null,
+  canNest = true,
   open,
   onClose,
 }: {
@@ -129,10 +160,17 @@ export function TaskDrawer({
   members: TaskMember[];
   /** Present for an edit, absent for a create. */
   task?: EditableTask | null;
+  /** Top-level tasks this one may be filed under, itself excluded. */
+  parents?: ParentOption[];
+  /** For a create: start as a subtask of this task. */
+  defaultParentId?: number | null;
+  /** False for a task that has subtasks — it cannot become one. */
+  canNest?: boolean;
   open: boolean;
   onClose: () => void;
 }) {
   const t = useTranslations("projects.taskDrawer");
+  const tp = useTranslations("projects.drawer");
   const toast = useToast();
   const utils = api.useUtils();
   const titleId = useId();
@@ -144,11 +182,17 @@ export function TaskDrawer({
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [status, setStatus] = useState<TaskStatus>("pending");
   const [dueDate, setDueDate] = useState("");
+  const [parentId, setParentId] = useState("");
   const [drafts, setDrafts] = useState<
-    { title: string; description?: string; priority: TaskPriority; estimatedDueDays?: number }[]
+    {
+      title: string;
+      description?: string;
+      priority: TaskPriority;
+      estimatedDueDays?: number;
+    }[]
   >([]);
 
-  const titleRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
   const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -201,21 +245,11 @@ export function TaskDrawer({
     setPriority(task?.priority ?? "medium");
     setStatus(task?.status ?? "pending");
     setDueDate(toLocalInput(task?.dueDate ?? null));
-  }, [open, task]);
+    const parent = task ? task.parentTaskId : defaultParentId;
+    setParentId(parent ? String(parent) : "");
+  }, [open, task, defaultParentId]);
 
   const close = useCallback(() => onClose(), [onClose]);
-
-  useEffect(() => {
-    // Ignored once the drawer is already leaving: a second Escape would ask a
-    // closing drawer to close again.
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    titleRef.current?.focus();
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, close]);
 
   const invalidate = useCallback(async () => {
     await Promise.all([
@@ -301,13 +335,31 @@ export function TaskDrawer({
     });
   };
 
-  const pending = createTask.isPending || updateTask.isPending || updateStatus.isPending;
+  const pending =
+    createTask.isPending || updateTask.isPending || updateStatus.isPending;
   const canSubmit = title.trim().length > 0 && !pending;
+  const parentTaskId = parentId ? Number(parentId) : null;
 
   const submit = async () => {
     if (!canSubmit) return;
     const due = dueDate ? new Date(dueDate) : undefined;
 
+    /* The drawer leaves on the click, not on the round trip. Waiting for the
+       save and the list refresh held it on "Saving…" for a second or more
+       against the hosted database before it slid away. The form's values are
+       already captured above, and a failure still surfaces as a toast — each
+       mutation's `onError` raises it. */
+    close();
+
+    try {
+      await persist(due);
+    } catch {
+      return;
+    }
+    await invalidate();
+  };
+
+  const persist = async (due: Date | undefined) => {
     if (task) {
       await updateTask.mutateAsync({
         taskId: task.id,
@@ -316,6 +368,7 @@ export function TaskDrawer({
         assignedToId: assignedToId || null,
         priority,
         dueDate: due ?? null,
+        parentTaskId,
       });
       if (status !== task.status) {
         await updateStatus.mutateAsync({ taskId: task.id, status });
@@ -330,32 +383,56 @@ export function TaskDrawer({
         priority,
         status,
         dueDate: due,
+        parentTaskId: parentTaskId ?? undefined,
       });
       toast.success(t("created", { title: title.trim() }));
     }
-
-    await invalidate();
-    close();
   };
+
+  /* Read through a ref so the keyboard effect keeps stable deps — depending on
+     `submit` would re-run it (and re-focus the title) on every keystroke. */
+  const submitRef = useRef(submit);
+  submitRef.current = submit;
+
+  // Escape closes; ⌘/Ctrl+Enter submits from anywhere in the form.
+  useEffect(() => {
+    // Ignored once the drawer is already leaving: a second Escape would ask a
+    // closing drawer to close again.
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter")
+        void submitRef.current();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    titleRef.current?.focus();
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, close]);
 
   /** Create every drafted task at once; the form itself stays untouched. */
   const acceptAllDrafts = async () => {
-    for (const draft of drafts) {
-      await createTask.mutateAsync({
-        projectId,
-        title: draft.title,
-        description: draft.description ?? undefined,
-        priority: draft.priority,
-        status: "pending",
-        dueDate: draft.estimatedDueDays
-          ? new Date(Date.now() + draft.estimatedDueDays * 86_400_000)
-          : undefined,
-      });
-    }
-    toast.success(t("ai.addedAll", { count: drafts.length }));
-    setDrafts([]);
-    await invalidate();
+    // Leaves on the click, like `submit`.
     close();
+    try {
+      for (const draft of drafts) {
+        await createTask.mutateAsync({
+          projectId,
+          title: draft.title,
+          description: draft.description ?? undefined,
+          priority: draft.priority,
+          status: "pending",
+          dueDate: draft.estimatedDueDays
+            ? new Date(Date.now() + draft.estimatedDueDays * 86_400_000)
+            : undefined,
+          parentTaskId: parentTaskId ?? undefined,
+        });
+      }
+      toast.success(t("ai.addedAll", { count: drafts.length }));
+      setDrafts([]);
+    } catch {
+      // Already toasted by `onError`; the ones created before it still show.
+    }
+    await invalidate();
   };
 
   if (!mounted) return null;
@@ -373,26 +450,16 @@ export function TaskDrawer({
           aria-label={t("close")}
           onClick={close}
           disabled={closing}
-          className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] ${
+          className={`absolute inset-0 bg-black/55 backdrop-blur-[6px] ${
             closing ? "projects-drawer-scrim-out" : "projects-drawer-scrim"
           }`}
         />
 
         <aside
-          className={`relative flex h-full w-full max-w-[440px] flex-col border-l border-border-light/60 bg-bg-secondary shadow-[-28px_0_60px_rgba(0,0,0,0.5)] ${
+          className={`border-tui-ink/10 bg-tui-pane text-tui-ink relative m-2 flex h-[calc(100%-1rem)] w-full max-w-[520px] flex-col overflow-hidden rounded-[16px] border shadow-[var(--tui-pane-shadow)] sm:m-3 sm:h-[calc(100%-1.5rem)] ${
             closing ? "projects-drawer-out" : "projects-drawer"
           }`}
         >
-          <div className="flex items-center justify-between gap-4 border-b border-border-light/50 px-[26px] py-5">
-            <h2
-              id={titleId}
-              className="m-0 text-[17px] font-semibold tracking-[-0.01em] text-fg-primary"
-            >
-              {editing ? t("editTitle") : t("title")}
-            </h2>
-            <ModalDismiss onDismiss={close} label={t("close")} />
-          </div>
-
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -400,51 +467,62 @@ export function TaskDrawer({
             }}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="flex flex-1 flex-col gap-[22px] overflow-auto p-[26px]">
-              <label
-                className="projects-slide-in flex flex-col gap-2"
-                style={{ animationDelay: "0.1s" }}
-              >
-                <span className={STAMP}>{t("name")}</span>
-                <input
-                  ref={titleRef}
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  maxLength={256}
-                  placeholder={t("namePlaceholder")}
-                  className={`h-11 text-[15px] ${FIELD}`}
-                />
-              </label>
-
-              <label
-                className="projects-slide-in flex flex-col gap-2"
-                style={{ animationDelay: "0.14s" }}
-              >
-                <span className={STAMP}>
-                  {t("description")} <span className="text-fg-quaternary">{t("optional")}</span>
+            {/* Header: what this is, and the title — the one field that matters. */}
+            <div className={`flex flex-col pt-6 pb-6 ${PAD}`}>
+              <div className="flex items-center justify-between">
+                <span id={titleId} className={EYEBROW}>
+                  {editing
+                    ? t("editTitle")
+                    : parentTaskId
+                      ? t("subtaskTitle")
+                      : t("title")}
                 </span>
+                <button
+                  type="button"
+                  onClick={close}
+                  aria-label={t("close")}
+                  className="text-tui-ink3 hover:bg-tui-ink/[0.055] hover:text-tui-ink -mr-2 flex h-8 w-8 items-center justify-center rounded-full text-[18px] leading-none transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+
+              <textarea
+                ref={titleRef}
+                value={title}
+                onChange={(event) =>
+                  setTitle(event.target.value.replace(/\n/g, ""))
+                }
+                rows={1}
+                maxLength={256}
+                placeholder={t("namePlaceholder")}
+                aria-label={t("name")}
+                className="font-display text-tui-ink placeholder:text-tui-ink3/70 mt-5 [field-sizing:content] resize-none overflow-hidden bg-transparent text-[32px] leading-[1.1] tracking-[-0.02em] outline-none sm:text-[38px]"
+              />
+            </div>
+
+            <div className="bg-tui-ink/8 mx-6 h-px sm:mx-8" />
+
+            {/* Body */}
+            <div
+              className={`scrollbar-hide kairos-scroll-area flex min-h-0 flex-1 flex-col overflow-y-auto ${PAD}`}
+            >
+              <Field label={t("description")} optional={t("optional")}>
                 <textarea
                   rows={3}
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                   placeholder={t("descriptionPlaceholder")}
-                  className={`resize-none py-3 text-sm leading-[1.5] ${FIELD}`}
+                  className={`resize-none py-2.5 leading-[1.6] ${FIELD}`}
                 />
-              </label>
+              </Field>
 
-              <div
-                className="projects-slide-in flex flex-col gap-2.5"
-                style={{ animationDelay: "0.18s" }}
-              >
-                <span className={STAMP}>{t("priority")}</span>
-                <Pills
+              <Field label={t("priority")}>
+                <Segmented
                   label={t("priority")}
                   options={PRIORITIES}
                   value={priority}
                   onChange={setPriority}
-                  // Four across leaves ~40px of label on a 320px phone, less
-                  // than "Medium" needs; two rows of two until there is room.
-                  className="grid grid-cols-2 gap-2 sm:grid-cols-4"
                   render={(key) => (
                     <>
                       <span
@@ -455,89 +533,94 @@ export function TaskDrawer({
                     </>
                   )}
                 />
-              </div>
+              </Field>
 
-              <div
-                className="projects-slide-in flex flex-col gap-2.5"
-                style={{ animationDelay: "0.22s" }}
-              >
-                <span className={STAMP}>{t("status")}</span>
-                <Pills
+              <Field label={t("status")}>
+                <Segmented
                   label={t("status")}
                   options={STATUSES}
                   value={status}
                   onChange={setStatus}
-                  className="grid grid-cols-2 gap-2"
                   render={(key) => <>{t(`statuses.${key}`)}</>}
                 />
+              </Field>
+
+              {canNest && parents.length > 0 && (
+                <Field label={t("parent")}>
+                  <select
+                    value={parentId}
+                    onChange={(event) => setParentId(event.target.value)}
+                    className={`bg-tui-pane h-10 ${FIELD}`}
+                  >
+                    <option value="">{t("noParent")}</option>
+                    {parents.map((parent) => (
+                      <option key={parent.id} value={parent.id}>
+                        {parent.title}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
+
+              <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+                <Field label={t("assignee")}>
+                  <select
+                    value={assignedToId}
+                    onChange={(event) => setAssignedToId(event.target.value)}
+                    className={`bg-tui-pane h-10 ${FIELD}`}
+                  >
+                    <option value="">{t("unassigned")}</option>
+                    {members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name ?? member.email ?? member.id}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label={t("dueDate")} optional={t("optional")}>
+                  <input
+                    type="datetime-local"
+                    value={dueDate}
+                    onChange={(event) => setDueDate(event.target.value)}
+                    className={`h-10 ${FIELD}`}
+                  />
+                </Field>
               </div>
 
-              <label
-                className="projects-slide-in flex flex-col gap-2"
-                style={{ animationDelay: "0.26s" }}
-              >
-                <span className={STAMP}>{t("assignee")}</span>
-                <select
-                  value={assignedToId}
-                  onChange={(event) => setAssignedToId(event.target.value)}
-                  className={`h-11 text-[15px] ${FIELD}`}
-                >
-                  <option value="">{t("unassigned")}</option>
-                  {members.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.name ?? member.email ?? member.id}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label
-                className="projects-slide-in flex flex-col gap-2"
-                style={{ animationDelay: "0.3s" }}
-              >
-                <span className={STAMP}>
-                  {t("dueDate")} <span className="text-fg-quaternary">{t("optional")}</span>
-                </span>
-                <input
-                  type="datetime-local"
-                  value={dueDate}
-                  onChange={(event) => setDueDate(event.target.value)}
-                  className={`h-11 text-[15px] ${FIELD}`}
-                />
-              </label>
-
               {!editing && (
-                <div
-                  className="projects-slide-in flex flex-col gap-2.5 border-t border-border-light/50 pt-5"
-                  style={{ animationDelay: "0.34s" }}
-                >
-                  <span className={STAMP}>{t("ai.label")}</span>
-                  <button
-                    type="button"
-                    disabled={drafting}
-                    onClick={() =>
-                      generateDrafts.mutate({
-                        projectId,
-                        message: description.trim() || title.trim() || undefined,
-                      })
-                    }
-                    className="flex h-11 items-center justify-center gap-2 rounded-sm border border-border-light/60 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:border-accent-primary/40 hover:text-fg-primary disabled:opacity-50"
-                  >
-                    <Sparkles size={15} aria-hidden />
-                    {generateDrafts.isPending ? t("ai.working") : t("ai.suggest")}
-                  </button>
+                <Field label={t("ai.label")}>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      disabled={drafting}
+                      onClick={() =>
+                        generateDrafts.mutate({
+                          projectId,
+                          message:
+                            description.trim() || title.trim() || undefined,
+                        })
+                      }
+                      className={GHOST_BUTTON}
+                    >
+                      <Sparkles size={15} aria-hidden />
+                      {generateDrafts.isPending
+                        ? t("ai.working")
+                        : t("ai.suggest")}
+                    </button>
 
-                  <button
-                    type="button"
-                    disabled={drafting}
-                    onClick={() => pdfRef.current?.click()}
-                    className="flex h-11 items-center justify-center gap-2 rounded-sm border border-border-light/60 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:border-accent-primary/40 hover:text-fg-primary disabled:opacity-50"
-                  >
-                    <FileText size={15} aria-hidden />
-                    {extractFromPdf.isPending
-                      ? t("ai.pdfReading")
-                      : t("ai.fromPdf")}
-                  </button>
+                    <button
+                      type="button"
+                      disabled={drafting}
+                      onClick={() => pdfRef.current?.click()}
+                      className={GHOST_BUTTON}
+                    >
+                      <FileText size={15} aria-hidden />
+                      {extractFromPdf.isPending
+                        ? t("ai.pdfReading")
+                        : t("ai.fromPdf")}
+                    </button>
+                  </div>
 
                   <input
                     ref={pdfRef}
@@ -553,7 +636,7 @@ export function TaskDrawer({
                   />
 
                   {drafts.length > 0 && (
-                    <div className="flex flex-col">
+                    <div className="border-tui-ink/10 flex flex-col overflow-hidden rounded-[10px] border">
                       {drafts.map((draft, index) => (
                         <button
                           key={`${draft.title}-${index}`}
@@ -565,23 +648,26 @@ export function TaskDrawer({
                             if (draft.estimatedDueDays) {
                               setDueDate(
                                 toLocalInput(
-                                  new Date(Date.now() + draft.estimatedDueDays * 86_400_000),
+                                  new Date(
+                                    Date.now() +
+                                      draft.estimatedDueDays * 86_400_000,
+                                  ),
                                 ),
                               );
                             }
                           }}
-                          className="flex items-start gap-2.5 border-b border-border-light/50 px-1 py-3 text-left transition-colors duration-300 hover:bg-accent-primary/[0.07]"
+                          className="border-tui-ink/8 hover:bg-tui-ink/[0.025] flex items-start gap-3 border-t px-3.5 py-3 text-left transition-colors first:border-t-0"
                         >
                           <span
                             aria-hidden
                             className={`mt-[7px] h-[7px] w-[7px] flex-none rounded-full ${PRIORITY_DOT[draft.priority]}`}
                           />
-                          <span className="min-w-0">
-                            <span className="block text-sm font-medium text-fg-primary">
+                          <span className="flex min-w-0 flex-col">
+                            <span className="text-tui-ink text-[14px] font-medium">
                               {draft.title}
                             </span>
                             {draft.description && (
-                              <span className="mt-1 block text-[13px] leading-[1.45] text-fg-tertiary">
+                              <span className="text-tui-ink3 mt-0.5 text-[12.5px] leading-[1.5]">
                                 {draft.description}
                               </span>
                             )}
@@ -592,37 +678,76 @@ export function TaskDrawer({
                         type="button"
                         disabled={pending}
                         onClick={() => void acceptAllDrafts()}
-                        className="mt-3 flex h-10 items-center justify-center rounded-sm border border-accent-primary/55 bg-accent-primary/[0.14] text-[13px] font-semibold text-fg-primary transition-colors duration-300 hover:bg-accent-primary/25 disabled:opacity-50"
+                        className="border-tui-ink/8 bg-tui-ink/[0.045] text-tui-ink hover:bg-tui-ink/[0.07] h-10 border-t text-[13px] font-medium transition-colors disabled:opacity-50"
                       >
                         {t("ai.addAll", { count: drafts.length })}
                       </button>
                     </div>
                   )}
-                </div>
+                </Field>
               )}
               {editing && task && <TaskHistory taskId={task.id} />}
+              <span className="h-6 flex-none" />
             </div>
 
-            <div className="flex gap-2.5 border-t border-border-light/50 bg-bg-primary px-[26px] pt-5 pb-[calc(1.25rem+var(--kairos-safe-bottom))]">
+            {/* Footer */}
+            <div
+              className={`border-tui-ink/8 flex items-center gap-2 border-t pt-4 pb-[calc(1rem+var(--kairos-safe-bottom))] ${PAD}`}
+            >
+              {!editing && (
+                <span className="text-tui-ink3 hidden items-center gap-2 text-[12px] sm:flex">
+                  <kbd className="border-tui-ink/12 rounded-[4px] border px-1.5 font-mono text-[10.5px] leading-4">
+                    ⌘ ↵
+                  </kbd>
+                  {tp("toCreate")}
+                </span>
+              )}
+              <span className="flex-1" />
               <button
                 type="button"
                 onClick={close}
-                className="rounded-sm border border-border-light/70 px-[18px] py-3 text-sm font-medium text-fg-secondary transition-colors duration-300 hover:bg-bg-tertiary hover:text-fg-primary"
+                className="text-tui-ink2 hover:text-tui-ink h-9 rounded-full px-3.5 text-[13.5px] transition-colors"
               >
                 {t("cancel")}
               </button>
               <button
                 type="submit"
                 disabled={!canSubmit}
-                className="flex-1 rounded-sm bg-accent-primary px-[18px] py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-px hover:bg-accent-hover disabled:pointer-events-none disabled:opacity-50"
+                className="bg-tui-accent text-tui-on-accent disabled:bg-tui-ink/[0.07] disabled:text-tui-ink3 flex h-9 items-center gap-2 rounded-full px-4 text-[13.5px] font-medium transition-colors hover:opacity-90 disabled:hover:opacity-100"
               >
                 {pending ? t("saving") : editing ? t("save") : t("submit")}
+                <span aria-hidden>→</span>
               </button>
             </div>
           </form>
         </aside>
       </div>
     </Overlay>
+  );
+}
+
+/** One form field: a spaced-capitals label, the control, an optional note. */
+function Field({
+  label,
+  optional,
+  children,
+}: {
+  label: string;
+  optional?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2.5 pt-6">
+      <span className={EYEBROW}>
+        {label}
+        {optional && (
+          <span className="text-tui-ink3/80 ml-2 tracking-[0.02em] normal-case">
+            {optional}
+          </span>
+        )}
+      </span>
+      {children}
+    </div>
   );
 }
 
@@ -657,40 +782,33 @@ function TaskHistory({ taskId }: { taskId: number }) {
   if (activity.isLoading || events.length === 0) return null;
 
   return (
-    <div
-      className="projects-slide-in flex flex-col gap-2.5 border-t border-border-light/50 pt-5"
-      style={{ animationDelay: "0.34s" }}
-    >
-      <span className={STAMP}>{td("history.label")}</span>
-
-      <ul className="m-0 flex list-none flex-col p-0">
+    <Field label={td("history.label")}>
+      <ul className="border-tui-ink/10 m-0 flex list-none flex-col overflow-hidden rounded-[10px] border p-0">
         {events.map((event) => (
           <li
             key={event.key}
-            className="flex items-start gap-2.5 border-b border-border-light/50 py-2.5 last:border-b-0"
+            className="border-tui-ink/8 flex items-start gap-3 border-t px-3.5 py-2.5 first:border-t-0"
           >
             <span className="min-w-0 flex-1">
-              <span className="block text-[13px] leading-[1.45] text-fg-secondary">
-                <span className="font-medium text-fg-primary">
-                  {event.actor}
-                </span>{" "}
+              <span className="text-tui-ink2 block text-[13px] leading-[1.45]">
+                <span className="text-tui-ink font-medium">{event.actor}</span>{" "}
                 {t(`timeline.verbs.${event.verb}`)}
               </span>
               {event.detail && (
-                <span className="mt-0.5 block truncate text-[12px] text-fg-quaternary">
+                <span className="text-tui-ink3 mt-0.5 block truncate text-[12px]">
                   {event.detail}
                 </span>
               )}
             </span>
             <time
               dateTime={event.at.toISOString()}
-              className="flex-none text-[11px] text-fg-quaternary"
+              className="text-tui-ink3 flex-none text-[11px]"
             >
               {formatDate(event.at, "short")}
             </time>
           </li>
         ))}
       </ul>
-    </div>
+    </Field>
   );
 }

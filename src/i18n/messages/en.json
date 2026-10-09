@@ -698,15 +698,10 @@
     "agentsPoint1": "One conversation — no need to pick an agent",
     "agentsPoint2": "Every change arrives as a draft you approve",
     "agentsPoint3": "Locked notes stay private, always",
-    "agentConciergeName": "Workspace Concierge",
     "agentConciergeBody": "Answers questions, spots risks, points the way.",
-    "agentPlannerName": "Task Planner",
     "agentPlannerBody": "Turns a goal — or a PDF brief — into a clear plan.",
-    "agentNotesName": "Notes Vault",
     "agentNotesBody": "Tidies and summarises notes. Locked ones stay unseen.",
-    "agentEventsName": "Events Publisher",
     "agentEventsBody": "Drafts the event page, ready for your final look.",
-    "agentBriefName": "Daily Brief",
     "agentBriefBody": "A short, quiet summary of the day ahead.",
     "agentTagReadOnly": "Read-only",
     "agentTagDrafts": "Drafts",
@@ -768,6 +763,8 @@
       "emailNote": "Email cannot be changed",
       "imageFormats": "JPG, PNG or GIF.",
       "imageMaxSize": "Max size {size}.",
+      "imageTooLarge": "That image is too large. Try one under 4MB.",
+      "imageNotImage": "Please choose an image file.",
       "bioPlaceholder": "Tell us about yourself...",
       "characters": "characters",
       "memberSince": "Member since",
@@ -1072,12 +1069,33 @@
         "custom": "Custom",
         "deleteConfirm": "Delete the role \"{name}\"?",
         "delete": "Delete role",
-        "deleteBody": "Members holding this role keep their membership, but lose the permissions it granted.",
+        "deleteBody": "{count, plural, =0 {Nobody holds this role.} one {# person holds this role. They keep their membership and their current permissions; only the role is gone.} other {# people hold this role. They keep their membership and their current permissions; only the role is gone.}}",
         "mentor": "Mentor",
         "duplicate": "Copy as new role",
         "edit": "Edit {name}",
         "saveRole": "Save role",
-        "editNote": "People who already hold this role keep the permissions they were given. Assign the role again to give them the edited set."
+        "editNote": "People who already hold this role keep the permissions they were given. After saving, use Re-apply role to give them the edited set.",
+        "permissionColumn": "Permission",
+        "filterPermissions": "Filter permissions",
+        "noPermissionMatch": "No permission matches that filter.",
+        "groupWork": "Work",
+        "groupPeople": "People",
+        "groupInsight": "Insight",
+        "holders": "{count, plural, =0 {Nobody} one {# person} other {# people}}",
+        "holdersDrifted": "{count} · {drifted} drifted",
+        "heldBy": "Held by",
+        "noHolders": "Nobody holds this role yet.",
+        "viewOnly": "View only — no permissions",
+        "grantedCount": "{count} of {total} permissions",
+        "driftBody": "{count, plural, one {# person has} other {# people have}} different permissions than this role ({names}) — from an earlier version of it, or an individual change.",
+        "reapply": "Re-apply role",
+        "reapplied": "{count, plural, one {Role re-applied to # person} other {Role re-applied to # people}}",
+        "reapplyFailed": "Couldn't re-apply the role",
+        "saveFirst": "Save or discard your changes first.",
+        "discard": "Discard",
+        "copyName": "{name} (copy)",
+        "riskyHint": "Gives power over other people",
+        "legendTemplate": "Built-in templates are read-only"
       },
       "permissions": {
         "createProjects": "Create projects",
@@ -1244,7 +1262,184 @@
       "calendarNoScope": "Google did not grant calendar access. Connect again and tick the calendar permissions on the consent screen.",
       "dismiss": "Dismiss",
       "calendarGroup": "Calendar",
-      "calendarGroupHint": "Meeting prep is inert without a connected calendar."
+      "calendarGroupHint": "Meeting prep is inert without a connected calendar.",
+      "crew": {
+        "title": "Your crew",
+        "hint": "Ten agents work for you. You talk to the one in the middle; it hands changes to a specialist, and nothing a specialist drafts is written until you approve it. Pick an agent to see what it does and how to tune it.",
+        "you": "You",
+        "orbitLabel": "The agents, arranged around you",
+        "legendTalks": "Talks to you",
+        "legendDrafts": "Drafts changes",
+        "legendScheduled": "On a schedule",
+        "tagReadOnly": "Read only",
+        "tagWrites": "Writes",
+        "tagScheduled": "Scheduled",
+        "soon": "Soon",
+        "nameTitle": "Name",
+        "nameDescWorkspace": "Everyone in this workspace sees this name, and the agent introduces itself with it in chat.",
+        "nameDescPersonal": "The agent introduces itself with this name in chat.",
+        "nameAdminOnly": "Only a workspace admin can rename agents.",
+        "save": "Save",
+        "reset": "Reset",
+        "errorEmpty": "Give it a name.",
+        "errorTooLong": "Keep it to {max} characters.",
+        "errorCharacters": "Letters, numbers, spaces, apostrophes, dots and hyphens only.",
+        "errorTaken": "Another agent already goes by that name.",
+        "effortTitle": "Thinking effort",
+        "effortDesc": "Quick, balanced or deep — chosen from the chat composer, per conversation.",
+        "effortValue": "In the chat",
+        "memoryTitle": "What it remembers",
+        "memoryDesc": "Facts kept for this agent. Review or delete them under What the assistant remembers.",
+        "memoryValue": "{count, plural, =0 {Nothing yet} one {# fact} other {# facts}}",
+        "scheduleTitle": "Schedule",
+        "scheduleDesc": "When it runs and where it reaches you. Set under Proactive updates below.",
+        "scheduleOn": "On",
+        "scheduleOff": "Off",
+        "meetingPrepOn": "Before each meeting",
+        "toneTitle": "Tone",
+        "toneDesc": "How it sounds when it replies: direct, friendly or detailed.",
+        "languageTitle": "Reply language",
+        "languageDesc": "Answer in the language you write in, or always in one language. Applies to every agent in the chat.",
+        "approvalTitle": "Approval",
+        "approvalDesc": "Ask before every change, or let small ones save on their own with Undo — up to 3 changes, nothing deleted, nothing assigned to someone else.",
+        "scopeTitle": "Scope",
+        "scopeDesc": "Which of this workspace’s projects it may change. Anything outside is hidden from it and refused.",
+        "taskDefaultsTitle": "Task defaults",
+        "taskDefaultsDesc": "Default assignee, priority and how far out due dates land.",
+        "noteTemplateTitle": "Note template",
+        "noteTemplateDesc": "The structure new notes start from.",
+        "eventDefaultsTitle": "Event defaults",
+        "eventDefaultsDesc": "Default length, RSVP and reminders for new events.",
+        "namingPatternTitle": "Naming pattern",
+        "namingPatternDesc": "A template for new project names. Placeholders: {list}.",
+        "briefSectionsTitle": "What to include",
+        "briefSectionsDesc": "Choose the sections the brief covers.",
+        "stalledAfterTitle": "Stalled after",
+        "stalledAfterDesc": "Days without progress before a project is flagged.",
+        "leadTimeTitle": "Lead time",
+        "leadTimeDesc": "How long before a meeting the brief arrives.",
+        "about": {
+          "workspace_concierge": "The one you talk to. It answers questions about your workspace and hands anything that needs changing to the right specialist. It can look, but never touch.",
+          "task_planner": "Turns a goal into a backlog and revises plans already on screen. Every change is drafted for your approval first.",
+          "notes_vault": "Creates, edits and deletes notes. Locked notes are left out before their content is ever loaded.",
+          "events_publisher": "Runs events end to end: the event itself, its comments, RSVPs and likes.",
+          "org_admin": "Changes members, roles and permissions. Each change is checked against your own access, one at a time.",
+          "project_manager": "Creates, renames, updates and archives projects, with permission checked again at the moment of applying.",
+          "daily_brief": "One short message each morning about what needs your attention today.",
+          "risk_radar": "Watches for overdue work and stalled projects. It counts rather than guesses, so it keeps working when the AI budget is spent.",
+          "weekly_retro": "A look back once a week: what closed, what was added, what carried over and what stalled.",
+          "meeting_prep": "A short brief before each meeting on your connected calendar, with the open tasks that relate to it."
+        },
+        "settingAdminOnly": "Only a workspace admin can change this.",
+        "values": {
+          "workspace_concierge": {
+            "tone": {
+              "balanced": "Balanced",
+              "direct": "Direct",
+              "friendly": "Friendly",
+              "detailed": "Detailed"
+            },
+            "replyLanguage": {
+              "auto": "Match my message",
+              "en": "English",
+              "bg": "Български",
+              "de": "Deutsch",
+              "es": "Español",
+              "fr": "Français"
+            }
+          },
+          "daily_brief": {
+            "sections": {
+              "dueToday": "Due today",
+              "events": "Events",
+              "risks": "Risks"
+            }
+          },
+          "risk_radar": {
+            "stalledAfterDays": {
+              "7": "7 days",
+              "14": "14 days",
+              "30": "30 days"
+            }
+          },
+          "meeting_prep": {
+            "leadMinutes": {
+              "15": "15 minutes",
+              "30": "30 minutes",
+              "60": "1 hour",
+              "90": "1½ hours"
+            }
+          },
+          "task_planner": {
+            "priority": {
+              "low": "Low",
+              "medium": "Medium",
+              "high": "High",
+              "urgent": "Urgent"
+            },
+            "dueInDays": {
+              "none": "No due date",
+              "1": "In 1 day",
+              "3": "In 3 days",
+              "7": "In a week",
+              "14": "In 2 weeks",
+              "30": "In 30 days"
+            },
+            "assignee": {
+              "none": "Unassigned",
+              "requester": "The person asking"
+            },
+            "approval": {
+              "ask": "Always ask",
+              "autoSmall": "Save small changes"
+            }
+          },
+          "notes_vault": {
+            "template": {
+              "blank": "Blank",
+              "meeting": "Meeting notes",
+              "decision": "Decision record"
+            },
+            "approval": {
+              "ask": "Always ask",
+              "autoSmall": "Save small changes"
+            }
+          },
+          "events_publisher": {
+            "lengthMinutes": {
+              "none": "No set length",
+              "30": "30 minutes",
+              "60": "1 hour",
+              "90": "1½ hours",
+              "120": "2 hours",
+              "240": "4 hours"
+            }
+          }
+        },
+        "settingLabels": {
+          "task_planner": {
+            "priority": "Priority",
+            "dueInDays": "Due",
+            "assignee": "Assignee",
+            "approval": "You",
+            "allowAutoApply": "Allowed in workspace"
+          },
+          "events_publisher": {
+            "lengthMinutes": "Length",
+            "enableRsvp": "RSVP",
+            "sendReminders": "Reminders"
+          },
+          "notes_vault": {
+            "approval": "You",
+            "allowAutoApply": "Allowed in workspace"
+          }
+        },
+        "settingInvalid": "That pattern can’t be saved. Use letters, numbers, simple punctuation and the placeholders listed.",
+        "scopeAll": "All projects",
+        "scopeOnly": "Chosen projects",
+        "scopeEmpty": "No active projects in this workspace yet.",
+        "autoApplyNeedsUndo": "Needs Undo, which comes with Pro."
+      }
     },
     "developer": {
       "title": "Developer",
@@ -1326,7 +1521,9 @@
       "previewAction": "Preview",
       "edit": "Edit profile",
       "editDesc": "Change your name, picture or bio",
-      "editAction": "Open"
+      "editAction": "Open",
+      "findByEmail": "Let people find me by email",
+      "findByEmailDesc": "When someone types your exact email address into a workspace invite, they see your name and photo. Off: only people who already share a workspace with you see who you are."
     },
     "billing": {
       "title": "Billing",
@@ -2197,7 +2394,7 @@
     "dailyLimitReached": "You’ve reached your daily message limit.",
     "editThenApply": "You can edit the details below, then click Apply when ready.",
     "title": "KAIROS AI",
-    "subtitle": "Workspace Concierge",
+    "subtitle": "{name} · Workspace Concierge",
     "thinking": "Thinking…",
     "info": "Info",
     "hide": "Hide",
@@ -2208,12 +2405,12 @@
     "emptySubtitle": "I can analyze progress, identify risks, plan tasks, manage notes, and more.",
     "infoDesc": "Project-scoped AI assistant. Answers are best-effort based on available data — verify critical decisions.",
     "infoCaps": "Capabilities: workspace Q&A, project analysis, task planning, notes management, event scheduling.",
-    "handoffTaskPlanner": "I’m going to hand this off to the Task Planning Agent to build your tasks. One moment.",
-    "taskPlannerWorking": "Task Planner is working…",
+    "handoffTaskPlanner": "I’m handing this to {name}, the Task Planner, to build your tasks. One moment.",
+    "taskPlannerWorking": "{name} is working…",
     "taskPlannerDone": "Your tasks have been successfully created! {count} tasks are now ready on your project board.",
     "taskPlannerDoneNoCount": "Your changes have been successfully applied! Check your project board for the updates.",
-    "taskPlannerPlanReady": "The Task Planner prepared a plan:",
-    "taskPlannerFailed": "The Task Planner ran into an issue: {error}",
+    "taskPlannerPlanReady": "{name} prepared a plan:",
+    "taskPlannerFailed": "{name} ran into an issue: {error}",
     "taskPlannerModifyHint": "Want to modify? Tell me what to change.",
     "confirmTaskPlan": "Confirm Task Plan",
     "applyTaskPlan": "Apply Task Plan",
@@ -2412,7 +2609,8 @@
     "projectDone": "Project changes applied.",
     "projectRefused": "{count} operation(s) were refused by the server:",
     "confirmProjectChanges": "Confirm Project Changes",
-    "applyProjectChanges": "Apply Project Changes"
+    "applyProjectChanges": "Apply Project Changes",
+    "autoApplied": "{name} saved {count, plural, one {# change} other {# changes}} without asking, as you chose in Settings → AI. You can undo it for the next 10 minutes."
   },
   "onboarding": {
     "welcome": {
@@ -2486,13 +2684,17 @@
       "dueToday": "Due today",
       "overdue": "Overdue",
       "openThisWeek": "Open this week",
-      "completed": "Completed",
       "notes": {
-        "doneToday": "{count} done",
-        "oldest": "oldest {days}d",
-        "across": "across {count}",
-        "allTime": "all time"
-      }
+        "left": "{count, plural, =0 {all done} one {one left} other {# left}}",
+        "nothingDue": "nothing due today",
+        "oldestDays": "oldest {days, plural, one {one day} other {# days}} late",
+        "onTime": "nothing late",
+        "acrossProjects": "across {count, plural, one {one project} other {# projects}}",
+        "more": "{count} more than last week",
+        "fewer": "{count} fewer than last week",
+        "same": "same as last week"
+      },
+      "doneThisWeek": "Done this week"
     },
     "activity": {
       "title": "Recent activity",
@@ -2505,19 +2707,6 @@
         "updated": "{user} updated {task} in {project}",
         "deleted": "{user} deleted {task} in {project}"
       }
-    },
-    "workspace": {
-      "title": "Workspace progress",
-      "done": "{count} done",
-      "active": "{count} active",
-      "todo": "{count} to do",
-      "dayGone": "{percent}% of today gone",
-      "ofTasksDone": "of tasks done",
-      "ofTodayGone": "of today gone",
-      "doneLabel": "done",
-      "activeLabel": "active",
-      "todoLabel": "to do",
-      "dayGoneLabel": "day gone"
     },
     "projects": {
       "untitled": "Untitled project",
@@ -2546,7 +2735,7 @@
       "welcomeLabel": "welcome",
       "newWorkspace": "a new workspace",
       "headline": "Nothing on the board yet",
-      "howItFills": "how it fills in",
+      "howItFills": "How it fills in",
       "steps3": "3 steps",
       "stepCreateTitle": "Create a project",
       "stepTeamTitle": "Bring the team in",
@@ -2571,7 +2760,7 @@
       "radarIdleBody": "Nothing to watch yet. The radar starts reading due dates and workload as soon as the first task exists."
     },
     "radar": {
-      "title": "What the radar found",
+      "title": "From the radar",
       "count": "{count, plural, =0 {nothing flagged} one {# finding} other {# findings}}",
       "loading": "checking…",
       "checked": "Checked {ago} ago",
@@ -2586,33 +2775,24 @@
       }
     },
     "projectStatus": {
-      "title": "Project status",
+      "title": "Projects",
       "count": "{count, plural, =0 {none active} other {# active}}",
       "action": "All projects",
       "ends": "Ends {date}",
       "noDate": "No date",
-      "columns": {
-        "project": "Project",
-        "team": "Team",
-        "open": "Open",
-        "overdue": "Overdue",
-        "completion": "Completion",
-        "health": "Health"
-      }
-    },
-    "momentum": {
-      "title": "Your momentum",
-      "streak": "{count, plural, one {1-day streak} other {#-day streak}}",
-      "noStreak": "No streak yet",
-      "line": "{total, plural, =0 {Nothing finished in the last fortnight.} one {You finished one task in the last fortnight.} other {You finished # tasks in the last fortnight}}{today, plural, =0 {} other {, {today} of them today}}."
+      "openCount": "{count} open",
+      "done": "{percent}% done",
+      "timeUsed": "{percent}% of time",
+      "noDeadline": "no end date"
     },
     "teamToday": {
-      "title": "Team today",
+      "title": "Team",
       "open": "{count} open",
       "active": "Active {ago} ago",
       "neverActive": "No activity yet",
       "you": "{name} (you)",
-      "empty": "Nobody else is on these projects yet."
+      "empty": "Nobody else is on these projects yet.",
+      "meta": "open tasks"
     },
     "tui": {
       "briefing": "briefing",
@@ -2637,9 +2817,67 @@
       "booting": "booting dashboard",
       "waitingCounts": "waiting on task counts",
       "today": "today"
+    },
+    "brief": {
+      "signed": "<agent>{name}</agent>, your morning brief · {time}",
+      "ask": "Ask Kairos AI",
+      "planWeek": "Plan my week",
+      "planPrompt": "Help me plan my week: look at what is due and overdue, and suggest what to do first."
+    },
+    "nextUp": {
+      "title": "Next up",
+      "meta": "yours first, by due date and priority",
+      "replan": "Re-plan with {name}",
+      "empty": "Nothing dated is waiting on you in the next three weeks.",
+      "overdue": "{days, plural, one {one day overdue} other {# days overdue}}",
+      "today": "Today",
+      "markDone": "Mark “{task}” done",
+      "priority": {
+        "high": "High priority",
+        "urgent": "Urgent"
+      }
+    },
+    "week": {
+      "title": "This week",
+      "action": "Calendar",
+      "tasks": "{count, plural, =0 {no tasks} one {one task} other {# tasks}}",
+      "events": "{count, plural, =0 {no events} one {one event} other {# events}}"
+    },
+    "crew": {
+      "title": "The crew",
+      "today": "today at {time}",
+      "tomorrow": "tomorrow at {time}",
+      "day": "{day} at {time}",
+      "meetings": "before each meeting",
+      "off": "No scheduled agents are on.",
+      "settings": "AI settings"
     }
   },
   "agents": {
+    "names": {
+      "workspace_concierge": "Mentor",
+      "task_planner": "Odysseus",
+      "notes_vault": "Mnemosyne",
+      "events_publisher": "Iris",
+      "org_admin": "Solon",
+      "project_manager": "Daedalus",
+      "daily_brief": "Hemera",
+      "risk_radar": "Argus",
+      "weekly_retro": "Clio",
+      "meeting_prep": "Nestor"
+    },
+    "roles": {
+      "workspace_concierge": "Workspace Concierge",
+      "task_planner": "Task Planner",
+      "notes_vault": "Notes Vault",
+      "events_publisher": "Events Publisher",
+      "org_admin": "Organization Admin",
+      "project_manager": "Project Manager",
+      "daily_brief": "Daily Brief",
+      "risk_radar": "Risk Radar",
+      "weekly_retro": "Weekly Retro",
+      "meeting_prep": "Meeting Prep"
+    },
     "effort": {
       "title": "How hard the assistant thinks",
       "auto": "Auto",
@@ -2921,7 +3159,11 @@
         "medium": "MEDIUM",
         "high": "HIGH",
         "urgent": "URGENT"
-      }
+      },
+      "addSubtask": "Add subtask",
+      "subtaskCount": "{done}/{total} subtasks",
+      "subtaskOf": "Subtask of {title}",
+      "discardConfirmWithSubtasks": "Click again to discard it and its {count, plural, one {# subtask} other {# subtasks}}"
     },
     "team": {
       "label": "Team",
@@ -2981,7 +3223,10 @@
       },
       "history": {
         "label": "History"
-      }
+      },
+      "subtaskTitle": "New subtask",
+      "parent": "Subtask of",
+      "noParent": "None — a top-level task"
     },
     "archive": {
       "title": "Archive project",
@@ -3133,7 +3378,19 @@
     "clearAllTitle": "Clear all notifications",
     "clearAllBody": "Every notification is deleted, including any you have not read. This cannot be undone.",
     "clearAllConfirm": "Clear all",
-    "clearAllCancel": "Cancel"
+    "clearAllCancel": "Cancel",
+    "openLink": "Open",
+    "kind": {
+      "event": "Event",
+      "event_reminder": "Reminder",
+      "task": "Task",
+      "project": "Project",
+      "system": "Kairos",
+      "like": "Like",
+      "comment": "Comment",
+      "reply": "Reply",
+      "message": "Message"
+    }
   },
   "onboardingSheet": {
     "eyebrow": "Kairos · Help",
@@ -3344,7 +3601,14 @@
     "guideEyebrow": "How a team works",
     "guideTitle": "Four roles, eight ticks",
     "guideBody": "Every person gets a role, and a role is only a starting set of permissions. Admins can tick or untick any of the eight for one person.",
-    "guidePersonal": "Your personal workspace stays yours. Nothing in it moves into an organization unless you move it."
+    "guidePersonal": "Your personal workspace stays yours. Nothing in it moves into an organization unless you move it.",
+    "invitee": {
+      "member": "Already in this workspace.",
+      "pending": "Already invited — waiting for them to accept.",
+      "person": "Has a KAIROS account. They'll get an email and a notification.",
+      "new": "Not registered in KAIROS yet — they'll get an email inviting them to sign up and join.",
+      "checking": "Checking…"
+    }
   },
   "skeleton": {
     "slow": {

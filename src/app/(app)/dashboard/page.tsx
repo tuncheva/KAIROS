@@ -43,6 +43,9 @@ export default async function DashboardPage() {
     api.project.getMyProjects.prefetch(),
     api.task.getOrgActivity.prefetch({ limit: 6, scope: "all" }),
     api.progress.getPulse.prefetch(),
+    // The headline is Hemera's brief when there is one; fetched with the rest
+    // so the page does not open on the plain summary and then swap it out.
+    api.agent.latestBrief.prefetch(),
   ]);
 
   return (
@@ -53,7 +56,7 @@ export default async function DashboardPage() {
           actions={
             <Link
               href="/projects?new=1"
-              className="flex items-center gap-2 rounded-lg bg-accent-primary px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="flex h-[34px] items-center gap-[7px] rounded-full bg-tui-accent px-3 text-[13px] font-medium whitespace-nowrap text-tui-on-accent transition-opacity hover:opacity-90 sm:px-3.5"
             >
               <Plus size={15} />
               <span className="hidden sm:inline">{tNav("newProject")}</span>
@@ -61,13 +64,19 @@ export default async function DashboardPage() {
           }
         />
 
-        <main id="main-content" className="flex-1 w-full overflow-auto kairos-bottomnav-gap">
+        {/* The hatch sits on <main>, not on the dashboard inside it: `main` is
+            the box that reaches the bottom of the window, so the stripes do too
+            however short the page is. */}
+        <main id="main-content" className="tui-screen flex-1 w-full overflow-auto kairos-bottomnav-gap">
           {/*
             The radar now lives inside the dashboard's own column rather than in
             a panel appended underneath it — see `RadarFindings` for why it sits
             directly under the headline.
           */}
-          <DashboardClient userName={session.user.name ?? null} />
+          <DashboardClient
+            userName={session.user.name ?? null}
+            userId={session.user.id}
+          />
         </main>
       </div>
     </div>
