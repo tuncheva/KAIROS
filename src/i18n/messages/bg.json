@@ -2939,6 +2939,8 @@
     "conversations": "Разговори",
     "hideConversations": "Скрий разговорите",
     "showConversations": "Покажи разговорите",
+    "showDetails": "Покажи детайлите",
+    "hideDetails": "Скрий детайлите",
     "newConversation": "Нов разговор",
     "searchConversations": "Търсене в разговорите",
     "loading": "Зареждане…",

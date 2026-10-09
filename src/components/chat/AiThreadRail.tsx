@@ -27,6 +27,8 @@ interface Props {
   onSelect: (id: string) => void;
   onNew: () => void;
   onCollapse: () => void;
+  /** `sheet` sits inside a `ConsoleDrawer`, which already draws the pane. */
+  variant?: "column" | "sheet";
 }
 
 /**
@@ -70,6 +72,7 @@ export function AiThreadRail({
   onSelect,
   onNew,
   onCollapse,
+  variant = "column",
 }: Props) {
   const t = useTranslations("aiConsole");
   const { formatDate } = useDateFormat();
@@ -125,7 +128,7 @@ export function AiThreadRail({
 
   return (
     <aside
-      className={`${CHAT_PANE} kairos-console-rail flex h-full min-h-0 w-full flex-col`}
+      className={`${variant === "column" ? `${CHAT_PANE} kairos-console-rail` : ""} flex h-full min-h-0 w-full flex-col`}
       aria-label={t("conversations")}
     >
       {/* The collapse sits on the eyebrow line so the title keeps the width;

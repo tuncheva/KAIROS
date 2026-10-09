@@ -793,6 +793,18 @@
   --accent-hover: var(--tui-accent);
   --accent-glow: var(--tui-accent);
 
+  /* The status families on the same inks, over warm tints of the paper,
+     rather than the app's cool alarm reds and greens. */
+  --status-success-surface: 234 241 235;
+  --status-success-border: 128 166 140;
+  --status-success-ink: var(--tui-ok);
+  --status-warning-surface: 245 238 224;
+  --status-warning-border: 188 158 104;
+  --status-warning-ink: var(--tui-warn);
+  --status-danger-surface: 247 233 229;
+  --status-danger-border: 199 132 121;
+  --status-danger-ink: var(--tui-danger);
+
   color: rgb(var(--fg-primary));
 }
 
@@ -805,6 +817,13 @@
   --border-light: 30 30 31;
   --border-medium: 49 48 49;
   --border-strong: 70 69 68;
+
+  --status-success-surface: 27 36 30;
+  --status-success-border: 74 104 84;
+  --status-warning-surface: 40 34 25;
+  --status-warning-border: 118 98 62;
+  --status-danger-surface: 44 27 25;
+  --status-danger-border: 124 74 66;
 }
 
 /* ─── Calendar · refined edition ───
@@ -3966,6 +3985,73 @@ input[type="search"]::-webkit-search-results-decoration {
 @media (prefers-reduced-motion: reduce) {
   .kairos-console-rail {
     animation: none;
+  }
+}
+
+/* The console's side columns fold rather than vanish. The slot animates its
+   width (and eats the flex gap with a negative margin, so nothing is left
+   behind at zero); the pane inside keeps its full width and slides and fades
+   under the slot's clip, so its contents never reflow mid-fold. Same curve as
+   the nav rail, which is the other thing that moves this page's edges. */
+.console-fold {
+  transition:
+    width 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    margin 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.console-fold > * {
+  transition:
+    opacity 300ms ease-out,
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.console-fold[data-open="false"] > * {
+  opacity: 0;
+}
+.console-fold[data-side="left"][data-open="false"] > * {
+  transform: translateX(-24px);
+}
+.console-fold[data-side="right"][data-open="false"] > * {
+  transform: translateX(24px);
+}
+
+/* The threads sheet comes in from the left; `projects-drawer` only knows the
+   right. Same duration and curve, so `DRAWER_EXIT_MS` holds for both. */
+@keyframes console-drawer-left-in {
+  from {
+    transform: translateX(calc(-100% - 0.75rem));
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes console-drawer-left-out {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(calc(-100% - 0.75rem));
+  }
+}
+.console-drawer-left {
+  animation: console-drawer-left-in 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+  will-change: transform;
+}
+.console-drawer-left-out {
+  animation: console-drawer-left-out 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .console-fold,
+  .console-fold > * {
+    transition: none;
+  }
+  .console-drawer-left {
+    animation: none !important;
+    transform: none !important;
+  }
+  .console-drawer-left-out {
+    animation: none !important;
+    transform: translateX(calc(-100% - 0.75rem)) !important;
   }
 }
 

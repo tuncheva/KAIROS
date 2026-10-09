@@ -114,7 +114,43 @@ export const CitationSchema = z
   })
   .strip();
 
-const A1BaseSchema = z
+/**
+ * Fill in `intent.type` when the model leaves it out.
+ *
+ * The type only restates which payload key is present, and models do drop it —
+ * `"intent": { "scope": {} }` next to a perfectly good `answer`. Failing the
+ * turn over that sent it to the JSON repair prompt, which sees neither the
+ * schema nor the conversation and so cannot know which type was meant. Reading
+ * it off the payload is exact; anything without a payload still fails.
+ */
+function inferIntentType(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw;
+  const out = raw as Record<string, unknown>;
+  const intent =
+    typeof out.intent === "object" && out.intent !== null && !Array.isArray(out.intent)
+      ? (out.intent as Record<string, unknown>)
+      : out.intent === undefined
+        ? {}
+        : null;
+  if (intent === null || intent.type !== undefined) return raw;
+
+  const type = out.handoffs || out.handoff
+    ? "handoff"
+    : out.clarify
+      ? "clarify"
+      : out.draftPlan
+        ? "draft_plan"
+        : out.answer
+          ? "answer"
+          : undefined;
+  if (!type) return raw;
+
+  return { ...out, intent: { ...intent, type } };
+}
+
+const A1BaseSchema = z.preprocess(
+  inferIntentType,
+  z
   .object({
     intent: ConciergeIntentSchema,
     answer: z
@@ -132,7 +168,8 @@ const A1BaseSchema = z
     citations: z.array(CitationSchema).optional(),
     followUps: z.array(plainString(z.string().min(1).max(120))).max(3).optional(),
   })
-  .strip();
+  .strip(),
+);
 
 /**
  * Normalize the two handoff shapes into one.

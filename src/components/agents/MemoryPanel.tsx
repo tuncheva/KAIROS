@@ -191,7 +191,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
             type="button"
             onClick={submit}
             disabled={upsert.isPending || !key.trim() || !value.trim()}
-            className="w-full rounded-lg bg-accent-primary px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+            className="w-full rounded-lg bg-accent-primary px-3 py-1.5 text-xs font-medium text-tui-on-accent disabled:opacity-50"
           >
             {upsert.isPending ? t("saving") : t("save")}
           </button>

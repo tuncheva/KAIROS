@@ -1721,6 +1721,8 @@
     "conversations": "Unterhaltungen",
     "hideConversations": "Unterhaltungen ausblenden",
     "showConversations": "Unterhaltungen einblenden",
+    "showDetails": "Details einblenden",
+    "hideDetails": "Details ausblenden",
     "newConversation": "Neue Unterhaltung",
     "searchConversations": "Unterhaltungen durchsuchen",
     "loading": "Wird geladen…",

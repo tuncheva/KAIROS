@@ -2939,6 +2939,8 @@
     "conversations": "Conversations",
     "hideConversations": "Hide conversations",
     "showConversations": "Show conversations",
+    "showDetails": "Show details",
+    "hideDetails": "Hide details",
     "newConversation": "New conversation",
     "searchConversations": "Search conversations",
     "loading": "Loading…",

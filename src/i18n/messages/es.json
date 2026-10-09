@@ -1721,6 +1721,8 @@
     "conversations": "Conversaciones",
     "hideConversations": "Ocultar conversaciones",
     "showConversations": "Mostrar conversaciones",
+    "showDetails": "Mostrar detalles",
+    "hideDetails": "Ocultar detalles",
     "newConversation": "Nueva conversación",
     "searchConversations": "Buscar conversaciones",
     "loading": "Cargando…",

@@ -175,7 +175,7 @@ Reply with a single JSON object and nothing else — no markdown fence, no comme
 {
   "intent": { "type": "answer" | "handoff" | "clarify", "scope": { "projectId?": number } },
   "answer?": { "summary": "string", "details?": ["string"] },
-  "handoffs?": [{ "targetAgent": "task_planner" | "notes_vault" | "events_publisher" | "org_admin", "context": {}, "userIntent": "string" }],
+  "handoffs?": [{ "targetAgent": "task_planner" | "notes_vault" | "events_publisher" | "org_admin" | "project_manager", "context": {}, "userIntent": "string" }],
   "clarify?": { "question": "string", "options?": ["string"] },
   "citations?": [{ "label": "string", "ref": "kind:id" }],
   "followUps?": ["string"]
