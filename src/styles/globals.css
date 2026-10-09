@@ -323,6 +323,7 @@
 /* Accent (theme) variants */
 :root[data-accent="purple"] {
   --accent-primary: var(--brand-purple);
+  --tui-accent: 91 72 145;
   --accent-secondary: 192 132 252;
   --accent-tertiary: 216 180 254;
   --accent-hover: 147 51 234;
@@ -332,6 +333,7 @@
 
 :root[data-accent="pink"] {
   --accent-primary: var(--brand-pink);
+  --tui-accent: 150 72 82;
   --accent-secondary: 228 171 171;
   --accent-tertiary: 243 213 213;
   --accent-hover: 194 120 120;
@@ -341,6 +343,7 @@
 
 :root[data-accent="caramel"] {
   --accent-primary: var(--brand-caramel);
+  --tui-accent: 146 90 38;
   --accent-secondary: 242 191 141;
   --accent-tertiary: 251 229 199;
   --accent-hover: 209 147 88;
@@ -350,6 +353,7 @@
 
 :root[data-accent="mint"] {
   --accent-primary: var(--brand-mint);
+  --tui-accent: 46 112 94;
   --accent-secondary: 130 201 183;
   --accent-tertiary: 186 231 220;
   --accent-hover: 73 148 128;
@@ -359,6 +363,7 @@
 
 :root[data-accent="sky"] {
   --accent-primary: var(--brand-sky);
+  --tui-accent: 33 92 160;
   --accent-secondary: 92 158 221;
   --accent-tertiary: 171 208 242;
   --accent-hover: 30 92 160;
@@ -368,6 +373,7 @@
 
 :root[data-accent="strawberry"] {
   --accent-primary: var(--brand-strawberry);
+  --tui-accent: 178 40 52;
   --accent-secondary: 248 110 122;
   --accent-tertiary: 252 193 198;
   --accent-hover: 205 41 56;
@@ -499,6 +505,7 @@
 .dark[data-accent="purple"],
 [data-accent="purple"] .dark {
   --accent-primary: var(--brand-purple);
+  --tui-accent: 168 150 216;
   --accent-secondary: 192 132 252;
   --accent-tertiary: 216 180 254;
   --accent-hover: 216 180 254;
@@ -509,6 +516,7 @@
 .dark[data-accent="pink"],
 [data-accent="pink"] .dark {
   --accent-primary: var(--brand-pink);
+  --tui-accent: 222 160 160;
   --accent-secondary: 228 171 171;
   --accent-tertiary: 243 213 213;
   --accent-hover: 243 213 213;
@@ -519,6 +527,7 @@
 .dark[data-accent="caramel"],
 [data-accent="caramel"] .dark {
   --accent-primary: var(--brand-caramel);
+  --tui-accent: 226 172 118;
   --accent-secondary: 242 191 141;
   --accent-tertiary: 251 229 199;
   --accent-hover: 251 229 199;
@@ -529,6 +538,7 @@
 .dark[data-accent="mint"],
 [data-accent="mint"] .dark {
   --accent-primary: var(--brand-mint);
+  --tui-accent: 128 196 176;
   --accent-secondary: 130 201 183;
   --accent-tertiary: 186 231 220;
   --accent-hover: 186 231 220;
@@ -539,6 +549,7 @@
 .dark[data-accent="sky"],
 [data-accent="sky"] .dark {
   --accent-primary: var(--brand-sky);
+  --tui-accent: 120 164 214;
   --accent-secondary: 92 158 221;
   --accent-tertiary: 171 208 242;
   --accent-hover: 171 208 242;
@@ -549,6 +560,7 @@
 .dark[data-accent="strawberry"],
 [data-accent="strawberry"] .dark {
   --accent-primary: var(--brand-strawberry);
+  --tui-accent: 240 112 120;
   --accent-secondary: 248 110 122;
   --accent-tertiary: 252 193 198;
   --accent-hover: 252 193 198;
@@ -563,8 +575,8 @@
    except here we *remap the semantic tokens themselves* on a scoped wrapper, so
    every `bg-bg-*`, `text-fg-*`, `border-border-*` and `text-accent-*` already in
    the notes components adopts the quiet palette without touching a class. The
-   accent is pinned to the design's violet regardless of the app's chosen accent,
-   because the quiet look is a whole; hairlines stay driven from the ink at low
+   accent is `--tui-accent`, the muted ink tone of the app's chosen accent
+   (lavender by default), so notes follow Appearance; hairlines stay driven from the ink at low
    opacity via the border tokens below. Light values are the default; the dark
    ones apply under next-themes' `.dark`. See docs/theme.md and the Kairos Notes
    2a design. */
@@ -588,11 +600,11 @@
   --border-medium: 216 215 211;
   --border-strong: 198 197 192;
 
-  --accent-primary: 91 72 145;
-  --accent-secondary: 91 72 145;
-  --accent-tertiary: 138 122 180;
-  --accent-hover: 70 54 120;
-  --accent-glow: 91 72 145;
+  --accent-primary: var(--tui-accent);
+  --accent-secondary: var(--tui-accent);
+  --accent-tertiary: var(--tui-accent);
+  --accent-hover: var(--tui-accent);
+  --accent-glow: var(--tui-accent);
 
   --success: 63 115 85;
   --warning: 138 103 42;
@@ -622,11 +634,11 @@
   --border-medium: 43 43 41;
   --border-strong: 60 59 55;
 
-  --accent-primary: 168 150 216;
-  --accent-secondary: 168 150 216;
-  --accent-tertiary: 196 184 226;
-  --accent-hover: 200 188 232;
-  --accent-glow: 168 150 216;
+  --accent-primary: var(--tui-accent);
+  --accent-secondary: var(--tui-accent);
+  --accent-tertiary: var(--tui-accent);
+  --accent-hover: var(--tui-accent);
+  --accent-glow: var(--tui-accent);
 
   --success: 147 186 158;
   --warning: 210 176 116;
@@ -651,10 +663,9 @@
    Most values point at the `--tui-*` tokens, which already switch under
    `.dark`, so only what the dashboard has no token for is set per theme.
 
-   The accent is pinned to `--tui-accent`, so the page always matches the
-   dashboard. Appearance's swatches paint their own brand colours, so picking
-   an accent there still shows which one is chosen; the change itself is seen
-   once you leave settings.
+   The accent is `--tui-accent`, so the page always matches the dashboard.
+   That token follows the chosen accent (see the `[data-accent]` variants),
+   so picking a swatch in Appearance recolours settings immediately.
 
    Settings speaks in the app's own faces (`--font-sans`, `--font-display`,
    `--font-mono`) rather than a set of its own, so leaving it does not change
@@ -749,7 +760,7 @@
 
 /* ─── AI chat · refined edition ───
    /chat/ai on the same panes as the direct chats: `tui-*` panes on the hatched
-   ground, ink hairlines, the pinned violet accent. The console's inner pieces
+   ground, ink hairlines, the `--tui-accent` (it follows the chosen accent). The console's inner pieces
    (the thread, the trail, memory, tools, documents) are shared with the
    widget, so instead of forking their classes the semantic tokens are
    remapped on the page wrapper, the same way `.settings-elegant` does it.
@@ -790,6 +801,59 @@
   --bg-tertiary: 29 29 33;
   --bg-overlay: 6 6 7;
   --fg-quaternary: 79 78 74;
+
+  --border-light: 30 30 31;
+  --border-medium: 49 48 49;
+  --border-strong: 70 69 68;
+}
+
+/* ─── Calendar · refined edition ───
+   /calendar on the dashboard's palette, carried like `.chat-refined`: the
+   calendar's grid, chips, drawer and dialogs keep their semantic classes and
+   the tokens are remapped here. The grid and drawer are drawn on
+   `--bg-elevated`/`--bg-surface`, so those are the pane; `--bg-secondary` is
+   the hover and header wash a step down, on the ground. Events and low
+   priority use the muted slate `--info` from `.notes-quiet` rather than the
+   global bright blue, and the now-line is the dashboard's danger red. */
+.calendar-refined {
+  --bg-primary: var(--tui-bg);
+  --bg-secondary: 238 237 233;
+  --bg-tertiary: 236 235 231;
+  --bg-elevated: var(--tui-pane);
+  --bg-surface: var(--tui-pane);
+  --bg-overlay: var(--tui-ink);
+
+  --fg-primary: var(--tui-ink);
+  --fg-secondary: var(--tui-ink2);
+  --fg-tertiary: var(--tui-ink3);
+  --fg-quaternary: 179 177 171;
+
+  --border-light: 228 227 223;
+  --border-medium: 211 210 206;
+  --border-strong: 190 189 185;
+
+  --success: var(--tui-ok);
+  --warning: var(--tui-warn);
+  --error: var(--tui-danger);
+  --info: 61 102 128;
+  --now-line: var(--tui-danger);
+
+  --accent-primary: var(--tui-accent);
+  --accent-secondary: var(--tui-accent);
+  --accent-tertiary: var(--tui-accent);
+  --accent-hover: var(--tui-accent);
+  --accent-glow: var(--tui-accent);
+
+  color: rgb(var(--fg-primary));
+}
+
+.dark .calendar-refined,
+.calendar-refined.dark {
+  --bg-secondary: 29 29 33;
+  --bg-tertiary: 29 29 33;
+  --bg-overlay: 6 6 7;
+  --fg-quaternary: 79 78 74;
+  --info: 143 178 201;
 
   --border-light: 30 30 31;
   --border-medium: 49 48 49;
@@ -3585,6 +3649,73 @@ html[data-kairos-intro="seen"] .k-intro {
 }
 
 /* ==========================================================================
+   Rolling stat digits (`RollingNumber`)
+   --------------------------------------------------------------------------
+   A changed digit sits in a clipped cell: the old glyph slides out one way
+   while the new one slides in behind it. The cell's padding gives descenders
+   and the serif's overshoot room so the clip doesn't shave them, and the
+   negative margin takes that room back out of the layout.
+   ========================================================================== */
+
+.roll-cell {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  padding-block: 0.12em;
+  margin-block: -0.12em;
+}
+
+.roll-in-up,
+.roll-in-down {
+  display: inline-block;
+  animation: 0.5s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.roll-out-up,
+.roll-out-down {
+  position: absolute;
+  inset-inline: 0;
+  top: 0.12em;
+  animation: 0.5s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.roll-in-up { animation-name: roll-in-up; }
+.roll-in-down { animation-name: roll-in-down; }
+.roll-out-up { animation-name: roll-out-up; }
+.roll-out-down { animation-name: roll-out-down; }
+
+@keyframes roll-in-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes roll-in-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes roll-out-up {
+  from { transform: none; opacity: 1; }
+  to { transform: translateY(-100%); opacity: 0; }
+}
+
+@keyframes roll-out-down {
+  from { transform: none; opacity: 1; }
+  to { transform: translateY(100%); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roll-in-up,
+  .roll-in-down {
+    animation: none !important;
+  }
+  .roll-out-up,
+  .roll-out-down {
+    display: none;
+  }
+}
+
+/* ==========================================================================
    Design 1b navigation sidebar
    --------------------------------------------------------------------------
    The sidebar is 248px, labelled and grouped, and collapses to a 68px rail of
@@ -3622,24 +3753,93 @@ html[data-kairos-intro="seen"] .k-intro {
 }
 
 /* Labels, group headings, counts and key hints only belong to the open
-   sidebar. They go outright rather than being clipped, so a row is just its
-   icon and nothing half-drawn sits at the rail's edge. */
-:root[data-rail-collapsed="true"] .kairos-rail .kairos-rail-label {
-  display: none;
+   sidebar. They fade rather than leave the layout: `display: none` took the
+   group headings' height with them on the first frame, so every icon jumped
+   up before the width had moved at all, and jumped back down on expand. Kept
+   in place, they are simply clipped by the narrowing rail while they fade.
+   Collapsing fades them fast, before the edge reaches them; expanding waits a
+   beat so they do not show inside a rail that is still 68px wide.
+   `visibility` follows the opacity so a hidden label cannot be clicked or
+   tabbed to — every row carries its own `aria-label`. */
+.kairos-rail .kairos-rail-label {
+  transition:
+    opacity 180ms ease 100ms,
+    visibility 0s linear 0s;
 }
 
-/* Collapsed, the header cannot fit the mark and the toggle side by side in
-   40px, so they stack — the toggle stays reachable without the shortcut. */
-:root[data-rail-collapsed="true"] .kairos-rail-head {
-  height: auto;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding-left: 0;
-  padding-right: 0;
+:root[data-rail-collapsed="true"] .kairos-rail .kairos-rail-label {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 90ms ease,
+    visibility 0s linear 90ms;
+}
+
+/* A group heading keeps its height when collapsed, so the icons never move;
+   a short hairline under the icon column takes the text's place and keeps the
+   groups readable as groups. */
+.kairos-rail-group::after {
+  content: "";
+  position: absolute;
+  left: 0.75rem; /* the row's px-3: the icon column */
+  top: calc(50% - 3px);
+  width: 1rem; /* the icon's width */
+  height: 1px;
+  background: rgb(var(--tui-ink) / 0.12);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+:root[data-rail-collapsed="true"] .kairos-rail-group::after {
+  opacity: 1;
+  transition-delay: 120ms;
+}
+
+/* The header stays one row. The toggle is pinned to its right edge, so it
+   rides the narrowing rail and comes to rest exactly over the mark — the two
+   sit on the icon column (34px). Collapsed, the mark shows and the toggle
+   takes its place on hover or keyboard focus; on a screen with no hover
+   (a tablet past `lg`) the toggle simply stays. The old header stacked the
+   mark over the toggle instead, which changed its height and pushed the whole
+   rail down mid-animation. */
+.kairos-rail-mark,
+.kairos-rail-toggle {
+  transition:
+    opacity 150ms ease,
+    background-color 200ms ease,
+    color 200ms ease;
+}
+
+@media (hover: hover) {
+  :root[data-rail-collapsed="true"] .kairos-rail-toggle {
+    opacity: 0;
+  }
+
+  :root[data-rail-collapsed="true"] .kairos-rail-head:hover .kairos-rail-toggle,
+  :root[data-rail-collapsed="true"] .kairos-rail-toggle:focus-visible {
+    opacity: 1;
+  }
+
+  :root[data-rail-collapsed="true"] .kairos-rail-head:hover .kairos-rail-mark,
+  /* `:has(:focus-visible)`, not `:focus-within`: a mouse click leaves the
+     toggle focused, and with the toggle invisible that would hide both. */
+  :root[data-rail-collapsed="true"] .kairos-rail-head:has(.kairos-rail-toggle:focus-visible) .kairos-rail-mark {
+    opacity: 0;
+  }
+}
+
+@media (hover: none) {
+  :root[data-rail-collapsed="true"] .kairos-rail-mark {
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rail-offset {
+  .rail-offset,
+  .kairos-rail .kairos-rail-label,
+  .kairos-rail-group::after,
+  .kairos-rail-mark,
+  .kairos-rail-toggle {
     transition: none;
   }
 }
@@ -4997,6 +5197,56 @@ input[type="search"]::-webkit-search-results-decoration {
     opacity: 0 !important;
     transform: none !important;
     transition: opacity 0.12s linear;
+  }
+}
+
+/* ── Top-bar dropdowns (profile, workspace) ─────────────────────────────
+   Grow out of the trigger's corner — the origin is set per menu — and fold
+   back into it on close. The exit length is `TOPBAR_MENU_EXIT_MS` in
+   `ui/menuExit.ts`; change them together. */
+.topbar-menu {
+  animation: kairos-scale-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.topbar-menu--out {
+  animation: kairos-scale-in 0.12s cubic-bezier(0.4, 0, 0.2, 1) reverse forwards;
+  pointer-events: none;
+}
+
+/* The rows follow the panel in, a beat apart, so the menu reads as unfolding
+   rather than appearing as one slab. Capped at the first eight. */
+.topbar-menu > * > *,
+.topbar-menu > * {
+  animation: topbar-menu-row 0.22s ease-out backwards;
+}
+@keyframes topbar-menu-row {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: none; }
+}
+.topbar-menu > :nth-child(1) { animation-delay: 30ms; }
+.topbar-menu > :nth-child(2) { animation-delay: 60ms; }
+.topbar-menu > :nth-child(3) { animation-delay: 90ms; }
+.topbar-menu > * > :nth-child(1) { animation-delay: 70ms; }
+.topbar-menu > * > :nth-child(2) { animation-delay: 95ms; }
+.topbar-menu > * > :nth-child(3) { animation-delay: 120ms; }
+.topbar-menu > * > :nth-child(4) { animation-delay: 145ms; }
+.topbar-menu > * > :nth-child(5) { animation-delay: 170ms; }
+.topbar-menu > * > :nth-child(6) { animation-delay: 195ms; }
+.topbar-menu > * > :nth-child(n + 7) { animation-delay: 220ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar-menu,
+  .topbar-menu > *,
+  .topbar-menu > * > * {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .topbar-menu--out {
+    animation: none !important;
+    opacity: 0 !important;
+    transform: none !important;
   }
 }
 

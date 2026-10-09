@@ -613,20 +613,25 @@ export function SideNav() {
         className="kairos-rail hidden lg:flex fixed left-0 top-0 bottom-0 z-40 w-[248px] flex-col overflow-hidden border-r border-tui-ink/8 bg-tui-pane px-3.5 pt-[18px] pb-4 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
         aria-label="Primary"
       >
-        <div className="kairos-rail-head mb-[18px] flex h-9 shrink-0 items-center gap-2.5 pr-1.5 pl-2">
+        {/* `pl-2.5` puts the mark's centre on the icon column (34px), where
+            the toggle comes to rest when the rail collapses. The two paddings
+            add up to exactly the collapsed rail's 40px of room: any more and
+            the header outgrows it, which parks the toggle off the mark. The
+            workspace link's own `pr-1.5` keeps its text clear of the toggle. */}
+        <div className="kairos-rail-head relative mb-[18px] flex h-9 shrink-0 items-center gap-2.5 pr-[30px] pl-2.5">
           <button
             type="button"
             onClick={openOnboarding}
             aria-label={t("gettingStarted")}
             title={t("gettingStarted")}
-            className="flex shrink-0 items-center rounded-md transition-opacity hover:opacity-70"
+            className="kairos-rail-mark flex shrink-0 items-center rounded-md hover:opacity-70"
           >
             <KairosMark size={20} />
           </button>
           <Link
             href={profileItem.href}
             title={tOrg("switchWorkspace")}
-            className={`${RAIL_LABEL} flex min-w-0 flex-1 flex-col gap-px whitespace-nowrap transition-opacity hover:opacity-75`}
+            className={`${RAIL_LABEL} flex min-w-0 flex-1 flex-col gap-px pr-1.5 whitespace-nowrap hover:opacity-75`}
           >
             <span className="truncate text-[13.5px] font-semibold text-tui-ink">{workspaceName}</span>
             <span className="truncate text-[11.5px] text-tui-ink3">{workspaceSubtitle}</span>
@@ -637,7 +642,7 @@ export function SideNav() {
             aria-expanded={!isRailCollapsed}
             aria-label={toggleLabel}
             title={`${toggleLabel} (${hint("\\")})`}
-            className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md text-tui-ink3 transition-colors hover:bg-tui-ink/[0.055] hover:text-tui-ink"
+            className="kairos-rail-toggle absolute top-1/2 right-[7px] flex h-[26px] w-[26px] -translate-y-1/2 items-center justify-center rounded-md text-tui-ink3 hover:bg-tui-ink/[0.055] hover:text-tui-ink"
           >
             {isRailCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
           </button>
@@ -661,8 +666,8 @@ export function SideNav() {
         <div className="kairos-scroll-area -mx-3.5 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overflow-x-hidden px-3.5">
           {railGroups.map((group) => (
             <div key={group.label} className="flex flex-col gap-0.5">
-              <span className={`${RAIL_LABEL} px-3 pb-1.5 text-[10.5px] font-medium tracking-[0.18em] whitespace-nowrap text-tui-ink3 uppercase`}>
-                {group.label}
+              <span className="kairos-rail-group relative px-3 pb-1.5 text-[10.5px] font-medium tracking-[0.18em] whitespace-nowrap text-tui-ink3 uppercase">
+                <span className={RAIL_LABEL}>{group.label}</span>
               </span>
               {group.items.map((item) => (
                 <RailLink

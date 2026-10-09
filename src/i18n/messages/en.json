@@ -3130,7 +3130,8 @@
       "new": "New task",
       "empty": "No tasks on this project yet.",
       "noneInFilter": "No tasks in this filter.",
-      "advance": "Move to next status",
+      "markDone": "Mark as done",
+      "markUndone": "Mark as not done",
       "edit": "Edit task",
       "discard": "Discard task",
       "discardConfirm": "Click again to discard",
@@ -3246,7 +3247,7 @@
     "createdBy": "created by {name}",
     "overview": "overview",
     "tui": {
-      "workspace": "workspace",
+      "workspace": "Workspace",
       "move": "move",
       "open": "open",
       "search": "search"

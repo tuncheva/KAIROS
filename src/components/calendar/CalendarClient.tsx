@@ -859,7 +859,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
           <button
             type="button"
             onClick={() => openNew(defaultNewDate())}
-            className="kairos-tap flex h-[30px] shrink-0 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="kairos-tap flex h-[30px] shrink-0 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover"
           >
             <Plus size={14} aria-hidden="true" />
             {t("newButton")}
@@ -1127,7 +1127,7 @@ function EmptyState({
       <button
         type="button"
         onClick={onAction}
-        className="mt-1 h-control-md rounded-lg bg-accent-primary px-4 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+        className="mt-1 h-control-md rounded-lg bg-accent-primary px-4 text-xs font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover"
       >
         {actionLabel}
       </button>

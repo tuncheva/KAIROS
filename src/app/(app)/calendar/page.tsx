@@ -12,7 +12,7 @@ export default async function CalendarPage() {
 
 
   return (
-    <div className="h-dvh overflow-hidden bg-bg-primary">
+    <div className="calendar-refined tui-screen h-dvh overflow-hidden">
       {/* The calendar is a fixed-height surface that scrolls its own hour grid,
           so this column needs a DEFINITE height: with `min-h-dvh` the height
           stays indefinite, `flex-1` on <main> falls back to content sizing and

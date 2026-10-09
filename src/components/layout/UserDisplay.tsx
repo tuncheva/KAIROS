@@ -11,6 +11,7 @@ import { onAvatarUpdate } from"~/lib/avatarEvents";
 import { Skeleton } from "~/components/ui/Skeleton";
 import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { useReleasePush } from "~/hooks/useReleasePush";
+import { useMenuExit } from "~/components/ui/menuExit";
 
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
@@ -27,6 +28,7 @@ export function UserDisplay() {
  const tSettings = useT("settings");
  const tOrg = useT("org");
  const [isOpen, setIsOpen] = useState(false);
+ const menu = useMenuExit(isOpen);
  const [storedAccounts, setStoredAccounts] = useState<StoredAccount[]>([]);
  // Switching accounts requires re-authentication, so picking an account opens a
  // password prompt rather than signing in directly.
@@ -255,9 +257,10 @@ export function UserDisplay() {
  ) : null}
  </button>
 
- {isOpen && (
+ {menu.mounted && (
  <div
- className="absolute right-0 mt-2 w-[268px] rounded-xl border border-tui-ink/12 shadow-[var(--tui-lift)] overflow-hidden z-50 bg-tui-pane"
+ aria-hidden={menu.closing || undefined}
+ className={`${menu.closing ? "topbar-menu--out" : "topbar-menu"} origin-top-right absolute right-0 mt-2 w-[268px] rounded-xl border border-tui-ink/12 shadow-[var(--tui-lift)] overflow-hidden z-50 bg-tui-pane`}
  role="menu"
  aria-label={tSettings("title")}
  >

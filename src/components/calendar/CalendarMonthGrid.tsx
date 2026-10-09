@@ -144,7 +144,7 @@ export function CalendarMonthGrid({
                       className={cn(
                         "flex h-[22px] min-w-[22px] items-center justify-center rounded-full px-1 text-xs font-semibold tabular-nums",
                         isToday
-                          ? "bg-accent-primary text-white"
+                          ? "bg-accent-primary text-tui-on-accent"
                           : inMonth
                             ? "text-fg-primary"
                             : "text-fg-tertiary",

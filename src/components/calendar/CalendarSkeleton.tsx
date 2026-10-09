@@ -230,7 +230,7 @@ export function CalendarMonthGridSkeleton({
                       className={cn(
                         "flex h-[22px] min-w-[22px] items-center justify-center rounded-full px-1 text-xs font-semibold tabular-nums",
                         cell.isToday
-                          ? "bg-accent-primary text-white"
+                          ? "bg-accent-primary text-tui-on-accent"
                           : cell.inMonth
                             ? "text-fg-primary"
                             : "text-fg-tertiary",
@@ -398,7 +398,7 @@ export function CalendarSkeleton() {
           <span className={cn(OUTLINE_BTN, "hidden w-[30px] justify-center px-0 text-fg-secondary sm:flex")}>
             <HelpCircle size={14} />
           </span>
-          <span className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-white">
+          <span className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-tui-on-accent">
             <Plus size={14} />
             {t("newButton")}
           </span>

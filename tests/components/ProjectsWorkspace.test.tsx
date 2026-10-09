@@ -524,15 +524,23 @@ describe("ProjectsWorkspace — tasks", () => {
     expect(screen.queryByText("Chapter 2 review")).not.toBeInTheDocument();
   });
 
-  it("advances a task to the next status from its marker", async () => {
+  it("marks an open task done from its marker", async () => {
     const user = setup();
     await open(user);
-    await user.click(
-      screen.getAllByRole("button", { name: "Move to next status" })[0]!,
-    );
+    await user.click(screen.getByRole("button", { name: "Mark as done" }));
     expect(statusMutate).toHaveBeenCalledWith({
       taskId: 21,
-      status: "in_progress",
+      status: "completed",
+    });
+  });
+
+  it("reopens a done task from its marker", async () => {
+    const user = setup();
+    await open(user);
+    await user.click(screen.getByRole("button", { name: "Mark as not done" }));
+    expect(statusMutate).toHaveBeenCalledWith({
+      taskId: 22,
+      status: "pending",
     });
   });
 
