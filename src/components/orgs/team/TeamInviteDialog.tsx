@@ -18,6 +18,7 @@ import {
   type MemberPermissionFlags,
   type OrgRole,
 } from "~/lib/permissions";
+import { InviteePreview, useInviteeLookup } from "~/components/orgs/InviteePreview";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { Tick } from "./TeamPerson";
@@ -103,6 +104,7 @@ export function TeamInviteDialog({
   const resulting = edited ? t("customLabel") : (displayRole ?? tRoles(templateRole === "worker" ? "member" : templateRole));
 
   const inviteMember = api.organization.inviteMember.useMutation();
+  const invitee = useInviteeLookup(organizationId, email);
   const createLink = api.organization.createInviteLink.useMutation();
 
   const send = async () => {
@@ -284,7 +286,7 @@ export function TeamInviteDialog({
                       setEmailErr(false);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") void send();
+                      if (e.key === "Enter" && !invitee.blocked) void send();
                     }}
                     placeholder="name@company.com"
                     aria-label={t("byEmail")}
@@ -293,7 +295,7 @@ export function TeamInviteDialog({
                 </label>
                 <button
                   type="button"
-                  disabled={!email.trim() || inviteMember.isPending}
+                  disabled={!email.trim() || inviteMember.isPending || invitee.blocked}
                   onClick={() => void send()}
                   className={cn(TEAM_PRIMARY_BUTTON, "h-[42px] px-[18px]")}
                 >
@@ -302,6 +304,7 @@ export function TeamInviteDialog({
                 </button>
               </div>
               {emailErr ? <span className="text-[12.5px] text-tui-danger">{t("badEmail")}</span> : null}
+              <InviteePreview email={email} lookup={invitee.result} loading={invitee.loading} />
             </>
           ) : (
             <div className="flex flex-col gap-3">

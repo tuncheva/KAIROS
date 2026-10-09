@@ -69,6 +69,7 @@ export const settingsRouter = createTRPCRouter({
           profileAudience: true,
           allowFollowers: true,
           showActivityFeed: true,
+          discoverableByEmail: true,
           showOnlineStatus: true,
           activityTracking: true,
           dataCollection: true,
@@ -564,6 +565,7 @@ export const settingsRouter = createTRPCRouter({
       allowFollowers: z.boolean().optional(),
       showActivityFeed: z.boolean().optional(),
       showOnlineStatus: z.boolean().optional(),
+      discoverableByEmail: z.boolean().optional(),
       activityTracking: z.boolean().optional(),
       dataCollection: z.boolean().optional(),
     }))

@@ -303,10 +303,8 @@ export function WorkspaceMenu() {
 }
 
 /**
- * The workspace's face in the switcher: an uploaded logo when there is one,
- * otherwise a serif initial in a soft wash — the same avatar language as the
- * dashboard, instead of the loud gradient monogram `OrgBadge` paints. Your own
- * space is the neutral one.
+ * The workspace's face in the switcher: the org's `OrgBadge`, or a neutral
+ * person glyph for your own space.
  */
 function WorkspaceMark({
   personal = false,
@@ -321,23 +319,17 @@ function WorkspaceMark({
   image?: string | null;
   size?: number;
 }) {
-  if (!personal && image) {
+  if (!personal) {
     return <OrgBadge id={id} name={name} image={image} size={size} rounded="rounded-full" />;
   }
 
   return (
     <span
       aria-hidden="true"
-      className={`flex shrink-0 items-center justify-center rounded-full font-display leading-none ${
-        personal ? "bg-tui-ink/[0.06] text-tui-ink2" : "bg-tui-accent/12 text-tui-accent"
-      }`}
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.56) }}
+      className="flex shrink-0 items-center justify-center rounded-full bg-tui-ink/[0.06] text-tui-ink2"
+      style={{ width: size, height: size }}
     >
-      {personal ? (
-        <User size={Math.round(size * 0.45)} />
-      ) : (
-        name.trim().charAt(0).toUpperCase() || "·"
-      )}
+      <User size={Math.round(size * 0.45)} />
     </span>
   );
 }

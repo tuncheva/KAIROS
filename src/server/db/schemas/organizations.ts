@@ -160,12 +160,36 @@ export const organizationInvites = createTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }),
+    /**
+     * How many times the invitation email has gone out, and when last.
+     * Resends are capped (see `~/server/invites/policy`): a non-user may get the
+     * first email and at most two manual resends, a day apart — never a drip.
+     */
+    sendCount: integer("send_count").notNull().default(1),
+    lastSentAt: timestamp("last_sent_at", { mode: "date", withTimezone: true }),
   }),
   (t) => [
     index("org_invite_org_idx").on(t.organizationId),
     index("org_invite_email_idx").on(t.email),
   ]
 );
+
+/**
+ * Addresses that asked never to be sent a KAIROS invitation again.
+ *
+ * Holds an HMAC of the normalised address, not the address: honouring the
+ * objection needs only to recognise it again, and a keyed hash keeps this table
+ * from being a list of people's emails. Checked before every invitation email;
+ * a suppressed address is answered exactly like a failed send, so the inviter
+ * cannot tell that the person opted out. See `~/server/invites/suppression`.
+ */
+export const inviteSuppressions = createTable("invite_suppressions", () => ({
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  emailHash: varchar("email_hash", { length: 64 }).notNull().unique(),
+  createdAt: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
 
 /**
  * Short-lived invite tokens behind the join QR code.

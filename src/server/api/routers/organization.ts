@@ -23,6 +23,11 @@ import { consumeAuthRateLimit, createAuthRateLimitKey } from "~/server/security/
 import { getClientIp } from "~/server/http/clientIp";
 import { assertSeatAvailable } from "~/server/billing/seats";
 import {
+  assertCanResend,
+  consumeInviteBudget,
+  consumeLookupBudget,
+} from "~/server/orgs/invitePolicy";
+import {
   JOIN_CODE_TTL_MS,
   buildJoinUrl,
   generateJoinToken,
@@ -1707,7 +1712,8 @@ export const organizationRouter = createTRPCRouter({
    *
    * Members who were given the role keep the flags they were given: a role is a
    * template stamped onto a membership, not a live link to it. Re-assign the
-   * role to someone to give them the edited flags.
+   * role to someone to give them the edited flags. A rename does follow them,
+   * since the name is the only link there is.
    */
   updateRole: protectedProcedure
     .input(
@@ -1739,16 +1745,41 @@ export const organizationRouter = createTRPCRouter({
 
       await assertRoleNameFree(ctx, input.organizationId, input.name, input.roleId);
 
-      const [role] = await ctx.db
-        .update(organizationRoles)
-        .set({ name: input.name, ...pickPermissionFlags(input.permissions) })
-        .where(
-          and(
-            eq(organizationRoles.id, input.roleId),
-            eq(organizationRoles.organizationId, input.organizationId),
-          ),
-        )
-        .returning();
+      const role = await ctx.db.transaction(async (tx) => {
+        const [before] = await tx
+          .select({ name: organizationRoles.name })
+          .from(organizationRoles)
+          .where(
+            and(
+              eq(organizationRoles.id, input.roleId),
+              eq(organizationRoles.organizationId, input.organizationId),
+            ),
+          )
+          .limit(1);
+        if (!before) return undefined;
+
+        const [updated] = await tx
+          .update(organizationRoles)
+          .set({ name: input.name, ...pickPermissionFlags(input.permissions) })
+          .where(eq(organizationRoles.id, input.roleId))
+          .returning();
+
+        // Holders remember the role by name only, so a rename has to move the
+        // label with it or they silently stop belonging to the role. Their
+        // flags are left alone, as for any edit.
+        if (updated && updated.name !== before.name) {
+          await tx
+            .update(organizationMembers)
+            .set({ displayRole: updated.name })
+            .where(
+              and(
+                eq(organizationMembers.organizationId, input.organizationId),
+                eq(organizationMembers.displayRole, before.name),
+              ),
+            );
+        }
+        return updated;
+      });
 
       if (!role) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Role not found in this organization" });
@@ -1818,6 +1849,123 @@ export const organizationRouter = createTRPCRouter({
    * single-use link (sent through Resend, so it reaches Gmail or any other
    * inbox), and an in-app notification if they already have an account.
    */
+  /**
+   * Who an address belongs to, as far as this inviter is allowed to know.
+   *
+   * Asked while the inviter types, so the dialog can show the person before
+   * the invitation goes out. What it may reveal is deliberately narrow (see
+   * docs/invite-email-legal-research-2026-10-08.md §6.1):
+   *
+   * - `member` / `pending` — facts about this workspace, which the inviter can
+   *   already read in its member and invite lists.
+   * - `person` — name and avatar, only when the account holder already shares
+   *   a workspace with the inviter, or turned on "let people find me by email".
+   * - `new` — everything else, identically: no account, an account the inviter
+   *   may not see, or an address that opted out of invitations. Telling those
+   *   apart would turn this into an oracle for who has a KAIROS account.
+   *
+   * Exact, full addresses only — no prefix or domain search — behind the same
+   * permission as inviting, and on a daily budget.
+   */
+  lookupInvitee: protectedProcedure
+    .input(
+      z.object({
+        organizationId: z.number(),
+        email: z.string().trim().email().max(255),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const callerId = ctx.session.user.id;
+      const [caller] = await ctx.db
+        .select()
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, input.organizationId),
+            eq(organizationMembers.userId, callerId),
+          ),
+        )
+        .limit(1);
+
+      if (!caller || !canInvite(caller)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have permission to invite members",
+        });
+      }
+
+      await consumeLookupBudget(callerId);
+      const email = normalizeEmail(input.email);
+
+      const [person] = await ctx.db
+        .select({
+          id: users.id,
+          name: users.name,
+          image: users.image,
+          discoverable: users.discoverableByEmail,
+        })
+        .from(users)
+        .where(sql`lower(${users.email}) = ${email}`)
+        .limit(1);
+
+      const shown = person ? { name: person.name, image: person.image } : null;
+
+      if (person) {
+        const [inThisOrg] = await ctx.db
+          .select({ userId: organizationMembers.userId })
+          .from(organizationMembers)
+          .where(
+            and(
+              eq(organizationMembers.organizationId, input.organizationId),
+              eq(organizationMembers.userId, person.id),
+            ),
+          )
+          .limit(1);
+        if (inThisOrg) return { status: "member" as const, person: shown };
+      }
+
+      const [pending] = await ctx.db
+        .select({ id: organizationInvites.id })
+        .from(organizationInvites)
+        .where(
+          and(
+            eq(organizationInvites.organizationId, input.organizationId),
+            inviteEmailIs(email),
+            eq(organizationInvites.status, "pending"),
+            or(
+              isNull(organizationInvites.expiresAt),
+              gt(organizationInvites.expiresAt, new Date()),
+            ),
+          ),
+        )
+        .limit(1);
+      if (pending) return { status: "pending" as const, person: null };
+
+      if (person && person.id !== callerId) {
+        let visible = person.discoverable;
+        if (!visible) {
+          const mine = ctx.db
+            .select({ id: organizationMembers.organizationId })
+            .from(organizationMembers)
+            .where(eq(organizationMembers.userId, callerId));
+          const [shared] = await ctx.db
+            .select({ id: organizationMembers.organizationId })
+            .from(organizationMembers)
+            .where(
+              and(
+                eq(organizationMembers.userId, person.id),
+                inArray(organizationMembers.organizationId, mine),
+              ),
+            )
+            .limit(1);
+          visible = Boolean(shared);
+        }
+        if (visible) return { status: "person" as const, person: shown };
+      }
+
+      return { status: "new" as const, person: null };
+    }),
+
   inviteMember: protectedProcedure
     .input(
       inviteGrantSchema.extend({
@@ -1912,6 +2060,10 @@ export const organizationRouter = createTRPCRouter({
       // forgotten invitation from last month block a real colleague today.
       await assertSeatAvailable(input.organizationId);
 
+      // Spent only once the invite is otherwise valid, so a typo'd duplicate or
+      // a full workspace does not cost a send.
+      await consumeInviteBudget(ctx.session.user.id, input.organizationId);
+
       const token = generateInviteToken();
       const [invite] = await ctx.db
         .insert(organizationInvites)
@@ -1964,12 +2116,33 @@ export const organizationRouter = createTRPCRouter({
         });
       }
 
+      const [current] = await ctx.db
+        .select()
+        .from(organizationInvites)
+        .where(
+          and(
+            eq(organizationInvites.id, input.inviteId),
+            eq(organizationInvites.organizationId, input.organizationId),
+            eq(organizationInvites.status, "pending"),
+          ),
+        )
+        .limit(1);
+      if (!current) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invite not found or already processed" });
+      }
+
+      // At most two resends, a day apart — a resend is the inviter asking
+      // again, not a reminder drip (BGH I ZR 65/14 Rn. 37–38).
+      assertCanResend(current);
+      await consumeInviteBudget(ctx.session.user.id, input.organizationId);
+
       const token = generateInviteToken();
       const [invite] = await ctx.db
         .update(organizationInvites)
         .set({
           acceptTokenHash: hashInviteToken(token),
           expiresAt: new Date(Date.now() + INVITE_TTL_MS),
+          sendCount: sql`${organizationInvites.sendCount} + 1`,
         })
         .where(
           and(

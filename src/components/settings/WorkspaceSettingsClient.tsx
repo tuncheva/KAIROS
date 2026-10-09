@@ -1,23 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Loader2, Pencil, QrCode, RefreshCw, Trash2, X } from "~/components/ui/icons";
+import { QrCode, RefreshCw, Trash2, X } from "~/components/ui/icons";
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useSocketEvent } from "~/hooks/useSocketEvent";
 import { useSwitchOrganization } from "~/hooks/useSwitchOrganization";
 import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
 import { InviteBuilder } from "~/components/orgs/InviteBuilder";
-import {
-  PermissionGrid,
-  usePermissionSummary,
-} from "~/components/orgs/PermissionGrid";
-import {
-  ROLE_TEMPLATES,
-  TEMPLATE_ROLE_ORDER,
-  pickPermissionFlags,
-  type MemberPermissionFlags,
-} from "~/lib/permissions";
+import { usePermissionSummary } from "~/components/orgs/PermissionGrid";
+import { TEMPLATE_ROLE_ORDER, pickPermissionFlags } from "~/lib/permissions";
 import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
@@ -26,6 +18,8 @@ import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { OrgBadge } from "~/components/orgs/OrgBadge";
 import { ProfileLink } from "~/components/profile/ProfileLink";
 import { useUploadThing } from "~/lib/uploadthing";
+
+import { RoleMatrix } from "./RoleMatrix";
 
 import {
   LedgerAction,
@@ -52,9 +46,8 @@ function customRoleValue(id: number): string {
 }
 
 /**
- * A workspace's logo: the uploaded image when it has one, otherwise the same
- * seeded gradient monogram profiles fall back to — seeded by id so the
- * colour survives a rename. Admins get a "Replace" control next to it; other
+ * A workspace's logo: the uploaded image when it has one, otherwise
+ * `OrgBadge`'s serif initial. Admins get a "Replace" control next to it; other
  * members just see the badge.
  */
 function OrgLogoCell({
@@ -139,10 +132,6 @@ export function WorkspaceSettingsClient() {
   const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(
     null,
   );
-  const [roleDeleteTarget, setRoleDeleteTarget] = useState<{
-    id: number;
-    name: string;
-  } | null>(null);
   const [leaveTarget, setLeaveTarget] = useState<{ id: number; name: string } | null>(null);
   const [leaveError, setLeaveError] = useState<string | null>(null);
 
@@ -161,13 +150,6 @@ export function WorkspaceSettingsClient() {
     step: "warn" | "type";
   } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  // ---- Custom role create/edit state ----
-  // `editingRoleId` null with the form open means "creating".
-  const [showCreateRole, setShowCreateRole] = useState(false);
-  const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
-  const [newRoleName, setNewRoleName] = useState("");
-  const [newRolePerms, setNewRolePerms] = useState<MemberPermissionFlags>(EMPTY_FLAGS);
 
   // A join link drops people here with the code already in the URL.
   useEffect(() => {
@@ -394,17 +376,6 @@ export function WorkspaceSettingsClient() {
       toast.success(t("messages.inviteCancelled"));
       void utils.organization.getInvites.invalidate();
       void utils.organization.getInviteHistory.invalidate();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-
-  const createRole = api.organization.createRole.useMutation();
-  const updateRole = api.organization.updateRole.useMutation();
-
-  const deleteRole = api.organization.deleteRole.useMutation({
-    onSuccess: () => {
-      toast.success(t("messages.roleDeleted"));
-      void utils.organization.getRoles.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -866,172 +837,16 @@ export function WorkspaceSettingsClient() {
     ) : undefined;
 
   // ---- Roles --------------------------------------------------------------
-  const closeRoleForm = () => {
-    setShowCreateRole(false);
-    setEditingRoleId(null);
-    setNewRoleName("");
-    setNewRolePerms(EMPTY_FLAGS);
-  };
-
-  const openRoleForm = (
-    from?: { id?: number; name: string } & MemberPermissionFlags,
-  ) => {
-    setShowCreateRole(true);
-    setEditingRoleId(from?.id ?? null);
-    setNewRoleName(from?.id ? from.name : "");
-    setNewRolePerms(from ? pickPermissionFlags(from) : EMPTY_FLAGS);
-  };
-
-  const submitRoleForm = async () => {
-    if (!newRoleName.trim() || !activeOrgId) return;
-    await save.run(async () => {
-      try {
-        if (editingRoleId !== null) {
-          await updateRole.mutateAsync({
-            organizationId: activeOrgId,
-            roleId: editingRoleId,
-            name: newRoleName,
-            permissions: newRolePerms,
-          });
-          toast.success(t("messages.roleUpdatedSaved"));
-        } else {
-          await createRole.mutateAsync({
-            organizationId: activeOrgId,
-            name: newRoleName,
-            ...newRolePerms,
-          });
-          toast.success(t("messages.roleCreated"));
-        }
-        await utils.organization.getRoles.invalidate();
-        closeRoleForm();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : t("messages.roleCreateFailed"));
-        throw e;
-      }
-    });
-  };
-
-  const roleRows: LedgerRow[] = [];
-
-  if (iManageRoles) {
-    roleRows.push({
-      id: "newRole",
-      title: t("roles.newRole"),
-      control: (
-        <LedgerAction onClick={() => (showCreateRole ? closeRoleForm() : openRoleForm())}>
-          {showCreateRole ? t("common.cancel") : t("roles.newRole")}
-        </LedgerAction>
-      ),
-    });
-  }
-
-  const roleFormPending = createRole.isPending || updateRole.isPending;
-
-  const rolesBlock = (
-    <div className="flex flex-col gap-5">
-      {showCreateRole && iManageRoles && activeOrgId ? (
-        <div className="rounded-xl border border-accent-primary/20 p-4">
-          <input
-            type="text"
-            value={newRoleName}
-            onChange={(e) => setNewRoleName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void submitRoleForm();
-            }}
-            placeholder={t("roles.namePlaceholder")}
-            aria-label={t("roles.namePlaceholder")}
-            maxLength={100}
-            className="mb-3 w-full rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-settings-body text-fg-primary outline-none placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
-            autoFocus
-          />
-          <div className="mb-3">
-            <PermissionGrid value={newRolePerms} onChange={setNewRolePerms} />
-          </div>
-          {editingRoleId !== null ? (
-            <p className="mb-3 text-settings-micro text-fg-tertiary">{t("roles.editNote")}</p>
-          ) : null}
-          <LedgerAction
-            disabled={!newRoleName.trim() || roleFormPending}
-            onClick={() => void submitRoleForm()}
-          >
-            {roleFormPending ? (
-              <Loader2 size={13} className="animate-spin" />
-            ) : editingRoleId !== null ? (
-              t("roles.saveRole")
-            ) : (
-              t("roles.createRole")
-            )}
-          </LedgerAction>
-        </div>
-      ) : null}
-
-      {/* The built-in templates, straight from `~/lib/permissions` — the same
-          flags the server applies, so this list cannot disagree with it. */}
-      {TEMPLATE_ROLE_ORDER.map((role) => (
-        <div key={role} className="flex flex-col gap-2 border-t border-border-light pt-4">
-          <div className="flex items-center justify-between gap-2">
-            <h4 className="text-settings-row font-medium text-fg-primary">{t(`roles.${role}`)}</h4>
-            <div className="flex items-center gap-2">
-              <span className="rounded-sm bg-bg-tertiary px-2 py-0.5 text-settings-eyebrow font-medium text-fg-tertiary">
-                {t("roles.template")}
-              </span>
-              {iManageRoles && activeOrgId ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    openRoleForm({ name: t(`roles.${role}`), ...ROLE_TEMPLATES[role] })
-                  }
-                  className="rounded-sm px-1.5 py-0.5 text-settings-micro font-medium text-fg-tertiary transition hover:text-fg-primary"
-                >
-                  {t("roles.duplicate")}
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <PermissionGrid value={ROLE_TEMPLATES[role]} />
-        </div>
-      ))}
-
-      {customRoles.map((role) => (
-        <div
-          key={role.id}
-          className="flex flex-col gap-2 border-t border-border-light pt-4"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <h4 className="text-settings-row font-medium text-fg-primary">{role.name}</h4>
-            <div className="flex items-center gap-2">
-              <span className="rounded-sm bg-accent-primary/10 px-2 py-0.5 text-settings-eyebrow font-medium text-accent-primary">
-                {t("roles.custom")}
-              </span>
-              {iManageRoles && activeOrgId ? (
-                <>
-                  <button
-                    type="button"
-                    aria-label={t("roles.edit", { name: role.name })}
-                    title={t("roles.edit", { name: role.name })}
-                    onClick={() => openRoleForm(role)}
-                    className="rounded-sm p-1 text-fg-tertiary transition hover:text-fg-primary"
-                  >
-                    <Pencil size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={t("roles.deleteConfirm", { name: role.name })}
-                    disabled={deleteRole.isPending}
-                    onClick={() => setRoleDeleteTarget({ id: role.id, name: role.name })}
-                    className="rounded-sm p-1 text-fg-tertiary transition hover:text-error disabled:opacity-50"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </>
-              ) : null}
-            </div>
-          </div>
-          <PermissionGrid value={pickPermissionFlags(role)} />
-        </div>
-      ))}
-    </div>
-  );
+  const rolesBlock = activeOrgId ? (
+    <RoleMatrix
+      organizationId={activeOrgId}
+      customRoles={customRoles}
+      members={members ?? []}
+      canManage={iManageRoles}
+      callerFlags={myFlags}
+      currentUserId={currentUser.data?.id}
+    />
+  ) : null;
 
   return (
     <LedgerSection
@@ -1064,7 +879,6 @@ export function WorkspaceSettingsClient() {
         <LedgerGroup
           label={t("roles.title")}
           hint={t("roles.subtitle")}
-          rows={roleRows}
           block={rolesBlock}
         />
       ) : null}
@@ -1093,25 +907,6 @@ export function WorkspaceSettingsClient() {
             setRemoveTarget(null);
             void save.run(() =>
               removeMember.mutateAsync({ organizationId: activeOrgId, userId }),
-            );
-          }}
-        />
-      ) : null}
-
-      {roleDeleteTarget !== null && activeOrgId ? (
-        <ConfirmDialog
-          destructive
-          title={t("roles.deleteConfirm", { name: roleDeleteTarget.name })}
-          message={t("roles.deleteBody")}
-          confirmLabel={deleteRole.isPending ? t("common.working") : t("roles.delete")}
-          cancelLabel={t("common.cancel")}
-          isPending={deleteRole.isPending}
-          onCancel={() => setRoleDeleteTarget(null)}
-          onConfirm={() => {
-            const roleId = roleDeleteTarget.id;
-            setRoleDeleteTarget(null);
-            void save.run(() =>
-              deleteRole.mutateAsync({ organizationId: activeOrgId, roleId }),
             );
           }}
         />

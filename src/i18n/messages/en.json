@@ -1069,12 +1069,33 @@
         "custom": "Custom",
         "deleteConfirm": "Delete the role \"{name}\"?",
         "delete": "Delete role",
-        "deleteBody": "Members holding this role keep their membership, but lose the permissions it granted.",
+        "deleteBody": "{count, plural, =0 {Nobody holds this role.} one {# person holds this role. They keep their membership and their current permissions; only the role is gone.} other {# people hold this role. They keep their membership and their current permissions; only the role is gone.}}",
         "mentor": "Mentor",
         "duplicate": "Copy as new role",
         "edit": "Edit {name}",
         "saveRole": "Save role",
-        "editNote": "People who already hold this role keep the permissions they were given. Assign the role again to give them the edited set."
+        "editNote": "People who already hold this role keep the permissions they were given. After saving, use Re-apply role to give them the edited set.",
+        "permissionColumn": "Permission",
+        "filterPermissions": "Filter permissions",
+        "noPermissionMatch": "No permission matches that filter.",
+        "groupWork": "Work",
+        "groupPeople": "People",
+        "groupInsight": "Insight",
+        "holders": "{count, plural, =0 {Nobody} one {# person} other {# people}}",
+        "holdersDrifted": "{count} · {drifted} drifted",
+        "heldBy": "Held by",
+        "noHolders": "Nobody holds this role yet.",
+        "viewOnly": "View only — no permissions",
+        "grantedCount": "{count} of {total} permissions",
+        "driftBody": "{count, plural, one {# person has} other {# people have}} different permissions than this role ({names}) — from an earlier version of it, or an individual change.",
+        "reapply": "Re-apply role",
+        "reapplied": "{count, plural, one {Role re-applied to # person} other {Role re-applied to # people}}",
+        "reapplyFailed": "Couldn't re-apply the role",
+        "saveFirst": "Save or discard your changes first.",
+        "discard": "Discard",
+        "copyName": "{name} (copy)",
+        "riskyHint": "Gives power over other people",
+        "legendTemplate": "Built-in templates are read-only"
       },
       "permissions": {
         "createProjects": "Create projects",
@@ -1500,7 +1521,9 @@
       "previewAction": "Preview",
       "edit": "Edit profile",
       "editDesc": "Change your name, picture or bio",
-      "editAction": "Open"
+      "editAction": "Open",
+      "findByEmail": "Let people find me by email",
+      "findByEmailDesc": "When someone types your exact email address into a workspace invite, they see your name and photo. Off: only people who already share a workspace with you see who you are."
     },
     "billing": {
       "title": "Billing",
@@ -3578,7 +3601,14 @@
     "guideEyebrow": "How a team works",
     "guideTitle": "Four roles, eight ticks",
     "guideBody": "Every person gets a role, and a role is only a starting set of permissions. Admins can tick or untick any of the eight for one person.",
-    "guidePersonal": "Your personal workspace stays yours. Nothing in it moves into an organization unless you move it."
+    "guidePersonal": "Your personal workspace stays yours. Nothing in it moves into an organization unless you move it.",
+    "invitee": {
+      "member": "Already in this workspace.",
+      "pending": "Already invited — waiting for them to accept.",
+      "person": "Has a KAIROS account. They'll get an email and a notification.",
+      "new": "Not registered in KAIROS yet — they'll get an email inviting them to sign up and join.",
+      "checking": "Checking…"
+    }
   },
   "skeleton": {
     "slow": {

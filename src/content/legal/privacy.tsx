@@ -97,6 +97,62 @@ const sections: LegalSection[] = [
         ),
     },
     {
+        // Linked from every invitation email — the Art. 14 notice for someone whose
+        // address we got from somebody else. Keep it in step with
+        // `~/server/orgs/invitePolicy` and docs/invite-email-legal-research-2026-10-08.md.
+        id: "invitations",
+        heading: "If you received a Kairos invitation",
+        body: (
+            <>
+                <p>
+                    Someone who belongs to a Kairos workspace typed your email address into an
+                    invitation, so that you could join that workspace. That is where we got your
+                    address: from them, not from a list, a purchase, or your contacts. The email
+                    names who invited you.
+                </p>
+                <p>For that invitation we store:</p>
+                <Bullets
+                    items={[
+                        "Your email address, the workspace, who invited you, and the role and permissions they offered.",
+                        "A hash of the link in the email — never the link itself — and when it expires, seven days after it was sent.",
+                        "How many times the invitation was sent. The person who invited you can resend it at most twice, a day apart. We never send reminders on our own.",
+                    ]}
+                />
+                <p>
+                    We do this on the basis of legitimate interest (GDPR Art. 6(1)(f)): the person
+                    inviting you needs a way to give you access, and a single email that you can
+                    ignore is the least intrusive way to do it. The invitation contains no
+                    advertising.
+                </p>
+                <p>
+                    If you do nothing, nothing happens. An invitation that was not accepted — expired,
+                    declined, or withdrawn — is deleted, with your address, within 30 days after it
+                    ends. If you accept, the address becomes part of your account and is handled as
+                    described above.
+                </p>
+                <p>
+                    Every invitation email has a link saying &ldquo;Don&apos;t send me Kairos
+                    invitations again&rdquo;. Following it withdraws any pending invitations to your
+                    address and stops all future ones. To remember that, we keep a keyed hash of your
+                    address — a value that recognises it again but cannot be turned back into it —
+                    for as long as the objection stands. The person who invited you is not told that
+                    you opted out. To reverse it, write to {mail} from that address.
+                </p>
+                <p>
+                    When someone types your address into an invitation, they see your name and
+                    picture only if you already share a workspace with them, or if you have turned on
+                    &ldquo;Let people find me by email&rdquo; in {settingsLink}. Otherwise they see
+                    the same thing whether or not you have an account.
+                </p>
+                <p>
+                    You have the rights described under &ldquo;Your rights over your data&rdquo;
+                    below, including to object, and you can complain to the Bulgarian Commission for
+                    Personal Data Protection (КЗЛД, cpdp.bg).
+                </p>
+            </>
+        ),
+    },
+    {
         id: "content-data",
         heading: "The data you create in the product",
         body: (
@@ -310,6 +366,11 @@ const sections: LegalSection[] = [
                     product can age them out on plans with a limited history window — messages older
                     than the window are deleted and a summary of the thread survives in their place —
                     but no such limit applies to any account today.
+                </p>
+                <p>
+                    Invitations that were never accepted are deleted, address included, within 30
+                    days after they expire, are declined, or are withdrawn — see &ldquo;If you
+                    received a Kairos invitation&rdquo; above.
                 </p>
                 <p>
                     Closing your account from the security section of {settingsLink} deletes it

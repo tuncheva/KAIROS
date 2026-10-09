@@ -180,6 +180,14 @@ export const users = createTable("user", (d) => ({
     allowFollowers: boolean("allow_followers").default(true).notNull(),
     /** Whether the drawer's Activity tab renders anything to other viewers. */
     showActivityFeed: boolean("show_activity_feed").default(true).notNull(),
+    /**
+     * Whether someone who types your exact email into a workspace invite sees
+     * your name and avatar. Off by default (GDPR Art. 25(2)): without it, only
+     * people who already share a workspace with you see who an address is, and
+     * everyone else gets the same answer for registered and unregistered
+     * addresses. See docs/invite-email-legal-research-2026-10-08.md §6.1.
+     */
+    discoverableByEmail: boolean("discoverable_by_email").default(false).notNull(),
     /** Last time this user was seen; drives the online dot. */
     lastSeenAt: timestamp("last_seen_at", { mode: "date", withTimezone: true }),
     activityTracking: boolean("activity_tracking").default(false).notNull(),

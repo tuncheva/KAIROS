@@ -92,6 +92,7 @@ export function PrivacySettingsClient() {
       showOnlineStatus: data?.showOnlineStatus ?? true,
       allowFollowers: data?.allowFollowers ?? true,
       showActivityFeed: data?.showActivityFeed ?? true,
+      discoverableByEmail: data?.discoverableByEmail ?? false,
     }),
     [data],
   );
@@ -136,6 +137,22 @@ export function PrivacySettingsClient() {
           onChange={(next) =>
             commit({ profileAudience: next as Audience })
           }
+        />
+      ),
+    },
+    {
+      // Independent of the profile switch: this is about invitations, not about
+      // the profile drawer, so hiding your profile does not mute it.
+      id: "discoverableByEmail",
+      title: t("findByEmail"),
+      desc: t("findByEmailDesc"),
+      keywords: "find me by email discoverable invite lookup",
+      control: (
+        <LedgerToggle
+          checked={values.discoverableByEmail}
+          disabled={isLoading}
+          label={t("findByEmail")}
+          onChange={(next) => commit({ discoverableByEmail: next })}
         />
       ),
     },

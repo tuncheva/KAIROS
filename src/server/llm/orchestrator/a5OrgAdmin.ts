@@ -43,6 +43,7 @@ import {
   type OrgAdminDraft,
 } from "~/server/llm/schemas/a5OrgAdminSchemas";
 import { createLogger } from "~/server/logger";
+import { consumeInviteBudget } from "~/server/orgs/invitePolicy";
 import {
   deliverOrgInvite,
   noticeMemberRemoved,
@@ -646,6 +647,16 @@ export const a5OrgAdmin = {
       if (flagsForRole(op.role).canManageRoles && me.role !== "admin") {
         results.refused.push(
           `${op.email}: only an admin can invite someone as an administrator.`,
+        );
+        continue;
+      }
+
+      // The same daily budget as the dialog: an agent is not a way around it.
+      try {
+        await consumeInviteBudget(userId, op.organizationId);
+      } catch {
+        results.refused.push(
+          `${op.email}: the daily invitation limit was reached. Try again tomorrow.`,
         );
         continue;
       }

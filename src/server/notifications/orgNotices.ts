@@ -25,6 +25,7 @@ import {
 } from "~/lib/permissions";
 import type { db as Database } from "~/server/db";
 import {
+  organizationInvites,
   organizationMembers,
   organizations,
   users,
@@ -38,6 +39,8 @@ import {
   roleLabelEn,
   storedGrantFlags,
 } from "~/server/orgs/inviteGrants";
+import { isSuppressed, optOutToken } from "~/server/orgs/invitePolicy";
+
 import { notify, notifyMany } from "./dispatch";
 
 const log = createLogger("notifications.org");
@@ -287,13 +290,21 @@ export async function noticeInviteCancelled(input: {
   });
 }
 
+/** What the inviter is told when an invitation email did not go out. */
+const NOT_DELIVERED = "Invite could not be delivered";
+
 /**
- * Tell the invitee: by email always, and in-app when they already have an
- * account.
+ * Tell the invitee: by email, and in-app when they already have an account —
+ * unless the address asked never to be sent invitations.
  *
  * A failed email does not undo the invite — the caller is told instead, and can
  * resend or share a link — because the invite is still valid and an invitee
  * who already has an account will see it in the app.
+ *
+ * A suppressed address is reported with exactly the same result as a failed
+ * send, and a failed send never passes the provider's error through. Either
+ * difference would let an inviter learn that this person opted out of KAIROS
+ * invitations, which is itself something about them we have no reason to tell.
  */
 export async function deliverOrgInvite(input: {
   db: Db;
@@ -307,7 +318,7 @@ export async function deliverOrgInvite(input: {
   } catch (err) {
     // The invite row exists and stays valid; only the telling failed.
     log.error("invite delivery failed", { err, inviteId: input.invite.id });
-    return { emailSent: false, emailError: "Invite could not be delivered" };
+    return { emailSent: false, emailError: NOT_DELIVERED };
   }
 }
 
@@ -319,6 +330,11 @@ async function deliverOrgInviteUnguarded(input: {
   existingUserId: string | null;
 }): Promise<{ emailSent: boolean; emailError: string | null }> {
   const { db, invite, token } = input;
+
+  if (await isSuppressed(db, invite.email)) {
+    return { emailSent: false, emailError: NOT_DELIVERED };
+  }
+
   const [org] = await db
     .select({ name: organizations.name })
     .from(organizations)
@@ -341,15 +357,21 @@ async function deliverOrgInviteUnguarded(input: {
     await sendOrganizationInvite({
       email: invite.email,
       inviterName,
+      inviterEmail: inviter?.email ?? null,
       organizationName,
       roleLabel,
       permissionLabels: grantedLabelsEn(flags),
       token,
       expiresAt: invite.expiresAt ?? new Date(Date.now() + INVITE_TTL_MS),
+      optOutToken: optOutToken(invite.email),
     });
     emailSent = true;
+    await db
+      .update(organizationInvites)
+      .set({ lastSentAt: new Date() })
+      .where(eq(organizationInvites.id, invite.id));
   } catch (error) {
-    emailError = error instanceof Error ? error.message : "Email could not be sent";
+    emailError = NOT_DELIVERED;
     log.error("invite email failed", { err: error, inviteId: invite.id });
   }
 

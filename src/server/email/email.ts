@@ -65,10 +65,19 @@ export interface OrganizationInviteEmailParams {
   /** The raw invite token; the link is built from `appUrl`. */
   token: string;
   expiresAt: Date;
+  /** Shown beside the name, and used as reply-to, so the invitee can check. */
+  inviterEmail: string | null;
+  /** From `~/server/orgs/invitePolicy` — the "don't invite me again" link. */
+  optOutToken: string;
 }
 
-type OrganizationInviteTemplateInput = Omit<OrganizationInviteEmailParams, "email" | "token"> & {
+type OrganizationInviteTemplateInput = Omit<
+  OrganizationInviteEmailParams,
+  "email" | "token" | "optOutToken"
+> & {
   acceptUrl: string;
+  optOutUrl: string;
+  privacyUrl: string;
 };
 
 type EmailVerificationTemplateInput = {
@@ -95,29 +104,26 @@ type CodeTemplateInput = {
  *
  * Email cannot read CSS variables — every colour has to be inlined as a literal
  * — so these are the hex forms of the light-theme tokens the application itself
- * renders. They were drifting: the templates hardcoded `#9448F2` while the app's
- * `--accent-primary` had moved to `rgb(168 85 247)`, so a confirmation email sat
- * next to the product wearing a visibly different purple. Change a token in
- * `globals.css` and change its twin here.
+ * renders, from the refined edition's `--tui-*` set. The violet is only ever the
+ * button; everything else is ink on paper. The `tui-ink/12` hairline is
+ * flattened onto the pane, since not every client composites rgba.
+ * Change a token in `globals.css` and change its twin here.
  */
 const BRAND = {
-  /** `--accent-primary` — rgb(168 85 247). */
-  accent: "#A855F7",
-  /** `--accent-hover` — rgb(147 51 234). Used for the wordmark tile edge. */
-  accentDeep: "#9333EA",
-  /** A tint of the accent, for the code plate. */
-  accentTint: "#F6F0FE",
-  /** `--fg-primary` — rgb(15 23 42). */
-  ink: "#0F172A",
-  /** `--fg-secondary` — rgb(71 85 105). */
-  inkMuted: "#475569",
-  /** Page ground behind the card. */
-  surface: "#F8FAFC",
-  card: "#FFFFFF",
-  border: "#E2E8F0",
-  /** `--warning` and `--warning-light`, for the security notices. */
-  warning: "#FB923C",
-  warningTint: "#FFF7ED",
+  /** `--tui-accent` — rgb(91 72 145). */
+  accent: "#5B4891",
+  /** `--tui-on-accent` — text on the button. */
+  onAccent: "#F6F5F1",
+  /** `--tui-ink` — rgb(26 25 23). */
+  ink: "#1A1917",
+  /** `--tui-ink2` — rgb(87 85 79). Body copy. */
+  inkMuted: "#57554F",
+  /** `--tui-ink3` — rgb(133 131 124). Labels, footer, fine print. */
+  inkFaint: "#85837C",
+  /** `--tui-pane`. */
+  card: "#FBFAF7",
+  /** `tui-ink/12` on the pane — the hairline. */
+  border: "#E0DFDC",
 } as const;
 
 /**
@@ -128,8 +134,11 @@ const BRAND = {
  */
 const BRAND_NAME = "KAIROS";
 
+/** The app's faces first, for the clients that have them installed. */
 const FONT_STACK =
-  "'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";
+  "Inter,'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',Arial,sans-serif";
+const MONO_STACK =
+  "'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,'Courier New',monospace";
 
 /**
  * Escape text destined for an HTML email body.
@@ -162,30 +171,29 @@ function escapeUrl(value: string): string {
   return escapeHtml(value);
 }
 
-function emailWrapper(content: string): string {
+/** The default footer: every email but the invitation goes to an account holder. */
+const ACCOUNT_FOOTER = `<p style="margin:0;color:${BRAND.inkFaint};font-size:12px;line-height:1.6;">You're getting this because of activity on your ${BRAND_NAME} account. Replies to this address aren't read.</p>`;
+
+function emailWrapper(content: string, footer: string = ACCOUNT_FOOTER): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
   <title>${BRAND_NAME}</title>
 </head>
-<body style="margin:0;padding:0;font-family:${FONT_STACK};background-color:${BRAND.surface};-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.surface};">
+<body style="margin:0;padding:0;font-family:${FONT_STACK};background-color:${BRAND.card};color:${BRAND.ink};-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.card};">
     <tr>
-      <td align="center" style="padding:40px 20px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+      <td align="center" style="padding:40px 24px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;width:100%;">
 ${content}
-          <!-- Footer -->
           <tr>
-            <td align="center" style="padding:32px 0 0;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tr><td style="border-top:1px solid ${BRAND.border};padding-top:24px;text-align:center;">
-                  <p style="margin:0;color:${BRAND.inkMuted};font-size:14px;line-height:1.5;">Sent by <strong style="color:${BRAND.ink};letter-spacing:0.06em;">${BRAND_NAME}</strong></p>
-                  <p style="margin:8px 0 0;color:${BRAND.inkMuted};font-size:12px;line-height:1.5;">This is an automated message about your account. Nobody replies to this address.</p>
-                </td></tr>
-              </table>
+            <td style="padding:32px 0 0;border-top:1px solid ${BRAND.border};">
+              ${footer}
             </td>
           </tr>
         </table>
@@ -197,52 +205,43 @@ ${content}
 }
 
 /**
- * The wordmark tile and the message heading.
+ * The wordmark and the message heading.
  *
- * The tile carries a `K` rather than an image: a remote logo is blocked by
- * default in most mail clients, and a transactional email whose first paint is a
- * broken-image icon reads as a phish.
+ * Text, not an image — a remote logo is blocked by default in most mail
+ * clients, and a transactional email whose first paint is a broken-image icon
+ * reads as a phish.
  */
 function logoBlock(title: string): string {
-  return `          <!-- Wordmark & Title -->
-          <tr>
-            <td align="center" style="padding-bottom:32px;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td align="center" style="width:56px;height:56px;background-color:${BRAND.accent};border-bottom:3px solid ${BRAND.accentDeep};border-radius:16px;text-align:center;vertical-align:middle;line-height:56px;">
-                    <span style="color:#ffffff;font-size:26px;font-weight:bold;">K</span>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin:12px 0 0;color:${BRAND.inkMuted};font-size:12px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;">${BRAND_NAME}</p>
-              <h1 style="margin:8px 0 0;color:${BRAND.ink};font-size:26px;font-weight:bold;line-height:1.3;">${escapeHtml(title)}</h1>
+  return `          <tr>
+            <td style="padding:0 0 32px;">
+              <p style="margin:0;color:${BRAND.ink};font-size:14px;font-weight:700;letter-spacing:0.08em;">${BRAND_NAME}</p>
+              <h1 style="margin:32px 0 0;color:${BRAND.ink};font-size:22px;font-weight:600;line-height:1.3;">${escapeHtml(title)}</h1>
             </td>
           </tr>`;
 }
 
-/** The white card every message body sits in. */
+/** The message body. No box around it — just the text, on the page. */
 function card(inner: string): string {
-  return `          <!-- Content Card -->
-          <tr>
-            <td style="background:${BRAND.card};border-radius:16px;padding:32px;border:1px solid ${BRAND.border};">
+  return `          <tr>
+            <td style="padding:0 0 16px;">
 ${inner}
             </td>
           </tr>`;
 }
 
 function greeting(userName: string): string {
-  return `              <p style="margin:0 0 20px;color:${BRAND.ink};font-size:16px;line-height:1.6;">Hi <strong>${escapeHtml(userName)}</strong>,</p>`;
+  return `              <p style="margin:0 0 16px;color:${BRAND.ink};font-size:15px;line-height:1.6;">Hi ${escapeHtml(userName)},</p>`;
 }
 
 function paragraph(text: string): string {
-  return `              <p style="margin:0 0 24px;color:${BRAND.inkMuted};font-size:16px;line-height:1.6;">${text}</p>`;
+  return `              <p style="margin:0 0 20px;color:${BRAND.ink};font-size:15px;line-height:1.6;">${text}</p>`;
 }
 
 function button(href: string, label: string): string {
-  return `              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+  return `              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td align="center" style="padding:8px 0 24px;">
-                    <a href="${escapeUrl(href)}" style="display:inline-block;padding:14px 32px;background-color:${BRAND.accent};color:#ffffff;text-decoration:none;border-radius:12px;font-weight:600;font-size:16px;line-height:1;">${escapeHtml(label)}</a>
+                  <td style="padding:4px 0 24px;">
+                    <a href="${escapeUrl(href)}" style="display:inline-block;padding:11px 20px;background-color:${BRAND.accent};color:${BRAND.onAccent};text-decoration:none;border-radius:6px;font-weight:600;font-size:14px;line-height:1;">${escapeHtml(label)}</a>
                   </td>
                 </tr>
               </table>`;
@@ -257,27 +256,12 @@ function button(href: string, label: string): string {
  * them is not really from here.
  */
 function codePlate(code: string): string {
-  return `              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td align="center" style="padding:8px 0 24px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td style="padding:18px 36px;background-color:${BRAND.accentTint};border:2px solid ${BRAND.accent};border-radius:12px;letter-spacing:8px;font-size:32px;font-weight:bold;color:${BRAND.ink};font-family:'Courier New',Courier,monospace;text-align:center;">${escapeHtml(code)}</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>`;
+  return `              <p style="margin:4px 0 24px;color:${BRAND.ink};font-family:${MONO_STACK};font-size:28px;font-weight:500;letter-spacing:4px;line-height:1.2;">${escapeHtml(code)}</p>`;
 }
 
+/** A point the reader should not skim past: a bold lead-in, then the text. */
 function notice(heading: string, body: string): string {
-  return `              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td style="background-color:${BRAND.warningTint};border-left:4px solid ${BRAND.warning};padding:16px;border-radius:0 8px 8px 0;">
-                    <p style="margin:0;color:${BRAND.inkMuted};font-size:14px;line-height:1.6;"><strong style="color:${BRAND.ink};">${escapeHtml(heading)}</strong><br>${body}</p>
-                  </td>
-                </tr>
-              </table>`;
+  return `              <p style="margin:0 0 20px;color:${BRAND.inkMuted};font-size:14px;line-height:1.6;"><strong style="color:${BRAND.ink};font-weight:600;">${escapeHtml(heading)}.</strong> ${body}</p>`;
 }
 
 const SIGN_OFF = `Sent by ${BRAND_NAME}. This is an automated message about your account.`;
@@ -308,6 +292,13 @@ ${SIGN_OFF}`,
 // Organization invitation
 // ---------------------------------------------------------------------------
 
+/** "16 October 2026, 12:00 UTC" — readable, and unambiguous across time zones. */
+function inviteDate(date: Date): string {
+  const day = date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  const time = date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  return `${day}, ${time} UTC`;
+}
+
 function permissionList(labels: string[]): string {
   if (labels.length === 0) {
     return paragraph("View-only access: you'll be able to see the workspace, but not change anything in it.");
@@ -315,28 +306,62 @@ function permissionList(labels: string[]): string {
   const items = labels
     .map(
       (label) =>
-        `<li style="margin:0 0 6px;color:${BRAND.ink};font-size:15px;line-height:1.5;">${escapeHtml(label)}</li>`,
+        `<li style="margin:0 0 4px;color:${BRAND.ink};font-size:15px;line-height:1.6;">${escapeHtml(label)}</li>`,
     )
     .join("");
-  return `              <p style="margin:0 0 8px;color:${BRAND.inkMuted};font-size:14px;font-weight:600;">You'll be able to:</p>
+  return `              <p style="margin:0 0 6px;color:${BRAND.ink};font-size:15px;line-height:1.6;">You'll be able to:</p>
               <ul style="margin:0 0 24px;padding-left:20px;">${items}</ul>`;
 }
 
+/**
+ * The invitation, to someone who may have no account and may never have heard
+ * of KAIROS.
+ *
+ * What it must and must not contain is a legal question, not a style one — see
+ * docs/invite-email-legal-research-2026-10-08.md §6.2. In short: it names who
+ * entered the address and why the person is getting it (GDPR Art. 14), says how
+ * to ignore it and how to stop all future ones (Art. 21, ZES Art. 261), links the
+ * privacy notice, and contains nothing promotional — no features, no pricing, no
+ * other links. That last part is what keeps it an access grant rather than the
+ * platform advertising that BGH I ZR 65/14 held needs consent.
+ */
 const OrganizationInviteTemplate = {
   subject: ({ inviterName, organizationName }: OrganizationInviteTemplateInput) =>
     `${inviterName} invited you to ${organizationName} on ${BRAND_NAME}`,
-  renderHtml: (input: OrganizationInviteTemplateInput) =>
-    emailWrapper(`
+  renderHtml: (input: OrganizationInviteTemplateInput) => {
+    const who = input.inviterEmail
+      ? `<strong style="color:${BRAND.ink};font-weight:600;">${escapeHtml(input.inviterName)}</strong> (${escapeHtml(input.inviterEmail)})`
+      : `<strong style="color:${BRAND.ink};font-weight:600;">${escapeHtml(input.inviterName)}</strong>`;
+    const link = (href: string, label: string) =>
+      `<a href="${escapeUrl(href)}" style="color:${BRAND.inkMuted};text-decoration:underline;">${escapeHtml(label)}</a>`;
+    const small = (html: string) =>
+      `<p style="margin:0 0 10px;color:${BRAND.inkFaint};font-size:12px;line-height:1.6;">${html}</p>`;
+
+    return emailWrapper(
+      `
 ${logoBlock(`Join ${input.organizationName}`)}
-${card(`${paragraph(`<strong style="color:${BRAND.ink};">${escapeHtml(input.inviterName)}</strong> invited you to join <strong style="color:${BRAND.ink};">${escapeHtml(input.organizationName)}</strong> as <strong style="color:${BRAND.ink};">${escapeHtml(input.roleLabel)}</strong>.`)}
+${card(`${paragraph(`${who} entered your email address to invite you to the <strong style="color:${BRAND.ink};font-weight:600;">${escapeHtml(input.organizationName)}</strong> workspace on ${BRAND_NAME}, as <strong style="color:${BRAND.ink};font-weight:600;">${escapeHtml(input.roleLabel)}</strong>.`)}
 ${permissionList(input.permissionLabels)}
 ${button(input.acceptUrl, "Accept invitation")}
 ${notice(
   "Sign in with this address",
-  `The invitation only works for the account that uses this email address. If you don't have one yet, create it with this address first. The link expires on <strong>${escapeHtml(input.expiresAt.toUTCString())}</strong>.`,
-)}`)}`),
+  `The invitation only works for the account that uses this email address. If you don't have one yet, create it with this address first. The link expires on ${escapeHtml(inviteDate(input.expiresAt))}.`,
+)}`)}`,
+      [
+        small(
+          `Don't know ${escapeHtml(input.inviterName)}, or weren't expecting this? Ignore this email. Nothing happens, and the invitation and your address are deleted within 30 days after it expires. Only accept invitations you expect.`,
+        ),
+        small(
+          `${link(input.optOutUrl, `Don't send me ${BRAND_NAME} invitations again`)} · ${link(input.privacyUrl, "How we handle your address")}`,
+        ),
+        small(
+          `Sent by ${BRAND_NAME} on behalf of ${escapeHtml(input.inviterName)}.${input.inviterEmail ? ` Replies go to ${escapeHtml(input.inviterName)}.` : ""}`,
+        ),
+      ].join("\n"),
+    );
+  },
   renderText: (input: OrganizationInviteTemplateInput) =>
-    `${input.inviterName} invited you to join ${input.organizationName} on ${BRAND_NAME} as ${input.roleLabel}.
+    `${input.inviterName}${input.inviterEmail ? ` (${input.inviterEmail})` : ""} entered your email address to invite you to the ${input.organizationName} workspace on ${BRAND_NAME}, as ${input.roleLabel}.
 
 ${
   input.permissionLabels.length
@@ -346,11 +371,14 @@ ${
 
 Accept the invitation: ${input.acceptUrl}
 
-The invitation only works for the account that uses this email address. It expires on ${input.expiresAt.toUTCString()}.
+The invitation only works for the account that uses this email address. It expires on ${inviteDate(input.expiresAt)}.
 
-If you weren't expecting this, ignore this email.
+Don't know ${input.inviterName}, or weren't expecting this? Ignore this email. Nothing happens, and the invitation and your address are deleted within 30 days after it expires. Only accept invitations you expect.
 
-${SIGN_OFF}`,
+Don't send me ${BRAND_NAME} invitations again: ${input.optOutUrl}
+How we handle your address: ${input.privacyUrl}
+
+Sent by ${BRAND_NAME} on behalf of ${input.inviterName}.`,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -689,14 +717,24 @@ export class EmailService {
   async sendOrganizationInvite({
     email,
     token,
+    optOutToken,
     ...rest
   }: OrganizationInviteEmailParams): Promise<{ id: string } | null> {
-    const acceptUrl = `${this.options.appUrl.replace(/\/$/, "")}/invite/${encodeURIComponent(token)}`;
-    const input = { ...rest, acceptUrl };
+    const base = this.options.appUrl.replace(/\/$/, "");
+    const acceptUrl = `${base}/invite/${encodeURIComponent(token)}`;
+    const optOutUrl = `${base}/invite-optout/${encodeURIComponent(optOutToken)}`;
+    const input = { ...rest, acceptUrl, optOutUrl, privacyUrl: `${base}/privacy#invitations` };
 
     const { data, error } = await this.resend.emails.send({
       from: this.options.fromEmail,
       to: [email],
+      ...(rest.inviterEmail ? { replyTo: rest.inviterEmail } : {}),
+      // RFC 8058 one-click: mail clients show their own "unsubscribe" button and
+      // POST here without a page in between.
+      headers: {
+        "List-Unsubscribe": `<${base}/api/invite-optout/${encodeURIComponent(optOutToken)}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
       subject: OrganizationInviteTemplate.subject(input),
       html: OrganizationInviteTemplate.renderHtml(input),
       text: OrganizationInviteTemplate.renderText(input),
