@@ -9,6 +9,7 @@ import { InviteQrDialog } from "~/components/orgs/InviteQrDialog";
 import { OrgBadge } from "~/components/orgs/OrgBadge";
 import { OrgEmptyState } from "~/components/orgs/OrgEmptyState";
 import { useToast } from "~/components/providers/ToastProvider";
+import { useMenuExit } from "~/components/ui/menuExit";
 import {
   useSwitchOrganization,
   useSwitchToPersonal,
@@ -27,6 +28,7 @@ export function WorkspaceMenu() {
   const t = useTranslations("org");
   const toast = useToast();
   const [open, setOpen] = useState(false);
+  const menu = useMenuExit(open);
   const [showInvite, setShowInvite] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -175,11 +177,12 @@ export function WorkspaceMenu() {
           />
         </button>
 
-        {open ? (
+        {menu.mounted ? (
           <div
             ref={menuRef}
             role="menu"
-            className="absolute left-0 z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border border-tui-ink/12 bg-tui-pane shadow-[var(--tui-lift)]"
+            aria-hidden={menu.closing || undefined}
+            className={`${menu.closing ? "topbar-menu--out" : "topbar-menu"} origin-top-left absolute left-0 z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border border-tui-ink/12 bg-tui-pane shadow-[var(--tui-lift)]`}
           >
             <div className="px-4 pb-1.5 pt-3.5 text-[11px] font-medium uppercase tracking-[0.12em] text-tui-ink3">
               {t("switchWorkspace")}

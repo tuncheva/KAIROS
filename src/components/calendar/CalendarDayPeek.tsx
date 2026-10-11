@@ -99,7 +99,7 @@ export function CalendarDayPeek({
             type="button"
             data-autofocus
             onClick={onCreate}
-            className="flex h-8 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="flex h-8 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover"
           >
             <Plus size={13} />
             {addLabel}

@@ -449,7 +449,7 @@ function CopyButton({ text, tooltip }: { text: string; tooltip: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="kairos-tap opacity-50 hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-white/10 text-fg-tertiary hover:text-fg-secondary shrink-0"
+      className="kairos-tap opacity-50 hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-bg-tertiary text-fg-tertiary hover:text-fg-secondary shrink-0"
       title={tooltip}
     >
       {copied ? (
@@ -488,8 +488,8 @@ function EventPreviewCard({
     item.kind === "create"
       ? "rgb(var(--accent-primary))"
       : item.kind === "update"
-        ? "rgb(234 179 8)"
-        : "rgb(239 68 68)";
+        ? "rgb(var(--warning))"
+        : "rgb(var(--error))";
 
   let dateStr = "";
   if (item.eventDate) {
@@ -584,8 +584,8 @@ function NotePreviewCard({
     item.kind === "create"
       ? "rgb(var(--accent-primary))"
       : item.kind === "update"
-        ? "rgb(234 179 8)"
-        : "rgb(239 68 68)";
+        ? "rgb(var(--warning))"
+        : "rgb(var(--error))";
 
   const isEditable = item.kind !== "delete" && onContentChange;
 
@@ -645,19 +645,19 @@ function OrgChangePreviewCard({
       ? {
           Icon: Shield,
           label: t("previewOrgRole"),
-          accent: "rgb(234 179 8)",
+          accent: "rgb(var(--warning))",
         }
       : item.kind === "permission"
         ? {
             Icon: ShieldCheck,
             label: t("previewOrgPermission"),
-            accent: "rgb(234 179 8)",
+            accent: "rgb(var(--warning))",
           }
         : item.kind === "removal"
           ? {
               Icon: UserMinus,
               label: t("previewOrgRemoval"),
-              accent: "rgb(239 68 68)",
+              accent: "rgb(var(--error))",
             }
           : {
               Icon: UserPlus,
@@ -719,12 +719,12 @@ function ProjectChangePreviewCard({
         ? {
             Icon: Pencil,
             label: t("previewProjectUpdate"),
-            accent: "rgb(234 179 8)",
+            accent: "rgb(var(--warning))",
           }
         : {
             Icon: Trash2,
             label: t("previewProjectArchive"),
-            accent: "rgb(239 68 68)",
+            accent: "rgb(var(--error))",
           };
 
   return (
@@ -1876,7 +1876,7 @@ export function ProjectIntelligenceChat(props: {
               <button
                 type="button"
                 onClick={() => setRateLimitPopup({ show: false, message: "" })}
-                className="mt-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
+                className="mt-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-tui-on-accent transition-all hover:opacity-90 active:scale-95"
                 style={{ backgroundColor: "rgb(var(--accent-primary))" }}
               >
                 Got it
@@ -2206,7 +2206,7 @@ export function ProjectIntelligenceChat(props: {
                             : "group max-w-[520px] rounded-xl rounded-br-sm border border-border-medium/60 bg-bg-tertiary px-4 py-3 text-fg-primary"
                           : "group w-full max-w-[720px] text-fg-primary"
                         : m.role === "user"
-                          ? "group max-w-[85%] rounded-lg rounded-br-md text-white px-4 py-2.5 shadow-sm"
+                          ? "group max-w-[85%] rounded-lg rounded-br-md text-tui-on-accent px-4 py-2.5 shadow-sm"
                           : "group max-w-[85%] rounded-lg rounded-bl-md text-fg-primary px-4 py-2.5 shadow-sm"
                     }
                     style={
@@ -2229,8 +2229,13 @@ export function ProjectIntelligenceChat(props: {
                         Auto routed a turn somewhere else; here it sits against
                         the thing it names. The console keeps the avatar, the
                         widget does not — 26px of chrome per answer is a real
-                        cost in a 352px panel. */}
-                    {isPanel && m.role === "agent" && (
+                        cost in a 352px panel.
+
+                        Not on the typing placeholders, though: until the reply
+                        lands there is no agentId to name, so it could only say
+                        "KAIROS · pinned agent" about an answer that does not
+                        exist yet. */}
+                    {isPanel && m.role === "agent" && !isThinkingMsg && !isSubAgentMsg && (
                       <div
                         className={`flex flex-wrap items-center ${
                           isConsole ? "mb-3 gap-2.5" : "mb-1.5 gap-2"
@@ -2419,19 +2424,19 @@ export function ProjectIntelligenceChat(props: {
                             <div
                               key={`org-warn-${wIdx}`}
                               className="flex items-start gap-2 rounded-md p-2"
-                              style={{ backgroundColor: "rgb(239 68 68 / 0.1)" }}
+                              style={{ backgroundColor: "rgb(var(--error) / 0.1)" }}
                             >
                               <AlertCircle
                                 size={12}
                                 style={{
-                                  color: "rgb(239 68 68)",
+                                  color: "rgb(var(--error))",
                                   flexShrink: 0,
                                   marginTop: 2,
                                 }}
                               />
                               <p
                                 className="text-[11px]"
-                                style={{ color: "rgb(239 68 68)" }}
+                                style={{ color: "rgb(var(--error))" }}
                               >
                                 {w}
                               </p>
@@ -2454,19 +2459,19 @@ export function ProjectIntelligenceChat(props: {
                           <div
                             key={`project-warn-${wIdx}`}
                             className="flex items-start gap-2 rounded-md p-2"
-                            style={{ backgroundColor: "rgb(239 68 68 / 0.1)" }}
+                            style={{ backgroundColor: "rgb(var(--error) / 0.1)" }}
                           >
                             <AlertCircle
                               size={12}
                               style={{
-                                color: "rgb(239 68 68)",
+                                color: "rgb(var(--error))",
                                 flexShrink: 0,
                                 marginTop: 2,
                               }}
                             />
                             <p
                               className="text-[11px]"
-                              style={{ color: "rgb(239 68 68)" }}
+                              style={{ color: "rgb(var(--error))" }}
                             >
                               {w}
                             </p>
@@ -2538,7 +2543,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-4 py-2 rounded-lg text-white font-medium transition-all hover:scale-[1.03] active:scale-95 flex items-center gap-2"
+                                className="text-xs px-4 py-2 rounded-lg text-tui-on-accent font-medium transition-all hover:scale-[1.03] active:scale-95 flex items-center gap-2"
                                 style={{
                                   backgroundColor: "rgb(var(--accent-primary))",
                                 }}
@@ -2620,7 +2625,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-4 py-2 rounded-lg text-white font-medium transition-all hover:scale-[1.03] active:scale-95 flex items-center gap-2"
+                                className="text-xs px-4 py-2 rounded-lg text-tui-on-accent font-medium transition-all hover:scale-[1.03] active:scale-95 flex items-center gap-2"
                                 style={{
                                   backgroundColor: "rgb(var(--accent-primary))",
                                 }}
@@ -2778,7 +2783,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg text-white transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-lg text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor:
                                     "rgb(var(--accent-primary))",
@@ -2917,7 +2922,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg text-white transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-lg text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor:
                                     "rgb(var(--accent-primary))",
@@ -3058,7 +3063,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg text-white transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-lg text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor: "rgb(var(--accent-primary))",
                                 }}
@@ -3216,7 +3221,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg text-white transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-lg text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor: "rgb(var(--accent-primary))",
                                 }}
@@ -3391,7 +3396,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg text-white transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-lg text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor:
                                     "rgb(var(--accent-primary))",
@@ -3580,7 +3585,7 @@ export function ProjectIntelligenceChat(props: {
                             ? "border-tui-accent bg-tui-accent text-tui-on-accent"
                             : "border-tui-ink/16 bg-transparent text-tui-ink3"
                         }`
-                      : "kairos-tap ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                      : "kairos-tap ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-tui-on-accent transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                   }
                   style={
                     isConsole
@@ -3620,7 +3625,7 @@ export function ProjectIntelligenceChat(props: {
             />
             <button
               type="submit"
-              className="h-10 shrink-0 px-4 rounded-md text-sm font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed text-white hover:scale-[1.03] active:scale-95"
+              className="h-10 shrink-0 px-4 rounded-md text-sm font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed text-tui-on-accent hover:scale-[1.03] active:scale-95"
               style={{
                 backgroundColor:
                   !isThinking && draft.trim()

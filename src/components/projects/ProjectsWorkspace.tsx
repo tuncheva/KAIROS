@@ -8,6 +8,7 @@ import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { Skeleton, skeletonWidth } from "~/components/ui/Skeleton";
+import { RollingNumber } from "~/components/ui/RollingNumber";
 import { SkeletonSlow } from "~/components/ui/SkeletonSlow";
 import { useSkeletonHold } from "~/hooks/useSkeletonHold";
 import { ProjectsSkeleton } from "./ProjectsSkeleton";
@@ -431,7 +432,7 @@ function StatLeader({
       <span
         className={`font-display text-[26px] leading-none tabular-nums ${toneClass}`}
       >
-        {value}
+        <RollingNumber value={value} />
       </span>
     </div>
   );
@@ -746,7 +747,7 @@ function StatStrip({
           <div
             className={`font-display mt-1.5 text-[26px] leading-none tabular-nums ${item.tone ?? "text-tui-ink"}`}
           >
-            {item.value}
+            <RollingNumber value={item.value} />
           </div>
         </div>
       ))}

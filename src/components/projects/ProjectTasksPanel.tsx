@@ -64,14 +64,6 @@ const STATUS_TEXT: Record<TaskStatus, string> = {
   blocked: "text-tui-danger",
 };
 
-/** Clicking the marker walks the common path; `blocked` is set in the drawer. */
-const NEXT_STATUS: Record<TaskStatus, TaskStatus> = {
-  pending: "in_progress",
-  in_progress: "completed",
-  completed: "pending",
-  blocked: "in_progress",
-};
-
 const STAMP =
   "text-[11px] font-medium uppercase tracking-[0.14em] text-tui-ink3";
 
@@ -282,11 +274,29 @@ export function ProjectTasksPanel({
             }
           : old,
       );
-      return { previous };
+      // The header stats are counted from the projects list, so patch that too
+      // or the numbers would only roll after the round trip.
+      await utils.project.getMyProjects.cancel();
+      const previousList = utils.project.getMyProjects.getData();
+      utils.project.getMyProjects.setData(undefined, (old) =>
+        old?.map((project) =>
+          project.id === projectId
+            ? {
+                ...project,
+                tasks: project.tasks?.map((task) =>
+                  task.id === taskId ? { ...task, status } : task,
+                ),
+              }
+            : project,
+        ),
+      );
+      return { previous, previousList };
     },
     onError: (error, _input, context) => {
       if (context?.previous)
         utils.project.getById.setData({ id: projectId }, context.previous);
+      if (context?.previousList)
+        utils.project.getMyProjects.setData(undefined, context.previousList);
       toast.error(error.message);
     },
     onSettled: () => void invalidate(),
@@ -448,11 +458,16 @@ export function ProjectTasksPanel({
                   onClick={() =>
                     updateStatus.mutate({
                       taskId: task.id,
-                      status: NEXT_STATUS[task.status],
+                      status: task.status === "completed" ? "pending" : "completed",
                     })
                   }
-                  aria-label={t("advance")}
-                  title={t(`statuses.${task.status}`)}
+                  aria-pressed={task.status === "completed"}
+                  aria-label={
+                    task.status === "completed" ? t("markUndone") : t("markDone")
+                  }
+                  title={
+                    task.status === "completed" ? t("markUndone") : t("markDone")
+                  }
                   className={`mt-[3px] flex h-[18px] w-[18px] items-center justify-center rounded-full border transition-colors disabled:cursor-default ${
                     task.status === "completed"
                       ? "border-tui-ok/60 bg-tui-ok/20 text-tui-ok"

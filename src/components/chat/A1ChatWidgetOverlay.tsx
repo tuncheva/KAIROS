@@ -412,11 +412,15 @@ export function A1ChatWidgetOverlay(props: {
        * globals.css, where the reduced-motion override can reach them.
        */
       /*
+       * `chat-refined` puts the panel on the /chat/ai palette — the warm
+       * `tui-*` paper and ink — since it floats over pages that wear it too.
+       */
+      /*
        * On a phone: open, it covers the screen and keeps its bar and composer
        * inside the notch and the home indicator; collapsed, it is a bar parked
        * just above the bottom nav rather than on top of it.
        */
-      className={`kairos-menu-surface kairos-ai-widget fixed z-50 flex flex-col overflow-hidden ${
+      className={`chat-refined kairos-menu-surface kairos-ai-widget fixed z-50 flex flex-col overflow-hidden ${
         !isPhone
           ? "rounded-xl"
           : minimised

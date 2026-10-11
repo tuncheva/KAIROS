@@ -250,6 +250,12 @@ export const a1Concierge = {
       if (parseResult.success) {
         outputJson = parseResult.data;
       } else {
+        // The validation error is for us, not the user: shown in the chat it
+        // was a raw Zod dump under the apology.
+        log.warn("A1 output failed validation", {
+          error: parseResult.error,
+          repairCount: parseResult.repairCount,
+        });
         const safeScope = input.scope ?? {};
         const isBg =
           contextPack.locale === "bg" ||
@@ -263,7 +269,6 @@ export const a1Concierge = {
             summary: isBg
               ? "Възникна грешка при обработката на вашата заявка. Моля, опитайте да преформулирате."
               : "I encountered an error processing your request. Please try rephrasing.",
-            details: [parseResult.error],
           },
           handoff: undefined,
           handoffs: [],

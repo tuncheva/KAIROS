@@ -149,7 +149,7 @@ export function AskKairosLauncher({ onOpen, hideBelowLg = false }: Props) {
 
   return (
     <div
-      className={`fixed z-40 flex gap-2.5 ${CORNER_CLASSES[corner]} ${hideBelowLg ? "max-lg:hidden" : ""}`}
+      className={`chat-refined fixed z-40 flex gap-2.5 ${CORNER_CLASSES[corner]} ${hideBelowLg ? "max-lg:hidden" : ""}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

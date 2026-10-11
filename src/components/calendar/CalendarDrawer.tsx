@@ -438,7 +438,7 @@ function DetailPanel({
                 "flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors disabled:opacity-50",
                 completed
                   ? "border border-border-medium text-fg-secondary hover:bg-bg-secondary"
-                  : "bg-accent-primary text-white hover:bg-accent-hover",
+                  : "bg-accent-primary text-tui-on-accent hover:bg-accent-hover",
               )}
             >
               <Check size={13} />
@@ -449,7 +449,7 @@ function DetailPanel({
               type="button"
               onClick={() => setTab("edit")}
               disabled={busy}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+              className="flex h-8 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
             >
               <Pencil size={13} />
               {t("edit")}
@@ -508,7 +508,7 @@ function DetailPanel({
                         type="button"
                         onClick={remove}
                         disabled={busy}
-                        className="h-control-sm flex-1 rounded-md bg-error px-2 text-[11px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                        className="h-control-sm flex-1 rounded-md bg-error px-2 text-[11px] font-semibold text-tui-on-accent transition-opacity hover:opacity-90 disabled:opacity-50"
                       >
                         {t("deleteYes")}
                       </button>
@@ -590,7 +590,7 @@ function RescheduleForm({
           type="button"
           onClick={() => at && onSubmit(at)}
           disabled={busy || !at}
-          className="h-10 flex-1 rounded-lg bg-accent-primary text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
+          className="h-10 flex-1 rounded-lg bg-accent-primary text-[13px] font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
           {busy ? t("saving") : t("saveChanges")}
         </button>
@@ -734,7 +734,7 @@ function EditForm({
           type="button"
           onClick={submit}
           disabled={busy}
-          className="h-10 flex-1 rounded-lg bg-accent-primary text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
+          className="h-10 flex-1 rounded-lg bg-accent-primary text-[13px] font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
           {busy ? t("saving") : t("saveChanges")}
         </button>
@@ -1039,7 +1039,7 @@ function NewItemPanel({
           type="button"
           onClick={submit}
           disabled={isSaving}
-          className="h-10 flex-1 rounded-lg bg-accent-primary text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
+          className="h-10 flex-1 rounded-lg bg-accent-primary text-[13px] font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
           {isSaving
             ? t("saving")
