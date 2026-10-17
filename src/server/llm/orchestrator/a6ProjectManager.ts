@@ -23,10 +23,12 @@ import {
   agentProjectManagerDrafts,
   organizationMembers,
   projects,
+  users,
 } from "~/server/db/schema";
 import { buildA6Context } from "~/server/llm/context/a6ContextBuilder";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 import { getA6SystemPrompt } from "~/server/llm/prompts/a6Prompts";
+import { handoffContextMessages } from "~/server/llm/prompts/handoffContext";
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
 import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
 import { localized, type LocalizedText } from "~/server/llm/locale";
@@ -146,6 +148,7 @@ export const a6ProjectManager = {
           message: input.message,
           originalMessage: input.originalMessage,
         }),
+        ...handoffContextMessages(input.handoffContext),
         { role: "user", content: input.message },
       ],
       schema: ProjectManagerDraftSchema,
@@ -411,10 +414,28 @@ export const a6ProjectManager = {
       "project_manager.scope"
     ];
 
+    // A create that names no organization lands where `project.create` would
+    // put it: the caller's active organization, if they still belong to it.
+    // Without this the project is personal, and the project list — which shows
+    // only the active organization's projects — never displays it.
+    let activeOrgId: number | null = null;
+    if (plan.creates.some((op) => op.organizationId === undefined)) {
+      const [user] = await db
+        .select({ activeOrganizationId: users.activeOrganizationId })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      const candidate = user?.activeOrganizationId ?? null;
+      if (candidate !== null && (await getOrgMembership(candidate))) {
+        activeOrgId = candidate;
+      }
+    }
+
     // ---- creates
     for (const op of plan.creates) {
-      if (op.organizationId !== undefined) {
-        const membership = await getOrgMembership(op.organizationId);
+      const organizationId = op.organizationId ?? activeOrgId ?? undefined;
+      if (organizationId !== undefined) {
+        const membership = await getOrgMembership(organizationId);
         if (!membership?.canCreateProjects) {
           results.refused.push(
             `"${op.title}": you don't have permission to create projects in that organization.`,
@@ -427,7 +448,7 @@ export const a6ProjectManager = {
         title: op.title,
         description: op.description ?? null,
         createdById: userId,
-        organizationId: op.organizationId ?? null,
+        organizationId: organizationId ?? null,
         status: "active",
       });
 

@@ -205,6 +205,9 @@ export function SideNav() {
   const [isRailCollapsed, setIsRailCollapsed] = useState(false);
   // "Ctrl" until mounted, so the server and first client render agree.
   const [modKey, setModKey] = useState("Ctrl");
+  // The server never has the active organization, but the client cache can,
+  // so the workspace label waits for mount rather than guessing "Personal".
+  const [mounted, setMounted] = useState(false);
   const { status } = useSession();
   const pathname = usePathname();
   const mobileNavId = "mobile-nav-menu";
@@ -268,6 +271,7 @@ export function SideNav() {
   useEffect(() => {
     setIsRailCollapsed(window.localStorage.getItem(RAIL_COLLAPSED_KEY) === "true");
     if (/Mac|iPhone|iPad/.test(navigator.userAgent)) setModKey("⌘");
+    setMounted(true);
   }, []);
 
   // `--rail-w` hangs off <html> so every page's `.rail-offset` shifts with the
@@ -315,7 +319,7 @@ export function SideNav() {
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
   });
-  const { data: activeOrg } = api.organization.getActive.useQuery(undefined, {
+  const { data: activeOrg, isPending: activeOrgPending } = api.organization.getActive.useQuery(undefined, {
     enabled: signedIn,
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
@@ -334,10 +338,18 @@ export function SideNav() {
     mentor: tOrg("roleMentor"),
     guest: tOrg("roleGuest"),
   };
-  const workspaceName = activeOrg?.organization.name ?? tOrg("personalWorkspace");
-  const workspaceSubtitle = activeOrg
-    ? (roleLabels[activeOrg.role] ?? activeOrg.role)
-    : tOrg("personalSubtitle");
+  // Blank until the organization is known: a signed-in user with an org would
+  // otherwise see "Personal Workspace" flash first, and SSR would disagree
+  // with a client that already has it cached.
+  const workspaceKnown = mounted && !(signedIn && activeOrgPending);
+  const workspaceName = !workspaceKnown
+    ? " "
+    : (activeOrg?.organization.name ?? tOrg("personalWorkspace"));
+  const workspaceSubtitle = !workspaceKnown
+    ? " "
+    : activeOrg
+      ? (roleLabels[activeOrg.role] ?? activeOrg.role)
+      : tOrg("personalSubtitle");
 
   const mainNavItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: t("dashboard") },

@@ -36,10 +36,12 @@ import { createLogger } from "~/server/logger";
 import { entitlementsFor } from "~/server/billing/entitlements";
 import { consumeRateLimit } from "~/server/security/rateLimit";
 import {
+  handoffReplies,
   runAgentTurn,
   type AgentTurnResult,
 } from "~/server/llm/orchestrator/handoff";
 import { isPinnable } from "~/server/llm/agents/registry";
+import { LlmUnavailableError } from "~/server/llm/core/modelClient";
 import {
   isUserReasoningEffort,
   withUserReasoningEffort,
@@ -75,6 +77,12 @@ interface ChatRequestBody {
 
 function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+/** The assistant row for a turn: A1's output, plus the sub-agents' replies when there are any. */
+function storedTurn(result: AgentTurnResult) {
+  const replies = handoffReplies(result.plans);
+  return replies.length > 0 ? { ...result.a1, handoffReplies: replies } : result.a1;
 }
 
 export async function POST(request: Request) {
@@ -205,7 +213,9 @@ export async function POST(request: Request) {
           role: "assistant",
           // Store the structured output, which is what the model produced
           // and what the next turn should see — not the rendered bubble.
-          content: JSON.stringify(turn.result.a1),
+          // Plus what any sub-agent said: without it, a question Daedalus
+          // asked was missing from the history its answer gets read against.
+          content: JSON.stringify(storedTurn(turn.result)),
           // On a pinned turn A1 never ran, so attributing the message to it
           // would make the history claim a model call that did not happen.
           agentId: pinnedAgent ?? "workspace_concierge",
@@ -267,6 +277,9 @@ export async function POST(request: Request) {
             err instanceof Error
               ? err.message
               : "The assistant failed to answer.",
+          // Lets the client show its own localised "try again later" instead of
+          // an English message, when every model in the chain is down.
+          ...(err instanceof LlmUnavailableError ? { code: err.code } : {}),
         });
       } finally {
         closed = true;

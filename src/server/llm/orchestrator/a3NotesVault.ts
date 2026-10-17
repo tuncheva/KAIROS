@@ -23,6 +23,7 @@ import { completeJson } from "~/server/llm/core/jsonRepair";
 import { chatCompletion } from "~/server/llm/core/modelClient";
 import { toPlainText } from "~/server/llm/core/plainText";
 
+import { handoffContextMessages } from "~/server/llm/prompts/handoffContext";
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
 import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
 
@@ -72,6 +73,7 @@ export const a3NotesVault = {
           message: input.message,
           originalMessage: input.originalMessage,
         }),
+        ...handoffContextMessages(input.handoffContext),
         { role: "user", content: input.message },
       ],
       schema: NotesVaultDraftSchema,

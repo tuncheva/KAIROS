@@ -93,7 +93,11 @@ export interface AgentStreamHandlers {
   /** G-1: a run of answer text. Append it; do not replace. */
   onAnswerDelta?: (text: string) => void;
   onResult: (payload: AgentTurnPayload) => void;
-  onError: (message: string, isRateLimit: boolean) => void;
+  /**
+   * `code` is the server's machine-readable reason when it sent one, e.g.
+   * "AI_UNAVAILABLE" once every model in the chain has failed.
+   */
+  onError: (message: string, isRateLimit: boolean, code?: string) => void;
 }
 
 interface SendOptions {
@@ -258,6 +262,7 @@ export function useAgentStream(handlers: AgentStreamHandlers) {
               handlersRef.current.onError(
                 (payload as { message: string }).message,
                 false,
+                (payload as { code?: string }).code,
               );
               break;
           }

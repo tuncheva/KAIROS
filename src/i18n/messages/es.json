@@ -1316,6 +1316,7 @@
     "confirmEvents": "Confirmar Plan de Eventos",
     "applyEvents": "Aplicar Plan de Eventos",
     "somethingWentWrong": "Algo salió mal: {error}",
+    "aiUnavailable": "El asistente de IA no está disponible temporalmente. Inténtalo de nuevo en unos minutos.",
     "noResponse": "No pude generar una respuesta. ¿Podrías reformular tu pregunta?",
     "alreadyConfirmed": "Ya confirmado — usa Aplicar para ejecutar.",
     "confirmFailed": "Error al confirmar: {error}",

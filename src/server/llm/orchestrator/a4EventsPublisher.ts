@@ -18,6 +18,7 @@ import { buildA4Context } from "~/server/llm/context/a4ContextBuilder";
 import { getA4SystemPrompt } from "~/server/llm/prompts/a4Prompts";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 
+import { handoffContextMessages } from "~/server/llm/prompts/handoffContext";
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
 import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
 import { applyEventDefaults } from "~/server/llm/agents/defaults";
@@ -114,6 +115,7 @@ export const a4EventsPublisher = {
           message: input.message,
           originalMessage: input.originalMessage,
         }),
+        ...handoffContextMessages(input.handoffContext),
         { role: "user", content: input.message },
       ],
       schema: EventsPublisherDraftSchema,

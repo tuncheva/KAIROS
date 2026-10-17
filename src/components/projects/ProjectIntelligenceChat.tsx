@@ -1519,7 +1519,7 @@ export function ProjectIntelligenceChat(props: {
         void utils.note.invalidate();
       }
     },
-    onError: (message, isRateLimit) => {
+    onError: (message, isRateLimit, code) => {
       setProgressLabel(null);
       pushTrail({ kind: "error", label: tc("trailFailed"), detail: message });
       props.onBusyChange?.(false);
@@ -1536,7 +1536,10 @@ export function ProjectIntelligenceChat(props: {
       }
       setMessages((prev) =>
         replaceThinking(prev, {
-          text: t("somethingWentWrong", { error: message }),
+          text:
+            code === "AI_UNAVAILABLE"
+              ? t("aiUnavailable")
+              : t("somethingWentWrong", { error: message }),
           createdAt: new Date(),
         }),
       );
@@ -1642,13 +1645,22 @@ export function ProjectIntelligenceChat(props: {
         try {
           const parsed = JSON.parse(m.content) as {
             answer?: { summary?: string; details?: string[] };
+            clarify?: { question?: string; options?: string[] };
+            handoffReplies?: Array<{ summary?: string; questions?: string[] }>;
           };
-          if (parsed.answer?.summary) {
-            text = [
-              parsed.answer.summary,
-              ...(parsed.answer.details ?? []).map((d) => asBullet(d)),
-            ].join("\n");
-          }
+          // A clarifying question or a handoff has no `answer`, and used to
+          // come back from a reload as the raw JSON of the stored turn.
+          const lines = [
+            parsed.answer?.summary,
+            ...(parsed.answer?.details ?? []).map((d) => asBullet(d)),
+            parsed.clarify?.question,
+            ...(parsed.clarify?.options ?? []).map((o) => asBullet(o)),
+            ...(parsed.handoffReplies ?? []).flatMap((r) => [
+              r.summary,
+              ...(r.questions ?? []).map((q) => asBullet(q)),
+            ]),
+          ].filter((l): l is string => Boolean(l));
+          if (lines.length > 0) text = lines.join("\n");
         } catch {
           // Older rows, or a turn stored as plain text: show it as-is.
         }

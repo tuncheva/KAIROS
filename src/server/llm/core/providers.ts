@@ -23,12 +23,22 @@
  * Keys follow the same shape: `LLM_API_KEY_<PROVIDER>` if set, else the shared
  * `LLM_API_KEY`.
  *
+ * **Backup provider.** `LLM_BACKUP_PROVIDER` names a second preset that the
+ * model client tries once every primary model has failed. It exists because a
+ * fallback *model* on the same gateway shares that gateway's outages: on
+ * 2026-10-11 NIM listed eight candidate models and only one of them served.
+ * A second provider is a separate failure domain. `LLM_BACKUP_BASE_URL` /
+ * `LLM_BACKUP_API_KEY` / `LLM_BACKUP_MODEL` / `LLM_BACKUP_MODEL_FAST` override
+ * it the same way the primary variables do. The backup never borrows the shared
+ * `LLM_API_KEY`: that key belongs to the primary, and sending it to a second
+ * host would leak it for a guaranteed 401.
+ *
  * Pure and dependency-free on purpose — `~/env` is server-only, and
  * `scripts/llm-probe.ts` has to resolve identically from raw `process.env` or it
  * verifies a configuration the app never sends.
  */
 
-export const LLM_PROVIDERS = ["nvidia", "velocity", "deepseek"] as const;
+export const LLM_PROVIDERS = ["nvidia", "velocity", "deepseek", "gemini"] as const;
 
 export type LlmProvider = (typeof LLM_PROVIDERS)[number];
 
@@ -51,13 +61,24 @@ interface ProviderPreset {
  *
  * NVIDIA's free tier is development-only: its terms forbid personal data and
  * permit training on content. See docs/llm-provider-research-2026-08-21.md.
+ *
+ * The NIM preset is pinned to the one model that both served and wrote usable
+ * Bulgarian when re-probed on 2026-10-11. The DeepSeek V4 ids it used to name
+ * return 410 (end of life 2026-08-07). `kimi-k3`, `glm-5.3`,
+ * `deepseek-v4.1-flash` and `gemma-4-31b-it` are listed in `/models` but sent no
+ * first byte, and `nemotron-3-super` code-switches out of Bulgarian. So it has no
+ * same-gateway fallback on purpose: the backup provider is the fallback.
+ *
+ * Gemini's ids come from docs/llm-free-provider-research-2026-10-09.md and are
+ * unverified until `pnpm llm:probe -- --backup` passes with a real key. Its
+ * free quota is per model, which is why a second Gemini model is a worthwhile
+ * fallback there while a second NIM model is not.
  */
 const PRESETS: Record<LlmProvider, ProviderPreset> = {
   nvidia: {
     baseUrl: "https://integrate.api.nvidia.com/v1",
-    model: "deepseek-ai/deepseek-v4-flash",
-    fallbackModel: "deepseek-ai/deepseek-v4-pro",
-    fastModel: "deepseek-ai/deepseek-v4-flash",
+    model: "openai/gpt-oss-20b",
+    fastModel: "openai/gpt-oss-20b",
     keyVar: "LLM_API_KEY_NVIDIA",
   },
   velocity: {
@@ -70,6 +91,13 @@ const PRESETS: Record<LlmProvider, ProviderPreset> = {
     baseUrl: "https://api.deepseek.com/v1",
     model: "deepseek-chat",
     keyVar: "LLM_API_KEY_DEEPSEEK",
+  },
+  gemini: {
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+    model: "gemini-3.8-flash",
+    fallbackModel: "gemini-3.1-flash-lite",
+    fastModel: "gemini-3.1-flash-lite",
+    keyVar: "LLM_API_KEY_GEMINI",
   },
 };
 
@@ -85,7 +113,8 @@ export interface LlmEnvSource {
   [key: string]: unknown;
 }
 
-export interface ResolvedLlmConfig {
+/** One endpoint plus the models to try on it, in order. */
+export interface ResolvedLlmLane {
   /** Which preset applied, or null when configured by raw variables alone. */
   provider: LlmProvider | null;
   /** Trailing slashes stripped. Empty string when unconfigured. */
@@ -97,6 +126,11 @@ export interface ResolvedLlmConfig {
   fastModel: string | null;
 }
 
+export interface ResolvedLlmConfig extends ResolvedLlmLane {
+  /** Second provider, tried after every primary model. Null when not fully configured. */
+  backup: ResolvedLlmLane | null;
+}
+
 /** A trimmed non-empty string, or undefined — `LLM_FALLBACK_MODEL=` means "none". */
 function value(source: LlmEnvSource, key: string): string | undefined {
   const raw = source[key];
@@ -106,17 +140,47 @@ function value(source: LlmEnvSource, key: string): string | undefined {
 }
 
 /** The named preset, or null for unset. An unknown name throws rather than silently falling back. */
-function selectPreset(source: LlmEnvSource): ProviderPreset | null {
-  const name = value(source, "LLM_PROVIDER")?.toLowerCase();
+function selectPreset(
+  source: LlmEnvSource,
+  variable = "LLM_PROVIDER",
+): ProviderPreset | null {
+  const name = value(source, variable)?.toLowerCase();
   if (!name) return null;
   const preset = PRESETS[name as LlmProvider];
   if (!preset) {
     throw new Error(
-      `LLM_PROVIDER="${name}" is not a known provider. Use one of ${LLM_PROVIDERS.join(", ")}, ` +
-        "or unset it and set LLM_BASE_URL / LLM_MODEL directly.",
+      `${variable}="${name}" is not a known provider. Use one of ${LLM_PROVIDERS.join(", ")}, ` +
+        "or unset it and set the base URL / model variables directly.",
     );
   }
   return preset;
+}
+
+/**
+ * The backup lane, or null unless it has a base URL, a key and a model.
+ *
+ * Half-configured is treated as off rather than as an error: the backup is an
+ * extra, and a missing key there must never stop the primary from serving.
+ */
+function resolveBackup(source: LlmEnvSource): ResolvedLlmLane | null {
+  const preset = selectPreset(source, "LLM_BACKUP_PROVIDER");
+  const baseUrl = value(source, "LLM_BACKUP_BASE_URL") ?? preset?.baseUrl;
+  const apiKey =
+    value(source, "LLM_BACKUP_API_KEY") ??
+    (preset ? value(source, preset.keyVar) : undefined);
+  const model = value(source, "LLM_BACKUP_MODEL") ?? preset?.model;
+  if (!baseUrl || !apiKey || !model) return null;
+
+  const fallback = value(source, "LLM_BACKUP_MODEL") ? undefined : preset?.fallbackModel;
+  return {
+    provider: preset
+      ? (value(source, "LLM_BACKUP_PROVIDER")!.toLowerCase() as LlmProvider)
+      : null,
+    baseUrl: baseUrl.replace(/\/+$/, ""),
+    apiKey,
+    models: [model, fallback].filter((m): m is string => typeof m === "string"),
+    fastModel: value(source, "LLM_BACKUP_MODEL_FAST") ?? preset?.fastModel ?? null,
+  };
 }
 
 /** Resolve the effective endpoint, key and model chain. See the module comment for precedence. */
@@ -144,5 +208,6 @@ export function resolveLlmConfig(source: LlmEnvSource): ResolvedLlmConfig {
     apiKey,
     models: [model, fallback].filter((m): m is string => typeof m === "string"),
     fastModel: value(source, "LLM_MODEL_FAST") ?? preset?.fastModel ?? null,
+    backup: resolveBackup(source),
   };
 }

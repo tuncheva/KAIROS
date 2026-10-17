@@ -84,20 +84,12 @@ function buildFallbackResponse(
       scope: { orgId: safeScope.orgId, projectId: safeScope.projectId },
     },
     answer: {
+      // No `details`. This reply means the model could not be reached, so
+      // the old "rephrase your question" bullets sent the user to fix a
+      // problem that was never theirs, under every outage.
       summary: isBg
-        ? "В момента има проблем с генерирането на отговор от изкуствения интелект. Моля, опитайте да преформулирате въпроса си или уточнете какво ви е необходимо."
-        : "I’m having trouble generating an AI response right now. Try rephrasing your question or be more specific about what you need.",
-      // No bullet glyphs here: every renderer of `answer.details` adds its own,
-      // and a hand-written one shows up as a doubled bullet.
-      details: isBg
-        ? [
-            "Задайте директен въпрос (напр. „Какъв е статусът на проект X?“)",
-            "Ако искате да създадете задачи, кажете „създай задачи за …“ и ще прехвърля заявката към Task Planner",
-          ]
-        : [
-            "Ask a direct question (e.g., ‘What’s the status of Project X?’)",
-            "If you want tasks created, say ‘create tasks for …’ and I’ll hand it off to the Task Planner",
-          ],
+        ? "AI асистентът е временно недостъпен. Опитайте отново след малко."
+        : "The AI assistant is temporarily unavailable. Please try again in a moment.",
     },
     // Normalized by `A1OutputSchema`'s transform on the happy path; set here
     // because a hand-built fallback never passes through it.

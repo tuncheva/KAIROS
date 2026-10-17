@@ -58,6 +58,49 @@ export type AgentPlan =
   | { kind: "org"; draftId: string; plan: OrgAdminDraft }
   | { kind: "project_manager"; draftId: string; plan: ProjectManagerDraft };
 
+/** What one sub-agent said to the user in a turn, as kept in the history. */
+export interface HandoffReply {
+  agent: TargetAgent;
+  summary?: string;
+  /** Questions it asked. The user's next message is usually the answer. */
+  questions?: string[];
+}
+
+const AGENT_FOR_KIND: Record<AgentPlan["kind"], TargetAgent> = {
+  tasks: "task_planner",
+  notes: "notes_vault",
+  events: "events_publisher",
+  org: "org_admin",
+  project_manager: "project_manager",
+};
+
+/**
+ * The sub-agents' side of a turn, for the stored history.
+ *
+ * The history used to keep only A1's output, which on a handoff turn says
+ * "passed this to Daedalus" and nothing more. When Daedalus then asked for the
+ * project's name, the user's answer reached A1, which had no record of the
+ * question and read the answer as a new request. Storing what each sub-agent
+ * said lets the next turn see the question it is answering.
+ */
+export function handoffReplies(plans: AgentPlan[]): HandoffReply[] {
+  return plans.flatMap((p) => {
+    const plan = p.plan as { summary?: unknown; questions?: unknown };
+    const summary = typeof plan.summary === "string" ? plan.summary : undefined;
+    const questions = Array.isArray(plan.questions)
+      ? plan.questions.filter((q): q is string => typeof q === "string" && q.length > 0)
+      : [];
+    if (!summary && questions.length === 0) return [];
+    return [
+      {
+        agent: AGENT_FOR_KIND[p.kind],
+        ...(summary ? { summary } : {}),
+        ...(questions.length > 0 ? { questions } : {}),
+      },
+    ];
+  });
+}
+
 export type AgentTurnResult = {
   /** A1's own draft id, always present. */
   draftId: string;

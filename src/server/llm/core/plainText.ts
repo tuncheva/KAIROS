@@ -62,6 +62,18 @@ const RULE = /^[ \t]{0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/gm;
  */
 const LIST_MARKER = /^[ \t]*(?:[-*+•‣▪]|\d{1,3}[.)])[ \t]+/gm;
 
+/**
+ * A citation ref echoed into prose: "Payments API (task:42)".
+ *
+ * Refs belong in `citations`, which the client turns into links; in a summary or
+ * a bullet they are an internal id the user cannot act on. The prompt says so,
+ * and the small models ignore it often enough to need this. Only the bracketed
+ * form is removed: a bare "task:42" mid-sentence carries meaning, so deleting it
+ * would leave a hole in the sentence.
+ */
+const RECORD_REF =
+  /[ \t]*[([][ \t]*(?:task|project|note|event|document|organization|org|member|reminder):\d+(?:[ \t]*,[ \t]*(?:task|project|note|event|document|organization|org|member|reminder):\d+)*[ \t]*[)\]]/gi;
+
 /** Whitespace left behind once the markup is gone. */
 const TRAILING_SPACE = /[ \t]+$/gm;
 const REPEATED_BLANK_LINES = /\n{3,}/g;
@@ -86,6 +98,7 @@ export function toPlainText(text: string): string {
     .replace(HEADING, "")
     .replace(QUOTE, "")
     .replace(LIST_MARKER, "")
+    .replace(RECORD_REF, "")
     .replace(TRAILING_SPACE, "")
     .replace(REPEATED_BLANK_LINES, "\n\n")
     .trim();

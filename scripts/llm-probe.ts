@@ -8,7 +8,8 @@
  * build against the answer.
  *
  * Usage:
- *   pnpm llm:probe
+ *   pnpm llm:probe              the primary provider
+ *   pnpm llm:probe -- --backup  the backup provider (LLM_BACKUP_PROVIDER)
  *
  * Resolves the endpoint exactly as the app does - the `LLM_PROVIDER` preset plus
  * any explicit overrides, through the shared resolver - so a green probe is a
@@ -18,10 +19,12 @@
 
 import { resolveLlmConfig } from "../src/server/llm/core/providers";
 
-const CONFIG = resolveLlmConfig(process.env);
-const BASE_URL = CONFIG.baseUrl;
-const API_KEY = CONFIG.apiKey;
-const MODEL = CONFIG.models[0] ?? "";
+const RESOLVED = resolveLlmConfig(process.env);
+const PROBE_BACKUP = process.argv.includes("--backup");
+const CONFIG = PROBE_BACKUP ? RESOLVED.backup : RESOLVED;
+const BASE_URL = CONFIG?.baseUrl ?? "";
+const API_KEY = CONFIG?.apiKey ?? "";
+const MODEL = CONFIG?.models[0] ?? "";
 
 const PASS = "✓";
 const FAIL = "✗";
@@ -494,6 +497,14 @@ async function probeStreaming() {
 // ---------------------------------------------------------------------------
 
 async function main() {
+  if (PROBE_BACKUP && !CONFIG) {
+    console.error(
+      "No backup provider resolved. Set LLM_BACKUP_PROVIDER (e.g. gemini) and\n" +
+        "its LLM_API_KEY_<PROVIDER>, or LLM_BACKUP_BASE_URL / LLM_BACKUP_API_KEY /\n" +
+        "LLM_BACKUP_MODEL directly.",
+    );
+    process.exit(1);
+  }
   if (!BASE_URL || !API_KEY || !MODEL) {
     console.error(
       "No endpoint resolved. Set LLM_PROVIDER to a known preset (with its\n" +
@@ -504,7 +515,9 @@ async function main() {
   }
 
   console.log(`\nProbing ${BASE_URL}`);
-  console.log(`Provider: ${CONFIG.provider ?? "(none - explicit env vars)"}`);
+  console.log(
+    `Provider: ${CONFIG?.provider ?? "(none - explicit env vars)"}${PROBE_BACKUP ? " [backup]" : ""}`,
+  );
   console.log(`Model:    ${MODEL}\n`);
 
   await probeModels();

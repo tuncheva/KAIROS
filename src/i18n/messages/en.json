@@ -2421,6 +2421,7 @@
     "confirmEvents": "Confirm Event Plan",
     "applyEvents": "Apply Event Plan",
     "somethingWentWrong": "Something went wrong: {error}",
+    "aiUnavailable": "The AI assistant is temporarily unavailable. Please try again in a few minutes.",
     "noResponse": "I couldn’t generate a response for that. Could you try rephrasing your question?",
     "alreadyConfirmed": "Already confirmed — use Apply to execute.",
     "confirmFailed": "Confirm failed: {error}",

@@ -19,8 +19,14 @@ const {
   streamCompletion,
   TruncatedResponseError,
   LlmHttpError,
+  LlmUnavailableError,
   isLlmConfigured,
+  resetLlmHealth,
 } = await import("~/server/llm/core/modelClient");
+/** The mocked env object itself, so a case can switch the backup lane on. */
+const { env } = (await import("~/env")) as unknown as {
+  env: Record<string, string | undefined>;
+};
 const { withUserReasoningEffort } = await import(
   "~/server/llm/core/effortScope"
 );
@@ -81,6 +87,8 @@ let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);
+  // Cooldowns are module state; one case's failures must not reorder the next.
+  resetLlmHealth();
 });
 
 afterEach(() => {
@@ -404,8 +412,10 @@ describe("modelClient — retries and fallback", () => {
     async (status) => {
       fetchMock.mockResolvedValue(errorResponse(status));
 
+      // A 400 is a bug in the request and surfaces as itself; a rejected key is
+      // an outage from the user's side and gets the user-facing error.
       await expect(chatCompletion({ messages: USER })).rejects.toBeInstanceOf(
-        LlmHttpError,
+        status === 400 ? LlmHttpError : LlmUnavailableError,
       );
       // A malformed request or a bad key fails identically on every attempt and
       // on every model; retrying only spends the user's latency budget.
@@ -413,13 +423,13 @@ describe("modelClient — retries and fallback", () => {
     },
   );
 
-  it.each([404, 422])(
+  it.each([404, 410, 422])(
     "does not retry HTTP %i, but does advance the chain",
     async (status) => {
       fetchMock.mockResolvedValue(errorResponse(status));
 
       await expect(chatCompletion({ messages: USER })).rejects.toBeInstanceOf(
-        LlmHttpError,
+        LlmUnavailableError,
       );
       // A model this account cannot reach is a property of *that* endpoint, not
       // of the request, so the fallback is worth trying — but only once each: the
@@ -502,7 +512,7 @@ describe("modelClient — retries and fallback", () => {
 
     await expect(
       chatCompletion({ messages: USER, model: "pinned" }),
-    ).rejects.toBeInstanceOf(LlmHttpError);
+    ).rejects.toBeInstanceOf(LlmUnavailableError);
 
     const modelsTried = new Set(
       fetchMock.mock.calls.map((_call, i) => requestBody(i).model),
@@ -518,6 +528,157 @@ describe("modelClient — retries and fallback", () => {
 
     const res = await chatCompletion({ messages: USER });
     expect(res.content).toBe("ok");
+  });
+});
+
+describe("modelClient — wire format of chatCompletion", () => {
+  /**
+   * NIM withholds headers on a non-streamed request until generation is done, so
+   * only a streamed request can tell a dead model from a slow one in 20s.
+   */
+  it("streams on the wire and assembles one response", async () => {
+    fetchMock.mockResolvedValue(
+      sseResponse([
+        'data: {"model":"primary-model","choices":[{"delta":{"reasoning_content":"hmm"}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":"Здравей"}}]}\n\n',
+        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"c1","function":{"name":"t","arguments":"{}"}}]}}]}\n\n',
+        'data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}}\n\n',
+        "data: [DONE]\n\n",
+      ]),
+    );
+
+    const res = await chatCompletion({ messages: USER });
+
+    expect(requestBody(0).stream).toBe(true);
+    expect(res).toMatchObject({
+      content: "Здравей",
+      reasoning: "hmm",
+      toolCalls: [{ id: "c1", name: "t", arguments: "{}" }],
+      finishReason: "stop",
+      usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 },
+    });
+  });
+
+  it("raises TruncatedResponseError on a streamed answer cut at max_tokens", async () => {
+    fetchMock.mockResolvedValue(
+      sseResponse([
+        'data: {"choices":[{"delta":{"content":"{\\"partial\\":"},"finish_reason":"length"}]}\n\n',
+        "data: [DONE]\n\n",
+      ]),
+    );
+
+    await expect(chatCompletion({ messages: USER })).rejects.toBeInstanceOf(
+      TruncatedResponseError,
+    );
+  });
+});
+
+describe("modelClient — failover and health", () => {
+  const BACKUP = {
+    LLM_BACKUP_BASE_URL: "https://backup.test/v1",
+    LLM_BACKUP_API_KEY: "sk-backup",
+    LLM_BACKUP_MODEL: "backup-model",
+  };
+
+  beforeEach(() => {
+    Object.assign(env, BACKUP);
+  });
+
+  afterEach(() => {
+    for (const key of Object.keys(BACKUP)) delete env[key];
+  });
+
+  /** URL, key and model of the nth fetch call. */
+  function target(index: number) {
+    const [url, init] = fetchMock.mock.calls[index] as unknown as [string, RequestInit];
+    const headers = init.headers as Record<string, string>;
+    return { url, auth: headers.Authorization, model: requestBody(index).model };
+  }
+
+  it("moves to the backup provider, with its own key, once the primary lane fails", async () => {
+    fetchMock
+      .mockResolvedValueOnce(errorResponse(404))
+      .mockResolvedValueOnce(errorResponse(404))
+      .mockResolvedValueOnce(completion({ role: "assistant", content: "from backup" }));
+
+    const res = await chatCompletion({ messages: USER });
+
+    expect(res.content).toBe("from backup");
+    expect(target(2)).toEqual({
+      url: "https://backup.test/v1/chat/completions",
+      auth: "Bearer sk-backup",
+      model: "backup-model",
+    });
+  });
+
+  /**
+   * A rejected key dooms every model on that gateway, but not a gateway with a
+   * different key — which is the whole reason the backup lane exists.
+   */
+  it("skips the rest of a lane on 401, but still tries the backup", async () => {
+    fetchMock
+      .mockResolvedValueOnce(errorResponse(401))
+      .mockResolvedValueOnce(completion({ role: "assistant", content: "ok" }));
+
+    await chatCompletion({ messages: USER });
+
+    expect(fetchMock.mock.calls.map((_c, i) => target(i).model)).toEqual([
+      "primary-model",
+      "backup-model",
+    ]);
+  });
+
+  it("demotes a model that failed, so the next request skips its wait", async () => {
+    fetchMock
+      .mockResolvedValueOnce(errorResponse(410))
+      .mockResolvedValueOnce(completion({ role: "assistant", content: "a" }))
+      .mockResolvedValueOnce(completion({ role: "assistant", content: "b" }));
+
+    await chatCompletion({ messages: USER });
+    await chatCompletion({ messages: USER });
+
+    // Second request: the retired primary has dropped behind the fallback.
+    expect(target(2).model).toBe("fallback-model");
+  });
+
+  it("still tries a demoted model when every candidate is cooling down", async () => {
+    fetchMock.mockResolvedValue(errorResponse(404));
+    await expect(chatCompletion({ messages: USER })).rejects.toBeInstanceOf(
+      LlmUnavailableError,
+    );
+
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue(completion({ role: "assistant", content: "back" }));
+
+    const res = await chatCompletion({ messages: USER });
+    expect(res.content).toBe("back");
+  });
+
+  it("advances at once when a request sends no first byte", async () => {
+    vi.useFakeTimers();
+    // A gateway that accepted the request and never answers: settles only on abort.
+    fetchMock.mockImplementationOnce(
+      // The untyped `vi.fn()` expects a void return; fetch's is a Promise.
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => {
+            reject(init.signal?.reason as Error);
+          });
+        }),
+    );
+    fetchMock.mockResolvedValueOnce(completion({ role: "assistant", content: "fallback" }));
+
+    const pending = chatCompletion({ messages: USER });
+    await vi.advanceTimersByTimeAsync(20_000);
+    const res = await pending;
+
+    expect(res.content).toBe("fallback");
+    // One silent attempt on the primary, not three.
+    expect(fetchMock.mock.calls.map((_c, i) => target(i).model)).toEqual([
+      "primary-model",
+      "fallback-model",
+    ]);
   });
 });
 
