@@ -2,6 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 
+import type { PageContext } from "~/lib/pageContext";
+
 /**
  * Client for `POST /api/ai/chat`.
  *
@@ -124,6 +126,11 @@ interface SendOptions {
    * which also keeps the cheap first routing pass.
    */
   effort?: "low" | "medium" | "high" | "max";
+  /**
+   * The page the user is on, so "this" means something. Ids only — the server
+   * looks up everything else after checking access.
+   */
+  pageContext?: PageContext | null;
 }
 
 /** Split an SSE buffer into complete `event:`/`data:` frames. */
@@ -182,6 +189,7 @@ export function useAgentStream(handlers: AgentStreamHandlers) {
           priorTaskDraftId: opts.priorTaskDraftId,
           agentId: opts.agentId,
           effort: opts.effort,
+          pageContext: opts.pageContext ?? undefined,
         }),
         signal: controller.signal,
       });

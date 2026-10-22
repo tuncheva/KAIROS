@@ -41,6 +41,8 @@ import {
   type AgentTurnResult,
 } from "~/server/llm/orchestrator/handoff";
 import { isPinnable } from "~/server/llm/agents/registry";
+import { resolvePageContext } from "~/server/llm/context/pageContext";
+import { parsePageContext } from "~/lib/pageContext";
 import { LlmUnavailableError } from "~/server/llm/core/modelClient";
 import {
   isUserReasoningEffort,
@@ -73,6 +75,8 @@ interface ChatRequestBody {
   agentId?: unknown;
   /** How hard the model thinks: low/medium/high/max. Omit for the default. */
   effort?: unknown;
+  /** The page the widget was opened from — ids only, see `~/lib/pageContext`. */
+  pageContext?: unknown;
 }
 
 function sse(event: string, data: unknown): string {
@@ -130,6 +134,10 @@ export async function POST(request: Request) {
   // Same leniency as the agent id: an unknown value is the default, not a 400.
   const effort = isUserReasoningEffort(body.effort) ? body.effort : undefined;
 
+  // And again for the page: a hint about what "this" means, never a reason to
+  // refuse the turn.
+  const requestedPage = parsePageContext(body.pageContext);
+
   // Built before the rate-limit gate rather than after: the ceiling is now the
   // caller's plan ceiling, and resolving entitlements needs a context.
   // `apiKeyId: null` — this route authenticates by cookie only.
@@ -166,15 +174,25 @@ export async function POST(request: Request) {
   // One select for the conversation, one for its recent turns — see
   // `openConversation`. This is the last thing between the request and the first
   // streamed byte, so whatever does not have to happen here does not.
-  const {
-    conversationId,
-    messages: history,
-    summary,
-  } = await openConversation(ctx, {
-    conversationId: requestedConversationId,
-    userId,
-    projectId,
-  });
+  //
+  // The page lookup rides alongside: it is one indexed select, independent of
+  // the conversation, and waiting for them in turn would put both in front of
+  // the first byte.
+  const [
+    {
+      conversationId,
+      messages: history,
+      summary,
+    },
+    pageContext,
+  ] = await Promise.all([
+    openConversation(ctx, {
+      conversationId: requestedConversationId,
+      userId,
+      projectId,
+    }),
+    resolvePageContext(ctx, requestedPage),
+  ]);
 
   const encoder = new TextEncoder();
   const startedAt = Date.now();
@@ -255,6 +273,7 @@ export async function POST(request: Request) {
             scope: projectId ? { projectId } : undefined,
             conversationHistory: history,
             conversationSummary: summary,
+            pageContext,
             priorTaskDraftId,
             pinnedAgent,
             signal: request.signal,

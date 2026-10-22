@@ -116,3 +116,25 @@ describe("project scope", () => {
   });
 });
 
+describe("AI button question", () => {
+  const ID = "workspace_concierge.pageOpener";
+
+  it("is the built-in question per page until someone writes one", () => {
+    expect(defaultAgentSettings()[ID]).toBe("");
+  });
+
+  it("stores one tidy line, in any language", () => {
+    expect(parseAgentSettingValue(ID, "  Summarise   this, please ")).toEqual({
+      ok: true,
+      value: "Summarise this, please",
+    });
+    expect(parseAgentSettingValue(ID, "Обобщи това в три точки.").ok).toBe(true);
+  });
+
+  it("refuses line breaks and anything over the limit", () => {
+    expect(parseAgentSettingValue(ID, "one\ntwo").ok).toBe(false);
+    expect(parseAgentSettingValue(ID, `one${String.fromCharCode(0x2028)}two`).ok).toBe(false);
+    expect(parseAgentSettingValue(ID, "x".repeat(301)).ok).toBe(false);
+  });
+});
+

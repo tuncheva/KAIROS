@@ -4,8 +4,11 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { AskKairosLauncher } from "~/components/chat/AskKairosLauncher";
+import { pageContextFromPath } from "~/lib/pageContext";
+import { api } from "~/trpc/react";
 
 /**
  * The two heavy surfaces, split out of the shared bundle.
@@ -82,8 +85,8 @@ export function GlobalAIWidget() {
    */
   const [paletteArmed, setPaletteArmed] = useState(false);
   /**
-   * A question handed to the widget from outside it — today, from clicking a
-   * Risk Radar nudge on the launcher.
+   * A question handed to the widget from outside it — from clicking a Risk
+   * Radar nudge on the launcher, or the TopBar's AI button.
    *
    * `n` remounts the thread, which is the only way the prefill is actually
    * sent: `ProjectIntelligenceChat` fires it once per mount, deliberately, so
@@ -126,6 +129,54 @@ export function GlobalAIWidget() {
     window.addEventListener("kairos:openAI", handler);
     return () => window.removeEventListener("kairos:openAI", handler);
   }, []);
+
+  /*
+   * The TopBar's AI button: open over this page and ask about it.
+   *
+   * The question is plain words in the user's language — what they would have
+   * typed — and says only "this note"; which note is not in the text but in the
+   * page context the widget sends beside it, which the server resolves. On a
+   * page with nothing to point at, the button just opens the widget: a question
+   * about nothing would spend a request on an answer nobody wanted.
+   *
+   * Read from `window.location` at the moment of the click rather than from
+   * hooks. This component renders in the root layout, server side included, and
+   * the query string is only needed here, once, after a click.
+   */
+  const tAsk = useTranslations("ai.askAboutPage");
+  const utils = api.useUtils();
+  useEffect(() => {
+    const handler = () => {
+      const page = pageContextFromPath(window.location.pathname, window.location.search);
+      const show = () => {
+        setOpen(true);
+        setEverOpened(true);
+      };
+      if (!page) {
+        show();
+        return;
+      }
+
+      /* The user's own question from Settings → AI, if they wrote one. Fetched
+         on the click rather than on every page load: most page loads never
+         press the button. Settings invalidates this query when it saves, so a
+         change made a moment ago is the one used. A failed read is the
+         built-in question, not a button that does nothing. */
+      void utils.agent.settings
+        .fetch(undefined, { staleTime: 60_000 })
+        .then((s) => s.values["workspace_concierge.pageOpener"])
+        .catch(() => "")
+        .then((custom) => {
+          const text = custom || tAsk(page.kind);
+          // Together with the open, so the panel first appears already on the
+          // new question — not on the old thread for a frame before it.
+          setAsk((a) => ({ text, n: a.n + 1 }));
+          show();
+        });
+    };
+    window.addEventListener("kairos:askAboutPage", handler);
+    return () => window.removeEventListener("kairos:askAboutPage", handler);
+  }, [tAsk, utils]);
 
   if (!session) return null;
 

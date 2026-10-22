@@ -21,6 +21,7 @@
 import { TRPCError } from "@trpc/server";
 
 import { createLogger } from "~/server/logger";
+import { pageHandoffContext } from "~/server/llm/prompts/pageContext";
 import type {
   A1Output,
   HandoffPlan,
@@ -159,7 +160,14 @@ async function runHandoff(
   fallbackMessage: string,
 ): Promise<AgentPlan> {
   const message = handoff.userIntent || fallbackMessage;
-  const handoffContext = handoff.context;
+  // The page goes along with whatever A1 collected, so a sub-agent knows which
+  // note "this" is even when A1's paraphrase did not repeat it — and on a
+  // pinned turn, where A1 never ran, it is the only way the page arrives at all.
+  // A1's own `currentPage`, should it ever write one, wins.
+  const handoffContext = {
+    ...pageHandoffContext(input.pageContext),
+    ...handoff.context,
+  };
 
   // The sub-agent detects its reply language from the message it is given, and
   // that message is A1's paraphrase — so a paraphrase normalized to English

@@ -91,6 +91,7 @@ type OptionKey =
   | "schedule"
   | "tone"
   | "language"
+  | "pageOpener"
   | "approval"
   | "scope"
   | "taskDefaults"
@@ -111,6 +112,7 @@ const LIVE: ReadonlySet<OptionKey> = new Set(["effort", "memory", "schedule"]);
 const SETTING_FOR: Partial<Record<OptionKey, AgentSettingId | readonly AgentSettingId[]>> = {
   tone: "workspace_concierge.tone",
   language: "workspace_concierge.replyLanguage",
+  pageOpener: "workspace_concierge.pageOpener",
   briefSections: "daily_brief.sections",
   stalledAfter: "risk_radar.stalledAfterDays",
   leadTime: "meeting_prep.leadMinutes",
@@ -145,7 +147,7 @@ const NEEDS_UNDO: ReadonlySet<AgentSettingId> = new Set([
 ]);
 
 const OPTIONS: Record<AgentId, OptionKey[]> = {
-  workspace_concierge: ["effort", "memory", "tone", "language"],
+  workspace_concierge: ["effort", "memory", "tone", "language", "pageOpener"],
   // Scope only where the agent works inside projects: notes, events and members
   // do not belong to one.
   // Approval only where a change can be undone: tasks and notes. Events,
@@ -789,7 +791,9 @@ export function AgentSettingControl({
         <TextSettingControl
           value={typeof value === "string" ? value : ""}
           maxLength={def.control.maxLength}
-          placeholder={def.control.placeholder}
+          placeholder={
+            def.control.placeholderKey ? t(def.control.placeholderKey) : def.control.placeholder
+          }
           disabled={disabled}
           label={label}
           t={t}

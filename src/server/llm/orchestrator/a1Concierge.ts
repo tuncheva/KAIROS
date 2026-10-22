@@ -19,6 +19,7 @@ import {
 } from "~/server/llm/context/a1ContextBuilder";
 import { getA1SystemPrompt } from "~/server/llm/prompts/a1Prompts";
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
+import { pageContextMessages } from "~/server/llm/prompts/pageContext";
 import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
 import {
   parseAndValidate,
@@ -106,6 +107,7 @@ export interface A1TurnInput {
   message: string;
   conversationHistory?: AgentDraftInput["conversationHistory"];
   conversationSummary?: string | null;
+  pageContext?: AgentDraftInput["pageContext"];
   /**
    * The tools the loop may execute. Production leaves this unset and gets the
    * real read tools. The live eval passes stubs over a fixed workspace, so it
@@ -167,6 +169,10 @@ ${input.conversationSummary}`,
           ]
         : []),
       ...historyMessages,
+      // Where the user is, after the history: the page can change between
+      // turns while the widget stays open, and the current one is the one
+      // "this" refers to.
+      ...pageContextMessages(input.pageContext),
       // After the history, not before it. A thread that ran in Bulgarian
       // for ten turns and then gets an English message is the case that
       // kept failing: whatever the system prompt says about mirroring the
@@ -224,6 +230,7 @@ export const a1Concierge = {
         message: input.message,
         conversationHistory: input.conversationHistory,
         conversationSummary: input.conversationSummary,
+        pageContext: input.pageContext,
         signal: input.signal,
         onToolCall: input.onToolCall,
         onAnswerDelta: input.onAnswerDelta,

@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { A1ChatWidgetOverlay } from "~/components/chat/A1ChatWidgetOverlay";
 
 const push = vi.fn();
+/** Where the widget is floating. A page with nothing to point at by default. */
+const location = { pathname: "/settings", search: "" };
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   useRouter: () => ({
@@ -13,6 +15,8 @@ vi.mock("next/navigation", async (importOriginal) => ({
     back: vi.fn(),
     prefetch: vi.fn(),
   }),
+  usePathname: () => location.pathname,
+  useSearchParams: () => new URLSearchParams(location.search),
 }));
 
 /** The widget panel is the fixed container that holds everything. */
@@ -25,6 +29,30 @@ describe("A1ChatWidgetOverlay", () => {
     vi.clearAllMocks();
     push.mockClear();
     localStorage.clear();
+    location.pathname = "/settings";
+    location.search = "";
+  });
+
+  // What the agent can see is said out loud, and can be switched off.
+  it("names the page it will share, and stops sharing it on a click", async () => {
+    location.pathname = "/notes/12";
+    const user = userEvent.setup();
+    render(<A1ChatWidgetOverlay isOpen />);
+
+    const chip = screen.getByTestId("widget-page-context");
+    expect(chip).toHaveTextContent("This note");
+    expect(chip).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(chip);
+    expect(chip).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(chip);
+    expect(chip).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("offers no page chip where there is nothing to point at", () => {
+    render(<A1ChatWidgetOverlay isOpen />);
+    expect(screen.queryByTestId("widget-page-context")).not.toBeInTheDocument();
   });
 
   /*

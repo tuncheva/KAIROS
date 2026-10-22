@@ -42,8 +42,12 @@ export type AgentSettingControl =
   /** A subset of a few values, as a row of checks; `min` keeps the last one from being unticked. */
   | { kind: "multi"; options: readonly string[]; min?: number }
   | { kind: "toggle" }
-  /** A short line of text, saved on Enter or blur. Empty means "none". */
-  | { kind: "text"; maxLength: number; placeholder?: string }
+  /**
+   * A short line of text, saved on Enter or blur. Empty means "none".
+   * `placeholderKey` names a string under `settings.ai.crew` for a placeholder
+   * that has to be in the reader's language rather than a literal pattern.
+   */
+  | { kind: "text"; maxLength: number; placeholder?: string; placeholderKey?: string }
   /** All of the workspace's projects, or a chosen few (`ProjectScope`). */
   | { kind: "projects" };
 
@@ -81,6 +85,8 @@ const NOTE_TEMPLATES = ["blank", "meeting", "decision"] as const;
 export const NAMING_PLACEHOLDERS = ["client", "topic", "year", "quarter", "month"] as const;
 
 export const NAMING_PATTERN_MAX = 60;
+
+export const PAGE_OPENER_MAX = 300;
 
 /**
  * Which projects an agent may touch: every one the user can, or only some.
@@ -147,6 +153,35 @@ export const AGENT_SETTINGS = {
     control: { kind: "choice", options: LANGUAGES },
     schema: z.enum(LANGUAGES),
     default: "auto",
+  }),
+  /**
+   * What the TopBar's AI button asks about the page you are on.
+   *
+   * Empty means the built-in question for each kind of page. A custom one is
+   * one sentence for every page: "this" in it is resolved by the page context
+   * the widget sends beside the message, so "summarise this and list the
+   * open questions" works on a note and on a project alike. It is sent as the
+   * user's own message — what they would have typed — so it is held to one
+   * plain line rather than to the narrow character set a prompt fragment
+   * like the naming pattern needs.
+   */
+  "workspace_concierge.pageOpener": define({
+    agent: "workspace_concierge",
+    key: "pageOpener",
+    scope: "personal",
+    live: true,
+    control: { kind: "text", maxLength: PAGE_OPENER_MAX, placeholderKey: "pageOpenerPlaceholder" },
+    schema: z
+      .string()
+      .max(PAGE_OPENER_MAX)
+      // Line feed, carriage return, and the Unicode line and paragraph
+      // separators, by code point: the field is a single line.
+      .refine(
+        (s) => ![10, 13, 0x2028, 0x2029].some((c) => s.includes(String.fromCharCode(c))),
+        "characters",
+      )
+      .transform((s) => s.trim().replace(/\s+/g, " ")),
+    default: "",
   }),
   "daily_brief.sections": define({
     agent: "daily_brief",
