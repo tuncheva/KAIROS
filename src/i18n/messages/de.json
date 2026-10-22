@@ -1316,6 +1316,7 @@
     "confirmEvents": "Eventplan bestätigen",
     "applyEvents": "Eventplan anwenden",
     "somethingWentWrong": "Etwas ist schiefgelaufen: {error}",
+    "aiUnavailable": "Der KI-Assistent ist vorübergehend nicht verfügbar. Bitte versuchen Sie es in ein paar Minuten erneut.",
     "noResponse": "Ich konnte keine Antwort generieren. Könntest du deine Frage umformulieren?",
     "alreadyConfirmed": "Bereits bestätigt — verwende Anwenden zum Ausführen.",
     "confirmFailed": "Bestätigung fehlgeschlagen: {error}",

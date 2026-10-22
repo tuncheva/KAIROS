@@ -24,6 +24,14 @@
  *   the token volume and must never reach a JSON parser or the chat transcript.
  * - **Observability.** One structured line per call with model, attempt, latency,
  *   token counts and finish reason.
+ * - **Failover.** The chain is primary models, then the backup provider's
+ *   (`LLM_BACKUP_PROVIDER`), each a {@link Candidate}. A model that just failed
+ *   in a way the next request would repeat — no first byte, quota gone, 404/410,
+ *   a rejected key — is moved to the back of the chain for a cooldown, so later
+ *   requests stop paying its timeout. It is demoted, never dropped: when every
+ *   candidate is cooling down they are all still tried, in order of recovery.
+ *   Once the chain is exhausted the caller gets {@link LlmUnavailableError}, which
+ *   carries a message fit to show a user instead of an upstream response body.
  */
 
 import "server-only";
@@ -31,7 +39,7 @@ import "server-only";
 import { env } from "~/env";
 import { createLogger } from "~/server/logger";
 import { currentUserReasoningEffort } from "./effortScope";
-import { resolveLlmConfig } from "./providers";
+import { resolveLlmConfig, type ResolvedLlmLane } from "./providers";
 
 const log = createLogger("llm");
 
@@ -56,14 +64,20 @@ const DEFAULT_TIMEOUT_MS = 120_000;
  *   "time to full answer" and any guard short enough to be useful would kill
  *   healthy calls.
  *
- * Non-streaming requests therefore keep the total budget as their only clock; a
- * dead endpoint is caught there by {@link chatCompletion} moving to the next
- * model in the chain rather than by a shorter deadline.
+ * That is why {@link chatCompletion} streams on the wire and assembles the answer
+ * itself. It used to send `stream: false` and so had only the total budget as a
+ * clock. A model that never answered cost 120s per attempt, three attempts per
+ * model, and that was most of what "the AI is not working" looked like. Streamed,
+ * the same dead model is detected in 20s, once.
  */
 const FIRST_BYTE_TIMEOUT_MS = 20_000;
 const MAX_ATTEMPTS_PER_MODEL = 3;
 const BACKOFF_BASE_MS = 500;
 const BACKOFF_CAP_MS = 8_000;
+/** Cooldown for faults that tend to clear: silence, quota, exhausted 5xx retries. */
+const COOLDOWN_TRANSIENT_MS = 5 * 60_000;
+/** Cooldown for faults that do not clear on their own: 404/410, a rejected key. */
+const COOLDOWN_PERSISTENT_MS = 30 * 60_000;
 
 /**
  * Default output budget.
@@ -259,46 +273,113 @@ function config() {
   return resolveLlmConfig(env);
 }
 
-function getBaseUrl(): string {
-  return config().baseUrl;
-}
-
-function getApiKey(): string {
-  return config().apiKey;
-}
-
-/** Primary model, then the optional fallback. Empty strings are dropped. */
-function getModelChain(): string[] {
-  return config().models;
+/** One model on one endpoint: the unit the chain retries, demotes and falls back over. */
+interface Candidate {
+  lane: "primary" | "backup";
+  baseUrl: string;
+  apiKey: string;
+  model: string;
 }
 
 /**
- * The cheap chain, for work that does not need the reasoning model.
+ * One lane's models for a tier.
  *
- * Conversation titles, rolling summaries, JSON repair and intent classification
- * are all short, mechanical, and were being served by the same model that plans
- * a thirty-task backlog. Falls back to the strong chain when `LLM_MODEL_FAST` is
- * unset, so tiering is an optimisation and never a hard dependency.
+ * The fast tier exists because conversation titles, rolling summaries, JSON
+ * repair and intent classification are all short, mechanical, and were being
+ * served by the same model that plans a thirty-task backlog. It falls back to
+ * the strong chain when no fast model is set, so tiering is an optimisation and
+ * never a hard dependency.
  */
-function getFastModelChain(): string[] {
-  const { fastModel, models } = config();
-  if (!fastModel) return models;
+function laneModels(lane: ResolvedLlmLane, tier: "fast" | "strong"): string[] {
+  if (tier !== "fast" || !lane.fastModel) return lane.models;
   // Deduplicated: pointing LLM_MODEL_FAST at the same id as LLM_MODEL is the
   // normal configuration for a gateway that serves one model, and the naive
   // concatenation turned that into the same endpoint twice — a doubled retry
   // ladder (three attempts, then three more) against a model already known bad.
-  return [fastModel, ...models.filter((m) => m !== fastModel)];
+  return [lane.fastModel, ...lane.models.filter((m) => m !== lane.fastModel)];
 }
 
-/** Resolve the model chain for one request: explicit pin, then tier, then default. */
-function resolveChain(req: ChatRequest): string[] {
-  if (req.model) return [req.model];
-  return req.tier === "fast" ? getFastModelChain() : getModelChain();
+/**
+ * The chain for one request: primary lane, then backup lane, reordered by health.
+ *
+ * Pinning `req.model` names a model on the primary endpoint and skips the chain.
+ */
+function resolveCandidates(req: ChatRequest): Candidate[] {
+  const cfg = config();
+  const tier = req.tier ?? "strong";
+  const primary = { lane: "primary" as const, baseUrl: cfg.baseUrl, apiKey: cfg.apiKey };
+  if (req.model) return [{ ...primary, model: req.model }];
+
+  const chain: Candidate[] = laneModels(cfg, tier).map((model) => ({ ...primary, model }));
+  if (cfg.backup) {
+    const { baseUrl, apiKey } = cfg.backup;
+    for (const model of laneModels(cfg.backup, tier)) {
+      chain.push({ lane: "backup", baseUrl, apiKey, model });
+    }
+  }
+  return orderByHealth(chain);
 }
 
 /** True when the AI features have enough configuration to run at all. */
 export function isLlmConfigured(): boolean {
-  return Boolean(getBaseUrl() && getApiKey() && getModelChain().length > 0);
+  const { baseUrl, apiKey, models } = config();
+  return Boolean(baseUrl && apiKey && models.length > 0);
+}
+
+// ---------------------------------------------------------------------------
+// Health
+// ---------------------------------------------------------------------------
+
+/**
+ * When each recently failed candidate may lead the chain again, keyed by
+ * endpoint and model.
+ *
+ * Per process and in memory on purpose. It is a latency optimisation, not a
+ * source of truth: losing it on restart costs one slow request per dead model,
+ * and sharing it across instances would need a store this layer has no reason to
+ * depend on.
+ */
+const unhealthyUntil = new Map<string, number>();
+
+function healthKey(c: Candidate): string {
+  return `${c.baseUrl}|${c.model}`;
+}
+
+function markUnhealthy(c: Candidate, cooldownMs: number, reason: string): void {
+  unhealthyUntil.set(healthKey(c), Date.now() + cooldownMs);
+  log.warn("model demoted for a cooldown", {
+    lane: c.lane,
+    model: c.model,
+    reason,
+    cooldownMs,
+  });
+}
+
+function markHealthy(c: Candidate): void {
+  unhealthyUntil.delete(healthKey(c));
+}
+
+/**
+ * Healthy candidates in configured order, then cooling ones, soonest to
+ * recover first.
+ *
+ * Demoted rather than dropped. A cooldown is a guess about the next few minutes,
+ * and if it is wrong for every candidate at once, trying them all late is still
+ * better than failing without trying.
+ */
+function orderByHealth(chain: Candidate[]): Candidate[] {
+  const now = Date.now();
+  const until = (c: Candidate) => unhealthyUntil.get(healthKey(c)) ?? 0;
+  const healthy = chain.filter((c) => until(c) <= now);
+  const cooling = chain
+    .filter((c) => until(c) > now)
+    .sort((a, b) => until(a) - until(b));
+  return [...healthy, ...cooling];
+}
+
+/** Forget every cooldown. For tests, which share this module across cases. */
+export function resetLlmHealth(): void {
+  unhealthyUntil.clear();
 }
 
 // ---------------------------------------------------------------------------
@@ -420,6 +501,28 @@ export class LlmTimeoutError extends Error {
     this.name = "TimeoutError";
     this.phase = phase;
     this.waitedMs = waitedMs;
+  }
+}
+
+/**
+ * Every candidate in the chain failed.
+ *
+ * The message is written for the person waiting on the answer, because it is
+ * the one they see: the chat route forwards `err.message` as-is, and the
+ * upstream error it replaces read like "LLM request failed (504): <html>…".
+ * The upstream failure stays on `cause` for the logs. `code` lets a client
+ * swap in a localised string.
+ */
+export class LlmUnavailableError extends Error {
+  readonly code = "AI_UNAVAILABLE";
+  override readonly cause: unknown;
+
+  constructor(cause: unknown) {
+    super(
+      "The AI assistant is temporarily unavailable. Please try again in a few minutes.",
+    );
+    this.name = "LlmUnavailableError";
+    this.cause = cause;
   }
 }
 
@@ -600,28 +703,35 @@ function buildBody(
  */
 const RETRIABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
-/**
- * Errors that doom every model in the chain equally.
- *
- * A malformed request or a bad key fails identically on the fallback, so trying
- * it only doubles the user's wait. Everything else — a timeout, a 404 for a model
- * this account cannot reach, an upstream 5xx — is a property of *that model's*
- * endpoint, and the fallback exists precisely for it.
- *
- * This distinction is why a stalled primary used to surface as a 500 with the
- * fallback never attempted: the chain threw on the first non-retriable error
- * instead of advancing.
- */
-function isFatalForChain(err: unknown): boolean {
-  if (err instanceof LlmHttpError) {
-    return err.status === 400 || err.status === 401 || err.status === 403;
-  }
+/** Errors no other candidate can fix, so the chain stops and rethrows. */
+function isFatalForRequest(err: unknown): boolean {
   // Truncation says the request was too big for the budget, not that the endpoint
   // is unhealthy; the caller retries with a larger budget instead.
   if (err instanceof TruncatedResponseError) return true;
   // The caller hung up. Nobody is waiting for a fallback answer.
   if (err instanceof Error && err.name === "AbortError") return true;
   return false;
+}
+
+/**
+ * Errors that doom every model *on the same endpoint* equally.
+ *
+ * A malformed request or a bad key fails identically on that gateway's fallback
+ * model, so trying it only doubles the user's wait. A different provider is
+ * another matter: it has its own key, and its own idea of which parameters and
+ * context lengths it accepts, so the backup lane is still worth a try.
+ *
+ * Everything else — a timeout, a 404 for a model this account cannot reach, an
+ * upstream 5xx — is a property of *that model*, and the next model exists
+ * precisely for it. This distinction is why a stalled primary used to surface as
+ * a 500 with the fallback never attempted: the chain threw on the first
+ * non-retriable error instead of advancing.
+ */
+function isFatalForLane(err: unknown): boolean {
+  return (
+    err instanceof LlmHttpError &&
+    (err.status === 400 || err.status === 401 || err.status === 403)
+  );
 }
 
 /**
@@ -661,6 +771,130 @@ function isRetriable(err: unknown): boolean {
     if (err.name === "TypeError") return true;
   }
   return false;
+}
+
+/**
+ * What to do after one failed attempt, and how long to demote the candidate.
+ *
+ * `cooldownMs` is set only for faults the *next request* would hit too. A 400
+ * says this request is wrong, not that the model is, so it demotes nothing.
+ */
+type Verdict =
+  | { action: "throw" }
+  | { action: "retry"; waitMs: number }
+  | { action: "next-model" | "next-lane"; reason: string; cooldownMs?: number };
+
+function verdictFor(err: unknown, attempt: number): Verdict {
+  if (isFatalForRequest(err)) return { action: "throw" };
+
+  if (isFatalForLane(err)) {
+    const status = (err as LlmHttpError).status;
+    return status === 400
+      ? { action: "next-lane", reason: "request rejected (400)" }
+      : {
+          action: "next-lane",
+          reason: `key rejected (${String(status)})`,
+          cooldownMs: COOLDOWN_PERSISTENT_MS,
+        };
+  }
+
+  if (err instanceof LlmHttpError && (err.status === 404 || err.status === 410)) {
+    // Gone or never served to this account. NIM lists models it will not serve.
+    return {
+      action: "next-model",
+      reason: `model unavailable (${String(err.status)})`,
+      cooldownMs: COOLDOWN_PERSISTENT_MS,
+    };
+  }
+
+  // Not worth a second shot at the same endpoint, but no sign it is unhealthy.
+  if (!isRetriable(err)) return { action: "next-model", reason: "not retriable" };
+
+  // Either the gateway never sent a byte, which it will not do on attempt two,
+  // or generation already ran the whole budget. Repeating either costs minutes.
+  if (err instanceof LlmTimeoutError) {
+    return {
+      action: "next-model",
+      reason: `timeout (${err.phase})`,
+      cooldownMs: COOLDOWN_TRANSIENT_MS,
+    };
+  }
+
+  if (isQuotaExhausted(err)) {
+    return {
+      action: "next-model",
+      reason: "quota exhausted (429)",
+      cooldownMs: COOLDOWN_TRANSIENT_MS,
+    };
+  }
+
+  if (attempt >= MAX_ATTEMPTS_PER_MODEL - 1) {
+    return {
+      action: "next-model",
+      reason: "retries exhausted",
+      cooldownMs: COOLDOWN_TRANSIENT_MS,
+    };
+  }
+
+  return {
+    action: "retry",
+    waitMs:
+      err instanceof LlmHttpError && err.retryAfterMs !== undefined
+        ? err.retryAfterMs
+        : backoffMs(attempt),
+  };
+}
+
+/**
+ * Apply a verdict: throw, sleep and say "retry", or record the demotion and say
+ * "advance". `skipLanes` collects lanes that a lane-fatal error has ruled out
+ * for the rest of this request.
+ */
+async function handleFailure(
+  err: unknown,
+  candidate: Candidate,
+  attempt: number,
+  req: ChatRequest,
+  skipLanes: Set<Candidate["lane"]>,
+): Promise<"retry" | "advance"> {
+  const verdict = verdictFor(err, attempt);
+  if (verdict.action === "throw") throw err;
+
+  if (verdict.action === "retry") {
+    log.warn("retriable LLM failure, backing off", {
+      lane: candidate.lane,
+      model: candidate.model,
+      attempt: attempt + 1,
+      waitMs: verdict.waitMs,
+      err,
+    });
+    await sleep(verdict.waitMs, req.signal);
+    return "retry";
+  }
+
+  if (verdict.cooldownMs !== undefined) {
+    markUnhealthy(candidate, verdict.cooldownMs, verdict.reason);
+  }
+  if (verdict.action === "next-lane") skipLanes.add(candidate.lane);
+  log.warn("advancing the chain", {
+    lane: candidate.lane,
+    model: candidate.model,
+    reason: verdict.reason,
+    err,
+  });
+  return "advance";
+}
+
+/**
+ * The error to raise once the chain is exhausted.
+ *
+ * A 400 is a bug in the request rather than an outage, so it surfaces as itself
+ * where it can be fixed. Everything else becomes {@link LlmUnavailableError}.
+ */
+function chainExhausted(lastError: unknown): Error {
+  if (lastError instanceof LlmHttpError && lastError.status === 400) return lastError;
+  log.error("every LLM candidate failed", { err: lastError });
+  return new LlmUnavailableError(lastError);
 }
 
 /** `Retry-After` may be seconds or an HTTP date. */
@@ -791,135 +1025,145 @@ async function toHttpError(res: Response): Promise<LlmHttpError> {
 // Non-streaming
 // ---------------------------------------------------------------------------
 
+/** One POST to one candidate. Shared by both paths so headers stay in one place. */
+function postCompletion(
+  candidate: Candidate,
+  body: Record<string, unknown>,
+  signal: AbortSignal,
+): Promise<Response> {
+  return fetch(`${candidate.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${candidate.apiKey}`,
+      "Content-Type": "application/json",
+      Accept: "text/event-stream, application/json",
+    },
+    body: JSON.stringify(body),
+    signal,
+  });
+}
+
+/** Read a plain JSON completion: a gateway that ignored `stream: true`. */
+async function readJsonCompletion(
+  res: Response,
+  model: string,
+  startedAt: number,
+  purpose?: string,
+): Promise<ChatResponse> {
+  const data = (await res.json()) as WireCompletion;
+  const choice = data.choices?.[0];
+  if (!choice?.message) throw new Error("LLM returned no choices");
+
+  const toolCalls = readToolCalls(choice.message.tool_calls);
+  const finishReason = choice.finish_reason ?? null;
+  const usage = readUsage(data.usage);
+
+  log.info("completion", {
+    purpose: purpose ?? "unspecified",
+    model: data.model ?? model,
+    latencyMs: Date.now() - startedAt,
+    finishReason,
+    toolCalls: toolCalls.length,
+    promptTokens: usage?.promptTokens,
+    completionTokens: usage?.completionTokens,
+    cachedPromptTokens: usage?.cachedPromptTokens,
+  });
+
+  return {
+    content: choice.message.content ?? "",
+    reasoning: choice.message.reasoning_content ?? undefined,
+    toolCalls,
+    finishReason,
+    model: data.model ?? model,
+    usage,
+  };
+}
+
+/**
+ * One attempt against one candidate, streamed on the wire and assembled here.
+ *
+ * Streaming is for the first-byte guard (see {@link FIRST_BYTE_TIMEOUT_MS}), not
+ * for the caller, who still gets one whole response. Because nothing has been
+ * shown to anyone yet, a failure mid-stream is as retriable as one before it,
+ * unlike in {@link streamCompletion}.
+ */
 async function singleCompletion(
   req: ChatRequest,
-  model: string,
+  candidate: Candidate,
 ): Promise<ChatResponse> {
   const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  // No first-byte guard here: this provider withholds headers on a non-streamed
-  // request until generation is complete, so there is no early signal to read.
-  const { signal, firstByteReceived, dispose } = withTimeout(
-    timeoutMs,
-    req.signal,
-    timeoutMs,
-  );
+  const { signal, firstByteReceived, dispose } = withTimeout(timeoutMs, req.signal);
   const startedAt = Date.now();
 
   try {
-    const res = await fetch(`${getBaseUrl()}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${getApiKey()}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(buildBody(req, model, false)),
-      signal,
-    });
+    const res = await postCompletion(candidate, buildBody(req, candidate.model, true), signal);
     // Headers are in, so the endpoint is alive; the rest of the wait is
     // generation and belongs to the total budget alone.
     firstByteReceived();
 
     if (!res.ok) throw await toHttpError(res);
 
-    const data = (await res.json()) as WireCompletion;
-    const choice = data.choices?.[0];
-    if (!choice?.message) throw new Error("LLM returned no choices");
-
-    const content = choice.message.content ?? "";
-    const toolCalls = readToolCalls(choice.message.tool_calls);
-    const finishReason = choice.finish_reason ?? null;
-    const usage = readUsage(data.usage);
-
-    log.info("completion", {
-      purpose: req.purpose ?? "unspecified",
-      model: data.model ?? model,
-      latencyMs: Date.now() - startedAt,
-      finishReason,
-      toolCalls: toolCalls.length,
-      promptTokens: usage?.promptTokens,
-      completionTokens: usage?.completionTokens,
-      cachedPromptTokens: usage?.cachedPromptTokens,
-    });
+    let response: ChatResponse | undefined;
+    const isJson = res.headers.get("content-type")?.includes("application/json");
+    if (isJson || !res.body) {
+      response = await readJsonCompletion(res, candidate.model, startedAt, req.purpose);
+    } else {
+      for await (const event of readStream(res.body, candidate.model, startedAt, req.purpose)) {
+        if (event.type !== "done") continue;
+        response = {
+          content: event.content,
+          reasoning: event.reasoning || undefined,
+          toolCalls: event.toolCalls,
+          finishReason: event.finishReason,
+          model: event.model,
+          usage: event.usage,
+        };
+      }
+    }
+    if (!response) throw new Error("LLM stream ended without a result");
 
     // Truncation is only a failure when the model was producing an answer. A
     // tool-calling turn that stops at the cap still yields usable calls.
-    if (finishReason === "length" && toolCalls.length === 0) {
-      throw new TruncatedResponseError(content, req.maxTokens ?? DEFAULT_MAX_TOKENS);
+    if (response.finishReason === "length" && response.toolCalls.length === 0) {
+      throw new TruncatedResponseError(
+        response.content,
+        req.maxTokens ?? DEFAULT_MAX_TOKENS,
+      );
     }
-
-    return {
-      content,
-      reasoning: choice.message.reasoning_content ?? undefined,
-      toolCalls,
-      finishReason,
-      model: data.model ?? model,
-      usage,
-    };
+    return response;
   } finally {
     dispose();
   }
 }
 
 /**
- * Send a chat completion, retrying transient failures and falling back to the
- * secondary model once the primary is exhausted.
+ * Send a chat completion, retrying transient failures and failing over down the
+ * chain: primary models, then the backup provider's. See the module comment.
  *
  * Pinning `req.model` skips the chain and uses only that model.
  */
 export async function chatCompletion(req: ChatRequest): Promise<ChatResponse> {
   assertConfigured();
 
-  const chain = resolveChain(req);
+  const skipLanes = new Set<Candidate["lane"]>();
   let lastError: unknown;
 
-  for (const model of chain) {
+  for (const candidate of resolveCandidates(req)) {
+    if (skipLanes.has(candidate.lane)) continue;
     for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_MODEL; attempt++) {
       try {
-        return await singleCompletion(req, model);
+        const response = await singleCompletion(req, candidate);
+        markHealthy(candidate);
+        return response;
       } catch (err) {
         lastError = err;
-        if (isFatalForChain(err)) throw err;
-        // Model-specific but not worth a second shot at the same endpoint: move
-        // down the chain rather than abandoning the turn.
-        if (!isRetriable(err)) {
-          log.warn("model failed unretriably, advancing the chain", { model, err });
-          break;
-        }
-        // A gateway that never sent a byte will not send one on attempt two.
-        // Hammering it costs the whole budget and reaches the fallback too late.
-        if (err instanceof LlmTimeoutError && err.phase === "first-byte") {
-          log.warn("endpoint sent no first byte, advancing the chain", { model, err });
-          break;
-        }
-        if (isQuotaExhausted(err)) {
-          log.warn("model is out of quota, advancing the chain", { model });
-          break;
-        }
-
-        const isLastAttempt = attempt === MAX_ATTEMPTS_PER_MODEL - 1;
-        if (isLastAttempt) {
-          log.warn("model exhausted its attempts", { model, err });
-          break;
-        }
-
-        const wait =
-          err instanceof LlmHttpError && err.retryAfterMs !== undefined
-            ? err.retryAfterMs
-            : backoffMs(attempt);
-        log.warn("retriable LLM failure, backing off", {
-          model,
-          attempt: attempt + 1,
-          waitMs: wait,
-          err,
-        });
-        await sleep(wait, req.signal);
+        const next = await handleFailure(err, candidate, attempt, req, skipLanes);
+        if (next === "advance") break;
       }
     }
   }
 
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("All configured models failed");
+  throw chainExhausted(lastError);
 }
 
 /** Send a system + user prompt and get the text back. */
@@ -1017,27 +1261,19 @@ export async function* streamCompletion(
 ): AsyncGenerator<StreamEvent, void, undefined> {
   assertConfigured();
 
-  const chain = resolveChain(req);
   const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const skipLanes = new Set<Candidate["lane"]>();
   let lastError: unknown;
 
-  for (const model of chain) {
+  for (const candidate of resolveCandidates(req)) {
+    if (skipLanes.has(candidate.lane)) continue;
     for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_MODEL; attempt++) {
       const { signal, firstByteReceived, dispose } = withTimeout(timeoutMs, req.signal);
       const startedAt = Date.now();
 
       let res: Response;
       try {
-        res = await fetch(`${getBaseUrl()}/chat/completions`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${getApiKey()}`,
-            "Content-Type": "application/json",
-            Accept: "text/event-stream",
-          },
-          body: JSON.stringify(buildBody(req, model, true)),
-          signal,
-        });
+        res = await postCompletion(candidate, buildBody(req, candidate.model, true), signal);
         // Headers are in — from here the stream owns the total budget.
         firstByteReceived();
         if (!res.ok) throw await toHttpError(res);
@@ -1045,34 +1281,16 @@ export async function* streamCompletion(
       } catch (err) {
         dispose();
         lastError = err;
-        if (isFatalForChain(err)) throw err;
-        if (!isRetriable(err)) break;
-        // Streamed calls get a real first-byte signal, so silence here is a
-        // reliable "not serving" and the fallback should be tried at once.
-        if (err instanceof LlmTimeoutError && err.phase === "first-byte") {
-          log.warn("stream sent no first byte, advancing the chain", { model, err });
-          break;
-        }
-        if (isQuotaExhausted(err)) {
-          log.warn("stream model is out of quota, advancing the chain", { model });
-          break;
-        }
-        if (attempt < MAX_ATTEMPTS_PER_MODEL - 1) {
-          await sleep(
-            err instanceof LlmHttpError && err.retryAfterMs !== undefined
-              ? err.retryAfterMs
-              : backoffMs(attempt),
-            req.signal,
-          );
-          continue;
-        }
-        break;
+        const next = await handleFailure(err, candidate, attempt, req, skipLanes);
+        if (next === "advance") break;
+        continue;
       }
 
       // Past this point the response is committed: surface failures rather than
       // restarting and double-rendering.
+      markHealthy(candidate);
       try {
-        yield* readStream(res.body, model, startedAt, req.purpose);
+        yield* readStream(res.body, candidate.model, startedAt, req.purpose);
         return;
       } finally {
         dispose();
@@ -1080,9 +1298,7 @@ export async function* streamCompletion(
     }
   }
 
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("All configured models failed");
+  throw chainExhausted(lastError);
 }
 
 /**

@@ -75,6 +75,19 @@ export const env = createEnv({
     LLM_API_KEY_NVIDIA: z.string().optional(),
     LLM_API_KEY_VELOCITY: z.string().optional(),
     LLM_API_KEY_DEEPSEEK: z.string().optional(),
+    LLM_API_KEY_GEMINI: z.string().optional(),
+    /**
+     * Second provider, tried after every primary model has failed — a separate
+     * failure domain, unlike LLM_FALLBACK_MODEL on the same gateway. A preset
+     * name from providers.ts; the LLM_BACKUP_* variables below override it.
+     * Off unless it resolves to a base URL, a key and a model.
+     */
+    LLM_BACKUP_PROVIDER: z.string().optional(),
+    LLM_BACKUP_BASE_URL: z.string().url().optional(),
+    /** Never falls back to LLM_API_KEY: that key belongs to the primary host. */
+    LLM_BACKUP_API_KEY: z.string().optional(),
+    LLM_BACKUP_MODEL: z.string().optional(),
+    LLM_BACKUP_MODEL_FAST: z.string().optional(),
     /** Overrides the preset's primary model — and, with it, its fallback. */
     LLM_MODEL: z.string().optional(),
     /** Only tried when the primary model fails retriably. Empty = no fallback. */
@@ -243,6 +256,12 @@ export const env = createEnv({
     LLM_API_KEY_NVIDIA: process.env.LLM_API_KEY_NVIDIA,
     LLM_API_KEY_VELOCITY: process.env.LLM_API_KEY_VELOCITY,
     LLM_API_KEY_DEEPSEEK: process.env.LLM_API_KEY_DEEPSEEK,
+    LLM_API_KEY_GEMINI: process.env.LLM_API_KEY_GEMINI,
+    LLM_BACKUP_PROVIDER: process.env.LLM_BACKUP_PROVIDER,
+    LLM_BACKUP_BASE_URL: process.env.LLM_BACKUP_BASE_URL,
+    LLM_BACKUP_API_KEY: process.env.LLM_BACKUP_API_KEY,
+    LLM_BACKUP_MODEL: process.env.LLM_BACKUP_MODEL,
+    LLM_BACKUP_MODEL_FAST: process.env.LLM_BACKUP_MODEL_FAST,
     LLM_MODEL: process.env.LLM_MODEL,
     LLM_FALLBACK_MODEL: process.env.LLM_FALLBACK_MODEL,
     LLM_MODEL_FAST: process.env.LLM_MODEL_FAST,

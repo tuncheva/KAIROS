@@ -2,6 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 
+import type { PageContext } from "~/lib/pageContext";
+
 /**
  * Client for `POST /api/ai/chat`.
  *
@@ -93,7 +95,11 @@ export interface AgentStreamHandlers {
   /** G-1: a run of answer text. Append it; do not replace. */
   onAnswerDelta?: (text: string) => void;
   onResult: (payload: AgentTurnPayload) => void;
-  onError: (message: string, isRateLimit: boolean) => void;
+  /**
+   * `code` is the server's machine-readable reason when it sent one, e.g.
+   * "AI_UNAVAILABLE" once every model in the chain has failed.
+   */
+  onError: (message: string, isRateLimit: boolean, code?: string) => void;
 }
 
 interface SendOptions {
@@ -120,6 +126,11 @@ interface SendOptions {
    * which also keeps the cheap first routing pass.
    */
   effort?: "low" | "medium" | "high" | "max";
+  /**
+   * The page the user is on, so "this" means something. Ids only — the server
+   * looks up everything else after checking access.
+   */
+  pageContext?: PageContext | null;
 }
 
 /** Split an SSE buffer into complete `event:`/`data:` frames. */
@@ -178,6 +189,7 @@ export function useAgentStream(handlers: AgentStreamHandlers) {
           priorTaskDraftId: opts.priorTaskDraftId,
           agentId: opts.agentId,
           effort: opts.effort,
+          pageContext: opts.pageContext ?? undefined,
         }),
         signal: controller.signal,
       });
@@ -258,6 +270,7 @@ export function useAgentStream(handlers: AgentStreamHandlers) {
               handlersRef.current.onError(
                 (payload as { message: string }).message,
                 false,
+                (payload as { code?: string }).code,
               );
               break;
           }

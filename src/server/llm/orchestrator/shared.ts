@@ -27,6 +27,7 @@ import type {
 import {
   type A1Output,
 } from "~/server/llm/schemas/a1WorkspaceConciergeSchemas";
+import type { ResolvedPageContext } from "~/server/llm/prompts/pageContext";
 import {
   createLogger,
 } from "~/server/logger";
@@ -56,6 +57,12 @@ export interface AgentDraftInput {
    * conversation keeps its beginning without the prompt growing without bound.
    */
   conversationSummary?: string | null;
+  /**
+   * The page the assistant was opened from, already access-checked by
+   * `resolvePageContext`. What "this" means when the user says "help me with
+   * this"; null or absent when there is nothing to point at.
+   */
+  pageContext?: ResolvedPageContext | null;
   /** Cancels the upstream model call when the client disconnects. */
   signal?: AbortSignal;
   /** Fires as each tool starts, so a streaming caller can show real progress. */

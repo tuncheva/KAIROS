@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   X,
@@ -12,7 +12,18 @@ import {
   Check,
   ChevronUp,
   ChevronDown,
+  FileText,
+  StickyNote,
+  CheckSquare,
+  CalendarDays,
+  LayoutDashboard,
+  Megaphone,
 } from "~/components/ui/icons";
+import {
+  pageContextFromPath,
+  pageContextKey,
+  type PageContextKind,
+} from "~/lib/pageContext";
 import { useTranslations } from "next-intl";
 import { ProjectIntelligenceChat } from "~/components/projects/ProjectIntelligenceChat";
 import { AUTO_AGENT } from "~/components/agents/AgentPicker";
@@ -25,6 +36,17 @@ import {
 import { api } from "~/trpc/react";
 
 const ALL_PROJECTS = "__all__";
+
+const PAGE_ICONS: Record<PageContextKind, typeof FileText> = {
+  note: FileText,
+  project: FolderKanban,
+  notes: StickyNote,
+  projects: FolderKanban,
+  tasks: CheckSquare,
+  calendar: CalendarDays,
+  dashboard: LayoutDashboard,
+  events: Megaphone,
+};
 
 /* ────────────── types ────────────── */
 interface Rect {
@@ -211,6 +233,28 @@ export function A1ChatWidgetOverlay(props: {
   const scopeProjectId =
     props.projectId ?? (scope === ALL_PROJECTS ? undefined : Number(scope));
   const scopeProject = projects.find((pr) => String(pr.id) === scope) ?? null;
+
+  /*
+   * The page under the widget, and whether the user lets the agent see it.
+   *
+   * Read from the URL, so it follows the user as they move with the widget
+   * open. Turning it off is remembered for that page only: switching it off on
+   * one note is a decision about that note, and the next page starts shared
+   * again — the chip is right there to say so.
+   */
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const search = searchParams?.toString() ?? "";
+  const page = useMemo(() => pageContextFromPath(pathname, search), [pathname, search]);
+  const pageKey = page ? pageContextKey(page) : null;
+  const [pageOff, setPageOff] = useState<string | null>(null);
+  const pageShared = page !== null && pageKey !== pageOff;
+  const pageLabel = page
+    ? page.kind === "project"
+      ? (projects.find((pr) => pr.id === page.id)?.title ?? t("page.project"))
+      : t(`page.${page.kind}`)
+    : null;
+  const PageIcon = page ? PAGE_ICONS[page.kind] : null;
 
   const agentLabel =
     selectedAgent === AUTO_AGENT
@@ -589,11 +633,34 @@ export function A1ChatWidgetOverlay(props: {
           clearKey={clearKey}
           onCanClearChange={setCanClear}
           prefill={props.prefill}
+          pageContext={pageShared ? page : null}
           projectId={scopeProjectId}
           pinnedAgentId={pinnedAgentId}
           effort={reasoning.effort}
           composerControls={
             <>
+              {/* What the agent can see, said out loud. A model that quietly
+                  reads the open note is a surprise; one that says so, and can
+                  be told not to, is a feature. */}
+              {page && PageIcon && (
+                <button
+                  type="button"
+                  data-testid="widget-page-context"
+                  aria-pressed={pageShared}
+                  onClick={() => setPageOff(pageShared ? pageKey : null)}
+                  title={pageShared ? t("page.sharing") : t("page.notSharing")}
+                  className={`kairos-tap flex max-w-[170px] items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] transition-colors ${
+                    pageShared
+                      ? "text-fg-secondary shadow-[0_0_0_0.5px_rgb(var(--border-medium)/0.8)] hover:text-fg-primary"
+                      : "text-fg-quaternary line-through shadow-[0_0_0_0.5px_rgb(var(--border-medium)/0.5)] hover:text-fg-tertiary"
+                  }`}
+                >
+                  <PageIcon className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{pageLabel}</span>
+                  {pageShared && <X className="h-3 w-3 shrink-0 opacity-60" />}
+                </button>
+              )}
+
               <ComposerMenu
                 tone="accent"
                 title={tAgents("chooseAgent")}

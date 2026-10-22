@@ -61,3 +61,44 @@ describe("A1OutputSchema intent.type", () => {
     expect(() => A1OutputSchema.parse({ intent: {} })).toThrow();
   });
 });
+
+/* ─────────── empty placeholder payloads ─────────── */
+
+describe("A1OutputSchema empty payloads", () => {
+  // Seen live from gpt-oss-20b: a correct handoff with every other key
+  // filled in as an empty placeholder.
+  it("accepts a handoff that arrives with empty answer and clarify", () => {
+    const out = A1OutputSchema.parse({
+      intent: { type: "handoff", scope: {} },
+      handoffs: [
+        {
+          targetAgent: "project_manager",
+          context: { projectName: "училище" },
+          userIntent: "Създай проект с име „училище“",
+        },
+      ],
+      answer: {},
+      clarify: {},
+      citations: [],
+      followUps: [],
+    });
+
+    expect(out.handoff?.targetAgent).toBe("project_manager");
+    expect(out.answer).toBeUndefined();
+    expect(out.clarify).toBeUndefined();
+  });
+
+  it("does not infer a type from an empty payload", () => {
+    expect(() => A1OutputSchema.parse({ intent: {}, answer: {} })).toThrow();
+  });
+
+  it("keeps an answer that has content beside a handoff", () => {
+    const out = A1OutputSchema.parse({
+      intent: { type: "handoff", scope: {} },
+      handoffs: [{ targetAgent: "task_planner", context: {}, userIntent: "Plan it" }],
+      answer: { summary: "Passing this to the planner." },
+    });
+
+    expect(out.answer?.summary).toBe("Passing this to the planner.");
+  });
+});

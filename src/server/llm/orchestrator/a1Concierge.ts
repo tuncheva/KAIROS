@@ -19,6 +19,7 @@ import {
 } from "~/server/llm/context/a1ContextBuilder";
 import { getA1SystemPrompt } from "~/server/llm/prompts/a1Prompts";
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
+import { pageContextMessages } from "~/server/llm/prompts/pageContext";
 import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
 import {
   parseAndValidate,
@@ -84,20 +85,12 @@ function buildFallbackResponse(
       scope: { orgId: safeScope.orgId, projectId: safeScope.projectId },
     },
     answer: {
+      // No `details`. This reply means the model could not be reached, so
+      // the old "rephrase your question" bullets sent the user to fix a
+      // problem that was never theirs, under every outage.
       summary: isBg
-        ? "В момента има проблем с генерирането на отговор от изкуствения интелект. Моля, опитайте да преформулирате въпроса си или уточнете какво ви е необходимо."
-        : "I’m having trouble generating an AI response right now. Try rephrasing your question or be more specific about what you need.",
-      // No bullet glyphs here: every renderer of `answer.details` adds its own,
-      // and a hand-written one shows up as a doubled bullet.
-      details: isBg
-        ? [
-            "Задайте директен въпрос (напр. „Какъв е статусът на проект X?“)",
-            "Ако искате да създадете задачи, кажете „създай задачи за …“ и ще прехвърля заявката към Task Planner",
-          ]
-        : [
-            "Ask a direct question (e.g., ‘What’s the status of Project X?’)",
-            "If you want tasks created, say ‘create tasks for …’ and I’ll hand it off to the Task Planner",
-          ],
+        ? "AI асистентът е временно недостъпен. Опитайте отново след малко."
+        : "The AI assistant is temporarily unavailable. Please try again in a moment.",
     },
     // Normalized by `A1OutputSchema`'s transform on the happy path; set here
     // because a hand-built fallback never passes through it.
@@ -114,6 +107,7 @@ export interface A1TurnInput {
   message: string;
   conversationHistory?: AgentDraftInput["conversationHistory"];
   conversationSummary?: string | null;
+  pageContext?: AgentDraftInput["pageContext"];
   /**
    * The tools the loop may execute. Production leaves this unset and gets the
    * real read tools. The live eval passes stubs over a fixed workspace, so it
@@ -175,6 +169,10 @@ ${input.conversationSummary}`,
           ]
         : []),
       ...historyMessages,
+      // Where the user is, after the history: the page can change between
+      // turns while the widget stays open, and the current one is the one
+      // "this" refers to.
+      ...pageContextMessages(input.pageContext),
       // After the history, not before it. A thread that ran in Bulgarian
       // for ten turns and then gets an English message is the case that
       // kept failing: whatever the system prompt says about mirroring the
@@ -232,6 +230,7 @@ export const a1Concierge = {
         message: input.message,
         conversationHistory: input.conversationHistory,
         conversationSummary: input.conversationSummary,
+        pageContext: input.pageContext,
         signal: input.signal,
         onToolCall: input.onToolCall,
         onAnswerDelta: input.onAnswerDelta,

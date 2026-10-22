@@ -65,6 +65,19 @@ describe("toPlainText", () => {
     expect(toPlainText("3 * 4 tasks")).toBe("3 * 4 tasks");
   });
 
+  it("drops a citation ref echoed into the prose", () => {
+    expect(toPlainText("Payments API – blocked, due 9 Oct (task:42)")).toBe(
+      "Payments API – blocked, due 9 Oct",
+    );
+    expect(toPlainText("Two notes [note:3, note:7] mention it.")).toBe(
+      "Two notes mention it.",
+    );
+  });
+
+  it("keeps a bare ref, which is part of the sentence", () => {
+    expect(toPlainText("Open task:42 first.")).toBe("Open task:42 first.");
+  });
+
   it("is idempotent", () => {
     const once = toPlainText("**Bold** and [a link](http://x.y)");
     expect(toPlainText(once)).toBe(once);

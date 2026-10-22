@@ -1300,6 +1300,9 @@
         "toneDesc": "How it sounds when it replies: direct, friendly or detailed.",
         "languageTitle": "Reply language",
         "languageDesc": "Answer in the language you write in, or always in one language. Applies to every agent in the chat.",
+        "pageOpenerTitle": "AI button question",
+        "pageOpenerDesc": "What the AI button next to search asks about the page you are on. \"This\" always means that page — a note, a project, your calendar. Leave empty for a question suited to each page.",
+        "pageOpenerPlaceholder": "Look at this and tell me what you can do with it.",
         "approvalTitle": "Approval",
         "approvalDesc": "Ask before every change, or let small ones save on their own with Undo — up to 3 changes, nothing deleted, nothing assigned to someone else.",
         "scopeTitle": "Scope",
@@ -2385,7 +2388,18 @@
         "event": "Event",
         "comment": "Comment"
       },
-      "triggerLabel": "Search or ask…"
+      "triggerLabel": "Search or ask…",
+      "askAboutPage": "Ask AI about this page"
+    },
+    "askAboutPage": {
+      "note": "Look at this note and tell me what you can do with it.",
+      "project": "Look at this project and tell me what you can do with it.",
+      "notes": "Look at my notes and tell me what you can help me with.",
+      "projects": "Look at my projects and tell me which ones need attention.",
+      "tasks": "Look at my tasks and tell me what you can help me with.",
+      "calendar": "Look at my calendar for this week and tell me what you can help me with.",
+      "dashboard": "What needs my attention today?",
+      "events": "Look at my events and tell me what you can help me with."
     }
   },
   "chat": {
@@ -2421,6 +2435,7 @@
     "confirmEvents": "Confirm Event Plan",
     "applyEvents": "Apply Event Plan",
     "somethingWentWrong": "Something went wrong: {error}",
+    "aiUnavailable": "The AI assistant is temporarily unavailable. Please try again in a few minutes.",
     "noResponse": "I couldn’t generate a response for that. Could you try rephrasing your question?",
     "alreadyConfirmed": "Already confirmed — use Apply to execute.",
     "confirmFailed": "Confirm failed: {error}",
@@ -2936,6 +2951,18 @@
     "previewProjectArchive": "Archive project"
   },
   "aiConsole": {
+    "page": {
+      "note": "This note",
+      "project": "This project",
+      "notes": "Notes",
+      "projects": "Projects",
+      "tasks": "Tasks",
+      "calendar": "Calendar",
+      "dashboard": "Dashboard",
+      "events": "Events",
+      "sharing": "The assistant can see this page. Click to stop sharing it.",
+      "notSharing": "The assistant can't see this page. Click to share it."
+    },
     "conversations": "Conversations",
     "hideConversations": "Hide conversations",
     "showConversations": "Show conversations",

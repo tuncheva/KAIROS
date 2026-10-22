@@ -36,10 +36,14 @@ import { createLogger } from "~/server/logger";
 import { entitlementsFor } from "~/server/billing/entitlements";
 import { consumeRateLimit } from "~/server/security/rateLimit";
 import {
+  handoffReplies,
   runAgentTurn,
   type AgentTurnResult,
 } from "~/server/llm/orchestrator/handoff";
 import { isPinnable } from "~/server/llm/agents/registry";
+import { resolvePageContext } from "~/server/llm/context/pageContext";
+import { parsePageContext } from "~/lib/pageContext";
+import { LlmUnavailableError } from "~/server/llm/core/modelClient";
 import {
   isUserReasoningEffort,
   withUserReasoningEffort,
@@ -71,10 +75,18 @@ interface ChatRequestBody {
   agentId?: unknown;
   /** How hard the model thinks: low/medium/high/max. Omit for the default. */
   effort?: unknown;
+  /** The page the widget was opened from — ids only, see `~/lib/pageContext`. */
+  pageContext?: unknown;
 }
 
 function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+/** The assistant row for a turn: A1's output, plus the sub-agents' replies when there are any. */
+function storedTurn(result: AgentTurnResult) {
+  const replies = handoffReplies(result.plans);
+  return replies.length > 0 ? { ...result.a1, handoffReplies: replies } : result.a1;
 }
 
 export async function POST(request: Request) {
@@ -122,6 +134,10 @@ export async function POST(request: Request) {
   // Same leniency as the agent id: an unknown value is the default, not a 400.
   const effort = isUserReasoningEffort(body.effort) ? body.effort : undefined;
 
+  // And again for the page: a hint about what "this" means, never a reason to
+  // refuse the turn.
+  const requestedPage = parsePageContext(body.pageContext);
+
   // Built before the rate-limit gate rather than after: the ceiling is now the
   // caller's plan ceiling, and resolving entitlements needs a context.
   // `apiKeyId: null` — this route authenticates by cookie only.
@@ -158,15 +174,25 @@ export async function POST(request: Request) {
   // One select for the conversation, one for its recent turns — see
   // `openConversation`. This is the last thing between the request and the first
   // streamed byte, so whatever does not have to happen here does not.
-  const {
-    conversationId,
-    messages: history,
-    summary,
-  } = await openConversation(ctx, {
-    conversationId: requestedConversationId,
-    userId,
-    projectId,
-  });
+  //
+  // The page lookup rides alongside: it is one indexed select, independent of
+  // the conversation, and waiting for them in turn would put both in front of
+  // the first byte.
+  const [
+    {
+      conversationId,
+      messages: history,
+      summary,
+    },
+    pageContext,
+  ] = await Promise.all([
+    openConversation(ctx, {
+      conversationId: requestedConversationId,
+      userId,
+      projectId,
+    }),
+    resolvePageContext(ctx, requestedPage),
+  ]);
 
   const encoder = new TextEncoder();
   const startedAt = Date.now();
@@ -205,7 +231,9 @@ export async function POST(request: Request) {
           role: "assistant",
           // Store the structured output, which is what the model produced
           // and what the next turn should see — not the rendered bubble.
-          content: JSON.stringify(turn.result.a1),
+          // Plus what any sub-agent said: without it, a question Daedalus
+          // asked was missing from the history its answer gets read against.
+          content: JSON.stringify(storedTurn(turn.result)),
           // On a pinned turn A1 never ran, so attributing the message to it
           // would make the history claim a model call that did not happen.
           agentId: pinnedAgent ?? "workspace_concierge",
@@ -245,6 +273,7 @@ export async function POST(request: Request) {
             scope: projectId ? { projectId } : undefined,
             conversationHistory: history,
             conversationSummary: summary,
+            pageContext,
             priorTaskDraftId,
             pinnedAgent,
             signal: request.signal,
@@ -267,6 +296,9 @@ export async function POST(request: Request) {
             err instanceof Error
               ? err.message
               : "The assistant failed to answer.",
+          // Lets the client show its own localised "try again later" instead of
+          // an English message, when every model in the chain is down.
+          ...(err instanceof LlmUnavailableError ? { code: err.code } : {}),
         });
       } finally {
         closed = true;

@@ -17,10 +17,7 @@ describe("resolveLlmConfig", () => {
 
     expect(config.provider).toBe("nvidia");
     expect(config.baseUrl).toBe("https://integrate.api.nvidia.com/v1");
-    expect(config.models).toEqual([
-      "deepseek-ai/deepseek-v4-flash",
-      "deepseek-ai/deepseek-v4-pro",
-    ]);
+    expect(config.models).toEqual(["openai/gpt-oss-20b"]);
     expect(config.apiKey).toBe("nvapi-key");
   });
 
@@ -97,10 +94,7 @@ describe("resolveLlmConfig", () => {
       LLM_API_KEY: "sk-shared",
     });
 
-    expect(config.models).toEqual([
-      "deepseek-ai/deepseek-v4-flash",
-      "deepseek-ai/deepseek-v4-pro",
-    ]);
+    expect(config.models).toEqual(["openai/gpt-oss-20b"]);
     expect(config.apiKey).toBe("sk-shared");
   });
 
@@ -114,6 +108,66 @@ describe("resolveLlmConfig", () => {
   it("throws on an unknown provider rather than silently serving nothing", () => {
     expect(() => resolveLlmConfig({ LLM_PROVIDER: "openai" })).toThrow(
       /not a known provider/,
+    );
+  });
+
+  it("carries the preset's fallback when the primary is not overridden", () => {
+    expect(resolveLlmConfig({ LLM_PROVIDER: "gemini" }).models).toEqual([
+      "gemini-3.8-flash",
+      "gemini-3.1-flash-lite",
+    ]);
+  });
+});
+
+describe("resolveLlmConfig — backup provider", () => {
+  it("is off unless it has a base URL, a key and a model", () => {
+    expect(resolveLlmConfig({ LLM_BACKUP_PROVIDER: "gemini" }).backup).toBeNull();
+  });
+
+  it("fills the backup lane from its preset and its own key", () => {
+    const { backup } = resolveLlmConfig({
+      LLM_PROVIDER: "nvidia",
+      LLM_API_KEY_NVIDIA: "nvapi-key",
+      LLM_BACKUP_PROVIDER: "gemini",
+      LLM_API_KEY_GEMINI: "gemini-key",
+    });
+
+    expect(backup).toEqual({
+      provider: "gemini",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+      apiKey: "gemini-key",
+      models: ["gemini-3.8-flash", "gemini-3.1-flash-lite"],
+      fastModel: "gemini-3.1-flash-lite",
+    });
+  });
+
+  it("never borrows the primary's shared key", () => {
+    // Sending one host's key to another leaks it for a guaranteed 401.
+    const config = resolveLlmConfig({
+      LLM_API_KEY: "sk-primary",
+      LLM_BACKUP_PROVIDER: "gemini",
+    });
+
+    expect(config.backup).toBeNull();
+  });
+
+  it("works from raw variables with no preset", () => {
+    const { backup } = resolveLlmConfig({
+      LLM_BACKUP_BASE_URL: "https://backup.test/v1/",
+      LLM_BACKUP_API_KEY: "sk-backup",
+      LLM_BACKUP_MODEL: "backup-model",
+    });
+
+    expect(backup).toMatchObject({
+      provider: null,
+      baseUrl: "https://backup.test/v1",
+      models: ["backup-model"],
+    });
+  });
+
+  it("throws on an unknown backup provider", () => {
+    expect(() => resolveLlmConfig({ LLM_BACKUP_PROVIDER: "openai" })).toThrow(
+      /LLM_BACKUP_PROVIDER="openai" is not a known provider/,
     );
   });
 });

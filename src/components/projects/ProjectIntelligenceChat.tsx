@@ -13,6 +13,7 @@ import {
 } from "~/hooks/useAgentStream";
 import { useTranslations } from "next-intl";
 import { useAgentLabel } from "~/components/agents/useAgentLabel";
+import type { PageContext } from "~/lib/pageContext";
 import { api } from "~/trpc/react";
 
 import { PlanDiffCard } from "./PlanDiffCard";
@@ -769,6 +770,13 @@ export function ProjectIntelligenceChat(props: {
    */
   prefill?: string;
   /**
+   * The page the chat is floating over, sent with every turn.
+   *
+   * Every turn rather than the first: the widget stays open while the user
+   * moves between pages, and "this" should mean the page they are on now.
+   */
+  pageContext?: PageContext | null;
+  /**
    * A sub-agent pinned in the workspace picker.
    *
    * Undefined is Auto — A1 routes and hands off, which is what every caller
@@ -1470,6 +1478,12 @@ export function ProjectIntelligenceChat(props: {
       );
     },
     onResult: (payload) => {
+      // A turn that opened a new conversation makes the cached "most recent"
+      // one stale, and that cache never expires on its own — the next surface
+      // to restore the latest thread would otherwise reopen the old chat.
+      if (conversationIdRef.current !== payload.conversationId) {
+        void utils.agent.latestConversation.invalidate();
+      }
       conversationIdRef.current = payload.conversationId;
       setProgressLabel(null);
 
@@ -1519,7 +1533,7 @@ export function ProjectIntelligenceChat(props: {
         void utils.note.invalidate();
       }
     },
-    onError: (message, isRateLimit) => {
+    onError: (message, isRateLimit, code) => {
       setProgressLabel(null);
       pushTrail({ kind: "error", label: tc("trailFailed"), detail: message });
       props.onBusyChange?.(false);
@@ -1536,7 +1550,10 @@ export function ProjectIntelligenceChat(props: {
       }
       setMessages((prev) =>
         replaceThinking(prev, {
-          text: t("somethingWentWrong", { error: message }),
+          text:
+            code === "AI_UNAVAILABLE"
+              ? t("aiUnavailable")
+              : t("somethingWentWrong", { error: message }),
           createdAt: new Date(),
         }),
       );
@@ -1585,9 +1602,27 @@ export function ProjectIntelligenceChat(props: {
   const pinnedConversationId = props.conversationId;
   const wantsLatest = pinnedConversationId === undefined;
 
+  /**
+   * A thread mounted to ask something — the AI button, a Risk Radar fix, the
+   * palette — starts a conversation of its own rather than restoring the last.
+   *
+   * The question is sent on mount, before the last conversation can have
+   * loaded, so it went out with no conversation id and was stored in a new
+   * one; then the old one arrived and was poured over the screen. The user
+   * saw a chat they had not opened, without the question they had just asked,
+   * and the answer went to a thread nothing was showing. Asking about the page
+   * in front of you is a new question, so a new thread is also what it should
+   * have been. Read once: a new question remounts the thread anyway.
+   */
+  const startsFresh = useRef(wantsLatest && Boolean(props.prefill)).current;
+
   const latestQuery = api.agent.latestConversation.useQuery(
     { projectId },
-    { enabled: wantsLatest, refetchOnWindowFocus: false, staleTime: Infinity },
+    {
+      enabled: wantsLatest && !startsFresh,
+      refetchOnWindowFocus: false,
+      staleTime: Infinity,
+    },
   );
 
   const pinnedQuery = api.agent.conversation.useQuery(
@@ -1599,13 +1634,21 @@ export function ProjectIntelligenceChat(props: {
     },
   );
 
-  const historyData = wantsLatest
-    ? latestQuery.data
-    : typeof pinnedConversationId === "string" && pinnedQuery.data
-      ? { conversationId: pinnedConversationId, messages: pinnedQuery.data }
-      : undefined;
+  const historyData = startsFresh
+    ? undefined
+    : wantsLatest
+      ? latestQuery.data
+      : typeof pinnedConversationId === "string" && pinnedQuery.data
+        ? { conversationId: pinnedConversationId, messages: pinnedQuery.data }
+        : undefined;
 
-  const hydratedRef = useRef(false);
+  /**
+   * Latched once there is nothing left to restore: after a restore, after
+   * "start over", and as soon as the user sends anything — history that turns
+   * up after a message is on screen is older than that message, and replacing
+   * the screen with it is how a sent question used to disappear.
+   */
+  const hydratedRef = useRef(startsFresh);
 
   /**
    * A pinned thread's id is known before its messages have loaded. Seeding it
@@ -1642,13 +1685,22 @@ export function ProjectIntelligenceChat(props: {
         try {
           const parsed = JSON.parse(m.content) as {
             answer?: { summary?: string; details?: string[] };
+            clarify?: { question?: string; options?: string[] };
+            handoffReplies?: Array<{ summary?: string; questions?: string[] }>;
           };
-          if (parsed.answer?.summary) {
-            text = [
-              parsed.answer.summary,
-              ...(parsed.answer.details ?? []).map((d) => asBullet(d)),
-            ].join("\n");
-          }
+          // A clarifying question or a handoff has no `answer`, and used to
+          // come back from a reload as the raw JSON of the stored turn.
+          const lines = [
+            parsed.answer?.summary,
+            ...(parsed.answer?.details ?? []).map((d) => asBullet(d)),
+            parsed.clarify?.question,
+            ...(parsed.clarify?.options ?? []).map((o) => asBullet(o)),
+            ...(parsed.handoffReplies ?? []).flatMap((r) => [
+              r.summary,
+              ...(r.questions ?? []).map((q) => asBullet(q)),
+            ]),
+          ].filter((l): l is string => Boolean(l));
+          if (lines.length > 0) text = lines.join("\n");
         } catch {
           // Older rows, or a turn stored as plain text: show it as-is.
         }
@@ -1766,6 +1818,8 @@ export function ProjectIntelligenceChat(props: {
       const msg = text.trim();
       if (!msg) return;
 
+      // See `hydratedRef`: from here on the screen is this thread.
+      hydratedRef.current = true;
       setDraft("");
       setMessages((prev) => [
         ...prev,
@@ -1799,10 +1853,11 @@ export function ProjectIntelligenceChat(props: {
         conversationId: conversationIdRef.current,
         agentId: pinnedAgentId,
         effort,
+        pageContext: props.pageContext,
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [projectId, pinnedAgentId, effort, pushTrail, sendTurn, tc],
+    [projectId, pinnedAgentId, effort, props.pageContext, pushTrail, sendTurn, tc],
   );
 
   /**

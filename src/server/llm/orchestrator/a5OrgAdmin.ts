@@ -34,6 +34,7 @@ import {
 import { buildA5Context } from "~/server/llm/context/a5ContextBuilder";
 import { completeJson } from "~/server/llm/core/jsonRepair";
 import { getA5SystemPrompt } from "~/server/llm/prompts/a5Prompts";
+import { handoffContextMessages } from "~/server/llm/prompts/handoffContext";
 import { replyLanguageMessages } from "~/server/llm/prompts/replyLanguage";
 import { fixedReplyLanguage } from "~/server/llm/prompts/languageRules";
 import { localized, type LocalizedText } from "~/server/llm/locale";
@@ -214,6 +215,7 @@ export const a5OrgAdmin = {
           message: input.message,
           originalMessage: input.originalMessage,
         }),
+        ...handoffContextMessages(input.handoffContext),
         { role: "user", content: input.message },
       ],
       schema: OrgAdminDraftSchema,

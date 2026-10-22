@@ -148,8 +148,36 @@ function inferIntentType(raw: unknown): unknown {
   return { ...out, intent: { ...intent, type } };
 }
 
+/**
+ * Remove payloads the model emitted as empty placeholders.
+ *
+ * Small models fill in every key they have seen: a correct handoff arrives with
+ * `"answer": {}` and `"clarify": {}` beside it. The empty `answer` then fails
+ * `summary`'s min length and sinks a turn that had everything it needed. An
+ * empty payload says nothing, so it is dropped rather than repaired. One with
+ * content is kept, because an answer beside a handoff is a real shape.
+ */
+function dropEmptyPayloads(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw;
+  const out = { ...(raw as Record<string, unknown>) };
+  const blank = (v: unknown) => typeof v !== "string" || v.trim().length === 0;
+  const isEmptyObject = (v: unknown) =>
+    typeof v === "object" && v !== null && !Array.isArray(v) && Object.keys(v).length === 0;
+
+  const answer = out.answer as Record<string, unknown> | undefined;
+  if (isEmptyObject(answer) || (answer && typeof answer === "object" && blank(answer.summary) && !answer.details)) {
+    delete out.answer;
+  }
+  const clarify = out.clarify as Record<string, unknown> | undefined;
+  if (isEmptyObject(clarify) || (clarify && typeof clarify === "object" && blank(clarify.question))) {
+    delete out.clarify;
+  }
+  if (isEmptyObject(out.draftPlan)) delete out.draftPlan;
+  return out;
+}
+
 const A1BaseSchema = z.preprocess(
-  inferIntentType,
+  (raw) => inferIntentType(dropEmptyPayloads(raw)),
   z
   .object({
     intent: ConciergeIntentSchema,
