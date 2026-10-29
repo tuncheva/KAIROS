@@ -25,24 +25,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Skeleton, SkeletonStatus } from "~/components/ui/Skeleton";
 import { SkeletonSlow } from "~/components/ui/SkeletonSlow";
-import {
-  AlertCircle,
-  ArrowLeft,
-  BookOpen,
-  CalendarDays,
-  Check,
-  CloudOff,
-  FileText,
-  FolderOpen,
-  Loader2,
-  Lock,
-  LockOpen,
-  MoreHorizontal,
-  Plus,
-  Share2,
-  Trash2,
-  X,
-} from "~/components/ui/icons";
+import { AlertCircle, ArrowLeft, BookOpen, CalendarDays, Check, CloudOff, FileText, FolderOpen, Lock, LockOpen, MoreHorizontal, Plus, Share2, Trash2, X } from "~/components/ui/icons";
 
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from "./Menu";
 import { toNotePassword } from "~/lib/notePassword";
@@ -63,6 +46,7 @@ import {
   type NoteItem,
 } from "./notesData";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 export interface DraftInput {
   title: string;
   content: string;
@@ -84,7 +68,7 @@ export interface LockState {
 const STRIP =
   "notes-strip mb-4 flex items-center gap-2.5 rounded-md border border-border-medium bg-bg-surface px-3 py-2.5";
 const STRIP_INPUT =
-  "min-w-0 flex-1 rounded-lg border border-border-medium bg-bg-elevated px-2.5 py-1.5 text-[12px] tabular-nums text-fg-primary outline-none transition-colors focus:border-accent-primary/60 focus:ring-[3px] focus:ring-accent-primary/10";
+  "min-w-0 flex-1 rounded-sm border border-border-medium bg-bg-elevated px-2.5 py-1.5 text-[12px] tabular-nums text-fg-primary outline-none transition-colors focus:border-accent-primary/60 focus:ring-[3px] focus:ring-accent-primary/10";
 
 export function NotePage({
   note,
@@ -506,7 +490,7 @@ export function NotePage({
             onBlur={() => void autosave.flush()}
             readOnly={readOnly}
             placeholder={t("untitled")}
-            className="note-serif w-full bg-transparent text-[32px] leading-[1.12] font-medium tracking-[-0.02em] text-fg-primary caret-accent-primary placeholder:text-fg-quaternary focus:outline-none md:text-[44px]"
+            className="note-serif w-full bg-transparent text-[32px] leading-[1.12] font-medium tracking-[-0.02em] text-fg-primary caret-accent-primary placeholder:text-fg-tertiary focus:outline-none md:text-[44px]"
           />
 
           <p className={`${MICRO} mt-3 mb-4 flex flex-wrap items-center gap-x-3.5 gap-y-1 font-normal text-[12.5px]`}>
@@ -631,7 +615,7 @@ export function NotePage({
                 onChange={(event) => setContent(event.target.value)}
                 onBlur={() => void autosave.flush()}
                 placeholder={t("create.contentPlaceholder")}
-                className="note-serif min-h-[240px] w-full flex-1 resize-none bg-transparent text-[18.5px] leading-[1.72] text-note-write caret-accent-primary placeholder:text-fg-quaternary focus:outline-none"
+                className="note-serif min-h-[240px] w-full flex-1 resize-none bg-transparent text-[18.5px] leading-[1.72] text-note-write caret-accent-primary placeholder:text-fg-tertiary focus:outline-none"
               />
             </>
           )}
@@ -712,7 +696,7 @@ function SaveIndicator({
   if (status === "saving") {
     return (
       <span key="saving" className={`${shell} text-fg-tertiary`}>
-        <Loader2 size={11} className="animate-spin" />
+        <PendingDot />
         {t("actions.saving")}
       </span>
     );
@@ -729,7 +713,7 @@ function SaveIndicator({
 
   if (status === "dirty") {
     return (
-      <span key="dirty" className={`${shell} text-fg-quaternary`}>
+      <span key="dirty" className={`${shell} text-fg-tertiary`}>
         <AlertCircle size={11} />
         {t("messages.unsaved")}
       </span>

@@ -62,7 +62,7 @@ export function TeamWorkspacesSkeleton() {
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden px-3 pb-3.5" aria-hidden="true">
         <span className={cn(TEAM_EYEBROW, "px-2.5 pt-1.5 pb-2")}>{t("workspaces")}</span>
         <div className="flex w-full items-center gap-3 rounded-lg p-2.5 text-tui-ink">
-          <span className="grid h-9 w-9 flex-none place-items-center rounded-[9px] bg-tui-ink/5 text-tui-ink3">
+          <span className="grid h-9 w-9 flex-none place-items-center rounded-sm bg-tui-ink/5 text-tui-ink3">
             <User size={15} />
           </span>
           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -82,11 +82,11 @@ export function TeamWorkspacesSkeleton() {
       </div>
 
       <div className="flex flex-col gap-2 border-t border-tui-ink/8 px-4 pt-3.5 pb-4" aria-hidden="true">
-        <span className={cn(OUTLINE, "flex h-9 items-center justify-center gap-2 rounded-full px-4 text-[13px] font-medium text-tui-ink")}>
+        <span className={cn(OUTLINE, "flex h-9 items-center justify-center gap-2 rounded-md px-4 text-[13px] font-medium text-tui-ink")}>
           <KeyRound size={14} className="text-tui-ink2" />
           {t("joinWithCode")}
         </span>
-        <span className={cn(OUTLINE, "flex h-9 items-center justify-center gap-2 rounded-full px-4 text-[13px] font-medium text-tui-ink")}>
+        <span className={cn(OUTLINE, "flex h-9 items-center justify-center gap-2 rounded-md px-4 text-[13px] font-medium text-tui-ink")}>
           <Plus size={14} className="text-tui-ink2" />
           {t("newOrg")}
         </span>
@@ -136,12 +136,12 @@ export function TeamOrgSkeleton({ onRetry }: { onRetry?: () => void }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5 px-5 pt-4 pb-3 sm:px-7" aria-hidden="true">
-        <span className={cn(OUTLINE, "flex h-9 w-full items-center gap-2.5 rounded-full bg-tui-bg pr-2 pl-3.5 text-[13.5px] text-tui-ink3 sm:w-[280px]")}>
+        <span className={cn(OUTLINE, "flex h-9 w-full items-center gap-2.5 rounded-md bg-tui-bg pr-2 pl-3.5 text-[13.5px] text-tui-ink3 sm:w-[280px]")}>
           <Search size={14} className="flex-none" />
           {t("searchPeople")}
         </span>
         <span className="hidden flex-1 sm:block" />
-        <span className={cn(OUTLINE, "flex h-7 items-center gap-1.5 rounded-full px-[11px] text-[12.5px] font-medium text-tui-ink2")}>
+        <span className={cn(OUTLINE, "flex h-7 items-center gap-1.5 rounded-sm px-[11px] text-[12.5px] font-medium text-tui-ink2")}>
           {t("filterAll")}
           <Skeleton className="h-[7px] w-3" row={2} />
         </span>
@@ -228,7 +228,7 @@ export function TeamPersonSkeleton() {
                 {TEMPLATE_ROLE_ORDER.map((r) => (
                   <span
                     key={r}
-                    className={cn(OUTLINE, "flex h-[30px] items-center rounded-full px-3 text-[12.5px] font-medium text-tui-ink3")}
+                    className={cn(OUTLINE, "flex h-[30px] items-center rounded-sm px-3 text-[12.5px] font-medium text-tui-ink3")}
                   >
                     {tRoles(r)}
                   </span>
@@ -244,7 +244,7 @@ export function TeamPersonSkeleton() {
               <div className="-mx-2 flex flex-col gap-0.5">
                 {PERMISSION_DISPLAY_ORDER.map((key, i) => (
                   <span key={key} className="flex items-center gap-3 px-2 py-[7px] text-[13.5px] text-tui-ink3">
-                    <span className="flex h-4 w-4 flex-none overflow-hidden rounded-[4px] border border-tui-ink/16">
+                    <span className="flex h-4 w-4 flex-none overflow-hidden rounded-xs border border-tui-ink/16">
                       <Skeleton className="h-full w-full" row={i + 5} style={{ borderRadius: 0 }} />
                     </span>
                     <span className="flex-1">{label(key)}</span>

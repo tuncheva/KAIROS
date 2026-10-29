@@ -94,7 +94,7 @@ export function TeamWorkspaces({
           <span className="truncate text-[12.5px] text-tui-ink3">{sub}</span>
         </span>
         {activeId === id ? (
-          <span className="flex h-[22px] flex-none items-center rounded-full border border-tui-accent/45 px-[9px] text-[11px] font-semibold text-tui-accent">
+          <span className="flex h-[22px] flex-none items-center rounded-sm border border-tui-accent/45 px-[9px] text-[11px] font-semibold text-tui-accent">
             {t("active")}
           </span>
         ) : null}
@@ -124,7 +124,7 @@ export function TeamWorkspaces({
                 className="team-glow mb-3 flex flex-col gap-3 rounded-lg border border-tui-accent/45 bg-tui-accent/6 p-3.5"
               >
                 <div className="flex items-center gap-3">
-                  <OrgBadge id={invite.organizationId} name={invite.orgName} size={36} rounded="rounded-[9px]" />
+                  <OrgBadge id={invite.organizationId} name={invite.orgName} size={36} rounded="rounded-sm" />
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="truncate text-[14.5px] font-semibold">{invite.orgName}</span>
                     <span className="text-[12.5px] text-tui-ink2">
@@ -159,7 +159,7 @@ export function TeamWorkspaces({
         {row(
           "personal",
           0,
-          <span className="grid h-9 w-9 flex-none place-items-center rounded-[9px] bg-tui-ink/5 text-tui-ink3">
+          <span className="grid h-9 w-9 flex-none place-items-center rounded-sm bg-tui-ink/5 text-tui-ink3">
             <User size={15} />
           </span>,
           t("personalWorkspace"),
@@ -178,7 +178,7 @@ export function TeamWorkspaces({
           row(
             org.id,
             i + 1,
-            <OrgBadge id={org.id} name={org.name} image={org.image} size={36} rounded="rounded-[9px]" />,
+            <OrgBadge id={org.id} name={org.name} image={org.image} size={36} rounded="rounded-sm" />,
             org.name,
             t("wsSub", { role: tRoles(shownRole(org.role)), count: org.memberCount }),
           ),

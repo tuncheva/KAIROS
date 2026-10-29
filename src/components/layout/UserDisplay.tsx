@@ -291,7 +291,7 @@ export function UserDisplay() {
  <div className="p-1.5">
  <a
  href="/orgs"
- className="flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-lg transition-colors"
+ className="flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-md transition-colors"
  onClick={() => setIsOpen(false)}
  role="menuitem"
  >
@@ -302,7 +302,7 @@ export function UserDisplay() {
  {otherAccounts.length === 0 ? (
  <button
  onClick={handleSwitchAccount}
- className="w-full flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-lg transition-colors"
+ className="w-full flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-md transition-colors"
  role="menuitem"
  >
  <LogIn size={16} />
@@ -331,7 +331,7 @@ export function UserDisplay() {
  value={switchPassword}
  onChange={(e) => setSwitchPassword(e.target.value)}
  placeholder={tSettings("security.switchPasswordLabel")}
- className="w-full px-2.5 py-1.5 text-sm rounded-lg bg-tui-ink/[0.035] text-tui-ink border border-tui-ink/12 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-tui-accent"
+ className="w-full px-2.5 py-1.5 text-sm rounded-sm bg-tui-ink/[0.035] text-tui-ink border border-tui-ink/12 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-tui-accent"
  />
  {switchError ? (
  <div className="text-xs text-status-danger-ink">{switchError}</div>
@@ -340,7 +340,7 @@ export function UserDisplay() {
  <button
  type="submit"
  disabled={isSwitching}
- className="flex-1 px-2.5 py-1.5 text-sm rounded-full bg-tui-accent text-tui-on-accent disabled:opacity-60"
+ className="flex-1 px-2.5 py-1.5 text-sm rounded-md bg-tui-accent text-tui-on-accent disabled:opacity-60"
  >
  {isSwitching
  ? tSettings("security.switching")
@@ -349,7 +349,7 @@ export function UserDisplay() {
  <button
  type="button"
  onClick={cancelSwitch}
- className="px-2.5 py-1.5 text-sm rounded-full text-tui-ink2 hover:bg-tui-ink/[0.045]"
+ className="px-2.5 py-1.5 text-sm rounded-md text-tui-ink2 hover:bg-tui-ink/[0.045]"
  >
  {tSettings("security.switchCancel")}
  </button>
@@ -367,7 +367,7 @@ export function UserDisplay() {
  <button
  key={acct.email}
  onClick={() => beginSwitchToAccount(acct)}
- className="w-full flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-lg transition-colors"
+ className="w-full flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-md transition-colors"
  role="menuitem"
  >
  {acct.image ? (
@@ -388,7 +388,7 @@ export function UserDisplay() {
 
  <button
  onClick={handleSwitchAccount}
- className="w-full flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-lg transition-colors"
+ className="w-full flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-md transition-colors"
  role="menuitem"
  >
  <LogIn size={16} />
@@ -399,7 +399,7 @@ export function UserDisplay() {
 
  <a
  href="/settings"
- className="flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-lg transition-colors"
+ className="flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-ink hover:bg-tui-ink/[0.045] rounded-md transition-colors"
  onClick={() => setIsOpen(false)}
  role="menuitem"
  >
@@ -422,7 +422,7 @@ export function UserDisplay() {
  <div aria-hidden="true" className="mx-2.5 my-1 border-t border-tui-ink/8" />
  <button
  onClick={handleSignOut}
- className="w-full flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-danger hover:bg-tui-danger/10 rounded-lg transition-colors"
+ className="w-full flex items-center gap-3 px-2.5 py-2 text-[13.5px] text-tui-danger hover:bg-tui-danger/10 rounded-md transition-colors"
  role="menuitem"
  >
  <LogOut size={16} />

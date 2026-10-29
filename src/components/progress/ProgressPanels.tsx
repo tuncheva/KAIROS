@@ -690,7 +690,7 @@ export function TeamTable({
                     <span
                       key={index}
                       className={cn(
-                        "w-1 rounded-[1px]",
+                        "w-1 rounded-xs",
                         count === 0
                           ? "bg-tui-ink/[0.12]"
                           : row.member.isSelf

@@ -86,6 +86,7 @@
   --color-accent-secondary: rgb(var(--accent-secondary));
   --color-accent-tertiary: rgb(var(--accent-tertiary));
   --color-accent-hover: rgb(var(--accent-hover));
+  --color-on-accent: rgb(var(--on-accent));
 
   /* Brand palette */
   --color-brand-purple: rgb(var(--brand-purple));
@@ -166,7 +167,11 @@
      Four steps, tied to the element class rather than to taste:
        sm  chips / inputs      md  buttons / fields
        lg  cards / panels      xl  dialogs / drawers
-     `rounded-full` is reserved for the marketing pages. */
+     plus `xs` for marks smaller than a chip — checkboxes, key caps, legend
+     swatches, chart cells and bars — where 8px would read as a circle.
+     `rounded-full` is reserved for the marketing pages and for shapes that
+     are round by geometry. */
+  --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 12px;
@@ -212,13 +217,13 @@
   --text-primary: 15 23 42;
   --text-secondary: 71 85 105;
   --text-tertiary: 100 116 139;
-  --text-quaternary: 148 163 184;
+  --text-quaternary: 129 142 161;
 
   /* FG aliases - FOR TAILWIND CLASSES (text-fg-primary, etc.) */
   --fg-primary: 15 23 42;
   --fg-secondary: 71 85 105;
   --fg-tertiary: 100 116 139;
-  --fg-quaternary: 148 163 184;
+  --fg-quaternary: 129 142 161;
 
   /* Borders - Light */
   --border-light: 200 200 200;
@@ -231,6 +236,10 @@
   --accent-tertiary: 216 180 254;
   --accent-hover: 147 51 234;
   --accent-glow: 192 132 252;
+  /* Text and icons on a solid accent fill. White on the classic accents; each
+     edition points it at `--tui-on-accent`, because its accent is a muted ink
+     that turns light in dark mode. */
+  --on-accent: 255 255 255;
 
   /* Brand / Accent Palette (requested) */
   --brand-purple: 168 85 247; /* Electric neon purple */
@@ -285,7 +294,7 @@
   --tui-pane: 251 250 247;
   --tui-ink: 26 25 23;
   --tui-ink2: 87 85 79;
-  --tui-ink3: 133 131 124;
+  --tui-ink3: 108 106 101;
   --tui-accent: 91 72 145;
   --tui-on-accent: 246 245 241;
   --tui-danger: 164 71 58;
@@ -458,7 +467,7 @@
   --tui-pane: 17 17 20;
   --tui-ink: 237 235 230;
   --tui-ink2: 169 167 161;
-  --tui-ink3: 122 120 115;
+  --tui-ink3: 134 132 128;
   --tui-accent: 168 150 216;
   --tui-on-accent: 13 13 15;
   --tui-danger: 214 139 125;
@@ -588,12 +597,14 @@
   --bg-tertiary: 238 237 233;
   --bg-elevated: 255 255 255;
   --bg-surface: 255 255 255;
-  --bg-overlay: 25 24 22;
+  /* The dialog shell (`MODAL_SHELL`), which `EditionScope` carries across the
+     portal: the same paper as the rest of the surface. */
+  --bg-overlay: 255 255 255;
 
   --fg-primary: 25 24 22;
   --fg-secondary: 90 88 82;
-  --fg-tertiary: 139 137 131;
-  --fg-quaternary: 181 179 173;
+  --fg-tertiary: 109 107 103;
+  --fg-quaternary: 138 136 132;
   --note-write: 52 50 46;
 
   --border-light: 231 230 226;
@@ -605,6 +616,7 @@
   --accent-tertiary: var(--tui-accent);
   --accent-hover: var(--tui-accent);
   --accent-glow: var(--tui-accent);
+  --on-accent: var(--tui-on-accent);
 
   --success: 63 115 85;
   --warning: 138 103 42;
@@ -622,12 +634,12 @@
   --bg-tertiary: 29 29 32;
   --bg-elevated: 20 20 22;
   --bg-surface: 20 20 22;
-  --bg-overlay: 6 6 7;
+  --bg-overlay: 20 20 22;
 
   --fg-primary: 236 235 231;
   --fg-secondary: 164 162 156;
-  --fg-tertiary: 116 114 108;
-  --fg-quaternary: 77 76 72;
+  --fg-tertiary: 134 132 127;
+  --fg-quaternary: 104 104 100;
   --note-write: 212 209 202;
 
   --border-light: 28 28 27;
@@ -639,6 +651,7 @@
   --accent-tertiary: var(--tui-accent);
   --accent-hover: var(--tui-accent);
   --accent-glow: var(--tui-accent);
+  --on-accent: var(--tui-on-accent);
 
   --success: 147 186 158;
   --warning: 210 176 116;
@@ -676,13 +689,15 @@
   --bg-tertiary: 236 235 231;
   --bg-elevated: var(--tui-pane);
   --bg-surface: var(--tui-pane);
-  --bg-overlay: var(--tui-ink);
+  /* Dialogs opened from settings (carried across the portal by `EditionScope`)
+     sit on the pane, like everything else on the page. */
+  --bg-overlay: var(--tui-pane);
   --settings-side: 241 240 236;
 
   --fg-primary: var(--tui-ink);
   --fg-secondary: var(--tui-ink2);
   --fg-tertiary: var(--tui-ink3);
-  --fg-quaternary: 179 177 171;
+  --fg-quaternary: 137 135 131;
 
   --border-light: 228 227 223;
   --border-medium: 211 210 206;
@@ -697,6 +712,7 @@
   --accent-tertiary: var(--tui-accent);
   --accent-hover: var(--tui-accent);
   --accent-glow: var(--tui-accent);
+  --on-accent: var(--tui-on-accent);
 
   background-color: rgb(var(--bg-primary));
   color: rgb(var(--fg-primary));
@@ -708,10 +724,9 @@
 .settings-elegant.dark {
   --bg-secondary: 20 20 23;
   --bg-tertiary: 29 29 33;
-  --bg-overlay: 6 6 7;
   --settings-side: 10 10 12;
 
-  --fg-quaternary: 79 78 74;
+  --fg-quaternary: 105 104 100;
 
   --border-light: 30 30 31;
   --border-medium: 49 48 49;
@@ -772,12 +787,12 @@
   --bg-tertiary: 236 235 231;
   --bg-elevated: var(--tui-pane);
   --bg-surface: var(--tui-pane);
-  --bg-overlay: var(--tui-ink);
+  --bg-overlay: var(--tui-pane);
 
   --fg-primary: var(--tui-ink);
   --fg-secondary: var(--tui-ink2);
   --fg-tertiary: var(--tui-ink3);
-  --fg-quaternary: 179 177 171;
+  --fg-quaternary: 137 135 131;
 
   --border-light: 228 227 223;
   --border-medium: 211 210 206;
@@ -792,6 +807,7 @@
   --accent-tertiary: var(--tui-accent);
   --accent-hover: var(--tui-accent);
   --accent-glow: var(--tui-accent);
+  --on-accent: var(--tui-on-accent);
 
   /* The status families on the same inks, over warm tints of the paper,
      rather than the app's cool alarm reds and greens. */
@@ -811,8 +827,7 @@
 .dark .chat-refined,
 .chat-refined.dark {
   --bg-tertiary: 29 29 33;
-  --bg-overlay: 6 6 7;
-  --fg-quaternary: 79 78 74;
+  --fg-quaternary: 105 104 100;
 
   --border-light: 30 30 31;
   --border-medium: 49 48 49;
@@ -833,19 +848,26 @@
    `--bg-elevated`/`--bg-surface`, so those are the pane; `--bg-secondary` is
    the hover and header wash a step down, on the ground. Events and low
    priority use the muted slate `--info` from `.notes-quiet` rather than the
-   global bright blue, and the now-line is the dashboard's danger red. */
-.calendar-refined {
+   global bright blue, and the now-line is the dashboard's danger red.
+
+   `.tui-refined` is the same mapping for everything else: it sits on the app
+   layout (every signed-in route), the auth layout and the public event page,
+   so any screen still written in the semantic tokens is on the refined
+   palette. Settings, notes, the calendar and AI chat nest their own edition
+   inside it, and dialogs carry it across the portal through `EditionScope`. */
+.calendar-refined,
+.tui-refined {
   --bg-primary: var(--tui-bg);
   --bg-secondary: 238 237 233;
   --bg-tertiary: 236 235 231;
   --bg-elevated: var(--tui-pane);
   --bg-surface: var(--tui-pane);
-  --bg-overlay: var(--tui-ink);
+  --bg-overlay: var(--tui-pane);
 
   --fg-primary: var(--tui-ink);
   --fg-secondary: var(--tui-ink2);
   --fg-tertiary: var(--tui-ink3);
-  --fg-quaternary: 179 177 171;
+  --fg-quaternary: 137 135 131;
 
   --border-light: 228 227 223;
   --border-medium: 211 210 206;
@@ -862,16 +884,18 @@
   --accent-tertiary: var(--tui-accent);
   --accent-hover: var(--tui-accent);
   --accent-glow: var(--tui-accent);
+  --on-accent: var(--tui-on-accent);
 
   color: rgb(var(--fg-primary));
 }
 
 .dark .calendar-refined,
-.calendar-refined.dark {
+.calendar-refined.dark,
+.dark .tui-refined,
+.tui-refined.dark {
   --bg-secondary: 29 29 33;
   --bg-tertiary: 29 29 33;
-  --bg-overlay: 6 6 7;
-  --fg-quaternary: 79 78 74;
+  --fg-quaternary: 105 104 100;
   --info: 143 178 201;
 
   --border-light: 30 30 31;
@@ -1013,24 +1037,17 @@ textarea::-moz-selection,
 }
 
 /* Inside own message bubbles with solid/gradient accent backgrounds */
-.bg-gradient-to-br ::selection,
 [class*="from-accent"] ::selection {
   background-color: rgba(255, 255, 255, 0.35);
   color: #ffffff;
 }
 
-.bg-gradient-to-br ::-moz-selection,
 [class*="from-accent"] ::-moz-selection {
   background-color: rgba(255, 255, 255, 0.35);
   color: #ffffff;
 }
 
 /* Professional elevated surfaces with depth */
-.surface-elevated {
-  background-color: rgb(var(--bg-elevated));
-  box-shadow: var(--shadow-lg);
-  border: 1px solid rgb(var(--border-light) / 0.7);
-}
 
 .surface-card {
   background-image: linear-gradient(
@@ -1050,20 +1067,6 @@ textarea::-moz-selection,
 }
 
 /* Professional glass effect */
-.glass-effect {
-  /* Keep headers readable while content scrolls underneath.
-     Use a fairly opaque base so underlying text doesn't show through. */
-  background-color: rgb(var(--bg-overlay) / 0.92);
-  background-image: linear-gradient(
-    135deg,
-    rgb(var(--bg-surface) / 0.98) 0%,
-    rgb(var(--bg-surface) / 0.9) 100%
-  );
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgb(var(--border-light) / 0.6);
-}
-
 
 /* Prefer targeted transitions over global * transitions (perf + a11y) */
 a,
@@ -1123,9 +1126,6 @@ summary,
 }
 
 /* Theme transition utility */
-.theme-transition {
-  transition: all 0.3s ease-in-out;
-}
 
 /* ─── Terminal edition (dashboard) ───
    The screen the panes sit on: the warm bg with a faint diagonal hatch that
@@ -1209,41 +1209,11 @@ summary,
 /* A pane's title chip straddles the top border: the top half sits over the
    screen, the bottom half over the pane, so the fill is split to match and the
    label reads as set *into* the frame rather than floating on it. */
-.tui-label {
-  background: linear-gradient(
-    to bottom,
-    rgb(var(--tui-bg)) 50%,
-    rgb(var(--tui-pane)) 50%
-  );
-}
 
 /* The briefing's blinking block cursor. Steps, not a fade, so it reads as a
    terminal caret; reduced-motion users get a steady block via the global rule. */
-@keyframes tui-blink {
-  0%,
-  100% {
-    opacity: 0.35;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.tui-cursor {
-  animation: tui-blink 1.1s steps(1) infinite;
-}
 
 /* Sticky note popup animation */
-@keyframes popIn {
-  0% {
-    opacity: 0;
-    transform: scale(0.85);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
 
 @keyframes fadeIn {
   0% {
@@ -1255,150 +1225,14 @@ summary,
 }
 
 /* Professional Button System */
-.btn-primary {
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(
-    135deg,
-    rgb(var(--accent-primary)) 0%,
-    rgb(var(--accent-secondary)) 100%
-  );
-  color: #0f172a;
-  font-weight: 600;
-  border-radius: var(--radius-lg);
-  border: none;
-  box-shadow: var(--shadow-md);
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-primary::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgb(var(--accent-secondary)) 0%,
-    rgb(var(--accent-tertiary)) 100%
-  );
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.btn-primary:hover::before {
-  opacity: 1;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-xl);
-}
-
-.btn-primary:active {
-  transform: translateY(0);
-}
-
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
 
 /* Ensure button content is above the ::before pseudo-element */
-.btn-primary > * {
-  position: relative;
-  z-index: 1;
-}
-
-.btn-secondary {
-  padding: 0.75rem 1.5rem;
-  background-color: rgb(var(--bg-secondary));
-  border: 2px solid rgb(var(--border-medium));
-  color: rgb(var(--text-primary));
-  font-weight: 600;
-  border-radius: var(--radius-lg);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-}
-
-.btn-secondary:hover {
-  background-color: rgb(var(--bg-tertiary));
-  border-color: rgb(var(--accent-primary));
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
-}
 
 /* Professional Input System */
-.input-base {
-  padding: 0.875rem 1rem;
-  border: 2px solid rgb(var(--border-light));
-  border-radius: var(--radius-lg);
-  background-color: rgb(var(--bg-surface));
-  color: rgb(var(--text-primary));
-  outline: none;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--shadow-xs);
-}
-
-.input-base:hover {
-  border-color: rgb(var(--border-medium));
-}
-
-.input-base:focus {
-  border-color: rgb(var(--accent-primary));
-  box-shadow:
-    var(--shadow-sm),
-    0 0 0 3px rgb(var(--accent-primary) / 0.1);
-  background-color: rgb(var(--bg-elevated));
-}
-
-.input-base::placeholder {
-  color: rgb(var(--text-quaternary));
-}
 
 /* Professional Card System */
-.card-base {
-  background-color: rgb(var(--bg-surface));
-  border: 1px solid rgb(var(--border-light));
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.card-base:hover {
-  box-shadow: var(--shadow-lg);
-  border-color: rgb(var(--border-medium));
-}
-
-.card-interactive {
-  background-color: rgb(var(--bg-surface));
-  border: 1px solid rgb(var(--border-light));
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-}
-
-.card-interactive:hover {
-  box-shadow: var(--shadow-xl);
-  transform: translateY(-4px);
-  border-color: rgb(var(--accent-primary) / 0.5);
-}
 
 /* Events page utilities */
-.card-shadow {
-  box-shadow: 0 2px 15px rgb(0 0 0 / 0.04);
-}
-
-.modal-gradient {
-  background: radial-gradient(
-    circle at top right,
-    rgb(var(--accent-primary) / 0.08),
-    transparent
-  );
-}
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
@@ -1437,39 +1271,8 @@ summary,
   }
 }
 
-.kairos-title {
-  letter-spacing: 0.02em;
-  font-family: var(--font-display), var(--font-sans);
-}
-
-.kairos-glass-button {
-  position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.95);
-  color: #0a0a0c;
-  box-shadow:
-    0 12px 28px -16px rgb(0 0 0 / 0.35),
-    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-}
-
-.dark .kairos-glass-button {
-  background: rgba(255, 255, 255, 0.95);
-  color: #0a0a0c;
-}
-
 /* Hover is a lift and a slightly deeper drop shadow. No white halo: the
    button is already white, so a white glow only smears its edge. */
-.kairos-glass-button:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 1);
-  box-shadow: 0 18px 40px -22px rgb(0 0 0 / 0.45);
-}
-
-.kairos-glass-button:active {
-  transform: translateY(0);
-}
 
 @keyframes slideIn {
   from {
@@ -1482,86 +1285,7 @@ summary,
   }
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes pop-up {
-  0% {
-    opacity: 0;
-    transform: translateY(20px) scale(0.8);
-  }
-  60% {
-    opacity: 1;
-    transform: translateY(-5px) scale(1.05);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.animate-pop-up {
-  animation: pop-up 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
-}
-
 /* Magic Bento Hover Effect */
-.magic-bento-card {
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease-in-out;
-}
-
-.magic-bento-card:before {
-  content: "";
-  position: absolute;
-  top: -5px;
-  left: -5px;
-  right: -5px;
-  bottom: -5px;
-  border-radius: var(--radius-xl);
-  background: transparent;
-  transition: opacity 0.3s ease-in-out;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0;
-}
-
-.magic-bento-card:hover:before {
-  opacity: 1;
-  box-shadow:
-    0 0 10px rgba(var(--hover-color), 0.5),
-    0 0 20px rgba(var(--hover-color), 0.3),
-    0 0 30px rgba(var(--hover-color), 0.1);
-}
-
-.card-org:hover:before {
-  --hover-color: 148 72 242;
-}
-.card-team:hover:before {
-  --hover-color: 128 196 155;
-}
-.card-personal:hover:before {
-  --hover-color: 255 197 61;
-}
 
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
@@ -1571,88 +1295,7 @@ summary,
   animation: slideIn 0.3s ease-out;
 }
 
-.animate-slideUp {
-  animation: slideUp 0.3s ease-out;
-}
-
-.animate-scaleIn {
-  animation: scaleIn 0.2s ease-out;
-}
-
-.animate-writing-k {
-  animation: writing 2s ease-in-out forwards;
-  stroke-dasharray: 100%;
-  stroke-dashoffset: 100%;
-  stroke-width: 2;
-}
-
 /* Custom delay utility classes */
-.pop-up-delay-1 {
-  animation-delay: 0.1s;
-}
-.pop-up-delay-2 {
-  animation-delay: 0.2s;
-}
-.pop-up-delay-3 {
-  animation-delay: 0.3s;
-}
-.pop-up-delay-4 {
-  animation-delay: 0.4s;
-}
-.pop-up-delay-5 {
-  animation-delay: 0.5s;
-}
-.pop-up-delay-6 {
-  animation-delay: 0.6s;
-}
-.pop-up-delay-7 {
-  animation-delay: 0.7s;
-}
-.pop-up-delay-8 {
-  animation-delay: 0.8s;
-}
-.pop-up-delay-9 {
-  animation-delay: 0.9s;
-}
-.pop-up-delay-10 {
-  animation-delay: 1s;
-}
-.pop-up-delay-11 {
-  animation-delay: 1.1s;
-}
-.pop-up-delay-12 {
-  animation-delay: 1.2s;
-}
-.pop-up-delay-13 {
-  animation-delay: 1.3s;
-}
-.pop-up-delay-14 {
-  animation-delay: 1.4s;
-}
-.pop-up-delay-15 {
-  animation-delay: 1.5s;
-}
-.pop-up-delay-16 {
-  animation-delay: 1.6s;
-}
-.pop-up-delay-17 {
-  animation-delay: 1.7s;
-}
-.pop-up-delay-18 {
-  animation-delay: 1.8s;
-}
-
-::selection {
-  background-color: rgba(var(--accent-primary), 0.45);
-  color: #fff;
-  -webkit-text-fill-color: #fff;
-}
-
-::-moz-selection {
-  background-color: rgba(var(--accent-primary), 0.45);
-  color: #fff;
-  -webkit-text-fill-color: #fff;
-}
 
 /* Global focus — inherits the element's own border-radius.
    Lives in `@layer base` on purpose: unlayered CSS outranks every layered
@@ -1686,14 +1329,6 @@ summary,
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
 }
 
-.dark .btn-primary {
-  color: white;
-}
-
-.dark .shadow-md {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-}
-
 .dark .shadow-lg {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
 }
@@ -1713,114 +1348,7 @@ summary,
   }
 }
 
-@keyframes float-slow {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(30px, -30px) scale(1.1);
-  }
-  66% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
-}
-
-@keyframes float-medium {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(-40px, 30px) scale(1.05);
-  }
-  66% {
-    transform: translate(25px, -25px) scale(0.95);
-  }
-}
-
-@keyframes float-fast {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(20px, 40px) scale(1.08);
-  }
-  66% {
-    transform: translate(-30px, -20px) scale(0.92);
-  }
-}
-
-.radial-progress {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--size, 5rem);
-  height: var(--size, 5rem);
-  border-radius: 50%;
-  transition: --value 2s ease-out;
-}
-
-.radial-progress::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(
-    currentColor calc(var(--value, 0) * 1%),
-    transparent calc(var(--value, 0) * 1%)
-  );
-  mask: radial-gradient(
-    farthest-side,
-    transparent calc(100% - var(--thickness, 4px)),
-    white calc(100% - var(--thickness, 4px))
-  );
-  -webkit-mask: radial-gradient(
-    farthest-side,
-    transparent calc(100% - var(--thickness, 4px)),
-    white calc(100% - var(--thickness, 4px))
-  );
-}
-
-.radial-progress::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
-  mask: radial-gradient(
-    farthest-side,
-    transparent calc(100% - var(--thickness, 4px)),
-    white calc(100% - var(--thickness, 4px))
-  );
-  -webkit-mask: radial-gradient(
-    farthest-side,
-    transparent calc(100% - var(--thickness, 4px)),
-    white calc(100% - var(--thickness, 4px))
-  );
-}
-
 /* Kairos Card System - System Settings Style */
-.kairos-system-card {
-  background: rgb(var(--bg-surface) / 0.8);
-  border-radius: var(--radius-xl);
-  box-shadow:
-    0 0 0 0.5px rgba(var(--border-light) / 0.5),
-    0 2px 8px -2px rgba(0, 0, 0, 0.08),
-    0 4px 16px -4px rgba(0, 0, 0, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.dark .kairos-system-card {
-  background: rgb(var(--bg-surface) / 0.7);
-  box-shadow:
-    0 0 0 0.5px rgba(var(--border-light) / 0.8),
-    0 2px 12px -2px rgba(0, 0, 0, 0.4),
-    0 6px 24px -6px rgba(0, 0, 0, 0.3);
-}
 
 .kairos-system-card-elevated {
   background: rgb(var(--bg-elevated) / 0.9);
@@ -1862,404 +1390,47 @@ summary,
     0 10px 32px -6px rgba(0, 0, 0, 0.45);
 }
 
-.kairos-system-header {
-  background: rgb(var(--bg-surface) / 0.85);
-  border-bottom: 0.5px solid rgba(var(--border-light) / 0.5);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-}
-
-.dark .kairos-system-header {
-  background: rgb(var(--bg-surface) / 0.75);
-  border-bottom: 0.5px solid rgba(var(--border-light) / 0.8);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
 /* ============================================================================
    KAIROS DESIGN SYSTEM - Kairos Settings Style
    ============================================================================ */
 
 /* Light Theme - Default */
-.kairos-bg-secondary {
-  background-color: #f2f2f7;
-}
-
-.kairos-bg-surface {
-  background-color: #ffffff;
-}
-
-.kairos-bg-tertiary {
-  background-color: #d1d1d6;
-}
-
-.kairos-active-state {
-  background-color: #d1d1d6;
-}
-
-.kairos-fg-primary {
-  color: #000000;
-}
-
-.kairos-fg-secondary {
-  color: #3c3c43;
-  opacity: 0.6;
-}
-
-.kairos-fg-tertiary {
-  color: #3c3c43;
-  opacity: 0.3;
-}
 
 /* Use your existing accent-primary variable */
-.kairos-accent-primary {
-  color: rgb(var(--accent-primary));
-}
-.kairos-accent-primary\/15 {
-  background-color: rgba(var(--accent-primary), 0.15);
-}
-
-.kairos-section-border {
-  border: 0.5px solid #c6c6c8;
-}
-
-.kairos-divider {
-  background-color: #c6c6c8;
-}
-
-.kairos-accent-border {
-  border: 0.5px solid rgba(0, 0, 0, 0.08);
-}
 
 /* Dark Theme - Applied when .dark class is present on parent */
-.dark .kairos-bg-secondary {
-  background-color: #000000;
-}
-
-.dark .kairos-bg-surface {
-  background-color: #1c1c1e;
-}
-
-.dark .kairos-bg-tertiary {
-  background-color: #1a1a1e;
-}
-
-.dark .kairos-active-state {
-  background-color: #2c2c2e;
-}
-
-.dark .kairos-fg-primary {
-  color: #ffffff;
-}
-
-.dark .kairos-fg-secondary {
-  color: #ebebf5;
-  opacity: 0.6;
-}
-
-.dark .kairos-fg-tertiary {
-  color: #ebebf5;
-  opacity: 0.3;
-}
-
-.dark .kairos-section-border {
-  border: 0.5px solid #38383a;
-}
-
-.dark .kairos-divider {
-  background-color: #38383a;
-}
-
-.dark .kairos-accent-border {
-  border: 0.5px solid rgba(255, 255, 255, 0.08);
-}
 
 /* ============================================================================
    Settings Navigation - Animated Left Indicator
    ============================================================================ */
 
 /* Settings nav item container */
-.settingsNavItem {
-  position: relative;
-  /* Smooth transitions for background and text color changes */
-  transition:
-    background-color 300ms ease,
-    color 300ms ease;
-}
 
 /* Focus visible styling for keyboard navigation */
-.settingsNavItem:focus-visible {
-  outline: none;
-}
 
 /* ============================================================================
    Settings Navigation Indicator
    ============================================================================ */
 
 /* The clickable item (usually a Link/a) */
-.settingsNavItem {
-  position: relative;
-  display: block;
-}
 
 /* The left indicator line */
-.settingsNavIndicator {
-  position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-
-  width: 3px;
-  border-radius: 9999px;
-
-  /* hidden by default */
-  opacity: 0;
-  transform: scaleY(0);
-  transform-origin: top;
-
-  /* neutral line colour on hover — the hairline token, so it follows the theme */
-  background-color: rgb(var(--border-strong) / 0.9);
-
-  /* Smooth animation for state changes */
-  transition:
-    transform 300ms cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 200ms cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
 
 /* Hover state: indicator appears (neutral color) */
-.settingsNavItem:hover .settingsNavIndicator {
-  opacity: 1;
-  transform: scaleY(1);
-}
 
 /* Focus-visible should be on the focusable element (the link itself) */
-.settingsNavItem:focus-visible .settingsNavIndicator,
-.settingsNavItem:focus-within .settingsNavIndicator {
-  opacity: 1;
-  transform: scaleY(1);
-}
 
 /* Active state: indicator visible with accent color */
-.settingsNavItem[data-active="true"] .settingsNavIndicator {
-  opacity: 1;
-  transform: scaleY(1);
-
-  /* Use your CSS var if present, otherwise fallback */
-  background-color: rgb(
-    var(--accent-primary, 59 130 246)
-  ); /* fallback: blue-500 */
-}
 
 /* Ensure indicator doesn't interfere with content */
-.settingsNavIndicator {
-  pointer-events: none;
-  z-index: 0;
-}
-
-.settingsNavItem > * {
-  position: relative;
-  z-index: 1;
-}
 
 /* ============================================================================
    Kairos System Settings Style Components
    ============================================================================ */
 
-.kairos-system-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-left: 1rem;
-  padding-right: 1rem;
-  padding-top: 0.875rem;
-  padding-bottom: 0.875rem;
-  margin-left: -1rem;
-  margin-right: -1rem;
-  transition-property: color, background-color, border-color;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-.kairos-system-row:hover,
-.kairos-system-row:active {
-  background-color: #d1d1d6;
-}
-
-.dark .kairos-system-row:hover,
-.dark .kairos-system-row:active {
-  background-color: #2c2c2e;
-}
-
-.kairos-system-label {
-  font-size: 17px;
-  font-weight: 590;
-  line-height: 1.235;
-  letter-spacing: -0.016em;
-  color: #000000;
-}
-
-.dark .kairos-system-label {
-  color: #ffffff;
-}
-
-.kairos-system-caption {
-  font-size: 13px;
-  line-height: 1.3846;
-  letter-spacing: -0.006em;
-  color: #3c3c43;
-  opacity: 0.6;
-}
-
-.dark .kairos-system-caption {
-  color: #ebebf5;
-  opacity: 0.6;
-}
-
-.kairos-system-value {
-  font-size: 17px;
-  font-weight: 590;
-  color: #000000;
-}
-
-.dark .kairos-system-value {
-  color: #ffffff;
-}
-
-.kairos-system-button {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: var(--radius-sm);
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-  font-size: 13px;
-  font-weight: 500;
-  background-color: transparent;
-  border-width: 0.5px;
-  border-color: #c6c6c8;
-  color: #000000;
-}
-
-.dark .kairos-system-button {
-  border-color: #38383a;
-  color: #ffffff;
-}
-
-.kairos-system-button:hover {
-  background-color: rgba(209, 209, 214, 0.3);
-}
-
-.dark .kairos-system-button:hover {
-  background-color: rgba(26, 26, 30, 0.3);
-}
-
-.kairos-system-button:active {
-  background-color: #d1d1d6;
-}
-
-.dark .kairos-system-button:active {
-  background-color: #2c2c2e;
-}
-
-.kairos-system-dropdown {
-  background-color: #ffffff;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow:
-    0 20px 25px -5px rgb(0 0 0 / 0.1),
-    0 8px 10px -6px rgb(0 0 0 / 0.1);
-  border-width: 0.5px;
-  border-color: #c6c6c8;
-  min-width: 160px;
-  animation: kairos-scale-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.dark .kairos-system-dropdown {
-  background-color: #1c1c1e;
-  border-color: #38383a;
-}
-
-.kairos-system-option {
-  width: 100%;
-  text-align: left;
-  padding: 0.75rem 1rem;
-  transition-property: color, background-color;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 17px;
-  color: #000000;
-  font-weight: 590;
-}
-
-.dark .kairos-system-option {
-  color: #ffffff;
-}
-
-.kairos-system-option:hover {
-  background-color: #d1d1d6;
-}
-
-.dark .kairos-system-option:hover {
-  background-color: #2c2c2e;
-}
-
-.kairos-system-divider {
-  height: 0.33px;
-  background-color: #c6c6c8;
-  margin-left: 1rem;
-  margin-right: 1rem;
-}
-
-.dark .kairos-system-divider {
-  background-color: #38383a;
-}
-
 /* Kairos avatar */
-.kairos-system-avatar {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 9999px;
-  background-image: linear-gradient(
-    to bottom right,
-    rgb(var(--accent-primary)),
-    rgb(var(--accent-secondary))
-  );
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgb(var(--border-light) / 0.2);
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-}
-
-.kairos-system-avatar-initial {
-  font-size: 15px;
-  font-weight: 600;
-  color: #ffffff;
-}
 
 /* Kairos permission badge */
-.kairos-system-permission-badge {
-  padding: 0.375rem 0.75rem;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  font-weight: 500;
-  background-color: rgba(209, 209, 214, 0.2);
-  color: #000000;
-  border-width: 0.5px;
-  border-color: #c6c6c8;
-}
-
-.dark .kairos-system-permission-badge {
-  background-color: rgba(26, 26, 30, 0.2);
-  color: #ffffff;
-  border-color: #38383a;
-}
 
 /* Kairos selection animation */
 @keyframes kairos-scale-in {
@@ -2273,107 +1444,21 @@ summary,
   }
 }
 
-.animate-scaleIn {
-  animation: kairos-scale-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
 /* Kairos tap feedback */
-.kairos-system-tap-feedback {
-  transition-property: color, background-color;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-.kairos-system-tap-feedback:active {
-  background-color: #d1d1d6;
-}
-
-.dark .kairos-system-tap-feedback:active {
-  background-color: #2c2c2e;
-}
 
 /* Kairos modal backdrop blur */
-.kairos-system-modal-backdrop {
-  backdrop-filter: blur(10px) saturate(180%);
-  -webkit-backdrop-filter: blur(10px) saturate(180%);
-  background-color: rgba(var(--bg-overlay), 0.7);
-}
 
 /* Kairos corner radius */
-.kairos-system-rounded-lg {
-  border-radius: var(--radius-md);
-}
-
-.kairos-system-rounded-xl {
-  border-radius: var(--radius-xl);
-}
 
 /* Kairos scrolling */
-.kairos-system-scroll {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-}
 
 /* Kairos button press animation */
-@keyframes kairos-button-press {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(0.97);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.kairos-system-button-press {
-  animation: kairos-button-press 0.3s ease;
-}
 
 /* Kairos system spacing */
-.kairos-system-spacing-y {
-  padding-top: 0.875rem;
-  padding-bottom: 0.875rem;
-}
-
-.kairos-system-spacing-x {
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
 
 /* Kairos system fonts */
-.kairos-system-font-regular {
-  font-weight: 400;
-}
-
-.kairos-system-font-medium {
-  font-weight: 500;
-}
-
-.kairos-system-font-semibold {
-  font-weight: 590;
-}
-
-.kairos-system-font-bold {
-  font-weight: 700;
-}
 
 /* Kairos icon sizing */
-.kairos-system-icon-sm {
-  width: 18px;
-  height: 18px;
-}
-
-.kairos-system-icon-md {
-  width: 20px;
-  height: 20px;
-}
-
-.kairos-system-icon-lg {
-  width: 24px;
-  height: 24px;
-}
 
 /* ============================================================================
    End of Settings Navigation Indicator
@@ -2473,52 +1558,8 @@ summary,
 }
 
 /* Glassmorphism surface */
-.kairos-glass {
-  background: rgba(var(--bg-elevated), 0.6);
-  backdrop-filter: blur(20px) saturate(1.5);
-  -webkit-backdrop-filter: blur(20px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.dark .kairos-glass {
-  background: rgba(var(--bg-elevated), 0.4);
-  border-color: rgba(255, 255, 255, 0.06);
-}
 
 /* Futuristic card with subtle glow */
-.kairos-card {
-  background: rgb(var(--bg-elevated));
-  border-radius: var(--radius-xl);
-  border: 1px solid rgba(var(--border-light), 0.5);
-  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.kairos-card:hover {
-  border-color: rgba(var(--accent-primary), 0.3);
-  box-shadow: 0 8px 32px -8px rgba(var(--accent-primary), 0.15);
-  transform: translateY(-1px);
-}
-
-.kairos-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(var(--accent-primary), 0.03) 0%,
-    transparent 50%
-  );
-  border-radius: inherit;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.kairos-card:hover::before {
-  opacity: 1;
-}
 
 /* Button micro-interaction */
 .kairos-btn {
@@ -2533,79 +1574,10 @@ summary,
 }
 
 /* Neon purple gradient button – used on HomeClient, SignIn, ForgotPassword */
-.kairos-neon-btn {
-  background: linear-gradient(
-    135deg,
-    rgb(var(--accent-primary)),
-    rgb(var(--accent-secondary))
-  );
-  position: relative;
-  overflow: hidden;
-  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.kairos-neon-btn:hover {
-  filter: brightness(1.12);
-  box-shadow: 0 0 24px rgba(var(--accent-primary), 0.35);
-}
-.kairos-neon-btn:active {
-  transform: scale(0.97);
-}
 
 /* Modern input styling */
-.kairos-input {
-  background: rgba(var(--bg-surface), 0.8);
-  border: 1px solid rgba(var(--border-light), 0.5);
-  border-radius: var(--radius-lg);
-  padding: 10px 14px;
-  font-size: 14px;
-  color: rgb(var(--fg-primary));
-  transition: all 0.2s ease;
-  outline: none;
-}
-
-.kairos-input:focus {
-  border-color: rgba(var(--accent-primary), 0.5);
-  box-shadow: 0 0 0 3px rgba(var(--accent-primary), 0.1);
-  background: rgba(var(--bg-surface), 1);
-}
-
-.kairos-input::placeholder {
-  color: rgb(var(--fg-quaternary));
-}
 
 /* Modern modal overlay */
-.kairos-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: kairos-fade-in 0.2s ease;
-}
-
-@keyframes kairos-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.kairos-modal-content {
-  background: rgb(var(--bg-primary));
-  border-radius: var(--radius-xl);
-  border: 1px solid rgba(var(--border-light), 0.3);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
-  animation: kairos-modal-enter 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-  overflow: hidden;
-  max-height: 90vh;
-  overflow-y: auto;
-}
 
 @keyframes kairos-modal-enter {
   from {
@@ -2645,7 +1617,7 @@ summary,
 }
 
 .kairos-chat-response code {
-  background: rgba(var(--bg-tertiary), 0.8);
+  background: rgb(var(--bg-tertiary) / 0.8);
   border-radius: var(--radius-sm);
   padding: 0.15em 0.4em;
   font-size: 0.9em;
@@ -2653,7 +1625,7 @@ summary,
 }
 
 .kairos-chat-response pre {
-  background: rgba(var(--bg-tertiary), 0.8);
+  background: rgb(var(--bg-tertiary) / 0.8);
   border-radius: var(--radius-sm);
   padding: 0.75em 1em;
   overflow-x: auto;
@@ -2806,181 +1778,24 @@ summary,
 }
 
 /* Smooth transitions utility */
-.kairos-transition {
-  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.kairos-transition-slow {
-  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-}
 
 /* ─── Task Timeline Page ─── */
-.timeline-page {
-  background:
-    radial-gradient(
-      ellipse 60% 40% at 80% 20%,
-      rgb(var(--accent-primary) / 0.04),
-      transparent 60%
-    ),
-    rgb(var(--bg-primary));
-}
-.dark .timeline-page {
-  background:
-    radial-gradient(
-      ellipse 60% 40% at 80% 20%,
-      rgb(var(--accent-primary) / 0.06),
-      transparent 60%
-    ),
-    rgb(var(--bg-primary));
-}
 
 /* Create Entry Card */
-.create-entry-card {
-  background: rgb(255 255 255);
-  box-shadow:
-    var(--shadow-md),
-    0 0 0 1px rgb(var(--border-light) / 0.6);
-  transition:
-    box-shadow 0.3s ease,
-    transform 0.3s ease;
-}
-.create-entry-card:hover {
-  box-shadow:
-    var(--shadow-lg),
-    0 0 0 1px rgb(var(--accent-primary) / 0.15),
-    0 8px 32px rgb(var(--accent-primary) / 0.08);
-}
-.dark .create-entry-card {
-  background: rgb(14 14 18);
-  box-shadow:
-    0 2px 12px 0 rgb(0 0 0 / 0.3),
-    0 0 0 1px rgb(var(--accent-primary) / 0.06);
-}
-.dark .create-entry-card:hover {
-  box-shadow:
-    0 4px 24px 0 rgb(0 0 0 / 0.4),
-    0 0 0 1px rgb(var(--accent-primary) / 0.12),
-    0 0 40px rgb(var(--accent-primary) / 0.04);
-}
 
 /* Timeline Entry Cards */
-.timeline-card {
-  background: rgb(255 255 255);
-  box-shadow:
-    var(--shadow-sm),
-    0 0 0 1px rgb(var(--border-light) / 0.5);
-  transition:
-    box-shadow 0.3s ease,
-    transform 0.3s ease,
-    border-color 0.3s ease;
-}
-.timeline-card:hover {
-  box-shadow:
-    var(--shadow-md),
-    0 0 0 1px rgb(var(--accent-primary) / 0.12);
-}
-.dark .timeline-card {
-  background: rgb(14 14 18);
-  box-shadow:
-    0 1px 6px 0 rgb(0 0 0 / 0.2),
-    0 0 0 1px rgb(255 255 255 / 0.03);
-}
-.dark .timeline-card:hover {
-  box-shadow:
-    0 4px 20px 0 rgb(0 0 0 / 0.35),
-    0 0 0 1px rgb(var(--accent-primary) / 0.1);
-}
 
 /* File Upload Zone */
-.timeline-upload-zone {
-  background: rgb(var(--bg-tertiary) / 0.3);
-  transition:
-    background 0.3s ease,
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
-}
-.timeline-upload-zone:hover {
-  background: rgb(var(--accent-primary) / 0.04);
-  box-shadow: 0 0 20px rgb(var(--accent-primary) / 0.06);
-}
-.dark .timeline-upload-zone {
-  background: rgb(255 255 255 / 0.02);
-}
-.dark .timeline-upload-zone:hover {
-  background: rgb(var(--accent-primary) / 0.06);
-  box-shadow: 0 0 24px rgb(var(--accent-primary) / 0.08);
-}
 
 /* Timeline List container */
-.timeline-list {
-  position: relative;
-  overflow-y: auto;
-  max-height: 70vh;
-  scroll-behavior: smooth;
-}
 
 /* Scroll depth blur gradient — fades bottom items */
-.timeline-scroll-fade {
-  position: sticky;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 100px;
-  z-index: 5;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    rgb(var(--bg-primary) / 0.6) 30%,
-    rgb(var(--bg-primary) / 0.9) 65%,
-    rgb(var(--bg-primary)) 100%
-  );
-  margin-top: -100px;
-  pointer-events: none;
-}
 
 /* Timeline entry stagger animation */
-.timeline-entry-wrapper {
-  will-change: opacity, transform, filter;
-}
 
 /* Enhanced form input focus glow */
-.timeline-input {
-  background: rgb(var(--bg-tertiary) / 0.5);
-  border: 1px solid rgb(var(--border-medium) / 0.4);
-  outline: none;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
-}
-.timeline-input:focus {
-  border-color: rgb(var(--accent-primary) / 0.6);
-  box-shadow:
-    0 0 0 3px rgb(var(--accent-primary) / 0.08),
-    0 2px 8px rgb(var(--accent-primary) / 0.06);
-  background: rgb(var(--bg-tertiary) / 0.7);
-}
-.dark .timeline-input {
-  background: rgb(255 255 255 / 0.04);
-  border-color: rgb(255 255 255 / 0.08);
-}
-.dark .timeline-input:focus {
-  border-color: rgb(var(--accent-primary) / 0.5);
-  box-shadow:
-    0 0 0 3px rgb(var(--accent-primary) / 0.12),
-    0 2px 12px rgb(var(--accent-primary) / 0.08);
-  background: rgb(255 255 255 / 0.06);
-}
 
 /* Fix select dropdown option backgrounds for light/dark */
-.timeline-input option {
-  background-color: rgb(var(--bg-primary));
-  color: rgb(var(--fg-primary));
-}
-.dark .timeline-input option {
-  background-color: rgb(14 14 18);
-  color: rgb(255 255 255);
-}
 
 /* File Upload Zone enhancement - hover shadow */
 
@@ -3179,7 +1994,6 @@ summary,
 .k-drift-slower {
   animation: k-drift 22s ease-in-out infinite;
 }
-
 
 /* Pill buttons. No white: the solid button warms to the lighter accent, the
    ghost picks up an accent border and a faint accent wash. No fill wipe, no
@@ -4081,17 +2895,6 @@ input[type="search"]::-webkit-search-results-decoration {
   }
 }
 
-@keyframes projects-slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(22px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
 .projects-drawer {
   animation: projects-drawer-in 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) both;
   /* The panel carries a wide, soft shadow. Promoting it keeps that shadow from
@@ -4101,10 +2904,6 @@ input[type="search"]::-webkit-search-results-decoration {
 
 .projects-drawer-scrim {
   animation: projects-scrim-in 0.35s ease-out both;
-}
-
-.projects-slide-in {
-  animation: projects-slide-in 0.5s cubic-bezier(0.2, 0.8, 0.25, 1) both;
 }
 
 /* --------------------------------------------------------------------------
@@ -4163,8 +2962,7 @@ input[type="search"]::-webkit-search-results-decoration {
 
 @media (prefers-reduced-motion: reduce) {
   .projects-drawer,
-  .projects-drawer-scrim,
-  .projects-slide-in {
+  .projects-drawer-scrim {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
@@ -4312,18 +3110,6 @@ input[type="search"]::-webkit-search-results-decoration {
     padding-top: 0;
     padding-bottom: 0;
     border-bottom-width: 0;
-  }
-}
-
-.dash-row-out {
-  overflow: hidden;
-  pointer-events: none;
-  animation: dash-row-out 0.42s cubic-bezier(0.4, 0, 0.2, 1) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dash-row-out {
-    animation-duration: 0.01s !important;
   }
 }
 
@@ -4585,7 +3371,7 @@ input[type="search"]::-webkit-search-results-decoration {
   width: fit-content;
   max-width: 100%;
   padding: 0.5rem 0.5rem 0.5rem 0.625rem;
-  border-radius: 1.125rem;
+  border-radius: var(--radius-lg);
   background: rgb(var(--tui-ink));
   color: rgb(var(--tui-bg));
   font-size: 0.8125rem;
@@ -4804,10 +3590,6 @@ input[type="search"]::-webkit-search-results-decoration {
 /* ── Reaching past the safe area ───────────────────────────────────────────
    Content that must run edge to edge (a full-bleed hero, a sheet) still needs
    its *text* inside the safe rectangle. */
-.kairos-safe-x {
-  padding-left: var(--kairos-safe-left);
-  padding-right: var(--kairos-safe-right);
-}
 
 .kairos-safe-bottom {
   padding-bottom: var(--kairos-safe-bottom);
@@ -4837,13 +3619,6 @@ input[type="search"]::-webkit-search-results-decoration {
 /* ── Landscape phones ──────────────────────────────────────────────────────
    A phone on its side is ~375px tall. Anything that centres itself in a full
    viewport height has to be allowed to scroll there instead. */
-@media (max-height: 480px) and (orientation: landscape) {
-  .kairos-center-viewport {
-    align-items: flex-start;
-    padding-top: 1.5rem;
-    padding-bottom: 1.5rem;
-  }
-}
 
 /* ── Controls that only exist on hover ────────────────────────────────────
    A handful of surfaces hide a control behind `opacity-0 group-hover:
@@ -5186,18 +3961,6 @@ input[type="search"]::-webkit-search-results-decoration {
   }
 }
 
-@keyframes notes-badge-morph {
-  0% {
-    transform: scale(1);
-  }
-  45% {
-    transform: scale(0.86);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
 @keyframes notes-strip-in {
   from {
     opacity: 0;
@@ -5420,9 +4183,6 @@ input[type="search"]::-webkit-search-results-decoration {
 
 /* Unlocking is a state change, not a screen swap — the badge dips and comes
    back while its border crosses from error to success. */
-.notes-badge-morph {
-  animation: notes-badge-morph 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
 
 /* ── Skeletons ───────────────────────────────────────────────────────────
    Hatched placeholders. A skeleton is a denser patch of the page's own

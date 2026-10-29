@@ -122,14 +122,14 @@ function ShowOnce({
               void navigator.clipboard.writeText(value);
               setCopied(true);
             }}
-            className="shrink-0 rounded-lg bg-accent-primary px-3 py-1.5 text-settings-small font-medium text-white"
+            className="shrink-0 rounded-lg bg-accent-primary px-3 py-1.5 text-settings-small font-medium text-on-accent"
           >
             {copied ? (copiedLabel ?? copyLabel) : copyLabel}
           </button>
         ) : null}
       </div>
       {footer ? (
-        <p className="mt-2 font-mono text-settings-micro text-fg-quaternary">{footer}</p>
+        <p className="mt-2 font-mono text-settings-micro text-fg-tertiary">{footer}</p>
       ) : null}
       <button
         type="button"
@@ -237,7 +237,7 @@ function KeysGroup({ t }: { t: Translator }) {
                     </span>
                   ) : null}
                 </p>
-                <p className="mt-0.5 font-mono text-settings-meta text-fg-quaternary">
+                <p className="mt-0.5 font-mono text-settings-meta text-fg-tertiary">
                   {key.prefix}…{" · "}
                   {key.lastUsedAt
                     ? t("lastUsed", {
@@ -365,7 +365,7 @@ function WebhooksGroup({ t }: { t: Translator }) {
                   <p className="truncate text-settings-body font-medium text-fg-primary">
                     {hook.url}
                   </p>
-                  <p className="mt-0.5 text-settings-meta text-fg-quaternary">
+                  <p className="mt-0.5 text-settings-meta text-fg-tertiary">
                     {hook.events ? hook.events : t("allEvents")}
                     {!hook.enabled ? ` · ${t("disabled")}` : ""}
                   </p>
@@ -470,7 +470,7 @@ function DeliveryLog({ id, t }: { id: number; t: Translator }) {
               ? ` · ${t("notRetried")}`
               : ""}
           </span>
-          <span className="shrink-0 text-fg-quaternary">
+          <span className="shrink-0 text-fg-tertiary">
             {new Date(row.createdAt).toLocaleString()}
           </span>
         </li>

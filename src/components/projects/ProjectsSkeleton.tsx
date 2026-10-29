@@ -48,7 +48,7 @@ function Pill({
 }) {
   return (
     <span
-      className={`flex h-8 items-center gap-2 rounded-full px-3.5 text-[13px] font-medium ${
+      className={`flex h-8 items-center gap-2 rounded-sm px-3.5 text-[13px] font-medium ${
         active ? "bg-tui-accent/[0.14] text-tui-ink" : "text-tui-ink3"
       }`}
     >
@@ -105,7 +105,7 @@ export function ProjectsSkeleton({ onRetry }: { onRetry?: () => void }) {
 
         {/* Controls — outlines with their real names; only the counts hatch. */}
         <div aria-hidden className="flex flex-wrap items-center gap-3">
-          <span className="border-tui-ink/12 bg-tui-pane flex h-10 w-full items-center gap-2.5 rounded-full border px-4 shadow-[var(--tui-pane-shadow)] sm:w-[300px]">
+          <span className="border-tui-ink/12 bg-tui-pane flex h-10 w-full items-center gap-2.5 rounded-md border px-4 shadow-[var(--tui-pane-shadow)] sm:w-[300px]">
             <Search size={15} className="text-tui-ink3 flex-none" aria-hidden />
             <span className="text-tui-ink3 min-w-0 flex-1 truncate text-[13.5px]">
               {t("searchPlaceholder")}

@@ -24,7 +24,7 @@ export function Hero({ onSignIn }: { onSignIn: () => void }) {
     return (
         <section className="mx-auto grid w-full max-w-[1440px] grid-cols-1 items-center gap-y-16 px-6 pt-16 sm:pt-24 lg:grid-cols-12 lg:gap-x-6 lg:px-20 lg:pt-28">
             <div className="flex flex-col lg:col-span-7">
-                <span className="k-in-fade flex items-center gap-3 font-mono text-[11px] tracking-[0.24em] text-fg-quaternary uppercase [animation-delay:0.3s]">
+                <span className="k-in-fade flex items-center gap-3 font-mono text-[11px] tracking-[0.24em] text-fg-tertiary uppercase [animation-delay:0.3s]">
                     <span className="k-breathe h-1.5 w-1.5 rounded-full bg-accent-primary" aria-hidden="true" />
                     {t("heroEyebrow")}
                 </span>

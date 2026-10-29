@@ -29,7 +29,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { toNotePassword } from "~/lib/notePassword";
-import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, KeyRound, Loader2 } from "~/components/ui/icons";
+import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, KeyRound } from "~/components/ui/icons";
 import Link from "next/link";
 
 import {
@@ -41,6 +41,7 @@ import {
   MICRO,
 } from "~/components/notes/notesUi";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 /** Matches the redirect below, and is what the countdown counts. */
 const REDIRECT_SECONDS = 3;
 
@@ -231,7 +232,7 @@ export function RecoverClient({ noteId }: { noteId: string }) {
                   disabled={resetPassword.isPending}
                 />
               </div>
-              <p className="mt-1.5 text-[11.5px] leading-relaxed text-fg-quaternary">{t("pinHelp")}</p>
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-fg-tertiary">{t("pinHelp")}</p>
             </div>
 
             {/* The tip, without the emoji, on the same calm block the dialogs
@@ -249,7 +250,7 @@ export function RecoverClient({ noteId }: { noteId: string }) {
               className={`${BTN_ACCENT} mt-5 h-[38px] w-full`}
             >
               {resetPassword.isPending ? (
-                <Loader2 size={14} className="animate-spin" />
+                <PendingDot />
               ) : (
                 <Lock size={14} />
               )}
@@ -304,7 +305,7 @@ function Outcome({
         >
           {icon}
         </div>
-        <h1 className="text-[17px] font-bold tracking-[-0.014em] text-fg-primary">{title}</h1>
+        <h1 className="font-display text-[22px] font-normal tracking-[-0.014em] text-fg-primary">{title}</h1>
         <p className="mt-2 mb-6 text-[13px] leading-relaxed text-fg-tertiary">{body}</p>
         {children}
       </div>

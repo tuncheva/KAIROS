@@ -31,6 +31,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { EditionScope, useEditionScope } from "./editionScope";
+
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -148,33 +150,42 @@ export function Modal({
 
   useModalBehavior({ containerRef, onDismiss, dismissOnEscape });
 
-  if (!mounted) return null;
+  // The page's edition, read where the caller sits and re-applied inside the portal.
+  const { anchor, edition } = useEditionScope();
 
-  return createPortal(
-    /* Onto `document.body` rather than in place: callers sit inside ancestors
-       carrying transforms and filters, and a `position: fixed` overlay inside
-       one of those is contained by it rather than by the viewport — the
-       backdrop covers part of the page and the card lands wherever the caller
-       is. */
-    <div
-      className={`fixed inset-0 z-[100] grid place-items-center overflow-y-auto overscroll-contain p-4 ${overlayClassName || "bg-black/60"}`}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onDismiss();
-      }}
-    >
-      <div
-        ref={containerRef}
-        role={role}
-        aria-modal="true"
-        aria-label={label}
-        aria-labelledby={labelledBy}
-        aria-describedby={describedBy}
-        className={className}
-      >
-        {children}
-      </div>
-    </div>,
-    document.body,
+  return (
+    <>
+      {anchor}
+      {mounted &&
+        createPortal(
+          /* Onto `document.body` rather than in place: callers sit inside ancestors
+             carrying transforms and filters, and a `position: fixed` overlay inside
+             one of those is contained by it rather than by the viewport — the
+             backdrop covers part of the page and the card lands wherever the caller
+             is. */
+          <EditionScope edition={edition}>
+            <div
+              className={`fixed inset-0 z-[100] grid place-items-center overflow-y-auto overscroll-contain p-4 ${overlayClassName || "bg-black/60"}`}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) onDismiss();
+              }}
+            >
+              <div
+                ref={containerRef}
+                role={role}
+                aria-modal="true"
+                aria-label={label}
+                aria-labelledby={labelledBy}
+                aria-describedby={describedBy}
+                className={className}
+              >
+                {children}
+              </div>
+            </div>
+          </EditionScope>,
+          document.body,
+        )}
+    </>
   );
 }
 
@@ -252,7 +263,7 @@ export function ModalHeader({
     <header className="flex flex-none items-start justify-between gap-3 border-b border-border-light px-pad-dialog py-4">
       <div className="min-w-0">
         {eyebrow ? (
-          <p className="mb-1.5 font-mono text-[10px] tracking-[0.16em] text-fg-quaternary uppercase">
+          <p className="mb-1.5 font-mono text-[10px] tracking-[0.16em] text-fg-tertiary uppercase">
             {eyebrow}
           </p>
         ) : null}
@@ -309,7 +320,7 @@ export const MODAL_ACTION_TONES = {
   quiet:
     "border border-border-medium text-fg-secondary hover:bg-bg-secondary hover:text-fg-primary",
   /** The one that does the thing. */
-  primary: "bg-accent-primary text-white hover:bg-accent-hover",
+  primary: "bg-accent-primary text-on-accent hover:bg-accent-hover",
   /** The one that destroys something: danger ink on a danger hairline. */
   danger:
     "border border-status-danger-border bg-status-danger-surface text-status-danger-ink hover:border-status-danger-ink",

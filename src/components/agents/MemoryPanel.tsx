@@ -137,7 +137,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
             <select
               value={scope}
               onChange={(e) => setScope(e.target.value)}
-              className="mt-0.5 w-full rounded-lg bg-bg-secondary px-2 py-1.5 text-xs text-fg-primary"
+              className="mt-0.5 w-full rounded-sm bg-bg-secondary px-2 py-1.5 text-xs text-fg-primary"
             >
               <option value={GLOBAL_SCOPE}>{t("scopeGlobal")}</option>
               {agents
@@ -157,7 +157,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
               onChange={(e) => setKey(e.target.value)}
               placeholder="sprint_cadence"
               maxLength={64}
-              className="mt-0.5 w-full rounded-lg bg-bg-secondary px-2 py-1.5 font-mono text-xs text-fg-primary placeholder:text-fg-tertiary"
+              className="mt-0.5 w-full rounded-sm bg-bg-secondary px-2 py-1.5 font-mono text-xs text-fg-primary placeholder:text-fg-tertiary"
             />
           </label>
 
@@ -169,7 +169,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
               placeholder={t("factValuePlaceholder")}
               maxLength={200}
               rows={3}
-              className="mt-0.5 w-full resize-none rounded-lg bg-bg-secondary px-2 py-1.5 text-xs text-fg-primary placeholder:text-fg-tertiary"
+              className="mt-0.5 w-full resize-none rounded-sm bg-bg-secondary px-2 py-1.5 text-xs text-fg-primary placeholder:text-fg-tertiary"
             />
           </label>
 
@@ -191,7 +191,7 @@ export function MemoryPanel({ agents, activeAgentId }: Props) {
             type="button"
             onClick={submit}
             disabled={upsert.isPending || !key.trim() || !value.trim()}
-            className="w-full rounded-lg bg-accent-primary px-3 py-1.5 text-xs font-medium text-tui-on-accent disabled:opacity-50"
+            className="w-full rounded-sm bg-accent-primary px-3 py-1.5 text-xs font-medium text-tui-on-accent disabled:opacity-50"
           >
             {upsert.isPending ? t("saving") : t("save")}
           </button>

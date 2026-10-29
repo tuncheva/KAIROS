@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 
-import { AlertCircle, Check, Copy, Loader2, Lock, Plus, RefreshCw, Search, Trash2 } from "~/components/ui/icons";
+import { AlertCircle, Check, Copy, Lock, Plus, RefreshCw, Search, Trash2 } from "~/components/ui/icons";
 import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { useToast } from "~/components/providers/ToastProvider";
 import { ProfileLink } from "~/components/profile/ProfileLink";
@@ -23,6 +23,7 @@ import { api } from "~/trpc/react";
 
 import { useSettingsSave } from "./ledger/Ledger";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
 type TemplateRole = (typeof TEMPLATE_ROLE_ORDER)[number];
@@ -104,10 +105,10 @@ export function driftedHolders(
 }
 
 const FIELD =
-  "rounded-[6px] border border-transparent bg-fg-primary/5 text-settings-body text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary/50 focus:bg-transparent";
+  "rounded-sm border border-transparent bg-fg-primary/5 text-settings-body text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-accent-primary/50 focus:bg-transparent";
 
 const BUTTON =
-  "inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-[6px] px-[13px] text-settings-small font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-[13px] text-settings-small font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40";
 
 /**
  * Roles & permissions as one matrix: roles across, permissions down, so any
@@ -375,7 +376,7 @@ export function RoleMatrix({
                       <button
                         type="button"
                         onClick={() => select(col)}
-                        className="flex w-full cursor-pointer flex-col items-center gap-1 rounded-[6px] px-1.5 py-1 transition-colors hover:bg-fg-primary/5"
+                        className="flex w-full cursor-pointer flex-col items-center gap-1 rounded-sm px-1.5 py-1 transition-colors hover:bg-fg-primary/5"
                       >
                         <span
                           className={`kairos-break-anywhere flex items-center gap-1 text-settings-small font-medium ${
@@ -536,7 +537,7 @@ export function RoleMatrix({
             {activeHolders.length ? (
               <HolderStack holders={activeHolders} />
             ) : (
-              <span className="text-settings-meta text-fg-quaternary">{t("roles.noHolders")}</span>
+              <span className="text-settings-meta text-fg-tertiary">{t("roles.noHolders")}</span>
             )}
           </div>
         ) : null}
@@ -559,7 +560,7 @@ export function RoleMatrix({
               title={dirty ? t("roles.saveFirst") : undefined}
               className={`${BUTTON} self-start border border-warning/40 text-warning hover:bg-warning/10`}
             >
-              {reapplying ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} aria-hidden />}
+              {reapplying ? <PendingDot /> : <RefreshCw size={13} aria-hidden />}
               {t("roles.reapply")}
             </button>
           </div>
@@ -583,10 +584,10 @@ export function RoleMatrix({
                   type="button"
                   onClick={() => void submit()}
                   disabled={!dirty || !draft?.name.trim() || pending}
-                  className={`${BUTTON} flex-1 bg-accent-primary text-white hover:bg-accent-primary/90`}
+                  className={`${BUTTON} flex-1 bg-accent-primary text-on-accent hover:bg-accent-primary/90`}
                 >
                   {pending ? (
-                    <Loader2 size={13} className="animate-spin" />
+                    <PendingDot />
                   ) : active.kind === "new" ? (
                     t("roles.createRole")
                   ) : (
@@ -676,7 +677,7 @@ function GroupRows({
         <th
           scope="colgroup"
           colSpan={span}
-          className="sticky left-0 bg-bg-elevated px-3 pb-1 pt-3 text-left text-settings-eyebrow font-medium uppercase tracking-[0.1em] text-fg-quaternary"
+          className="sticky left-0 bg-bg-elevated px-3 pb-1 pt-3 text-left text-settings-eyebrow font-medium uppercase tracking-[0.1em] text-fg-tertiary"
         >
           {title}
         </th>
@@ -705,7 +706,7 @@ function CellMark({
 }) {
   const box = (
     <span
-      className={`flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border transition ${
+      className={`flex h-[18px] w-[18px] items-center justify-center rounded-xs border transition ${
         on
           ? "border-accent-primary/50 bg-accent-primary/20 text-accent-primary"
           : "border-border-medium bg-transparent"
@@ -718,8 +719,10 @@ function CellMark({
   if (!interactive) {
     return (
       <span
-        role="img"
-        aria-label={`${label}: ${on ? "✓" : "—"}`}
+        role="checkbox"
+        aria-checked={on}
+        aria-disabled="true"
+        aria-label={label}
         title={locked ? lockedHint : undefined}
         className={`inline-flex ${locked ? "cursor-not-allowed opacity-50" : ""}`}
       >
@@ -734,7 +737,7 @@ function CellMark({
       aria-checked={on}
       aria-label={label}
       onClick={onToggle}
-      className="inline-flex cursor-pointer rounded-[5px] p-1 transition hover:bg-fg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
+      className="inline-flex cursor-pointer rounded-xs p-1 transition hover:bg-fg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
     >
       {box}
     </button>
@@ -773,7 +776,7 @@ function HolderStack({ holders }: { holders: readonly MatrixMember[] }) {
         );
       })}
       {rest > 0 ? (
-        <span className="flex h-[26px] min-w-[26px] items-center justify-center rounded-full bg-fg-primary/5 px-1.5 text-settings-eyebrow font-medium text-fg-tertiary">
+        <span className="flex h-[26px] min-w-[26px] items-center justify-center rounded-sm bg-fg-primary/5 px-1.5 text-settings-eyebrow font-medium text-fg-tertiary">
           +{rest}
         </span>
       ) : null}

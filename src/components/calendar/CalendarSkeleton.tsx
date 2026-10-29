@@ -45,7 +45,7 @@ const EVENT_PATTERN: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
 const GUTTER = "w-[58px]";
 
 const OUTLINE_BTN =
-  "flex h-[30px] items-center gap-1.5 rounded-lg border border-border-medium px-2.5 text-xs font-semibold text-fg-tertiary";
+  "flex h-[30px] items-center gap-1.5 rounded-sm border border-border-medium px-2.5 text-xs font-semibold text-fg-tertiary";
 
 export type TimeColumnSkeleton = {
   /** Weekday label — known even before the clock is. */
@@ -228,7 +228,7 @@ export function CalendarMonthGridSkeleton({
                   <div className="flex items-center justify-between gap-1">
                     <span
                       className={cn(
-                        "flex h-[22px] min-w-[22px] items-center justify-center rounded-full px-1 text-xs font-semibold tabular-nums",
+                        "flex h-[22px] min-w-[22px] items-center justify-center rounded-sm px-1 text-xs font-semibold tabular-nums",
                         cell.isToday
                           ? "bg-accent-primary text-tui-on-accent"
                           : cell.inMonth
@@ -364,7 +364,7 @@ export function CalendarSkeleton() {
           <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-border-medium text-fg-secondary">
             <ChevronRight size={15} />
           </span>
-          <span className="ml-1 flex h-[30px] items-center rounded-lg border border-accent-primary/30 bg-accent-primary/10 px-2.5 text-xs font-semibold text-accent-primary">
+          <span className="ml-1 flex h-[30px] items-center rounded-sm border border-accent-primary/30 bg-accent-primary/10 px-2.5 text-xs font-semibold text-accent-primary">
             {t("today")}
           </span>
         </div>
@@ -384,7 +384,7 @@ export function CalendarSkeleton() {
         <span className="flex-1" />
 
         <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
-          <span className="flex h-[30px] min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-medium bg-bg-surface px-2.5 text-xs text-fg-quaternary sm:w-[190px] sm:flex-none">
+          <span className="flex h-[30px] min-w-0 flex-1 items-center gap-2 rounded-sm border border-border-medium bg-bg-surface px-2.5 text-xs text-fg-tertiary sm:w-[190px] sm:flex-none">
             <Search size={13} className="shrink-0 text-fg-tertiary" />
             <span className="truncate">{t("searchRange")}</span>
           </span>
@@ -398,7 +398,7 @@ export function CalendarSkeleton() {
           <span className={cn(OUTLINE_BTN, "hidden w-[30px] justify-center px-0 text-fg-secondary sm:flex")}>
             <HelpCircle size={14} />
           </span>
-          <span className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-tui-on-accent">
+          <span className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-sm bg-accent-primary px-3 text-xs font-semibold text-tui-on-accent">
             <Plus size={14} />
             {t("newButton")}
           </span>

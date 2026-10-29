@@ -73,7 +73,7 @@ export function NotificationPositionPicker({
                 key={slot}
                 className={`flex items-center justify-center rounded-lg border border-dashed px-1 text-center text-settings-eyebrow leading-tight font-medium ${
                   isReserved
-                    ? "border-border-light text-fg-quaternary"
+                    ? "border-border-light text-fg-tertiary"
                     : "border-success/40 bg-success/8 text-success"
                 }`}
               >
@@ -126,7 +126,7 @@ export function NotificationPositionPicker({
         >
           {t("positionPreview")}
         </button>
-        <span className="text-settings-micro text-fg-quaternary">{t("positionMobileNote")}</span>
+        <span className="text-settings-micro text-fg-tertiary">{t("positionMobileNote")}</span>
       </div>
     </div>
   );

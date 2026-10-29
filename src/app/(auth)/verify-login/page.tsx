@@ -87,7 +87,7 @@ function VerifyLoginContent() {
         <p className={body}>{t("deniedBody")}</p>
         <Link
           href="/"
-          className="inline-block px-6 py-2.5 bg-accent-primary text-white font-medium rounded-lg hover:bg-accent-secondary transition-colors"
+          className="inline-block px-6 py-2.5 bg-accent-primary text-on-accent font-medium rounded-md hover:bg-accent-hover transition-colors"
         >
           {t("resetPassword")}
         </Link>
@@ -116,7 +116,7 @@ function VerifyLoginContent() {
             type="button"
             disabled={decide.isPending}
             onClick={() => decide.mutate({ token, decision: "approve" })}
-            className="flex-1 px-6 py-2.5 bg-accent-primary text-white font-medium rounded-lg hover:bg-accent-secondary transition-colors disabled:opacity-60"
+            className="flex-1 px-6 py-2.5 bg-accent-primary text-on-accent font-medium rounded-md hover:bg-accent-hover transition-colors disabled:opacity-60"
           >
             {t("approve")}
           </button>
@@ -124,7 +124,7 @@ function VerifyLoginContent() {
             type="button"
             disabled={decide.isPending}
             onClick={() => decide.mutate({ token, decision: "deny" })}
-            className="flex-1 px-6 py-2.5 border border-border-light/60 text-fg-primary font-medium rounded-lg hover:bg-bg-tertiary/60 transition-colors disabled:opacity-60"
+            className="flex-1 px-6 py-2.5 border border-border-medium text-fg-primary font-medium rounded-md hover:bg-bg-tertiary/60 transition-colors disabled:opacity-60"
           >
             {t("deny")}
           </button>
@@ -138,7 +138,7 @@ function VerifyLoginContent() {
 
   return (
     <div className="min-h-dvh bg-bg-primary flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-bg-secondary/60 border border-border-light/40 rounded-lg p-8">
+      <div className="w-full max-w-md bg-bg-elevated border border-border-medium rounded-lg p-8">
         {content}
       </div>
     </div>

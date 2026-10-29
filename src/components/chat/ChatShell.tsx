@@ -973,13 +973,13 @@ export function ChatShell({
                 </p>
               </div>
               {activeConversation.projectTitle && (
-                <span className="hidden h-7 max-w-[220px] items-center gap-[7px] rounded-full border border-tui-ink/16 px-3 text-[12.5px] text-tui-ink2 md:flex">
+                <span className="hidden h-7 max-w-[220px] items-center gap-[7px] rounded-sm border border-tui-ink/16 px-3 text-[12.5px] text-tui-ink2 md:flex">
                   <FolderKanban size={12} className="flex-none text-tui-ink3" />
                   <span className="truncate">{activeConversation.projectTitle}</span>
                 </span>
               )}
               {activeConversation.muted && (
-                <span className="hidden h-7 items-center gap-[7px] rounded-full border border-tui-ink/16 px-3 text-[12.5px] text-tui-ink3 md:flex">
+                <span className="hidden h-7 items-center gap-[7px] rounded-sm border border-tui-ink/16 px-3 text-[12.5px] text-tui-ink3 md:flex">
                   <BellOff size={12} />
                   {t("muted")}
                 </span>
@@ -1070,7 +1070,7 @@ export function ChatShell({
                 <button
                   type="button"
                   onClick={() => router.push("/chat")}
-                  className="h-[38px] rounded-full border border-tui-accent/45 px-[18px] text-[13.5px] font-semibold text-tui-accent transition-colors hover:bg-tui-accent/6"
+                  className="h-[38px] rounded-md border border-tui-accent/45 px-[18px] text-[13.5px] font-semibold text-tui-accent transition-colors hover:bg-tui-accent/6"
                 >
                   {t("backToConversations")}
                 </button>
@@ -1089,7 +1089,7 @@ export function ChatShell({
             <button
               type="button"
               onClick={() => setShowNewChat(true)}
-              className="mt-2 flex h-[38px] items-center gap-2 rounded-full border border-tui-accent/45 px-[18px] text-[13.5px] font-semibold text-tui-accent transition-colors hover:bg-tui-accent/6"
+              className="mt-2 flex h-[38px] items-center gap-2 rounded-md border border-tui-accent/45 px-[18px] text-[13.5px] font-semibold text-tui-accent transition-colors hover:bg-tui-accent/6"
             >
               <Plus size={14} />
               {t("newChat")}

@@ -78,7 +78,7 @@ export function SearchTrigger() {
           onClick={askAboutPage}
           aria-label={t("askAboutPage")}
           title={t("askAboutPage")}
-          className="relative z-10 hidden h-6 shrink-0 items-center gap-1 rounded-full bg-tui-accent/10 px-2 text-[11.5px] font-medium text-tui-accent transition-colors hover:bg-tui-accent/20 focus-visible:ring-2 focus-visible:ring-tui-accent focus-visible:outline-none lg:inline-flex"
+          className="relative z-10 hidden h-6 shrink-0 items-center gap-1 rounded-sm bg-tui-accent/10 px-2 text-[11.5px] font-medium text-tui-accent transition-colors hover:bg-tui-accent/20 focus-visible:ring-2 focus-visible:ring-tui-accent focus-visible:outline-none lg:inline-flex"
         >
           <Sparkles size={12} aria-hidden="true" />
           AI
@@ -86,7 +86,7 @@ export function SearchTrigger() {
       )}
       <kbd
         aria-hidden="true"
-        className="pointer-events-none hidden h-[22px] shrink-0 items-center rounded-full border border-tui-ink/12 bg-tui-pane px-2 font-mono text-[11px] text-tui-ink3 sm:inline-flex"
+        className="pointer-events-none hidden h-[22px] shrink-0 items-center rounded-sm border border-tui-ink/12 bg-tui-pane px-2 font-mono text-[11px] text-tui-ink3 sm:inline-flex"
       >
         {modKey === "⌘" ? "⌘K" : "Ctrl K"}
       </kbd>

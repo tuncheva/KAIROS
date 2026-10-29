@@ -41,36 +41,19 @@ describe("Design System – globals.css", () => {
     expect(css).toContain(".kairos-stagger");
   });
 
-  it("defines .kairos-glass glassmorphism class", () => {
-    expect(css).toContain(".kairos-glass");
-  });
-
-  it("defines .kairos-card class with hover effects", () => {
-    expect(css).toContain(".kairos-card");
-  });
-
   it("defines .kairos-btn micro-interaction class", () => {
     expect(css).toContain(".kairos-btn");
-  });
-
-  it("defines .kairos-input class", () => {
-    expect(css).toContain(".kairos-input");
-  });
-
-  it("defines .kairos-modal-overlay class", () => {
-    expect(css).toContain(".kairos-modal-overlay");
-  });
-
-  it("defines .kairos-modal-content class", () => {
-    expect(css).toContain(".kairos-modal-content");
   });
 
   it("defines .kairos-chat-response class", () => {
     expect(css).toContain(".kairos-chat-response");
   });
 
-  it("defines .kairos-transition utility", () => {
-    expect(css).toContain(".kairos-transition");
+  /* ─── no broken colour functions ─── */
+  it("never mixes a space-separated token into a comma rgba()", () => {
+    // `--x` holds "168 85 247", so `rgba(var(--x), 0.5)` is invalid and the
+    // browser drops the whole declaration — the light-mode selection bug.
+    expect(css).not.toMatch(/rgba\(var\(--[\w-]+\),/);
   });
 
   /* ─── reduced motion support ─── */

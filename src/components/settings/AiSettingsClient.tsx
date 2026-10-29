@@ -425,7 +425,7 @@ export function AiSettingsClient() {
                       {/* The value verbatim: paraphrasing what it remembers
                           would defeat the point of showing it. */}
                       <p className="text-settings-body text-fg-primary">{fact.value}</p>
-                      <p className="mt-0.5 text-settings-meta text-fg-quaternary">
+                      <p className="mt-0.5 text-settings-meta text-fg-tertiary">
                         {/* Which agent this applies to. A fact scoped to one
                             agent reads as a general rule without this, and a
                             user cannot correct a scope they cannot see. */}
@@ -473,7 +473,7 @@ export function AiSettingsClient() {
             <div className="kairos-scroll-area overflow-x-auto">
               <table className="w-full min-w-[24rem] text-settings-body">
                 <thead>
-                  <tr className="text-left text-settings-eyebrow font-medium uppercase tracking-[0.14em] text-fg-quaternary">
+                  <tr className="text-left text-settings-eyebrow font-medium uppercase tracking-[0.14em] text-fg-tertiary">
                     <th className="pb-2 font-medium">{t("agent")}</th>
                     <th className="pb-2 text-right font-medium">p50</th>
                     <th className="pb-2 text-right font-medium">p95</th>

@@ -88,7 +88,7 @@ export function ConsoleDrawer({
           role="dialog"
           aria-modal="true"
           aria-label={label}
-          className={`relative m-2 flex h-[calc(100%-1rem)] w-full flex-col overflow-hidden rounded-[16px] border border-tui-ink/10 bg-tui-pane text-tui-ink shadow-[var(--tui-pane-shadow)] sm:m-3 sm:h-[calc(100%-1.5rem)] ${
+          className={`relative m-2 flex h-[calc(100%-1rem)] w-full flex-col overflow-hidden rounded-xl border border-tui-ink/10 bg-tui-pane text-tui-ink shadow-[var(--tui-pane-shadow)] sm:m-3 sm:h-[calc(100%-1.5rem)] ${
             left ? "max-w-[320px]" : "max-w-[380px]"
           } ${
             left

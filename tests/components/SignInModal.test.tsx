@@ -67,7 +67,12 @@ describe("SignInModal", () => {
 
   it("has tabs for sign in and sign up", () => {
     render(<SignInModal {...defaultProps} />);
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    // The tab and the submit button share the label "Sign in" in sentence case;
+    // the tab is the one that is not a submit button.
+    const signInTab = screen
+      .getAllByRole("button", { name: "Sign in" })
+      .find((b) => b.getAttribute("type") !== "submit");
+    expect(signInTab).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign up" })).toBeInTheDocument();
   });
 
@@ -113,13 +118,15 @@ describe("SignInModal", () => {
 
   it("has submit button for sign in", () => {
     render(<SignInModal {...defaultProps} />);
-    const submitBtn = screen.getByRole("button", { name: "Sign In" });
+    const submitBtn = screen
+      .getAllByRole("button", { name: "Sign in" })
+      .find((b) => b.getAttribute("type") === "submit");
     expect(submitBtn).toBeInTheDocument();
   });
 
   it("shows Welcome back heading in sign in mode", () => {
     render(<SignInModal {...defaultProps} />);
-    expect(screen.getByText("Welcome Back")).toBeInTheDocument();
+    expect(screen.getByText("Welcome back")).toBeInTheDocument();
   });
 
   it("tabs back to sign in from sign up", async () => {
@@ -130,7 +137,7 @@ describe("SignInModal", () => {
     expect(screen.getByText("Create your account")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(screen.getByText("Welcome Back")).toBeInTheDocument();
+    expect(screen.getByText("Welcome back")).toBeInTheDocument();
   });
 
   it("renders terms and privacy notice", async () => {

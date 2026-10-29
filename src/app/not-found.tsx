@@ -13,7 +13,7 @@ import { SYSTEM_ACTION_PRIMARY, SystemScreen } from "~/components/ui/SystemScree
  * The 404.
  *
  * Same vocabulary as the error boundaries: the Kairos mark, a mono eyebrow
- * carrying the status, a display-serif headline and Geist body copy. The old
+ * carrying the status, a `font-display` headline and sans body copy. The old
  * screen set "404" in bold sans at text-4xl inside a tinted tile, which is the
  * one place in the product where a number was doing a stamp's job.
  */

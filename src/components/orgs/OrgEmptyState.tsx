@@ -69,7 +69,7 @@ export function JoinWithCodeForm({ onJoined }: { onJoined?: () => void }) {
         onChange={(e) => setCode(e.target.value)}
         /* Codes are stored and compared upper-case; showing them that way means
            the field looks like what the sender pasted. */
-        className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-bg-secondary border border-border-light text-sm text-fg-primary uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal placeholder:text-fg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+        className="flex-1 min-w-0 px-3 py-2 rounded-md bg-bg-secondary border border-border-light text-sm text-fg-primary uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal placeholder:text-fg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
         placeholder={tOrg("joinCodePlaceholder")}
         autoComplete="off"
         spellCheck={false}
@@ -77,7 +77,7 @@ export function JoinWithCodeForm({ onJoined }: { onJoined?: () => void }) {
       <button
         type="submit"
         disabled={!trimmed || join.isPending}
-        className="px-4 py-2 rounded-xl bg-accent-primary text-white text-sm font-semibold hover:bg-accent-primary/90 transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary"
+        className="px-4 py-2 rounded-md bg-accent-primary text-on-accent text-sm font-semibold hover:bg-accent-primary/90 transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary"
       >
         {join.isPending ? tOrg("joining") : tOrg("joinWithCodeCta")}
       </button>
@@ -123,14 +123,14 @@ function CreateOrgForm() {
         id="org-create-name"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-bg-secondary border border-border-light text-sm text-fg-primary placeholder:text-fg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+        className="flex-1 min-w-0 px-3 py-2 rounded-md bg-bg-secondary border border-border-light text-sm text-fg-primary placeholder:text-fg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
         placeholder={tOrg("createNamePlaceholder")}
         autoComplete="organization"
       />
       <button
         type="submit"
         disabled={!trimmed || create.isPending}
-        className="px-4 py-2 rounded-xl border border-border-light text-sm font-semibold text-fg-primary hover:bg-bg-secondary transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary"
+        className="px-4 py-2 rounded-md border border-border-light text-sm font-semibold text-fg-primary hover:bg-bg-secondary transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary"
       >
         {create.isPending ? tOrg("creating") : tOrg("createOrgCta")}
       </button>
@@ -157,7 +157,7 @@ export function OrgEmptyState({ compact = false }: { compact?: boolean }) {
   return (
     <div className="space-y-5">
       <div className="space-y-1">
-        <h2 className="text-lg font-bold text-fg-primary">{tOrg("emptyTitle")}</h2>
+        <h2 className="font-display text-lg font-normal text-fg-primary">{tOrg("emptyTitle")}</h2>
         <p className="text-sm text-fg-secondary">{tOrg("emptyBody")}</p>
       </div>
 

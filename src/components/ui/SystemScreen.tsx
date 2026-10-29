@@ -7,7 +7,7 @@ import { KairosMark } from "~/components/layout/KairosMark";
  * surfaces in the app with no design pass: a bold sans heading at text-2xl, a
  * warning character in whatever emoji font the OS supplied, and no mark, eyebrow
  * or stamp anywhere. They now read like the rest of the product — a mono
- * eyebrow, the Kairos mark, a display-serif headline, Geist body copy and a
+ * eyebrow, the Kairos mark, a `font-display` headline, sans body copy and a
  * mono footer line.
  *
  * Deliberately hook-free and provider-free so the server-rendered `loading.tsx`
@@ -47,7 +47,7 @@ export function SystemScreen({
           <KairosMark size={34} className="mb-6" />
         )}
 
-        <p className="text-fg-quaternary font-mono text-[11px] tracking-[0.18em] uppercase">
+        <p className="text-fg-tertiary font-mono text-[11px] tracking-[0.18em] uppercase">
           {eyebrow}
         </p>
 
@@ -77,7 +77,7 @@ const ACTION_BASE =
   "inline-flex h-control-md items-center justify-center rounded-md px-5 text-[13px] font-semibold transition-colors";
 
 /** The action that does the thing. Flat accent, not a gradient. */
-export const SYSTEM_ACTION_PRIMARY = `${ACTION_BASE} bg-accent-primary text-white hover:bg-accent-hover`;
+export const SYSTEM_ACTION_PRIMARY = `${ACTION_BASE} bg-accent-primary text-on-accent hover:bg-accent-hover`;
 
 /** The way back. Flat ink on a hairline, which is the house style for accent. */
 export const SYSTEM_ACTION_QUIET = `${ACTION_BASE} border border-border-medium text-fg-secondary hover:border-accent-primary/50 hover:text-fg-primary`;

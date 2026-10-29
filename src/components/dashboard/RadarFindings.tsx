@@ -34,7 +34,7 @@ const SEVERITY = {
 
 /** The fix and "open project" share one outline pill that fills with ink on hover. */
 const ACTION =
-  "border-tui-ink/16 text-tui-ink hover:border-tui-ink hover:bg-tui-ink hover:text-tui-pane flex h-[30px] items-center rounded-full border px-3.5 text-[12.5px] font-medium whitespace-nowrap transition-colors";
+  "border-tui-ink/16 text-tui-ink hover:border-tui-ink hover:bg-tui-ink hover:text-tui-pane flex h-[30px] items-center rounded-sm border px-3.5 text-[12.5px] font-medium whitespace-nowrap transition-colors";
 
 type Severity = keyof typeof SEVERITY;
 
@@ -81,7 +81,7 @@ export function RadarFindings({
 
   return (
     <section
-      className={`border-tui-ink/10 bg-tui-pane overflow-hidden rounded-[14px] border shadow-[var(--tui-pane-shadow)] ${className}`}
+      className={`border-tui-ink/10 bg-tui-pane overflow-hidden rounded-lg border shadow-[var(--tui-pane-shadow)] ${className}`}
       style={style}
     >
       <div className="flex items-baseline gap-3 px-[18px] pt-[22px] pb-4 sm:px-7">

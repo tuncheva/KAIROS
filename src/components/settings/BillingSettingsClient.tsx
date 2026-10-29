@@ -473,7 +473,7 @@ function CreateOrgToBuy({ t }: { t: Translator }) {
     return (
       <>
         <LedgerAction onClick={() => setOpen(true)}>{t("createOrg")}</LedgerAction>
-        <p className="text-settings-micro text-fg-quaternary">{t("teamNeedsOrg")}</p>
+        <p className="text-settings-micro text-fg-tertiary">{t("teamNeedsOrg")}</p>
       </>
     );
   }
@@ -505,7 +505,7 @@ function CreateOrgToBuy({ t }: { t: Translator }) {
         maxLength={256}
         placeholder={t("orgNamePlaceholder")}
         aria-label={t("orgNameLabel")}
-        className="rounded-md border border-border-medium bg-bg-primary px-2.5 py-1.5 text-settings-body text-fg-primary placeholder:text-fg-quaternary focus:border-accent-primary focus:outline-none"
+        className="rounded-md border border-border-medium bg-bg-primary px-2.5 py-1.5 text-settings-body text-fg-primary placeholder:text-fg-tertiary focus:border-accent-primary focus:outline-none"
       />
       <LedgerAction onClick={submit} disabled={!trimmed || create.isPending}>
         {create.isPending ? t("creatingOrg") : t("createOrgConfirm")}
@@ -622,12 +622,12 @@ function PlanCard({
         </LedgerAction>
         )}
         {blocker ? (
-          <p className="text-settings-micro text-fg-quaternary">{blocker}</p>
+          <p className="text-settings-micro text-fg-tertiary">{blocker}</p>
         ) : trialDays > 0 ? (
           // What happens at the end, said before the decision rather than in a
           // renewal email. A trial that collects no card and does not say so
           // reads as a subscription the buyer has forgotten the terms of.
-          <p className="text-settings-micro text-fg-quaternary">
+          <p className="text-settings-micro text-fg-tertiary">
             {t("trialNote", { days: trialDays })}
           </p>
         ) : null}

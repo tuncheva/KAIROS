@@ -18,7 +18,7 @@ describe("SideNav", () => {
 
   it("renders the desktop sidebar", () => {
     const { container } = render(<SideNav />);
-    const aside = container.querySelector('aside[aria-label="Primary"]');
+    const aside = container.querySelector('aside[aria-label="Main menu"]');
     expect(aside).not.toBeNull();
   });
 
@@ -184,14 +184,14 @@ describe("SideNav", () => {
 
   it("is open at 248px by default and does not expand on hover", () => {
     const { container } = render(<SideNav />);
-    const aside = container.querySelector('aside[aria-label="Primary"]')!;
+    const aside = container.querySelector('aside[aria-label="Main menu"]')!;
     expect(aside.className).toContain("w-[248px]");
     expect(aside.className).not.toContain("hover:w-");
   });
 
   it("groups the destinations under Workspace, Insights and Collaboration", () => {
     const { container } = render(<SideNav />);
-    const aside = container.querySelector('aside[aria-label="Primary"]')!;
+    const aside = container.querySelector('aside[aria-label="Main menu"]')!;
     expect(aside.textContent).toContain("Workspace");
     expect(aside.textContent).toContain("Insights");
     expect(aside.textContent).toContain("Collaboration");
@@ -277,7 +277,7 @@ describe("SideNav", () => {
     window.addEventListener("kairos:openPalette", handler);
 
     const { container } = render(<SideNav />);
-    const aside = container.querySelector<HTMLElement>('aside[aria-label="Primary"]')!;
+    const aside = container.querySelector<HTMLElement>('aside[aria-label="Main menu"]')!;
     await user.click(within(aside).getByRole("button", { name: "Search" }));
     expect(handler).toHaveBeenCalledTimes(1);
 
@@ -296,7 +296,7 @@ describe("SideNav", () => {
   it("keeps the open width class whether collapsed or not", () => {
     window.localStorage.setItem("kairos:railCollapsed", "true");
     const { container } = render(<SideNav />);
-    const aside = container.querySelector('aside[aria-label="Primary"]')!;
+    const aside = container.querySelector('aside[aria-label="Main menu"]')!;
 
     expect(aside.className).toContain("kairos-rail");
     expect(aside.className).toContain("w-[248px]");

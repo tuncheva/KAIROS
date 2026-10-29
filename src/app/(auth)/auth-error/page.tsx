@@ -67,7 +67,7 @@ function AuthErrorContent() {
 
   return (
     <div className="min-h-dvh bg-bg-primary flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-bg-secondary/60 border border-border-light/40 rounded-lg p-8 space-y-5">
+      <div className="w-full max-w-md bg-bg-elevated border border-border-medium rounded-lg p-8 space-y-5">
         <div className="space-y-3 text-center">
           <AlertCircle className="mx-auto text-status-warning-ink" size={32} />
           <h1 className="font-display text-[22px] leading-tight font-normal text-fg-primary">
@@ -82,13 +82,13 @@ function AuthErrorContent() {
         <div className="space-y-2">
           <Link
             href="/"
-            className="block w-full text-center px-6 py-2.5 bg-accent-primary text-white font-medium rounded-lg hover:bg-accent-secondary transition-colors"
+            className="block w-full text-center px-6 py-2.5 bg-accent-primary text-on-accent font-medium rounded-md hover:bg-accent-hover transition-colors"
           >
             Back to sign in
           </Link>
           <Link
             href="/verify-email"
-            className="block w-full text-center px-6 py-2.5 border border-border-light/40 text-fg-secondary font-medium rounded-lg hover:text-fg-primary transition-colors"
+            className="block w-full text-center px-6 py-2.5 border border-border-medium text-fg-secondary font-medium rounded-md hover:text-fg-primary transition-colors"
           >
             Send a new confirmation email
           </Link>

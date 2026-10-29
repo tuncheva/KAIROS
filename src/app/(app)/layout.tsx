@@ -48,14 +48,21 @@ import { PushRegistrar } from "~/components/notifications/PushRegistrar";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ProfilePeekProvider>
-      <SideNav />
-      <PushRegistrar />
-      {/* One mount, covering every signed-in route. It was mounted on `/create`
-          and `/notes/*` only — never on `/dashboard`, which is where sign-in
-          actually lands — so the users it exists for routinely never met it.
-          Wrapping `children` rather than the whole shell keeps the rail on
-          screen behind it. */}
-      <OnboardingGate>{children}</OnboardingGate>
+      {/* Every signed-in route is on the refined palette: `.tui-refined` remaps
+          the semantic tokens for any screen still written in them, and the
+          screens with an edition of their own (settings, notes, calendar, AI
+          chat) nest it inside and win. `contents`, so the wrapper adds no box
+          and the layout is exactly what it was. See docs/theme.md, Editions. */}
+      <div className="tui-refined contents">
+        <SideNav />
+        <PushRegistrar />
+        {/* One mount, covering every signed-in route. It was mounted on `/create`
+            and `/notes/*` only — never on `/dashboard`, which is where sign-in
+            actually lands — so the users it exists for routinely never met it.
+            Wrapping `children` rather than the whole shell keeps the rail on
+            screen behind it. */}
+        <OnboardingGate>{children}</OnboardingGate>
+      </div>
     </ProfilePeekProvider>
   );
 }

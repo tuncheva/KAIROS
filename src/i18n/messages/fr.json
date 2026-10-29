@@ -1,6 +1,8 @@
 {
   "nav": {
-    "dashboard": "Tableau de bord",
+        "mainMenu": "Menu principal",
+    "menu": "Navigation",
+"dashboard": "Tableau de bord",
     "home": "Accueil",
     "create": "Créer",
     "publish": "Publier",
@@ -271,7 +273,8 @@
     "title": "Paramètres",
     "subtitle": "Gérez votre compte et vos préférences",
     "profile": {
-      "title": "Paramètres du profil",
+            "imagePreview": "Aperçu de la nouvelle image",
+"title": "Paramètres du profil",
       "subtitle": "Gérez vos informations personnelles",
       "updateProfile": "Mettre à jour le profil",
       "uploadImage": "Télécharger une image",
@@ -281,7 +284,7 @@
       "characters": "caractères",
       "memberSince": "Membre depuis",
       "saving": "Enregistrement...",
-      "saveSuccess": "Profil mis à jour avec succès !",
+      "saveSuccess": "Profil enregistré.",
       "profilePicture": "Photo de profil",
       "fullName": "Nom complet",
       "namePlaceholder": "Entrez votre nom complet",
@@ -1024,7 +1027,7 @@
         "contentRequired": "Veuillez ajouter du contenu à votre note."
       },
       "success": {
-        "created": "Note créée avec succès !"
+        "created": "Note créée."
       },
       "labels": {
         "password": "Mot de passe"
@@ -1033,9 +1036,9 @@
       "errors": {
         "createFailed": "Impossible de créer la note : {message}"
       },
-      "empty": "Aucune note pour le moment. Créez votre première note !",
+      "empty": "Aucune note pour le moment. Créez-en une pour commencer.",
       "encrypted": "Chiffré ({count})",
-      "encryptedNote": "🔒 Note chiffrée",
+      "encryptedNote": "Note chiffrée",
       "deleteConfirm": "Supprimer cette note ? Cette action est irréversible.",
       "allLocked": "Toutes les notes sont verrouillées",
       "allLockedHint": "Vérifiez le dossier chiffré",
@@ -1052,7 +1055,7 @@
       },
       "edit": {
         "title": "Modifier la note",
-        "save": "Enregistrer",
+"save": "Enregistrer",
         "saving": "Enregistrement..."
       },
       "reset": {
@@ -1062,7 +1065,7 @@
         "expiry": "Le lien expirera dans 1 heure.",
         "send": "Envoyer l’e-mail",
         "sending": "Envoi...",
-        "success": "✅ E-mail de réinitialisation envoyé ! Vérifiez votre boîte de réception."
+        "success": "Mot de passe de la note réinitialisé."
       }
     }
   },
@@ -1093,7 +1096,7 @@
     "share": "Partager",
     "noEventsTitle": "Aucun événement trouvé",
     "noEventsRegion": "Aucun événement pour {region}.",
-    "noEventsDefault": "Créez votre premier événement !",
+    "noEventsDefault": "Créez votre premier événement pour commencer.",
     "loadingEvents": "Chargement des événements...",
     "errorLoadingEvents": "Erreur de chargement",
     "viewAllComments": "Voir les {count} commentaires",
@@ -1146,6 +1149,7 @@
     "welcomeDesc": "Connectez-vous pour commencer à organiser vos projets"
   },
   "common": {
+    "switchLanguage": "Changer de langue",
     "save": "Enregistrer",
     "cancel": "Annuler",
     "delete": "Supprimer",
@@ -1203,7 +1207,7 @@
     "joinDecline": "Pas maintenant",
     "joinGoToDashboard": "Aller au tableau de bord",
     "joining": "Adhésion...",
-    "joinedOrg": "Vous avez rejoint {name} !",
+    "joinedOrg": "Vous avez rejoint {name}.",
     "inviteQrRevoked": "Code d'invitation révoqué",
     "loadingOrgs": "Chargement des organisations…",
     "inviteDeclined": "Invitation refusée",
@@ -1303,8 +1307,8 @@
     "infoCaps": "Capacités : questions sur l’espace de travail, analyse de projets, planification de tâches, gestion de notes, planification d’événements.",
     "handoffTaskPlanner": "Je transmets cela à {name}, le Planificateur de tâches, pour créer vos tâches. Un instant.",
     "taskPlannerWorking": "{name} travaille…",
-    "taskPlannerDone": "Vos tâches ont été créées avec succès ! {count} tâches sont prêtes sur votre tableau de projet.",
-    "taskPlannerDoneNoCount": "Vos modifications ont été appliquées avec succès ! Consultez votre tableau de projet pour les mises à jour.",
+    "taskPlannerDone": "{count} tâches sont prêtes sur votre tableau de projet.",
+    "taskPlannerDoneNoCount": "Modifications appliquées. Elles sont sur votre tableau de projet.",
     "taskPlannerPlanReady": "{name} a préparé un plan :",
     "taskPlannerFailed": "{name} a rencontré un problème : {error}",
     "confirmTaskPlan": "Confirmer le plan",
@@ -1316,25 +1320,27 @@
     "confirmEvents": "Confirmer le plan d’événement",
     "applyEvents": "Appliquer le plan d’événement",
     "somethingWentWrong": "Quelque chose s’est mal passé : {error}",
+    "alreadyApplied": "Ces modifications sont déjà appliquées.",
+    "appliedCount": "{count} modifications appliquées.",
     "aiUnavailable": "L’assistant IA est temporairement indisponible. Veuillez réessayer dans quelques minutes.",
     "noResponse": "Je n’ai pas pu générer de réponse. Pourriez-vous reformuler votre question ?",
     "alreadyConfirmed": "Déjà confirmé — utilisez Appliquer pour exécuter.",
     "confirmFailed": "Échec de la confirmation : {error}",
     "applyFailed": "Échec de l’application : {error}",
-    "notesDone": "Terminé ! Modifications appliquées avec succès.",
+    "notesDone": "Modifications appliquées.",
     "notesConfirmed": "Confirmé. {summary}",
     "eventsConfirmed": "Plan d’événement confirmé. {summary}",
-    "eventsDone": "Plan d’événement appliqué avec succès.",
+    "eventsDone": "Plan d’événement appliqué.",
     "readyToApply": "Prêt à appliquer.",
     "copyTooltip": "Cliquer pour copier",
     "suggestedQ1": "Quel est le statut de mes projets ?",
     "suggestedQ2": "Montre-moi les tâches en retard",
     "suggestedQ3": "Quels sont les plus grands risques ?",
     "suggestedQ4": "Résume la progression de cette semaine",
-    "greeting1": "Salut ! Je suis là pour aider. Posez-moi n’importe quelle question sur votre espace de travail, projets, tâches ou événements.",
-    "greeting2": "Bonjour ! Prêt à aider pour tout ce qui concerne l’espace de travail — projets, tâches, notes, événements.",
-    "greeting3": "Bonjour ! N’hésitez pas à me poser des questions sur vos projets, suivre la progression, gérer des notes ou planifier des événements.",
-    "greeting4": "Salut ! En quoi puis-je vous aider ? Je peux répondre à des questions sur votre espace de travail, analyser des projets, gérer des notes et plus.",
+    "greeting1": "Posez-moi vos questions sur votre espace de travail, vos projets, vos tâches ou vos événements.",
+    "greeting2": "Je peux vous aider pour tout votre espace de travail : projets, tâches, notes et événements.",
+    "greeting3": "Demandez où en est un projet, suivez la progression, rangez vos notes ou planifiez un événement.",
+    "greeting4": "En quoi puis-je vous aider ? Je réponds aux questions sur votre espace de travail, j’examine les projets et je gère les notes.",
     "createOps": "Créer {count}",
     "updateOps": "Mettre à jour {count}",
     "deleteOps": "Supprimer {count}",

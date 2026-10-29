@@ -265,7 +265,7 @@ export function TeamOrg({
       {tab === "people" ? (
         <>
           <div className="flex flex-wrap items-center gap-2.5 px-5 pt-4 pb-3 sm:px-7">
-            <label className="flex h-9 w-full items-center gap-2.5 rounded-full border border-tui-ink/16 bg-tui-bg pr-2 pl-3.5 sm:w-[280px]">
+            <label className="flex h-9 w-full items-center gap-2.5 rounded-md border border-tui-ink/16 bg-tui-bg pr-2 pl-3.5 sm:w-[280px]">
               <Search size={14} className="flex-none text-tui-ink3" />
               <input
                 value={q}
@@ -284,7 +284,7 @@ export function TeamOrg({
                   aria-pressed={filter === k}
                   onClick={() => setFilter(k)}
                   className={cn(
-                    "flex h-7 items-center gap-1.5 rounded-full border px-[11px] text-[12.5px] font-medium transition-colors",
+                    "flex h-7 items-center gap-1.5 rounded-sm border px-[11px] text-[12.5px] font-medium transition-colors",
                     teamPill(filter === k),
                   )}
                 >
@@ -332,7 +332,7 @@ export function TeamOrg({
                   <span className="flex">
                     <span
                       className={cn(
-                        "flex h-6 items-center rounded-full border px-2.5 text-[12px] font-medium whitespace-nowrap",
+                        "flex h-6 items-center rounded-sm border px-2.5 text-[12px] font-medium whitespace-nowrap",
                         ROLE_TONE[role].pill,
                       )}
                     >
@@ -441,7 +441,7 @@ export function TeamOrg({
                       <button
                         type="button"
                         onClick={() => onRevokeEmail(e.id)}
-                        className="kairos-tap h-7 rounded-full border border-tui-ink/16 bg-transparent px-[11px] text-[12px] text-tui-ink2 transition-colors hover:bg-tui-danger/8"
+                        className="kairos-tap h-7 rounded-sm border border-tui-ink/16 bg-transparent px-[11px] text-[12px] text-tui-ink2 transition-colors hover:bg-tui-danger/8"
                       >
                         {t("revoke")}
                       </button>
@@ -480,7 +480,7 @@ export function TeamOrg({
                     <span key={key} className={cn("flex items-center gap-2.5 text-[13px]", on ? "text-tui-ink" : "text-tui-ink3")}>
                       <span
                         className={cn(
-                          "grid h-4 w-4 flex-none place-items-center rounded-[4px] border",
+                          "grid h-4 w-4 flex-none place-items-center rounded-xs border",
                           on ? "border-tui-accent/45 bg-tui-accent/15" : "border-tui-ink/16",
                         )}
                       >

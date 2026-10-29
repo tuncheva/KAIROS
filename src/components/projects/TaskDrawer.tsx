@@ -67,11 +67,11 @@ const EYEBROW =
 
 /** A bordered text control, as `NewProjectDrawer` draws its description. */
 const FIELD =
-  "border-tui-ink/10 text-tui-ink placeholder:text-tui-ink3 focus:border-tui-ink/30 w-full rounded-[10px] border bg-transparent px-3.5 text-[14px] transition-colors outline-none";
+  "border-tui-ink/10 text-tui-ink placeholder:text-tui-ink3 focus:border-tui-ink/30 w-full rounded-md border bg-transparent px-3.5 text-[14px] transition-colors outline-none";
 
 /** A quiet bordered button, for the secondary actions in the body. */
 const GHOST_BUTTON =
-  "border-tui-ink/10 text-tui-ink2 hover:border-tui-ink/25 hover:text-tui-ink flex h-10 items-center justify-center gap-2 rounded-[10px] border text-[13.5px] font-medium transition-colors disabled:opacity-50 disabled:hover:border-tui-ink/10";
+  "border-tui-ink/10 text-tui-ink2 hover:border-tui-ink/25 hover:text-tui-ink flex h-10 items-center justify-center gap-2 rounded-md border text-[13.5px] font-medium transition-colors disabled:opacity-50 disabled:hover:border-tui-ink/10";
 
 /** `datetime-local` wants a local `YYYY-MM-DDTHH:mm`, not an ISO string. */
 function toLocalInput(value: Date | string | null | undefined): string {
@@ -104,7 +104,7 @@ function Segmented<T extends string>({
       aria-label={label}
       // Four across leaves too little label on a 320px phone; two rows of two
       // until there is room.
-      className="bg-tui-ink/[0.045] grid grid-cols-2 gap-0.5 rounded-[10px] p-0.5 sm:grid-cols-4"
+      className="bg-tui-ink/[0.045] grid grid-cols-2 gap-0.5 rounded-md p-0.5 sm:grid-cols-4"
     >
       {options.map((option) => {
         const active = value === option;
@@ -115,7 +115,7 @@ function Segmented<T extends string>({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(option)}
-            className={`flex h-8 items-center justify-center gap-1.5 rounded-[8px] px-2 text-[12.5px] font-medium whitespace-nowrap transition-colors ${
+            className={`flex h-8 items-center justify-center gap-1.5 rounded-sm px-2 text-[12.5px] font-medium whitespace-nowrap transition-colors ${
               active
                 ? "bg-tui-pane text-tui-ink shadow-[var(--tui-pane-shadow)]"
                 : "text-tui-ink3 hover:text-tui-ink2"
@@ -456,7 +456,7 @@ export function TaskDrawer({
         />
 
         <aside
-          className={`border-tui-ink/10 bg-tui-pane text-tui-ink relative m-2 flex h-[calc(100%-1rem)] w-full max-w-[520px] flex-col overflow-hidden rounded-[16px] border shadow-[var(--tui-pane-shadow)] sm:m-3 sm:h-[calc(100%-1.5rem)] ${
+          className={`border-tui-ink/10 bg-tui-pane text-tui-ink relative m-2 flex h-[calc(100%-1rem)] w-full max-w-[520px] flex-col overflow-hidden rounded-xl border shadow-[var(--tui-pane-shadow)] sm:m-3 sm:h-[calc(100%-1.5rem)] ${
             closing ? "projects-drawer-out" : "projects-drawer"
           }`}
         >
@@ -636,7 +636,7 @@ export function TaskDrawer({
                   />
 
                   {drafts.length > 0 && (
-                    <div className="border-tui-ink/10 flex flex-col overflow-hidden rounded-[10px] border">
+                    <div className="border-tui-ink/10 flex flex-col overflow-hidden rounded-md border">
                       {drafts.map((draft, index) => (
                         <button
                           key={`${draft.title}-${index}`}
@@ -696,7 +696,7 @@ export function TaskDrawer({
             >
               {!editing && (
                 <span className="text-tui-ink3 hidden items-center gap-2 text-[12px] sm:flex">
-                  <kbd className="border-tui-ink/12 rounded-[4px] border px-1.5 font-mono text-[10.5px] leading-4">
+                  <kbd className="border-tui-ink/12 rounded-xs border px-1.5 font-mono text-[10.5px] leading-4">
                     ⌘ ↵
                   </kbd>
                   {tp("toCreate")}
@@ -706,14 +706,14 @@ export function TaskDrawer({
               <button
                 type="button"
                 onClick={close}
-                className="text-tui-ink2 hover:text-tui-ink h-9 rounded-full px-3.5 text-[13.5px] transition-colors"
+                className="text-tui-ink2 hover:text-tui-ink h-9 rounded-md px-3.5 text-[13.5px] transition-colors"
               >
                 {t("cancel")}
               </button>
               <button
                 type="submit"
                 disabled={!canSubmit}
-                className="bg-tui-accent text-tui-on-accent disabled:bg-tui-ink/[0.07] disabled:text-tui-ink3 flex h-9 items-center gap-2 rounded-full px-4 text-[13.5px] font-medium transition-colors hover:opacity-90 disabled:hover:opacity-100"
+                className="bg-tui-accent text-tui-on-accent disabled:bg-tui-ink/[0.07] disabled:text-tui-ink3 flex h-9 items-center gap-2 rounded-md px-4 text-[13.5px] font-medium transition-colors hover:opacity-90 disabled:hover:opacity-100"
               >
                 {pending ? t("saving") : editing ? t("save") : t("submit")}
                 <span aria-hidden>→</span>
@@ -783,7 +783,7 @@ function TaskHistory({ taskId }: { taskId: number }) {
 
   return (
     <Field label={td("history.label")}>
-      <ul className="border-tui-ink/10 m-0 flex list-none flex-col overflow-hidden rounded-[10px] border p-0">
+      <ul className="border-tui-ink/10 m-0 flex list-none flex-col overflow-hidden rounded-md border p-0">
         {events.map((event) => (
           <li
             key={event.key}

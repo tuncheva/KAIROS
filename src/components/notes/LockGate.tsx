@@ -22,10 +22,11 @@
 
 import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { AlertCircle, Eye, EyeOff, Loader2, Lock } from "~/components/ui/icons";
+import { AlertCircle, Eye, EyeOff, Lock } from "~/components/ui/icons";
 
 import { BTN_ACCENT, FIELD, FIELD_INPUT } from "./notesUi";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 export function LockGate({
   password,
   onPasswordChange,
@@ -114,7 +115,7 @@ export function LockGate({
             {reveal ? <EyeOff size={14} /> : <Eye size={14} />}
           </button>
           <button type="submit" disabled={!password || isPending} className={`${BTN_ACCENT} h-[30px] flex-none px-3`}>
-            {isPending && <Loader2 size={12} className="animate-spin" />}
+            {isPending && <PendingDot />}
             {isPending ? t("actions.unlocking") : t("actions.unlock")}
           </button>
         </div>

@@ -119,7 +119,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-lg font-semibold text-fg-primary block mb-1">{t("createOrg.label")}</span>
+                      <span className="font-display text-lg font-normal text-fg-primary block mb-1">{t("createOrg.label")}</span>
                       <span className="text-fg-tertiary text-sm">{t("createOrg.description")}</span>
                     </div>
                     <ChevronRight className="text-accent-primary group-hover:translate-x-1 transition-transform flex-shrink-0 mt-1" size={24} />
@@ -133,7 +133,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-lg font-semibold text-fg-primary block mb-1">{t("personalMode.label")}</span>
+                      <span className="font-display text-lg font-normal text-fg-primary block mb-1">{t("personalMode.label")}</span>
                       <span className="text-fg-tertiary text-sm">{t("personalMode.description")}</span>
                     </div>
                     <ChevronRight className="text-fg-tertiary group-hover:text-accent-primary group-hover:translate-x-1 transition-all flex-shrink-0 mt-1" size={24} />
@@ -149,7 +149,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-lg font-semibold text-fg-primary block mb-1">{t("joinOrg.label")}</span>
+                      <span className="font-display text-lg font-normal text-fg-primary block mb-1">{t("joinOrg.label")}</span>
                       <span className="text-fg-tertiary text-sm">{t("joinOrg.description")}</span>
                     </div>
                     <ChevronRight className="text-fg-tertiary group-hover:text-accent-primary group-hover:translate-x-1 transition-all flex-shrink-0 mt-1" size={24} />
@@ -211,7 +211,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
               <button
                 onClick={handleCreateOrganization}
                 disabled={createOrganization.isPending}
-                className="w-full h-control-lg px-6 bg-accent-primary text-white font-semibold rounded-md hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full h-control-lg px-6 bg-accent-primary text-on-accent font-semibold rounded-md hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {createOrganization.isPending ? t("createOrg.loading") : t("createOrg.submit")}
               </button>
@@ -230,13 +230,13 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
             </div>
 
             <div className="bg-bg-surface rounded-lg p-pad-card text-center mb-6 border border-accent-primary/40">
-              <p className="font-mono text-[10px] text-fg-quaternary uppercase tracking-[0.16em] mb-3">{t("createOrg.codeLabel")}</p>
+              <p className="font-mono text-[10px] text-fg-tertiary uppercase tracking-[0.16em] mb-3">{t("createOrg.codeLabel")}</p>
               <p className="text-[34px] text-accent-primary tracking-[0.3em] font-mono mb-4">
                 {generatedCode}
               </p>
               <button
                 onClick={handleCopyCode}
-                className="h-control-md px-5 bg-accent-primary text-white rounded-md hover:bg-accent-hover transition-colors text-[13px] font-semibold"
+                className="h-control-md px-5 bg-accent-primary text-on-accent rounded-md hover:bg-accent-hover transition-colors text-[13px] font-semibold"
               >
                 {t("createOrg.copyButton")}
               </button>
@@ -247,7 +247,7 @@ export function RoleSelectionModal({ isOpen, onComplete }: RoleSelectionModalPro
                 void utils.user.checkOnboardingStatus.invalidate();
                 onComplete();
               }}
-              className="w-full h-control-lg px-6 bg-accent-primary text-white font-semibold rounded-md hover:bg-accent-hover transition-colors"
+              className="w-full h-control-lg px-6 bg-accent-primary text-on-accent font-semibold rounded-md hover:bg-accent-hover transition-colors"
             >
               {t("common.continueButton")}
             </button>

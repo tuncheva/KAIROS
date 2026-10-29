@@ -14,8 +14,9 @@
  */
 
 import { useTranslations } from "next-intl";
-import { ChevronLeft, ChevronRight, Loader2 } from "~/components/ui/icons";
+import { ChevronLeft, ChevronRight } from "~/components/ui/icons";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 /** Page numbers around `page`, with `null` standing in for an elision. */
 export function pageWindow(
   page: number,
@@ -60,7 +61,7 @@ export function FeedPager({
 
   if (pageCount <= 1 && !hasMore) return null;
 
-  const step = "grid h-9 min-w-9 place-items-center rounded-lg border border-border-medium px-2.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-40";
+  const step = "grid h-9 min-w-9 place-items-center rounded-md border border-border-medium px-2.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
     <nav
@@ -120,7 +121,7 @@ export function FeedPager({
         className={`${step} text-fg-secondary hover:enabled:border-accent-primary/40 hover:enabled:text-accent-primary`}
       >
         {isLoadingMore && page >= pageCount ? (
-          <Loader2 size={15} className="animate-spin text-accent-primary" />
+          <PendingDot />
         ) : (
           <ChevronRight size={15} />
         )}
