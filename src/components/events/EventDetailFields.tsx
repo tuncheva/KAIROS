@@ -180,13 +180,13 @@ function CoHostPicker({
           onClick={() => setOpen((value) => !value)}
           disabled={disabled}
           aria-expanded={open}
-          className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-dashed border-border-strong text-fg-quaternary transition-all hover:border-accent-primary hover:text-accent-primary"
+          className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-dashed border-border-strong text-fg-tertiary transition-all hover:border-accent-primary hover:text-accent-primary"
         >
           <Plus size={18} />
         </button>
 
         {chosen.length === 0 && !open && (
-          <span className="text-xs font-medium text-fg-quaternary">
+          <span className="text-xs font-medium text-fg-tertiary">
             {t("addGuestHosts")}
           </span>
         )}

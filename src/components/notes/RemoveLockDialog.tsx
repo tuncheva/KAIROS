@@ -15,7 +15,7 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2 } from "~/components/ui/icons";
+import {  } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
@@ -29,6 +29,7 @@ import {
   NotesDialog,
 } from "./notesDialog";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 export function RemoveLockDialog({
   noteId,
   knownPassword,
@@ -85,7 +86,7 @@ export function RemoveLockDialog({
             {t("common.cancel")}
           </button>
           <button type="submit" disabled={removePassword.isPending} className={DIALOG_DANGER}>
-            {removePassword.isPending && <Loader2 size={14} className="animate-spin" />}
+            {removePassword.isPending && <PendingDot />}
             {removePassword.isPending ? t("common.working") : t("password.remove")}
           </button>
         </>

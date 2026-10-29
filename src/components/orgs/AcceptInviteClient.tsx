@@ -4,11 +4,12 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { AlertCircle, Building2, CheckCircle2, Loader2 } from "~/components/ui/icons";
+import { AlertCircle, Building2, CheckCircle2 } from "~/components/ui/icons";
 import { useToast } from "~/components/providers/ToastProvider";
 import { PermissionGrid } from "~/components/orgs/PermissionGrid";
 import { api } from "~/trpc/react";
 
+import { SkeletonLines } from "~/components/ui/Skeleton";
 /** The landing screen for an emailed invitation. */
 export function AcceptInviteClient({ token }: { token: string }) {
   const t = useTranslations("org");
@@ -64,7 +65,7 @@ export function AcceptInviteClient({ token }: { token: string }) {
   if (peek.isLoading) {
     return (
       <Card>
-        <Loader2 size={28} className="animate-spin text-fg-tertiary" />
+        <SkeletonLines widths={[64, 42]} />
         <p className="text-sm text-fg-secondary">{t("joinChecking")}</p>
       </Card>
     );
@@ -148,7 +149,7 @@ export function AcceptInviteClient({ token }: { token: string }) {
         <Building2 size={24} className="text-accent-primary" />
       </div>
       <div className="space-y-1">
-        <p className="text-lg font-semibold text-fg-primary">{result.organizationName}</p>
+        <p className="font-display text-lg font-normal text-fg-primary">{result.organizationName}</p>
         <p className="text-sm text-fg-secondary">
           {result.inviterName
             ? t("inviteFrom", { name: result.inviterName, role: roleLabel })
@@ -165,7 +166,7 @@ export function AcceptInviteClient({ token }: { token: string }) {
         type="button"
         onClick={() => accept.mutate({ token })}
         disabled={accept.isPending || decline.isPending}
-        className="w-full rounded-xl bg-accent-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
+        className="w-full rounded-md bg-accent-primary px-4 py-2.5 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-60"
       >
         {accept.isPending ? t("joining") : t("inviteAccept")}
       </button>

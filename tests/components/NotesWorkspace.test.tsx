@@ -301,7 +301,7 @@ describe("NotesWorkspace", () => {
     await user.click(screen.getByRole("button", { name: "Note actions" }));
     await user.click(screen.getByRole("menuitem", { name: "Delete" }));
 
-    expect(screen.getByRole("alertdialog", { name: "Delete Note" })).toBeInTheDocument();
+    expect(screen.getByRole("alertdialog", { name: "Delete note" })).toBeInTheDocument();
   });
 
   it("moves a note between notebooks from the same menu", async () => {

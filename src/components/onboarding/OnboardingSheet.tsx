@@ -151,14 +151,11 @@ export function OnboardingSheet() {
           closing ? "onboarding-sheet-dialog--out" : ""
         }`}
       >
-        {/* Purple drift, matching the landing wash */}
+        {/* Accent drift, matching the landing wash: a flat disc, blurred, so the
+            accent stays flat ink rather than a gradient. */}
         <div
-          className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full blur-[90px]"
+          className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-accent-primary/15 blur-[90px]"
           aria-hidden="true"
-          style={{
-            background:
-              "radial-gradient(circle at 45% 45%, rgb(var(--accent-primary) / 0.22), transparent 66%)",
-          }}
         />
 
         <header className="relative flex items-center justify-between border-b border-white/[0.08] px-6 py-4">
@@ -195,7 +192,7 @@ export function OnboardingSheet() {
                 aria-pressed={tab === item.id}
                 className={`rounded-md px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary ${
                   tab === item.id
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-on-accent"
                     : "border border-white/10 text-fg-tertiary hover:border-white/20 hover:text-fg-primary"
                 }`}
               >

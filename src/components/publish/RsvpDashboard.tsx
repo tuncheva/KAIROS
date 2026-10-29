@@ -91,11 +91,11 @@ export function RsvpDashboard({
           <div className="rounded-xl border border-border-light bg-bg-secondary p-4 sm:p-5">
             <div className="mb-2 flex items-center gap-3">
               <Users className="text-accent-primary" size={20} />
-              <h3 className="text-base font-semibold text-fg-primary sm:text-lg">
+              <h3 className="font-display text-base font-normal text-fg-primary sm:text-lg">
                 {t("totalResponses")}
               </h3>
             </div>
-            <p className="mt-2 text-3xl font-bold text-accent-primary sm:text-4xl">
+            <p className="mt-2 text-3xl font-normal text-accent-primary sm:text-4xl tabular-nums">
               {total}
             </p>
           </div>

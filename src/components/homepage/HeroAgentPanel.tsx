@@ -31,7 +31,7 @@ export function HeroAgentPanel() {
                     <span className="k-live-dot h-[7px] w-[7px] rounded-full" aria-hidden="true" />
                     {t("panelTitle")}
                 </span>
-                <span className="font-mono text-[10px] tracking-[0.18em] text-fg-quaternary uppercase">
+                <span className="font-mono text-[10px] tracking-[0.18em] text-fg-tertiary uppercase">
                     {t("panelMode")}
                 </span>
             </div>
@@ -55,7 +55,7 @@ export function HeroAgentPanel() {
                 </div>
 
                 <div className="k-in-up overflow-hidden rounded-lg border border-fg-primary/9 [animation-delay:3.4s]">
-                    <div className="flex justify-between gap-4 border-b border-fg-primary/6 px-4 py-3 text-xs text-fg-quaternary">
+                    <div className="flex justify-between gap-4 border-b border-fg-primary/6 px-4 py-3 text-xs text-fg-tertiary">
                         <span>{t("panelDraft")}</span>
                         <span>{t("panelNeedsApproval")}</span>
                     </div>
@@ -67,7 +67,7 @@ export function HeroAgentPanel() {
                             }`}
                         >
                             <span>{t(task.key)}</span>
-                            <span className="shrink-0 text-xs text-fg-quaternary">
+                            <span className="shrink-0 text-xs text-fg-tertiary">
                                 {t("panelWeek", { week: task.week })}
                             </span>
                         </div>

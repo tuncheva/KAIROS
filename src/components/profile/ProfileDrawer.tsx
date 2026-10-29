@@ -310,7 +310,7 @@ export function ProfileDrawer({
                   <div>
                     <h2
                       id={titleId}
-                      className="m-0 text-[19px] font-semibold tracking-[-0.01em] text-fg-primary"
+                      className="font-display m-0 text-[22px] font-normal tracking-[-0.01em] text-fg-primary"
                     >
                       {displayName}
                     </h2>
@@ -348,14 +348,14 @@ export function ProfileDrawer({
                         onClick={() => setTab("followers")}
                         className="flex flex-col items-center px-2 text-fg-primary transition-opacity hover:opacity-70"
                       >
-                        <span className="text-[17px] font-semibold">
+                        <span className="text-[17px] font-normal tabular-nums">
                           {full.followerCount}
                         </span>
                         <span className={STAMP}>{t("followers")}</span>
                       </button>
                       <span className="h-7 w-px bg-border-light/60" />
                       <div className="flex flex-col items-center px-2 text-fg-primary">
-                        <span className="text-[17px] font-semibold">
+                        <span className="text-[17px] font-normal tabular-nums">
                           {full.followingCount}
                         </span>
                         <span className={STAMP}>{t("following")}</span>
@@ -411,7 +411,7 @@ export function ProfileDrawer({
                             className={`flex flex-1 items-center justify-center gap-2 rounded-sm py-2.5 text-[14px] font-medium transition-colors disabled:opacity-50 ${
                               full.isFollowing
                                 ? "border border-border-light/70 text-fg-primary hover:bg-bg-tertiary"
-                                : "bg-accent-primary text-white hover:opacity-90"
+                                : "bg-accent-primary text-on-accent hover:opacity-90"
                             }`}
                           >
                             {full.isFollowing ? (
@@ -624,7 +624,7 @@ function MetaRow({
 }) {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="text-fg-quaternary">{icon}</span>
+      <span className="text-fg-tertiary">{icon}</span>
       <dt className="text-fg-tertiary">{label}</dt>
       <dd className="ml-auto m-0 text-fg-primary">{value}</dd>
     </div>
@@ -689,7 +689,7 @@ function ProfileSkeleton({ t }: { t: (key: string) => string }) {
         <dl className="mt-6 grid gap-2.5 px-[26px] text-[13px]">
           {SKELETON_META.map(({ key, Icon, width }, i) => (
             <div key={key} className="flex items-center gap-2.5">
-              <span className="text-fg-quaternary">
+              <span className="text-fg-tertiary">
                 <Icon size={13} aria-hidden />
               </span>
               <dt className="text-fg-tertiary">{t(key)}</dt>

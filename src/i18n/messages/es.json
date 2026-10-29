@@ -1,6 +1,8 @@
 {
   "nav": {
-    "dashboard": "Panel",
+        "mainMenu": "Menú principal",
+    "menu": "Navegación",
+"dashboard": "Panel",
     "home": "Inicio",
     "create": "Crear",
     "publish": "Publicar",
@@ -271,7 +273,8 @@
     "title": "Ajustes",
     "subtitle": "Gestiona tu cuenta y preferencias",
     "profile": {
-      "title": "Configuración del perfil",
+            "imagePreview": "Vista previa de la nueva imagen",
+"title": "Configuración del perfil",
       "subtitle": "Gestiona tu información personal",
       "updateProfile": "Actualizar perfil",
       "uploadImage": "Subir imagen",
@@ -281,7 +284,7 @@
       "characters": "caracteres",
       "memberSince": "Miembro desde",
       "saving": "Guardando...",
-      "saveSuccess": "¡Perfil actualizado con éxito!",
+      "saveSuccess": "Perfil guardado.",
       "profilePicture": "Foto de perfil",
       "fullName": "Nombre completo",
       "namePlaceholder": "Ingresa tu nombre completo",
@@ -1024,7 +1027,7 @@
         "contentRequired": "Añade contenido a tu nota."
       },
       "success": {
-        "created": "¡Nota creada con éxito!"
+        "created": "Nota creada."
       },
       "labels": {
         "password": "Contraseña"
@@ -1033,9 +1036,9 @@
       "errors": {
         "createFailed": "No se pudo crear la nota: {message}"
       },
-      "empty": "Aún no hay notas. ¡Crea tu primera nota!",
+      "empty": "Aún no hay notas. Crea una para empezar.",
       "encrypted": "Cifrado ({count})",
-      "encryptedNote": "🔒 Nota cifrada",
+      "encryptedNote": "Nota cifrada",
       "deleteConfirm": "¿Eliminar esta nota? Esto no se puede deshacer.",
       "allLocked": "Todas las notas están bloqueadas",
       "allLockedHint": "Revisa la carpeta cifrada",
@@ -1052,7 +1055,7 @@
       },
       "edit": {
         "title": "Editar nota",
-        "save": "Guardar",
+"save": "Guardar",
         "saving": "Guardando..."
       },
       "reset": {
@@ -1062,7 +1065,7 @@
         "expiry": "El enlace caducará en 1 hora.",
         "send": "Enviar correo",
         "sending": "Enviando...",
-        "success": "✅ Correo de restablecimiento enviado. Revisa tu bandeja de entrada."
+        "success": "Contraseña de la nota restablecida."
       }
     }
   },
@@ -1093,7 +1096,7 @@
     "share": "Compartir",
     "noEventsTitle": "No se encontraron eventos",
     "noEventsRegion": "No hay eventos para {region}.",
-    "noEventsDefault": "¡Crea tu primer evento!",
+    "noEventsDefault": "Crea tu primer evento para empezar.",
     "loadingEvents": "Cargando eventos...",
     "errorLoadingEvents": "Error al cargar eventos",
     "viewAllComments": "Ver todos los {count} comentarios",
@@ -1146,6 +1149,7 @@
     "welcomeDesc": "Inicia sesión para empezar a organizar tus proyectos"
   },
   "common": {
+    "switchLanguage": "Cambiar idioma",
     "save": "Guardar",
     "cancel": "Cancelar",
     "delete": "Eliminar",
@@ -1203,7 +1207,7 @@
     "joinDecline": "Ahora no",
     "joinGoToDashboard": "Ir al panel",
     "joining": "Uniéndose...",
-    "joinedOrg": "¡Te has unido a {name}!",
+    "joinedOrg": "Te has unido a {name}.",
     "inviteQrRevoked": "Código de invitación revocado",
     "loadingOrgs": "Cargando organizaciones…",
     "inviteDeclined": "Invitación rechazada",
@@ -1303,8 +1307,8 @@
     "infoCaps": "Capacidades: preguntas del espacio de trabajo, análisis de proyectos, planificación de tareas, gestión de notas, programación de eventos.",
     "handoffTaskPlanner": "Voy a pasar esto a {name}, el Planificador de Tareas, para crear tus tareas. Un momento.",
     "taskPlannerWorking": "{name} está trabajando…",
-    "taskPlannerDone": "¡Tus tareas se han creado con éxito! {count} tareas están listas en tu tablero de proyecto.",
-    "taskPlannerDoneNoCount": "¡Tus cambios se han aplicado con éxito! Revisa el tablero del proyecto para las actualizaciones.",
+    "taskPlannerDone": "{count} tareas están listas en tu tablero de proyecto.",
+    "taskPlannerDoneNoCount": "Cambios aplicados. Ya están en tu tablero de proyecto.",
     "taskPlannerPlanReady": "{name} preparó un plan:",
     "taskPlannerFailed": "{name} tuvo un problema: {error}",
     "confirmTaskPlan": "Confirmar Plan de Tareas",
@@ -1316,25 +1320,27 @@
     "confirmEvents": "Confirmar Plan de Eventos",
     "applyEvents": "Aplicar Plan de Eventos",
     "somethingWentWrong": "Algo salió mal: {error}",
+    "alreadyApplied": "Estos cambios ya están aplicados.",
+    "appliedCount": "{count} cambios aplicados.",
     "aiUnavailable": "El asistente de IA no está disponible temporalmente. Inténtalo de nuevo en unos minutos.",
     "noResponse": "No pude generar una respuesta. ¿Podrías reformular tu pregunta?",
     "alreadyConfirmed": "Ya confirmado — usa Aplicar para ejecutar.",
     "confirmFailed": "Error al confirmar: {error}",
     "applyFailed": "Error al aplicar: {error}",
-    "notesDone": "¡Listo! Cambios aplicados con éxito.",
+    "notesDone": "Cambios aplicados.",
     "notesConfirmed": "Confirmado. {summary}",
     "eventsConfirmed": "Plan de eventos confirmado. {summary}",
-    "eventsDone": "Plan de eventos aplicado con éxito.",
+    "eventsDone": "Plan de eventos aplicado.",
     "readyToApply": "Listo para aplicar.",
     "copyTooltip": "Clic para copiar",
     "suggestedQ1": "¿Cuál es el estado de mis proyectos?",
     "suggestedQ2": "Muéstrame tareas atrasadas",
     "suggestedQ3": "¿Cuáles son los mayores riesgos?",
     "suggestedQ4": "Resume el progreso de esta semana",
-    "greeting1": "¡Hola! Estoy aquí para ayudar. Pregúntame lo que quieras sobre tu espacio de trabajo, proyectos, tareas o eventos.",
-    "greeting2": "¡Hola! Listo para ayudar con todo lo relacionado al espacio de trabajo — proyectos, tareas, notas, eventos.",
-    "greeting3": "¡Hola! Siéntete libre de preguntarme sobre tus proyectos, seguir el progreso, gestionar notas o planificar eventos.",
-    "greeting4": "¡Hola! ¿En qué puedo ayudarte? Puedo responder preguntas sobre tu espacio de trabajo, analizar proyectos, gestionar notas y más.",
+    "greeting1": "Pregúntame sobre tu espacio de trabajo, proyectos, tareas o eventos.",
+    "greeting2": "Puedo ayudarte con todo tu espacio de trabajo: proyectos, tareas, notas y eventos.",
+    "greeting3": "Pregunta por un proyecto, revisa el progreso, ordena tus notas o planifica un evento.",
+    "greeting4": "¿En qué te ayudo? Puedo responder preguntas sobre tu espacio de trabajo, revisar proyectos y gestionar notas.",
     "createOps": "Crear {count}",
     "updateOps": "Actualizar {count}",
     "deleteOps": "Eliminar {count}",

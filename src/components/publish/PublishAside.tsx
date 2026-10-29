@@ -67,7 +67,7 @@ function InviteInbox() {
                 type="button"
                 onClick={() => accept.mutate({ inviteId: invite.id })}
                 disabled={accept.isPending || decline.isPending}
-                className="h-8 flex-1 rounded-lg bg-accent-primary text-xs font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+                className="h-8 flex-1 rounded-lg bg-accent-primary text-xs font-semibold text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
               >
                 {t("acceptInvite")}
               </button>
@@ -75,7 +75,7 @@ function InviteInbox() {
                 type="button"
                 onClick={() => decline.mutate({ inviteId: invite.id })}
                 disabled={accept.isPending || decline.isPending}
-                className="h-8 rounded-lg border border-border-medium px-3 text-xs text-fg-secondary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
+                className="h-8 rounded-sm border border-border-medium px-3 text-xs text-fg-secondary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
               >
                 {t("declineInvite")}
               </button>
@@ -153,7 +153,7 @@ function WhoToFollow() {
               type="button"
               onClick={() => follow.mutate({ userId: person.id })}
               disabled={follow.isPending}
-              className="kairos-stamp flex h-control-sm shrink-0 items-center gap-1 rounded-lg bg-accent-primary/10 px-2.5 text-[9.5px] tracking-[0.12em] text-accent-primary transition-colors hover:bg-accent-primary/20 disabled:opacity-50"
+              className="kairos-stamp flex h-control-sm shrink-0 items-center gap-1 rounded-sm bg-accent-primary/10 px-2.5 text-[9.5px] tracking-[0.12em] text-accent-primary transition-colors hover:bg-accent-primary/20 disabled:opacity-50"
             >
               <UserPlus size={11} />
               {t("follow")}
@@ -189,7 +189,7 @@ function Agenda() {
                 className={`kairos-stamp w-[52px] shrink-0 text-[10.5px] ${
                   item.rsvpStatus === "going" || item.isHost
                     ? "text-accent-primary"
-                    : "text-fg-quaternary"
+                    : "text-fg-tertiary"
                 }`}
               >
                 {date.day} {date.month}

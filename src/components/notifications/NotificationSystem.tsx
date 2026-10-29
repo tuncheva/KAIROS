@@ -105,7 +105,7 @@ const TONE: Record<NotificationType, string> = {
   comment: "text-accent-primary",
   reply: "text-accent-primary",
   like: "text-error",
-  system: "text-fg-quaternary",
+  system: "text-fg-tertiary",
 };
 
 function GlyphFor({
@@ -274,7 +274,7 @@ function FloatingCard({
         <button
           type="button"
           onClick={onDismiss}
-          className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[7px] text-tui-ink3 transition-colors hover:bg-tui-ink/5 hover:text-tui-ink"
+          className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-sm text-tui-ink3 transition-colors hover:bg-tui-ink/5 hover:text-tui-ink"
           aria-label={labels.dismiss}
         >
           <X size={11} strokeWidth={2.4} />
@@ -572,7 +572,7 @@ export function NotificationSystem() {
         setExpanded(false);
       }}
       aria-pressed={filter === value}
-      className={`flex h-[26px] items-center rounded-full border px-3 text-[12px] transition-colors ${
+      className={`flex h-[26px] items-center rounded-sm border px-3 text-[12px] transition-colors ${
         filter === value
           ? "border-transparent bg-tui-ink text-tui-bg"
           : "border-tui-ink/12 text-tui-ink2 hover:border-tui-ink/20 hover:text-tui-ink"
@@ -660,7 +660,7 @@ export function NotificationSystem() {
           {unreadCount > 0 && (
             <span
               aria-hidden="true"
-              className="absolute -right-px top-[3px] flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-tui-accent px-[5px] text-[10px] font-semibold leading-none tabular-nums text-tui-on-accent ring-2 ring-tui-pane"
+              className="absolute -right-px top-[3px] flex h-[17px] min-w-[17px] items-center justify-center rounded-sm bg-tui-accent px-[5px] text-[10px] font-semibold leading-none tabular-nums text-tui-on-accent ring-2 ring-tui-pane"
             >
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
@@ -711,7 +711,7 @@ export function NotificationSystem() {
                     type="button"
                     onClick={() => setConfirmClear(true)}
                     disabled={clearAllMutation.isPending}
-                    className="text-[12px] text-fg-quaternary transition-colors hover:text-error disabled:opacity-50"
+                    className="text-[12px] text-fg-tertiary transition-colors hover:text-error disabled:opacity-50"
                   >
                     {t("clearAll")}
                   </button>
@@ -800,7 +800,7 @@ export function NotificationSystem() {
                                 {notification.title}
                               </h4>
                               <span
-                                className={`${label} ml-auto flex-none text-fg-quaternary`}
+                                className={`${label} ml-auto flex-none text-fg-tertiary`}
                               >
                                 {shortWhen(
                                   notification.createdAt,
@@ -827,7 +827,7 @@ export function NotificationSystem() {
                               <button
                                 type="button"
                                 onClick={(e) => handleMarkReadOnly(notification.id, e)}
-                                className="flex h-6 w-6 items-center justify-center rounded-md text-fg-quaternary transition-colors hover:bg-success/10 hover:text-success focus-visible:opacity-100"
+                                className="flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-success/10 hover:text-success focus-visible:opacity-100"
                                 aria-label={t("markRead")}
                                 title={t("markRead")}
                               >
@@ -837,7 +837,7 @@ export function NotificationSystem() {
                             <button
                               type="button"
                               onClick={(e) => handleDelete(notification.id, e)}
-                              className="flex h-6 w-6 items-center justify-center rounded-md text-fg-quaternary transition-colors hover:bg-error/10 hover:text-error focus-visible:opacity-100"
+                              className="flex h-6 w-6 items-center justify-center rounded-md text-fg-tertiary transition-colors hover:bg-error/10 hover:text-error focus-visible:opacity-100"
                               aria-label={t("deleteOne")}
                               title={t("deleteOne")}
                             >
@@ -874,7 +874,7 @@ export function NotificationSystem() {
                 <Link
                   href="/settings?section=notifications"
                   onClick={() => setIsOpen(false)}
-                  className="text-[12px] text-fg-quaternary transition-colors hover:text-fg-primary"
+                  className="text-[12px] text-fg-tertiary transition-colors hover:text-fg-primary"
                 >
                   {t("settingsLink")}
                 </Link>

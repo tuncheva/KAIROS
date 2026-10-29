@@ -112,12 +112,12 @@ export function EventPage({ eventId }: { eventId: number }) {
 
   if (error || !data) {
     return (
-      <main className="grid min-h-dvh place-items-center bg-bg-primary px-6 text-center">
+      <main className="tui-refined grid min-h-dvh place-items-center bg-bg-primary px-6 text-center">
         <div>
           <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-accent-primary/10">
             <AlertCircle size={30} className="text-accent-primary" />
           </div>
-          <h1 className="mb-2 text-xl font-semibold text-fg-primary">
+          <h1 className="font-display mb-2 text-xl font-normal text-fg-primary">
             {t("eventNotFound")}
           </h1>
           <p className="mb-6 text-sm text-fg-secondary">
@@ -125,7 +125,7 @@ export function EventPage({ eventId }: { eventId: number }) {
           </p>
           <Link
             href="/publish"
-            className="inline-flex h-10 items-center rounded-lg bg-accent-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="inline-flex h-10 items-center rounded-md bg-accent-primary px-4 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-hover"
           >
             {t("backToEvents")}
           </Link>
@@ -214,7 +214,7 @@ export function EventPage({ eventId }: { eventId: number }) {
             aria-pressed={active}
             className={`h-10 flex-1 rounded-lg text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
               active
-                ? "bg-accent-primary text-white"
+                ? "bg-accent-primary text-on-accent"
                 : "border border-border-medium text-fg-secondary hover:bg-bg-tertiary"
             }`}
           >
@@ -239,7 +239,7 @@ export function EventPage({ eventId }: { eventId: number }) {
   );
 
   return (
-    <main className="min-h-dvh bg-bg-primary pb-[calc(8rem+var(--kairos-safe-bottom))] lg:pb-10">
+    <main className="tui-refined min-h-dvh bg-bg-primary pb-[calc(8rem+var(--kairos-safe-bottom))] lg:pb-10">
       {/* A slim bar rather than the app rail: most people who open this link
           do not have an account, and a sidebar of links they cannot use is a
           worse greeting than the event itself. It clears the notch itself —
@@ -257,7 +257,7 @@ export function EventPage({ eventId }: { eventId: number }) {
           <button
             type="button"
             onClick={handleShare}
-            className="flex h-control-md items-center gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
+            className="flex h-control-md items-center gap-2 rounded-md border border-border-medium px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
           >
             <Share2 size={14} />
             <span className="hidden sm:inline">{t("share")}</span>
@@ -265,7 +265,7 @@ export function EventPage({ eventId }: { eventId: number }) {
           {!session && (
             <Link
               href={`/?callbackUrl=/events/${eventId}`}
-              className="flex h-control-md items-center rounded-lg bg-accent-primary px-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="flex h-control-md items-center rounded-md bg-accent-primary px-3.5 text-[13px] font-semibold text-on-accent transition-colors hover:bg-accent-hover"
             >
               {t("signIn")}
             </Link>
@@ -313,7 +313,7 @@ export function EventPage({ eventId }: { eventId: number }) {
               )}
             </div>
 
-            <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-fg-primary sm:text-[32px]">
+            <h1 className="font-display text-[26px] font-normal leading-tight tracking-tight text-fg-primary sm:text-[32px]">
               {event.title}
             </h1>
 
@@ -328,14 +328,14 @@ export function EventPage({ eventId }: { eventId: number }) {
             )}
 
             <div className="flex flex-wrap gap-2">
-              <span className="flex h-control-md items-center gap-2 rounded-lg bg-bg-elevated/75 px-3 text-[13px] text-fg-secondary backdrop-blur-sm">
+              <span className="flex h-control-md items-center gap-2 rounded-md bg-bg-elevated/75 px-3 text-[13px] text-fg-secondary backdrop-blur-sm">
                 <Clock size={13} className="text-accent-primary" />
                 {/* `withYear` rather than `long`: the long format already ends
                     in a time, which read as "4 July 2026 13:00 · 13:00". */}
                 {formatDate(new Date(event.eventDate), "withYear")} ·{" "}
                 {formatTimeRange(event, locale)}
               </span>
-              <span className="flex h-control-md items-center gap-2 rounded-lg bg-bg-elevated/75 px-3 text-[13px] text-fg-secondary backdrop-blur-sm">
+              <span className="flex h-control-md items-center gap-2 rounded-md bg-bg-elevated/75 px-3 text-[13px] text-fg-secondary backdrop-blur-sm">
                 <MapPin size={13} className="text-accent-primary" />
                 {placeLine(event)}
               </span>
@@ -404,7 +404,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                 <button
                   type="button"
                   onClick={() => setShowEditForm(true)}
-                  className="flex h-control-md items-center gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
+                  className="flex h-control-md items-center gap-2 rounded-md border border-border-medium px-3 text-[13px] text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
                 >
                   <Pencil size={14} />
                   {t("edit.title")}
@@ -426,7 +426,7 @@ export function EventPage({ eventId }: { eventId: number }) {
               <div className="hidden flex-col gap-3 rounded-lg border border-border-medium bg-bg-elevated p-4 lg:flex">
                 <div className="flex items-baseline justify-between">
                   <Stamp className="tracking-[0.14em]">{t("going")}</Stamp>
-                  <span className="kairos-mono text-xl font-semibold text-fg-primary">
+                  <span className="kairos-mono text-xl font-normal text-fg-primary tabular-nums">
                     {event.rsvpCounts.going}
                   </span>
                 </div>
@@ -563,7 +563,7 @@ export function EventPage({ eventId }: { eventId: number }) {
                   className={`flex h-9 items-center justify-center gap-2 rounded-lg text-[13px] font-semibold transition-colors ${
                     event.viewerFollowsAuthor
                       ? "bg-bg-secondary text-fg-secondary hover:bg-bg-tertiary"
-                      : "bg-accent-primary text-white hover:bg-accent-hover"
+                      : "bg-accent-primary text-on-accent hover:bg-accent-hover"
                   }`}
                 >
                   {!event.viewerFollowsAuthor && <UserPlus size={14} />}

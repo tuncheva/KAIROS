@@ -2,6 +2,8 @@
 
 import { createPortal } from "react-dom";
 
+import { EditionScope, useEditionScope } from "./editionScope";
+
 /**
  * Renders a full-viewport overlay into `document.body`.
  *
@@ -18,8 +20,20 @@ import { createPortal } from "react-dom";
  * which is the only way to get true viewport coordinates back.
  *
  * Callers render this conditionally, so nothing reaches `document` during SSR.
+ * The page's edition (`.calendar-refined` and the rest) is carried across the
+ * portal by `EditionScope`, so the overlay keeps the palette of the page it
+ * opened from.
  */
 export function Overlay({ children }: { children: React.ReactNode }) {
+  const { anchor, edition } = useEditionScope();
   if (typeof document === "undefined") return null;
-  return createPortal(children, document.body);
+  return (
+    <>
+      {anchor}
+      {createPortal(
+        <EditionScope edition={edition}>{children}</EditionScope>,
+        document.body,
+      )}
+    </>
+  );
 }

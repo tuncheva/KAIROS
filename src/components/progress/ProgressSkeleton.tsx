@@ -33,7 +33,7 @@ export function Sheet({ children }: { children: ReactNode }) {
   return (
     <div className="tui-screen text-tui-ink min-h-full">
       <div className="mx-auto max-w-[1360px] px-3 pt-4 pb-8 sm:px-6 sm:pt-6">
-        <article className="border-tui-ink/10 bg-tui-pane rounded-[10px] border px-4 pt-4 pb-10 shadow-[var(--tui-pane-shadow)] sm:px-8 lg:px-12 lg:pt-6 lg:pb-12">
+        <article className="border-tui-ink/10 bg-tui-pane rounded-md border px-4 pt-4 pb-10 shadow-[var(--tui-pane-shadow)] sm:px-8 lg:px-12 lg:pt-6 lg:pb-12">
           {children}
         </article>
       </div>
@@ -412,7 +412,7 @@ export function TeamTableSkeleton({ rows = 5 }: { rows?: number }) {
                   <Skeleton
                     key={d}
                     row={i + 1}
-                    className="w-1 rounded-[1px]"
+                    className="w-1 rounded-xs"
                     style={{ height: 4 + Math.round(((Math.sin((i + 1) * 7 + d * 1.7) + 1) / 2) * 14) }}
                   />
                 ))}

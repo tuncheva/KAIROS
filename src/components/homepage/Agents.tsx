@@ -36,7 +36,7 @@ export function Agents() {
                                 <span className="font-display text-2xl text-fg-primary">{tAgents(`names.${agent.id}`)}</span>
                                 <span className="text-[13px] text-fg-tertiary">{tAgents(`roles.${agent.id}`)}</span>
                             </span>
-                            <span className="text-[13.5px] text-fg-quaternary">{t(agent.body)}</span>
+                            <span className="text-[13.5px] text-fg-tertiary">{t(agent.body)}</span>
                         </span>
                         <Tag accent={"accent" in agent}>{t(agent.tag)}</Tag>
                     </li>

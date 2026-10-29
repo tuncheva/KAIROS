@@ -86,7 +86,7 @@ function FilterPill({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex h-8 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-colors ${
+      className={`flex h-8 items-center gap-1.5 rounded-sm border px-3.5 text-[13px] font-medium transition-colors ${
         active
           ? "border-tui-accent/55 bg-tui-accent/[0.14] text-tui-ink"
           : "border-tui-ink/16 text-tui-ink3 hover:text-tui-ink2"
@@ -421,7 +421,7 @@ export function ProjectTasksPanel({
           <button
             type="button"
             onClick={() => openCreate()}
-            className="bg-tui-accent text-tui-on-accent flex h-9 items-center gap-2 rounded-full px-4 text-[13px] font-semibold transition-opacity hover:opacity-90"
+            className="bg-tui-accent text-tui-on-accent flex h-9 items-center gap-2 rounded-md px-4 text-[13px] font-semibold transition-opacity hover:opacity-90"
           >
             <Plus size={15} aria-hidden />
             {t("new")}
@@ -587,14 +587,14 @@ export function ProjectTasksPanel({
                                 completionNote: noteDraft.trim() || null,
                               })
                             }
-                            className="bg-tui-accent text-tui-on-accent rounded-full px-4 py-2 text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                            className="bg-tui-accent text-tui-on-accent rounded-md px-4 py-2 text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
                           >
                             {t("saveNote")}
                           </button>
                           <button
                             type="button"
                             onClick={() => setNoteFor(null)}
-                            className="border-tui-ink/16 text-tui-ink2 hover:text-tui-ink rounded-full border px-4 py-2 text-[13px] font-medium transition-colors"
+                            className="border-tui-ink/16 text-tui-ink2 hover:text-tui-ink rounded-md border px-4 py-2 text-[13px] font-medium transition-colors"
                           >
                             {t("cancel")}
                           </button>
@@ -816,7 +816,7 @@ export function ProjectTeamPanel({
                         })
                       }
                       aria-pressed={row.permission === key}
-                      className={`h-7 rounded-full px-3 text-[12px] font-medium transition-colors ${
+                      className={`h-7 rounded-sm px-3 text-[12px] font-medium transition-colors ${
                         row.permission === key
                           ? "bg-tui-accent/[0.16] text-tui-ink"
                           : "text-tui-ink3 hover:text-tui-ink2"
@@ -870,7 +870,7 @@ export function ProjectTeamPanel({
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder={t("invitePlaceholder")}
-            className="border-tui-ink/12 bg-tui-pane text-tui-ink placeholder:text-tui-ink3 focus:border-tui-accent/60 h-10 min-w-0 flex-1 rounded-full border px-4 text-sm shadow-[var(--tui-pane-shadow)] transition-colors outline-none sm:max-w-[280px]"
+            className="border-tui-ink/12 bg-tui-pane text-tui-ink placeholder:text-tui-ink3 focus:border-tui-accent/60 h-10 min-w-0 flex-1 rounded-md border px-4 text-sm shadow-[var(--tui-pane-shadow)] transition-colors outline-none sm:max-w-[280px]"
           />
           <div className="border-tui-ink/12 bg-tui-pane flex gap-1 rounded-full border p-1 shadow-[var(--tui-pane-shadow)]">
             {(["read", "write"] as const).map((key) => (
@@ -879,7 +879,7 @@ export function ProjectTeamPanel({
                 type="button"
                 onClick={() => setPermission(key)}
                 aria-pressed={permission === key}
-                className={`h-8 rounded-full px-3 text-[12px] font-medium transition-colors ${
+                className={`h-8 rounded-sm px-3 text-[12px] font-medium transition-colors ${
                   permission === key
                     ? "bg-tui-accent/[0.16] text-tui-ink"
                     : "text-tui-ink3 hover:text-tui-ink2"
@@ -892,7 +892,7 @@ export function ProjectTeamPanel({
           <button
             type="submit"
             disabled={addCollaborator.isPending || email.trim().length === 0}
-            className="border-tui-ink/16 text-tui-ink2 hover:border-tui-accent/40 hover:text-tui-ink flex h-10 items-center gap-2 rounded-full border px-4 text-[13px] font-medium transition-colors disabled:opacity-50"
+            className="border-tui-ink/16 text-tui-ink2 hover:border-tui-accent/40 hover:text-tui-ink flex h-10 items-center gap-2 rounded-md border px-4 text-[13px] font-medium transition-colors disabled:opacity-50"
           >
             <UserPlus size={15} aria-hidden />
             {t("invite")}

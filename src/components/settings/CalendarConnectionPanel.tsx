@@ -80,7 +80,7 @@ export function CalendarConnectionPanel() {
           <p className="text-settings-desc text-fg-tertiary">{t("calendarNone")}</p>
           <a
             href="/api/calendar/google/connect"
-            className="self-start rounded-lg bg-accent-primary px-3 py-1.5 text-settings-small font-medium text-white transition-[filter] hover:brightness-110"
+            className="self-start rounded-lg bg-accent-primary px-3 py-1.5 text-settings-small font-medium text-on-accent transition-[filter] hover:brightness-110"
           >
             {t("calendarConnect")}
           </a>
@@ -91,7 +91,7 @@ export function CalendarConnectionPanel() {
             <p className="text-settings-body font-medium text-fg-primary">
               {connection.accountEmail ?? connection.provider}
             </p>
-            <p className="mt-0.5 text-settings-meta text-fg-quaternary">
+            <p className="mt-0.5 text-settings-meta text-fg-tertiary">
               {connection.lastSyncedAt
                 ? t("calendarSynced", {
                     count: data.eventCount,

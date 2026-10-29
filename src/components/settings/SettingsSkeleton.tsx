@@ -33,7 +33,7 @@ export function HealthSkeleton({ row = 0 }: { row?: number }) {
   return (
     <div
       aria-hidden
-      className="mt-[22px] flex h-[70px] items-center gap-4 rounded-[10px] border border-border-light px-[18px]"
+      className="mt-[22px] flex h-[70px] items-center gap-4 rounded-md border border-border-light px-[18px]"
     >
       <Skeleton shape="title" className="h-[22px] w-11" row={row} />
       <span className="flex flex-1 flex-col gap-2.5">
@@ -117,7 +117,7 @@ export function SettingsSkeleton() {
   const search = (
     <div
       aria-hidden
-      className="flex h-[34px] items-center gap-2.5 rounded-[7px] bg-fg-primary/5 pl-3 pr-2"
+      className="flex h-[34px] items-center gap-2.5 rounded-sm bg-fg-primary/5 pl-3 pr-2"
     >
       <Search size={13} className="flex-none text-fg-tertiary" />
       <span className="min-w-0 flex-1 truncate text-settings-desc text-fg-tertiary">
@@ -137,7 +137,7 @@ export function SettingsSkeleton() {
           className="hidden w-[300px] flex-none flex-col border-r border-border-light bg-settings-side lg:flex"
         >
           <div className="px-7 pt-[26px]">
-            <span className="-ml-1.5 flex h-[30px] items-center gap-2.5 rounded-[6px] pl-1.5 pr-2.5 text-settings-desc text-fg-secondary">
+            <span className="-ml-1.5 flex h-[30px] items-center gap-2.5 rounded-sm pl-1.5 pr-2.5 text-settings-desc text-fg-secondary">
               <ArrowLeft size={14} />
               {t("elegant.back")}
             </span>
@@ -164,7 +164,7 @@ export function SettingsSkeleton() {
                   return (
                     <span
                       key={id}
-                      className="flex h-9 items-center gap-[7px] rounded-[7px] pl-3 pr-3.5 text-fg-secondary"
+                      className="flex h-9 items-center gap-[7px] rounded-sm pl-3 pr-3.5 text-fg-secondary"
                     >
                       <span className="flex h-6 w-6 flex-none items-center justify-center text-fg-tertiary">
                         <Icon size={15} />
@@ -189,16 +189,16 @@ export function SettingsSkeleton() {
             aria-hidden
             className="absolute inset-x-0 top-0 z-[4] flex h-16 items-center gap-3 border-b border-transparent tui-screen pl-4 pr-4 sm:pr-7 lg:pl-14"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-[7px] text-fg-secondary lg:hidden">
+            <span className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-secondary lg:hidden">
               <ArrowLeft size={15} />
             </span>
             <span className="flex-1" />
-            <span className="flex h-8 items-center gap-2 rounded-[7px] px-3 text-settings-small font-medium text-fg-secondary">
+            <span className="flex h-8 items-center gap-2 rounded-sm px-3 text-settings-small font-medium text-fg-secondary">
               <History size={14} />
               {t("elegant.activity")}
             </span>
-            <span className="hidden h-8 items-center gap-2 rounded-[7px] pl-2.5 pr-2 text-settings-meta text-fg-tertiary sm:flex">
-              <kbd className="rounded-[4px] border border-border-medium px-[5px] py-px font-mono text-settings-eyebrow leading-[14px]">
+            <span className="hidden h-8 items-center gap-2 rounded-sm pl-2.5 pr-2 text-settings-meta text-fg-tertiary sm:flex">
+              <kbd className="rounded-xs border border-border-medium px-[5px] py-px font-mono text-settings-eyebrow leading-[14px]">
                 esc
               </kbd>
               <X size={14} />
@@ -213,7 +213,7 @@ export function SettingsSkeleton() {
                   {SETTINGS_SECTIONS.map((id) => (
                     <span
                       key={id}
-                      className="flex h-8 flex-none items-center whitespace-nowrap rounded-[7px] px-3 text-settings-small font-medium text-fg-secondary"
+                      className="flex h-8 flex-none items-center whitespace-nowrap rounded-sm px-3 text-settings-small font-medium text-fg-secondary"
                     >
                       {t(`nav.${id}`)}
                     </span>
@@ -260,7 +260,7 @@ export function SettingsSkeleton() {
                     </span>
                   </RowSkeleton>
                   <RowSkeleton title={t("profile.fullName")}>
-                    <span className="flex h-9 w-[280px] max-w-full items-center rounded-[6px] bg-fg-primary/5 px-3">
+                    <span className="flex h-9 w-[280px] max-w-full items-center rounded-sm bg-fg-primary/5 px-3">
                       <Skeleton className="h-[9px] w-[52%]" row={3} />
                     </span>
                   </RowSkeleton>
@@ -272,7 +272,7 @@ export function SettingsSkeleton() {
                     title={t("profile.bio")}
                     desc={<Skeleton className="mt-1 h-[8px] w-24" row={5} />}
                   >
-                    <span className="flex h-[87px] w-full flex-col gap-[11px] rounded-[6px] bg-fg-primary/5 px-3 py-[15px]">
+                    <span className="flex h-[87px] w-full flex-col gap-[11px] rounded-sm bg-fg-primary/5 px-3 py-[15px]">
                       <Skeleton className="h-[9px] w-[88%]" row={5} />
                       <Skeleton className="h-[9px] w-[54%]" row={6} />
                     </span>

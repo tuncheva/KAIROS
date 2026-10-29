@@ -34,7 +34,7 @@ export function EventPageSkeleton({ onRetry }: { onRetry?: () => void }) {
           <span className="flex-1" />
           <span
             aria-hidden
-            className="flex h-control-md items-center gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-tertiary"
+            className="flex h-control-md items-center gap-2 rounded-md border border-border-medium px-3 text-[13px] text-fg-tertiary"
           >
             <Share2 size={14} />
             <span className="hidden sm:inline">{t("share")}</span>
@@ -76,11 +76,11 @@ export function EventPageSkeleton({ onRetry }: { onRetry?: () => void }) {
             </section>
 
             <div className="flex flex-wrap items-center gap-2">
-              <span className="flex h-control-md items-center gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-tertiary">
+              <span className="flex h-control-md items-center gap-2 rounded-md border border-border-medium px-3 text-[13px] text-fg-tertiary">
                 <Heart size={15} />
                 <Skeleton className="h-[8px] w-3" row={5} />
               </span>
-              <span className="flex h-control-md items-center gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-tertiary">
+              <span className="flex h-control-md items-center gap-2 rounded-md border border-border-medium px-3 text-[13px] text-fg-tertiary">
                 <Bookmark size={15} />
                 {t("save")}
               </span>
@@ -104,7 +104,7 @@ export function EventPageSkeleton({ onRetry }: { onRetry?: () => void }) {
                     {t(key)}
                   </span>
                 ))}
-                <span className="flex h-10 items-center rounded-lg border border-border-medium px-3 text-[13px] text-fg-tertiary">
+                <span className="flex h-10 items-center rounded-md border border-border-medium px-3 text-[13px] text-fg-tertiary">
                   {t("cantGo")}
                 </span>
               </div>

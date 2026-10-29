@@ -32,7 +32,7 @@ import { FEED_VIEWS, TOPICS } from "./feedData";
 import { Panel, Stamp, TitledPanel } from "./publishUi";
 
 const CARD_SHELL =
-  "overflow-hidden rounded-lg bg-bg-elevated shadow-[0_0_0_0.5px_rgba(200,200,200,0.55),0_2px_8px_-2px_rgba(0,0,0,0.08),0_4px_16px_-4px_rgba(0,0,0,0.06)] dark:shadow-[0_0_0_0.5px_rgba(60,60,60,0.9),0_2px_12px_-2px_rgba(0,0,0,0.4),0_6px_24px_-6px_rgba(0,0,0,0.3)]";
+  "overflow-hidden rounded-lg bg-bg-elevated shadow-[var(--tui-pane-shadow)]";
 
 /** One feed card: `EventCard` with the event's data hatched. */
 export function EventCardSkeleton({ index = 0 }: { index?: number }) {
@@ -104,7 +104,7 @@ export function EventCardSkeleton({ index = 0 }: { index?: number }) {
       </div>
 
       {/* Reactions: the icons are known, the counts are not. */}
-      <div className="mt-3 flex items-center gap-0.5 border-t border-border-light px-2.5 py-2 text-fg-quaternary">
+      <div className="mt-3 flex items-center gap-0.5 border-t border-border-light px-2.5 py-2 text-fg-tertiary">
         <span className="flex h-8 items-center gap-1.5 px-2.5">
           <Heart size={15} />
           <Skeleton className="h-[7px] w-3" row={row + 2} />
@@ -203,7 +203,7 @@ function RailSkeleton() {
     <>
       <div aria-hidden className="flex flex-col gap-2 lg:hidden">
         <div className="-mx-1 flex gap-1 overflow-hidden px-1 pb-1">{views}</div>
-        <span className="flex h-control-md items-center rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary">
+        <span className="flex h-control-md items-center rounded-md border border-border-medium px-3 text-[13px] text-fg-secondary">
           {t("filters")}
         </span>
       </div>
@@ -235,7 +235,7 @@ function RailSkeleton() {
             {TOPICS.map((topic) => (
               <span
                 key={topic}
-                className="kairos-mono rounded-lg bg-bg-tertiary px-2.5 py-1.5 text-[11px] text-fg-secondary"
+                className="kairos-mono rounded-sm bg-bg-tertiary px-2.5 py-1.5 text-[11px] text-fg-secondary"
               >
                 {t(`topics.${topic}`)}
               </span>
@@ -257,7 +257,7 @@ function ComposerSkeleton() {
     <div aria-hidden className="rounded-xl border border-border-medium bg-bg-elevated p-4">
       <div className="flex items-center gap-3">
         <Skeleton shape="circle" className="h-9 w-9" />
-        <span className="flex h-10 min-w-0 flex-1 items-center rounded-lg border border-border-medium bg-bg-secondary px-3 text-sm text-fg-tertiary">
+        <span className="flex h-10 min-w-0 flex-1 items-center rounded-md border border-border-medium bg-bg-secondary px-3 text-sm text-fg-tertiary">
           <span className="truncate">{t("composerPlaceholder")}</span>
         </span>
       </div>
@@ -279,7 +279,7 @@ function ComposerSkeleton() {
           <Users size={12} className="text-fg-quaternary" />
           <Stamp className="tracking-[0.14em]">{t("audiencePublic")}</Stamp>
         </span>
-        <span className="flex h-8 items-center rounded-lg border border-border-medium px-4 text-xs font-semibold text-fg-tertiary">
+        <span className="flex h-8 items-center rounded-sm border border-border-medium px-4 text-xs font-semibold text-fg-tertiary">
           {t("continue")}
         </span>
       </div>
@@ -299,7 +299,7 @@ export function PublishLoadingView() {
         actions={
           <span
             aria-hidden
-            className="flex h-control-md items-center gap-2 rounded-lg border border-border-medium px-3.5 text-[13px] font-semibold text-fg-tertiary"
+            className="flex h-control-md items-center gap-2 rounded-md border border-border-medium px-3.5 text-[13px] font-semibold text-fg-tertiary"
           >
             <CalendarPlus size={15} />
             <span className="hidden sm:inline">{t("publishEvent")}</span>
@@ -320,7 +320,7 @@ export function PublishLoadingView() {
                   key={source}
                   className={`kairos-stamp rounded-md px-3 py-1.5 text-[10px] tracking-[0.12em] ${
                     i === 0
-                      ? "bg-white text-accent-primary shadow-sm dark:bg-white/10"
+                      ? "bg-bg-elevated text-accent-primary shadow-sm"
                       : "text-fg-tertiary"
                   }`}
                 >
@@ -328,7 +328,7 @@ export function PublishLoadingView() {
                 </span>
               ))}
             </span>
-            <span className="relative flex h-control-md min-w-0 flex-1 items-center rounded-lg border border-border-medium bg-bg-secondary pl-8 pr-8 text-[13px] text-fg-tertiary">
+            <span className="relative flex h-control-md min-w-0 flex-1 items-center rounded-md border border-border-medium bg-bg-secondary pl-8 pr-8 text-[13px] text-fg-tertiary">
               <Search
                 size={14}
                 className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-quaternary"
@@ -358,7 +358,7 @@ export function EventProgressSkeleton() {
         {Array.from({ length: 5 }, (_, i) => (
           <div
             key={i}
-            className="flex flex-col items-center gap-2 rounded-xl bg-accent-primary/5 p-3 dark:bg-white/5"
+            className="flex flex-col items-center gap-2 rounded-xl bg-accent-primary/5 p-3"
           >
             <Skeleton shape="circle" className="h-[15px] w-[15px]" row={0} />
             <Skeleton shape="title" className="h-[16px] w-8" row={0} />

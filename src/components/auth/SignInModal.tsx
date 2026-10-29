@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { Loader2, Eye, EyeOff, ArrowRight, ArrowLeft, KeyRound, Check } from "~/components/ui/icons";
+import { Eye, EyeOff, ArrowRight, ArrowLeft, KeyRound, Check } from "~/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 
 import { ModalDismiss, useModalBehavior } from "~/components/ui/Modal";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 /* ─── Types ─── */
 type ModalView =
   | "signIn"
@@ -543,7 +544,7 @@ export function SignInModal({
       <div className="flex items-center gap-4">
         <button type="submit" disabled={isLoading} className={`${primaryBtnClass} flex-1`}>
           {isLoading ? (
-            <><Loader2 className="animate-spin" size={18} />{t("signIn.signingIn")}</>
+            <><PendingDot />{t("signIn.signingIn")}</>
           ) : (
             <>{t("signIn.submit")}<ArrowRight size={17} /></>
           )}
@@ -618,7 +619,7 @@ export function SignInModal({
 
       <button type="submit" disabled={isLoading || !agreeTerms} className={`${primaryBtnClass} w-full`}>
         {isLoading ? (
-          <><Loader2 className="animate-spin" size={18} />{t("signUp.creatingAccount")}</>
+          <><PendingDot />{t("signUp.creatingAccount")}</>
         ) : (
           <>{t("signUp.submit")}<ArrowRight size={17} /></>
         )}
@@ -667,7 +668,7 @@ export function SignInModal({
       />
       <button type="submit" disabled={isLoading} className={`${primaryBtnClass} w-full`}>
         {isLoading ? (
-          <><Loader2 className="animate-spin" size={18} />{t("forgotPassword.sendingCode")}</>
+          <><PendingDot />{t("forgotPassword.sendingCode")}</>
         ) : (
           <>{t("forgotPassword.submit")}<ArrowRight size={17} /></>
         )}
@@ -713,7 +714,7 @@ export function SignInModal({
           className={`${primaryBtnClass} flex-1`}
         >
           {isLoading ? (
-            <Loader2 className="animate-spin" size={18} />
+            <PendingDot />
           ) : (
             <>{t("twoFactor.submit")}<KeyRound size={17} /></>
           )}
@@ -760,7 +761,7 @@ export function SignInModal({
           className={`${primaryBtnClass} flex-1`}
         >
           {isLoading ? (
-            <Loader2 className="animate-spin" size={18} />
+            <PendingDot />
           ) : (
             <>{t("resetCode.submit")}<KeyRound size={17} /></>
           )}
@@ -815,7 +816,7 @@ export function SignInModal({
 
       <button type="submit" disabled={isLoading} className={`${primaryBtnClass} w-full`}>
         {isLoading ? (
-          <><Loader2 className="animate-spin" size={18} />{t("newPassword.resetting")}</>
+          <><PendingDot />{t("newPassword.resetting")}</>
         ) : (
           <>{t("newPassword.submit")}<ArrowRight size={17} /></>
         )}
@@ -896,21 +897,11 @@ export function SignInModal({
         <div className="relative hidden flex-col justify-between overflow-hidden border-r border-fg-primary/[0.08] bg-bg-primary p-11 lg:flex">
           <div
             aria-hidden="true"
-            className="k-drift-slow pointer-events-none absolute -bottom-[180px] -left-[120px] h-[620px] w-[620px] rounded-full blur-[90px]"
-            style={{
-              background:
-                "radial-gradient(circle at 50% 50%, rgb(var(--accent-primary) / 0.26), transparent 64%)",
-            }}
+            className="k-drift-slow pointer-events-none absolute -bottom-[180px] -left-[120px] h-[620px] w-[620px] rounded-full bg-accent-primary/20 blur-[90px]"
           />
 
           <div className="relative flex items-center gap-3">
-            <div
-              className="flex h-[30px] w-[30px] items-center justify-center rounded-sm"
-              style={{
-                background:
-                  "linear-gradient(140deg, rgb(var(--accent-primary)), rgb(var(--accent-secondary)))",
-              }}
-            >
+            <div className="flex h-[30px] w-[30px] items-center justify-center rounded-sm bg-accent-primary">
               <Image src="/logo_white.png" alt="Kairos" width={18} height={18} className="h-[18px] w-[18px] object-contain" priority />
             </div>
             <span className="font-display text-2xl text-fg-primary">Kairos</span>
@@ -1022,7 +1013,7 @@ export function SignInModal({
                     type="button"
                     disabled={resendVerificationMutation.isPending}
                     onClick={() => resendVerificationMutation.mutate({ email })}
-                    className="self-start rounded-xl border border-accent-primary/25 px-4 py-2 text-sm font-semibold text-accent-primary transition-colors hover:bg-accent-primary/10 disabled:opacity-50"
+                    className="self-start rounded-md border border-accent-primary/25 px-4 py-2 text-sm font-semibold text-accent-primary transition-colors hover:bg-accent-primary/10 disabled:opacity-50"
                   >
                     {resendVerificationMutation.isPending
                       ? t("verifyEmail.resending")
@@ -1031,7 +1022,7 @@ export function SignInModal({
                 ))}
               {loadingMessage && (
                 <p className="flex items-center gap-2 rounded-xl border border-accent-primary/25 bg-accent-primary/10 px-4 py-3 text-sm text-accent-primary">
-                  <Loader2 className="animate-spin" size={16} />
+                  <PendingDot />
                   {loadingMessage}
                 </p>
               )}

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Globe, ChevronDown, Check } from "~/components/ui/icons";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { LOCALE_METADATA, locales, type Locale } from "~/i18n/locales";
 
 type LanguageCode = Locale;
@@ -27,6 +27,7 @@ interface LanguageSwitcherProps {
 }
 
 export function LanguageSwitcher({ variant = "compact", className = "" }: LanguageSwitcherProps) {
+  const t = useTranslations("common");
   const currentLocale = useLocale() as LanguageCode;
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -54,8 +55,8 @@ export function LanguageSwitcher({ variant = "compact", className = "" }: Langua
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm font-medium text-fg-secondary hover:text-fg-primary hover:bg-bg-tertiary backdrop-blur-sm transition-all duration-200 border border-border-medium"
-        aria-label="Switch language"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-sm font-medium text-fg-secondary hover:text-fg-primary hover:bg-bg-tertiary backdrop-blur-sm transition-all duration-200 border border-border-medium"
+        aria-label={t("switchLanguage")}
       >
         <Globe size={15} className="opacity-70" />
         {variant === "full" ? (

@@ -147,7 +147,7 @@ export function NewProjectDrawer({
       <button
         type="button"
         onClick={openDrawer}
-        className="flex h-[34px] items-center gap-[7px] rounded-full bg-tui-accent px-3 text-[13px] font-medium whitespace-nowrap text-tui-on-accent transition-opacity hover:opacity-90 sm:px-3.5"
+        className="flex h-[34px] items-center gap-[7px] rounded-md bg-tui-accent px-3 text-[13px] font-medium whitespace-nowrap text-tui-on-accent transition-opacity hover:opacity-90 sm:px-3.5"
       >
         <Plus size={15} aria-hidden />
         <span className="hidden sm:inline">{t("open")}</span>
@@ -172,7 +172,7 @@ export function NewProjectDrawer({
             />
 
             <aside
-              className={`border-tui-ink/10 bg-tui-pane text-tui-ink relative m-2 flex h-[calc(100%-1rem)] w-full max-w-[520px] flex-col overflow-hidden rounded-[16px] border shadow-[var(--tui-pane-shadow)] sm:m-3 sm:h-[calc(100%-1.5rem)] ${
+              className={`border-tui-ink/10 bg-tui-pane text-tui-ink relative m-2 flex h-[calc(100%-1rem)] w-full max-w-[520px] flex-col overflow-hidden rounded-xl border shadow-[var(--tui-pane-shadow)] sm:m-3 sm:h-[calc(100%-1.5rem)] ${
                 closing ? "projects-drawer-out" : "projects-drawer"
               }`}
             >
@@ -228,7 +228,7 @@ export function NewProjectDrawer({
                       value={description}
                       onChange={(event) => setDescription(event.target.value)}
                       placeholder={t("descriptionPlaceholder")}
-                      className="border-tui-ink/10 text-tui-ink placeholder:text-tui-ink3 focus:border-tui-ink/30 w-full resize-none rounded-[10px] border bg-transparent px-3.5 py-2.5 text-[14px] leading-[1.6] transition-colors outline-none"
+                      className="border-tui-ink/10 text-tui-ink placeholder:text-tui-ink3 focus:border-tui-ink/30 w-full resize-none rounded-md border bg-transparent px-3.5 py-2.5 text-[14px] leading-[1.6] transition-colors outline-none"
                     />
                   </Field>
 
@@ -236,7 +236,7 @@ export function NewProjectDrawer({
                     <div
                       role="radiogroup"
                       aria-label={t("whoCanSee")}
-                      className="border-tui-ink/10 flex flex-col overflow-hidden rounded-[10px] border"
+                      className="border-tui-ink/10 flex flex-col overflow-hidden rounded-md border"
                     >
                       {VISIBILITY.map((option) => {
                         const active = visibility === option.key;
@@ -282,7 +282,7 @@ export function NewProjectDrawer({
                     optional={t("optional")}
                     hint={t("inviteHint")}
                   >
-                    <div className="border-tui-ink/10 focus-within:border-tui-ink/30 flex items-center gap-2 rounded-[10px] border py-1 pr-1 pl-3.5 transition-colors">
+                    <div className="border-tui-ink/10 focus-within:border-tui-ink/30 flex items-center gap-2 rounded-md border py-1 pr-1 pl-3.5 transition-colors">
                       <input
                         type="email"
                         value={email}
@@ -293,7 +293,7 @@ export function NewProjectDrawer({
                       <div
                         role="radiogroup"
                         aria-label={t("permission")}
-                        className="bg-tui-ink/[0.045] flex flex-none gap-0.5 rounded-[8px] p-0.5"
+                        className="bg-tui-ink/[0.045] flex flex-none gap-0.5 rounded-sm p-0.5"
                       >
                         {PERMISSIONS.map((option) => {
                           const active = permission === option.key;
@@ -304,7 +304,7 @@ export function NewProjectDrawer({
                               role="radio"
                               aria-checked={active}
                               onClick={() => setPermission(option.key)}
-                              className={`h-7 rounded-[6px] px-2.5 text-[12px] font-medium whitespace-nowrap transition-colors ${
+                              className={`h-7 rounded-sm px-2.5 text-[12px] font-medium whitespace-nowrap transition-colors ${
                                 active
                                   ? "bg-tui-pane text-tui-ink shadow-[var(--tui-pane-shadow)]"
                                   : "text-tui-ink3 hover:text-tui-ink2"
@@ -320,7 +320,7 @@ export function NewProjectDrawer({
 
                   {/* A live preview, drawn as the dashboard's project row. */}
                   <Field label={t("howItAppears")}>
-                    <div className="border-tui-ink/8 bg-tui-bg grid grid-cols-[minmax(0,1fr)_minmax(0,120px)] items-center gap-5 rounded-[10px] border px-4 py-3.5">
+                    <div className="border-tui-ink/8 bg-tui-bg grid grid-cols-[minmax(0,1fr)_minmax(0,120px)] items-center gap-5 rounded-md border px-4 py-3.5">
                       <span className="flex min-w-0 flex-col gap-0.5">
                         <span
                           className={`truncate text-[14.5px] font-medium ${
@@ -344,7 +344,7 @@ export function NewProjectDrawer({
                   className={`border-tui-ink/8 flex items-center gap-2 border-t py-4 ${PAD}`}
                 >
                   <span className="text-tui-ink3 hidden items-center gap-2 text-[12px] sm:flex">
-                    <kbd className="border-tui-ink/12 rounded-[4px] border px-1.5 font-mono text-[10.5px] leading-4">
+                    <kbd className="border-tui-ink/12 rounded-xs border px-1.5 font-mono text-[10.5px] leading-4">
                       ⌘ ↵
                     </kbd>
                     {t("toCreate")}
@@ -353,14 +353,14 @@ export function NewProjectDrawer({
                   <button
                     type="button"
                     onClick={close}
-                    className="text-tui-ink2 hover:text-tui-ink h-9 rounded-full px-3.5 text-[13.5px] transition-colors"
+                    className="text-tui-ink2 hover:text-tui-ink h-9 rounded-md px-3.5 text-[13.5px] transition-colors"
                   >
                     {t("cancel")}
                   </button>
                   <button
                     type="submit"
                     disabled={!canSubmit}
-                    className="bg-tui-accent text-tui-on-accent disabled:bg-tui-ink/[0.07] disabled:text-tui-ink3 flex h-9 items-center gap-2 rounded-full px-4 text-[13.5px] font-medium transition-colors hover:opacity-90 disabled:hover:opacity-100"
+                    className="bg-tui-accent text-tui-on-accent disabled:bg-tui-ink/[0.07] disabled:text-tui-ink3 flex h-9 items-center gap-2 rounded-md px-4 text-[13.5px] font-medium transition-colors hover:opacity-90 disabled:hover:opacity-100"
                   >
                     {pending ? t("creating") : t("submit")}
                     <span aria-hidden>→</span>

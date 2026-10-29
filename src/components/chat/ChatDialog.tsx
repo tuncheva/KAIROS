@@ -121,7 +121,7 @@ export function ChatDialog({
           <button
             type="button"
             onClick={onDismiss}
-            className="h-9 rounded-full border border-tui-ink/16 bg-transparent px-4 text-[13px] font-medium text-tui-ink transition-colors hover:bg-tui-accent/6"
+            className="h-9 rounded-md border border-tui-ink/16 bg-transparent px-4 text-[13px] font-medium text-tui-ink transition-colors hover:bg-tui-accent/6"
           >
             {cancelLabel}
           </button>
@@ -131,7 +131,7 @@ export function ChatDialog({
               onClick={primary.onClick}
               disabled={primary.disabled}
               data-autofocus
-              className={`h-9 rounded-full border px-4 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${toneCls.primary}`}
+              className={`h-9 rounded-md border px-4 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${toneCls.primary}`}
             >
               {primary.label}
             </button>

@@ -134,7 +134,7 @@ export function ConfirmDialog({
 
           {requireText !== undefined ? (
             <label className="mt-4 block">
-              <span className="mb-1.5 block font-mono text-[9.5px] tracking-[0.13em] uppercase text-fg-quaternary">
+              <span className="mb-1.5 block font-mono text-[9.5px] tracking-[0.13em] uppercase text-fg-tertiary">
                 {requireTextLabel}
               </span>
               <span className="flex h-[38px] items-center rounded-md border border-border-medium bg-bg-surface px-3 transition-colors focus-within:border-accent-primary/60 focus-within:bg-bg-elevated focus-within:ring-[3px] focus-within:ring-accent-primary/10">
@@ -150,7 +150,7 @@ export function ConfirmDialog({
                   autoCapitalize="off"
                   spellCheck={false}
                   aria-label={requireTextLabel}
-                  className="min-w-0 flex-1 border-0 bg-transparent text-[13.5px] text-fg-primary outline-none placeholder:text-fg-quaternary"
+                  className="min-w-0 flex-1 border-0 bg-transparent text-[13.5px] text-fg-primary outline-none placeholder:text-fg-tertiary"
                 />
               </span>
             </label>

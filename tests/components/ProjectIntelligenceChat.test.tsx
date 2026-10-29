@@ -651,7 +651,7 @@ describe("ProjectIntelligenceChat", () => {
     expect(
       await screen.findByText(/There are two members named Ivan/),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Confirm Org Changes")).not.toBeInTheDocument();
+    expect(screen.queryByText("Confirm org changes")).not.toBeInTheDocument();
   });
 
   it("keeps org changes two-step: confirm first, then apply", async () => {
@@ -679,12 +679,12 @@ describe("ProjectIntelligenceChat", () => {
 
     // Step one is a confirm, never a one-click apply: an org write is not
     // something to execute off the first button the user sees.
-    const confirm = await screen.findByText("Confirm Org Changes");
-    expect(screen.queryByText("Apply Org Changes")).not.toBeInTheDocument();
+    const confirm = await screen.findByText("Confirm org changes");
+    expect(screen.queryByText("Apply org changes")).not.toBeInTheDocument();
 
     await user.click(confirm);
 
-    expect(await screen.findByText("Apply Org Changes")).toBeInTheDocument();
+    expect(await screen.findByText("Apply org changes")).toBeInTheDocument();
   });
 
   /* ---- Phase 5: small plans that saved on their own ---- */

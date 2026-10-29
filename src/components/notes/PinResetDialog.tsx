@@ -11,7 +11,7 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2 } from "~/components/ui/icons";
+import {  } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
@@ -26,6 +26,7 @@ import {
   NotesDialog,
 } from "./notesDialog";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 export function PinResetDialog({
   noteId,
   hint,
@@ -104,7 +105,7 @@ export function PinResetDialog({
             {t("common.cancel")}
           </button>
           <button type="submit" disabled={resetPassword.isPending} className={DIALOG_PRIMARY}>
-            {resetPassword.isPending && <Loader2 size={14} className="animate-spin" />}
+            {resetPassword.isPending && <PendingDot />}
             {resetPassword.isPending ? t("password.resetting") : t("password.resetPassword")}
           </button>
         </>

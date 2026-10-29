@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 /** Mono eyebrow above a section heading. */
 export function Eyebrow({ children }: { children: ReactNode }) {
     return (
-        <span className="font-mono text-[11px] tracking-[0.24em] text-fg-quaternary uppercase">
+        <span className="font-mono text-[11px] tracking-[0.24em] text-fg-tertiary uppercase">
             {children}
         </span>
     );
@@ -29,7 +29,7 @@ export function Tag({ children, accent = false }: { children: ReactNode; accent?
     return (
         <span
             className={`font-mono text-[10px] tracking-[0.16em] uppercase ${
-                accent ? "text-accent-primary" : "text-fg-quaternary"
+                accent ? "text-accent-primary" : "text-fg-tertiary"
             }`}
         >
             {children}

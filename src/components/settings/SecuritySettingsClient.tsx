@@ -466,7 +466,7 @@ export function SecuritySettingsClient() {
           <code className="break-all rounded-sm bg-bg-secondary px-1.5 py-1 text-settings-small text-fg-secondary">
             {feedUrl}
           </code>
-          <span className="text-settings-micro text-fg-quaternary">
+          <span className="text-settings-micro text-fg-tertiary">
             {t("calendarFeedSecret")}
           </span>
         </span>

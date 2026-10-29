@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { Check, Copy, Link2, Loader2, Mail, Trash2, Users } from "~/components/ui/icons";
+import { Check, Copy, Link2, Mail, Trash2, Users } from "~/components/ui/icons";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useSettingsSave } from "~/components/settings/ledger/Ledger";
 import {
@@ -24,6 +24,7 @@ import {
 import { InviteePreview, useInviteeLookup } from "~/components/orgs/InviteePreview";
 import { api } from "~/trpc/react";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
 export interface CustomRoleOption extends MemberPermissionFlags {
@@ -297,9 +298,9 @@ export function InviteBuilder({
   );
 
   const inputClass =
-    "min-w-0 flex-1 rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-settings-body text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30";
+    "min-w-0 flex-1 rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-settings-body text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30";
   const primaryButton =
-    "flex items-center justify-center gap-1.5 rounded-md bg-accent-primary px-3.5 py-1.5 text-settings-small font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50";
+    "flex items-center justify-center gap-1.5 rounded-md bg-accent-primary px-3.5 py-1.5 text-settings-small font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50";
   const selectClass =
     "rounded-md border border-border-medium bg-bg-secondary px-2 py-1.5 text-settings-body text-fg-primary outline-none focus:border-accent-primary";
 
@@ -375,7 +376,7 @@ export function InviteBuilder({
                 onClick={handleSend}
                 className={primaryButton}
               >
-                {inviteMember.isPending ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
+                {inviteMember.isPending ? <PendingDot /> : <Mail size={13} />}
                 {t("inviteBuilder.sendInvitation")}
               </button>
             </div>
@@ -398,7 +399,7 @@ export function InviteBuilder({
                   onChange={(e) => setBulkInput(e.target.value)}
                   aria-label={t("members.bulkInviteLabel")}
                   placeholder={t("members.bulkInvitePlaceholder")}
-                  className="min-h-[72px] w-full resize-y rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-settings-body text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
+                  className="min-h-[72px] w-full resize-y rounded-md border border-border-medium bg-bg-secondary px-2.5 py-1.5 text-settings-body text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30"
                 />
                 <button
                   type="button"
@@ -448,7 +449,7 @@ export function InviteBuilder({
                 onClick={handleCreateLink}
                 className={primaryButton}
               >
-                {createLink.isPending ? <Loader2 size={13} className="animate-spin" /> : <Link2 size={13} />}
+                {createLink.isPending ? <PendingDot /> : <Link2 size={13} />}
                 {t("inviteBuilder.createLink")}
               </button>
             </div>
@@ -497,7 +498,7 @@ export function InviteBuilder({
                 <span className="text-settings-meta text-fg-tertiary">
                   {summarize(link.permissions, t("inviteBuilder.viewOnly"))}
                 </span>
-                <span className="text-settings-micro text-fg-quaternary">
+                <span className="text-settings-micro text-fg-tertiary">
                   {t("inviteBuilder.usedOf", { used: link.usedCount, max: link.maxUses })} ·{" "}
                   {t("members.expiresOn", { date: new Date(link.expiresAt).toLocaleDateString() })}
                 </span>

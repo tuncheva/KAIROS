@@ -154,7 +154,7 @@ function ViewButton({
       <span className="flex-1">{t(`views.${view}`)}</span>
       <span
         className={`kairos-mono text-[11px] ${
-          active ? "text-accent-primary" : "text-fg-quaternary"
+          active ? "text-accent-primary" : "text-fg-tertiary"
         }`}
       >
         {count}
@@ -188,7 +188,7 @@ function FilterChip({
     >
       <span>{label}</span>
       {count !== undefined && count > 0 && (
-        <span className={active ? "text-accent-primary/70" : "text-fg-quaternary"}>
+        <span className={active ? "text-accent-primary/70" : "text-fg-tertiary"}>
           {count}
         </span>
       )}
@@ -269,7 +269,7 @@ export function PublishRail({
             <button
               type="button"
               onClick={() => setShowAllRegions((open) => !open)}
-              className="kairos-mono flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] text-accent-primary transition-colors hover:text-accent-hover"
+              className="kairos-mono flex items-center gap-1 rounded-sm px-2 py-1.5 text-[11px] text-accent-primary transition-colors hover:text-accent-hover"
             >
               {showAllRegions
                 ? t("showFewer")
@@ -320,7 +320,7 @@ export function PublishRail({
           type="button"
           onClick={() => setShowMobileFilters((open) => !open)}
           aria-expanded={showMobileFilters}
-          className="flex h-control-md items-center justify-between gap-2 rounded-lg border border-border-medium px-3 text-[13px] text-fg-secondary"
+          className="flex h-control-md items-center justify-between gap-2 rounded-md border border-border-medium px-3 text-[13px] text-fg-secondary"
         >
           <span className="flex shrink-0 items-center gap-2">
             <SlidersHorizontal size={14} className="text-accent-primary" />

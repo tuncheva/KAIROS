@@ -22,6 +22,7 @@ import { Sparkles, Copy, Check, CheckCircle2, Calendar, FileText, MapPin, Trash2
 import { useDateFormat } from "~/hooks/useDateFormat";
 import { humanizeToolName, type TrailEvent } from "~/components/chat/trail";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
 /* ------------------------------------------------------------------ */
@@ -512,7 +513,7 @@ function EventPreviewCard({
           {label}
         </span>
         {isEditable && (
-          <span className="text-[10px] text-fg-quaternary ml-auto">{t("previewClickToEdit")}</span>
+          <span className="text-[10px] text-fg-tertiary ml-auto">{t("previewClickToEdit")}</span>
         )}
       </div>
       {item.title && (
@@ -553,7 +554,7 @@ function EventPreviewCard({
         )}
       </div>
       {item.reason && (
-        <p className="text-[10px] text-fg-quaternary mt-1 italic">{item.reason}</p>
+        <p className="text-[10px] text-fg-tertiary mt-1 italic">{item.reason}</p>
       )}
     </div>
   );
@@ -601,10 +602,10 @@ function NotePreviewCard({
           {label}
         </span>
         {item.noteId && (
-          <span className="text-[10px] text-fg-quaternary">#{item.noteId}</span>
+          <span className="text-[10px] text-fg-tertiary">#{item.noteId}</span>
         )}
         {isEditable && (
-          <span className="text-[10px] text-fg-quaternary ml-auto">{t("previewClickToEdit")}</span>
+          <span className="text-[10px] text-fg-tertiary ml-auto">{t("previewClickToEdit")}</span>
         )}
       </div>
       {item.content && (
@@ -620,7 +621,7 @@ function NotePreviewCard({
         )
       )}
       {item.reason && (
-        <p className="text-[10px] text-fg-quaternary mt-1 italic">{item.reason}</p>
+        <p className="text-[10px] text-fg-tertiary mt-1 italic">{item.reason}</p>
       )}
     </div>
   );
@@ -694,7 +695,7 @@ function OrgChangePreviewCard({
           &minus; {item.revoke!.join(", ")}
         </p>
       )}
-      <p className="text-[10px] text-fg-quaternary mt-1 italic">
+      <p className="text-[10px] text-fg-tertiary mt-1 italic">
         {item.rationale}
       </p>
     </div>
@@ -746,7 +747,7 @@ function ProjectChangePreviewCard({
       {item.detail && (
         <p className="text-xs text-fg-secondary mt-0.5">{item.detail}</p>
       )}
-      <p className="text-[10px] text-fg-quaternary mt-1 italic">
+      <p className="text-[10px] text-fg-tertiary mt-1 italic">
         {item.rationale}
       </p>
     </div>
@@ -1931,7 +1932,7 @@ export function ProjectIntelligenceChat(props: {
               <button
                 type="button"
                 onClick={() => setRateLimitPopup({ show: false, message: "" })}
-                className="mt-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-tui-on-accent transition-all hover:opacity-90 active:scale-95"
+                className="mt-2 px-6 py-2.5 rounded-md text-sm font-semibold text-tui-on-accent transition-all hover:opacity-90 active:scale-95"
                 style={{ backgroundColor: "rgb(var(--accent-primary))" }}
               >
                 Got it
@@ -1958,7 +1959,7 @@ export function ProjectIntelligenceChat(props: {
           >
             <h3
               id="kairos-new-chat-title"
-              className="mb-2 text-lg font-bold text-fg-primary"
+              className="font-display mb-2 text-lg font-normal text-fg-primary"
             >
               {t("deleteChatTitle")}
             </h3>
@@ -1977,7 +1978,7 @@ export function ProjectIntelligenceChat(props: {
                   setConfirmNewChat(false);
                   setNewChatError(null);
                 }}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-surface"
+                className="rounded-md px-4 py-2 text-sm font-medium text-fg-secondary transition-colors hover:bg-bg-surface"
               >
                 {t("cancel")}
               </button>
@@ -1986,7 +1987,7 @@ export function ProjectIntelligenceChat(props: {
                 data-testid="new-chat-confirm"
                 onClick={() => void startNewChat()}
                 disabled={deleteConversationMutation.isPending}
-                className="rounded-lg border border-status-danger-border bg-status-danger-surface px-4 py-2 text-sm font-medium text-status-danger-ink transition-colors hover:border-status-danger-ink disabled:opacity-50"
+                className="rounded-md border border-status-danger-border bg-status-danger-surface px-4 py-2 text-sm font-medium text-status-danger-ink transition-colors hover:border-status-danger-ink disabled:opacity-50"
               >
                 {deleteConversationMutation.isPending
                   ? t("deleting")
@@ -2040,7 +2041,7 @@ export function ProjectIntelligenceChat(props: {
             <button
               type="button"
               data-testid="new-chat"
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-fg-secondary transition-colors hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs text-fg-secondary transition-colors hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-40"
               style={{ backgroundColor: "rgb(var(--bg-secondary))" }}
               // Nothing on screen means nothing to start over from — and the
               // stored thread, if any, is already empty.
@@ -2059,7 +2060,7 @@ export function ProjectIntelligenceChat(props: {
 
           <button
             type="button"
-            className="text-xs px-2.5 py-1.5 rounded-lg text-fg-secondary transition-colors hover:text-fg-primary"
+            className="text-xs px-2.5 py-1.5 rounded-sm text-fg-secondary transition-colors hover:text-fg-primary"
             style={{ backgroundColor: "rgb(var(--bg-secondary))" }}
             onClick={() => setShowAssumptions((v) => !v)}
           >
@@ -2122,7 +2123,7 @@ export function ProjectIntelligenceChat(props: {
                   className={
                     isConsole
                       ? "font-display text-[34px] leading-[1.08] font-light tracking-[-0.02em] text-fg-primary"
-                      : "text-[17px] font-semibold tracking-[-0.015em] text-fg-primary"
+                      : "font-display text-[17px] font-normal tracking-[-0.015em] text-fg-primary"
                   }
                 >
                   {t("emptyTitle")}
@@ -2257,7 +2258,7 @@ export function ProjectIntelligenceChat(props: {
                             // the controls that change the workspace, not to
                             // every line the user has ever typed.
                             isConsole
-                            ? "group max-w-[520px] rounded-[14px] border border-tui-accent/30 bg-tui-accent/10 px-[15px] py-[11px] text-tui-ink"
+                            ? "group max-w-[520px] rounded-lg border border-tui-accent/30 bg-tui-accent/10 px-[15px] py-[11px] text-tui-ink"
                             : "group max-w-[520px] rounded-xl rounded-br-sm border border-border-medium/60 bg-bg-tertiary px-4 py-3 text-fg-primary"
                           : "group w-full max-w-[720px] text-fg-primary"
                         : m.role === "user"
@@ -2598,7 +2599,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-4 py-2 rounded-lg text-tui-on-accent font-medium transition-all hover:scale-[1.03] active:scale-95 flex items-center gap-2"
+                                className="text-xs px-4 py-2 rounded-sm text-tui-on-accent font-medium transition-all hover:scale-[1.03] active:scale-95 flex items-center gap-2"
                                 style={{
                                   backgroundColor: "rgb(var(--accent-primary))",
                                 }}
@@ -2650,7 +2651,7 @@ export function ProjectIntelligenceChat(props: {
                                       ...prev,
                                       {
                                         role: "agent",
-                                        text: `❌ ${msg.includes("status=confirmed") ? "Already applied!" : `Something went wrong: ${msg}`}`,
+                                        text: msg.includes("status=confirmed") ? t("alreadyApplied") : t("somethingWentWrong", { error: msg }),
                                         createdAt: new Date(),
                                       },
                                     ]);
@@ -2659,7 +2660,7 @@ export function ProjectIntelligenceChat(props: {
                               >
                                 {isApplying ? (
                                   <>
-                                    <span className="animate-spin">⏳</span>
+                                    <PendingDot />
                                     Applying...
                                   </>
                                 ) : (
@@ -2680,7 +2681,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-4 py-2 rounded-lg text-tui-on-accent font-medium transition-all hover:scale-[1.03] active:scale-95 flex items-center gap-2"
+                                className="text-xs px-4 py-2 rounded-sm text-tui-on-accent font-medium transition-all hover:scale-[1.03] active:scale-95 flex items-center gap-2"
                                 style={{
                                   backgroundColor: "rgb(var(--accent-primary))",
                                 }}
@@ -2710,7 +2711,11 @@ export function ProjectIntelligenceChat(props: {
                                       ...prev,
                                       {
                                         role: "agent",
-                                        text: `✅ Done! ${results ? `(${typeof results === "object" ? Object.keys(results as Record<string, unknown>).length : 1} operations applied)` : "Changes applied successfully."}`,
+                                        text: results
+                                          ? t("appliedCount", {
+                                              count: typeof results === "object" ? Object.keys(results as Record<string, unknown>).length : 1,
+                                            })
+                                          : t("eventsDone"),
                                         createdAt: new Date(),
                                       },
                                     ]);
@@ -2728,7 +2733,7 @@ export function ProjectIntelligenceChat(props: {
                                       ...prev,
                                       {
                                         role: "agent",
-                                        text: `❌ ${msg.includes("status=confirmed") ? "Already applied!" : `Something went wrong: ${msg}`}`,
+                                        text: msg.includes("status=confirmed") ? t("alreadyApplied") : t("somethingWentWrong", { error: msg }),
                                         createdAt: new Date(),
                                       },
                                     ]);
@@ -2737,7 +2742,7 @@ export function ProjectIntelligenceChat(props: {
                               >
                                 {isApplying ? (
                                   <>
-                                    <span className="animate-spin">⏳</span>
+                                    <PendingDot />
                                     Applying...
                                   </>
                                 ) : (
@@ -2756,7 +2761,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-sm font-medium transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor:
                                     "rgb(var(--accent-primary) / 0.15)",
@@ -2838,7 +2843,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-sm text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor:
                                     "rgb(var(--accent-primary))",
@@ -2898,7 +2903,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-sm font-medium transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor:
                                     "rgb(var(--accent-primary) / 0.15)",
@@ -2977,7 +2982,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-sm text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor:
                                     "rgb(var(--accent-primary))",
@@ -3037,7 +3042,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-sm font-medium transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor: "rgb(var(--accent-primary) / 0.15)",
                                   color: "rgb(var(--accent-primary))",
@@ -3118,7 +3123,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-sm text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor: "rgb(var(--accent-primary))",
                                 }}
@@ -3197,7 +3202,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-sm font-medium transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor: "rgb(var(--accent-primary) / 0.15)",
                                   color: "rgb(var(--accent-primary))",
@@ -3276,7 +3281,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-sm text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor: "rgb(var(--accent-primary))",
                                 }}
@@ -3379,7 +3384,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-sm font-medium transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor:
                                     "rgb(var(--accent-primary) / 0.15)",
@@ -3451,7 +3456,7 @@ export function ProjectIntelligenceChat(props: {
                               <button
                                 key={`${a.type}-${a.draftId}-${aIdx}`}
                                 type="button"
-                                className="text-xs px-3 py-1.5 rounded-lg text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
+                                className="text-xs px-3 py-1.5 rounded-sm text-tui-on-accent transition-all hover:scale-[1.03] active:scale-95"
                                 style={{
                                   backgroundColor:
                                     "rgb(var(--accent-primary))",
