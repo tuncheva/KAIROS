@@ -51,10 +51,10 @@ const REGIONS = [
 type Region = (typeof REGIONS)[number]["value"];
 
 const FIELD =
-  "h-[42px] rounded-lg border border-border-medium bg-bg-surface px-3 text-sm text-fg-primary outline-none transition-colors focus:border-accent-primary/60 focus:ring-2 focus:ring-accent-primary/20";
+  "h-[42px] rounded-md border border-border-medium bg-bg-surface px-3 text-sm text-fg-primary outline-none transition-colors focus:border-accent-primary/60 focus:ring-2 focus:ring-accent-primary/20";
 const MICRO_LABEL = "text-[11px] uppercase tracking-[0.12em] text-fg-tertiary";
 const ACTION =
-  "flex h-8 items-center gap-1.5 rounded-lg border border-border-medium px-2.5 text-xs font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary disabled:opacity-50";
+  "flex h-8 items-center gap-1.5 rounded-sm border border-border-medium px-2.5 text-xs font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary disabled:opacity-50";
 
 export type DrawerState =
   | { mode: "detail"; item: CalendarItem }
@@ -106,7 +106,7 @@ export function CalendarDrawer({ state, onClose, onCreated, onChanged, onDeleted
           <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border-light px-6 py-5 pt-[calc(1.25rem+var(--kairos-safe-top))]">
             <h2
               id={headingId}
-              className="text-[17px] font-semibold tracking-tight text-fg-primary"
+              className="font-display text-[22px] font-normal tracking-tight text-fg-primary"
             >
               {state.mode === "detail" ? t(KIND_LABEL_KEYS[state.item.kind]) : t("newTitle")}
             </h2>
@@ -352,7 +352,7 @@ function DetailPanel({
           </span>
           <span
             className={cn(
-              "text-[22px] leading-snug font-semibold tracking-tight text-fg-primary",
+              "font-display text-[22px] leading-snug font-normal tracking-tight text-fg-primary",
               completed && "text-fg-tertiary line-through",
             )}
           >
@@ -435,7 +435,7 @@ function DetailPanel({
               disabled={busy}
               aria-pressed={completed}
               className={cn(
-                "flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors disabled:opacity-50",
+                "flex h-8 items-center gap-1.5 rounded-sm px-3 text-xs font-semibold transition-colors disabled:opacity-50",
                 completed
                   ? "border border-border-medium text-fg-secondary hover:bg-bg-secondary"
                   : "bg-accent-primary text-tui-on-accent hover:bg-accent-hover",
@@ -449,7 +449,7 @@ function DetailPanel({
               type="button"
               onClick={() => setTab("edit")}
               disabled={busy}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
+              className="flex h-8 items-center gap-1.5 rounded-sm bg-accent-primary px-3 text-xs font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
             >
               <Pencil size={13} />
               {t("edit")}
@@ -508,7 +508,7 @@ function DetailPanel({
                         type="button"
                         onClick={remove}
                         disabled={busy}
-                        className="h-control-sm flex-1 rounded-md bg-error px-2 text-[11px] font-semibold text-tui-on-accent transition-opacity hover:opacity-90 disabled:opacity-50"
+                        className="h-control-sm flex-1 rounded-sm border border-status-danger-border bg-status-danger-surface px-2 text-[11px] font-semibold text-status-danger-ink transition-colors hover:border-status-danger-ink disabled:opacity-50"
                       >
                         {t("deleteYes")}
                       </button>
@@ -597,7 +597,7 @@ function RescheduleForm({
         <button
           type="button"
           onClick={onCancel}
-          className="h-10 rounded-lg border border-border-medium px-4 text-[13px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
+          className="h-10 rounded-md border border-border-medium px-4 text-[13px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
         >
           {t("cancel")}
         </button>
@@ -723,7 +723,7 @@ function EditForm({
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="resize-y rounded-lg border border-border-medium bg-bg-surface px-3 py-2.5 text-sm text-fg-primary outline-none transition-colors focus:border-accent-primary/60 focus:ring-2 focus:ring-accent-primary/20"
+              className="resize-y rounded-md border border-border-medium bg-bg-surface px-3 py-2.5 text-sm text-fg-primary outline-none transition-colors focus:border-accent-primary/60 focus:ring-2 focus:ring-accent-primary/20"
             />
           </label>
         </>
@@ -741,7 +741,7 @@ function EditForm({
         <button
           type="button"
           onClick={onCancel}
-          className="h-10 rounded-lg border border-border-medium px-4 text-[13px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
+          className="h-10 rounded-md border border-border-medium px-4 text-[13px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
         >
           {t("cancel")}
         </button>
@@ -1022,7 +1022,7 @@ function NewItemPanel({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={t("descriptionPlaceholder")}
-            className="resize-y rounded-lg border border-border-medium bg-bg-surface px-3 py-2.5 text-sm text-fg-primary outline-none transition-colors focus:border-accent-primary/60 focus:ring-2 focus:ring-accent-primary/20"
+            className="resize-y rounded-md border border-border-medium bg-bg-surface px-3 py-2.5 text-sm text-fg-primary outline-none transition-colors focus:border-accent-primary/60 focus:ring-2 focus:ring-accent-primary/20"
           />
         </label>
       </div>
@@ -1031,7 +1031,7 @@ function NewItemPanel({
         <button
           type="button"
           onClick={onCancel}
-          className="h-10 rounded-lg border border-border-medium px-4 text-[13px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
+          className="h-10 rounded-md border border-border-medium px-4 text-[13px] font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
         >
           {t("cancel")}
         </button>

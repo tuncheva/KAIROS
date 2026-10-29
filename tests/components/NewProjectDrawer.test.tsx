@@ -108,7 +108,11 @@ describe("NewProjectDrawer", () => {
 
     const dialog = screen.getByRole("dialog");
     expect(container).not.toContainElement(dialog);
-    expect(dialog.parentElement).toBe(document.body);
+    // Between the two sits only the `display: contents` edition scope, which
+    // has no box and so cannot become a containing block.
+    const scope = dialog.parentElement;
+    expect(scope).toHaveClass("contents");
+    expect(scope?.parentElement).toBe(document.body);
   });
 
   it("will not submit without a name", async () => {

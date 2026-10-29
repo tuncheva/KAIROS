@@ -111,7 +111,7 @@ export function ConversationRailSkeleton() {
       </div>
 
       <div className="flex-none px-4 pb-3" aria-hidden="true">
-        <span className="flex h-[38px] items-center gap-2.5 rounded-full border border-tui-ink/16 bg-tui-bg pr-2 pl-3.5">
+        <span className="flex h-[38px] items-center gap-2.5 rounded-md border border-tui-ink/16 bg-tui-bg pr-2 pl-3.5">
           <Search size={14} className="flex-none text-tui-ink3" />
           <span className="truncate text-[13.5px] text-tui-ink3">{t("searchPeopleAndMessages")}</span>
         </span>
@@ -121,7 +121,7 @@ export function ConversationRailSkeleton() {
         {filters.map((label, i) => (
           <span
             key={label}
-            className={`flex h-7 items-center gap-1.5 rounded-full border px-[11px] text-[12.5px] font-medium whitespace-nowrap ${chatPill(i === 0)}`}
+            className={`flex h-7 items-center gap-1.5 rounded-sm border px-[11px] text-[12.5px] font-medium whitespace-nowrap ${chatPill(i === 0)}`}
           >
             {label}
           </span>
@@ -222,7 +222,7 @@ export function ComposerSkeleton() {
             <Paperclip size={14} />
           </span>
           <span className="min-w-0 flex-1 truncate text-[12px] text-tui-ink3">{t("sendHint")}</span>
-          <span className="flex h-[34px] flex-none items-center gap-[7px] rounded-full border border-tui-ink/16 px-[15px] text-[13px] font-semibold text-tui-ink3">
+          <span className="flex h-[34px] flex-none items-center gap-[7px] rounded-md border border-tui-ink/16 px-[15px] text-[13px] font-semibold text-tui-ink3">
             {t("send")}
             <ArrowUp size={13} />
           </span>
@@ -263,7 +263,7 @@ export function NoThreadSkeleton() {
       </span>
       <span
         aria-hidden="true"
-        className="mt-2 flex h-[38px] items-center gap-2 rounded-full border border-tui-accent/45 px-[18px] text-[13.5px] font-semibold text-tui-accent"
+        className="mt-2 flex h-[38px] items-center gap-2 rounded-md border border-tui-accent/45 px-[18px] text-[13.5px] font-semibold text-tui-accent"
       >
         <Plus size={14} />
         {t("newChat")}
@@ -347,11 +347,11 @@ export function DetailsPaneSkeleton() {
         </section>
 
         <section aria-hidden="true" className="flex flex-col gap-0.5 px-4 pt-3.5 pb-[22px]">
-          <span className="flex h-10 w-full items-center gap-[11px] rounded-lg px-1.5 text-[13.5px] text-tui-ink2">
+          <span className="flex h-10 w-full items-center gap-[11px] rounded-md px-1.5 text-[13.5px] text-tui-ink2">
             <Eraser size={14} className="flex-none text-tui-ink3" />
             {t("clearHistory")}
           </span>
-          <span className="flex h-10 w-full items-center gap-[11px] rounded-lg px-1.5 text-[13.5px] text-tui-danger">
+          <span className="flex h-10 w-full items-center gap-[11px] rounded-md px-1.5 text-[13.5px] text-tui-danger">
             <LogOut size={14} className="flex-none" />
             {t("leaveConversation")}
           </span>
@@ -456,7 +456,7 @@ export function AiThreadRailSkeleton() {
       </div>
 
       <div className="flex-none px-4 pb-3.5" aria-hidden="true">
-        <span className="flex h-[38px] items-center gap-2.5 rounded-full border border-tui-ink/16 bg-tui-bg pr-2 pl-3.5">
+        <span className="flex h-[38px] items-center gap-2.5 rounded-md border border-tui-ink/16 bg-tui-bg pr-2 pl-3.5">
           <Search size={14} className="flex-none text-tui-ink3" />
           <span className="truncate text-[13.5px] text-tui-ink3">{t("searchConversations")}</span>
         </span>
@@ -533,7 +533,7 @@ function AiComposerSkeleton() {
           {[64, 88, 52].map((w, i) => (
             <span
               key={i}
-              className="flex h-[26px] items-center rounded-full border border-tui-ink/16 px-2.5"
+              className="flex h-[26px] items-center rounded-sm border border-tui-ink/16 px-2.5"
             >
               <Skeleton row={i} className="h-[7px]" style={{ width: w }} />
             </span>
@@ -608,7 +608,7 @@ export function AiConsoleSkeleton() {
           {tabs.map(([label, Icon], i) => (
             <span
               key={label}
-              className={`flex h-7 items-center gap-1.5 rounded-full border px-[11px] text-[12.5px] font-medium whitespace-nowrap ${chatPill(i === 0)}`}
+              className={`flex h-7 items-center gap-1.5 rounded-sm border px-[11px] text-[12.5px] font-medium whitespace-nowrap ${chatPill(i === 0)}`}
             >
               <Icon size={12} />
               {label}

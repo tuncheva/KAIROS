@@ -22,7 +22,7 @@ import Image from "next/image";
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useTranslations } from "next-intl";
 import { Skeleton } from "~/components/ui/Skeleton";
-import { AlertCircle, Loader2, X } from "~/components/ui/icons";
+import { AlertCircle, X } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
@@ -30,6 +30,7 @@ import { useToast } from "~/components/providers/ToastProvider";
 import { DIALOG_FIELD, DIALOG_INPUT, DIALOG_PRIMARY, DIALOG_QUIET, NotesDialog } from "./notesDialog";
 import { Badge, ICON_BTN_BARE, POPOVER_SURFACE } from "./notesUi";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LOOKUP_DEBOUNCE_MS = 400;
 
@@ -126,7 +127,7 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
     if (debouncedEmail && isLookingUp) {
       return (
         <Row muted>
-          <Loader2 size={14} className="animate-spin text-fg-tertiary" />
+          <PendingDot />
           <span className="text-[12.5px] text-fg-tertiary">{t("sharing.lookup")}</span>
         </Row>
       );
@@ -139,7 +140,7 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
             <span className="block truncate text-[13px] font-semibold text-fg-primary">
               {lookup.name ?? t("sharing.noName")}
             </span>
-            <span className="block truncate font-mono text-[9.5px] text-fg-quaternary">
+            <span className="block truncate font-mono text-[9.5px] text-fg-tertiary">
               {lookup.email}
             </span>
           </span>
@@ -173,7 +174,7 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
                   <span className="block truncate text-[13px] font-semibold text-fg-primary">
                     {member.name ?? t("sharing.noName")}
                   </span>
-                  <span className="block truncate font-mono text-[9.5px] text-fg-quaternary">
+                  <span className="block truncate font-mono text-[9.5px] text-fg-tertiary">
                     {member.email}
                   </span>
                 </span>
@@ -248,7 +249,7 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
             disabled={!email.trim() || shareNote.isPending}
             className={DIALOG_PRIMARY}
           >
-            {shareNote.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+            {shareNote.isPending ? <PendingDot /> : null}
             {t("share")}
           </button>
         </div>
@@ -262,7 +263,7 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
         )}
       </div>
 
-      <p className="mt-8 mb-1 font-mono text-[10px] tracking-[0.16em] text-fg-quaternary uppercase">
+      <p className="mt-8 mb-1 font-mono text-[10px] tracking-[0.16em] text-fg-tertiary uppercase">
         {t("sharing.sharedWith")}
       </p>
 
@@ -294,7 +295,7 @@ export function ShareDialog({ noteId, onClose }: { noteId: number; onClose: () =
                 <span className="block truncate text-[13.5px] font-semibold text-fg-primary">
                   {share.userName ?? share.userEmail}
                 </span>
-                <span className="block truncate font-mono text-[9.5px] text-fg-quaternary">
+                <span className="block truncate font-mono text-[9.5px] text-fg-tertiary">
                   {share.userEmail}
                 </span>
               </span>

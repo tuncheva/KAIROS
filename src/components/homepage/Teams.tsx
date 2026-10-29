@@ -31,13 +31,13 @@ export function Teams() {
             <div data-reveal className="k-sheet flex flex-col gap-7 p-6 sm:p-9 lg:col-span-6 lg:col-start-7">
                 <div className="flex flex-wrap items-start justify-between gap-6">
                     <div className="flex flex-col gap-2">
-                        <span className="font-mono text-[10px] tracking-[0.2em] text-fg-quaternary uppercase">
+                        <span className="font-mono text-[10px] tracking-[0.2em] text-fg-tertiary uppercase">
                             {t("teamsOrgLabel")}
                         </span>
                         <span className="font-display text-[34px] leading-none text-fg-primary">{t("teamsOrgName")}</span>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                        <span className="font-mono text-[10px] tracking-[0.2em] text-fg-quaternary uppercase">
+                        <span className="font-mono text-[10px] tracking-[0.2em] text-fg-tertiary uppercase">
                             {t("accessCode")}
                         </span>
                         <span className="rounded-sm border border-dashed border-fg-primary/25 px-3.5 py-2 font-mono text-base tracking-[0.2em] text-accent-primary">
@@ -69,7 +69,7 @@ export function Teams() {
                 </ul>
 
                 <div className="flex flex-col gap-2.5">
-                    <div className="flex justify-between text-[13px] text-fg-quaternary">
+                    <div className="flex justify-between text-[13px] text-fg-tertiary">
                         <span>{t("teamsProject")}</span>
                         <span>{t("teamsProgress", { percent: PROGRESS })}</span>
                     </div>

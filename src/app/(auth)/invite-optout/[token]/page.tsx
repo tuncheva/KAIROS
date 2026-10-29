@@ -3,8 +3,9 @@
 import { use, useState } from "react";
 import Link from "next/link";
 
-import { Check, Loader2, Mail } from "~/components/ui/icons";
+import { Check, Mail } from "~/components/ui/icons";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 /**
  * The page behind the invitation email's "Don't send me invitations again".
  *
@@ -34,7 +35,7 @@ export default function InviteOptOutPage({
 
   return (
     <div className="bg-bg-primary flex min-h-dvh items-center justify-center p-4">
-      <div className="bg-bg-secondary/60 border-border-light/40 w-full max-w-md space-y-5 rounded-lg border p-8 text-center">
+      <div className="bg-bg-elevated border-border-medium w-full max-w-md space-y-5 rounded-lg border p-8 text-center">
         {state === "done" ? (
           <>
             <Check className="text-status-success-ink mx-auto" size={32} />
@@ -65,9 +66,9 @@ export default function InviteOptOutPage({
               type="button"
               disabled={state === "busy"}
               onClick={() => void confirm()}
-              className="bg-accent-primary hover:bg-accent-hover inline-flex h-10 items-center gap-2 rounded-md px-5 text-sm font-semibold text-white transition-colors disabled:opacity-60"
+              className="bg-accent-primary hover:bg-accent-hover inline-flex h-10 items-center gap-2 rounded-md px-5 text-sm font-semibold text-on-accent transition-colors disabled:opacity-60"
             >
-              {state === "busy" ? <Loader2 size={14} className="animate-spin" /> : null}
+              {state === "busy" ? <PendingDot /> : null}
               Don&apos;t send me invitations
             </button>
           </>

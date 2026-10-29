@@ -16,11 +16,11 @@ export const TEAM_EYEBROW = "text-[11px] font-medium tracking-[0.18em] uppercase
 
 /** A ghost pill button: Decline, Set active, Join with a code. */
 export const TEAM_GHOST_BUTTON =
-  "kairos-tap h-9 rounded-full border border-tui-ink/16 bg-transparent px-4 text-[13px] font-medium text-tui-ink transition-colors hover:bg-tui-accent/6 disabled:cursor-not-allowed disabled:opacity-50";
+  "kairos-tap h-9 rounded-md border border-tui-ink/16 bg-transparent px-4 text-[13px] font-medium text-tui-ink transition-colors hover:bg-tui-accent/6 disabled:cursor-not-allowed disabled:opacity-50";
 
 /** The filled accent pill: Invite, Accept, Send invitation. */
 export const TEAM_PRIMARY_BUTTON =
-  "kairos-tap flex items-center justify-center gap-2 h-9 rounded-full border-0 bg-tui-accent px-4 text-[13px] font-semibold text-tui-on-accent transition-[filter,opacity] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45";
+  "kairos-tap flex items-center justify-center gap-2 h-9 rounded-md border-0 bg-tui-accent px-4 text-[13px] font-semibold text-tui-on-accent transition-[filter,opacity] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45";
 
 /** A round outline control: leave, copy, revoke. */
 export const TEAM_ROUND_BUTTON =

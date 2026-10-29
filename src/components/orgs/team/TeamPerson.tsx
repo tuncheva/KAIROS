@@ -55,7 +55,7 @@ export function Tick({
     >
       <span
         className={cn(
-          "grid h-4 w-4 flex-none place-items-center rounded-[4px] border",
+          "grid h-4 w-4 flex-none place-items-center rounded-xs border",
           on ? "border-tui-accent/45 bg-tui-accent/15" : "border-tui-ink/16 bg-transparent",
         )}
       >
@@ -140,7 +140,7 @@ export function TeamPerson({
       disabled={!editable}
       onClick={onPick}
       className={cn(
-        "h-[30px] rounded-full border px-3 text-[12.5px] font-medium transition-colors",
+        "h-[30px] rounded-sm border px-3 text-[12.5px] font-medium transition-colors",
         on ? toneOn : "border-tui-ink/16 bg-transparent text-tui-ink2",
         editable ? (on ? "" : "hover:bg-tui-accent/6") : "cursor-default",
         !editable && !on && "opacity-50",
@@ -167,7 +167,7 @@ export function TeamPerson({
                 type="button"
                 onClick={onMessage}
                 disabled={messaging}
-                className="kairos-tap flex h-8 items-center gap-[7px] rounded-full border border-tui-ink/16 bg-transparent px-3.5 text-[12.5px] font-medium text-tui-ink transition-colors hover:bg-tui-accent/6 disabled:opacity-50"
+                className="kairos-tap flex h-8 items-center gap-[7px] rounded-sm border border-tui-ink/16 bg-transparent px-3.5 text-[12.5px] font-medium text-tui-ink transition-colors hover:bg-tui-accent/6 disabled:opacity-50"
               >
                 <MessageCircle size={13} className="text-tui-ink2" />
                 {t("message")}
@@ -177,7 +177,7 @@ export function TeamPerson({
               <button
                 type="button"
                 onClick={onRemove}
-                className="kairos-tap flex h-8 items-center gap-[7px] rounded-full border border-tui-danger/40 bg-transparent px-3.5 text-[12.5px] font-medium text-tui-danger transition-colors hover:bg-tui-danger/8"
+                className="kairos-tap flex h-8 items-center gap-[7px] rounded-sm border border-tui-danger/40 bg-transparent px-3.5 text-[12.5px] font-medium text-tui-danger transition-colors hover:bg-tui-danger/8"
               >
                 <UserMinus size={13} />
                 {t("remove")}

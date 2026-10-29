@@ -154,7 +154,7 @@ export function MessageBubble({
       <div className={`relative flex max-w-[min(480px,88%)] flex-col gap-1.5 ${align}`}>
         <div
           title={showHead ? undefined : formatTime(createdAt, locale)}
-          className={`flex min-w-0 max-w-full flex-col gap-2.5 rounded-[14px] border px-[15px] py-[11px] text-[14.5px] leading-[1.55] text-tui-ink transition-shadow duration-400 ${
+          className={`flex min-w-0 max-w-full flex-col gap-2.5 rounded-lg border px-[15px] py-[11px] text-[14.5px] leading-[1.55] text-tui-ink transition-shadow duration-400 ${
             isOwn ? "bg-tui-accent/10" : "bg-tui-ink/[0.045]"
           } ${
             failed ? "border-tui-danger/40" : isOwn ? "border-tui-accent/30" : "border-tui-ink/16"
@@ -206,14 +206,14 @@ export function MessageBubble({
                     setEditing(false);
                     setEditDraft(message.body);
                   }}
-                  className="h-7 rounded-full border border-tui-ink/16 px-3 text-[12px] text-tui-ink2 transition-colors hover:bg-tui-accent/6"
+                  className="h-7 rounded-sm border border-tui-ink/16 px-3 text-[12px] text-tui-ink2 transition-colors hover:bg-tui-accent/6"
                 >
                   {t("cancel")}
                 </button>
                 <button
                   type="button"
                   onClick={commitEdit}
-                  className="h-7 rounded-full border border-tui-accent bg-tui-accent px-3 text-[12px] font-semibold text-tui-on-accent"
+                  className="h-7 rounded-sm border border-tui-accent bg-tui-accent px-3 text-[12px] font-semibold text-tui-on-accent"
                 >
                   {t("save")}
                 </button>
@@ -228,7 +228,7 @@ export function MessageBubble({
                     href={file.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block overflow-hidden rounded-[10px] border border-tui-ink/16"
+                    className="block overflow-hidden rounded-md border border-tui-ink/16"
                   >
                     <Image
                       src={file.url}
@@ -245,7 +245,7 @@ export function MessageBubble({
                     href={file.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex min-w-[min(260px,60vw)] items-center gap-3 rounded-[10px] border border-tui-ink/16 bg-tui-bg px-3 py-2.5 transition-colors hover:border-tui-accent/45"
+                    className="flex min-w-[min(260px,60vw)] items-center gap-3 rounded-md border border-tui-ink/16 bg-tui-bg px-3 py-2.5 transition-colors hover:border-tui-accent/45"
                   >
                     <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-full border border-tui-ink/16 text-tui-ink2">
                       <FileText size={14} />
@@ -272,7 +272,7 @@ export function MessageBubble({
         {!deleted && (pinned || message.reactions.length > 0) && (
           <div className={`flex flex-wrap items-center gap-1.5 ${isOwn ? "justify-end" : "justify-start"}`}>
             {pinned && (
-              <span className="flex h-6 items-center gap-[5px] rounded-full border border-tui-ink/16 px-[9px] text-[11.5px] text-tui-ink3">
+              <span className="flex h-6 items-center gap-[5px] rounded-sm border border-tui-ink/16 px-[9px] text-[11.5px] text-tui-ink3">
                 <Pin size={11} />
                 {t("pinned")}
               </span>
@@ -284,7 +284,7 @@ export function MessageBubble({
                 onClick={() => onToggleReaction(message.id, group.emoji)}
                 aria-pressed={group.mine}
                 aria-label={`${group.emoji} ${group.count}`}
-                className={`flex h-6 items-center gap-[5px] rounded-full border px-[9px] text-[12px] transition-colors ${chatPill(group.mine)}`}
+                className={`flex h-6 items-center gap-[5px] rounded-sm border px-[9px] text-[12px] transition-colors ${chatPill(group.mine)}`}
               >
                 <span className="text-[12.5px]">{group.emoji}</span>
                 <span className="tabular-nums">{group.count}</span>
@@ -302,14 +302,14 @@ export function MessageBubble({
             <button
               type="button"
               onClick={() => onRetry(message.id)}
-              className="h-[26px] rounded-full border border-tui-danger/40 bg-tui-danger/8 px-[11px] text-[12px] font-medium text-tui-danger"
+              className="h-[26px] rounded-sm border border-tui-danger/40 bg-tui-danger/8 px-[11px] text-[12px] font-medium text-tui-danger"
             >
               {t("retry")}
             </button>
             <button
               type="button"
               onClick={() => onDiscard(message.id)}
-              className="h-[26px] rounded-full border border-tui-ink/16 bg-transparent px-[11px] text-[12px] text-tui-ink2 transition-colors hover:bg-tui-accent/6"
+              className="h-[26px] rounded-sm border border-tui-ink/16 bg-transparent px-[11px] text-[12px] text-tui-ink2 transition-colors hover:bg-tui-accent/6"
             >
               {t("discard")}
             </button>

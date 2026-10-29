@@ -306,7 +306,7 @@ export function ProjectsWorkspace({
               style={rise(0.14)}
             >
               <label
-                className={`border-tui-ink/12 bg-tui-pane flex h-10 w-full items-center gap-2.5 rounded-full border px-4 shadow-[var(--tui-pane-shadow)] sm:w-[300px]`}
+                className={`border-tui-ink/12 bg-tui-pane flex h-10 w-full items-center gap-2.5 rounded-md border px-4 shadow-[var(--tui-pane-shadow)] sm:w-[300px]`}
               >
                 <Search
                   size={15}
@@ -460,7 +460,7 @@ function Pill({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex h-8 items-center gap-2 rounded-full px-3.5 text-[13px] font-medium transition-colors ${
+      className={`flex h-8 items-center gap-2 rounded-sm px-3.5 text-[13px] font-medium transition-colors ${
         active
           ? "bg-tui-accent/[0.14] text-tui-ink"
           : "text-tui-ink3 hover:text-tui-ink2"
@@ -617,14 +617,14 @@ function ProjectTable({
                   <button
                     type="button"
                     onClick={onClearSearch}
-                    className="border-tui-ink/16 text-tui-ink hover:bg-tui-ink/[0.04] h-9 rounded-full border px-4 text-[13.5px] font-medium transition-colors"
+                    className="border-tui-ink/16 text-tui-ink hover:bg-tui-ink/[0.04] h-9 rounded-md border px-4 text-[13.5px] font-medium transition-colors"
                   >
                     {t("clearSearch")}
                   </button>
                   <button
                     type="button"
                     onClick={onShowAll}
-                    className="bg-tui-accent/[0.16] text-tui-ink hover:bg-tui-accent/[0.22] h-9 rounded-full px-4 text-[13.5px] font-medium transition-colors"
+                    className="bg-tui-accent/[0.16] text-tui-ink hover:bg-tui-accent/[0.22] h-9 rounded-md px-4 text-[13.5px] font-medium transition-colors"
                   >
                     {t("showAll")}
                   </button>
@@ -830,7 +830,7 @@ function ProjectDetail({
           <button
             type="button"
             onClick={onArchive}
-            className="border-tui-ink/16 bg-tui-pane text-tui-ink hover:bg-tui-ink/[0.04] h-9 rounded-full border px-4 text-[13px] font-medium transition-colors"
+            className="border-tui-ink/16 bg-tui-pane text-tui-ink hover:bg-tui-ink/[0.04] h-9 rounded-md border px-4 text-[13px] font-medium transition-colors"
           >
             {t("archive.title")}
           </button>
@@ -839,7 +839,7 @@ function ProjectDetail({
           <button
             type="button"
             onClick={onDelete}
-            className="border-tui-danger/40 bg-tui-pane text-tui-danger hover:bg-tui-danger/[0.08] h-9 rounded-full border px-4 text-[13px] font-medium transition-colors"
+            className="border-tui-danger/40 bg-tui-pane text-tui-danger hover:bg-tui-danger/[0.08] h-9 rounded-md border px-4 text-[13px] font-medium transition-colors"
           >
             {t("delete.title")}
           </button>
@@ -853,7 +853,7 @@ function ProjectDetail({
               {project.title || t("untitled")}
             </h1>
             <span
-              className={`flex h-7 items-center gap-2 rounded-full border px-3 text-[12.5px] font-medium ${HEALTH_TONE[project.health]}`}
+              className={`flex h-7 items-center gap-2 rounded-sm border px-3 text-[12.5px] font-medium ${HEALTH_TONE[project.health]}`}
               style={{ borderColor: "rgb(var(--tui-ink) / 0.16)" }}
             >
               <span
@@ -935,7 +935,7 @@ function ProjectDetail({
                 type="button"
                 onClick={() => setKind(key)}
                 aria-pressed={kind === key}
-                className={`h-[30px] rounded-full border px-3 text-[12.5px] font-medium transition-colors ${
+                className={`h-[30px] rounded-sm border px-3 text-[12.5px] font-medium transition-colors ${
                   kind === key
                     ? "border-tui-accent/55 bg-tui-accent/[0.14] text-tui-ink"
                     : "border-tui-ink/16 text-tui-ink3 hover:text-tui-ink2"
@@ -987,7 +987,7 @@ function ProjectDetail({
                     <button
                       type="button"
                       onClick={() => setShowEarlier((value) => !value)}
-                      className="border-tui-ink/16 text-tui-ink2 hover:border-tui-accent/40 hover:text-tui-ink h-[34px] rounded-full border px-4 text-[13px] font-medium transition-colors"
+                      className="border-tui-ink/16 text-tui-ink2 hover:border-tui-accent/40 hover:text-tui-ink h-[34px] rounded-md border px-4 text-[13px] font-medium transition-colors"
                     >
                       {showEarlier
                         ? t("timeline.hideEarlier")
@@ -1301,7 +1301,7 @@ function ArchivePanel({
                 type="button"
                 disabled={pending}
                 onClick={() => onReopen(row.id)}
-                className="border-tui-ink/16 text-tui-ink hover:border-tui-accent/40 h-8 rounded-full border px-3.5 text-[12.5px] font-medium transition-colors disabled:opacity-50"
+                className="border-tui-ink/16 text-tui-ink hover:border-tui-accent/40 h-8 rounded-sm border px-3.5 text-[12.5px] font-medium transition-colors disabled:opacity-50"
               >
                 {t("archive.reopen")}
               </button>

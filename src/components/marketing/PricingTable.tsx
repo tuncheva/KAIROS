@@ -210,7 +210,7 @@ function PlanColumn({
         }
         className={`mt-auto rounded-lg px-4 py-2.5 text-center text-[13.5px] font-medium transition-colors ${
           featured
-            ? "bg-accent-primary text-white hover:opacity-90"
+            ? "bg-accent-primary text-on-accent hover:opacity-90"
             : "border border-border-medium text-fg-primary hover:bg-bg-tertiary"
         }`}
       >

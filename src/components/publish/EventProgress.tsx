@@ -48,7 +48,7 @@ export function EventProgressButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-control-md shrink-0 items-center gap-2 rounded-lg border border-border-medium bg-bg-elevated px-3 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
+        className="flex h-control-md shrink-0 items-center gap-2 rounded-md border border-border-medium bg-bg-elevated px-3 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
       >
         <BarChart3 size={14} className="text-accent-primary" />
         <span className="hidden sm:inline">{t("eventProgress")}</span>
@@ -132,10 +132,10 @@ function EventProgressDialog({ onClose }: { onClose: () => void }) {
                 {tiles.map(({ Icon, value, label }) => (
                   <div
                     key={label}
-                    className="rounded-xl bg-accent-primary/5 p-3 text-center dark:bg-white/5"
+                    className="rounded-xl bg-accent-primary/5 p-3 text-center"
                   >
                     <Icon size={15} className="mx-auto mb-1 text-accent-primary" />
-                    <dd className="kairos-mono text-lg font-bold text-fg-primary">
+                    <dd className="kairos-mono text-lg font-normal text-fg-primary tabular-nums">
                       {value}
                     </dd>
                     <dt className="text-[10px] text-fg-tertiary">{label}</dt>
@@ -163,7 +163,7 @@ function EventProgressDialog({ onClose }: { onClose: () => void }) {
                       <li key={event.id}>
                         <div className="mb-1.5 flex items-end justify-between gap-3">
                           <span className="flex min-w-0 items-baseline gap-2">
-                            <span className="kairos-mono shrink-0 text-[11px] text-fg-quaternary">
+                            <span className="kairos-mono shrink-0 text-[11px] text-fg-tertiary">
                               {String(index + 1).padStart(2, "0")}
                             </span>
                             <span className="min-w-0">

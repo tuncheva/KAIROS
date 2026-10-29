@@ -36,7 +36,7 @@ const chatHref = (prompt: string) =>
 
 /** The card shell shared by every panel on the page. */
 const CARD =
-  "overflow-hidden rounded-[14px] border border-tui-ink/10 bg-tui-pane shadow-[var(--tui-pane-shadow)]";
+  "overflow-hidden rounded-lg border border-tui-ink/10 bg-tui-pane shadow-[var(--tui-pane-shadow)]";
 
 /** Side padding every card row shares, so their contents line up. */
 const PAD = "px-[18px] sm:px-7";
@@ -411,13 +411,13 @@ export function DashboardClient({
               onClick={() =>
                 window.dispatchEvent(new CustomEvent("kairos:openAI"))
               }
-              className="border-tui-ink/14 text-tui-ink2 hover:border-tui-ink/30 hover:text-tui-ink flex h-[34px] items-center rounded-full border px-3.5 text-[13px] whitespace-nowrap transition-colors"
+              className="border-tui-ink/14 text-tui-ink2 hover:border-tui-ink/30 hover:text-tui-ink flex h-[34px] items-center rounded-md border px-3.5 text-[13px] whitespace-nowrap transition-colors"
             >
               {t("brief.ask")}
             </button>
             <Link
               href={chatHref(t("brief.planPrompt"))}
-              className="border-tui-ink/14 text-tui-ink2 hover:border-tui-ink/30 hover:text-tui-ink flex h-[34px] items-center rounded-full border px-3.5 text-[13px] whitespace-nowrap transition-colors"
+              className="border-tui-ink/14 text-tui-ink2 hover:border-tui-ink/30 hover:text-tui-ink flex h-[34px] items-center rounded-md border px-3.5 text-[13px] whitespace-nowrap transition-colors"
             >
               {t("brief.planWeek")}
             </Link>
@@ -886,7 +886,7 @@ function WeekCard({ days, locale }: { days: WeekDay[]; locale: string }) {
               key={day.date.toISOString()}
               aria-label={label}
               title={label}
-              className={`flex flex-col items-center gap-1.5 rounded-[10px] py-2.5 ${
+              className={`flex flex-col items-center gap-1.5 rounded-md py-2.5 ${
                 day.isToday ? "bg-tui-ink/[0.045]" : ""
               }`}
             >
@@ -983,7 +983,7 @@ function TeamCard({ members, now }: { members: TeamMember[]; now: Date }) {
                     {Array.from({ length: 10 }, (_, i) => (
                       <span
                         key={i}
-                        className={`h-3 w-1 rounded-[1px] ${
+                        className={`h-3 w-1 rounded-xs ${
                           i < member.open
                             ? late
                               ? "bg-tui-danger"

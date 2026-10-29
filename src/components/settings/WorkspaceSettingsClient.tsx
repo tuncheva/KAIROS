@@ -757,7 +757,7 @@ export function WorkspaceSettingsClient() {
                   >
                     {summarizePermissions(inv.permissions, t("inviteBuilder.viewOnly"))}
                   </span>
-                  <span className="text-settings-micro text-fg-quaternary">
+                  <span className="text-settings-micro text-fg-tertiary">
                     {inv.expiresAt
                       ? t("members.expiresOn", {
                           date: new Date(inv.expiresAt).toLocaleDateString(),
@@ -825,7 +825,7 @@ export function WorkspaceSettingsClient() {
                   <span className="text-settings-meta text-fg-tertiary">
                     {translateInviteStatus(inv.status)}
                   </span>
-                  <span className="text-settings-micro text-fg-quaternary">
+                  <span className="text-settings-micro text-fg-tertiary">
                     {new Date(inv.createdAt).toLocaleString()}
                   </span>
                 </li>

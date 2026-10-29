@@ -86,7 +86,7 @@ export function PermissionGrid({
             title={locked ? lockedHint : undefined}
             className={`flex items-center gap-2 text-xs transition ${
               locked
-                ? "cursor-not-allowed text-fg-quaternary"
+                ? "cursor-not-allowed text-fg-tertiary"
                 : "cursor-pointer text-fg-secondary hover:text-fg-primary"
             }`}
           >

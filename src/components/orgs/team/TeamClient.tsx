@@ -515,7 +515,7 @@ export function TeamClient() {
               aria-label={t("createTitle")}
               autoComplete="organization"
               data-autofocus
-              className="h-[48px] rounded-lg border border-tui-ink/16 bg-tui-bg px-4 text-[15px] text-tui-ink outline-none placeholder:text-tui-ink3 focus:border-tui-accent/50"
+              className="h-[48px] rounded-md border border-tui-ink/16 bg-tui-bg px-4 text-[15px] text-tui-ink outline-none placeholder:text-tui-ink3 focus:border-tui-accent/50"
             />
           </form>
         </ChatDialog>

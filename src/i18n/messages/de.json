@@ -1,6 +1,8 @@
 {
   "nav": {
-    "dashboard": "Dashboard",
+        "mainMenu": "Hauptmenü",
+    "menu": "Navigation",
+"dashboard": "Dashboard",
     "home": "Startseite",
     "create": "Erstellen",
     "publish": "Veröffentlichen",
@@ -271,7 +273,8 @@
     "title": "Einstellungen",
     "subtitle": "Verwalten Sie Ihr Konto und Ihre Einstellungen",
     "profile": {
-      "title": "Profileinstellungen",
+            "imagePreview": "Vorschau des neuen Bildes",
+"title": "Profileinstellungen",
       "subtitle": "Verwalten Sie Ihre persönlichen Informationen",
       "updateProfile": "Profil aktualisieren",
       "uploadImage": "Bild hochladen",
@@ -281,7 +284,7 @@
       "characters": "Zeichen",
       "memberSince": "Mitglied seit",
       "saving": "Speichern...",
-      "saveSuccess": "Profil erfolgreich aktualisiert!",
+      "saveSuccess": "Profil gespeichert.",
       "profilePicture": "Profilbild",
       "fullName": "Vollständiger Name",
       "namePlaceholder": "Geben Sie Ihren vollständigen Namen ein",
@@ -1024,7 +1027,7 @@
         "contentRequired": "Bitte füge Inhalt zu deiner Notiz hinzu."
       },
       "success": {
-        "created": "Notiz erfolgreich erstellt!"
+        "created": "Notiz erstellt."
       },
       "labels": {
         "password": "Passwort"
@@ -1033,9 +1036,9 @@
       "errors": {
         "createFailed": "Notiz konnte nicht erstellt werden: {message}"
       },
-      "empty": "Noch keine Notizen. Erstelle deine erste Notiz!",
+      "empty": "Noch keine Notizen. Erstelle eine, um loszulegen.",
       "encrypted": "Verschlüsselt ({count})",
-      "encryptedNote": "🔒 Verschlüsselte Notiz",
+      "encryptedNote": "Verschlüsselte Notiz",
       "deleteConfirm": "Diese Notiz löschen? Das kann nicht rückgängig gemacht werden.",
       "allLocked": "Alle Notizen sind gesperrt",
       "allLockedHint": "Sieh im verschlüsselten Ordner nach",
@@ -1052,7 +1055,7 @@
       },
       "edit": {
         "title": "Notiz bearbeiten",
-        "save": "Speichern",
+"save": "Speichern",
         "saving": "Wird gespeichert..."
       },
       "reset": {
@@ -1062,7 +1065,7 @@
         "expiry": "Der Link läuft in 1 Stunde ab.",
         "send": "E-Mail senden",
         "sending": "Wird gesendet...",
-        "success": "✅ E-Mail zum Zurücksetzen gesendet! Bitte Posteingang prüfen."
+        "success": "Notizpasswort zurückgesetzt."
       }
     }
   },
@@ -1093,7 +1096,7 @@
     "share": "Teilen",
     "noEventsTitle": "Keine Events gefunden",
     "noEventsRegion": "Keine Events für {region}.",
-    "noEventsDefault": "Erstellen Sie Ihr erstes Event!",
+    "noEventsDefault": "Erstellen Sie Ihr erstes Event, um loszulegen.",
     "loadingEvents": "Events werden geladen...",
     "errorLoadingEvents": "Fehler beim Laden",
     "viewAllComments": "Alle {count} Kommentare anzeigen",
@@ -1146,6 +1149,7 @@
     "welcomeDesc": "Melden Sie sich an, um Ihre Projekte zu organisieren"
   },
   "common": {
+    "switchLanguage": "Sprache wechseln",
     "save": "Speichern",
     "cancel": "Abbrechen",
     "delete": "Löschen",
@@ -1203,7 +1207,7 @@
     "joinDecline": "Jetzt nicht",
     "joinGoToDashboard": "Zum Dashboard",
     "joining": "Beitreten...",
-    "joinedOrg": "{name} beigetreten!",
+    "joinedOrg": "{name} beigetreten.",
     "inviteQrRevoked": "Einladungscode widerrufen",
     "loadingOrgs": "Organisationen werden geladen…",
     "inviteDeclined": "Einladung abgelehnt",
@@ -1303,8 +1307,8 @@
     "infoCaps": "Fähigkeiten: Arbeitsbereich-Fragen, Projektanalyse, Aufgabenplanung, Notizverwaltung, Terminplanung.",
     "handoffTaskPlanner": "Ich übergebe das an {name}, den Aufgabenplaner, um Ihre Aufgaben zu erstellen. Einen Moment.",
     "taskPlannerWorking": "{name} arbeitet…",
-    "taskPlannerDone": "Ihre Aufgaben wurden erfolgreich erstellt! {count} Aufgaben sind jetzt auf Ihrem Projektboard bereit.",
-    "taskPlannerDoneNoCount": "Ihre Änderungen wurden erfolgreich angewendet! Prüfen Sie Ihr Projektboard für die Aktualisierungen.",
+    "taskPlannerDone": "{count} Aufgaben sind auf Ihrem Projektboard bereit.",
+    "taskPlannerDoneNoCount": "Änderungen angewendet. Sie sind auf Ihrem Projektboard.",
     "taskPlannerPlanReady": "{name} hat einen Plan vorbereitet:",
     "taskPlannerFailed": "{name} hat ein Problem festgestellt: {error}",
     "confirmTaskPlan": "Aufgabenplan bestätigen",
@@ -1316,25 +1320,27 @@
     "confirmEvents": "Eventplan bestätigen",
     "applyEvents": "Eventplan anwenden",
     "somethingWentWrong": "Etwas ist schiefgelaufen: {error}",
+    "alreadyApplied": "Diese Änderungen sind bereits angewendet.",
+    "appliedCount": "{count} Änderungen angewendet.",
     "aiUnavailable": "Der KI-Assistent ist vorübergehend nicht verfügbar. Bitte versuchen Sie es in ein paar Minuten erneut.",
     "noResponse": "Ich konnte keine Antwort generieren. Könntest du deine Frage umformulieren?",
     "alreadyConfirmed": "Bereits bestätigt — verwende Anwenden zum Ausführen.",
     "confirmFailed": "Bestätigung fehlgeschlagen: {error}",
     "applyFailed": "Anwendung fehlgeschlagen: {error}",
-    "notesDone": "Fertig! Änderungen erfolgreich angewendet.",
+    "notesDone": "Änderungen angewendet.",
     "notesConfirmed": "Bestätigt. {summary}",
     "eventsConfirmed": "Eventplan bestätigt. {summary}",
-    "eventsDone": "Eventplan erfolgreich angewendet.",
+    "eventsDone": "Eventplan angewendet.",
     "readyToApply": "Bereit zum Anwenden.",
     "copyTooltip": "Klicken zum Kopieren",
     "suggestedQ1": "Was ist der Status meiner Projekte?",
     "suggestedQ2": "Zeige mir überfällige Aufgaben",
     "suggestedQ3": "Was sind die größten Risiken?",
     "suggestedQ4": "Fasse den Fortschritt dieser Woche zusammen",
-    "greeting1": "Hey! Ich bin hier, um zu helfen. Frag mich alles über deinen Arbeitsbereich, Projekte, Aufgaben oder Termine.",
-    "greeting2": "Hallo! Bereit zu helfen bei allem rund um den Arbeitsbereich — Projekte, Aufgaben, Notizen, Termine.",
-    "greeting3": "Hallo! Frag mich gerne zu deinen Projekten, verfolge den Fortschritt, verwalte Notizen oder plane Termine.",
-    "greeting4": "Hey! Wie kann ich dir helfen? Ich kann Fragen zu deinem Arbeitsbereich beantworten, Projekte analysieren, Notizen verwalten und mehr.",
+    "greeting1": "Frag mich zu deinem Arbeitsbereich, deinen Projekten, Aufgaben oder Terminen.",
+    "greeting2": "Ich helfe bei allem in deinem Arbeitsbereich: Projekte, Aufgaben, Notizen und Termine.",
+    "greeting3": "Frag nach einem Projekt, prüfe den Fortschritt, ordne Notizen oder plane einen Termin.",
+    "greeting4": "Wobei kann ich helfen? Ich beantworte Fragen zu deinem Arbeitsbereich, schaue mir Projekte an und verwalte Notizen.",
     "createOps": "Erstellen {count}",
     "updateOps": "Aktualisieren {count}",
     "deleteOps": "Löschen {count}",

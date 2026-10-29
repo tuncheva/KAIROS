@@ -17,12 +17,13 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowDown, Loader2 } from "~/components/ui/icons";
+import { ArrowDown } from "~/components/ui/icons";
 
 import { formatDayLabel, isSameDay } from "./chatUi";
 import { MessagesSkeleton } from "./ChatSkeletons";
 import { MessageBubble, type SendStatus, type ThreadMessage } from "./MessageBubble";
 
+import { Skeleton } from "~/components/ui/Skeleton";
 /** Distance from the bottom, in px, still treated as "at the bottom". */
 const AT_BOTTOM_SLOP = 80;
 /** Distance from the top that triggers loading the previous page. */
@@ -193,8 +194,9 @@ export function MessageThread({
         className="flex h-full flex-col overflow-y-auto px-4 pt-3.5 pb-[26px] sm:px-7"
       >
         {isFetchingPreviousPage && (
-          <div className="flex justify-center py-2" aria-hidden="true">
-            <Loader2 className="animate-spin text-tui-ink3" size={16} />
+          <div className="flex flex-col gap-2 py-2" aria-hidden="true">
+            <Skeleton shape="bubble" className="w-[46%]" />
+            <Skeleton shape="bubble" tone="yours" row={1} className="ml-auto w-[34%]" />
           </div>
         )}
         {!hasPreviousPage && messages.length > 12 && (
@@ -279,7 +281,7 @@ export function MessageThread({
         {peerTyping && (
           <div className="chat-rise flex flex-col items-start gap-1.5 pt-5" aria-live="polite">
             <span className="text-[12.5px] text-tui-ink3">{peerName}</span>
-            <span className="flex gap-[5px] rounded-[14px] border border-tui-ink/16 bg-tui-ink/[0.045] px-4 py-3.5">
+            <span className="flex gap-[5px] rounded-lg border border-tui-ink/16 bg-tui-ink/[0.045] px-4 py-3.5">
               <span className="sr-only">{t("isTyping", { name: peerName })}</span>
               <Dot delay="0s" />
               <Dot delay=".2s" />

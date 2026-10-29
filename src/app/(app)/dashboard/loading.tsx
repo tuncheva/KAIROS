@@ -19,7 +19,7 @@ export default async function DashboardLoading() {
           actions={
             <Link
               href="/projects?new=1"
-              className="flex h-[34px] items-center gap-[7px] rounded-full bg-tui-accent px-3 text-[13px] font-medium whitespace-nowrap text-tui-on-accent transition-opacity hover:opacity-90 sm:px-3.5"
+              className="flex h-[34px] items-center gap-[7px] rounded-md bg-tui-accent px-3 text-[13px] font-medium whitespace-nowrap text-tui-on-accent transition-opacity hover:opacity-90 sm:px-3.5"
             >
               <Plus size={15} />
               <span className="hidden sm:inline">{tNav("newProject")}</span>

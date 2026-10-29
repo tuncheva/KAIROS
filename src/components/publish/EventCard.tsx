@@ -309,7 +309,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
           className={`kairos-stamp flex items-center gap-1 rounded-md px-2 py-1 text-[9.5px] tracking-[0.12em] ${
             countdown.kind === "now" || countdown.kind === "soon"
               ? "bg-status-danger-ink/85 text-white"
-              : "bg-accent-primary/85 text-white"
+              : "bg-accent-primary/85 text-on-accent"
           }`}
         >
           <Clock size={10} />
@@ -371,7 +371,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
       <article
         id={`event-${event.id}`}
         data-testid="event-card"
-        className="dash-rise overflow-hidden rounded-lg bg-bg-elevated shadow-[0_0_0_0.5px_rgba(200,200,200,0.55),0_2px_8px_-2px_rgba(0,0,0,0.08),0_4px_16px_-4px_rgba(0,0,0,0.06)] target:ring-2 target:ring-accent-primary/50 dark:shadow-[0_0_0_0.5px_rgba(60,60,60,0.9),0_2px_12px_-2px_rgba(0,0,0,0.4),0_6px_24px_-6px_rgba(0,0,0,0.3)]"
+        className="dash-rise overflow-hidden rounded-lg bg-bg-elevated shadow-[var(--tui-pane-shadow)] target:ring-2 target:ring-accent-primary/50"
       >
         {/* Who posted it, and why you are seeing it. */}
         <div className="flex items-center gap-2.5 px-3.5 pb-2.5 pt-3">
@@ -436,7 +436,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
               onClick={() => setShowMenu((open) => !open)}
               aria-label={t("moreActions")}
               aria-expanded={showMenu}
-              className="rounded-lg p-1.5 text-fg-quaternary transition-colors hover:bg-bg-tertiary hover:text-accent-primary"
+              className="rounded-lg p-1.5 text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-accent-primary"
             >
               <MoreHorizontal size={18} />
             </button>
@@ -598,7 +598,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
             >
               {date.month}
             </Stamp>
-            <span className="text-[22px] font-semibold leading-tight text-fg-primary">
+            <span className="text-[22px] font-normal leading-tight text-fg-primary tabular-nums">
               {date.day}
             </span>
             <span className="kairos-mono text-[10px] text-fg-tertiary">
@@ -611,7 +611,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
               href={`/events/${event.id}`}
               className="rounded-md transition-colors hover:text-accent-primary"
             >
-              <h3 className="font-display text-[20px] font-semibold leading-tight tracking-tight text-fg-primary">
+              <h3 className="font-display text-[20px] font-normal leading-tight tracking-tight text-fg-primary">
                 {event.title}
               </h3>
             </Link>
@@ -621,11 +621,11 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
 
             {/* The facts a person needs before they can decide. */}
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="flex h-control-sm items-center gap-1.5 rounded-lg border border-border-medium bg-bg-secondary px-2 text-[11px] text-fg-secondary">
+              <span className="flex h-control-sm items-center gap-1.5 rounded-sm border border-border-medium bg-bg-secondary px-2 text-[11px] text-fg-secondary">
                 <MapPin size={11} className="text-accent-primary" />
                 <span className="max-w-[220px] truncate">{placeLine(event)}</span>
               </span>
-              <span className="flex h-control-sm items-center gap-1.5 rounded-lg border border-border-medium bg-bg-secondary px-2 text-[11px] text-fg-secondary">
+              <span className="flex h-control-sm items-center gap-1.5 rounded-sm border border-border-medium bg-bg-secondary px-2 text-[11px] text-fg-secondary">
                 <Clock size={11} className="text-accent-primary" />
                 {formatTimeRange(event, locale)}
               </span>
@@ -644,7 +644,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                 </span>
               )}
               {past && (
-                <span className="flex h-control-sm items-center rounded-lg bg-bg-tertiary px-2 text-[11px] text-fg-tertiary">
+                <span className="flex h-control-sm items-center rounded-sm bg-bg-tertiary px-2 text-[11px] text-fg-tertiary">
                   {t("past")}
                 </span>
               )}
@@ -702,7 +702,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
                   title={blocked ? t("soldOut") : undefined}
                   className={`h-control-md flex-1 rounded-lg text-[12.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                     active
-                      ? "bg-accent-primary text-white"
+                      ? "bg-accent-primary text-on-accent"
                       : "bg-bg-tertiary text-fg-secondary hover:text-fg-primary"
                   }`}
                 >
@@ -739,7 +739,7 @@ export function EventCard({ event }: { event: FeedEventForViewer }) {
           <Link
             href={`/events/${event.id}#discussion`}
             aria-label={t("comments")}
-            className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-secondary"
+            className="flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-[12px] text-fg-tertiary transition-colors hover:bg-bg-tertiary hover:text-fg-secondary"
           >
             <MessageCircle size={15} />
             <span className="kairos-mono">{event.commentCount}</span>

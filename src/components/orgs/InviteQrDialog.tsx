@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ModalDismiss } from "~/components/ui/Modal";
-import { Check, Copy, Link2, Loader2, RefreshCw, ShieldOff } from "~/components/ui/icons";
+import { Check, Copy, Link2, RefreshCw, ShieldOff } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { useToast } from "~/components/providers/ToastProvider";
 import { api } from "~/trpc/react";
 
+import { Skeleton } from "~/components/ui/Skeleton";
+import { PendingDot } from "~/components/ui/PendingDot";
 /**
  * Live seconds left on a token.
  *
@@ -189,7 +191,7 @@ export function InviteQrDialog({
             ) : revoked ? (
               <ShieldOff size={30} className="text-fg-quaternary" />
             ) : (
-              <Loader2 size={28} className="animate-spin text-fg-quaternary" />
+              <Skeleton shape="block" className="h-full w-full" />
             )}
           </div>
 
@@ -210,7 +212,7 @@ export function InviteQrDialog({
               <button
                 type="button"
                 onClick={() => void copy(active.url, "link")}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-bg-elevated px-3 py-2 text-xs font-medium text-fg-secondary transition-colors hover:text-fg-primary"
+                className="flex w-full items-center justify-center gap-2 rounded-sm bg-bg-elevated px-3 py-2 text-xs font-medium text-fg-secondary transition-colors hover:text-fg-primary"
               >
                 {copied === "link" ? <Check size={14} /> : <Link2 size={14} />}
                 {copied === "link" ? tCommon("copied") : t("inviteQrCopyLink")}
@@ -218,7 +220,7 @@ export function InviteQrDialog({
               <button
                 type="button"
                 onClick={() => void copy(active.code, "code")}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 font-mono text-xs tracking-[0.15em] text-fg-tertiary transition-colors hover:bg-bg-elevated hover:text-fg-secondary"
+                className="flex w-full items-center justify-center gap-2 rounded-sm px-3 py-2 font-mono text-xs tracking-[0.15em] text-fg-tertiary transition-colors hover:bg-bg-elevated hover:text-fg-secondary"
                 title={t("inviteQrCopyCode")}
               >
                 {copied === "code" ? <Check size={12} /> : <Copy size={12} />}
@@ -233,9 +235,9 @@ export function InviteQrDialog({
             type="button"
             onClick={() => rotate.mutate(input)}
             disabled={busy}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent-primary px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
+            className="flex flex-1 items-center justify-center gap-2 rounded-sm bg-accent-primary px-3 py-2 text-xs font-semibold text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-60"
           >
-            <RefreshCw size={14} className={busy ? "animate-spin" : undefined} />
+            {busy ? <PendingDot /> : <RefreshCw size={14} />}
             {t("inviteQrRegenerate")}
           </button>
           {active && !isDead ? (
@@ -243,7 +245,7 @@ export function InviteQrDialog({
               type="button"
               onClick={() => revoke.mutate(input)}
               disabled={revoke.isPending}
-              className="rounded-lg px-3 py-2 text-xs font-medium text-fg-tertiary transition-colors hover:bg-status-danger-surface hover:text-status-danger-ink disabled:opacity-60"
+              className="rounded-sm px-3 py-2 text-xs font-medium text-fg-tertiary transition-colors hover:bg-status-danger-surface hover:text-status-danger-ink disabled:opacity-60"
             >
               {t("inviteQrRevoke")}
             </button>

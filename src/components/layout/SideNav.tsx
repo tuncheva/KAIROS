@@ -42,7 +42,7 @@ const RAIL_COLLAPSED_WIDTH = 68;
  * move.
  */
 const railRowClass =
-  "flex h-9 w-full items-center gap-3 rounded-lg px-3 text-left text-[13.5px] whitespace-nowrap transition-colors duration-200";
+  "flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-[13.5px] whitespace-nowrap transition-colors duration-200";
 
 /**
  * Anything that only belongs to the open sidebar — labels, group headings,
@@ -462,7 +462,7 @@ export function SideNav() {
             className="flex items-center gap-2.5 rounded-lg transition-opacity hover:opacity-70"
           >
             <KairosMark size={28} />
-            <h1 className="text-lg font-semibold text-tui-ink font-display tracking-[-0.02em]">KAIROS</h1>
+            <h1 className="text-lg font-normal text-tui-ink font-display tracking-[-0.02em]">KAIROS</h1>
           </button>
         </div>
         <button
@@ -491,14 +491,14 @@ export function SideNav() {
           <div
             id={mobileNavId}
             role="dialog"
-            aria-label="Navigation"
+            aria-label={t("menu")}
             /* `w-72` is 288px — wider than 85% of a 320px phone, which left the
                page behind it as a 32px sliver you could not actually aim at.
                The sheet also scrolls: eleven rows plus the quick-actions block
                is taller than a landscape phone. */
             className="kairos-topbar-gap kairos-sheet-left kairos-scroll-area animate-slideIn fixed bottom-0 left-0 top-0 z-50 w-[min(18rem,85vw)] overflow-y-auto bg-tui-pane shadow-2xl lg:hidden"
           >
-            <nav className="kairos-safe-bottom flex flex-col gap-1 p-3 pb-6" aria-label="Primary">
+            <nav className="kairos-safe-bottom flex flex-col gap-1 p-3 pb-6" aria-label={t("mainMenu")}>
               {mainNavItems.map((item) => {
                 const isActive = isItemActive(item.href);
                 return (
@@ -579,7 +579,7 @@ export function SideNav() {
           renders later in the tree, so it won every time — covering the last
           item on every phone. The launcher also lifts to `bottom-24` to clear
           this bar; the toast viewport uses the same clearance. */}
-      <nav className={`kairos-mobile-bottomnav fixed bottom-0 left-0 right-0 z-50 border-t border-tui-ink/8 bg-tui-pane/95 pt-2 backdrop-blur-md lg:hidden ${isMobileMenuOpen ? "hidden" : ""}`} aria-label="Primary">
+      <nav className={`kairos-mobile-bottomnav fixed bottom-0 left-0 right-0 z-50 border-t border-tui-ink/8 bg-tui-pane/95 pt-2 backdrop-blur-md lg:hidden ${isMobileMenuOpen ? "hidden" : ""}`} aria-label={t("mainMenu")}>
         <div className="flex items-center justify-around gap-1">
           {mobileBottomItems.map((item) => {
             const isActive = isItemActive(item.href);
@@ -623,7 +623,7 @@ export function SideNav() {
           step with the rail instead of being covered by it. */}
       <aside
         className="kairos-rail hidden lg:flex fixed left-0 top-0 bottom-0 z-40 w-[248px] flex-col overflow-hidden border-r border-tui-ink/8 bg-tui-pane px-3.5 pt-[18px] pb-4 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
-        aria-label="Primary"
+        aria-label={t("mainMenu")}
       >
         {/* `pl-2.5` puts the mark's centre on the icon column (34px), where
             the toggle comes to rest when the rail collapses. The two paddings
@@ -666,7 +666,7 @@ export function SideNav() {
           onClick={openPalette}
           aria-label={tCommon("search")}
           title={`${tCommon("search")} (${hint("K")})`}
-          className="mb-[22px] flex h-[34px] w-full shrink-0 items-center gap-2.5 rounded-lg bg-tui-ink/[0.055] pr-2.5 pl-3 text-left text-[13px] whitespace-nowrap text-tui-ink3 transition-colors hover:text-tui-ink"
+          className="mb-[22px] flex h-[34px] w-full shrink-0 items-center gap-2.5 rounded-md bg-tui-ink/[0.055] pr-2.5 pl-3 text-left text-[13px] whitespace-nowrap text-tui-ink3 transition-colors hover:text-tui-ink"
         >
           <Search size={14} className="shrink-0" />
           <span className={`${RAIL_LABEL} flex-1`}>{tCommon("search")}</span>

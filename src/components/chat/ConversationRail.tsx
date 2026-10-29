@@ -150,7 +150,7 @@ export function ConversationRail({
       </div>
 
       <div className="flex-none px-4 pb-3">
-        <label className="flex h-[38px] items-center gap-2.5 rounded-full border border-tui-ink/16 bg-tui-bg pr-2 pl-3.5 transition-colors focus-within:border-tui-accent/45">
+        <label className="flex h-[38px] items-center gap-2.5 rounded-md border border-tui-ink/16 bg-tui-bg pr-2 pl-3.5 transition-colors focus-within:border-tui-accent/45">
           <Search size={14} className="flex-none text-tui-ink3" />
           <input
             type="search"
@@ -186,7 +186,7 @@ export function ConversationRail({
             role="tab"
             aria-selected={filter === f.key}
             onClick={() => onFilterChange(f.key)}
-            className={`flex h-7 items-center gap-1.5 rounded-full border px-[11px] text-[12.5px] font-medium whitespace-nowrap transition-colors ${chatPill(filter === f.key)}`}
+            className={`flex h-7 items-center gap-1.5 rounded-sm border px-[11px] text-[12.5px] font-medium whitespace-nowrap transition-colors ${chatPill(filter === f.key)}`}
           >
             {f.label}
             {f.count ? <span className="text-[11.5px] tabular-nums opacity-80">{f.count}</span> : null}
@@ -276,7 +276,7 @@ export function ConversationRail({
                             )}
                           </span>
                           {convo.projectTitle && (
-                            <span className="mt-[5px] flex h-[22px] max-w-full items-center gap-1.5 self-start rounded-full border border-tui-ink/16 px-[9px] text-[11.5px] text-tui-ink2">
+                            <span className="mt-[5px] flex h-[22px] max-w-full items-center gap-1.5 self-start rounded-sm border border-tui-ink/16 px-[9px] text-[11.5px] text-tui-ink2">
                               <FolderKanban size={11} className="flex-none text-tui-ink3" />
                               <span className="truncate">{convo.projectTitle}</span>
                             </span>

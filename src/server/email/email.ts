@@ -118,8 +118,8 @@ const BRAND = {
   ink: "#1A1917",
   /** `--tui-ink2` — rgb(87 85 79). Body copy. */
   inkMuted: "#57554F",
-  /** `--tui-ink3` — rgb(133 131 124). Labels, footer, fine print. */
-  inkFaint: "#85837C",
+  /** `--tui-ink3` — rgb(108 106 101). Labels, footer, fine print. */
+  inkFaint: "#6C6A65",
   /** `--tui-pane`. */
   card: "#FBFAF7",
   /** `tui-ink/12` on the pane — the hairline. */
@@ -241,7 +241,7 @@ function button(href: string, label: string): string {
   return `              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td style="padding:4px 0 24px;">
-                    <a href="${escapeUrl(href)}" style="display:inline-block;padding:11px 20px;background-color:${BRAND.accent};color:${BRAND.onAccent};text-decoration:none;border-radius:6px;font-weight:600;font-size:14px;line-height:1;">${escapeHtml(label)}</a>
+                    <a href="${escapeUrl(href)}" style="display:inline-block;padding:11px 20px;background-color:${BRAND.accent};color:${BRAND.onAccent};text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;line-height:1;">${escapeHtml(label)}</a>
                   </td>
                 </tr>
               </table>`;

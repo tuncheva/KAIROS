@@ -21,7 +21,7 @@ import { SkeletonSlow } from "~/components/ui/SkeletonSlow";
 
 /** Mirrors `CARD` in `DashboardClient`. */
 const CARD =
-  "overflow-hidden rounded-[14px] border border-tui-ink/10 bg-tui-pane shadow-[var(--tui-pane-shadow)]";
+  "overflow-hidden rounded-lg border border-tui-ink/10 bg-tui-pane shadow-[var(--tui-pane-shadow)]";
 
 /** Mirrors `PAD` in `DashboardClient`. */
 const PAD = "px-[18px] sm:px-7";
@@ -109,7 +109,7 @@ export function RadarFindingsSkeletonBody({ row = 0 }: { row?: number }) {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <span className="border-tui-ink/16 flex h-[30px] items-center rounded-full border px-3.5">
+            <span className="border-tui-ink/16 flex h-[30px] items-center rounded-sm border px-3.5">
               <Skeleton
                 className="h-[7px]"
                 row={row + i}
@@ -231,10 +231,10 @@ export function DashboardSkeleton({
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2.5 lg:flex-col lg:items-end" aria-hidden="true">
-            <span className="border-tui-ink/14 text-tui-ink3 flex h-[34px] items-center rounded-full border px-3.5 text-[13px]">
+            <span className="border-tui-ink/14 text-tui-ink3 flex h-[34px] items-center rounded-md border px-3.5 text-[13px]">
               {t("brief.ask")}
             </span>
-            <span className="border-tui-ink/14 text-tui-ink3 flex h-[34px] items-center rounded-full border px-3.5 text-[13px]">
+            <span className="border-tui-ink/14 text-tui-ink3 flex h-[34px] items-center rounded-md border px-3.5 text-[13px]">
               {t("brief.planWeek")}
             </span>
           </div>

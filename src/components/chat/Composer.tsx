@@ -11,11 +11,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowUp, CornerUpLeft, FileText, ImageIcon, Loader2, Paperclip, X } from "~/components/ui/icons";
+import { ArrowUp, CornerUpLeft, FileText, ImageIcon, Paperclip, X } from "~/components/ui/icons";
 
 import { formatFileSize, isImageMime } from "./chatUi";
 import type { ThreadMessage } from "./MessageBubble";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 /** Height cap, in rows, before the box scrolls instead of growing. */
 const MAX_ROWS = 6;
 const LINE_HEIGHT_PX = 22;
@@ -110,7 +111,7 @@ export function Composer({
       }}
     >
       {replyingTo && (
-        <div className="chat-rise flex items-center gap-3 rounded-[10px] border border-tui-ink/16 bg-tui-ink/[0.025] py-[9px] pr-2.5 pl-3.5">
+        <div className="chat-rise flex items-center gap-3 rounded-md border border-tui-ink/16 bg-tui-ink/[0.025] py-[9px] pr-2.5 pl-3.5">
           <CornerUpLeft size={14} className="flex-none text-tui-accent" />
           <div className="flex min-w-0 flex-1 flex-col gap-px">
             <p className="text-[12px] font-medium text-tui-ink2">
@@ -143,7 +144,7 @@ export function Composer({
             {attachments.map((item, idx) => (
               <span
                 key={`${item.file.name}-${idx}`}
-                className="flex h-[30px] max-w-full items-center gap-2 rounded-full border border-tui-ink/16 pr-1.5 pl-[11px] text-[12.5px] text-tui-ink2"
+                className="flex h-[30px] max-w-full items-center gap-2 rounded-sm border border-tui-ink/16 pr-1.5 pl-[11px] text-[12.5px] text-tui-ink2"
               >
                 {isImageMime(item.file.type) ? (
                   <ImageIcon size={12} className="flex-none text-tui-ink3" />
@@ -230,7 +231,7 @@ export function Composer({
             type="button"
             onClick={onSend}
             disabled={!canSend}
-            className={`flex h-[34px] flex-none items-center gap-[7px] rounded-full border px-[15px] text-[13px] font-semibold transition-colors duration-200 ${
+            className={`flex h-[34px] flex-none items-center gap-[7px] rounded-md border px-[15px] text-[13px] font-semibold transition-colors duration-200 ${
               canSend
                 ? "cursor-pointer border-tui-accent bg-tui-accent text-tui-on-accent"
                 : "cursor-default border-tui-ink/16 bg-transparent text-tui-ink3"
@@ -238,7 +239,7 @@ export function Composer({
           >
             {t("send")}
             {isUploading ? (
-              <Loader2 size={13} className="animate-spin" />
+              <PendingDot />
             ) : (
               <ArrowUp size={13} />
             )}

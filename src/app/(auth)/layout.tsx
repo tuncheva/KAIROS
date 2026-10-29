@@ -10,7 +10,13 @@
  * A layout rather than an edit to each page: two of the three have several
  * early returns, and one `<main>` per branch is three chances for the next
  * branch to forget.
+ *
+ * `.tui-refined` puts the auth pages on the same refined palette as the app.
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  return <main id="main-content">{children}</main>;
+  return (
+    <main id="main-content" className="tui-refined">
+      {children}
+    </main>
+  );
 }

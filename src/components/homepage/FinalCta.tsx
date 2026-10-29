@@ -56,7 +56,7 @@ export function FinalCta({ onSignIn, onJoin }: { onSignIn: () => void; onJoin: (
                             autoComplete="off"
                             autoCapitalize="characters"
                             spellCheck={false}
-                            className="h-full min-w-0 flex-grow bg-transparent px-6 font-mono text-[13px] tracking-[0.1em] text-fg-primary outline-none placeholder:text-fg-quaternary"
+                            className="h-full min-w-0 flex-grow bg-transparent px-6 font-mono text-[13px] tracking-[0.1em] text-fg-primary outline-none placeholder:text-fg-tertiary"
                         />
                         <button
                             type="submit"

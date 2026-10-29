@@ -311,7 +311,7 @@ export function NoteList({
           the scroll, which is where it could not be seen without reaching the
           end of the results it is explaining. */}
       {query.trim() !== "" && lockedExcluded > 0 && (
-        <p className="flex flex-none items-start gap-2 border-t border-border-light/45 px-3.5 py-3 text-[11.5px] leading-relaxed text-fg-quaternary">
+        <p className="flex flex-none items-start gap-2 border-t border-border-light/45 px-3.5 py-3 text-[11.5px] leading-relaxed text-fg-tertiary">
           <Lock size={12} className="mt-0.5 flex-shrink-0" />
           {t("searchLockedExcluded", { count: lockedExcluded })}
         </p>

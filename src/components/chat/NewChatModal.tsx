@@ -16,12 +16,13 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2, MessageCircle, Search } from "~/components/ui/icons";
+import { MessageCircle, Search } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { Avatar, CHAT_EYEBROW, displayName, type ChatUser } from "./chatUi";
 import { ChatDialog } from "./ChatDialog";
 
+import { Skeleton, skeletonWidth } from "~/components/ui/Skeleton";
 export function NewChatModal({
   onClose,
   onSelect,
@@ -141,8 +142,13 @@ export function NewChatModal({
 
         <div className="-mx-2.5 flex max-h-[330px] min-h-0 flex-col gap-1 overflow-y-auto">
           {suggestionsQuery.isLoading ? (
-            <div className="grid place-items-center py-10">
-              <Loader2 className="animate-spin text-tui-accent" size={20} />
+            <div className="flex flex-col gap-3 px-2.5 py-3" aria-hidden="true">
+              {[0, 1, 2, 3].map((i) => (
+                <span key={i} className="flex items-center gap-3">
+                  <Skeleton shape="circle" row={i} className="h-8 w-8" />
+                  <Skeleton row={i} style={{ width: skeletonWidth(i + 1, 34, 62) }} />
+                </span>
+              ))}
             </div>
           ) : (
             <>

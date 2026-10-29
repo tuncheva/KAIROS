@@ -86,7 +86,7 @@ const SMALL_CHIP =
 const IDLE_CHIP = "border-border-medium text-fg-tertiary hover:bg-bg-secondary";
 const MICRO_LABEL = "text-[11px] uppercase tracking-[0.12em] text-fg-tertiary";
 const BAR_BTN =
-  "kairos-tap flex h-[30px] items-center gap-1.5 rounded-lg border border-border-medium px-2.5 text-xs font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary";
+  "kairos-tap flex h-[30px] items-center gap-1.5 rounded-sm border border-border-medium px-2.5 text-xs font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary";
 const DATE_INPUT =
   "h-[30px] rounded-md border border-border-medium bg-bg-surface px-2 text-[11px] tabular-nums text-fg-primary outline-none transition-colors focus:border-accent-primary/60";
 
@@ -610,7 +610,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
           <button
             type="button"
             onClick={goToToday}
-            className="kairos-tap ml-1 h-[30px] rounded-lg border border-accent-primary/30 bg-accent-primary/10 px-2.5 text-xs font-semibold text-accent-primary transition-colors hover:bg-accent-primary/20"
+            className="kairos-tap ml-1 h-[30px] rounded-sm border border-accent-primary/30 bg-accent-primary/10 px-2.5 text-xs font-semibold text-accent-primary transition-colors hover:bg-accent-primary/20"
           >
             {t("today")}
           </button>
@@ -638,7 +638,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
             />
           </div>
         ) : (
-          <h2 className="min-w-0 truncate px-1 font-display text-[20px] leading-none font-semibold tracking-tight text-fg-primary">
+          <h2 className="min-w-0 truncate px-1 font-display text-[20px] leading-none font-normal tracking-tight text-fg-primary">
             {title}
           </h2>
         )}
@@ -682,7 +682,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("searchRange")}
               aria-label={t("searchRange")}
-              className="min-w-0 flex-1 border-none bg-transparent text-xs text-fg-primary outline-none placeholder:text-fg-quaternary"
+              className="min-w-0 flex-1 border-none bg-transparent text-xs text-fg-primary outline-none placeholder:text-fg-tertiary"
             />
             {query && (
               <button
@@ -708,7 +708,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
               aria-expanded={filtersOpen}
               aria-haspopup="dialog"
               className={cn(
-                "kairos-tap flex h-[30px] shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-colors",
+                "kairos-tap flex h-[30px] shrink-0 items-center gap-1.5 rounded-sm border px-2.5 text-xs font-semibold transition-colors",
                 filtersOpen || tokens.length
                   ? "border-accent-primary/30 bg-accent-primary/10 text-accent-primary"
                   : IDLE_CHIP,
@@ -859,7 +859,7 @@ function CalendarWorkspace({ today }: { today: Date }) {
           <button
             type="button"
             onClick={() => openNew(defaultNewDate())}
-            className="kairos-tap flex h-[30px] shrink-0 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover"
+            className="kairos-tap flex h-[30px] shrink-0 items-center gap-1.5 rounded-sm bg-accent-primary px-3 text-xs font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover"
           >
             <Plus size={14} aria-hidden="true" />
             {t("newButton")}
@@ -1127,7 +1127,7 @@ function EmptyState({
       <button
         type="button"
         onClick={onAction}
-        className="mt-1 h-control-md rounded-lg bg-accent-primary px-4 text-xs font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover"
+        className="mt-1 h-control-md rounded-md bg-accent-primary px-4 text-xs font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover"
       >
         {actionLabel}
       </button>

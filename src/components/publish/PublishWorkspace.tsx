@@ -259,7 +259,7 @@ export function PublishWorkspace() {
           <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-accent-primary/20">
             <AlertCircle size={30} className="text-accent-primary" />
           </div>
-          <h2 className="mb-2 text-xl font-semibold text-fg-primary">
+          <h2 className="font-display mb-2 text-xl font-normal text-fg-primary">
             {t("errorLoadingEvents")}
           </h2>
           <p className="text-sm text-fg-secondary">{error.message}</p>
@@ -287,7 +287,7 @@ export function PublishWorkspace() {
           <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-accent-primary/10">
             <CalendarPlus size={30} className="text-accent-primary" />
           </div>
-          <h2 className="mb-2 text-xl font-semibold text-fg-primary">
+          <h2 className="font-display mb-2 text-xl font-normal text-fg-primary">
             {t("noEventsTitle")}
           </h2>
           <p className="text-sm text-fg-secondary">{emptyBody}</p>
@@ -300,7 +300,7 @@ export function PublishWorkspace() {
               <button
                 type="button"
                 onClick={() => setFilter({ source: "discover" })}
-                className="h-control-md rounded-lg bg-accent-primary px-4 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
+                className="h-control-md rounded-md bg-accent-primary px-4 text-[13px] font-semibold text-on-accent transition-colors hover:bg-accent-hover"
               >
                 {t("sources.discover")}
               </button>
@@ -309,7 +309,7 @@ export function PublishWorkspace() {
               <button
                 type="button"
                 onClick={() => setFilter({ view: "past" })}
-                className="h-control-md rounded-lg border border-border-medium px-4 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
+                className="h-control-md rounded-md border border-border-medium px-4 text-[13px] font-semibold text-fg-secondary transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
               >
                 {t("browsePast", { count: counts.past })}
               </button>
@@ -372,7 +372,7 @@ export function PublishWorkspace() {
             <button
               type="button"
               onClick={() => setDraft({ title: "", focus: "title" })}
-              className="flex h-control-md items-center gap-2 rounded-lg bg-accent-primary px-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
+              className="flex h-control-md items-center gap-2 rounded-md bg-accent-primary px-3.5 text-[13px] font-semibold text-on-accent transition-colors hover:bg-accent-hover"
             >
               <CalendarPlus size={15} />
               <span className="hidden sm:inline">{t("publishEvent")}</span>
@@ -422,7 +422,7 @@ export function PublishWorkspace() {
                     aria-pressed={source === candidate}
                     className={`kairos-stamp rounded-md px-3 py-1.5 text-[10px] tracking-[0.12em] transition-colors ${
                       source === candidate
-                        ? "bg-white text-accent-primary shadow-sm dark:bg-white/10"
+                        ? "bg-bg-elevated text-accent-primary shadow-sm"
                         : "text-fg-tertiary hover:text-fg-secondary"
                     }`}
                   >
@@ -444,14 +444,14 @@ export function PublishWorkspace() {
                 onChange={(event) => setSearchText(event.target.value)}
                 placeholder={t("searchPlaceholder")}
                 aria-label={t("searchPlaceholder")}
-                className="h-control-md w-full rounded-lg border border-border-medium bg-bg-secondary pl-8 pr-8 text-[13px] text-fg-primary placeholder:text-fg-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary/40"
+                className="h-control-md w-full rounded-md border border-border-medium bg-bg-secondary pl-8 pr-8 text-[13px] text-fg-primary placeholder:text-fg-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary/40"
               />
               {searchText && (
                 <button
                   type="button"
                   onClick={() => setSearchText("")}
                   aria-label={t("clearSearch")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-fg-quaternary transition-colors hover:text-fg-primary"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-fg-tertiary transition-colors hover:text-fg-primary"
                 >
                   <X size={13} />
                 </button>

@@ -18,7 +18,7 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { KeyRound, Loader2 } from "~/components/ui/icons";
+import { KeyRound } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
@@ -35,6 +35,7 @@ import {
 } from "./notesDialog";
 import { Badge } from "./notesUi";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 export function LockNoteDialog({
   noteId,
   onClose,
@@ -144,7 +145,7 @@ export function LockNoteDialog({
             {t("common.cancel")}
           </button>
           <button type="submit" disabled={isPending || !pinKnown} className={DIALOG_PRIMARY}>
-            {isPending && <Loader2 size={14} className="animate-spin" />}
+            {isPending && <PendingDot />}
             {isPending ? t("common.working") : t("actions.lock")}
           </button>
         </>

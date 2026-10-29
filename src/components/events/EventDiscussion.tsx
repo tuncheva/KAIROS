@@ -16,7 +16,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
-import { Loader2, MessageCircle, Send } from "~/components/ui/icons";
+import { MessageCircle, Send } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { ProfileLink } from "~/components/profile/ProfileLink";
@@ -24,6 +24,7 @@ import { PersonAvatar, Stamp } from "~/components/publish/publishUi";
 import { useDateFormat } from "~/hooks/useDateFormat";
 import type { FeedComment, FeedCommentThread } from "~/components/publish/feedData";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 function CommentBody({
   comment,
   hostId,
@@ -140,7 +141,7 @@ function CommentComposer({
         className="text-accent-primary transition-opacity disabled:opacity-30"
       >
         {addComment.isPending ? (
-          <Loader2 className="animate-spin" size={16} />
+          <PendingDot />
         ) : (
           <Send size={16} />
         )}
@@ -231,7 +232,7 @@ export function EventDiscussion({
       <h2 className="mb-3 flex items-center gap-2 text-[15px] font-semibold text-fg-primary">
         <MessageCircle size={16} className="text-accent-primary" />
         {t("discussion")}
-        <span className="kairos-mono text-[12px] text-fg-quaternary">
+        <span className="kairos-mono text-[12px] text-fg-tertiary">
           {commentCount}
         </span>
       </h2>

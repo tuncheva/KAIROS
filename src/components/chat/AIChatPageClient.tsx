@@ -285,7 +285,7 @@ export function AIChatPageClient() {
             role="tab"
             onClick={() => setRightTab(id)}
             aria-selected={rightTab === id}
-            className={`flex h-7 items-center gap-1.5 rounded-full border px-[11px] text-[12.5px] font-medium whitespace-nowrap transition-colors ${chatPill(rightTab === id)}`}
+            className={`flex h-7 items-center gap-1.5 rounded-sm border px-[11px] text-[12.5px] font-medium whitespace-nowrap transition-colors ${chatPill(rightTab === id)}`}
           >
             <Icon size={12} />
             {label}
@@ -407,7 +407,7 @@ export function AIChatPageClient() {
             </div>
 
             {scopeProject && (
-              <span className="hidden h-7 max-w-[220px] items-center gap-[7px] rounded-full border border-tui-ink/16 px-3 text-[12.5px] text-tui-ink2 @2xl:flex">
+              <span className="hidden h-7 max-w-[220px] items-center gap-[7px] rounded-sm border border-tui-ink/16 px-3 text-[12.5px] text-tui-ink2 @2xl:flex">
                 <FolderKanban size={12} className="flex-none text-tui-ink3" />
                 <span className="truncate">{scopeProject.title}</span>
               </span>

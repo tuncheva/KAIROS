@@ -56,7 +56,7 @@ export interface RailNotebook {
  * tabular, like every other figure on the surface.
  */
 const ROW_BASE =
-  "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] transition-colors duration-200";
+  "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-[13px] transition-colors duration-200";
 const ROW_IDLE = "text-fg-secondary hover:bg-fg-primary/[0.045] hover:text-fg-primary";
 const ROW_ON = "bg-fg-primary/[0.07] font-medium text-fg-primary";
 
@@ -168,7 +168,7 @@ export function NotesRail({
                 <span className="flex-1 truncate">{entry.label}</span>
                 <span
                   className={`text-[11.5px] tabular-nums ${
-                    view === entry.key ? "text-accent-primary" : "text-fg-quaternary"
+                    view === entry.key ? "text-accent-primary" : "text-fg-tertiary"
                   }`}
                 >
                   {entry.count}
@@ -192,7 +192,7 @@ export function NotesRail({
         </div>
 
         {notebooks.length === 0 ? (
-          <p className="px-4 py-2 text-[12px] text-fg-quaternary">{t("notebooks.emptyRail")}</p>
+          <p className="px-4 py-2 text-[12px] text-fg-tertiary">{t("notebooks.emptyRail")}</p>
         ) : (
           <ul className="kairos-stagger flex flex-col px-2">
             {notebooks.map((notebook) => {
@@ -210,7 +210,7 @@ export function NotesRail({
                     <span className="flex-1 truncate">{notebook.name}</span>
                     <span
                       className={`text-[11.5px] tabular-nums ${
-                        selected ? "text-accent-primary" : "text-fg-quaternary"
+                        selected ? "text-accent-primary" : "text-fg-tertiary"
                       }`}
                     >
                       {notebook.count}

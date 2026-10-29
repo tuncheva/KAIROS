@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { ChatDialog } from "~/components/chat/ChatDialog";
-import { Check, Copy, Link2, Loader2, Mail, UserPlus } from "~/components/ui/icons";
+import { Check, Copy, Link2, Mail, UserPlus } from "~/components/ui/icons";
 import { PERMISSION_DISPLAY_ORDER, usePermissionLabel } from "~/components/orgs/PermissionGrid";
 import { useToast } from "~/components/providers/ToastProvider";
 import {
@@ -24,6 +24,7 @@ import { api } from "~/trpc/react";
 import { Tick } from "./TeamPerson";
 import { TEAM_EYEBROW, TEAM_PRIMARY_BUTTON, teamPill, type CustomRole } from "./teamUi";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 /** "builtin:member" or "custom:12". */
 type TemplateKey = `builtin:${OrgRole}` | `custom:${number}`;
 
@@ -146,7 +147,7 @@ export function TeamInviteDialog({
         setFlags(capTo(templateFlags(key)));
       }}
       className={cn(
-        "h-[30px] rounded-full border px-3 text-[12.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+        "h-[30px] rounded-sm border px-3 text-[12.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
         teamPill(template === key && !edited),
       )}
     >
@@ -186,7 +187,7 @@ export function TeamInviteDialog({
         <button
           type="button"
           onClick={() => onCopy(value, id, message)}
-          className="kairos-tap flex h-8 items-center gap-1.5 rounded-full border border-tui-ink/16 bg-transparent px-3 text-[12.5px] text-tui-ink transition-colors hover:bg-tui-accent/6"
+          className="kairos-tap flex h-8 items-center gap-1.5 rounded-sm border border-tui-ink/16 bg-transparent px-3 text-[12.5px] text-tui-ink transition-colors hover:bg-tui-accent/6"
         >
           {copied ? <Check size={12} className="text-tui-ok" /> : <Copy size={12} className="text-tui-ink2" />}
           {copied ? t("copied") : t("copy")}
@@ -261,7 +262,7 @@ export function TeamInviteDialog({
                 aria-selected={mode === id}
                 onClick={() => setMode(id)}
                 className={cn(
-                  "flex h-8 items-center gap-[7px] rounded-full border px-3.5 text-[13px] font-medium transition-colors",
+                  "flex h-8 items-center gap-[7px] rounded-sm border px-3.5 text-[13px] font-medium transition-colors",
                   teamPill(mode === id),
                 )}
               >
@@ -299,7 +300,7 @@ export function TeamInviteDialog({
                   onClick={() => void send()}
                   className={cn(TEAM_PRIMARY_BUTTON, "h-[42px] px-[18px]")}
                 >
-                  {inviteMember.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
+                  {inviteMember.isPending ? <PendingDot /> : null}
                   {t("sendInvitation")}
                 </button>
               </div>
@@ -324,7 +325,7 @@ export function TeamInviteDialog({
                   onClick={() => void makeLink()}
                   className={cn(TEAM_PRIMARY_BUTTON, "h-[34px]")}
                 >
-                  {createLink.isPending ? <Loader2 size={13} className="animate-spin" /> : <Link2 size={13} />}
+                  {createLink.isPending ? <PendingDot /> : <Link2 size={13} />}
                   {t("createLink")}
                 </button>
               </div>

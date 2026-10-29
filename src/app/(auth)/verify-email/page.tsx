@@ -68,12 +68,12 @@ function VerifyEmailContent() {
             value={resendEmail}
             onChange={(e) => setResendEmail(e.target.value)}
             placeholder="you@example.com"
-            className="w-full px-3 py-2 rounded-lg bg-bg-primary text-fg-primary border border-border-light/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary"
+            className="w-full px-3 py-2 rounded-md bg-bg-primary text-fg-primary border border-border-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary"
           />
           <button
             type="submit"
             disabled={resend.isPending}
-            className="w-full px-6 py-2.5 bg-accent-primary text-white font-medium rounded-lg hover:bg-accent-secondary transition-colors disabled:opacity-60"
+            className="w-full px-6 py-2.5 bg-accent-primary text-on-accent font-medium rounded-md hover:bg-accent-hover transition-colors disabled:opacity-60"
           >
             {resend.isPending ? "Sending…" : "Send link"}
           </button>
@@ -85,7 +85,7 @@ function VerifyEmailContent() {
 
   return (
     <div className="min-h-dvh bg-bg-primary flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-bg-secondary/60 border border-border-light/40 rounded-lg p-8">
+      <div className="w-full max-w-md bg-bg-elevated border border-border-medium rounded-lg p-8">
         {!token ? (
           <div className="space-y-3 text-center">
             <AlertCircle className="mx-auto text-status-warning-ink" size={32} />
@@ -116,7 +116,7 @@ function VerifyEmailContent() {
             </p>
             <Link
               href="/"
-              className="inline-block px-6 py-2.5 bg-accent-primary text-white font-medium rounded-lg hover:bg-accent-secondary transition-colors"
+              className="inline-block px-6 py-2.5 bg-accent-primary text-on-accent font-medium rounded-md hover:bg-accent-hover transition-colors"
             >
               Go to sign in
             </Link>
