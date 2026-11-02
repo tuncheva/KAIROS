@@ -1,0 +1,460 @@
+{
+ "findings": [
+  {
+   "rule": "R-STYLE-010",
+   "status": "pass",
+   "detail": "Literary Bulgarian throughout; English terms are introduced in parentheses as established terms."
+  },
+  {
+   "rule": "R-STYLE-020",
+   "status": "pass",
+   "detail": "Impersonal third-person scientific style; no first person or reader address found."
+  },
+  {
+   "rule": "R-STYLE-030",
+   "status": "fail",
+   "detail": "Internal contradictions break logical coherence: §3.1 presents vector retrieval as a future direction, but §1.4 and §2.8.9 describe it as already implemented; the conclusion and Table 12 give 57 tables / 44 migrations while §2.1.4 and §2.7 give 59 / 48; §2.14.5 says live mode was not measured while a live run exists in the repo; the conclusion paragraph 436 is cut off mid-sentence.",
+   "evidence": [
+    {
+     "paragraph": 405,
+     "text": "Извличането съчетава два начина на търсене. Когато е конфигуриран модел за векторни представяния…"
+    },
+    {
+     "paragraph": 435,
+     "text": "Проектиран е релационен модел от 57 таблици в осем домейна."
+    },
+    {
+     "paragraph": 436,
+     "text": "…шест разговорни агента с ясно разделени"
+    }
+   ]
+  },
+  {
+   "rule": "R-STYLE-040",
+   "status": "pass",
+   "detail": "Sections are connected prose; the bullet-like lists in §2.2 and §2.12 are full sentences inside a framing paragraph."
+  },
+  {
+   "rule": "R-STYLE-050",
+   "status": "pass",
+   "detail": "No colloquial or contracted forms found."
+  },
+  {
+   "rule": "R-STYLE-060",
+   "status": "pass",
+   "detail": "Established terminology; English terms glossed on first use."
+  },
+  {
+   "rule": "R-STYLE-080",
+   "status": "fail",
+   "detail": "Several abbreviations are never expanded: JSON, JWT, HNSW, ICS, REST, API, ORM, SQL, QR, PIN, RSVP, GSAP, ECDSA. LLM, RAG, RBAC, OWASP and VAPID are expanded correctly.",
+   "evidence": [
+    {
+     "paragraph": 81,
+     "text": "…в точно определен формат (JSON) с предварително зададени полета…"
+    },
+    {
+     "paragraph": 91,
+     "text": "…pgvector с HNSW индекс…"
+    }
+   ]
+  },
+  {
+   "rule": "R-STYLE-090",
+   "status": "pass",
+   "detail": "Chapter sections open with linking sentences (e.g. §1.7 'Въз основа на конкурентния анализ…')."
+  },
+  {
+   "rule": "R-STYLE-100",
+   "status": "pass",
+   "detail": "Most sections open with a short statement of their subject."
+  },
+  {
+   "rule": "R-STYLE-110",
+   "status": "fail",
+   "detail": "Most subsections end on a detail rather than a summary (e.g. §2.10.5, §2.11.5, §2.13)."
+  },
+  {
+   "rule": "R-COVER-050",
+   "status": "pass",
+   "detail": "Topic is on the cover.",
+   "evidence": [
+    {
+     "paragraph": 5,
+     "text": "КАЙРОС (KAIROS) – МУЛТИФУНКЦИОНАЛНА ДИГИТАЛНА ПЛАТФОРМА"
+    }
+   ]
+  },
+  {
+   "rule": "R-COVER-060",
+   "status": "pass",
+   "detail": "Student's full name appears in the cover table: 'Тина Веселинова Тунчева'."
+  },
+  {
+   "rule": "R-COVER-080",
+   "status": "pass",
+   "detail": "Supervisor appears in the cover table: 'Мария Христова'."
+  },
+  {
+   "rule": "R-VIS-010",
+   "status": "fail",
+   "detail": "Not evidenced in the extracted document: no logo, banner or icon set is identified (cover has one image at paragraph 8; chapters start with plain text headings)."
+  },
+  {
+   "rule": "R-VIS-030",
+   "status": "fail",
+   "detail": "Not evidenced in the extracted document: no logo, banner or icon set is identified (cover has one image at paragraph 8; chapters start with plain text headings)."
+  },
+  {
+   "rule": "R-VIS-040",
+   "status": "fail",
+   "detail": "Not evidenced in the extracted document: no logo, banner or icon set is identified (cover has one image at paragraph 8; chapters start with plain text headings)."
+  },
+  {
+   "rule": "R-VIS-050",
+   "status": "fail",
+   "detail": "Not evidenced in the extracted document: no logo, banner or icon set is identified (cover has one image at paragraph 8; chapters start with plain text headings)."
+  },
+  {
+   "rule": "R-VIS-020",
+   "status": "pass",
+   "detail": "Diagrams share a consistent palette (colour-coded Use Case groups described in §2.4)."
+  },
+  {
+   "rule": "R-INTRO-020",
+   "status": "pass",
+   "detail": "§0.1 argues relevance with two concrete trends. (The intro heading is letter-spaced 'У В О Д', which the section detector missed, so R-STRUCT-040 is a false negative.)"
+  },
+  {
+   "rule": "R-INTRO-030",
+   "status": "pass",
+   "detail": "§0.2 states a twofold scientific problem explicitly. (The intro heading is letter-spaced 'У В О Д', which the section detector missed, so R-STRUCT-040 is a false negative.)"
+  },
+  {
+   "rule": "R-INTRO-040",
+   "status": "pass",
+   "detail": "§0.3 gives one main goal. (The intro heading is letter-spaced 'У В О Д', which the section detector missed, so R-STRUCT-040 is a false negative.)"
+  },
+  {
+   "rule": "R-INTRO-050",
+   "status": "pass",
+   "detail": "§0.3 lists nine tasks. (The intro heading is letter-spaced 'У В О Д', which the section detector missed, so R-STRUCT-040 is a false negative.)"
+  },
+  {
+   "rule": "R-INTRO-060",
+   "status": "pass",
+   "detail": "§0.4 lists research methods. (The intro heading is letter-spaced 'У В О Д', which the section detector missed, so R-STRUCT-040 is a false negative.)"
+  },
+  {
+   "rule": "R-INTRO-070",
+   "status": "pass",
+   "detail": "§0.5 states limitations explicitly. (The intro heading is letter-spaced 'У В О Д', which the section detector missed, so R-STRUCT-040 is a false negative.)"
+  },
+  {
+   "rule": "R-CH1-010",
+   "status": "pass",
+   "detail": "§1.1 covers current state, problem, shortcomings of existing tools and need for a new solution."
+  },
+  {
+   "rule": "R-CH1-020",
+   "status": "pass",
+   "detail": "§1.2 describes the system's AI approach, purpose and design requirements."
+  },
+  {
+   "rule": "R-CH1-030",
+   "status": "fail",
+   "detail": "Competitor profiles in §1.6.2 give mainly weaknesses and pricing; functions and advantages per competitor are thin (Linear, Motion, Eventbrite/Luma/Meetup get one or two sentences).",
+   "evidence": [
+    {
+     "paragraph": 112,
+     "text": "Платформите за събития – Eventbrite, Luma, Meetup – предлагат страници за събития и регистрация, но нямат задачи и бележки за екипа."
+    }
+   ]
+  },
+  {
+   "rule": "R-CH1-040",
+   "status": "pass",
+   "detail": "§1.6.4 explains six differentiators."
+  },
+  {
+   "rule": "R-CH1-060",
+   "status": "pass",
+   "detail": "§1.7 text analyses each SWOT quadrant after Figure 1 (script R-CH1-050 looked for English quadrant names; the SWOT is an image with Bulgarian text)."
+  },
+  {
+   "rule": "R-CH1-070",
+   "status": "fail",
+   "detail": "§1.8 covers cost categories and pricing, but the billing model in code is richer than described: annual plans, per-seat Team billing and a free month without a card are implemented via Stripe yet not mentioned; no concrete cost figures.",
+   "evidence": [
+    {
+     "paragraph": 141,
+     "text": "KAIROS има безплатен план и два платени – Pro (12 евро на месец) и Team (22 евро на човек на месец, минимум трима души)."
+    }
+   ],
+   "crosscheck": {
+    "claim": "Plans: Free, Pro 12 EUR/mo, Team 22 EUR/seat/mo",
+    "code": "src/lib/plans.ts; src/server/api/routers/billing.ts (annual plans, seats, trial)",
+    "contradiction": "Prices match; annual plans and the free trial month are missing from the text."
+   }
+  },
+  {
+   "rule": "R-CH1-080",
+   "status": "fail",
+   "detail": "No Business Model Canvas."
+  },
+  {
+   "rule": "R-CH1-090",
+   "status": "fail",
+   "detail": "No ROI analysis."
+  },
+  {
+   "rule": "R-CH1-100",
+   "status": "fail",
+   "detail": "Competitor analysis present but no market sizing / market analysis."
+  },
+  {
+   "rule": "R-CH1-110",
+   "status": "pass",
+   "detail": "Target audience named: small teams, schools, non-profits (§1.8, §1.1)."
+  },
+  {
+   "rule": "R-CH1-120",
+   "status": "fail",
+   "detail": "No user persona in the document, yet the repo already has one: docs/diploma/evals/persona-desi.md ('Деси'), used for a live evaluation on 2026-10-17.",
+   "crosscheck": {
+    "claim": "(absent)",
+    "code": "docs/diploma/evals/persona-desi.md",
+    "contradiction": "A ready persona exists in the repo but is not in the document."
+   }
+  },
+  {
+   "rule": "R-CH1-130",
+   "status": "fail",
+   "detail": "No user stories."
+  },
+  {
+   "rule": "R-CH2-010",
+   "status": "fail",
+   "detail": "Technology chapter is mostly accurate (Next.js 16.1, React 19.2, Tailwind 4, tRPC v11 with 17 routers, 59 tables, 48 migrations, 30 pages verified) but has outdated claims: (1) next-intl 'преводи за пет езика' - only en and bg are offered; de/es/fr are about half translated and disabled in src/i18n/locales.ts; (2) LOC/file counts are stale (now about 122k lines in 468 TS files under src, ws-server); (3) §2.2 says presets exist for three providers - code has four (nvidia, velocity, deepseek, gemini) plus a separate backup provider.",
+   "evidence": [
+    {
+     "paragraph": 169,
+     "text": "…всички текстове са изнесени в отделни файлове с преводи за пет езика."
+    },
+    {
+     "paragraph": 174,
+     "text": "…реализирани са предварителни настройки за три доставчика;"
+    }
+   ],
+   "crosscheck": {
+    "claim": "Interface translated into five languages; three provider presets",
+    "code": "src/i18n/locales.ts: locales = ['en','bg'], de/es/fr marked incomplete; src/server/llm/core/providers.ts:78-100 four presets",
+    "contradiction": "Only 2 languages are offered; 4 presets exist."
+   }
+  },
+  {
+   "rule": "R-CH2-020",
+   "status": "pass",
+   "detail": "§2.3 describes VS Code, Git/GitHub, ESLint, Prettier, Vitest, RTL, CI."
+  },
+  {
+   "rule": "R-CH2-040",
+   "status": "pass",
+   "detail": "§2.4 describes actors and their actions after the Use Case diagram."
+  },
+  {
+   "rule": "R-CH3-020",
+   "status": "fail",
+   "detail": "§2.7 / Table 6 match the 59 tables in code, but omit subtasks via tasks.parent_task_id (migration 0054) and that embedding halfvec(2048) columns exist on tasks and sticky_notes as well as document_chunks; PK/FK described only by example. The conclusion and Table 12 contradict with '57 таблици, 44 миграции'.",
+   "evidence": [
+    {
+     "paragraph": 435,
+     "text": "Проектиран е релационен модел от 57 таблици в осем домейна."
+    }
+   ],
+   "crosscheck": {
+    "claim": "57 tables, 44 migrations (conclusion, Table 12)",
+    "code": "src/server/db/schemas/*.ts: 59 createTable; src/server/db/migrations: 48 .sql",
+    "contradiction": "Stale counts in the conclusion; chapter 2 is correct."
+   }
+  },
+  {
+   "rule": "R-CH3-040",
+   "status": "fail",
+   "detail": "§2.12 and §2.8 omit features added from October: Microsoft (Entra ID) sign-in (src/server/auth/config.ts:7), page-aware assistant context with a configurable 'page opener' (src/server/llm/prompts/pageContext.ts, 2026-10-22), handoff context passed to sub-agents (2026-10-17), AI thread rail column/sheet layout, floating notification cards, team management. §2.8.14 says 19 agent settings; code now has 20 (workspace_concierge.pageOpener).",
+   "evidence": [
+    {
+     "paragraph": 175,
+     "text": "OAuth 2.0 доставчици – Google, наред с класическата регистрация с имейл и парола;"
+    },
+    {
+     "paragraph": 279,
+     "text": "Освен името всеки агент има собствени настройки – общо 19…"
+    }
+   ],
+   "crosscheck": {
+    "claim": "OAuth only via Google; 19 agent settings",
+    "code": "src/server/auth/config.ts:7,111 MicrosoftEntraID; src/lib/agentSettings.ts 20 keys incl. pageOpener",
+    "contradiction": "Microsoft sign-in and page-aware context are implemented but undocumented."
+   }
+  },
+  {
+   "rule": "R-CH3-050",
+   "status": "pass",
+   "detail": "Algorithms for registration, login, 2FA, Argon2id hashing, PBKDF2 key derivation and Zod validation are described (§2.11)."
+  },
+  {
+   "rule": "R-CH3-060",
+   "status": "pass",
+   "detail": "Password protection, encryption, validation, rate limiting and prompt-injection defences described; verified against code (argon2, AES-256-GCM, Zod)."
+  },
+  {
+   "rule": "R-CH3-070",
+   "status": "fail",
+   "detail": "A public REST API with keys is mentioned (§2.12) but not documented."
+  },
+  {
+   "rule": "R-CH3-080",
+   "status": "fail",
+   "detail": "No OpenAPI/Swagger spec or reference."
+  },
+  {
+   "rule": "R-CH3-090",
+   "status": "fail",
+   "detail": "Endpoints not enumerated: code exposes 14 route handlers (incl. SSE /api/ai/chat, Stripe webhook, /api/export/*, ICS feed, WS token) and 231 tRPC procedures."
+  },
+  {
+   "rule": "R-CH3-100",
+   "status": "fail",
+   "detail": "No performance measurements; the live evals in the repo have p50/p95 latency (10.3 s / 52 s routing run; 6.6-7.9 s / 20-24 s persona run) that could be reported."
+  },
+  {
+   "rule": "R-CH3-110",
+   "status": "pass",
+   "detail": "Optimisations described: SQL aggregation, context packets, rolling summary, deterministic detection."
+  },
+  {
+   "rule": "R-CH3-120",
+   "status": "fail",
+   "detail": "No caching mechanism described beyond Redis for rate limits; provider prompt caching (system prompt kept byte-identical, see src/server/llm/prompts/pageContext.ts) is implemented but undocumented."
+  },
+  {
+   "rule": "R-FIG-020",
+   "status": "pass",
+   "detail": "Most figures are followed by explanatory text."
+  },
+  {
+   "rule": "R-FIG-050",
+   "status": "fail",
+   "detail": "Appendix 5 lists nine screenshot captions (/dashboard ... /orgs) but contains no images: the screenshots are missing.",
+   "evidence": [
+    {
+     "paragraph": 499,
+     "text": "В това приложение се прилагат екранни снимки на основните изгледи…"
+    }
+   ]
+  },
+  {
+   "rule": "R-TBL-040",
+   "status": "pass",
+   "detail": "Each table is introduced and commented in the text."
+  },
+  {
+   "rule": "R-LIT-010",
+   "status": "pass",
+   "detail": "Sources are papers, official documentation and vendor sites; PromptArmor and ClickUp feedback are borderline but acceptable primary sources."
+  },
+  {
+   "rule": "R-VMAT-030",
+   "status": "fail",
+   "detail": "No wireframes."
+  },
+  {
+   "rule": "R-VMAT-040",
+   "status": "fail",
+   "detail": "No mockups."
+  },
+  {
+   "rule": "R-TEST-010",
+   "status": "fail",
+   "detail": "Unit tests described, but the count is stale: document says 141 test files; the repo now has 163 (148 unit, 12 integration, 3 live-eval).",
+   "evidence": [
+    {
+     "paragraph": 376,
+     "text": "…реализирани в 141 тестови файла."
+    }
+   ],
+   "crosscheck": {
+    "claim": "141 test files",
+    "code": "git ls-files *.test.ts(x): 163",
+    "contradiction": "Stale count."
+   }
+  },
+  {
+   "rule": "R-TEST-020",
+   "status": "pass",
+   "detail": "Integration tests against a real Postgres described; matches CI job 'Integration tests (Postgres)' in .github/workflows/ci.yml."
+  },
+  {
+   "rule": "R-TEST-030",
+   "status": "pass",
+   "detail": "Component/UI tests with React Testing Library described; no browser e2e exists and none is claimed."
+  },
+  {
+   "rule": "R-TEST-040",
+   "status": "fail",
+   "detail": "§2.14.5 and Appendix 4 report only the offline run and state that live mode was not measured. The repo contains a live routing eval (2026-09-25, gpt-oss-20b): routing 72.7% (40/55), schema validity 96.4% first pass / 98.2% after repair, tool selection 76.5%, p50 10.3 s; and a persona eval (2026-10-17, 'Деси', 44 turns): 2 of 9 criteria fully pass, routing about 94%, failures on Latin-script Bulgarian, invented entities and event time zones.",
+   "evidence": [
+    {
+     "paragraph": 372,
+     "text": "…това е предмет на живия режим, който изисква конфигуриран доставчик и не е включен в настоящите резултати."
+    }
+   ],
+   "crosscheck": {
+    "claim": "Live mode not measured",
+    "code": "docs/diploma/evals/a1-routing-2026-09-25-openai-gpt-oss-20b.md; docs/diploma/evals/persona-desi-findings-2026-10-17.md",
+    "contradiction": "Live results exist and are not reported."
+   }
+  },
+  {
+   "rule": "R-UX-010",
+   "status": "fail",
+   "detail": "A theme token system exists (docs/theme.md, CI 'Theme tokens' check) but the design system is not described."
+  },
+  {
+   "rule": "R-UX-020",
+   "status": "fail",
+   "detail": "No colour palette presented."
+  },
+  {
+   "rule": "R-UX-030",
+   "status": "fail",
+   "detail": "Typography not described (code uses self-hosted Inter via Fontsource)."
+  },
+  {
+   "rule": "R-UX-040",
+   "status": "fail",
+   "detail": "Responsive behaviour not described (AiThreadRail column/sheet variants, mobile layouts)."
+  },
+  {
+   "rule": "R-PERF-010",
+   "status": "fail",
+   "detail": "No Lighthouse analysis."
+  },
+  {
+   "rule": "R-PERF-020",
+   "status": "fail",
+   "detail": "Image optimisation not described (code downscales large uploads, commit 4169eff)."
+  },
+  {
+   "rule": "R-PERF-030",
+   "status": "fail",
+   "detail": "Lazy loading not described."
+  },
+  {
+   "rule": "R-PERF-040",
+   "status": "fail",
+   "detail": "Caching not described."
+  }
+ ]
+}
