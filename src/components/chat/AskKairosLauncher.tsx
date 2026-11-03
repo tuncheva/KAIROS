@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
@@ -82,6 +82,31 @@ export function AskKairosLauncher({ onOpen, hideBelowLg = false }: Props) {
   /* A drag ends with the same pointerup that fires the button's click, so the
    * click handler needs to know it is the tail end of a drag and not a tap. */
   const didDrag = useRef(false);
+  const pillRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  /* Where the pill was when it was let go. The snap itself is a class swap,
+   * which would teleport it; the layout effect below plays it back as a glide
+   * from here to wherever the new corner put it. */
+  const snapFrom = useRef<DOMRect | null>(null);
+
+  useLayoutEffect(() => {
+    const from = snapFrom.current;
+    const pill = pillRef.current;
+    const el = containerRef.current;
+    if (!from || dragPos || !pill || !el) return;
+    snapFrom.current = null;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const to = pill.getBoundingClientRect();
+    const dx = from.left - to.left;
+    const dy = from.top - to.top;
+    /* Translating the container by the pill's delta puts the pill back under
+     * the pointer for the first frame; the slight overshoot reads as it
+     * settling into the corner rather than sliding on a rail. */
+    el.animate(
+      [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }],
+      { duration: 420, easing: "cubic-bezier(0.22, 1.2, 0.36, 1)" },
+    );
+  }, [corner, dragPos]);
 
   // localStorage is read after mount rather than in the initializer so the
   // server and first client render agree on the default corner.
@@ -132,6 +157,7 @@ export function AskKairosLauncher({ onOpen, hideBelowLg = false }: Props) {
     const next: Corner = `${e.clientY < window.innerHeight / 2 ? "top" : "bottom"}-${
       e.clientX < window.innerWidth / 2 ? "left" : "right"
     }`;
+    snapFrom.current = pillRef.current?.getBoundingClientRect() ?? null;
     setCorner(next);
     setDragPos(null);
     try {
@@ -149,6 +175,7 @@ export function AskKairosLauncher({ onOpen, hideBelowLg = false }: Props) {
 
   return (
     <div
+      ref={containerRef}
       className={`chat-refined fixed z-40 flex gap-2.5 ${CORNER_CLASSES[corner]} ${hideBelowLg ? "max-lg:hidden" : ""}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -192,6 +219,7 @@ export function AskKairosLauncher({ onOpen, hideBelowLg = false }: Props) {
       )}
 
       <button
+        ref={pillRef}
         type="button"
         data-testid="ask-kairos"
         data-drag-handle
@@ -211,7 +239,9 @@ export function AskKairosLauncher({ onOpen, hideBelowLg = false }: Props) {
          * dot, so opening it reads as the pill growing rather than as one
          * control being swapped for another.
          */
-        className="kairos-menu-surface flex touch-none items-center gap-2.5 rounded-md px-4 py-2.5 text-[13.5px] font-semibold text-fg-primary transition-colors select-none hover:bg-bg-tertiary"
+        className={`kairos-menu-surface flex touch-none items-center gap-2.5 rounded-md px-4 py-2.5 text-[13.5px] font-semibold text-fg-primary transition-[background-color,transform,box-shadow] duration-200 select-none hover:bg-bg-tertiary motion-reduce:transition-none ${
+          dragPos ? "scale-[1.04] cursor-grabbing shadow-xl" : ""
+        }`}
       >
         <span
           className="h-[7px] w-[7px] rounded-full bg-accent-primary shadow-[0_0_0_3px_rgb(var(--accent-primary)/0.14)]"
