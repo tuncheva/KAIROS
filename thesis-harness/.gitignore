@@ -1,0 +1,5 @@
+# Working copies of the thesis, extracted text, proposals. Never committed:
+# the thesis lives outside the repo.
+/work/
+__pycache__/
+*.pyc

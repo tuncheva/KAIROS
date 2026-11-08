@@ -1,0 +1,5 @@
+# Правила от официалните изисквания за дипломната работа.
+# Не се пишат на ръка по памет: първо `python thesis-harness/run.py requirements import <файл>`,
+# после всяко правило цитира дословно source.txt (проверява се с `requirements validate`).
+# Формат – вж. thesis_harness/requirements.py.
+rules: []
