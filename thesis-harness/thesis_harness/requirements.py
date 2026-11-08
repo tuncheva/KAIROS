@@ -2,8 +2,8 @@
 
 The harness never contains requirements of its own. The flow is:
 
-1. ``requirements import <file>`` extracts the official document's text into
-   ``requirements/source.txt`` with ``=== стр. N ===`` page markers.
+1. ``requirements import <file> [<file> ...]`` extracts the official documents'
+   text into ``requirements/source.txt`` with ``=== D1 · стр. N ===`` markers.
 2. Claude drafts ``requirements/rules.yaml`` from that text, with you. Every
    rule carries a verbatim ``quote`` and its ``page``.
 3. ``requirements validate`` rejects any rule whose quote is not in the source.
@@ -14,11 +14,12 @@ The harness never contains requirements of its own. The flow is:
 
 ``rules.yaml``::
 
-    source: {file: Наредба-....pdf, sha256: ...}
+    sources: [{id: D1, file: Указания....docx, sha256: ...}]
     rules:
       - id: R01
         title: Задължителни структурни части
         quote: "Дипломният проект съдържа: увод, ..."
+        doc: D1
         page: 3
         check: req.required-headings
         params: {headings: ["^У\\s*В\\s*О\\s*Д", "ЗАКЛЮЧЕНИЕ|З А К Л Ю Ч Е Н И Е"]}
@@ -48,40 +49,72 @@ def rules_path(req_dir: Path) -> Path:
     return req_dir / "rules.yaml"
 
 
-def import_source(file: Path, req_dir: Path) -> dict:
+def _docx_text(path: Path) -> tuple[str, str | None]:
+    """Body text in reading order, tables inline as ``a | b`` rows. Returns
+    (text, title) where title is the first non-empty paragraph."""
+    import docx
+    from docx.oxml.ns import qn
+
+    d = docx.Document(str(path))
+    lines: list[str] = []
+    for el in d.element.body:
+        if el.tag == qn("w:p"):
+            t = "".join(x.text or "" for x in el.iter(qn("w:t")))
+            if t.strip():
+                lines.append(t)
+        elif el.tag == qn("w:tbl"):
+            for tr in el.iter(qn("w:tr")):
+                cells = []
+                for tc in tr.iter(qn("w:tc")):
+                    paras = ["".join(x.text or "" for x in p.iter(qn("w:t"))) for p in tc.iter(qn("w:p"))]
+                    cells.append(" ".join(x for x in paras if x.strip()))
+                lines.append(" | ".join(cells))
+    title = next((x.strip() for x in lines if x.strip()), None)
+    return "\n".join(lines), title
+
+
+def _read_pages(file: Path) -> tuple[list[str], str | None]:
     suffix = file.suffix.lower()
-    pages: list[str] = []
     if suffix == ".pdf":
         from pypdf import PdfReader
 
-        reader = PdfReader(str(file))
-        pages = [(pg.extract_text() or "") for pg in reader.pages]
-    elif suffix == ".docx":
-        import docx
+        return [(pg.extract_text() or "") for pg in PdfReader(str(file)).pages], None
+    if suffix == ".docx":
+        text, title = _docx_text(file)
+        return [text], title
+    if suffix in (".txt", ".md"):
+        return [file.read_text(encoding="utf-8")], None
+    raise SystemExit(f"Неподдържан формат {suffix}: подайте .pdf, .docx, .txt или .md")
 
-        d = docx.Document(str(file))
-        parts = [p.text for p in d.paragraphs]
-        for t in d.tables:
-            for row in t.rows:
-                parts.append(" | ".join(c.text for c in row.cells))
-        pages = ["\n".join(parts)]
-    elif suffix in (".txt", ".md"):
-        pages = [file.read_text(encoding="utf-8")]
-    else:
-        raise SystemExit(f"Неподдържан формат {suffix}: подайте .pdf, .docx, .txt или .md")
 
-    text = "\n".join(f"=== стр. {i} ===\n{t.strip()}\n" for i, t in enumerate(pages, 1))
+def import_source(files: list[Path], req_dir: Path) -> list[dict]:
+    """Extract every official document into one ``source.txt``. Documents get
+    ids D1, D2… in the order given; a rule names its document with ``doc``.
+    Re-importing replaces the whole source, so pass all documents each time."""
+    blocks, metas = [], []
+    for n, file in enumerate(files, 1):
+        pages, title = _read_pages(file)
+        doc_id = f"D{n}"
+        # Uploaded files sometimes lose a Cyrillic name ("____1.docx"); the
+        # document's own heading names it better.
+        label = title if title and re.fullmatch(r"[\w-]*?_{4,}[\w-]*", file.stem) else file.name
+        for i, t in enumerate(pages, 1):
+            blocks.append(f"=== {doc_id} · стр. {i} ===\n{t.strip()}\n")
+        metas.append({
+            "id": doc_id, "file": file.name, "title": label if label != file.name else title,
+            "sha256": sha256_file(file), "pages": len(pages),
+            "empty_pages": [i for i, t in enumerate(pages, 1) if len(t.strip()) < 20],
+        })
+    header = "".join(f"# {m['id']}: {m['title'] or m['file']} ({m['file']})\n" for m in metas)
     req_dir.mkdir(parents=True, exist_ok=True)
-    source_path(req_dir).write_text(text, encoding="utf-8")
-    meta = {"file": file.name, "sha256": sha256_file(file), "pages": len(pages), "chars": len(text)}
+    source_path(req_dir).write_text(header + "\n" + "\n".join(blocks), encoding="utf-8")
     rp = rules_path(req_dir)
     rules = read_yaml(rp, None) or {"rules": []}
-    rules["source"] = meta
+    rules.pop("source", None)
+    rules["sources"] = [{k: v for k, v in m.items() if k != "empty_pages"} for m in metas]
     rules.setdefault("rules", [])
-    write_yaml(rp, rules)
-    empty_pages = [i for i, t in enumerate(pages, 1) if len(t.strip()) < 20]
-    meta["empty_pages"] = empty_pages
-    return meta
+    write_yaml(rp, {"sources": rules["sources"], "rules": rules["rules"], **{k: v for k, v in rules.items() if k not in ("sources", "rules")}})
+    return metas
 
 
 def _norm(s: str) -> str:
@@ -95,10 +128,11 @@ def _norm(s: str) -> str:
     return s.strip().lower()
 
 
-def _page_texts(source: str) -> dict[int, str]:
+def _page_texts(source: str) -> dict[tuple[str, int], str]:
     out = {}
-    for m in re.finditer(r"=== стр\. (\d+) ===\n(.*?)(?=\n=== стр\. \d+ ===|\Z)", source, re.DOTALL):
-        out[int(m.group(1))] = m.group(2)
+    rx = r"=== (D\d+) · стр\. (\d+) ===\n(.*?)(?=\n=== D\d+ · стр\. \d+ ===|\Z)"
+    for m in re.finditer(rx, source, re.DOTALL):
+        out[(m.group(1), int(m.group(2)))] = m.group(3)
     return out
 
 
@@ -113,7 +147,6 @@ def validate_rules(req_dir: Path, check_ids: set[str]) -> list[str]:
         return ["Няма requirements/source.txt – пуснете `requirements import <файл>`"]
     source = sp.read_text(encoding="utf-8")
     pages = _page_texts(source)
-    whole = _norm(source)
     data = load_rules(req_dir)
     errs = []
     seen = set()
@@ -129,20 +162,25 @@ def validate_rules(req_dir: Path, check_ids: set[str]) -> list[str]:
             errs.append(f"{rid}: липсва дословен цитат (quote)")
             continue
         q = _norm(quote)
-        page = r.get("page")
-        if page is not None and int(page) in pages:
-            if q not in _norm(pages[int(page)]):
-                where = [n for n, t in pages.items() if q in _norm(t)]
-                errs.append(
-                    f"{rid}: цитатът не е на стр. {page}" + (f" (намерен на стр. {', '.join(map(str, where))})" if where else " и не е намерен в източника")
-                )
-        elif q not in whole:
-            errs.append(f"{rid}: цитатът не е намерен дословно в източника")
+        docs = sorted({d for d, _ in pages})
+        doc = r.get("doc") or (docs[0] if len(docs) == 1 else None)
+        if doc is None:
+            errs.append(f"{rid}: има няколко документа – посочете doc ({', '.join(docs)})")
+            continue
+        if doc not in docs:
+            errs.append(f"{rid}: няма документ {doc} в source.txt")
+            continue
+        page = int(r.get("page") or 1)
+        if (doc, page) not in pages:
+            errs.append(f"{rid}: {doc} няма стр. {page}")
+        elif q not in _norm(pages[(doc, page)]):
+            where = [f"{d} стр. {n}" for (d, n), t in pages.items() if q in _norm(t)]
+            errs.append(f"{rid}: цитатът не е в {doc} стр. {page}"
+                        + (f" (намерен в {', '.join(where)})" if where else " и не е намерен дословно никъде в източника"))
         check = r.get("check")
         if check != "semantic" and check not in check_ids:
             errs.append(f"{rid}: check трябва да е 'semantic' или една от: {', '.join(sorted(check_ids))}")
-    src_meta = data.get("source") or {}
-    return errs if errs else ([] if src_meta else ["rules.yaml няма source – пуснете `requirements import`"])
+    return errs if errs else ([] if data.get("sources") else ["rules.yaml няма sources – пуснете `requirements import`"])
 
 
 # When parts of the document disagree, the worst verdict wins: one chapter

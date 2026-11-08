@@ -83,10 +83,12 @@ python thesis-harness/run.py status
 
 Харнесът няма вградени изисквания. Всички идват от вашия официален документ:
 
-1. `python thesis-harness/run.py requirements import <изисквания.pdf>` записва
-   текста в `requirements/source.txt`.
+1. `python thesis-harness/run.py requirements import <файл1> [<файл2> …]` записва
+   текста на всички документи в `requirements/source.txt` (D1, D2, …). Подавайте
+   всички наведнъж – повторният импорт заменя предишния.
 2. Claude предлага правила и вие ги потвърждавате. Всяко правило има дословен
-   `quote` и `page`.
+   `quote`, `doc` (D1…) и `page`; по желание `severity` (препоръка → `warning`)
+   и `applies_to` (регулярен израз по заглавието на частта, за която се отнася).
 3. `python thesis-harness/run.py requirements validate` отхвърля правило,
    чийто цитат не е намерен в източника.
 

@@ -196,6 +196,8 @@ def cmd_check(cfg: Config, ws: Workspace, args) -> list:
         res, err = run_check(cls(), ctx)
         for f in res:
             f.rule = rule["id"]
+            if rule.get("severity") in ("error", "warning", "info"):
+                f.severity = rule["severity"]
             f.evidence = [f"изискване {rule['id']}, стр. {rule.get('page', '?')}: „{rule['quote']}“"] + f.evidence
         findings += res
         if err:
@@ -242,7 +244,13 @@ def cmd_tasks(cfg: Config, ws: Workspace) -> list:
     findings = (read_json(ws.p("findings.json"), {}) or {}).get("findings", [])
     leads = [f for f in findings if f.get("lead") and not f.get("fix")]
     rules = load_rules(cfg.requirements_dir).get("rules") or []
-    semantic_rules = [r["id"] for r in rules if r.get("check") == "semantic"]
+    semantic = [r for r in rules if r.get("check") == "semantic"]
+    semantic_rules = [r["id"] for r in semantic]
+
+    def rules_for(title: str) -> list[str]:
+        # applies_to: regex over the part's title; a rule without it goes to every part.
+        return [r["id"] for r in semantic
+                if not r.get("applies_to") or re.search(r["applies_to"], title, re.IGNORECASE)]
     tasks = []
     for pf in sorted(cfg.prompts_dir.glob("*.md")):
         meta, _ = _frontmatter(pf)
@@ -256,8 +264,12 @@ def cmd_tasks(cfg: Config, ws: Workspace) -> list:
         skip = [re.compile(rx, re.IGNORECASE) for rx in meta.get("exclude_chunks") or []]
         targets = [t for t in targets if not any(rx.search(t["title"]) for rx in skip)]
         for i, ch in enumerate(targets, 1):
+            part_rules = rules_for(ch["title"]) if scope == "requirements" else None
+            if scope == "requirements" and not part_rules:
+                continue
             keys = set(ch["keys"]) if ch.get("keys") else None
-            ch_leads = [f for f in leads if keys is None or f.get("para") in keys or (f.get("para") is None and i == 1)]
+            ch_leads = [] if meta.get("leads") is False else [
+                f for f in leads if keys is None or f.get("para") in keys or (f.get("para") is None and i == 1)]
             tasks.append({
                 "id": f"{pid}--{i:02d}",
                 "prompt": pid,
@@ -267,7 +279,7 @@ def cmd_tasks(cfg: Config, ws: Workspace) -> list:
                 "facts_file": str(ws.p("facts.json")),
                 "output_file": str(ws.p(f"review/{pid}--{i:02d}.yaml")),
                 "leads": ch_leads,
-                "rules": semantic_rules if scope == "requirements" else None,
+                "rules": part_rules,
                 "rules_file": str(cfg.requirements_dir / "rules.yaml") if scope == "requirements" else None,
                 "repo_root": str(cfg.repo_root),
             })
@@ -401,11 +413,13 @@ def cmd_requirements(cfg: Config, args) -> None:
     req_dir = cfg.requirements_dir
     registry = load_checks([cfg.path(d) for d in cfg.data["checks"].get("plugin_dirs") or []])
     if args.req_cmd == "import":
-        meta = import_source(Path(args.file).expanduser().resolve(), req_dir)
-        _out(f"Изисквания: {meta['file']} → {req_dir / 'source.txt'} ({meta['pages']} стр., {meta['chars']} знака)")
-        if meta["empty_pages"]:
-            _out(f"  ⚠ страници без извлечен текст: {meta['empty_pages']} – вероятно сканирани изображения;"
-                 " препишете ги в source.txt или подайте текстова версия")
+        metas = import_source([Path(f).expanduser().resolve() for f in args.files], req_dir)
+        for m in metas:
+            _out(f"{m['id']}: {m['title'] or m['file']} – {m['pages']} стр.")
+            if m["empty_pages"]:
+                _out(f"  ⚠ страници без извлечен текст: {m['empty_pages']} – вероятно сканирани изображения;"
+                     " препишете ги в source.txt или подайте текстова версия")
+        _out(f"→ {req_dir / 'source.txt'}")
     elif args.req_cmd == "validate":
         errs = validate_rules(req_dir, {k for k, v in registry.items() if v.requirement})
         rules = load_rules(req_dir).get("rules") or []
@@ -480,8 +494,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("status")
     s = sub.add_parser("requirements", help="официални изисквания")
     rs = s.add_subparsers(dest="req_cmd", required=True)
-    r = rs.add_parser("import")
-    r.add_argument("file")
+    r = rs.add_parser("import", help="всички официални документи наведнъж (заменя предишния импорт)")
+    r.add_argument("files", nargs="+")
     rs.add_parser("validate")
     r = rs.add_parser("record")
     r.add_argument("file")

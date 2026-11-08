@@ -212,7 +212,7 @@ class HarnessTest(unittest.TestCase):
         import yaml
         data = yaml.safe_load(rules.read_text(encoding="utf-8"))
         data["rules"] = [
-            {"id": "R01", "title": "Структура", "quote": "съдържа увод, изложение и заключение", "page": 1,
+            {"id": "R01", "title": "Структура", "quote": "съдържа увод, изложение и заключение", "doc": "D1", "page": 1,
              "check": "req.required-headings", "params": {"headings": ["УВОД", "ЗАКЛЮЧЕНИЕ"]}},
             {"id": "R02", "title": "Измислено", "quote": "шрифт Times New Roman 14 пункта", "page": 1, "check": "semantic"},
         ]
