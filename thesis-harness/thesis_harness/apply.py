@@ -13,7 +13,7 @@ from pathlib import Path
 from . import proposals as props
 from .docmodel import (
     ApplyError, delete_paragraph, element_index, extract, insert_paragraph_after, paragraph_text,
-    replace_in_paragraph, set_paragraph_text,
+    replace_all_in_paragraph, replace_in_paragraph, set_paragraph_text,
 )
 from .workspace import Workspace, now_iso, sha256_file, write_json
 
@@ -48,7 +48,10 @@ def apply(ws: Workspace, out: Path | None = None, dry_run: bool = False) -> dict
     items = props.load(ws)
     todo = [p for p in items if p["status"] in ("approved", "applied") and p["kind"] != "note"]
     manual = [p for p in items if p["status"] == "approved" and p["kind"] == "note"]
-    todo.sort(key=lambda p: (_ORDER[p["kind"]], p["id"]))
+    # Terminology replaces (all: true) run after every other text edit, so the
+    # other proposals still find their original wording and the new wording they
+    # bring in is covered too.
+    todo.sort(key=lambda p: (2.5 if p["kind"] == "replace" and p.get("all") else _ORDER[p["kind"]], p["id"]))
 
     document, index, existing_ids = element_index(source)
     results = []
@@ -61,7 +64,9 @@ def apply(ws: Workspace, out: Path | None = None, dry_run: bool = False) -> dict
         try:
             if el is None:
                 raise ApplyError("абзацът не е намерен в документа")
-            if p["kind"] == "replace":
+            if p["kind"] == "replace" and p.get("all"):
+                replace_all_in_paragraph(el, p["old"], p["new"])
+            elif p["kind"] == "replace":
                 replace_in_paragraph(el, p["old"], p["new"])
             elif p["kind"] == "replace_paragraph":
                 set_paragraph_text(el, p["new"])
@@ -116,7 +121,10 @@ def verify(out: Path, todo: list[dict], results: list[dict]) -> list[str]:
         if p["id"] not in ok_ids:
             continue
         target = by_key.get(p["para"])
-        if p["kind"] == "replace":
+        if p["kind"] == "replace" and p.get("all"):
+            if target is None or (p["old"] in target.text and p["old"] not in p["new"]):
+                problems.append(f"{p['id']}: „{p['old']}“ още се среща в абзаца след запис")
+        elif p["kind"] == "replace":
             if target is None or (p["new"] and p["new"] not in target.text):
                 problems.append(f"{p['id']}: новият текст не се вижда в абзаца след запис")
         elif p["kind"] == "replace_paragraph":

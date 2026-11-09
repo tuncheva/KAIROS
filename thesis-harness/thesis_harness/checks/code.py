@@ -149,6 +149,13 @@ class Agents(Check):
                         fix={"kind": "replace", "old": m.group(0), "new": "A" + m.group(0)[1:]}
                         if p.text.count(m.group(0)) == 1 else None,
                     )
+        # An agent named by its persona ("Mentor", "Ментор") counts as mentioned.
+        by_id = {a["id"]: a for a in agents["items"]}
+        all_text = "\n".join(p.text for p in ctx.prose)
+        for code, agent_id in (agents.get("code_to_id") or {}).items():
+            a = by_id.get(agent_id) or {}
+            if any(n and re.search(r"\b" + re.escape(n) + r"\b", all_text) for n in (a.get("persona"), a.get("persona_bg"))):
+                mentioned.setdefault(code, None)
         if mentioned:
             for code, file in codes.items():
                 if code not in mentioned:

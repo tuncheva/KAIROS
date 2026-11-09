@@ -273,6 +273,17 @@ def _replace_span(p_el, start: int, end: int, new: str) -> None:
             el.getparent().remove(el)
 
 
+def replace_all_in_paragraph(p_el, old: str, new: str) -> int:
+    """Replace every occurrence, right to left so earlier offsets stay valid.
+    Zero occurrences is not an error: an edit applied before this one may have
+    rewritten that text already. Returns how many were replaced."""
+    text = paragraph_text(p_el)
+    starts = [m.start() for m in re.finditer(re.escape(old), text)]
+    for start in reversed(starts):
+        _replace_span(p_el, start, start + len(old), new)
+    return len(starts)
+
+
 def replace_in_paragraph(p_el, old: str, new: str) -> None:
     text = paragraph_text(p_el)
     count = text.count(old)

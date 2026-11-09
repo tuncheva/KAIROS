@@ -162,6 +162,35 @@ class HarnessTest(unittest.TestCase):
         f.write_text("- {para: 00000225, page: 3}\n- {para: 00000149}\n", encoding="utf-8")
         self.assertEqual([x["para"] for x in read_yaml_text(f)], ["00000225", "00000149"])
 
+    def test_agent_codes_become_names(self):
+        doc = self.tmp / "names.docx"
+        d = docx.Document()
+        d.add_heading("1.1. Агенти", level=2)
+        d.add_paragraph("A1 · Mentor (Concierge)")
+        d.add_paragraph("Mentor (A1) отговаря, а A1 делегира към A2–A3. Пак A1.")
+        d.save(str(doc))
+        (self.repo / "src/lib/agentNames.ts").write_text(
+            'export const DEFAULT_AGENT_NAMES = {\n  a: "Mentor",\n  b: "Odysseus",\n  c: "Mnemosyne",\n};\n', encoding="utf-8")
+        for n in range(1, 7):
+            (self.repo / f"src/server/llm/orchestrator/a{n}Agent.ts").unlink()
+        for stem in ("a1A", "a2B", "a3C"):
+            (self.repo / f"src/server/llm/orchestrator/{stem}.ts").write_text("//", encoding="utf-8")
+        cfg = self.tmp / "harness.yaml"
+        cfg.write_text("checks:\n  options:\n    style.agent-names: {script: latin}\n", encoding="utf-8")
+        os.environ["THESIS_HARNESS_CONFIG"] = str(cfg)
+        try:
+            self.run_cli("scan", str(doc))
+            import yaml
+            props = yaml.safe_load((self.tmp / "work/names/proposals.yaml").read_text(encoding="utf-8"))
+            self.run_cli("approve", *[p["id"] for p in props if p["source"] == "check:style.agent-names"])
+            out = self.run_cli("apply")
+        finally:
+            os.environ.pop("THESIS_HARNESS_CONFIG")
+        self.assertNotIn("✗", out)
+        texts = [p.text for p in docx.Document(str(self.tmp / "names.revised.docx")).paragraphs]
+        self.assertIn("Mentor (Concierge)", texts)
+        self.assertIn("Mentor отговаря, а Mentor делегира към Odysseus и Mnemosyne. Пак Mentor.", texts)
+
     def test_apply_is_clean_and_keeps_formatting(self):
         self.run_cli("scan", str(self.doc_path))
         props = self.proposals()

@@ -10,6 +10,7 @@ A proposal is the unit you approve. Shape (``proposals.yaml``)::
       section: 2.1.2. Next.js и React
       kind: replace         # replace | replace_paragraph | insert_after | delete_paragraph | note
       old: Next.js 15       # replace: exact text, must occur once in the paragraph
+      all: false            # replace: true = every occurrence in the paragraph (terminology)
       new: Next.js 16
       rationale: ...
       evidence: [package.json:56 — "next": "16.1.1"]
@@ -100,10 +101,10 @@ def validate(p: dict, doc: DocModel) -> list[str]:
     if kind == "replace":
         if not old:
             errs.append("replace изисква old")
-        elif (c := target.text.count(old)) != 1:
+        elif (c := target.text.count(old)) != 1 and not (p.get("all") and c > 1):
             errs.append(
                 "old не се среща в абзаца (копирайте го точно от doc.md)" if c == 0
-                else f"old се среща {c} пъти в абзаца – удължете откъса, за да е еднозначен"
+                else f"old се среща {c} пъти в абзаца – удължете откъса или задайте all: true"
             )
         if new is None:
             errs.append("replace изисква new (празен низ = изтриване на откъса)")
@@ -131,7 +132,7 @@ def validate(p: dict, doc: DocModel) -> list[str]:
 
 
 def _fingerprint(p: dict) -> tuple:
-    return (p.get("para"), p.get("kind"), p.get("old"), p.get("new"))
+    return (p.get("para"), p.get("kind"), p.get("old"), p.get("new"), bool(p.get("all")))
 
 
 def add(ws: Workspace, incoming: list[dict], doc: DocModel) -> tuple[list[dict], list[tuple[dict, list[str]]], int]:
@@ -157,7 +158,7 @@ def add(ws: Workspace, incoming: list[dict], doc: DocModel) -> tuple[list[dict],
         out["para"] = p.pop("para", None)
         out["section"] = p.pop("section", None) or (target.section if target else None)
         out["kind"] = p.pop("kind")
-        for k in ("old", "new", "style_from", "rationale", "evidence"):
+        for k in ("old", "new", "all", "style_from", "rationale", "evidence"):
             if k in p:
                 out[k] = p.pop(k)
         out.update(p)  # keep any extra fields a plugin adds
@@ -299,6 +300,8 @@ def reanchor(ws: Workspace, old_doc: DocModel | None, new_doc: DocModel) -> dict
 
 def _is_merged(p: dict, doc: DocModel, target: Para) -> bool:
     kind, old, new = p["kind"], p.get("old") or "", p.get("new") or ""
+    if kind == "replace" and p.get("all"):
+        return old not in target.text or old in new
     if kind == "replace":
         if new:
             return new in target.text and (old not in target.text or old in new)

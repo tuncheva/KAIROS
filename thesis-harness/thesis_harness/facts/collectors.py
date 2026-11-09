@@ -108,6 +108,26 @@ def agents(repo: Path, _opts: dict) -> dict:
         m = re.match(r"a(\d+)", f.stem)
         codes[f"A{m.group(1)}"] = rel(repo, f)
 
+    # Which code is which agent: a5OrgAdmin.ts → tokens ["org", "admin"], each a
+    # prefix of a word of the role "Organization Admin".
+    def tokens(stem: str) -> list[str]:
+        return [t.lower() for t in re.findall(r"[A-Z][a-z]*|[a-z]+", re.sub(r"^a\d+", "", stem))]
+
+    code_to_id = {}
+    for code, file in codes.items():
+        toks = tokens(Path(file).stem)
+        for a in items:
+            if a["kind"] != "conversational" or not toks:
+                continue
+            # The role can be an expression (A1's comes from its profile), so the id counts too.
+            for words in ((a["role"] or "").lower().split(), a["id"].split("_")):
+                if any(len(words[i:i + len(toks)]) == len(toks)
+                       and all(w.startswith(t) for t, w in zip(toks, words[i:i + len(toks)]))
+                       for i in range(len(words))):
+                    code_to_id[code] = a["id"]
+                    break
+            if code in code_to_id:
+                break
     conversational = [a for a in items if a["kind"] == "conversational"]
     scheduled = [a for a in items if a["kind"] == "scheduled"]
     custom = repo / "src/server/llm/scheduled/customSchedules.ts"
@@ -117,6 +137,7 @@ def agents(repo: Path, _opts: dict) -> dict:
         "conversational_writing_count": sum(1 for a in conversational if a["writes"]),
         "scheduled_count": len(scheduled),
         "codes": codes,
+        "code_to_id": code_to_id,
         "custom_schedules": rel(repo, custom) if custom.exists() else None,
         "source": rel(repo, path),
     }
