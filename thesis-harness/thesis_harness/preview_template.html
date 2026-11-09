@@ -1,0 +1,309 @@
+<title>Коректура на дипломната</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+/* Layout: a proof sheet. A sticky bar of filters, then the manuscript's sections
+   in order; each change is a margin-annotated excerpt of the real paragraph. */
+:root {
+  --paper: #f6f7f9;
+  --sheet: #ffffff;
+  --ink: #1d2430;
+  --ink-soft: #5a6474;
+  --rule: #dde1e8;
+  --accent: #2c4f8f;
+  --accent-soft: #e5ecf8;
+  --del: #a3322b;
+  --del-bg: #fbe9e7;
+  --ins: #1f6b45;
+  --ins-bg: #e3f3ea;
+  --sev-error: #b3261e;
+  --sev-warning: #a86400;
+  --sev-info: #5a6474;
+  --approve: #1f6b45;
+  --reject: #a3322b;
+  --font-doc: "Literata", Georgia, "Times New Roman", serif;
+  --font-ui: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12151b; --sheet: #1a1f27; --ink: #e6e9ef; --ink-soft: #9aa4b4; --rule: #2c333f;
+    --accent: #8fb0ec; --accent-soft: #233150; --del: #f08a80; --del-bg: #3a2120; --ins: #7fd3a5;
+    --ins-bg: #183427; --sev-error: #f08a80; --sev-warning: #e2b25c; --sev-info: #9aa4b4;
+    --approve: #7fd3a5; --reject: #f08a80; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12151b; --sheet: #1a1f27; --ink: #e6e9ef; --ink-soft: #9aa4b4; --rule: #2c333f;
+  --accent: #8fb0ec; --accent-soft: #233150; --del: #f08a80; --del-bg: #3a2120; --ins: #7fd3a5;
+  --ins-bg: #183427; --sev-error: #f08a80; --sev-warning: #e2b25c; --sev-info: #9aa4b4;
+  --approve: #7fd3a5; --reject: #f08a80; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--font-ui); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--sheet); }
+.wrap { max-width: 860px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { padding-block: 28px 8px; }
+h1 { font: 600 1.6rem/1.2 var(--font-doc); margin: 0 0 6px; text-wrap: balance; }
+.meta { color: var(--ink-soft); font-size: .88rem; }
+.tally { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: .88rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.tally b { color: var(--ink); font-weight: 600; }
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--sheet); border-bottom: 1px solid var(--rule); }
+.bar .wrap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-block: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 999px; padding: 4px 11px; font: 500 .82rem var(--font-ui); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.bar select, .bar input[type="search"] { font: .88rem var(--font-ui); color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 8px; min-width: 0; }
+.bar input[type="search"] { flex: 1 1 160px; }
+.bar select { flex: 0 1 260px; max-width: 100%; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+main { padding-block: 8px 140px; }
+.section-head { font: 600 1.05rem/1.3 var(--font-doc); margin: 30px 0 10px; padding-bottom: 4px; border-bottom: 1px solid var(--rule); text-wrap: balance; }
+.card { background: var(--sheet); border: 1px solid var(--rule); border-left: 4px solid var(--sev-info); border-radius: 4px; padding: 14px 16px; margin-bottom: 12px; display: grid; gap: 10px; }
+.card.sev-error { border-left-color: var(--sev-error); }
+.card.sev-warning { border-left-color: var(--sev-warning); }
+.card.decided-approve { box-shadow: inset 0 0 0 1px var(--approve); }
+.card.decided-reject { opacity: .62; }
+.card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.pid { font: 600 .95rem var(--font-mono); }
+.sev { font: 600 .72rem var(--font-ui); text-transform: uppercase; letter-spacing: .06em; }
+.sev.error { color: var(--sev-error); } .sev.warning { color: var(--sev-warning); } .sev.info { color: var(--sev-info); }
+.kind, .where, .src { font-size: .8rem; color: var(--ink-soft); }
+.src { font-family: var(--font-mono); }
+.excerpt { font: 1rem/1.65 var(--font-doc); margin: 0; padding: 10px 12px; background: var(--paper); border-radius: 3px; min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.excerpt.faded { color: var(--ink-soft); }
+del { color: var(--del); background: var(--del-bg); text-decoration-thickness: 1.5px; }
+ins { color: var(--ins); background: var(--ins-bg); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.label { font: 600 .72rem var(--font-ui); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin-bottom: 3px; }
+.manual { font-size: .92rem; padding: 10px 12px; background: var(--accent-soft); border-radius: 3px; }
+.why { font-size: .92rem; margin: 0; }
+details summary { cursor: pointer; font-size: .82rem; color: var(--accent); }
+details ul { margin: 6px 0 0; padding-left: 18px; font: .8rem/1.5 var(--font-mono); color: var(--ink-soft); overflow-wrap: anywhere; }
+.note { font-size: .86rem; color: var(--ink-soft); font-style: italic; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { font: 500 .85rem var(--font-ui); border-radius: 6px; padding: 6px 12px; cursor: pointer; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); }
+.btn.approve[aria-pressed="true"] { background: var(--approve); border-color: var(--approve); color: var(--sheet); }
+.btn.reject[aria-pressed="true"] { background: var(--reject); border-color: var(--reject); color: var(--sheet); }
+.empty { color: var(--ink-soft); padding: 30px 0; text-align: center; }
+
+.tray { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--sheet); border-top: 1px solid var(--rule); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tray .wrap { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding-block: 10px; }
+.tray output { flex: 1 1 260px; min-width: 0; font: .85rem/1.4 var(--font-mono); color: var(--ink); overflow-wrap: anywhere; max-height: 4.2em; overflow-y: auto; }
+.tray .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--sheet); }
+.status { font-size: .8rem; color: var(--ink-soft); }
+
+.req { margin: 14px 0 0; font-size: .86rem; }
+.req summary { color: var(--ink); font-weight: 500; }
+.req ul { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; }
+.req li { display: flex; gap: 8px; }
+.req .v { flex: 0 0 auto; font: 600 .72rem var(--font-ui); text-transform: uppercase; letter-spacing: .05em; min-width: 5.2em; }
+.v.pass { color: var(--approve); } .v.partial { color: var(--sev-warning); } .v.fail { color: var(--sev-error); } .v.unknown, .v.na { color: var(--ink-soft); }
+@media (prefers-reduced-motion: no-preference) { .card { transition: opacity .15s, box-shadow .15s; } }
+</style>
+
+<header class="top wrap">
+  <h1 id="doc-title">Коректура на дипломната</h1>
+  <div class="meta" id="doc-meta"></div>
+  <div class="tally" id="tally"></div>
+  <details class="req" id="req"><summary>Съответствие с изискванията</summary><ul id="req-list"></ul></details>
+</header>
+
+<div class="bar">
+  <div class="wrap">
+    <div class="chips" role="group" aria-label="Филтър">
+      <button class="chip" data-f="all" aria-pressed="true">Всички</button>
+      <button class="chip" data-f="error" aria-pressed="false">Грешки</button>
+      <button class="chip" data-f="warning" aria-pressed="false">Остаряло</button>
+      <button class="chip" data-f="info" aria-pressed="false">Препоръки</button>
+      <button class="chip" data-f="text" aria-pressed="false">Промени в текста</button>
+      <button class="chip" data-f="note" aria-pressed="false">Ръчни</button>
+      <button class="chip" data-f="undecided" aria-pressed="false">Нерешени</button>
+    </div>
+    <select id="section" aria-label="Раздел"><option value="">Всички раздели</option></select>
+    <input type="search" id="q" placeholder="Търсене в текста…" aria-label="Търсене">
+  </div>
+</div>
+
+<main class="wrap" id="list"></main>
+
+<div class="tray">
+  <div class="wrap">
+    <output id="cmd" aria-live="polite">Маркирайте „Одобри“ или „Отхвърли“ – тук се сглобява съобщението за чата.</output>
+    <button class="btn primary" id="copy">Копирай за чата</button>
+    <button class="btn" id="clear">Изчисти</button>
+    <span class="status" id="copied" role="status"></span>
+  </div>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const KEY = "thesis-decisions:" + (DATA && DATA.document) + ":" + (DATA && DATA.version);
+const SEV = { error: "грешка", warning: "остаряло / неточно", info: "препоръка" };
+const KIND = { replace: "замяна", replace_paragraph: "пренаписване на абзаца", insert_after: "нов абзац", delete_paragraph: "изтриване на абзаца", note: "ръчно действие" };
+const VERDICT = { pass: "изпълнено", partial: "частично", fail: "неизпълнено", unknown: "неясно", "n/a": "не се отнася" };
+
+let decisions = {};
+try { decisions = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { decisions = {}; }
+for (const p of DATA.proposals) if (p.status === "approved" && !decisions[p.id]) decisions[p.id] = "approve";
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(decisions)); } catch (e) {} };
+
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const WIN = 240;
+
+function clipAround(text, start, end) {
+  const a = Math.max(0, start - WIN), b = Math.min(text.length, end + WIN);
+  return { a, b, pre: a > 0 ? "…" : "", post: b < text.length ? "…" : "" };
+}
+
+function excerptReplace(p) {
+  const text = p.para.text || "";
+  const old = p.old || "";
+  const spots = [];
+  if (old) { let i = text.indexOf(old); while (i >= 0) { spots.push(i); if (!p.all) break; i = text.indexOf(old, i + old.length); } }
+  if (!spots.length) return `<p class="excerpt"><del>${esc(old)}</del> <ins>${esc(p.new)}</ins></p>`;
+  const first = spots[0], last = spots[spots.length - 1] + old.length;
+  const w = clipAround(text, first, last);
+  let html = w.pre, pos = w.a;
+  for (const s of spots) {
+    html += esc(text.slice(pos, s)) + `<del>${esc(old)}</del>` + (p.new ? `<ins>${esc(p.new)}</ins>` : "");
+    pos = s + old.length;
+  }
+  html += esc(text.slice(pos, w.b)) + w.post;
+  return `<p class="excerpt">${html}</p>`;
+}
+
+function body(p) {
+  const t = p.para.text || "";
+  switch (p.kind) {
+    case "replace": return excerptReplace(p);
+    case "replace_paragraph":
+      return `<div><div class="label">Сега</div><p class="excerpt"><del>${esc(t)}</del></p></div>
+              <div><div class="label">Става</div><p class="excerpt"><ins>${esc(p.new)}</ins></p></div>`;
+    case "insert_after": {
+      const tail = t.length > 260 ? "…" + t.slice(-260) : t;
+      return `<div><div class="label">След абзаца</div><p class="excerpt faded">${esc(tail)}</p></div>
+              <div><div class="label">Се добавя</div><p class="excerpt"><ins>${esc(p.new)}</ins></p></div>`;
+    }
+    case "delete_paragraph":
+      return `<div><div class="label">Изтрива се</div><p class="excerpt"><del>${esc(t)}</del></p></div>`;
+    default: {
+      const where = t ? `<div><div class="label">Абзацът</div><p class="excerpt faded">${esc(t.length > 320 ? t.slice(0, 320) + "…" : t)}</p></div>` : "";
+      return `<div class="manual">✋ Не се прилага автоматично – редактирате го вие в Word.</div>${where}`;
+    }
+  }
+}
+
+function card(p) {
+  const d = decisions[p.id];
+  const where = p.para.index != null ? `¶${p.para.index}` : "";
+  const ev = p.evidence.length ? `<details><summary>Доказателство (${p.evidence.length})</summary><ul>${p.evidence.map((e) => `<li>${esc(e)}</li>`).join("")}</ul></details>` : "";
+  const note = p.user_note ? `<p class="note">Ваша бележка: ${esc(p.user_note)}</p>` : "";
+  const failed = p.status === "failed" ? `<p class="note">Последното прилагане не успя.</p>` : "";
+  return `<article class="card sev-${p.severity} ${d ? "decided-" + d : ""}" id="${p.id}">
+    <div class="card-head"><span class="pid">${p.id}</span><span class="sev ${p.severity}">${SEV[p.severity] || p.severity}</span>
+      <span class="kind">${KIND[p.kind] || p.kind}${p.all ? " · всички срещания" : ""}</span><span class="where">${where}</span><span class="src">${esc(p.source)}</span></div>
+    ${body(p)}
+    <p class="why"><b>Защо:</b> ${esc(p.rationale)}</p>
+    ${ev}${note}${failed}
+    <div class="actions">
+      <button class="btn approve" data-id="${p.id}" data-d="approve" aria-pressed="${d === "approve"}">${p.kind === "note" ? "Ще го направя" : "Одобри"}</button>
+      <button class="btn reject" data-id="${p.id}" data-d="reject" aria-pressed="${d === "reject"}">Отхвърли</button>
+    </div>
+  </article>`;
+}
+
+const state = { f: "all", section: "", q: "" };
+function visible(p) {
+  if (state.section && p.section !== state.section) return false;
+  if (state.q) { const q = state.q.toLowerCase(); if (![p.id, p.old, p.new, p.rationale, p.para.text, p.section].join(" ").toLowerCase().includes(q)) return false; }
+  switch (state.f) {
+    case "error": case "warning": case "info": return p.severity === state.f;
+    case "text": return p.kind !== "note";
+    case "note": return p.kind === "note";
+    case "undecided": return !decisions[p.id];
+    default: return true;
+  }
+}
+
+function render() {
+  const list = document.getElementById("list");
+  const shown = DATA.proposals.filter(visible);
+  if (!shown.length) { list.innerHTML = `<p class="empty">Няма предложения за този филтър.</p>`; return; }
+  let html = "", section = null;
+  for (const p of shown) {
+    if (p.section !== section) { section = p.section; html += `<h2 class="section-head">${esc(section)}</h2>`; }
+    html += card(p);
+  }
+  list.innerHTML = html;
+}
+
+function ranges(ids) {
+  const nums = ids.map((i) => parseInt(i.slice(1), 10)).sort((a, b) => a - b);
+  const out = []; let s = null, prev = null;
+  for (const n of nums.concat([null])) {
+    if (s === null) { s = prev = n; continue; }
+    if (n !== null && n === prev + 1) { prev = n; continue; }
+    out.push(s === prev ? `P${s}` : `P${s}-P${prev}`); s = prev = n;
+  }
+  return out.join(", ");
+}
+
+function updateTray() {
+  const ap = Object.keys(decisions).filter((k) => decisions[k] === "approve");
+  const rj = Object.keys(decisions).filter((k) => decisions[k] === "reject");
+  const parts = [];
+  if (ap.length) parts.push("одобри " + ranges(ap));
+  if (rj.length) parts.push("отхвърли " + ranges(rj));
+  document.getElementById("cmd").textContent = parts.length ? parts.join("; ") : "Маркирайте „Одобри“ или „Отхвърли“ – тук се сглобява съобщението за чата.";
+  const n = DATA.proposals.length;
+  document.getElementById("tally").innerHTML = [
+    `<span><b>${n}</b> предложения</span>`,
+    `<span><b>${DATA.proposals.filter((p) => p.severity === "error").length}</b> грешки</span>`,
+    `<span><b>${DATA.proposals.filter((p) => p.kind !== "note").length}</b> промени в текста</span>`,
+    `<span><b>${DATA.proposals.filter((p) => p.kind === "note").length}</b> ръчни</span>`,
+    `<span>маркирани: <b>${ap.length}</b> одобрени, <b>${rj.length}</b> отхвърлени</span>`,
+  ].join("");
+}
+
+document.getElementById("doc-title").textContent = "Коректура: " + DATA.document;
+document.getElementById("doc-meta").textContent = `Версия ${DATA.version} на документа · сверено с кода при commit ${DATA.commit}. Нищо не се прилага, докато не изпратите решенията в чата и не кажете „приложи“.`;
+const sel = document.getElementById("section");
+[...new Set(DATA.proposals.map((p) => p.section))].forEach((s) => { const o = document.createElement("option"); o.value = s; o.textContent = s; sel.appendChild(o); });
+const req = DATA.requirements || [];
+if (req.length) {
+  document.getElementById("req-list").innerHTML = req.map((r) => `<li><span class="v ${r.verdict === "n/a" ? "na" : r.verdict}">${VERDICT[r.verdict] || r.verdict}</span><span><b>${esc(r.rule)}</b> ${esc(r.title)}</span></li>`).join("");
+} else { document.getElementById("req").hidden = true; }
+
+document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll(".chip").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  state.f = b.dataset.f; render();
+}));
+sel.addEventListener("change", () => { state.section = sel.value; render(); });
+document.getElementById("q").addEventListener("input", (e) => { state.q = e.target.value.trim(); render(); });
+document.getElementById("list").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-id]"); if (!b) return;
+  const id = b.dataset.id;
+  decisions[id] = decisions[id] === b.dataset.d ? undefined : b.dataset.d;
+  if (!decisions[id]) delete decisions[id];
+  save();
+  const el = document.getElementById(id);
+  const p = DATA.proposals.find((x) => x.id === id);
+  if (state.f === "undecided") render(); else if (el) el.outerHTML = card(p);
+  updateTray();
+});
+document.getElementById("copy").addEventListener("click", () => {
+  const text = document.getElementById("cmd").textContent;
+  const done = (m) => { document.getElementById("copied").textContent = m; };
+  if (!Object.keys(decisions).length) { done("Още няма маркирани."); return; }
+  navigator.clipboard.writeText(text).then(() => done("Копирано – поставете го в чата."), () => {
+    const r = document.createRange(); r.selectNodeContents(document.getElementById("cmd"));
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r); done("Текстът е маркиран – копирайте го.");
+  });
+});
+document.getElementById("clear").addEventListener("click", () => { decisions = {}; save(); render(); updateTray(); document.getElementById("copied").textContent = ""; });
+render(); updateTray();
+</script>

@@ -12,6 +12,7 @@ import yaml
 
 from . import proposals as props
 from .apply import apply as apply_doc
+from .preview import build as build_preview
 from .checks import Context, load_checks, run_check
 from .config import Config, load_config
 from .docmodel import DocModel, extract
@@ -473,6 +474,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("files", nargs="+")
     s = sub.add_parser("review", help="генерирай review.md")
     s.add_argument("--print", action="store_true")
+    sub.add_parser("preview", help="HTML страница с всяка промяна в абзаца ѝ (зачертано/добавено)")
     s = sub.add_parser("show", help="покажи предложения")
     s.add_argument("ids", nargs="+")
     for name, help_ in (("approve", "одобри"), ("reject", "отхвърли"), ("reopen", "върни за преглед")):
@@ -538,6 +540,7 @@ def main(argv: list[str] | None = None) -> None:
         "propose": lambda: cmd_propose(cfg, ws, args),
         "review": lambda: cmd_review(cfg, ws, args),
         "show": lambda: cmd_show(cfg, ws, args),
+        "preview": lambda: _out(f"Страница с промените: {build_preview(ws)}"),
         "approve": lambda: cmd_decide(cfg, ws, args, "approve"),
         "reject": lambda: cmd_decide(cfg, ws, args, "reject"),
         "reopen": lambda: cmd_decide(cfg, ws, args, "reopen"),
