@@ -18,10 +18,11 @@ flowchart TB
   life["Draft → Confirm → Apply → Undo<br>отмяна: само задачи и бележки"]
   subgraph SCH["По график, отделно от разговора"]
     direction LR
-    tick["Планировчик в WS сървъра<br>на всеки 5 минути"] --> agents4["Hemera · Argus · Nestor · Clio<br>и потребителски графици"] --> ntf(["Известия"])
+    tick["Планировчик в WS сървъра<br>на всеки 5 минути"] --> agents4["Hemera · Argus · Nestor · Clio<br>потребителски графици · напомняния"] --> ntf(["Известие в приложението<br>и/или имейл"])
   end
   user --> rl --> orch --> mentor
   mentor <--> tools
   mentor -->|"отговор"| answer
   mentor -->|"делегиране, до 3 агента"| SPEC
+  orch -.->|"агент, избран от потребителя<br>(без Mentor)"| SPEC
   SPEC --> plan --> life

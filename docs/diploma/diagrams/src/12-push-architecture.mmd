@@ -7,6 +7,6 @@ flowchart TB
   db[("PostgreSQL<br>notifications · push_subscriptions")]
   disp -->|"INSERT"| db
   push <-->|"абонаменти"| db
-  disp -->|"notification:new"| ws["WS сървър (Socket.IO)<br>известие на живо"]
+  disp -->|"notification:new<br>Redis pub/sub"| ws["WS сървър (Socket.IO)<br>известие на живо"]
   push -->|"HTTPS POST"| svc["Push услуги<br>Apple · Google FCM · Microsoft WNS · Mozilla"]
-  svc -.-> sw["Service worker (sw.js)<br>iOS 16.4+ · Android · Windows · macOS"]
+  svc -.-> sw["Service worker (sw.js)<br>iOS 16.4+ · Android · Windows · macOS<br>Declarative Web Push: Safari 18.4+"]

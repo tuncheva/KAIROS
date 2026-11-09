@@ -10,10 +10,10 @@ GitHub показва диаграмите по-долу директно. Ге�
 %% Фигура 1 – SWOT анализ (по т. 1.7 от дипломната)
 block-beta
   columns 2
-  S["<b>Силни страни</b><br>• Контрол върху ИИ: одобрение преди всяка промяна<br>• Защита на данните: заключените бележки не стигат до модела<br>• Задачи, бележки и събития в една среда, на български"]
-  W["<b>Слаби страни</b><br>• По-слаби ИИ модели от тези на конкурентите<br>• Зависимост от външни доставчици на модели<br>• Малко интеграции, няма мобилно приложение<br>• Ниска популярност"]
-  O["<b>Възможности</b><br>• Недоверие към ИИ, който действа без разрешение<br>• Недоволство от отделното заплащане на ИИ<br>• Изискване за човешки контрол в ЕС<br>• Няма конкурент, съчетал събития и екипна работа"]
-  T["<b>Заплахи</b><br>• Конкурентите бързо добавят ИИ и подобен контрол<br>• Поскъпване и промени при доставчиците на модели<br>• Изискванията за лични данни ограничават доставчиците"]
+  S["<b>Силни страни</b><br>• Контрол върху ИИ: по подразбиране всяка промяна се одобрява;<br>• Защита на данните: заключените бележки не стигат до модела;<br>• Задачи, бележки и събития в една среда, на български."]
+  W["<b>Слаби страни</b><br>• По-слаби ИИ модели от тези на конкурентите;<br>• Зависимост от външни доставчици на модели;<br>• Малко интеграции, няма нативно мобилно приложение;<br>• Ниска популярност."]
+  O["<b>Възможности</b><br>• Недоверие към ИИ, който действа без разрешение;<br>• Недоволство от отделното заплащане на ИИ;<br>• Изискване за човешки контрол в ЕС;<br>• Няма конкурент, съчетал събития и екипна работа."]
+  T["<b>Заплахи</b><br>• Конкурентите бързо добавят ИИ и подобен контрол;<br>• Поскъпване и промени при доставчиците на модели;<br>• Изискванията за лични данни ограничават доставчиците."]
   style S fill:#e3f3ea,stroke:#1f6b45
   style W fill:#fbe9e7,stroke:#a3322b
   style O fill:#e8eef8,stroke:#2c4f8f
@@ -42,6 +42,7 @@ flowchart LR
       uc4(["Управление на проекти и задачи"])
       uc5(["Водене и споделяне на бележки"])
       uc6(["Създаване и публикуване на събития"])
+      uc12(["Лични и проектни разговори в чата"])
     end
     subgraph AIF["ИИ функции"]
       uc7(["Разговор с ИИ асистента"])
@@ -50,7 +51,7 @@ flowchart LR
     end
     subgraph EVN["Събития и известия"]
       uc10(["Получаване на известия и брифинги"])
-      uc11(["Разглеждане на събития и RSVP"])
+      uc11(["Разглеждане на събития<br>RSVP след вход"])
     end
   end
   member -.->|"наследява"| guest
@@ -64,6 +65,7 @@ flowchart LR
   member --- uc6
   member --- uc7
   member --- uc10
+  member --- uc12
   uc8 -.->|"«extend»"| uc7
   uc9 -.->|"«extend»"| uc7
   ai --- uc7
@@ -82,19 +84,19 @@ flowchart TB
   root["kairosonline.net"]
   subgraph PUB["Публична част"]
     direction TB
-    p1["/ – начало"] --- p2["/about"] --- p3["/careers"] --- p4["/pricing"] --- p5["/contact"] --- p6["/privacy"] --- p7["/terms"] --- p8["/events/[id]"]
+    p1["/ – начало · /about · /careers"] --- p2["/pricing · /contact"] --- p3["/privacy · /terms · /events/[id]"]
   end
   subgraph ACC["Достъп"]
     direction TB
-    a1["/security"] --- a2["/verify-email"] --- a3["/verify-login"] --- a4["/auth-error"] --- a5["/invite/[token]"] --- a6["/invite-optout/[token]"]
+    a1["/security · /verify-email · /verify-login"] --- a2["/auth-error · /invite/[token] · /invite-optout/[token]"]
   end
   subgraph WRK["Работна среда"]
     direction TB
-    w1["/dashboard"] --- w2["/projects"] --- w3["/progress"] --- w4["/calendar"] --- w5["/notes"] --- w6["/notes/[noteId]"] --- w7["/notes/new"] --- w8["/notes/[noteId]/recover"] --- w9["/orgs"] --- w10["/join/[code]"] --- w11["/profile/[userId]"] --- w12["/settings"]
+    w1["/dashboard · /projects · /progress · /calendar"] --- w2["/notes · /notes/new · /notes/[noteId]<br>/notes/[noteId]/recover"] --- w3["/orgs · /join/[code]"] --- w4["/profile/[userId] · /settings"]
   end
   subgraph COM["Комуникация и ИИ"]
     direction TB
-    c1["/chat"] --- c2["/chat/[conversationId]"] --- c3["/chat/ai"] --- c4["/publish"]
+    c1["/chat · /chat/[conversationId]"] --- c2["/chat/ai · /publish"]
   end
   subgraph API["Служебни крайни точки"]
     direction TB
@@ -126,7 +128,7 @@ flowchart LR
     l5["<b>Външни услуги</b><br>Доставчик на езикови модели (OpenAI-съвместим) · OAuth 2.0 (Google, Microsoft)<br>Resend · Stripe · UploadThing · OpenStreetMap · Google Calendar · Web Push"]
     l1 <--> l2 <--> l3 <--> l4 <--> l5
   end
-  SEC["<b>Сигурност</b><br>(пресичащ слой)<br><br>NextAuth.js v5<br>Argon2id<br>JWT сесии<br>Zod валидация<br>RBAC с 8 права<br>AES-256-GCM<br>PBKDF2 210 000<br>плъзгащи лимити<br>HTTP заглавия"]
+  SEC["<b>Сигурност</b><br>(пресичащ слой)<br><br>NextAuth.js v5<br>Argon2id<br>JWT сесии<br>Zod валидация<br>RBAC с 8 права<br>AES-256-GCM<br>PBKDF2 (210 000 итерации)<br>лимити с плъзгащ прозорец<br>HTTP заглавия"]
   SEC -.- STACK
   style STACK fill:transparent,stroke:transparent
   style SEC fill:#e3f3ea,stroke:#1f6b45
@@ -163,13 +165,17 @@ flowchart LR
     d6["direct_conversations · conversation_participants<br>direct_messages · direct_message_attachments<br>direct_message_reactions · notifications"]
   end
   subgraph D7["ИИ слой"]
-    d7["ai_conversations · ai_messages · ai_user_memory<br>ai_findings · ai_schedules · ai_custom_schedules · ai_reminders<br>agent_task_planner_drafts · agent_task_planner_applies<br>agent_notes_vault_drafts · agent_notes_vault_applies<br>agent_events_publisher_drafts · agent_events_publisher_applies<br>agent_org_admin_drafts · agent_org_admin_applies<br>agent_project_manager_drafts · agent_project_manager_applies"]
+    d7["ai_conversations · ai_messages · ai_user_memory<br>ai_findings · ai_schedules<br>ai_custom_schedules · ai_reminders"]
+  end
+  subgraph D9["ИИ слой: чернови и прилагания на пишещите агенти"]
+    d9["agent_task_planner_drafts · agent_task_planner_applies<br>agent_notes_vault_drafts · agent_notes_vault_applies<br>agent_events_publisher_drafts · agent_events_publisher_applies<br>agent_org_admin_drafts · agent_org_admin_applies<br>agent_project_manager_drafts · agent_project_manager_applies"]
   end
   subgraph D8["Интеграции"]
     d8["documents · document_chunks<br>api_keys · webhooks · webhook_deliveries<br>calendar_connections · external_events"]
   end
   D1 ~~~ D2 ~~~ D3 ~~~ D4
   D5 ~~~ D6 ~~~ D7 ~~~ D8
+  D7 ~~~ D9
 ```
 
 ## Фигура 6. Архитектура на многоагентната система на KAIROS
@@ -197,12 +203,13 @@ flowchart TB
   life["Draft → Confirm → Apply → Undo<br>отмяна: само задачи и бележки"]
   subgraph SCH["По график, отделно от разговора"]
     direction LR
-    tick["Планировчик в WS сървъра<br>на всеки 5 минути"] --> agents4["Hemera · Argus · Nestor · Clio<br>и потребителски графици"] --> ntf(["Известия"])
+    tick["Планировчик в WS сървъра<br>на всеки 5 минути"] --> agents4["Hemera · Argus · Nestor · Clio<br>потребителски графици · напомняния"] --> ntf(["Известие в приложението<br>и/или имейл"])
   end
   user --> rl --> orch --> mentor
   mentor <--> tools
   mentor -->|"отговор"| answer
   mentor -->|"делегиране, до 3 агента"| SPEC
+  orch -.->|"агент, избран от потребителя<br>(без Mentor)"| SPEC
   SPEC --> plan --> life
 ```
 
@@ -219,7 +226,7 @@ sequenceDiagram
   participant S as Сървър /api/ai/chat
   participant M as Mentor (модел)
   participant DB as PostgreSQL
-  participant A as Специализиран агент
+  participant A as Специализирани агенти (до 3, паралелно)
   U->>UI: съобщение
   UI->>S: заявка
   S->>S: ограничител на заявките
@@ -239,7 +246,7 @@ sequenceDiagram
     S->>DB: записва черновата
     S-->>UI: показва черновата
     U->>UI: потвърждава
-    UI->>S: прилага (авторизация на всяка операция, образ преди промяната)
+    UI->>S: прилага (авторизация на всяка операция,<br>образ преди промяната за задачи и бележки)
   end
 ```
 
@@ -253,18 +260,18 @@ stateDiagram-v2
   direction TB
   [*] --> draft: агентът връща план, валидиран със Zod
   draft --> confirmed: потребителят потвърждава
-  draft --> expired: изтича, без да е потвърден
-  confirmed --> applied: прилагане с авторизация, записва се образ преди промяната
-  draft --> applied: автоматично, само малък план за задачи или бележки, ако е включено
+  confirmed --> expired: токенът за потвърждение изтича след 10 минути, прилагането се отказва
+  confirmed --> applied: прилагане с авторизация, за задачи и бележки се записва образ преди промяната
+  draft --> confirmed: автоматично, само малък план за задачи или бележки, ако е включено
   applied --> undone: Undo до 10 минути, задачи и бележки, без изтривания
   expired --> [*]
   applied --> [*]
   undone --> [*]
   state "Чернова (draft)" as draft
   state "Потвърдена (confirmed)" as confirmed
-  state "Изтекла (expired)" as expired
+  state "Изтекъл токен (expired, не се записва)" as expired
   state "Приложена (applied)" as applied
-  state "Отменена (Undo)" as undone
+  state "Отменена (Undo, не е статус в базата)" as undone
 ```
 
 ## Фигура 9. Конвейер за извличане с обогатяване над качени документи
@@ -276,8 +283,8 @@ stateDiagram-v2
 flowchart TB
   subgraph IN["Качване"]
     direction LR
-    f["Файл (PDF)"] --> x["Извличане на текста<br>pdfjs-dist"] --> c["Пасажи с препокриване<br>и номер на страницата"]
-    c --> e["Вектори 2048<br>ако има модел за embeddings"]
+    f["Файл (PDF или текст)"] --> x["Извличане на текста<br>pdfjs-dist"] --> c["Пасажи с препокриване<br>и номер на страницата"]
+    c --> e["Вектори 2048, асинхронно<br>ако има модел за embeddings"]
   end
   st[("PostgreSQL<br>document_chunks · pgvector")]
   c --> st
@@ -289,7 +296,7 @@ flowchart TB
     t --> ft["Пълнотекстово търсене"]
     v --> rrf["Reciprocal Rank Fusion<br>k = 60"]
     ft --> rrf
-    rrf --> top["До 5 пасажа"] --> ans["Отговор с цитат<br>файл и страница"]
+    rrf --> top["5 пасажа по подразбиране<br>(до 10)"] --> ans["Отговор с цитат<br>файл и страница"]
   end
   st --> v
   st --> ft
@@ -303,13 +310,16 @@ flowchart TB
 %% Фигура 10 – Поток на планираните агенти
 flowchart TB
   tick["Планировчик в WS сървъра<br>на всеки 5 минути"] --> ep["/api/internal/ai/run-schedules"]
-  ep --> due["Графици, включени от потребителя<br>и наближили по час"]
+  ep --> due["Графици, включени от потребителя<br>и наближили по час или среща"]
   due --> det["Детерминистично откриване<br>заявки към базата, без модел"]
-  det --> fnd[("ai_findings<br>с отпечатък, без повторения")]
-  fnd --> lim{"Има ли дневен<br>системен лимит?"}
+  det --> fnd[("ai_findings<br>с отпечатък, без повторения<br>Argus · Hemera")]
+  det --> empty{"Има ли какво<br>да се съобщи?"}
+  fnd --> empty
+  empty -->|"не"| quiet["Нищо не се изпраща"]
+  empty -->|"да"| lim{"Остава ли от дневния<br>системен лимит?"}
   lim -->|"да"| llm["Моделът формулира текста<br>Hemera · Nestor · Clio"]
-  lim -->|"не"| raw["Само находките"]
-  llm --> ntf["Известие<br>в приложението и Web Push"]
+  lim -->|"не"| raw["Резервен текст<br>само от фактите"]
+  llm --> ntf["Известие в приложението<br>и Web Push или имейл"]
   raw --> ntf
 ```
 
@@ -321,6 +331,7 @@ flowchart TB
 %% Фигура 11 – Функционално взаимодействие между ролите (т. 2.9)
 flowchart LR
   g(["Гост"]) --> g1["Разглежда публичната информация<br>събития, страници"]
+  v(["Наблюдател в организация<br>шаблони mentor и guest"]) --> v1["Преглежда проектите<br>на организацията, без промени"]
   m(["Член на екип"]) --> m1["Създава проекти и задачи"]
   m --> m2["Проследява напредъка"]
   m --> m3["Води бележки"]
@@ -329,7 +340,8 @@ flowchart LR
   a --> a2["Задава роли и осемте права"]
   a --> a3["Създава собствени роли"]
   a --> a4["Конфигурира работната среда"]
-  m -.->|"има и правата на"| g
+  v -.->|"има и правата на"| g
+  m -.->|"има и правата на"| v
   a -.->|"има и правата на"| m
 ```
 
@@ -347,9 +359,9 @@ flowchart TB
   db[("PostgreSQL<br>notifications · push_subscriptions")]
   disp -->|"INSERT"| db
   push <-->|"абонаменти"| db
-  disp -->|"notification:new"| ws["WS сървър (Socket.IO)<br>известие на живо"]
+  disp -->|"notification:new<br>Redis pub/sub"| ws["WS сървър (Socket.IO)<br>известие на живо"]
   push -->|"HTTPS POST"| svc["Push услуги<br>Apple · Google FCM · Microsoft WNS · Mozilla"]
-  svc -.-> sw["Service worker (sw.js)<br>iOS 16.4+ · Android · Windows · macOS"]
+  svc -.-> sw["Service worker (sw.js)<br>iOS 16.4+ · Android · Windows · macOS<br>Declarative Web Push: Safari 18.4+"]
 ```
 
 ## Фигура 13. UML диаграма на абониране на устройство
@@ -369,12 +381,15 @@ sequenceDiagram
   U->>B: Разрешавам
   B->>P: pushManager.subscribe(VAPID ключ)
   P-->>B: endpoint + p256dh, auth
-  B->>K: pushSubscribe()
+  B->>K: pushSubscribe(endpoint, p256dh, auth)
   K->>DB: UPSERT push_subscriptions
   alt сменен адрес
     P->>B: pushsubscriptionchange
+    B->>P: pushManager.subscribe()
     B->>K: pushSubscribe(нов)
-  else изход от акаунта
+  else всяко отваряне на приложението
+    B->>K: pushSubscribe(текущия абонамент)
+  else изход от акаунта или „Изключи“
     B->>P: unsubscribe()
     B->>K: pushUnsubscribe(endpoint)
     K->>DB: DELETE абонамента
@@ -407,7 +422,8 @@ sequenceDiagram
     A->>S: GET – само показва заявката
     A->>S: „Одобри“ (POST)
     S->>DB: approvedAt = сега
-    B->>S: twoFactorStatus (на интервали)
+    Note over A,S: „Откажи“ записва deniedAt и анулира предизвикателството
+    B->>S: twoFactorStatus (на всеки 3 секунди)
     S-->>B: approved
     B->>S: тайна без код (two-factor)
   end
@@ -431,10 +447,11 @@ stateDiagram-v2
   pending --> expired: 10 минути
   approved --> expired: 10 минути
   pending --> invalid: 5 грешни кода или нов вход
+  approved --> invalid: нов вход
   consumed --> [*]: JWT сесия
   state "Чака потвърждение (pending)" as pending
   state "Одобрено (approved)" as approved
-  state "Изразходвано (consumedAt ≠ NULL)" as consumed
+  state "Изразходвано (издадена сесия)" as consumed
   state "Отказано (denied)" as denied
   state "Изтекло (expired)" as expired
   state "Анулирано (invalid)" as invalid
@@ -449,12 +466,13 @@ stateDiagram-v2
 flowchart TB
   subgraph LOCK["Заключване"]
     direction LR
-    l1["Парола"] --> l2["Хеш на паролата<br>Argon2id"] --> l3["Ключ от паролата и солта<br>PBKDF2-HMAC-SHA512, 210 000"] --> l4["Криптиране<br>AES-256-GCM"]
+    l1["Парола"] --> l2["Хеш на паролата<br>Argon2id"]
+    l1 --> l3["Ключ от паролата и случайна сол<br>PBKDF2-HMAC-SHA512, 210 000"] --> l4["Криптиране<br>AES-256-GCM, префикс v2:"]
   end
   db[("База данни · хеш · сол · криптиран текст")]
   subgraph UNLOCK["Отключване"]
     direction LR
-    u1["Проверка на паролата спрямо хеша<br>с ограничение на опитите"] --> u2["Декриптиране"] --> u3["Съдържанието се показва"]
+    u1["Проверка на паролата спрямо хеша<br>с ограничение на опитите"] --> u2["Ключ отново с PBKDF2<br>и декриптиране"] --> u3["Съдържанието се показва"]
   end
   LOCK --> db --> UNLOCK
 ```

@@ -9,7 +9,7 @@ flowchart LR
     l5["<b>Външни услуги</b><br>Доставчик на езикови модели (OpenAI-съвместим) · OAuth 2.0 (Google, Microsoft)<br>Resend · Stripe · UploadThing · OpenStreetMap · Google Calendar · Web Push"]
     l1 <--> l2 <--> l3 <--> l4 <--> l5
   end
-  SEC["<b>Сигурност</b><br>(пресичащ слой)<br><br>NextAuth.js v5<br>Argon2id<br>JWT сесии<br>Zod валидация<br>RBAC с 8 права<br>AES-256-GCM<br>PBKDF2 210 000<br>плъзгащи лимити<br>HTTP заглавия"]
+  SEC["<b>Сигурност</b><br>(пресичащ слой)<br><br>NextAuth.js v5<br>Argon2id<br>JWT сесии<br>Zod валидация<br>RBAC с 8 права<br>AES-256-GCM<br>PBKDF2 (210 000 итерации)<br>лимити с плъзгащ прозорец<br>HTTP заглавия"]
   SEC -.- STACK
   style STACK fill:transparent,stroke:transparent
   style SEC fill:#e3f3ea,stroke:#1f6b45

@@ -2,8 +2,8 @@
 flowchart TB
   subgraph IN["Качване"]
     direction LR
-    f["Файл (PDF)"] --> x["Извличане на текста<br>pdfjs-dist"] --> c["Пасажи с препокриване<br>и номер на страницата"]
-    c --> e["Вектори 2048<br>ако има модел за embeddings"]
+    f["Файл (PDF или текст)"] --> x["Извличане на текста<br>pdfjs-dist"] --> c["Пасажи с препокриване<br>и номер на страницата"]
+    c --> e["Вектори 2048, асинхронно<br>ако има модел за embeddings"]
   end
   st[("PostgreSQL<br>document_chunks · pgvector")]
   c --> st
@@ -15,7 +15,7 @@ flowchart TB
     t --> ft["Пълнотекстово търсене"]
     v --> rrf["Reciprocal Rank Fusion<br>k = 60"]
     ft --> rrf
-    rrf --> top["До 5 пасажа"] --> ans["Отговор с цитат<br>файл и страница"]
+    rrf --> top["5 пасажа по подразбиране<br>(до 10)"] --> ans["Отговор с цитат<br>файл и страница"]
   end
   st --> v
   st --> ft

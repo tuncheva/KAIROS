@@ -9,10 +9,11 @@ stateDiagram-v2
   pending --> expired: 10 минути
   approved --> expired: 10 минути
   pending --> invalid: 5 грешни кода или нов вход
+  approved --> invalid: нов вход
   consumed --> [*]: JWT сесия
   state "Чака потвърждение (pending)" as pending
   state "Одобрено (approved)" as approved
-  state "Изразходвано (consumedAt ≠ NULL)" as consumed
+  state "Изразходвано (издадена сесия)" as consumed
   state "Отказано (denied)" as denied
   state "Изтекло (expired)" as expired
   state "Анулирано (invalid)" as invalid

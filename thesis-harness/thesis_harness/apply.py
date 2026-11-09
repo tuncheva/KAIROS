@@ -143,10 +143,39 @@ def verify(out: Path, todo: list[dict], results: list[dict]) -> list[str]:
             first = str(p["new"]).split("\n\n")[0].strip(" \r\n")
             if first not in texts and first.replace("\n", "") not in [t.replace("\n", "") for t in texts]:
                 problems.append(f"{p['id']}: вмъкнатият абзац липсва след запис")
+        elif p["kind"] == "replace_image":
+            if not _figure_shows(out, p):
+                problems.append(f"{p['id']}: над надписа на Фигура {p.get('figure')} не стои новото изображение")
         elif p["kind"] == "delete_paragraph":
             if target is not None:
                 problems.append(f"{p['id']}: абзацът още е в документа")
     return problems
+
+
+def _figure_shows(path: Path, p: dict) -> bool:
+    """The image right above the figure's caption is the proposed one, and no
+    Word drawing is left there to cover it."""
+    import hashlib
+    import re
+
+    import docx
+    from docx.oxml.ns import qn
+
+    from .proposals import _image_path
+    want = hashlib.sha1(_image_path(p["image"]).read_bytes()).hexdigest()
+    d = docx.Document(str(path))
+    body = list(d.element.body)
+    cap_rx = re.compile(r"^\s*Фигура\s+%s\." % re.escape(str(p["figure"])))
+    for i, el in enumerate(body):
+        if el.tag == qn("w:p") and cap_rx.match("".join(t.text or "" for t in el.iter(qn("w:t")))):
+            for prev in body[max(0, i - 3):i][::-1]:
+                if prev.find(".//{http://schemas.openxmlformats.org/markup-compatibility/2006}AlternateContent") is not None:
+                    return False
+                blip = prev.find(".//{http://schemas.openxmlformats.org/drawingml/2006/main}blip")
+                if blip is not None:
+                    part = d.part.rels[blip.get(qn("r:embed"))].target_part
+                    return hashlib.sha1(part.blob).hexdigest() == want
+    return False
 
 
 __all__ = ["apply", "default_output", "paragraph_text"]

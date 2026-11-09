@@ -6,7 +6,7 @@ sequenceDiagram
   participant S as Сървър /api/ai/chat
   participant M as Mentor (модел)
   participant DB as PostgreSQL
-  participant A as Специализиран агент
+  participant A as Специализирани агенти (до 3, паралелно)
   U->>UI: съобщение
   UI->>S: заявка
   S->>S: ограничител на заявките
@@ -26,5 +26,5 @@ sequenceDiagram
     S->>DB: записва черновата
     S-->>UI: показва черновата
     U->>UI: потвърждава
-    UI->>S: прилага (авторизация на всяка операция, образ преди промяната)
+    UI->>S: прилага (авторизация на всяка операция,<br>образ преди промяната за задачи и бележки)
   end

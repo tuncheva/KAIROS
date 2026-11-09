@@ -374,46 +374,75 @@ _WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
 _EMU_PER_INCH = 914400
 
 
-def replace_figure_image(document, caption_el, image_path, max_width_emu: int | None = None) -> str:
-    """Put ``image_path`` in place of the picture that belongs to a caption.
+_MC = "http://schemas.openxmlformats.org/markup-compatibility/2006"
 
-    The picture is the nearest drawing within three paragraphs above the
-    caption. Its displayed width is kept and its height follows the new image's
-    aspect ratio. Every replacement gets its own image part, so placeholders
-    that several figures share are never changed together. With no picture
-    above the caption, a new centred paragraph with the image is inserted.
-    Returns "replaced" or "inserted".
+
+def _drawing_runs(p_el):
+    """Runs of a paragraph that carry a picture or a drawing: a plain inline
+    picture, or a Word drawing (shapes, text boxes, groups) wrapped in
+    mc:AlternateContent whose fallback is often a 1×1 placeholder image."""
+    out = []
+    for r in p_el.iter(qn("w:r")):
+        if r.find(f"{{{_MC}}}AlternateContent") is not None or r.find(qn("w:drawing")) is not None \
+                or r.find(qn("w:pict")) is not None:
+            out.append(r)
+    return out
+
+
+def _is_plain_picture(run) -> bool:
+    return (run.find(f"{{{_MC}}}AlternateContent") is None and run.find(qn("w:pict")) is None
+            and run.find(f".//{{{_A}}}blip") is not None)
+
+
+def replace_figure_image(document, caption_el, image_path, max_width_emu: int | None = None) -> str:
+    """Put ``image_path`` in place of the figure that belongs to a caption.
+
+    The figure is the nearest drawing within three elements above the caption.
+    A plain picture gets the new image in place: its displayed width is kept
+    and its height follows the new aspect ratio, with its own image part so a
+    shared placeholder never changes for other figures. A Word drawing (shapes,
+    text boxes – what Word shows instead of its 1×1 fallback image) is removed
+    from its paragraph, text untouched, and the image goes into a new centred
+    paragraph right above the caption. Returns "replaced" or "inserted".
     """
     from docx.shared import Emu
 
     from .diagrams import png_size
 
     w_px, h_px = png_size(Path(image_path))
-    rid, _ = document.part.get_or_add_image(str(image_path))
+    usable = max_width_emu or 6 * _EMU_PER_INCH
     prev = caption_el.getprevious()
     for _ in range(3):
         if prev is None:
             break
-        blip = prev.find(f".//{{{_A}}}blip")
-        if blip is not None:
-            blip.set(qn("r:embed"), rid)
+        runs = _drawing_runs(prev)
+        if runs:
             extent = prev.find(f".//{{{_WP}}}extent")
-            cx = int(extent.get("cx")) if extent is not None else (max_width_emu or 6 * _EMU_PER_INCH)
-            if max_width_emu:
-                cx = min(cx, max_width_emu)
-            cy = int(cx * h_px / w_px)
-            for el in [extent, prev.find(f".//{{{_A}}}xfrm/{{{_A}}}ext")]:
-                if el is not None:
-                    el.set("cx", str(cx))
-                    el.set("cy", str(cy))
-            return "replaced"
+            cx = int(extent.get("cx")) if extent is not None else usable
+            cx = min(cx, usable)
+            if len(runs) == 1 and _is_plain_picture(runs[0]):
+                rid, _ = document.part.get_or_add_image(str(image_path))
+                runs[0].find(f".//{{{_A}}}blip").set(qn("r:embed"), rid)
+                cy = int(cx * h_px / w_px)
+                for el in [runs[0].find(f".//{{{_WP}}}extent"), runs[0].find(f".//{{{_A}}}xfrm/{{{_A}}}ext")]:
+                    if el is not None:
+                        el.set("cx", str(cx))
+                        el.set("cy", str(cy))
+                return "replaced"
+            for r in runs:
+                r.getparent().remove(r)
+            width = cx
+            break
         prev = prev.getprevious()
+    else:
+        width = usable
+    if prev is None:
+        width = usable
     new_p = caption_el.makeelement(qn("w:p"), {})
     caption_el.addprevious(new_p)
     para = Paragraph(new_p, document._body)  # noqa: SLF001
     para.alignment = 1
-    width = max_width_emu or 6 * _EMU_PER_INCH
-    para.add_run().add_picture(str(image_path), width=Emu(width))
+    para.add_run().add_picture(str(image_path), width=Emu(int(width)))
     return "inserted"
 
 

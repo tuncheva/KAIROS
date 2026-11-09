@@ -20,6 +20,7 @@ HARNESS = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HARNESS))
 
 import docx  # noqa: E402
+from docx.oxml.ns import qn  # noqa: E402
 
 from thesis_harness import cli  # noqa: E402
 from thesis_harness.docmodel import extract  # noqa: E402
@@ -308,6 +309,44 @@ class HarnessTest(unittest.TestCase):
         self.assertTrue(any(b == new.read_bytes() for b in blobs))
         shape = out.inline_shapes[0]
         self.assertAlmostEqual(shape.height / shape.width, 2.0, places=2)
+
+    def test_replace_word_drawing_keeps_text(self):
+        """A figure drawn with Word shapes (mc:AlternateContent, 1×1 fallback)
+        anchored in a text paragraph: the drawing goes, the text stays, and
+        the new image sits in its own paragraph above the caption."""
+        from docx.oxml import parse_xml
+        d = docx.Document()
+        img = self.tmp / "ph.png"
+        _png(img, 1, 1)
+        para = d.add_paragraph("Текст преди рисунката.")
+        run = para.add_run()
+        run.add_picture(str(img))
+        drawing = run._r.find(qn("w:drawing"))
+        mc = parse_xml('<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">'
+                       '<mc:Choice Requires="wpg"/><mc:Fallback/></mc:AlternateContent>')
+        run._r.remove(drawing)
+        mc[1].append(drawing)
+        run._r.append(mc)
+        d.add_paragraph("Фигура 1. Схема")
+        d.save(str(self.doc_path))
+        new = self.repo / "fig.png"
+        _png(new, 300, 150, (0, 0, 255))
+        self.run_cli("scan", str(self.doc_path))
+        key = [p for p in extract(self.doc_path).paras if p.text.startswith("Фигура 1.")][0].key
+        review = self.tmp / "r.yaml"
+        review.write_text(f"- {{para: '{key}', kind: replace_image, figure: 1, image: fig.png, source: user, rationale: r}}\n",
+                          encoding="utf-8")
+        self.run_cli("propose", str(review))
+        self.run_cli("approve", "all")
+        out_text = self.run_cli("apply")
+        self.assertNotIn("✗", out_text)
+        self.assertNotIn("⚠", out_text)
+        out = docx.Document(str(self.tmp / "thesis.revised.docx"))
+        texts = [p.text for p in out.paragraphs]
+        self.assertIn("Текст преди рисунката.", texts)
+        self.assertEqual(len(list(out.element.body.iter("{http://schemas.openxmlformats.org/markup-compatibility/2006}AlternateContent"))), 0)
+        cap = texts.index("Фигура 1. Схема")
+        self.assertTrue(out.paragraphs[cap - 1]._p.findall(".//" + qn("w:drawing")))
 
     def test_apply_is_clean_and_keeps_formatting(self):
         self.run_cli("scan", str(self.doc_path))

@@ -19,7 +19,8 @@ sequenceDiagram
     A->>S: GET – само показва заявката
     A->>S: „Одобри“ (POST)
     S->>DB: approvedAt = сега
-    B->>S: twoFactorStatus (на интервали)
+    Note over A,S: „Откажи“ записва deniedAt и анулира предизвикателството
+    B->>S: twoFactorStatus (на всеки 3 секунди)
     S-->>B: approved
     B->>S: тайна без код (two-factor)
   end
