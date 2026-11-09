@@ -96,6 +96,15 @@ details ul { margin: 6px 0 0; padding-left: 18px; font: .8rem/1.5 var(--font-mon
 .btn.approve[aria-pressed="true"] { background: var(--approve); border-color: var(--approve); color: var(--sheet); }
 .btn.reject[aria-pressed="true"] { background: var(--reject); border-color: var(--reject); color: var(--sheet); }
 .empty { color: var(--ink-soft); padding: 30px 0; text-align: center; }
+.dgm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.dgm-pane { min-width: 0; display: grid; gap: 4px; align-content: start; }
+.dgm-box { background: #fff; border: 1px solid var(--rule); border-radius: 4px; padding: 8px; overflow: auto; max-height: 560px; }
+.dgm-box img, .dgm-box svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.dgm-box.after { border-color: var(--ins); }
+.dgm-box svg .label, .dgm-box svg .label * { text-transform: none; letter-spacing: normal; margin: 0; font-weight: inherit; color: inherit; font-size: inherit; }
+.dgm-err { color: var(--del); font-size: .85rem; white-space: pre-wrap; }
+.code-full summary { font-size: .82rem; }
+.code-full pre { margin: 6px 0 0; padding: 8px 10px; background: var(--paper); border-radius: 3px; overflow-x: auto; font: .78rem/1.45 var(--font-mono); }
 
 .tray { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--sheet); border-top: 1px solid var(--rule); padding-bottom: env(safe-area-inset-bottom, 0px); }
 .tray .wrap { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding-block: 10px; }
@@ -206,11 +215,73 @@ function excerptReplace(p) {
   return `<p class="excerpt">${html}</p>`;
 }
 
+// The diagram source after this proposal (and the author's own edit) is applied.
+function afterSource(p) {
+  const src = p.para.text || "";
+  const nw = p.new ?? "";
+  if (p.kind === "replace_paragraph") return nw;
+  if (p.kind !== "replace" || !p.old) return src;
+  return p.all ? src.split(p.old).join(nw) : src.replace(p.old, () => nw);
+}
+
 function body(p) {
   const t = p.para.text || "";
-  const pic = p.kind !== "replace_image" && p.para.image
-    ? `<details><summary>Диаграмата сега</summary><img src="${p.para.image}" alt="" style="max-width:100%;border:1px solid var(--rule);background:#fff"></details>` : "";
-  return pic + bodyInner(p, t);
+  if (DATA.kind === "diagrams" && p.kind !== "note" && p.kind !== "replace_image") {
+    const now = p.para.image ? `<img src="${p.para.image}" alt="Диаграмата сега">` : `<p class="dgm-err">Няма рендерирано изображение.</p>`;
+    return `<div class="dgm-grid">
+        <div class="dgm-pane"><div class="label">Сега</div><div class="dgm-box">${now}</div></div>
+        <div class="dgm-pane"><div class="label">След промяната</div><div class="dgm-box after" data-mmd="${p.id}">Рисува се…</div></div>
+      </div>
+      <div><div class="label">Промяна в кода</div>${bodyInner(p, t)}</div>
+      <details class="code-full" open><summary>Целият Mermaid код след промяната</summary><pre id="code-${p.id}">${esc(afterSource(p))}</pre></details>`;
+  }
+  return bodyInner(p, t);
+}
+
+// Live Mermaid rendering of the "after" state, in the browser.
+let mermaidReady = null, renderSeq = 0;
+function loadMermaid() {
+  if (mermaidReady) return mermaidReady;
+  mermaidReady = new Promise((resolve) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js";
+    s.onload = () => {
+      try {
+        const cfg = Object.assign({ startOnLoad: false, securityLevel: "strict" }, DATA.mermaid_config || {});
+        window.mermaid.initialize(cfg);
+        resolve(window.mermaid);
+      } catch (e) { resolve(null); }
+    };
+    s.onerror = () => resolve(null);
+    document.head.appendChild(s);
+  });
+  return mermaidReady;
+}
+async function drawDiagram(id) {
+  const box = document.querySelector(`[data-mmd="${id}"]`);
+  if (!box) return;
+  const p = view(DATA.proposals.find((x) => x.id === id));
+  const code = afterSource(p);
+  const pre = document.getElementById("code-" + id);
+  if (pre) pre.textContent = code;
+  const m = await loadMermaid();
+  if (!m) { box.innerHTML = `<p class="dgm-err">Mermaid не се зареди – кодът е по-долу, а изображението ще се види след прилагане.</p>`; return; }
+  const seq = ++renderSeq;
+  try {
+    await m.parse(code);
+    const { svg } = await m.render(`mmd-${id}-${seq}`, code);
+    box.innerHTML = svg;
+  } catch (e) {
+    box.innerHTML = `<p class="dgm-err">Кодът има грешка и диаграмата не може да се нарисува:\n${esc(String(e && e.message || e)).slice(0, 400)}</p>`;
+    document.querySelectorAll(`#dmermaid-mmd-${id}-${seq}, #mmd-${id}-${seq}`).forEach((n) => n.remove());
+  }
+}
+const drawObserver = "IntersectionObserver" in window ? new IntersectionObserver((entries) => {
+  for (const e of entries) if (e.isIntersecting) { drawObserver.unobserve(e.target); drawDiagram(e.target.dataset.mmd); }
+}, { rootMargin: "400px" }) : null;
+function observeDiagrams() {
+  if (DATA.kind !== "diagrams") return;
+  document.querySelectorAll("[data-mmd]").forEach((b) => drawObserver ? drawObserver.observe(b) : drawDiagram(b.dataset.mmd));
 }
 function bodyInner(p, t) {
   switch (p.kind) {
@@ -289,6 +360,7 @@ function render() {
     html += card(p);
   }
   list.innerHTML = html;
+  observeDiagrams();
 }
 
 function ranges(ids) {
@@ -350,7 +422,7 @@ document.getElementById("list").addEventListener("click", (e) => {
   persist(id);
   const el = document.getElementById(id);
   const p = DATA.proposals.find((x) => x.id === id);
-  if (state.f === "undecided") render(); else if (el) el.outerHTML = card(p);
+  if (state.f === "undecided") render(); else if (el) { el.outerHTML = card(p); observeDiagrams(); }
   updateTray();
 });
 document.getElementById("list").addEventListener("input", (e) => {
@@ -358,7 +430,12 @@ document.getElementById("list").addEventListener("input", (e) => {
   const id = ta.dataset.edit, p = DATA.proposals.find((x) => x.id === id);
   if (ta.value === (p.new || "")) delete texts[id]; else texts[id] = ta.value;
   ta.classList.toggle("changed", id in texts);
-  document.getElementById("x-" + id).innerHTML = body(view(p));
+  if (DATA.kind === "diagrams") {
+    clearTimeout(timers["draw-" + id]);
+    timers["draw-" + id] = setTimeout(() => drawDiagram(id), 500);
+  } else {
+    document.getElementById("x-" + id).innerHTML = body(view(p));
+  }
   const m = document.getElementById("s-" + id); if (m) m.textContent = store ? "Записва се…" : "";
   persist(id); updateTray();
 });
@@ -366,7 +443,7 @@ document.getElementById("list").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-reset]"); if (!b) return;
   const id = b.dataset.reset, p = DATA.proposals.find((x) => x.id === id);
   delete texts[id]; persist(id);
-  document.getElementById(id).outerHTML = card(p); updateTray();
+  document.getElementById(id).outerHTML = card(p); observeDiagrams(); updateTray();
 });
 document.getElementById("copy").addEventListener("click", () => {
   const text = document.getElementById("cmd").textContent;

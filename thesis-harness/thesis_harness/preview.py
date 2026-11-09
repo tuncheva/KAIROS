@@ -15,6 +15,12 @@ from .workspace import Workspace, read_yaml
 _TEMPLATE = Path(__file__).with_name("preview_template.html")
 
 
+def _mermaid_config(ws: Workspace) -> dict:
+    from . import diagrams as dg
+    conf = dg.repo_dir(ws.config) / "mermaid.json"
+    return json.loads(conf.read_text(encoding="utf-8")) if conf.exists() else {}
+
+
 def build(ws: Workspace) -> Path:
     doc = ws.doc()
     by_key = doc.by_key()
@@ -64,6 +70,8 @@ def build(ws: Workspace) -> Path:
             if p["status"] in ("proposed", "approved", "failed")
         ],
         "requirements": read_yaml(ws.p("requirements-results.yaml"), []) or [],
+        "kind": state.get("kind", "document"),
+        "mermaid_config": _mermaid_config(ws) if state.get("kind") == "diagrams" else None,
     }
     data["proposals"].sort(key=lambda x: (x["para"]["index"] if x["para"]["index"] is not None else 10**6, x["id"]))
     for r in data["requirements"]:

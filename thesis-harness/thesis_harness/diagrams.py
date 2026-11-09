@@ -205,9 +205,12 @@ nav a { font-size:.82rem; color:var(--accent); text-decoration:none; border:1px 
 figure { margin:20px 0; background:var(--sheet); border:1px solid var(--rule); border-radius:6px; padding:16px; }
 figure img { display:block; max-width:100%; height:auto; margin:12px auto; background:#fff; border-radius:4px; }
 figcaption { display:flex; flex-wrap:wrap; gap:6px 14px; align-items:baseline; }
-details { margin-top:8px; }
-summary { cursor:pointer; color:var(--accent); font-size:.85rem; }
-pre { overflow-x:auto; background:var(--bg); padding:10px; border-radius:4px; font:.8rem/1.45 Consolas, monospace; }
+.pair { display:grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap:14px; margin-top:12px; align-items:start; }
+@media (max-width: 800px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+.pane { min-width:0; }
+.label { font:600 .72rem Arial, sans-serif; text-transform:uppercase; letter-spacing:.06em; color:var(--soft); margin-bottom:4px; }
+.pane img { margin:0; }
+pre { margin:0; overflow:auto; max-height:640px; background:var(--bg); padding:10px; border-radius:4px; font:.78rem/1.45 Consolas, monospace; }
 """
 
 
@@ -224,8 +227,10 @@ def _figure_html(d: Diagram, root: Path, link: bool) -> str:
     return (
         f'<figure id="{html.escape(d.id)}"><figcaption><h2>{head}</h2>'
         f'<span class="src">{html.escape(d.file.relative_to(root).as_posix())}</span></figcaption>'
+        + '<div class="pair"><div class="pane"><div class="label">Диаграма</div>'
         + (f'<img src="{src}" alt="{title}">' if src else '<p class="meta">Още не е рендерирана – пуснете `diagrams render`.</p>')
-        + f'<details><summary>Mermaid код</summary><pre>{html.escape(d.source)}</pre></details></figure>'
+        + f'</div><div class="pane"><div class="label">Mermaid код ({html.escape(d.file.name)})</div>'
+        + f'<pre>{html.escape(d.source)}</pre></div></div></figure>'
     )
 
 
