@@ -516,7 +516,7 @@ def main(argv: list[str] | None = None) -> None:
         # e.g. "defense" for the concept-defense materials.
         if not re.fullmatch(r"[\w-]+", args.profile):
             raise SystemExit("профилът е име на папка: букви, цифри, - и _")
-        cfg.data["requirements"]["dir"] = str(cfg.requirements_dir / args.profile)
+        cfg.profile = args.profile
     if args.cmd == "ingest":
         cmd_ingest(cfg, args)
         return

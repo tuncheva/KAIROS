@@ -34,6 +34,7 @@ def _merge(base: dict, over: dict) -> dict:
 class Config:
     data: dict
     harness_dir: Path
+    profile: str | None = None  # requirement set: requirements/<profile>
 
     def path(self, rel: str | None) -> Path | None:
         if rel is None:
@@ -57,7 +58,8 @@ class Config:
     @property
     def requirements_dir(self) -> Path:
         override = os.environ.get("THESIS_HARNESS_REQUIREMENTS")
-        return Path(override).resolve() if override else self.path(self.data["requirements"]["dir"])
+        base = Path(override).resolve() if override else self.path(self.data["requirements"]["dir"])
+        return base / self.profile if self.profile else base
 
     def check_options(self, check_id: str) -> dict:
         return dict((self.data["checks"].get("options") or {}).get(check_id) or {})
