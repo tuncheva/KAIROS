@@ -453,6 +453,7 @@ def cmd_scan(cfg: Config, args) -> None:
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="thesis-harness", description="Проверка на дипломната документация спрямо кода и изискванията.")
     ap.add_argument("--doc-slug", help="работна папка (по подразбиране: последно заредената)")
+    ap.add_argument("--profile", help="набор изисквания: requirements/<профил> (по подразбиране: дипломната)")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("ingest", help="зареди .docx (нова версия пренася старите предложения)")
@@ -510,6 +511,12 @@ def main(argv: list[str] | None = None) -> None:
             pass
     args = build_parser().parse_args(argv)
     cfg = load_config()
+    if args.profile:
+        # A profile is a separate requirement set (its own source.txt and rules.yaml),
+        # e.g. "defense" for the concept-defense materials.
+        if not re.fullmatch(r"[\w-]+", args.profile):
+            raise SystemExit("профилът е име на папка: букви, цифри, - и _")
+        cfg.data["requirements"]["dir"] = str(cfg.requirements_dir / args.profile)
     if args.cmd == "ingest":
         cmd_ingest(cfg, args)
         return

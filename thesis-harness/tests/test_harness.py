@@ -229,6 +229,18 @@ class HarnessTest(unittest.TestCase):
         self.assertEqual(len(req), 2)  # neither heading exists in the synthetic document
         self.assertIn("съдържа увод", req[0]["evidence"][0])
 
+    def test_profiles_keep_requirement_sets_apart(self):
+        a, b = self.tmp / "a.txt", self.tmp / "b.txt"
+        a.write_text("Изискване за дипломната работа.", encoding="utf-8")
+        b.write_text("Изискване за защитата на концепцията.", encoding="utf-8")
+        self.run_cli("requirements", "import", str(a))
+        self.run_cli("--profile", "defense", "requirements", "import", str(b))
+        main = (self.tmp / "req/source.txt").read_text(encoding="utf-8")
+        defense = (self.tmp / "req/defense/source.txt").read_text(encoding="utf-8")
+        self.assertIn("дипломната", main)
+        self.assertNotIn("защитата", main)
+        self.assertIn("защитата", defense)
+
     def test_plugin_directory_is_loaded(self):
         plugins = self.tmp / "plugins"
         plugins.mkdir()

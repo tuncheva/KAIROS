@@ -100,6 +100,21 @@ python thesis-harness/run.py status
 
 `requirements/` може да се commit-не, за да са правилата проследими.
 
+### Профили (отделни набори изисквания)
+
+Изискванията към различни материали се държат отделно:
+
+- `requirements/` – за дипломната (сега: „Указания за разработване на дипломен проект“, 18 правила);
+- `requirements/<профил>/` – друг набор, напр. `defense` за материалите за
+  защитата на концепцията.
+
+Всяка команда приема `--profile <име>`:
+
+```bash
+python thesis-harness/run.py --profile defense requirements import <файл>
+python thesis-harness/run.py --profile defense scan <материал.docx>
+```
+
 ## Разширяване
 
 ### Нова детерминистична проверка
