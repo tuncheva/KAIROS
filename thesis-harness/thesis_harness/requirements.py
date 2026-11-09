@@ -184,8 +184,9 @@ def validate_rules(req_dir: Path, check_ids: set[str]) -> list[str]:
 
 
 # When parts of the document disagree, the worst verdict wins: one chapter
-# failing a rule fails it, and "n/a" from chapters the rule is not about is ignored.
-_PRIORITY = {"fail": 4, "partial": 3, "unknown": 2, "pass": 1, "n/a": 0}
+# failing a rule fails it. "unknown" (a part that cannot judge) and "n/a" (a part
+# the rule is not about) never outweigh a verdict from a part that could judge.
+_PRIORITY = {"fail": 4, "partial": 3, "pass": 2, "unknown": 1, "n/a": 0}
 
 
 def record_results(ws_path: Path, req_dir: Path, results: list[dict], origin: str = "manual") -> list[str]:
