@@ -412,4 +412,53 @@ def render_review(ws: Workspace, doc: DocModel, requirements_results: list | Non
         lines.append("")
     text = "\n".join(lines).rstrip() + "\n"
     ws.p("review.md").write_text(text, encoding="utf-8")
+    ws.p("checklist.md").write_text(render_checklist(ws, doc, items), encoding="utf-8")
     return text
+
+
+def _clip(s: str, n: int) -> str:
+    s = " ".join(str(s or "").split())
+    return s if len(s) <= n else s[: n - 1] + "…"
+
+
+def render_checklist(ws: Workspace, doc: DocModel, items: list[dict]) -> str:
+    """One line per open proposal, grouped by section: the sheet to decide from.
+    Details stay in review.md."""
+    by_key = doc.by_key()
+    state = ws.state()
+    sev = {"error": "🔴", "warning": "🟡", "info": "⚪"}
+    open_items = [p for p in items if p["status"] in ("proposed", "approved", "failed")]
+    lines = [
+        f"# За одобряване — {state.get('source_name', '')}",
+        "",
+        f"{len(open_items)} предложения · 🔴 грешка · 🟡 остаряло/неточно · ⚪ препоръка · ✋ ръчно действие",
+        "",
+        "Отговорете в чата, напр.: „одобри P11, P19, P83-P99“, „отхвърли P51“, „P42 – по-кратко“.",
+        "Подробности (защо, доказателство от кода): review.md.",
+        "",
+    ]
+
+    def order(p: dict) -> tuple:
+        para = by_key.get(str(p.get("para")))
+        return (para.index if para else 10**6, p["id"])
+
+    section = object()
+    for p in sorted(open_items, key=order):
+        sec = p.get("section") or "Общи бележки"
+        if sec != section:
+            lines += ["", f"## {sec}"]
+            section = sec
+        mark = sev.get(p.get("severity"), "")
+        done = " ✔одобрено" if p["status"] == "approved" else (" ✗неуспешно" if p["status"] == "failed" else "")
+        if p["kind"] == "replace":
+            what = f"„{_clip(p.get('old'), 60)}“ → „{_clip(p.get('new'), 60) or '(изтрива се)'}“"
+        elif p["kind"] == "replace_paragraph":
+            what = f"пренаписване на абзаца: „{_clip(p.get('new'), 90)}“"
+        elif p["kind"] == "insert_after":
+            what = f"нов абзац: „{_clip(p.get('new'), 90)}“"
+        elif p["kind"] == "delete_paragraph":
+            what = "изтриване на абзаца"
+        else:
+            what = f"✋ {_clip(p.get('rationale'), 110)}"
+        lines.append(f"- **{p['id']}** {mark} {what}{done}")
+    return "\n".join(lines).rstrip() + "\n"
