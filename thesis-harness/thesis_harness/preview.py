@@ -36,7 +36,7 @@ def build(ws: Workspace) -> Path:
             {
                 "id": p["id"], "status": p["status"], "severity": p.get("severity", "warning"),
                 "kind": p["kind"], "source": p.get("source", ""), "section": p.get("section") or "Общи бележки",
-                "old": p.get("old"), "new": p.get("new"), "all": bool(p.get("all")),
+                "old": p.get("old"), "new": p.get("new"), "all": bool(p.get("all")), "code": bool(p.get("code")),
                 "rationale": p.get("rationale", ""), "evidence": p.get("evidence") or [],
                 "user_note": p.get("user_note", ""), "para": context(p),
             }

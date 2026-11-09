@@ -384,6 +384,43 @@ def cmd_edit(cfg: Config, ws: Workspace, args) -> None:
     props.render_review(ws, ws.doc(), read_yaml(ws.p("requirements-results.yaml"), None))
 
 
+def cmd_sync(cfg: Config, ws: Workspace, args) -> None:
+    """Record what the author did on the preview page: edited texts first (each
+    re-validated, which resets the proposal to proposed), then decisions."""
+    data = json.loads(Path(args.file).read_text(encoding="utf-8"))
+    doc = ws.doc()
+    items = {p["id"]: p for p in props.load(ws)}
+    edited, problems = [], []
+    for pid, v in sorted(data.items()):
+        p = items.get(pid)
+        if p is None:
+            problems.append(f"{pid}: няма такова предложение")
+            continue
+        text = v.get("text")
+        if isinstance(text, str) and text != (p.get("new") or ""):
+            try:
+                props.edit(ws, pid, {"new": text}, "текстът е редактиран от автора на страницата", doc)
+                edited.append(pid)
+            except props.ProposalError as e:
+                problems.append(f"{pid}: редакцията не е приета – {e}")
+                continue
+    for decision in ("approve", "reject"):
+        ids = [pid for pid, v in sorted(data.items()) if v.get("decision") == decision and pid in items
+               and not any(x.startswith(pid + ":") for x in problems)]
+        if ids:
+            try:
+                props.decide(ws, ids, decision, None, doc)
+            except props.ProposalError as e:
+                problems.append(str(e))
+    items = {p["id"]: p for p in props.load(ws)}
+    _out(f"Редактиран текст: {_compress(edited) or '–'}")
+    _out(f"Одобрени: {_compress([i for i, p in items.items() if p['status'] == 'approved']) or '–'}")
+    _out(f"Отхвърлени: {_compress([i for i, p in items.items() if p['status'] == 'rejected']) or '–'}")
+    for e in problems:
+        _out(f"  ✗ {e}")
+    props.render_review(ws, doc, read_yaml(ws.p("requirements-results.yaml"), None))
+
+
 def cmd_apply(cfg: Config, ws: Workspace, args) -> None:
     log = apply_doc(ws, Path(args.out) if args.out else None, dry_run=args.dry_run)
     if args.dry_run:
@@ -475,6 +512,8 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("review", help="генерирай review.md")
     s.add_argument("--print", action="store_true")
     sub.add_parser("preview", help="HTML страница с всяка промяна в абзаца ѝ (зачертано/добавено)")
+    s = sub.add_parser("sync", help="приеми решенията и редакциите от страницата (JSON: {P011: {decision, text}})")
+    s.add_argument("file")
     s = sub.add_parser("show", help="покажи предложения")
     s.add_argument("ids", nargs="+")
     for name, help_ in (("approve", "одобри"), ("reject", "отхвърли"), ("reopen", "върни за преглед")):
@@ -541,6 +580,7 @@ def main(argv: list[str] | None = None) -> None:
         "review": lambda: cmd_review(cfg, ws, args),
         "show": lambda: cmd_show(cfg, ws, args),
         "preview": lambda: _out(f"Страница с промените: {build_preview(ws)}"),
+        "sync": lambda: cmd_sync(cfg, ws, args),
         "approve": lambda: cmd_decide(cfg, ws, args, "approve"),
         "reject": lambda: cmd_decide(cfg, ws, args, "reject"),
         "reopen": lambda: cmd_decide(cfg, ws, args, "reopen"),

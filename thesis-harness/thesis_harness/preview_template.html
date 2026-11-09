@@ -84,7 +84,14 @@ ins { color: var(--ins); background: var(--ins-bg); text-decoration: underline; 
 details summary { cursor: pointer; font-size: .82rem; color: var(--accent); }
 details ul { margin: 6px 0 0; padding-left: 18px; font: .8rem/1.5 var(--font-mono); color: var(--ink-soft); overflow-wrap: anywhere; }
 .note { font-size: .86rem; color: var(--ink-soft); font-style: italic; }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.editor { display: grid; gap: 4px; }
+.editor textarea { width: 100%; min-height: 3.2em; resize: vertical; font: .95rem/1.55 var(--font-doc); color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 8px 10px; }
+.editor textarea.changed { border-color: var(--accent); background: var(--accent-soft); }
+.editor textarea.code { font: .85rem/1.45 var(--font-mono); white-space: pre; }
+.editor .hint { font-size: .78rem; color: var(--ink-soft); }
+.saved { font-size: .78rem; color: var(--ink-soft); }
+.reset { font: .78rem var(--font-ui); color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
 .btn { font: 500 .85rem var(--font-ui); border-radius: 6px; padding: 6px 12px; cursor: pointer; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); }
 .btn.approve[aria-pressed="true"] { background: var(--approve); border-color: var(--approve); color: var(--sheet); }
 .btn.reject[aria-pressed="true"] { background: var(--reject); border-color: var(--reject); color: var(--sheet); }
@@ -146,10 +153,33 @@ const SEV = { error: "грешка", warning: "остаряло / неточно
 const KIND = { replace: "замяна", replace_paragraph: "пренаписване на абзаца", insert_after: "нов абзац", delete_paragraph: "изтриване на абзаца", note: "ръчно действие" };
 const VERDICT = { pass: "изпълнено", partial: "частично", fail: "неизпълнено", unknown: "неясно", "n/a": "не се отнася" };
 
-let decisions = {};
-try { decisions = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { decisions = {}; }
+let decisions = {};   // id → "approve" | "reject"
+let texts = {};       // id → edited new text (only when it differs from the proposal)
+try { const s = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; decisions = s.decisions || {}; texts = s.texts || {}; } catch (e) {}
 for (const p of DATA.proposals) if (p.status === "approved" && !decisions[p.id]) decisions[p.id] = "approve";
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(decisions)); } catch (e) {} };
+const saveLocal = () => { try { localStorage.setItem(KEY, JSON.stringify({ decisions, texts })); } catch (e) {} };
+
+// Shared store: decisions and edited texts are kept with the page, so Claude
+// reads them directly. Without it the page falls back to a chat message.
+const SLUG = String(DATA.document || "doc").replace(/[^A-Za-z0-9_-]+/g, "_") + "_v" + DATA.version;
+let store = null;
+const pending = {}, timers = {};
+function persist(id) {
+  saveLocal();
+  if (!store) return;
+  clearTimeout(timers[id]);
+  timers[id] = setTimeout(async () => {
+    if (pending[id]) { timers[id] = setTimeout(() => persist(id), 300); return; }
+    pending[id] = true;
+    const mark = document.getElementById("s-" + id);
+    try {
+      await store.doc(id).set({ decision: decisions[id] || null, text: id in texts ? texts[id] : null, at: new Date().toISOString() });
+      if (mark) mark.textContent = "Записано";
+    } catch (e) { if (mark) mark.textContent = "Не се записа – ще го видя от съобщението в чата."; }
+    pending[id] = false;
+  }, 600);
+}
+const save = () => saveLocal();
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const WIN = 240;
@@ -197,6 +227,17 @@ function body(p) {
   }
 }
 
+const EDITABLE = new Set(["replace", "replace_paragraph", "insert_after"]);
+function view(p) { return p.id in texts ? Object.assign({}, p, { new: texts[p.id] }) : p; }
+function editor(p) {
+  if (!EDITABLE.has(p.kind)) return "";
+  const val = p.id in texts ? texts[p.id] : (p.new || "");
+  const rows = Math.min(14, Math.max(2, Math.ceil(val.length / 80) + (val.match(/\n/g) || []).length));
+  return `<div class="editor"><label class="label" for="t-${p.id}">Нов текст – можете да го промените</label>
+    <textarea id="t-${p.id}" data-edit="${p.id}" rows="${rows}" class="${p.code ? "code " : ""}${p.id in texts ? "changed" : ""}" spellcheck="true">${esc(val)}</textarea>
+    <div class="hint">${p.id in texts ? `Променено от вас. <button class="reset" data-reset="${p.id}">Върни предложения текст</button>` : (p.kind === "replace" ? "Заменя само зачеркнатото." : "")}</div></div>`;
+}
+
 function card(p) {
   const d = decisions[p.id];
   const where = p.para.index != null ? `¶${p.para.index}` : "";
@@ -206,12 +247,14 @@ function card(p) {
   return `<article class="card sev-${p.severity} ${d ? "decided-" + d : ""}" id="${p.id}">
     <div class="card-head"><span class="pid">${p.id}</span><span class="sev ${p.severity}">${SEV[p.severity] || p.severity}</span>
       <span class="kind">${KIND[p.kind] || p.kind}${p.all ? " · всички срещания" : ""}</span><span class="where">${where}</span><span class="src">${esc(p.source)}</span></div>
-    ${body(p)}
+    <div id="x-${p.id}">${body(view(p))}</div>
+    ${editor(p)}
     <p class="why"><b>Защо:</b> ${esc(p.rationale)}</p>
     ${ev}${note}${failed}
     <div class="actions">
       <button class="btn approve" data-id="${p.id}" data-d="approve" aria-pressed="${d === "approve"}">${p.kind === "note" ? "Ще го направя" : "Одобри"}</button>
       <button class="btn reject" data-id="${p.id}" data-d="reject" aria-pressed="${d === "reject"}">Отхвърли</button>
+      <span class="saved" id="s-${p.id}" role="status"></span>
     </div>
   </article>`;
 }
@@ -258,7 +301,15 @@ function updateTray() {
   const parts = [];
   if (ap.length) parts.push("одобри " + ranges(ap));
   if (rj.length) parts.push("отхвърли " + ranges(rj));
-  document.getElementById("cmd").textContent = parts.length ? parts.join("; ") : "Маркирайте „Одобри“ или „Отхвърли“ – тук се сглобява съобщението за чата.";
+  const edited = Object.keys(texts);
+  if (store) {
+    document.getElementById("cmd").textContent = parts.length || edited.length
+      ? `Записано на страницата (${ap.length} одобрени, ${rj.length} отхвърлени, ${edited.length} с ваш текст). Напишете в чата „готово“.`
+      : "Решенията и промените в текста се записват автоматично. Когато сте готови, напишете в чата „готово“.";
+  } else {
+    const ed = edited.map((id) => `${id} нов текст: „${texts[id]}“`);
+    document.getElementById("cmd").textContent = parts.concat(ed).join("; ") || "Маркирайте „Одобри“ или „Отхвърли“ – тук се сглобява съобщението за чата.";
+  }
   const n = DATA.proposals.length;
   document.getElementById("tally").innerHTML = [
     `<span><b>${n}</b> предложения</span>`,
@@ -289,21 +340,57 @@ document.getElementById("list").addEventListener("click", (e) => {
   const id = b.dataset.id;
   decisions[id] = decisions[id] === b.dataset.d ? undefined : b.dataset.d;
   if (!decisions[id]) delete decisions[id];
-  save();
+  persist(id);
   const el = document.getElementById(id);
   const p = DATA.proposals.find((x) => x.id === id);
   if (state.f === "undecided") render(); else if (el) el.outerHTML = card(p);
   updateTray();
 });
+document.getElementById("list").addEventListener("input", (e) => {
+  const ta = e.target.closest("textarea[data-edit]"); if (!ta) return;
+  const id = ta.dataset.edit, p = DATA.proposals.find((x) => x.id === id);
+  if (ta.value === (p.new || "")) delete texts[id]; else texts[id] = ta.value;
+  ta.classList.toggle("changed", id in texts);
+  document.getElementById("x-" + id).innerHTML = body(view(p));
+  const m = document.getElementById("s-" + id); if (m) m.textContent = store ? "Записва се…" : "";
+  persist(id); updateTray();
+});
+document.getElementById("list").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-reset]"); if (!b) return;
+  const id = b.dataset.reset, p = DATA.proposals.find((x) => x.id === id);
+  delete texts[id]; persist(id);
+  document.getElementById(id).outerHTML = card(p); updateTray();
+});
 document.getElementById("copy").addEventListener("click", () => {
   const text = document.getElementById("cmd").textContent;
   const done = (m) => { document.getElementById("copied").textContent = m; };
-  if (!Object.keys(decisions).length) { done("Още няма маркирани."); return; }
+  if (!Object.keys(decisions).length && !Object.keys(texts).length) { done("Още няма маркирани."); return; }
   navigator.clipboard.writeText(text).then(() => done("Копирано – поставете го в чата."), () => {
     const r = document.createRange(); r.selectNodeContents(document.getElementById("cmd"));
     const s = getSelection(); s.removeAllRanges(); s.addRange(r); done("Текстът е маркиран – копирайте го.");
   });
 });
-document.getElementById("clear").addEventListener("click", () => { decisions = {}; save(); render(); updateTray(); document.getElementById("copied").textContent = ""; });
+document.getElementById("clear").addEventListener("click", () => {
+  const ids = new Set([...Object.keys(decisions), ...Object.keys(texts)]);
+  decisions = {}; texts = {}; ids.forEach(persist); render(); updateTray(); document.getElementById("copied").textContent = "";
+});
 render(); updateTray();
+
+// Load what was already saved on the page, then keep saving there.
+(async () => {
+  let db = null;
+  try { db = await window.claude?.use?.("db"); } catch (e) { db = null; }
+  if (!db) return;
+  const col = db.collection(`reviews/${SLUG}/decisions`);
+  try {
+    const snap = await Promise.race([col.get(), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 10000))]);
+    for (const d of snap.docs) {
+      const v = d.data() || {};
+      if (v.decision) decisions[d.id] = v.decision; else delete decisions[d.id];
+      if (typeof v.text === "string") texts[d.id] = v.text; else delete texts[d.id];
+    }
+    store = col; saveLocal(); render(); updateTray();
+    document.getElementById("copy").hidden = true;
+  } catch (e) { /* stay on the chat-message fallback */ }
+})();
 </script>
