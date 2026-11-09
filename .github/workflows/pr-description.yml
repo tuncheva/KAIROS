@@ -8,8 +8,9 @@
 # does not name — the path map in thesis-harness/sections.yaml is a heuristic.
 #
 # Runs on `edited` too, so fixing the description re-runs only this check.
-# Release roll-ups (development → main) are skipped: their PRs were checked on
-# the way into development.
+# Release PRs (development → main) are checked too: Claude opens those as well.
+# The same check runs before a PR is created, as a Claude Code hook
+# (.claude/hooks/pr_check.py); this workflow catches PRs opened any other way.
 
 name: PR description
 
@@ -28,7 +29,6 @@ permissions:
 jobs:
   describe:
     name: Description & documentation impact
-    if: ${{ !(github.base_ref == 'main' && github.head_ref == 'development') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

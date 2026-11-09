@@ -102,12 +102,14 @@ python thesis-harness/run.py pr-check --title "feat: …" --body-file pr.md
 | `sections.yaml` | разделите на дипломната: номер, заглавие, пътищата в кода, които описват |
 | `sync.yaml` | докъде документът отразява кода (мести се с `changes --mark-synced`) |
 | `changes` | всичко слято след `sync.yaml`, по раздели → `work/changes.md` |
-| `pr-check` | проверява описание на PR; пуска се от CI („PR description“) на всеки PR |
+| `pr-check` | проверява описание на PR; пуска се от CI („PR description“) на всеки PR и от hook-а `.claude/hooks/pr_check.py`, преди Claude да създаде PR |
 
 `scan` събира същото във `facts.json → changes`, а `changes.*` го превръщат в
 насоки към заглавието на раздела. Описанието на PR е само насока:
 предложението пак иска доказателство `файл:ред` от кода.
 
+- **Release PR** (`development` → `main`) се брои само ако има декларация;
+  иначе commit-ите му остават поотделно.
 - **Без декларация.** По-стари PR и commit-и директно в `development` влизат
   „за решение“; разделите се предполагат по променените файлове
   (`sections.yaml → paths`).

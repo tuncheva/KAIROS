@@ -12,6 +12,12 @@ sections it makes stale. The PR description is where that is recorded.
 
 ## Pull requests
 
+**Whenever you are asked to make a PR, use the `make-pr` skill.** A hook
+(`.claude/hooks/pr_check.py`, registered in `.claude/settings.json`) blocks
+`create_pull_request`, `update_pull_request`, `gh pr create` and `gh pr edit`
+when the description fails `pr-check`; fix the body and retry, never work
+around it. Release PRs (`development` → `main`) follow the same rules.
+
 Work goes through a PR into `development`. Do not push features straight to
 `development`: a commit without a PR has no Documentation impact and shows up
 in the doc ledger as "Needs a decision".

@@ -302,8 +302,24 @@ def check_pr(title: str, body: str | None, files: list[str], sections: list[dict
 
 
 def is_release_rollup(base: str, head: str) -> bool:
-    """``development`` → ``main`` repeats PRs that were checked on the way in."""
+    """``development`` → ``main``. Checked like any PR (Claude opens these too). In the
+    ledger one counts only when it has a Documentation impact block; without one,
+    its commits stay listed one by one."""
     return base == "main" and head == "development"
+
+
+def changed_files(repo: Path, base: str, head: str | None = None) -> tuple[list[str], list[str]] | None:
+    """Files a PR from ``head`` (default: the checkout) into ``base`` changes, or None
+    when no ref resolves. Tries remote-tracking refs first."""
+    heads = [f"origin/{head}", head] if head else []
+    heads.append("HEAD")
+    for b in (f"origin/{base}", base):
+        for h in heads:
+            try:
+                return parse_name_status(_git(repo, "diff", "--name-status", f"{b}...{h}"))
+            except Exception:  # noqa: BLE001 - try the next pair
+                continue
+    return None
 
 
 # ----------------------------------------------------------------- sources
@@ -355,7 +371,7 @@ def fetch_merged_prs(repo_slug: str, since: str, until: str, bases=("development
                          f"&per_page=50&page={page}", token)
             for pr in batch:
                 merged = pr.get("merged_at")
-                if merged and since < iso(merged) <= until and not is_release_rollup(pr["base"]["ref"], pr["head"]["ref"]):
+                if merged and since < iso(merged) <= until:
                     found[pr["number"]] = pr
             # Sorted by last update: once a whole page predates the window, so does the rest.
             if len(batch) < 50 or all(iso(pr["updated_at"]) < since for pr in batch):
@@ -437,17 +453,20 @@ def build_ledger(prs: list[dict], commits: list[dict], sections: list[dict], sin
     order = {s["id"]: i for i, s in enumerate(sections)}
     titles = {s["id"]: s["title"] for s in sections}
     by_section: dict[str, list[dict]] = {}
-    ledger = {"since": since, "until": until, "pr_count": len(prs), "commit_count": 0,
+    ledger = {"since": since, "until": until, "pr_count": 0, "commit_count": 0,
               "sections": [], "no_change": [], "needs_review": [], "possibly_missed": []}
     pr_subjects: set[str] = set()
 
     for pr in sorted(prs, key=lambda p: p["merged_at"]):
         ref = f"#{pr['number']}"
+        impact = parse_doc_impact(pr.get("body"))
+        if is_release_rollup(pr.get("base", ""), pr.get("head", "")) and not impact.found:
+            continue  # an undescribed roll-up: its commits are listed one by one below
         pr_subjects.add(subject_key(pr["title"]))
         pr_subjects.update(subject_key(s) for s in pr.get("commit_subjects") or [])
-        impact = parse_doc_impact(pr.get("body"))
         by_sec = suggest_sections(pr.get("files") or [], sections, pr.get("structural"))
         suggested = list(by_sec)
+        ledger["pr_count"] += 1
         base = {"ref": ref, "title": pr["title"], "url": pr.get("url", ""), "merged_at": pr["merged_at"]}
         if not impact.found or (not impact.entries and impact.none is None):
             body = pr.get("body") or ""

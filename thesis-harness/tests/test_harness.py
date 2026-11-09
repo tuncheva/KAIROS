@@ -605,6 +605,43 @@ class ChangesTest(unittest.TestCase):
         self.assertIn("`#1` feat: one — Risk Radar also flags stalled reviews.", md)
         self.assertNotIn("chore: harness", md)
 
+    def test_release_rollups_count_only_with_a_block(self):
+        commits = [{"sha": "c" * 40, "date": "2026-11-02T00:00:00Z", "subject": "feat: direct", "body": "",
+                    "files": ["src/server/auth/config.ts"]}]
+        roll = {"number": 20, "title": "Development", "merged_at": "2026-11-03T00:00:00Z", "base": "main",
+                "head": "development", "files": ["src/server/auth/config.ts"], "commit_subjects": ["feat: direct"]}
+        bare = self.chg.build_ledger([{**roll, "body": "Release."}], commits, self.sections, "2026-11-01T00:00:00Z",
+                                     "2026-11-09T00:00:00Z")
+        self.assertEqual((bare["pr_count"], [r["ref"] for r in bare["needs_review"]]), (0, ["ccccccc"]))
+        described = self.chg.build_ledger(
+            [{**roll, "body": pr_body("- 2.10 — Microsoft sign-in now verifies the e-mail domain.")}], commits,
+            self.sections, "2026-11-01T00:00:00Z", "2026-11-09T00:00:00Z")
+        self.assertEqual((described["pr_count"], described["needs_review"]), (1, []))
+        self.assertEqual(described["sections"][0]["id"], "2.10")
+
+    def test_pr_hook(self):
+        import subprocess
+        hook = HARNESS.parent / ".claude/hooks/pr_check.py"
+        good = pr_body("- 2.12 — New PendingDot on busy buttons.")
+
+        def run(payload: dict) -> dict:
+            out = subprocess.run([sys.executable, str(hook)], input=json.dumps(payload), capture_output=True,
+                                 text=True, encoding="utf-8",
+                                 env={k: v for k, v in os.environ.items() if k != "THESIS_HARNESS_CONFIG"})
+            self.assertEqual(out.returncode, 0, out.stderr)
+            return json.loads(out.stdout)["hookSpecificOutput"] if out.stdout.strip() else {}
+
+        create = "mcp__github__create_pull_request"
+        self.assertEqual(run({"tool_name": create, "tool_input": {"title": "x", "body": "Some changes"}})
+                         .get("permissionDecision"), "deny")
+        self.assertNotEqual(run({"tool_name": create, "tool_input": {"title": "feat: x", "body": good}})
+                            .get("permissionDecision"), "deny")
+        gh = "g" + "h pr"
+        self.assertEqual(run({"tool_name": "Bash", "tool_input": {"command": f"{gh} create --fill"}})
+                         .get("permissionDecision"), "deny")
+        self.assertEqual(run({"tool_name": "Bash", "tool_input": {"command": f"echo '{gh} create --fill'"}}), {})
+        self.assertEqual(run({"tool_name": "mcp__github__update_pull_request", "tool_input": {"title": "x"}}), {})
+
     def test_scan_turns_declared_changes_into_leads(self):
         doc_path = self.tmp / "thesis.docx"
         d = docx.Document()

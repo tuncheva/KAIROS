@@ -557,20 +557,12 @@ def cmd_pr_check(cfg: Config, args) -> None:
     body = Path(args.body_file).read_text(encoding="utf-8") if args.body_file else os.environ.get("PR_BODY", "")
     base = args.base or os.environ.get("PR_BASE_REF") or "development"
     head = args.head or os.environ.get("PR_HEAD_REF") or ""
-    if chg.is_release_rollup(base, head):
-        _out("Release roll-up (development → main): its PRs were checked on the way in. Skipping.")
-        return
     if args.files_from:
         files, structural = [x for x in Path(args.files_from).read_text(encoding="utf-8").splitlines() if x], None
     else:
-        files, structural = [], None
-        for ref in (f"origin/{base}", base):
-            try:
-                files, structural = chg.parse_name_status(chg._git(cfg.repo_root, "diff", "--name-status", f"{ref}...HEAD"))
-                break
-            except Exception:  # noqa: BLE001
-                continue
-        else:
+        found = chg.changed_files(cfg.repo_root, base, head or None)
+        files, structural = found if found else ([], None)
+        if not found:
             _out(f"Could not diff against {base}; skipping the file → section hints.")
     sections = chg.load_sections(chg.settings(cfg)["sections_path"])
     res = chg.check_pr(title, body, files, sections, structural)
