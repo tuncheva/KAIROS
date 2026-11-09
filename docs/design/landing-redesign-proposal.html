@@ -760,15 +760,10 @@ html:not(.motion) .odo .up, html:not(.motion) .odo .down { animation: none; }
 .ftr-brand { display: flex; flex-direction: column; gap: 14px; }
 .ftr-brand .brand span { font-size: 21px; }
 .ftr-brand p { margin: 0; font-size: 14px; color: rgb(var(--ink3)); }
-.clock { display: inline-flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; color: rgb(var(--ink2)); }
 .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; font-size: 14px; }
 .cols div { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
 .cols .h { color: rgb(var(--faint)); }
 .ftr-bot { margin-top: 56px; padding: 22px 0 28px; border-top: 1px solid rgb(var(--ink) / 0.06); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 13px; color: rgb(var(--ink3)); }
-.bigword { display: flex; justify-content: space-between; margin-top: 40px; font-size: clamp(64px, 19vw, 300px); line-height: 0.8; letter-spacing: -0.02em; color: rgb(var(--ink) / 0.06); user-select: none; overflow: hidden; padding-bottom: 0.02em; }
-.bigword span { display: block; }
-.motion .bigword span { transform: translateY(100%); transition: transform 1.4s var(--e-expo); transition-delay: calc(var(--i) * 70ms); }
-.motion .bigword.is-in span { transform: none; }
 @media (min-width: 1024px) { .ftr-top { flex-direction: row; justify-content: space-between; } .cols { display: flex; gap: 88px; } }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -851,7 +846,7 @@ html:not(.motion) .odo .up, html:not(.motion) .odo .down { animation: none; }
         <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>English &amp; Български</li>
       </ul>
       <div class="scroll-cue in-fade" style="--d:1.8s" aria-hidden="true"><i></i>Scroll</div>
-      <p class="anno"><b>Hero.</b> Same copy and line masks as today (`.k-mask`, 1.2s expo, 130ms apart), now with a hand-drawn accent stroke under “right”. Entrance waits for the curtain (`.k-on`). Behind the window: a real seconds dial — one accent tick per second, Europe/Sofia, shared with the footer clock.</p>
+      <p class="anno"><b>Hero.</b> Same copy and line masks as today (`.k-mask`, 1.2s expo, 130ms apart), now with a hand-drawn accent stroke under “right”. Entrance waits for the curtain (`.k-on`). Behind the window: a real seconds dial — one accent tick per second.</p>
     </div>
 
     <div class="hero-stage in-panel" style="--d:1s" id="heroStage">
@@ -1162,7 +1157,6 @@ html:not(.motion) .odo .up, html:not(.motion) .odo .down { animation: none; }
       <div class="ftr-brand">
         <a class="brand" href="#top"><img src="../../public/logo_white.png" alt="" width="20" height="20" style="width:20px;height:20px" onerror="this.style.display='none'"><span>KAIROS</span></a>
         <p>For the perfect timing.</p>
-        <span class="clock"><span class="dot live breathe" aria-hidden="true"></span>Sofia · <span id="clock" class="tnum">--:--:--</span></span>
       </div>
       <div class="cols">
         <div><span class="h">Product</span><a class="navlink" href="#agents">Agents</a><a class="navlink" href="#workspaces">Teams</a><a class="navlink" href="#events">Events</a></div>
@@ -1170,7 +1164,6 @@ html:not(.motion) .odo .up, html:not(.motion) .odo .down { animation: none; }
         <div><span class="h">Legal</span><a class="navlink" href="#footer">Privacy</a><a class="navlink" href="#footer">Terms</a><a class="navlink" href="#footer">Security</a></div>
       </div>
     </div>
-    <div class="bigword" data-reveal="split-letters" aria-hidden="true"><span style="--i:0">K</span><span style="--i:1">A</span><span style="--i:2">I</span><span style="--i:3">R</span><span style="--i:4">O</span><span style="--i:5">S</span></div>
     <div class="ftr-bot"><span>© 2026 Kairos</span><span>English · Български</span></div>
   </div>
 </footer>
@@ -1297,7 +1290,7 @@ html:not(.motion) .odo .up, html:not(.motion) .odo .down { animation: none; }
     onReveal(host, function () { if (prev) prev(); setTimeout(function () { countUp(el); }, 300); });
   });
 
-  /* ── the dial (hero) and the clock (footer) — real seconds, Sofia ── */
+  /* ── the hero dial — real seconds, Sofia time ── */
   (function buildDial() {
     var svg = $("#dial"), NS = "http://www.w3.org/2000/svg", s = "";
     s += '<circle class="ring" r="470"/><circle class="ring" r="330"/>';
@@ -1309,11 +1302,9 @@ html:not(.motion) .odo .up, html:not(.motion) .odo .down { animation: none; }
     s += '<g class="hand" id="hand"><line x1="0" y1="-404" x2="0" y2="-466"/><circle cx="0" cy="-484" r="5"/></g>';
     svg.innerHTML = s;
   })();
-  var fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Sofia", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-  var hand = $("#hand"), clockEl = $("#clock"), deg = null;
+  var hand = $("#hand"), deg = null;
   function tick() {
-    var now = new Date(), sec = now.getSeconds();
-    clockEl.textContent = fmt.format(now);
+    var sec = new Date().getSeconds();
     if (deg === null) deg = sec * 6; else deg += 6;
     if (!MOTION) deg = sec * 6;
     hand.style.transform = "rotate(" + deg + "deg)";
