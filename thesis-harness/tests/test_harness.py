@@ -191,6 +191,25 @@ class HarnessTest(unittest.TestCase):
         self.assertIn("Mentor (Concierge)", texts)
         self.assertIn("Mentor отговаря, а Mentor делегира към Odysseus и Mnemosyne. Пак Mentor.", texts)
 
+    def test_inserts_after_same_anchor_keep_order_and_code(self):
+        self.run_cli("scan", str(self.doc_path))
+        anchor = next(p for p in extract(self.doc_path).paras if p.text.startswith("Фигура 1.")).key
+        review = self.tmp / "r.yaml"
+        review.write_text(
+            f"- {{para: '{anchor}', kind: insert_after, new: 'Първи.', source: user, rationale: r}}\n"
+            f"- {{para: '{anchor}', kind: insert_after, new: 'Втори.', source: user, rationale: r}}\n"
+            f"- {{para: '{anchor}', kind: insert_after, new: \"const a = 1;\\nconst b = 2;\", code: true, source: user, rationale: r}}\n",
+            encoding="utf-8")
+        self.run_cli("propose", str(review))
+        self.run_cli("approve", *[p["id"] for p in self.proposals() if p["source"] == "user"])
+        self.assertNotIn("✗", self.run_cli("apply"))
+        d = docx.Document(str(self.tmp / "thesis.revised.docx"))
+        texts = [p.text for p in d.paragraphs]
+        i = texts.index("Фигура 1. Архитектура")
+        self.assertEqual(texts[i + 1: i + 4], ["Първи.", "Втори.", "const a = 1;\nconst b = 2;"])
+        code = d.paragraphs[i + 3].runs[0]
+        self.assertEqual(code.font.name, "Consolas")
+
     def test_apply_is_clean_and_keeps_formatting(self):
         self.run_cli("scan", str(self.doc_path))
         props = self.proposals()

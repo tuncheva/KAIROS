@@ -54,6 +54,9 @@ def apply(ws: Workspace, out: Path | None = None, dry_run: bool = False) -> dict
     todo.sort(key=lambda p: (2.5 if p["kind"] == "replace" and p.get("all") else _ORDER[p["kind"]], p["id"]))
 
     document, index, existing_ids = element_index(source)
+    # Several proposals may insert after the same paragraph (bibliography entries
+    # 37, 38, 39…). Each continues after the last one inserted there, in id order.
+    last_inserted: dict[str, object] = {}
     results = []
     for p in todo:
         errs = props.validate(p, doc)
@@ -72,9 +75,10 @@ def apply(ws: Workspace, out: Path | None = None, dry_run: bool = False) -> dict
                 set_paragraph_text(el, p["new"])
             elif p["kind"] == "insert_after":
                 style_el = index.get(p.get("style_from") or p["para"])
-                anchor = el
+                anchor = last_inserted.get(p["para"], el)
                 for chunk in [c.strip(" \r\n") for c in str(p["new"]).split("\n\n") if c.strip()]:
-                    anchor = insert_paragraph_after(anchor, chunk, style_el, existing_ids)
+                    anchor = insert_paragraph_after(anchor, chunk, style_el, existing_ids, code=bool(p.get("code")))
+                last_inserted[p["para"]] = anchor
             elif p["kind"] == "delete_paragraph":
                 delete_paragraph(el)
             results.append({"id": p["id"], "ok": True})
@@ -132,7 +136,7 @@ def verify(out: Path, todo: list[dict], results: list[dict]) -> list[str]:
                 problems.append(f"{p['id']}: абзацът не съдържа новия текст след запис")
         elif p["kind"] == "insert_after":
             first = str(p["new"]).split("\n\n")[0].strip(" \r\n")
-            if first not in texts:
+            if first not in texts and first.replace("\n", "") not in [t.replace("\n", "") for t in texts]:
                 problems.append(f"{p['id']}: вмъкнатият абзац липсва след запис")
         elif p["kind"] == "delete_paragraph":
             if target is not None:

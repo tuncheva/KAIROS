@@ -310,9 +310,10 @@ def _new_para_id(existing: set[str]) -> str:
             return v
 
 
-def insert_paragraph_after(anchor_el, text: str, style_source_el, existing_ids: set[str]):
+def insert_paragraph_after(anchor_el, text: str, style_source_el, existing_ids: set[str], code: bool = False):
     """Insert a new paragraph after ``anchor_el`` with the paragraph and run
-    formatting of ``style_source_el``. Returns the new element."""
+    formatting of ``style_source_el``. A newline in ``text`` becomes a line
+    break; ``code`` sets a monospaced font for a listing. Returns the new element."""
     new_el = copy.deepcopy(style_source_el)
     ppr = new_el.find(qn("w:pPr"))
     first_run = next(iter(style_source_el.xpath(_RUN_XPATH)), None)
@@ -331,15 +332,34 @@ def insert_paragraph_after(anchor_el, text: str, style_source_el, existing_ids: 
                 run.remove(child)
     else:
         run = new_el.makeelement(qn("w:r"), {})
-    # A tab in the text is a w:tab element to Word, not a character inside w:t.
-    for i, piece in enumerate(text.split("\t")):
-        if i:
-            run.append(run.makeelement(qn("w:tab"), {}))
-        if piece:
-            t = run.makeelement(qn("w:t"), {})
-            t.text = piece
-            t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
-            run.append(t)
+    if code:
+        rpr = run.find(qn("w:rPr"))
+        if rpr is None:
+            rpr = run.makeelement(qn("w:rPr"), {})
+            run.insert(0, rpr)
+        for tag in ("w:rFonts", "w:sz", "w:szCs"):
+            for x in rpr.findall(qn(tag)):
+                rpr.remove(x)
+        fonts = rpr.makeelement(qn("w:rFonts"), {qn(a): "Consolas" for a in ("w:ascii", "w:hAnsi", "w:cs", "w:eastAsia")})
+        rpr.insert(0, fonts)
+        for tag in ("w:sz", "w:szCs"):
+            rpr.append(rpr.makeelement(qn(tag), {qn("w:val"): "20"}))  # 10 pt
+        if ppr is not None:  # a listing is not indented or justified like prose
+            for tag in ("w:ind", "w:jc"):
+                for x in ppr.findall(qn(tag)):
+                    ppr.remove(x)
+    # A tab is a w:tab element and a newline a w:br to Word, not characters in w:t.
+    for li, line in enumerate(text.split("\n")):
+        if li:
+            run.append(run.makeelement(qn("w:br"), {}))
+        for i, piece in enumerate(line.split("\t")):
+            if i:
+                run.append(run.makeelement(qn("w:tab"), {}))
+            if piece:
+                t = run.makeelement(qn("w:t"), {})
+                t.text = piece
+                t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+                run.append(t)
     new_el.append(run)
     if new_el.get(W14_PARA_ID) is not None:
         new_el.set(W14_PARA_ID, _new_para_id(existing_ids))

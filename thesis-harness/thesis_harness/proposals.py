@@ -158,7 +158,7 @@ def add(ws: Workspace, incoming: list[dict], doc: DocModel) -> tuple[list[dict],
         out["para"] = p.pop("para", None)
         out["section"] = p.pop("section", None) or (target.section if target else None)
         out["kind"] = p.pop("kind")
-        for k in ("old", "new", "all", "style_from", "rationale", "evidence"):
+        for k in ("old", "new", "all", "code", "style_from", "rationale", "evidence"):
             if k in p:
                 out[k] = p.pop(k)
         out.update(p)  # keep any extra fields a plugin adds
