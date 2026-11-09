@@ -92,6 +92,9 @@ def main() -> None:
             sys.exit(0)
         if pr["action"] == "create" and (pr["fill"] or pr["body"] is None):
             deny("`gh pr create` without an explicit body (or with --fill) skips the conventions.")
+        if pr["action"] == "create" and not pr["base"]:
+            deny("`gh pr create` without `--base` targets the repository's default branch; "
+                 "pass `--base development` (or `--base main` for a release from development).")
         if pr["action"] == "edit" and pr["body"] is None:
             sys.exit(0)  # title/label edits leave the checked body as it is
         title, body, base, head = pr["title"], pr["body"], pr["base"], pr["head"]
@@ -116,6 +119,14 @@ def main() -> None:
 
     cfg = load_config()
     base = base or "development"
+    if head is None and tool == "Bash":
+        try:  # gh defaults --head to the checked-out branch
+            head = chg._git(cfg.repo_root, "rev-parse", "--abbrev-ref", "HEAD").strip() or None
+        except Exception:  # noqa: BLE001
+            head = None
+    flow = chg.branch_flow_error(base, head)
+    if flow:
+        deny(flow)
     found = chg.changed_files(cfg.repo_root, base, head)
     if found is None:  # the base branch was never fetched in this checkout
         try:

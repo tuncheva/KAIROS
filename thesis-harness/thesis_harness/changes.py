@@ -308,6 +308,16 @@ def is_release_rollup(base: str, head: str) -> bool:
     return base == "main" and head == "development"
 
 
+def branch_flow_error(base: str | None, head: str | None) -> str | None:
+    """Work reaches `development` through branch PRs; `main` only receives `development`."""
+    if base == "main" and head and head != "development":
+        return (f"`{head}` → `main` skips `development`. Open the PR into `development`; "
+                "`main` only receives `development` (a release PR).")
+    if head in ("development", "main") and base == head:
+        return f"head and base are both `{base}`."
+    return None
+
+
 def changed_files(repo: Path, base: str, head: str | None = None) -> tuple[list[str], list[str]] | None:
     """Files a PR from ``head`` (default: the checkout) into ``base`` changes, or None
     when no ref resolves. Tries remote-tracking refs first."""

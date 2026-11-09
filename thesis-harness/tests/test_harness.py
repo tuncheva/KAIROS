@@ -641,6 +641,27 @@ class ChangesTest(unittest.TestCase):
                          .get("permissionDecision"), "deny")
         self.assertEqual(run({"tool_name": "Bash", "tool_input": {"command": f"echo '{gh} create --fill'"}}), {})
         self.assertEqual(run({"tool_name": "mcp__github__update_pull_request", "tool_input": {"title": "x"}}), {})
+        into_main = run({"tool_name": create, "tool_input": {"title": "feat: x", "body": good,
+                                                             "head": "feat/x", "base": "main"}})
+        self.assertEqual(into_main.get("permissionDecision"), "deny")
+        self.assertIn("skips `development`", into_main["permissionDecisionReason"])
+        for head, base in (("feat/x", "development"), ("development", "main")):
+            self.assertNotEqual(run({"tool_name": create, "tool_input": {
+                "title": "feat: x", "body": good, "head": head, "base": base}}).get("permissionDecision"), "deny")
+
+    def test_branch_flow(self):
+        self.assertIsNone(self.chg.branch_flow_error("development", "feat/x"))
+        self.assertIsNone(self.chg.branch_flow_error("main", "development"))
+        self.assertIsNone(self.chg.branch_flow_error("feat/base", "feat/stacked"))
+        self.assertIn("skips", self.chg.branch_flow_error("main", "feat/x"))
+        body = self.tmp / "pr.md"
+        body.write_text(pr_body("- 2.12 — New PendingDot on busy buttons."), encoding="utf-8")
+        files = self.tmp / "files.txt"
+        files.write_text("src/components/ui/PendingDot.tsx\n", encoding="utf-8")
+        with self.assertRaises(AssertionError) as ctx:
+            self.run_cli("pr-check", "--title", "feat: x", "--body-file", str(body), "--files-from", str(files),
+                         "--base", "main", "--head", "feat/x")
+        self.assertIn("skips `development`", str(ctx.exception))
 
     def test_scan_turns_declared_changes_into_leads(self):
         doc_path = self.tmp / "thesis.docx"
