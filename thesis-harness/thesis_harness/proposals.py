@@ -108,14 +108,16 @@ def validate(p: dict, doc: DocModel) -> list[str]:
             )
         if new is None:
             errs.append("replace изисква new (празен низ = изтриване на откъса)")
-        elif "\n" in str(new) or "\t" in str(new):
+        elif target.kind != "diagram" and ("\n" in str(new) or "\t" in str(new)):
             errs.append("new в replace не може да съдържа нов ред/табулация – използвайте insert_after")
         if old is not None and new is not None and old == new:
             errs.append("old и new са еднакви")
+    if target.kind == "diagram" and kind in ("replace", "replace_paragraph") and new:
+        errs += _mermaid_lint(target.text, str(new))
     elif kind == "replace_paragraph":
         if not new:
             errs.append("replace_paragraph изисква new")
-        if old is not None and old != target.text:
+        if old is not None and old.strip() != target.text.strip():
             errs.append("old е зададен, но не съвпада с текущия текст на абзаца")
         if not target.text:
             errs.append("абзацът е празен – използвайте insert_after")
@@ -135,6 +137,18 @@ def validate(p: dict, doc: DocModel) -> list[str]:
     elif kind == "delete_paragraph":
         if target.has_drawing:
             errs.append("абзацът съдържа изображение – трие се само ръчно")
+    return errs
+
+
+def _mermaid_lint(source: str, new: str) -> list[str]:
+    """Mistakes that break a Mermaid diagram and are cheap to spot before
+    rendering. Full validation is `diagrams render`."""
+    errs = []
+    head = next((ln.strip() for ln in source.splitlines() if ln.strip() and not ln.strip().startswith(("%%", "---"))), "")
+    if head.startswith("sequenceDiagram") and ";" in new:
+        errs.append("„;“ в последователностна диаграма разделя изразите и чупи диаграмата – използвайте запетая")
+    if new.count('"') % 2:
+        errs.append("нечетен брой кавички в новия код")
     return errs
 
 
@@ -330,7 +344,11 @@ def _is_merged(p: dict, doc: DocModel, target: Para) -> bool:
 
 def _following_has(doc: DocModel, anchor: Para, text: str) -> bool:
     first = text.split("\n\n")[0].strip(" \r\n")
-    for para in doc.paras[anchor.index + 1: anchor.index + 6]:
+    # Several inserts after one anchor stack up (bibliography 37, 38, … 59), so
+    # look through everything up to the next heading, not just the next few.
+    for para in doc.paras[anchor.index + 1:]:
+        if para.kind == "heading":
+            break
         if para.text.strip(" \r\n") == first:
             return True
     return False

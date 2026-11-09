@@ -26,9 +26,9 @@ def build(ws: Workspace) -> Path:
         import base64
 
         from . import diagrams as dg
-        repo, items = dg.load(ws.config)
-        for d in items:
-            png = d.out("png", repo)
+        dg_repo, dg_items = dg.load(ws.config)
+        for d in dg_items:
+            png = d.out("png", dg_repo)
             if png.exists():
                 diagram_png[d.id] = "data:image/png;base64," + base64.b64encode(png.read_bytes()).decode()
 

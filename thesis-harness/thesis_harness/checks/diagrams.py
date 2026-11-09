@@ -75,7 +75,7 @@ class Manifest(Check):
                 yield Finding(self.id, "warning",
                               f"Фигура {n}: надписът в дипломната е „{cap}“, а в манифеста – „{d.caption}“.",
                               para=d.id, evidence=["diagrams.yaml", f"¶{p.index}"])
-            refs = [q for q in thesis.prose() if q is not p and re.search(r"(?<!\w)Фигура\s+" + str(n) + r"(?!\d)", q.text)]
+            refs = [q for q in thesis.prose() if q is not p and re.search(r"(?<!\w)[Фф]игура\s+" + str(n) + r"(?!\d)", q.text)]
             if not refs:
                 yield Finding(self.id, "warning", f"Фигура {n} не е спомената никъде в текста.",
                               para=d.id, evidence=[f"надпис ¶{p.index}"], lead=True)
