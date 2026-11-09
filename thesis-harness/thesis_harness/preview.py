@@ -21,9 +21,29 @@ def build(ws: Workspace) -> Path:
     items = props.load(ws)
     state = ws.state()
 
+    diagram_png = {}
+    if state.get("kind") == "diagrams":
+        import base64
+
+        from . import diagrams as dg
+        repo, items = dg.load(ws.config)
+        for d in items:
+            png = d.out("png", repo)
+            if png.exists():
+                diagram_png[d.id] = "data:image/png;base64," + base64.b64encode(png.read_bytes()).decode()
+
     def context(p: dict) -> dict:
         para = by_key.get(str(p.get("para"))) if p.get("para") else None
         out = {"index": para.index if para else None, "text": para.text if para else ""}
+        if str(p.get("para")) in diagram_png:
+            out["image"] = diagram_png[str(p.get("para"))]
+        if p["kind"] == "replace_image":
+            import base64
+
+            from .proposals import _image_path
+            img = _image_path(p.get("image", ""))
+            if img.exists():
+                out["image"] = "data:image/png;base64," + base64.b64encode(img.read_bytes()).decode()
         if para is not None and p["kind"] == "insert_after":
             out["after_style"] = para.kind
         return out

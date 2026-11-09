@@ -150,7 +150,7 @@ details ul { margin: 6px 0 0; padding-left: 18px; font: .8rem/1.5 var(--font-mon
 const DATA = /*__DATA__*/null;
 const KEY = "thesis-decisions:" + (DATA && DATA.document) + ":" + (DATA && DATA.version);
 const SEV = { error: "грешка", warning: "остаряло / неточно", info: "препоръка" };
-const KIND = { replace: "замяна", replace_paragraph: "пренаписване на абзаца", insert_after: "нов абзац", delete_paragraph: "изтриване на абзаца", note: "ръчно действие" };
+const KIND = { replace_image: "ново изображение", replace: "замяна", replace_paragraph: "пренаписване на абзаца", insert_after: "нов абзац", delete_paragraph: "изтриване на абзаца", note: "ръчно действие" };
 const VERDICT = { pass: "изпълнено", partial: "частично", fail: "неизпълнено", unknown: "неясно", "n/a": "не се отнася" };
 
 let decisions = {};   // id → "approve" | "reject"
@@ -208,6 +208,11 @@ function excerptReplace(p) {
 
 function body(p) {
   const t = p.para.text || "";
+  const pic = p.kind !== "replace_image" && p.para.image
+    ? `<details><summary>Диаграмата сега</summary><img src="${p.para.image}" alt="" style="max-width:100%;border:1px solid var(--rule);background:#fff"></details>` : "";
+  return pic + bodyInner(p, t);
+}
+function bodyInner(p, t) {
   switch (p.kind) {
     case "replace": return excerptReplace(p);
     case "replace_paragraph":
@@ -220,6 +225,8 @@ function body(p) {
     }
     case "delete_paragraph":
       return `<div><div class="label">Изтрива се</div><p class="excerpt"><del>${esc(t)}</del></p></div>`;
+    case "replace_image":
+      return `<div><div class="label">Ново изображение над надписа</div>${p.para.image ? `<img src="${p.para.image}" alt="" style="max-width:100%;border:1px solid var(--rule);background:#fff">` : ""}<p class="excerpt faded">${esc(t)}</p></div>`;
     default: {
       const where = t ? `<div><div class="label">Абзацът</div><p class="excerpt faded">${esc(t.length > 320 ? t.slice(0, 320) + "…" : t)}</p></div>` : "";
       return `<div class="manual">✋ Не се прилага автоматично – редактирате го вие в Word.</div>${where}`;
