@@ -1,10 +1,11 @@
 # CI for every push to `development`, and for every PR into `development` or `main`.
 #
-# Four jobs run in parallel so a failure names its cause at a glance:
+# Five jobs run in parallel so a failure names its cause at a glance:
 #
 #   checks       lint, typecheck, theme tokens, migration journal
 #   unit         the default vitest suite (jsdom)
 #   integration  real tRPC procedures against a throwaway Postgres with pgvector
+#   thesis-harness  tests for the Python thesis documentation harness
 #   build        `next build`, which catches what tsc does not (RSC boundaries,
 #                route config, missing modules in the server bundle)
 #
@@ -120,6 +121,22 @@ jobs:
       # `.env` — a file that does not exist on the runner.
       - name: Vitest (integration)
         run: pnpm exec vitest run --config vitest.integration.config.ts
+
+  # The thesis documentation harness (Python). Its tests use a synthetic
+  # document and repository, so no thesis file or secret is needed.
+  thesis-harness:
+    name: Thesis harness tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: thesis-harness/requirements.txt
+      - run: pip install -r thesis-harness/requirements.txt
+      - run: python thesis-harness/tests/test_harness.py
 
   build:
     name: Production build

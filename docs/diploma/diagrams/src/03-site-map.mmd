@@ -1,0 +1,31 @@
+%% Фигура 3 – Site Map (пътищата се сверяват с src/app)
+flowchart TB
+  root["kairosonline.net"]
+  subgraph PUB["Публична част"]
+    direction TB
+    p1["/ – начало · /about · /careers"] --- p2["/pricing · /contact"] --- p3["/privacy · /terms · /events/[id]"]
+  end
+  subgraph ACC["Достъп"]
+    direction TB
+    a1["/security · /verify-email · /verify-login"] --- a2["/auth-error · /invite/[token] · /invite-optout/[token]"]
+  end
+  subgraph WRK["Работна среда"]
+    direction TB
+    w1["/dashboard · /projects · /progress · /calendar"] --- w2["/notes · /notes/new · /notes/[noteId]<br>/notes/[noteId]/recover"] --- w3["/orgs · /join/[code]"] --- w4["/profile/[userId] · /settings"]
+  end
+  subgraph COM["Комуникация и ИИ"]
+    direction TB
+    c1["/chat · /chat/[conversationId]"] --- c2["/chat/ai · /publish"]
+  end
+  subgraph API["Служебни крайни точки"]
+    direction TB
+    x1["/api/trpc/[trpc] · /api/auth/[...nextauth] · /api/ai/chat"]
+    x2["/api/calendar/feed/[token] · /api/calendar/google/connect · /api/calendar/google/callback"]
+    x3["/api/export/[format] · /api/uploadthing · /api/ws/token · /api/internal/ai/run-schedules"]
+    x4["/api/stripe/webhook · /api/invite-optout/[token] · /api/account-switch/list · /api/account-switch/register"]
+  end
+  root --> PUB
+  root --> ACC
+  root --> WRK
+  root --> COM
+  root -.-> API

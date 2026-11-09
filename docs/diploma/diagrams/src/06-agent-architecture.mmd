@@ -1,0 +1,28 @@
+%% Фигура 6 – Архитектура на многоагентната система
+flowchart TB
+  user(["Потребител"])
+  rl["Ограничител на заявките · дневен лимит"]
+  orch["Оркестратор · един сървърен ход"]
+  mentor["Mentor · отговаря сам или делегира"]
+  tools[("Инструменти за четене<br>с проверка на правата")]
+  answer(["Отговор към потребителя"])
+  subgraph SPEC["Специализирани агенти · без инструменти, получават контекстен пакет"]
+    direction LR
+    od["Odysseus<br>задачи"]
+    mn["Mnemosyne<br>бележки"]
+    ir["Iris<br>събития"]
+    so["Solon<br>организация"]
+    da["Daedalus<br>проекти"]
+  end
+  plan["План (JSON), валидиран със Zod"]
+  life["Draft → Confirm → Apply → Undo<br>отмяна: само задачи и бележки"]
+  subgraph SCH["По график, отделно от разговора"]
+    direction LR
+    tick["Планировчик в WS сървъра<br>на всеки 5 минути"] --> agents4["Hemera · Argus · Nestor · Clio<br>потребителски графици · напомняния"] --> ntf(["Известие в приложението<br>и/или имейл"])
+  end
+  user --> rl --> orch --> mentor
+  mentor <--> tools
+  mentor -->|"отговор"| answer
+  mentor -->|"делегиране, до 3 агента"| SPEC
+  orch -.->|"агент, избран от потребителя<br>(без Mentor)"| SPEC
+  SPEC --> plan --> life

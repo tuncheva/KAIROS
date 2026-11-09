@@ -1,0 +1,20 @@
+%% Фигура 4 – Многослойна архитектура (числата се сверяват с кода)
+flowchart LR
+  subgraph STACK[" "]
+    direction TB
+    l1["<b>Презентационен слой</b><br>Next.js 16 · React 19 · Tailwind CSS 4<br>GSAP · Chart.js · next-intl (2 езика: български и английски)"]
+    l2["<b>Комуникационен слой</b><br>tRPC v11 (17 рутера) · TanStack Query<br>Next.js API Routes · Socket.IO (отделен сървър)"]
+    l3["<b>Бизнес логика и ИИ</b><br>Оркестратор · 6 разговорни агента: Mentor и 5 специализирани<br>цикъл с инструменти · RAG над документи · дълготрайна памет<br>4 планирани агента и потребителски графици · поправка на JSON · Zod схеми"]
+    l4["<b>Слой за данни</b><br>PostgreSQL (59 таблици, pgvector) · Drizzle ORM<br>48 миграции · Redis (по избор: лимити, pub/sub)"]
+    l5["<b>Външни услуги</b><br>Доставчик на езикови модели (OpenAI-съвместим) · OAuth 2.0 (Google, Microsoft)<br>Resend · Stripe · UploadThing · OpenStreetMap · Google Calendar · Web Push"]
+    l1 <--> l2 <--> l3 <--> l4 <--> l5
+  end
+  SEC["<b>Сигурност</b><br>(пресичащ слой)<br><br>NextAuth.js v5<br>Argon2id<br>JWT сесии<br>Zod валидация<br>RBAC с 8 права<br>AES-256-GCM<br>PBKDF2 (210 000 итерации)<br>лимити с плъзгащ прозорец<br>HTTP заглавия"]
+  SEC -.- STACK
+  style STACK fill:transparent,stroke:transparent
+  style SEC fill:#e3f3ea,stroke:#1f6b45
+  style l1 fill:#e8eef8,stroke:#2c4f8f
+  style l2 fill:#efe8f8,stroke:#6a4c9c
+  style l3 fill:#f6e6f3,stroke:#9b3f8a
+  style l4 fill:#fbefe0,stroke:#b8741a
+  style l5 fill:#eeeeee,stroke:#555555

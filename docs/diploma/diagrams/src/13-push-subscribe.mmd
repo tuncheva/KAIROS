@@ -1,0 +1,25 @@
+%% Фигура 13 – Абониране на устройство
+sequenceDiagram
+  actor U as Потребител
+  participant B as Браузър · sw.js
+  participant P as Push услуга (Apple / Google / Microsoft)
+  participant K as KAIROS (tRPC)
+  participant DB as PostgreSQL
+  U->>B: Известия → Това устройство → Включи
+  B->>U: заявка за разрешение
+  U->>B: Разрешавам
+  B->>P: pushManager.subscribe(VAPID ключ)
+  P-->>B: endpoint + p256dh, auth
+  B->>K: pushSubscribe(endpoint, p256dh, auth)
+  K->>DB: UPSERT push_subscriptions
+  alt сменен адрес
+    P->>B: pushsubscriptionchange
+    B->>P: pushManager.subscribe()
+    B->>K: pushSubscribe(нов)
+  else всяко отваряне на приложението
+    B->>K: pushSubscribe(текущия абонамент)
+  else изход от акаунта или „Изключи“
+    B->>P: unsubscribe()
+    B->>K: pushUnsubscribe(endpoint)
+    K->>DB: DELETE абонамента
+  end
