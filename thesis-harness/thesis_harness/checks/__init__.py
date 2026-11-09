@@ -72,6 +72,7 @@ class Context:
     repo: Path
     options: dict
     source_path: Path | None = None
+    extra: dict = field(default_factory=dict)
     _shared: dict = field(default_factory=dict)
 
     @property
@@ -94,6 +95,7 @@ class Check:
     title: str = ""
     description: str = ""
     requirement: bool = False
+    scope: str = "document"  # "document" (the thesis text) or "diagrams"
 
     def run(self, ctx: Context) -> Iterable[Finding]:  # pragma: no cover - interface
         raise NotImplementedError

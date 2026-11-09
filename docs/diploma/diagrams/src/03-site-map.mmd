@@ -1,0 +1,31 @@
+%% Фигура 3 – Site Map (пътищата се сверяват с src/app)
+flowchart TB
+  root["kairosonline.net"]
+  subgraph PUB["Публична част"]
+    direction TB
+    p1["/ – начало"] --- p2["/about"] --- p3["/careers"] --- p4["/pricing"] --- p5["/contact"] --- p6["/privacy"] --- p7["/terms"] --- p8["/events/[id]"]
+  end
+  subgraph ACC["Достъп"]
+    direction TB
+    a1["/security"] --- a2["/verify-email"] --- a3["/verify-login"] --- a4["/auth-error"] --- a5["/invite/[token]"] --- a6["/invite-optout/[token]"]
+  end
+  subgraph WRK["Работна среда"]
+    direction TB
+    w1["/dashboard"] --- w2["/projects"] --- w3["/progress"] --- w4["/calendar"] --- w5["/notes"] --- w6["/notes/[noteId]"] --- w7["/notes/new"] --- w8["/notes/[noteId]/recover"] --- w9["/orgs"] --- w10["/join/[code]"] --- w11["/profile/[userId]"] --- w12["/settings"]
+  end
+  subgraph COM["Комуникация и ИИ"]
+    direction TB
+    c1["/chat"] --- c2["/chat/[conversationId]"] --- c3["/chat/ai"] --- c4["/publish"]
+  end
+  subgraph API["Служебни крайни точки"]
+    direction TB
+    x1["/api/trpc/[trpc] · /api/auth/[...nextauth] · /api/ai/chat"]
+    x2["/api/calendar/feed/[token] · /api/calendar/google/connect · /api/calendar/google/callback"]
+    x3["/api/export/[format] · /api/uploadthing · /api/ws/token · /api/internal/ai/run-schedules"]
+    x4["/api/stripe/webhook · /api/invite-optout/[token] · /api/account-switch/list · /api/account-switch/register"]
+  end
+  root --> PUB
+  root --> ACC
+  root --> WRK
+  root --> COM
+  root -.-> API

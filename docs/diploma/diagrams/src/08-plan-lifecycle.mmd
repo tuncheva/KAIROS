@@ -1,0 +1,17 @@
+%% Фигура 8 и 18 – Жизнен цикъл на плана (статуси от src/server/db/schemas/enums.ts)
+stateDiagram-v2
+  direction TB
+  [*] --> draft: агентът връща план, валидиран със Zod
+  draft --> confirmed: потребителят потвърждава
+  draft --> expired: изтича, без да е потвърден
+  confirmed --> applied: прилагане с авторизация, записва се образ преди промяната
+  draft --> applied: автоматично, само малък план за задачи или бележки, ако е включено
+  applied --> undone: Undo до 10 минути, задачи и бележки, без изтривания
+  expired --> [*]
+  applied --> [*]
+  undone --> [*]
+  state "Чернова (draft)" as draft
+  state "Потвърдена (confirmed)" as confirmed
+  state "Изтекла (expired)" as expired
+  state "Приложена (applied)" as applied
+  state "Отменена (Undo)" as undone

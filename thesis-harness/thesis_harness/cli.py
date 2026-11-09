@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -180,17 +181,22 @@ def cmd_check(cfg: Config, ws: Workspace, args) -> list:
         return []
     doc, facts = ws.doc(), ws.facts()
     source = Path(ws.state()["source_path"])
+    kind = ws.state().get("kind", "document")
+    extra = _diagram_extra(cfg, ws) if kind == "diagrams" else {}
     only = set(args.only.split(",")) if args.only else None
     findings, errors = [], []
     for cid, cls in registry.items():
-        if cls.requirement or cid in cfg.data["checks"]["disabled"] or (only and cid not in only):
+        if cls.requirement or cls.scope != kind or cid in cfg.data["checks"]["disabled"] or (only and cid not in only):
             continue
-        ctx = Context(doc=doc, facts=facts, repo=cfg.repo_root, options=cfg.check_options(cid), source_path=source)
+        opts = cfg.check_options(cid)
+        if kind == "diagrams":
+            opts = {**cfg.check_options("style.agent-names"), **(cfg.data.get("diagrams") or {}), **opts}
+        ctx = Context(doc=doc, facts=facts, repo=cfg.repo_root, options=opts, source_path=source, extra=extra)
         res, err = run_check(cls(), ctx)
         findings += res
         if err:
             errors.append(err)
-    runs, req_errs = _requirement_runs(cfg, registry)
+    runs, req_errs = _requirement_runs(cfg, registry) if kind == "document" else ([], [])
     for rule, cls in runs:
         if only and cls.id not in only and rule["id"] not in only:
             continue
@@ -259,6 +265,8 @@ def cmd_tasks(cfg: Config, ws: Workspace) -> list:
         if not meta or meta.get("enabled", True) is False:
             continue
         pid = meta.get("id", pf.stem)
+        if meta.get("applies_to", "document") != ws.state().get("kind", "document"):
+            continue
         scope = meta.get("scope", "chunks")
         if scope == "requirements" and not semantic_rules:
             continue
@@ -422,6 +430,10 @@ def cmd_sync(cfg: Config, ws: Workspace, args) -> None:
 
 
 def cmd_apply(cfg: Config, ws: Workspace, args) -> None:
+    if ws.state().get("kind") == "diagrams":
+        from . import diagrams as dg
+        _apply_diagrams(cfg, ws, dg.load(cfg)[1], args.dry_run)
+        return
     log = apply_doc(ws, Path(args.out) if args.out else None, dry_run=args.dry_run)
     if args.dry_run:
         _out(f"Проба (нищо не е записано): биха се приложили {len(log['applied'])}, неуспешни {len(log['failed'])}")
@@ -486,6 +498,189 @@ def cmd_scan(cfg: Config, args) -> None:
     cmd_review(cfg, ws, argparse.Namespace(print=False))
 
 
+# ------------------------------------------------------------------ diagrams
+
+
+def _thesis_workspace(cfg: Config) -> Workspace | None:
+    slug = (cfg.data.get("diagrams") or {}).get("thesis_slug")
+    root = cfg.workspace_root
+    if not slug:
+        cur = root / "current"
+        slug = cur.read_text(encoding="utf-8").strip() if cur.exists() else None
+    if not slug or not (root / slug / "doc.json").exists():
+        return None
+    ws = Workspace(root=root / slug, config=cfg)
+    return ws if ws.state().get("kind", "document") == "document" else None
+
+
+def _diagram_extra(cfg: Config, ws: Workspace) -> dict:
+    from . import diagrams as dg
+    _, items = dg.load(cfg)
+    thesis = _thesis_workspace(cfg)
+    return {
+        "diagrams": items, "by_id": {d.id: d for d in items},
+        "render_errors": read_json(ws.p("render.json"), {}) or {},
+        "thesis_doc": thesis.doc() if thesis else None,
+    }
+
+
+def _diagram_ws(cfg: Config) -> Workspace:
+    slug = (cfg.data.get("diagrams") or {}).get("workspace", "diagrams")
+    root = cfg.workspace_root / slug
+    root.mkdir(parents=True, exist_ok=True)
+    return Workspace(root=root, config=cfg)
+
+
+def cmd_diagrams(cfg: Config, args) -> None:
+    from . import diagrams as dg
+    repo, items = dg.load(cfg)
+    ws = _diagram_ws(cfg)
+    if args.dg_cmd == "render":
+        errs = dg.render(cfg, items, set(args.ids) if args.ids else None)
+        old = read_json(ws.p("render.json"), {}) or {}
+        old.update(errs)
+        write_json(ws.p("render.json"), old)
+        for k, e in errs.items():
+            _out(f"  {'✓' if not e else '✗'} {k}{'' if not e else ' – ' + e}")
+        _out(f"→ {repo / 'out'}")
+        return
+    if args.dg_cmd == "scan":
+        if not args.no_render:
+            cmd_diagrams(cfg, argparse.Namespace(dg_cmd="render", ids=None))
+        doc = dg.as_doc(items)
+        state = ws.state()
+        old_doc = ws.doc() if ws.p("doc.json").exists() else None
+        sha = dg.sources_sha(items)
+        version = int(state.get("version", 0)) + (0 if state.get("source_sha256") == sha else 1)
+        write_json(ws.p("doc.json"), {"paras": [p.to_dict() for p in doc.paras], "warnings": []})
+        state.update({"kind": "diagrams", "source_path": str(repo / "diagrams.yaml"), "source_name": "диаграми",
+                      "source_sha256": sha, "ingested_at": now_iso(), "version": version, "repo": git_head(cfg.repo_root)})
+        ws.save_state(state)
+        _write_diagram_chunks(cfg, ws, items)
+        if props.load(ws):
+            props.reanchor(ws, old_doc, doc)
+        _out(f"Диаграми: {len(items)} (версия {version}) → {ws.root}")
+        cmd_facts(cfg, ws)
+        cmd_check(cfg, ws, argparse.Namespace(list=False, only=None, no_propose=False))
+        cmd_tasks(cfg, ws)
+        cmd_review(cfg, ws, argparse.Namespace(print=False))
+        return
+    if args.dg_cmd == "apply":
+        _apply_diagrams(cfg, ws, items, args.dry_run)
+        return
+    if args.dg_cmd == "to-doc":
+        _diagrams_to_doc(cfg, items, repo)
+        return
+
+
+def _write_diagram_chunks(cfg: Config, ws: Workspace, items) -> None:
+    thesis = _thesis_workspace(cfg)
+    tdoc = thesis.doc() if thesis else None
+    chunk_dir = ws.p("chunks")
+    chunk_dir.mkdir(exist_ok=True)
+    for old in chunk_dir.glob("*.md"):
+        old.unlink()
+    index = []
+    for i, d in enumerate(items, 1):
+        refs = []
+        if tdoc:
+            for n in d.figures:
+                rx = re.compile(r"(?<!\w)Фигура\s+%d(?!\d)" % n)
+                refs += [p for p in tdoc.prose() if rx.search(p.text)]
+        lines = [f"# [¶{i - 1}|{d.id}] Фигура {', '.join(map(str, d.figures))}. {d.caption}", "",
+                 f"Изходен файл: {d.file}", f"Проверки: {', '.join(d.checks) or '–'}", "",
+                 "## Mermaid изходен код (това е „абзацът“ – old/new се копират оттук)", "", "```mermaid", d.source.rstrip(), "```", "",
+                 "## Какво казва дипломната за тази фигура", ""]
+        lines += [f"- ¶{p.index}: {p.text}" for p in refs] or ["- (няма извлечен документ на дипломната)"]
+        fname = f"{i:02d}-{d.id}.md"
+        (chunk_dir / fname).write_text("\n".join(lines) + "\n", encoding="utf-8")
+        index.append({"file": f"chunks/{fname}", "title": f"Фигура {', '.join(map(str, d.figures))}. {d.caption}", "keys": [d.id]})
+    write_json(ws.p("chunks.json"), index)
+    ws.p("doc.md").write_text("\n\n".join((chunk_dir / c["file"].split("/")[-1]).read_text(encoding="utf-8") for c in index), encoding="utf-8")
+
+
+def _apply_diagrams(cfg: Config, ws: Workspace, items, dry_run: bool) -> None:
+    from . import diagrams as dg
+    by_id = {d.id: d for d in items}
+    if ws.state().get("source_sha256") != dg.sources_sha(items):
+        raise SystemExit("Диаграмите са променени след последния scan. Пуснете `diagrams scan` и после apply.")
+    entries = props.load(ws)
+    todo = [p for p in entries if p["status"] == "approved" and p["kind"] in ("replace", "replace_paragraph")]
+    todo.sort(key=lambda p: (1 if p.get("all") else 0, p["id"]))
+    texts = {d.id: d.source for d in items}
+    done, failed = [], []
+    for p in todo:
+        t = texts.get(p["para"], "")
+        if p["kind"] == "replace_paragraph":
+            texts[p["para"]] = p["new"]
+        elif p.get("all"):
+            texts[p["para"]] = t.replace(p["old"], p["new"])
+        elif t.count(p["old"]) == 1:
+            texts[p["para"]] = t.replace(p["old"], p["new"])
+        else:
+            failed.append((p["id"], "старият текст вече не се среща точно веднъж"))
+            continue
+        done.append(p["id"])
+    changed = [k for k, t in texts.items() if t != by_id[k].source]
+    if dry_run:
+        _out(f"Проба: биха се приложили {len(done)}, неуспешни {len(failed)}; файлове: {', '.join(changed) or '–'}")
+        return
+    for k in changed:
+        by_id[k].file.write_text(texts[k], encoding="utf-8")
+    for p in entries:
+        if p["id"] in done:
+            p["status"] = "applied"
+            props._log(p, "applied", by_id[p["para"]].file.name)  # noqa: SLF001
+        for fid, why in failed:
+            if p["id"] == fid:
+                p["status"] = "failed"
+                props._log(p, "failed", why)  # noqa: SLF001
+    props.save(ws, entries)
+    _out(f"Приложени: {_compress(done) or '–'}; променени файлове: {', '.join(changed) or '–'}")
+    for fid, why in failed:
+        _out(f"  ✗ {fid}: {why}")
+    if changed and not os.environ.get("THESIS_HARNESS_SKIP_RENDER"):
+        errs = dg.render(cfg, [by_id[k] for k in changed])
+        for k, e in errs.items():
+            _out(f"  {'✓' if not e else '✗'} рендерирано {k}{'' if not e else ' – ' + e}")
+        _out("Пуснете `diagrams scan`, за да се проверят отново.")
+
+
+def _diagrams_to_doc(cfg: Config, items, repo: Path) -> None:
+    """Propose each rendered diagram as the image of its figure in the thesis."""
+    import hashlib
+    thesis = _thesis_workspace(cfg)
+    if thesis is None:
+        raise SystemExit("Няма зареден документ на дипломната. Пуснете първо `scan <дипломна.docx>`.")
+    doc = thesis.doc()
+    caption_rx = re.compile(r"^\s*Фигура\s+(\d+)\.")
+    captions = {int(m.group(1)): p for p in doc.prose() if (m := caption_rx.match(p.text))}
+    incoming, missing = [], []
+    for d in items:
+        png = d.out("png", repo)
+        if not png.exists():
+            missing.append(d.id)
+            continue
+        sha = hashlib.sha256(png.read_bytes()).hexdigest()[:16]
+        for n in d.figures:
+            cap = captions.get(n)
+            if cap is None:
+                continue
+            incoming.append({
+                "para": cap.key, "kind": "replace_image", "figure": n,
+                "image": png.relative_to(cfg.repo_root).as_posix(), "image_sha": sha,
+                "severity": "warning", "source": f"diagram:{d.id}",
+                "rationale": f"Фигура {n} от хранилището с диаграми ({d.file.name}), проверена спрямо кода.",
+                "evidence": [d.file.relative_to(cfg.repo_root).as_posix()],
+            })
+    added, invalid, dupes = props.add(thesis, incoming, doc)
+    _out(f"Изображения за дипломната: нови предложения {len(added)} ({_compress([p['id'] for p in added]) or '–'}), вече предложени {dupes}")
+    for raw, errs in invalid:
+        _out(f"  ✗ Фигура {raw.get('figure')}: {'; '.join(errs)}")
+    if missing:
+        _out(f"  ⚠ не са рендерирани: {', '.join(missing)} – пуснете `diagrams render`")
+
+
 # ------------------------------------------------------------------------ main
 
 
@@ -535,6 +730,15 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--out")
     s.add_argument("--dry-run", action="store_true")
     sub.add_parser("status")
+    s = sub.add_parser("diagrams", help="диаграмите: scan, render, apply, to-doc")
+    ds = s.add_subparsers(dest="dg_cmd", required=True)
+    d = ds.add_parser("scan", help="рендерира, проверява и подготвя прегледа на диаграмите")
+    d.add_argument("--no-render", action="store_true")
+    d = ds.add_parser("render", help="SVG + PNG в out/")
+    d.add_argument("ids", nargs="*")
+    d = ds.add_parser("apply", help="запиши одобрените промени в .mmd файловете и рендерирай")
+    d.add_argument("--dry-run", action="store_true")
+    ds.add_parser("to-doc", help="предложи рендерираните диаграми като изображения на фигурите в дипломната")
     s = sub.add_parser("requirements", help="официални изисквания")
     rs = s.add_subparsers(dest="req_cmd", required=True)
     r = rs.add_parser("import", help="всички официални документи наведнъж (заменя предишния импорт)")
@@ -567,6 +771,9 @@ def main(argv: list[str] | None = None) -> None:
         return
     if args.cmd == "requirements":
         cmd_requirements(cfg, args)
+        return
+    if args.cmd == "diagrams":
+        cmd_diagrams(cfg, args)
         return
     if args.cmd == "check" and args.list:
         cmd_check(cfg, None, args)

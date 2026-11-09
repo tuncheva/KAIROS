@@ -201,8 +201,48 @@ def database(repo: Path, _opts: dict) -> dict:
         m = re.search(r"pgTableCreator\(\s*\(\s*name\s*\)\s*=>\s*`([^`$]*)\$\{name\}`", et)
         prefix = m.group(1) if m else None
     migrations = sorted((repo / "src/server/db/migrations").glob("*.sql"))
+
+    # Columns and foreign keys, for checking ER diagrams. A column's name is its
+    # explicit string (`varchar("due_date", …)`) or, with no casing configured in
+    # Drizzle, the property key itself (`assignedToId: d.varchar(…)`).
+    var_to_table: dict[str, str] = {}
+    texts = {f: f.read_text(encoding="utf-8") for f in sorted(schemas.glob("*.ts"))}
+    for t in texts.values():
+        for m in re.finditer(r"export const (\w+)\s*=\s*createTable\(\s*\"([a-z0-9_]+)\"", t):
+            var_to_table[m.group(1)] = m.group(2)
+    columns: dict[str, dict] = {}
+    for f, t in texts.items():
+        for m in re.finditer(r"createTable\(\s*\"([a-z0-9_]+)\"", t):
+            start = t.find("({", m.end())
+            if start < 0:
+                continue
+            depth, i = 0, start + 1
+            while i < len(t):
+                depth += {"{": 1, "}": -1}.get(t[i], 0)
+                if depth == 0:
+                    break
+                i += 1
+            body = t[start + 2:i]
+            cols = {}
+            indents = [len(x.group(1)) for x in re.finditer(r"^( +)\w+:\s*\S", body, re.MULTILINE)]
+            if not indents:
+                continue
+            ind = min(indents)
+            entries = list(re.finditer(r"^ {%d}(\w+):\s*" % ind, body, re.MULTILINE))
+            for n, e in enumerate(entries):
+                chunk = body[e.end(): entries[n + 1].start() if n + 1 < len(entries) else len(body)]
+                call = re.match(r"(?:d\s*\.\s*)?(\w+)\(\s*(?:\"([A-Za-z0-9_]+)\")?", chunk)
+                if not call:
+                    continue
+                ref = re.search(r"\.references\(\s*\(\)[^=]*=>\s*(\w+)\.", chunk)
+                cols[call.group(2) or e.group(1)] = {
+                    "type": call.group(1),
+                    "references": var_to_table.get(ref.group(1)) if ref else None,
+                }
+            columns[m.group(1)] = cols
     return {
         "tables": tables,
+        "columns": columns,
         "table_count": len(tables),
         "table_prefix": prefix,
         "migration_count": len(migrations),
@@ -210,6 +250,18 @@ def database(repo: Path, _opts: dict) -> dict:
         "orm": "drizzle-orm",
         "schema_dir": rel(repo, schemas),
     }
+
+
+@collector("routes")
+def routes(repo: Path, _opts: dict) -> dict:
+    """URL paths of the app: pages and API routes, route groups like (app) removed."""
+    app = repo / "src/app"
+    out = {"pages": {}, "api": {}}
+    for kind, name in (("pages", "page.tsx"), ("api", "route.ts")):
+        for f in sorted(app.rglob(name)):
+            parts = [p for p in f.relative_to(app).parts[:-1] if not (p.startswith("(") and p.endswith(")"))]
+            out[kind]["/" + "/".join(parts)] = rel(repo, f)
+    return out
 
 
 @collector("api")

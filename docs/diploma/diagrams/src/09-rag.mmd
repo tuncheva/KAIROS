@@ -1,0 +1,21 @@
+%% Фигура 9 – Извличане с обогатяване над документи
+flowchart TB
+  subgraph IN["Качване"]
+    direction LR
+    f["Файл (PDF)"] --> x["Извличане на текста<br>pdfjs-dist"] --> c["Пасажи с препокриване<br>и номер на страницата"]
+    c --> e["Вектори 2048<br>ако има модел за embeddings"]
+  end
+  st[("PostgreSQL<br>document_chunks · pgvector")]
+  c --> st
+  e --> st
+  subgraph Q["Въпрос"]
+    direction TB
+    q["Въпрос към Mentor"] --> t["Инструмент за търсене<br>проверка на достъпа"]
+    t --> v["Векторно търсене<br>косинусова близост"]
+    t --> ft["Пълнотекстово търсене"]
+    v --> rrf["Reciprocal Rank Fusion<br>k = 60"]
+    ft --> rrf
+    rrf --> top["До 5 пасажа"] --> ans["Отговор с цитат<br>файл и страница"]
+  end
+  st --> v
+  st --> ft

@@ -13,11 +13,11 @@ from pathlib import Path
 from . import proposals as props
 from .docmodel import (
     ApplyError, delete_paragraph, element_index, extract, insert_paragraph_after, paragraph_text,
-    replace_all_in_paragraph, replace_in_paragraph, set_paragraph_text,
+    replace_all_in_paragraph, replace_figure_image, replace_in_paragraph, set_paragraph_text,
 )
 from .workspace import Workspace, now_iso, sha256_file, write_json
 
-_ORDER = {"replace": 0, "replace_paragraph": 1, "insert_after": 2, "delete_paragraph": 3}
+_ORDER = {"replace": 0, "replace_paragraph": 1, "insert_after": 2, "replace_image": 2.7, "delete_paragraph": 3}
 
 
 def default_output(ws: Workspace, source: Path) -> Path:
@@ -79,6 +79,11 @@ def apply(ws: Workspace, out: Path | None = None, dry_run: bool = False) -> dict
                 for chunk in [c.strip(" \r\n") for c in str(p["new"]).split("\n\n") if c.strip()]:
                     anchor = insert_paragraph_after(anchor, chunk, style_el, existing_ids, code=bool(p.get("code")))
                 last_inserted[p["para"]] = anchor
+            elif p["kind"] == "replace_image":
+                from .proposals import _image_path
+                sec = document.sections[0]
+                usable = sec.page_width - sec.left_margin - sec.right_margin if sec.page_width else None
+                replace_figure_image(document, el, _image_path(p["image"]), int(usable) if usable else None)
             elif p["kind"] == "delete_paragraph":
                 delete_paragraph(el)
             results.append({"id": p["id"], "ok": True})

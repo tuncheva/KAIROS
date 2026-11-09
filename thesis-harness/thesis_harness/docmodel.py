@@ -369,6 +369,54 @@ def insert_paragraph_after(anchor_el, text: str, style_source_el, existing_ids: 
     return new_el
 
 
+_A = "http://schemas.openxmlformats.org/drawingml/2006/main"
+_WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+_EMU_PER_INCH = 914400
+
+
+def replace_figure_image(document, caption_el, image_path, max_width_emu: int | None = None) -> str:
+    """Put ``image_path`` in place of the picture that belongs to a caption.
+
+    The picture is the nearest drawing within three paragraphs above the
+    caption. Its displayed width is kept and its height follows the new image's
+    aspect ratio. Every replacement gets its own image part, so placeholders
+    that several figures share are never changed together. With no picture
+    above the caption, a new centred paragraph with the image is inserted.
+    Returns "replaced" or "inserted".
+    """
+    from docx.shared import Emu
+
+    from .diagrams import png_size
+
+    w_px, h_px = png_size(Path(image_path))
+    rid, _ = document.part.get_or_add_image(str(image_path))
+    prev = caption_el.getprevious()
+    for _ in range(3):
+        if prev is None:
+            break
+        blip = prev.find(f".//{{{_A}}}blip")
+        if blip is not None:
+            blip.set(qn("r:embed"), rid)
+            extent = prev.find(f".//{{{_WP}}}extent")
+            cx = int(extent.get("cx")) if extent is not None else (max_width_emu or 6 * _EMU_PER_INCH)
+            if max_width_emu:
+                cx = min(cx, max_width_emu)
+            cy = int(cx * h_px / w_px)
+            for el in [extent, prev.find(f".//{{{_A}}}xfrm/{{{_A}}}ext")]:
+                if el is not None:
+                    el.set("cx", str(cx))
+                    el.set("cy", str(cy))
+            return "replaced"
+        prev = prev.getprevious()
+    new_p = caption_el.makeelement(qn("w:p"), {})
+    caption_el.addprevious(new_p)
+    para = Paragraph(new_p, document._body)  # noqa: SLF001
+    para.alignment = 1
+    width = max_width_emu or 6 * _EMU_PER_INCH
+    para.add_run().add_picture(str(image_path), width=Emu(width))
+    return "inserted"
+
+
 def delete_paragraph(p_el) -> None:
     if any(p_el.find(".//" + t) is not None for t in _PROTECTED_TAGS):
         raise ApplyError("абзацът съдържа изображение/обект – изтрийте го ръчно в Word")

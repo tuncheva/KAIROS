@@ -210,6 +210,88 @@ class HarnessTest(unittest.TestCase):
         code = d.paragraphs[i + 3].runs[0]
         self.assertEqual(code.font.name, "Consolas")
 
+    def _diagram_repo(self):
+        root = self.repo / "docs/diploma/diagrams"
+        (root / "src").mkdir(parents=True)
+        (root / "out").mkdir()
+        (self.repo / "src/server/db/schemas").mkdir(parents=True)
+        (self.repo / "src/server/db/schemas/a.ts").write_text(
+            'export const users = createTable("user", (d) => ({\n'
+            '    id: d.varchar({ length: 255 }).primaryKey(),\n'
+            '    name: d.varchar({ length: 255 }),\n'
+            '}));\n'
+            'export const tasks = createTable("tasks", (d) => ({\n'
+            '    id: integer("id").primaryKey(),\n'
+            '    createdById: d\n      .varchar({ length: 255 })\n      .references(() => users.id),\n'
+            '}));\n', encoding="utf-8")
+        for n in range(1, 7):
+            (self.repo / f"src/server/llm/orchestrator/a{n}Agent.ts").unlink()
+        (self.repo / "src/server/llm/orchestrator/a1A.ts").write_text("//", encoding="utf-8")
+        (self.repo / "src/app/dashboard").mkdir(parents=True)
+        (self.repo / "src/app/dashboard/page.tsx").write_text("//", encoding="utf-8")
+        (root / "src/er.mmd").write_text(
+            "erDiagram\n  user {\n    varchar id PK\n    varchar nickname\n  }\n  tasks {\n    integer id PK\n  }\n"
+            "  ghosts {\n    integer id\n  }\n  user ||--o{ tasks : createdById\n", encoding="utf-8")
+        (root / "src/arch.mmd").write_text(
+            'flowchart TB\n  a["PostgreSQL (3 таблици)"] --> b["A1 решава"]\n  c["/dashboard"] --> d["/nowhere"]\n', encoding="utf-8")
+        (root / "diagrams.yaml").write_text(
+            "diagrams:\n  - {id: er, figure: 1, caption: ER, file: src/er.mmd, checks: [er]}\n"
+            "  - {id: arch, figure: 2, caption: Архитектура, file: src/arch.mmd, checks: [routes]}\n", encoding="utf-8")
+        return root
+
+    def test_diagram_checks(self):
+        from thesis_harness.diagrams import er_model, visible_text
+        self._diagram_repo()
+        self.run_cli("diagrams", "scan", "--no-render")
+        f = json.loads((self.tmp / "work/diagrams/findings.json").read_text(encoding="utf-8"))["findings"]
+        msgs = " | ".join(x["message"] for x in f)
+        self.assertIn("ghosts", msgs)             # entity not in schema
+        self.assertIn("user.nickname", msgs)      # column not in schema
+        self.assertIn("3 таблици", msgs)           # schema has 2
+        self.assertIn("/nowhere", msgs)            # route not in src/app
+        self.assertIn("„A1“ → „Mentor“", msgs)     # agent code in a diagram
+        self.assertNotIn("/dashboard“ няма", msgs)
+        self.assertEqual(er_model("erDiagram\n  a {\n    int x\n  }\n")["a"], ["x"])
+        self.assertIn("Мент", visible_text('flowchart LR\n  a["Мент<br>ор"]'))
+
+    def test_diagram_apply_writes_source(self):
+        root = self._diagram_repo()
+        self.run_cli("diagrams", "scan", "--no-render")
+        import yaml
+        props = yaml.safe_load((self.tmp / "work/diagrams/proposals.yaml").read_text(encoding="utf-8"))
+        fix = next(p for p in props if p["source"] == "check:dgm.numbers")
+        self.run_cli("--doc-slug", "diagrams", "approve", fix["id"])
+        os.environ["THESIS_HARNESS_SKIP_RENDER"] = "1"
+        try:
+            self.run_cli("--doc-slug", "diagrams", "apply")
+        finally:
+            os.environ.pop("THESIS_HARNESS_SKIP_RENDER")
+        self.assertIn("2 таблици", (root / "src/arch.mmd").read_text(encoding="utf-8"))
+
+    def test_replace_image_in_docx(self):
+        from PIL import Image
+        d = docx.Document()
+        img = self.tmp / "old.png"
+        Image.new("RGB", (40, 20), "white").save(img)
+        d.add_paragraph().add_run().add_picture(str(img))
+        d.add_paragraph("Фигура 1. Нещо")
+        d.save(str(self.doc_path))
+        new = self.repo / "fig.png"
+        Image.new("RGB", (100, 200), "red").save(new)
+        self.run_cli("scan", str(self.doc_path))
+        key = [p for p in extract(self.doc_path).paras if p.text.startswith("Фигура 1.")][0].key
+        review = self.tmp / "r.yaml"
+        review.write_text(f"- {{para: '{key}', kind: replace_image, figure: 1, image: fig.png, source: user, rationale: r}}\n",
+                          encoding="utf-8")
+        self.run_cli("propose", str(review))
+        self.run_cli("approve", "all")
+        self.assertNotIn("✗", self.run_cli("apply"))
+        out = docx.Document(str(self.tmp / "thesis.revised.docx"))
+        blobs = [r.target_part.blob for r in out.part.rels.values() if "image" in r.reltype]
+        self.assertTrue(any(b == new.read_bytes() for b in blobs))
+        shape = out.inline_shapes[0]
+        self.assertAlmostEqual(shape.height / shape.width, 2.0, places=2)
+
     def test_apply_is_clean_and_keeps_formatting(self):
         self.run_cli("scan", str(self.doc_path))
         props = self.proposals()

@@ -46,7 +46,9 @@ checks:
     style.agent-names:
       script: latin      # агентите с имената си (Mentor, Odysseus…), не A1–A6; cyrillic = Ментор, Одисей…
     code.identifiers:
-      ignore: []         # токени, които не са код (напр. абревиатури с долна черта)
+      ignore: [macOS]    # токени, които не са код (напр. абревиатури с долна черта)
+    dgm.identifiers:
+      ignore: [macOS]
 
 facts:
   # Факти от изпълнение на команда – напр. реалният брой тестове.
@@ -56,6 +58,13 @@ facts:
   #    run: pnpm test --reporter=dot
   #    regex: 'Tests\s+(\d+) passed'
   #    timeout: 900
+
+diagrams:
+  dir: docs/diploma/diagrams    # хранилището с диаграмите (спрямо repo_root)
+  workspace: diagrams           # работна папка в work/
+  ignore_figures: [22, 23, 24, 25, 26, 27, 28, 29, 30]   # екранните снимки не са диаграми
+  # thesis_slug: KAIROS_v09-10_updated   # по подразбиране: последно заредената дипломна
+  # mmdc: npx -y @mermaid-js/mermaid-cli@11.4.2   # как се вика Mermaid CLI
 
 prompts_dir: prompts     # смислови проверки (Claude) – по един .md файл на проверка
 

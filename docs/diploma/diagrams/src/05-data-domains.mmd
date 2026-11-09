@@ -1,0 +1,28 @@
+%% Фигура 5 – Домейни в релационния модел (проверка: всички таблици точно веднъж)
+flowchart LR
+  subgraph D1["Потребители и достъп"]
+    d1["user · account · session<br>verification_token · verification_code<br>two_factor_challenge · user_follow<br>push_subscriptions"]
+  end
+  subgraph D2["Организации"]
+    d2["organizations · organization_members<br>organization_roles · organization_invites<br>organization_join_codes · invite_suppressions"]
+  end
+  subgraph D3["Проекти и задачи"]
+    d3["projects · project_collaborators<br>tasks · task_dependencies<br>task_comments · task_activity_log"]
+  end
+  subgraph D4["Бележки"]
+    d4["notebooks · sticky_notes · note_shares"]
+  end
+  subgraph D5["Събития"]
+    d5["event · event_rsvp · event_like<br>event_comment · event_save · event_cohost"]
+  end
+  subgraph D6["Комуникация"]
+    d6["direct_conversations · conversation_participants<br>direct_messages · direct_message_attachments<br>direct_message_reactions · notifications"]
+  end
+  subgraph D7["ИИ слой"]
+    d7["ai_conversations · ai_messages · ai_user_memory<br>ai_findings · ai_schedules · ai_custom_schedules · ai_reminders<br>agent_task_planner_drafts · agent_task_planner_applies<br>agent_notes_vault_drafts · agent_notes_vault_applies<br>agent_events_publisher_drafts · agent_events_publisher_applies<br>agent_org_admin_drafts · agent_org_admin_applies<br>agent_project_manager_drafts · agent_project_manager_applies"]
+  end
+  subgraph D8["Интеграции"]
+    d8["documents · document_chunks<br>api_keys · webhooks · webhook_deliveries<br>calendar_connections · external_events"]
+  end
+  D1 ~~~ D2 ~~~ D3 ~~~ D4
+  D5 ~~~ D6 ~~~ D7 ~~~ D8

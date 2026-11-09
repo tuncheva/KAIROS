@@ -30,7 +30,7 @@ from difflib import SequenceMatcher
 from .docmodel import DocModel, Para
 from .workspace import Workspace, now_iso, read_json, read_yaml, write_yaml
 
-KINDS = ("replace", "replace_paragraph", "insert_after", "delete_paragraph", "note")
+KINDS = ("replace", "replace_paragraph", "insert_after", "delete_paragraph", "replace_image", "note")
 STATUSES = ("proposed", "approved", "rejected", "applied", "merged", "stale", "failed")
 SEVERITIES = ("error", "warning", "info")
 OPEN = ("proposed", "approved", "applied", "failed")
@@ -125,14 +125,29 @@ def validate(p: dict, doc: DocModel) -> list[str]:
         sf = p.get("style_from")
         if sf and sf not in doc.by_key():
             errs.append(f"style_from '{sf}' не съществува")
+    elif kind == "replace_image":
+        fig = p.get("figure")
+        if not re.match(r"^\s*Фигура\s+%s\." % re.escape(str(fig)), target.text):
+            errs.append(f"абзацът не е надписът на Фигура {fig}")
+        img = p.get("image")
+        if not img or not _image_path(img).exists():
+            errs.append(f"изображението „{img}“ не съществува")
     elif kind == "delete_paragraph":
         if target.has_drawing:
             errs.append("абзацът съдържа изображение – трие се само ръчно")
     return errs
 
 
+def _image_path(img: str):
+    from pathlib import Path
+
+    from .config import load_config
+    path = Path(img)
+    return path if path.is_absolute() else load_config().repo_root / path
+
+
 def _fingerprint(p: dict) -> tuple:
-    return (p.get("para"), p.get("kind"), p.get("old"), p.get("new"), bool(p.get("all")))
+    return (p.get("para"), p.get("kind"), p.get("old"), p.get("new"), bool(p.get("all")), p.get("image_sha"))
 
 
 def add(ws: Workspace, incoming: list[dict], doc: DocModel) -> tuple[list[dict], list[tuple[dict, list[str]]], int]:
@@ -158,7 +173,7 @@ def add(ws: Workspace, incoming: list[dict], doc: DocModel) -> tuple[list[dict],
         out["para"] = p.pop("para", None)
         out["section"] = p.pop("section", None) or (target.section if target else None)
         out["kind"] = p.pop("kind")
-        for k in ("old", "new", "all", "code", "style_from", "rationale", "evidence"):
+        for k in ("old", "new", "all", "code", "figure", "image", "image_sha", "style_from", "rationale", "evidence"):
             if k in p:
                 out[k] = p.pop(k)
         out.update(p)  # keep any extra fields a plugin adds
@@ -385,6 +400,8 @@ def render_review(ws: Workspace, doc: DocModel, requirements_results: list | Non
             lines += [f"**Сега:** {para.text if para else p.get('old', '')}", "", f"**Ново** (сходство {_ratio(para.text if para else '', p.get('new', ''))}): {p.get('new', '')}"]
         elif kind == "insert_after":
             lines += [f"**Нов абзац след:** „{(para.text[:90] + '…') if para and len(para.text) > 90 else (para.text if para else '')}“", "", f"> {p.get('new', '')}"]
+        elif kind == "replace_image":
+            lines.append(f"**Ново изображение за Фигура {p.get('figure')}:** `{p.get('image')}`")
         elif kind == "delete_paragraph":
             lines.append(f"**Изтриване на абзаца:** ~~{para.text if para else ''}~~")
         else:
