@@ -252,6 +252,11 @@ class HarnessTest(unittest.TestCase):
         self.assertIn("„A1“ → „Mentor“", msgs)     # agent code in a diagram
         self.assertNotIn("/dashboard“ няма", msgs)
         self.assertEqual(er_model("erDiagram\n  a {\n    int x\n  }\n")["a"], ["x"])
+        self.run_cli("diagrams", "html")
+        root = self.repo / "docs/diploma/diagrams"
+        self.assertIn("Фигура 2. Архитектура", (root / "out/index.html").read_text(encoding="utf-8"))
+        self.assertTrue((root / "out/er.html").exists())
+        self.assertIn("```mermaid", (root / "GALLERY.md").read_text(encoding="utf-8"))
         self.assertIn("Мент", visible_text('flowchart LR\n  a["Мент<br>ор"]'))
 
     def test_diagram_apply_writes_source(self):

@@ -542,7 +542,8 @@ def cmd_diagrams(cfg: Config, args) -> None:
         write_json(ws.p("render.json"), old)
         for k, e in errs.items():
             _out(f"  {'✓' if not e else '✗'} {k}{'' if not e else ' – ' + e}")
-        _out(f"→ {repo / 'out'}")
+        pages = dg.write_html(cfg, items)
+        _out(f"→ {repo / 'out'} (PNG, SVG, HTML) · галерия: {repo / 'out' / 'index.html'} · {repo / 'GALLERY.md'}")
         return
     if args.dg_cmd == "scan":
         if not args.no_render:
@@ -564,6 +565,10 @@ def cmd_diagrams(cfg: Config, args) -> None:
         cmd_check(cfg, ws, argparse.Namespace(list=False, only=None, no_propose=False))
         cmd_tasks(cfg, ws)
         cmd_review(cfg, ws, argparse.Namespace(print=False))
+        return
+    if args.dg_cmd == "html":
+        for p in dg.write_html(cfg, items):
+            _out(f"  {p}")
         return
     if args.dg_cmd == "apply":
         _apply_diagrams(cfg, ws, items, args.dry_run)
@@ -641,6 +646,7 @@ def _apply_diagrams(cfg: Config, ws: Workspace, items, dry_run: bool) -> None:
         _out(f"  ✗ {fid}: {why}")
     if changed and not os.environ.get("THESIS_HARNESS_SKIP_RENDER"):
         errs = dg.render(cfg, [by_id[k] for k in changed])
+        dg.write_html(cfg, items)
         for k, e in errs.items():
             _out(f"  {'✓' if not e else '✗'} рендерирано {k}{'' if not e else ' – ' + e}")
         _out("Пуснете `diagrams scan`, за да се проверят отново.")
@@ -738,6 +744,7 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("ids", nargs="*")
     d = ds.add_parser("apply", help="запиши одобрените промени в .mmd файловете и рендерирай")
     d.add_argument("--dry-run", action="store_true")
+    ds.add_parser("html", help="HTML страница за всяка диаграма, галерия out/index.html и GALLERY.md (без прерисуване)")
     ds.add_parser("to-doc", help="предложи рендерираните диаграми като изображения на фигурите в дипломната")
     s = sub.add_parser("requirements", help="официални изисквания")
     rs = s.add_subparsers(dest="req_cmd", required=True)
