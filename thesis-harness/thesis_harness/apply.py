@@ -68,7 +68,7 @@ def apply(ws: Workspace, out: Path | None = None, dry_run: bool = False) -> dict
             elif p["kind"] == "insert_after":
                 style_el = index.get(p.get("style_from") or p["para"])
                 anchor = el
-                for chunk in [c.strip() for c in str(p["new"]).split("\n\n") if c.strip()]:
+                for chunk in [c.strip(" \r\n") for c in str(p["new"]).split("\n\n") if c.strip()]:
                     anchor = insert_paragraph_after(anchor, chunk, style_el, existing_ids)
             elif p["kind"] == "delete_paragraph":
                 delete_paragraph(el)
@@ -123,7 +123,7 @@ def verify(out: Path, todo: list[dict], results: list[dict]) -> list[str]:
             if target is None or target.text != p["new"]:
                 problems.append(f"{p['id']}: абзацът не съдържа новия текст след запис")
         elif p["kind"] == "insert_after":
-            first = str(p["new"]).split("\n\n")[0].strip()
+            first = str(p["new"]).split("\n\n")[0].strip(" \r\n")
             if first not in texts:
                 problems.append(f"{p['id']}: вмъкнатият абзац липсва след запис")
         elif p["kind"] == "delete_paragraph":

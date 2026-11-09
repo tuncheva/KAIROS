@@ -320,10 +320,15 @@ def insert_paragraph_after(anchor_el, text: str, style_source_el, existing_ids: 
                 run.remove(child)
     else:
         run = new_el.makeelement(qn("w:r"), {})
-    t = run.makeelement(qn("w:t"), {})
-    t.text = text
-    t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
-    run.append(t)
+    # A tab in the text is a w:tab element to Word, not a character inside w:t.
+    for i, piece in enumerate(text.split("\t")):
+        if i:
+            run.append(run.makeelement(qn("w:tab"), {}))
+        if piece:
+            t = run.makeelement(qn("w:t"), {})
+            t.text = piece
+            t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+            run.append(t)
     new_el.append(run)
     if new_el.get(W14_PARA_ID) is not None:
         new_el.set(W14_PARA_ID, _new_para_id(existing_ids))

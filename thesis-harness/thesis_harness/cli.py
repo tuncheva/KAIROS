@@ -19,6 +19,7 @@ from .facts import collect_all
 from .requirements import import_source, load_rules, record_results, validate_rules
 from .workspace import (
     Workspace, create_or_open_for_source, git_head, now_iso, open_workspace, read_json, read_yaml,
+    read_yaml_text,
     sha256_file, slugify, write_json,
 )
 
@@ -294,7 +295,7 @@ def cmd_propose(cfg: Config, ws: Workspace, args) -> None:
     doc = ws.doc()
     total_added, total_invalid = 0, 0
     for f in args.files:
-        data = read_yaml(Path(f), None)
+        data = read_yaml_text(Path(f), None)
         if data is None:
             _out(f"{f}: празен или липсващ файл")
             continue

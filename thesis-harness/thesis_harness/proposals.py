@@ -311,9 +311,9 @@ def _is_merged(p: dict, doc: DocModel, target: Para) -> bool:
 
 
 def _following_has(doc: DocModel, anchor: Para, text: str) -> bool:
-    first = text.split("\n\n")[0].strip()
+    first = text.split("\n\n")[0].strip(" \r\n")
     for para in doc.paras[anchor.index + 1: anchor.index + 6]:
-        if para.text.strip() == first:
+        if para.text.strip(" \r\n") == first:
             return True
     return False
 

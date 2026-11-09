@@ -156,6 +156,12 @@ class HarnessTest(unittest.TestCase):
         added = [p for p in self.proposals() if p["source"] == "review:t"]
         self.assertEqual(len(added), 1)
 
+    def test_unquoted_numeric_keys_stay_text(self):
+        from thesis_harness.workspace import read_yaml_text
+        f = self.tmp / "k.yaml"
+        f.write_text("- {para: 00000225, page: 3}\n- {para: 00000149}\n", encoding="utf-8")
+        self.assertEqual([x["para"] for x in read_yaml_text(f)], ["00000225", "00000149"])
+
     def test_apply_is_clean_and_keeps_formatting(self):
         self.run_cli("scan", str(self.doc_path))
         props = self.proposals()
@@ -164,7 +170,7 @@ class HarnessTest(unittest.TestCase):
         anchor = chain["para"]
         review = self.tmp / "r.yaml"
         review.write_text(
-            f"- {{para: '{anchor}', kind: insert_after, new: 'Нов абзац.', source: user, rationale: r}}\n",
+            f"- {{para: '{anchor}', kind: insert_after, new: \"\\tНов абзац.\", source: user, rationale: r}}\n",
             encoding="utf-8")
         self.run_cli("propose", str(review))
         new_id = self.proposals()[-1]["id"]
@@ -179,8 +185,10 @@ class HarnessTest(unittest.TestCase):
         self.assertIn("Next.js 16", para.text)
         self.assertTrue(next(r for r in para.runs if "Next.js" in r.text).bold, "formatting of the edited run kept")
         texts = [p.text for p in d.paragraphs]
-        self.assertIn("Нов абзац.", texts)
-        self.assertEqual(texts.index("Нов абзац."), next(i for i, t in enumerate(texts) if "chain" in t) + 1)
+        self.assertIn("\tНов абзац.", texts)  # python-docx reads w:tab back as \t
+        self.assertEqual(texts.index("\tНов абзац."), next(i for i, t in enumerate(texts) if "chain" in t) + 1)
+        self.assertNotIn("\t", "".join(t.text or "" for t in d.element.body.iter(
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t")))
         xml = d.element.xml
         self.assertNotIn("w:ins ", xml)
         self.assertNotIn("w:highlight", xml)

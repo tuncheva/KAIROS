@@ -67,6 +67,27 @@ def read_yaml(path: Path, default: Any = None) -> Any:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
+class _NoNumbersLoader(yaml.SafeLoader):
+    """SafeLoader that keeps numbers as text.
+
+    Paragraph keys are 8 hex digits. Unquoted, ``00000225`` is an octal int (149)
+    to YAML 1.1 and ``00000149`` a string, so a key written by hand silently
+    turns into a different number. Reviewer files are read with this loader.
+    """
+
+
+_NoNumbersLoader.yaml_implicit_resolvers = {
+    ch: [(tag, rx) for tag, rx in resolvers if tag not in ("tag:yaml.org,2002:int", "tag:yaml.org,2002:float")]
+    for ch, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
+}
+
+
+def read_yaml_text(path: Path, default: Any = None) -> Any:
+    if not path.exists():
+        return default
+    return yaml.load(path.read_text(encoding="utf-8"), Loader=_NoNumbersLoader)
+
+
 class _Dumper(yaml.SafeDumper):
     pass
 
