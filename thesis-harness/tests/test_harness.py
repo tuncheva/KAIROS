@@ -25,6 +25,19 @@ from thesis_harness import cli  # noqa: E402
 from thesis_harness.docmodel import extract  # noqa: E402
 
 
+def _png(path: Path, w: int, h: int, rgb=(255, 255, 255)) -> None:
+    """A solid-colour PNG with the standard library only (no Pillow in CI)."""
+    import struct
+    import zlib
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+    raw = b"".join(b"\x00" + bytes(rgb) * w for _ in range(h))
+    path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+                     + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+
+
 def make_doc(path: Path) -> None:
     d = docx.Document()
     d.add_heading("Глава първа ТЕОРИЯ", level=1)
@@ -274,15 +287,14 @@ class HarnessTest(unittest.TestCase):
         self.assertIn("2 таблици", (root / "src/arch.mmd").read_text(encoding="utf-8"))
 
     def test_replace_image_in_docx(self):
-        from PIL import Image
         d = docx.Document()
         img = self.tmp / "old.png"
-        Image.new("RGB", (40, 20), "white").save(img)
+        _png(img, 40, 20)
         d.add_paragraph().add_run().add_picture(str(img))
         d.add_paragraph("Фигура 1. Нещо")
         d.save(str(self.doc_path))
         new = self.repo / "fig.png"
-        Image.new("RGB", (100, 200), "red").save(new)
+        _png(new, 100, 200, (255, 0, 0))
         self.run_cli("scan", str(self.doc_path))
         key = [p for p in extract(self.doc_path).paras if p.text.startswith("Фигура 1.")][0].key
         review = self.tmp / "r.yaml"
