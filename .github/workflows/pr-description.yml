@@ -1,0 +1,53 @@
+# Checks every PR description against the conventions in CLAUDE.md, above all the
+# `## Documentation impact` section the thesis harness reads when the
+# documentation checks run (`python thesis-harness/run.py changes`, `/thesis-check`).
+#
+# Fails on: no `## What changes`, no `## Documentation impact`, an empty or
+# unreadable entry, an unknown section id, or `none` without a reason.
+# Warns (never fails) when the changed files point at sections the description
+# does not name — the path map in thesis-harness/sections.yaml is a heuristic.
+#
+# Runs on `edited` too, so fixing the description re-runs only this check.
+# Release roll-ups (development → main) are skipped: their PRs were checked on
+# the way into development.
+
+name: PR description
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+    branches: [development, main]
+
+concurrency:
+  group: pr-description-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  describe:
+    name: Description & documentation impact
+    if: ${{ !(github.base_ref == 'main' && github.head_ref == 'development') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the merge base is needed for the changed-file hints
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: thesis-harness/requirements.txt
+      - run: pip install -r thesis-harness/requirements.txt
+
+      # Title and body go through env, never inline into the script: a PR body is
+      # untrusted text.
+      - name: Check description
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_BASE_REF: ${{ github.base_ref }}
+          PR_HEAD_REF: ${{ github.head_ref }}
+        run: python thesis-harness/run.py pr-check

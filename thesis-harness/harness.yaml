@@ -49,6 +49,24 @@ checks:
       ignore: [macOS]    # токени, които не са код (напр. абревиатури с долна черта)
     dgm.identifiers:
       ignore: [macOS]
+    changes.undeclared:
+      # Промяна без декларация, която пипа повече раздели, не дава насоки (рефакторинг,
+      # импорт) – остава само в списъка на `changes`.
+      max_sections_per_change: 4
+
+# Промените след последната синхронизация – от „## Documentation impact“ на всеки PR
+# (вж. CLAUDE.md). Влизат във facts.json → changes и в проверките changes.*.
+changes:
+  github: tuncheva/KAIROS   # откъдето се четат PR описанията; null = само локален git
+  branch: development       # commit-и без PR се търсят тук
+  sections: sections.yaml   # раздели на дипломната ↔ пътища в кода
+  sync: sync.yaml           # докъде документът е синхронизиран
+  ignore:                   # промяна само в тези пътища не е промяна в продукта
+    - thesis-harness/**
+    - docs/diploma/**
+    - docs-audit/**
+    - CLAUDE.md
+    - .github/pull_request_template.md
 
 facts:
   # Факти от изпълнение на команда – напр. реалният брой тестове.

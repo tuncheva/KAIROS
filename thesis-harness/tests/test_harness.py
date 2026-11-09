@@ -92,6 +92,8 @@ class HarnessTest(unittest.TestCase):
             "THESIS_HARNESS_WORKSPACE": str(self.tmp / "work"),
             "THESIS_HARNESS_REPO": str(self.repo),
             "THESIS_HARNESS_REQUIREMENTS": str(self.tmp / "req"),
+            # harness.yaml names the GitHub repo for `changes`; tests never touch the network.
+            "THESIS_HARNESS_OFFLINE": "1",
         }
         self._old = {k: os.environ.get(k) for k in self.env}
         os.environ.update(self.env)
@@ -456,6 +458,221 @@ class HarnessTest(unittest.TestCase):
         finally:
             os.environ.pop("THESIS_HARNESS_CONFIG")
         self.assertTrue(any(x["check"] == "test.todo" for x in self.findings()))
+
+
+# ---------------------------------------------------------------- changes
+
+
+def pr_body(impact: str) -> str:
+    return ("Short summary.\n\n## What changes\n- Scheduled agents can be paused.\n\n## Tests\n- pnpm test\n\n"
+            "## Documentation impact\n<!-- one line per section -->\n" + impact + "\n\n## Left open\n- nothing\n")
+
+
+class ChangesTest(unittest.TestCase):
+    """PR descriptions → ledger → leads on the thesis sections they make stale."""
+
+    def setUp(self):
+        from thesis_harness import changes as chg
+        self.chg = chg
+        self.sections = chg.load_sections(HARNESS / "sections.yaml")
+        self.tmp = Path(tempfile.mkdtemp())
+        self.repo = self.tmp / "repo"
+        self.repo.mkdir()
+        make_repo(self.repo)
+        self.sync = self.tmp / "sync.yaml"
+        self.sync.write_text("# marker\nlast_synced_at: '2026-11-01T00:00:00Z'\n", encoding="utf-8")
+        self.prs = self.tmp / "prs.json"
+        cfg = self.tmp / "harness.yaml"
+        cfg.write_text(
+            f"prompts_dir: '{(HARNESS / 'prompts').as_posix()}'\n"
+            f"changes:\n  github: null\n  sections: '{(HARNESS / 'sections.yaml').as_posix()}'\n"
+            f"  sync: '{self.sync.as_posix()}'\n  ignore: ['thesis-harness/**']\n", encoding="utf-8")
+        self.env = {
+            "THESIS_HARNESS_WORKSPACE": str(self.tmp / "work"),
+            "THESIS_HARNESS_REPO": str(self.repo),
+            "THESIS_HARNESS_REQUIREMENTS": str(self.tmp / "req"),
+            "THESIS_HARNESS_CONFIG": str(cfg),
+            "THESIS_HARNESS_CHANGES": str(self.prs),
+            "THESIS_HARNESS_OFFLINE": "1",
+        }
+        self._old = {k: os.environ.get(k) for k in self.env}
+        os.environ.update(self.env)
+
+    def tearDown(self):
+        for k, v in self._old.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    run_cli = HarnessTest.run_cli
+
+    def write_prs(self, prs: list[dict]) -> None:
+        base = {"base": "development", "head": "feat/x", "files": [], "structural": [], "commit_subjects": []}
+        self.prs.write_text(json.dumps([{**base, "url": f"https://x/pull/{p['number']}", **p} for p in prs]),
+                            encoding="utf-8")
+
+    def test_section_map_is_sound(self):
+        ids = [s["id"] for s in self.sections]
+        self.assertEqual(len(ids), len(set(ids)))
+        for s in self.sections:
+            for p in s.get("paths") or []:
+                self.chg.glob_to_regex(p)
+
+    def test_parse_doc_impact(self):
+        d = self.chg.parse_doc_impact(pr_body("\n".join([
+            "- 2.8.10 — Scheduled agents can now be paused per workspace.",
+            "- [2.12]: New PendingDot replaces spinners on busy buttons.",
+            "- 2.7, app-1 – New `agent_pause` table with workspace_id and until.",
+            "- `2.11` - Settings gains a pause toggle",
+            "  that lasts until midnight.",
+        ])))
+        self.assertTrue(d.found)
+        self.assertEqual(d.unparsed, [])
+        self.assertEqual([ids for ids, _ in d.entries], [["2.8.10"], ["2.12"], ["2.7", "app-1"], ["2.11"]])
+        self.assertEqual(d.entries[3][1], "Settings gains a pause toggle that lasts until midnight.")
+        self.assertEqual(self.chg.parse_doc_impact(pr_body("- none — test-only change, nothing moved")).none,
+                         "test-only change, nothing moved")
+        self.assertFalse(self.chg.parse_doc_impact("## What changes\n- x").found)
+        self.assertEqual(self.chg.parse_doc_impact(pr_body("- agents paused now")).unparsed, ["agents paused now"])
+
+    def test_suggest_sections(self):
+        s = self.chg.suggest_sections(["src/server/llm/scheduled/riskRadar.ts", "src/server/llm/undo.ts"], self.sections)
+        self.assertEqual(list(s), ["2.8.6", "2.8.10"])  # most specific, thesis order
+        self.assertEqual(list(self.chg.suggest_sections(["src/server/llm/other.ts"], self.sections)), ["2.8"])
+        page = "src/app/(app)/notes/page.tsx"
+        self.assertNotIn("2.5", self.chg.suggest_sections([page], self.sections, []))
+        self.assertIn("2.5", self.chg.suggest_sections([page], self.sections, [page]))
+        self.assertEqual(self.chg.parse_name_status("M\ta.ts\nA\tb.ts\nR100\told.ts\tnew.ts\n"),
+                         (["a.ts", "b.ts", "old.ts", "new.ts"], ["b.ts", "old.ts", "new.ts"]))
+
+    def test_check_pr(self):
+        files = ["src/server/llm/scheduled/riskRadar.ts"]
+        ok = self.chg.check_pr("feat(ai): pause", pr_body("- 2.8.10 — Scheduled agents can be paused per workspace."),
+                               files, self.sections)
+        self.assertEqual((ok.errors, ok.warnings), ([], []))
+        self.assertEqual(self.chg.check_pr("feat(ai): pause", pr_body("- 2.8 — Scheduled agents can be paused."),
+                                           files, self.sections).warnings, [])  # a parent covers the child
+
+        def errors(body: str) -> str:
+            return " ".join(self.chg.check_pr("feat: x", body, [], self.sections).errors)
+
+        self.assertIn("Missing a `## Documentation impact`", errors("## What changes\n- x"))
+        self.assertIn("What changes", errors("## Documentation impact\n- none — test-only change, nothing moved"))
+        self.assertIn('Unknown section id "9.9"', errors(pr_body("- 9.9 — Something long enough to write.")))
+        self.assertIn("too short", errors(pr_body("- 2.8.10 — paused")))
+        self.assertIn("is empty", errors(pr_body("")))
+        self.assertIn("Cannot read", errors(pr_body("- agents paused now")))
+        self.assertIn("same time", errors(pr_body("- none — test-only change here\n- 2.12 — New PendingDot on buttons.")))
+        self.assertIn("needs a reason", errors(pr_body("- none — n/a")))
+
+        named = self.chg.check_pr("Development", pr_body("- 2.12 — New PendingDot on busy buttons."), files, self.sections)
+        self.assertEqual(named.errors, [])
+        self.assertTrue(any("2.8.10" in w for w in named.warnings))
+        self.assertTrue(any("conventional" in w for w in named.warnings))
+        none = self.chg.check_pr("feat: x", pr_body("- none — internal refactor, no behaviour moved"), files, self.sections)
+        self.assertTrue(any("Declared no doc impact" in w for w in none.warnings))
+        self.assertTrue(self.chg.is_release_rollup("main", "development"))
+
+    def test_ledger_groups_by_section(self):
+        prs = [
+            {"number": 2, "title": "feat: two", "merged_at": "2026-11-03T00:00:00Z", "files": ["src/server/db/schema.ts"],
+             "body": pr_body("- 2.12 — New PendingDot on busy buttons.\n- 2.8.10 — Scheduled agents can be paused.")},
+            {"number": 1, "title": "feat: one", "merged_at": "2026-11-02T00:00:00Z",
+             "body": pr_body("- 2.8.10 — Risk Radar also flags stalled reviews."), "commit_subjects": ["feat: one"]},
+            {"number": 3, "title": "test: three", "merged_at": "2026-11-04T00:00:00Z",
+             "body": pr_body("- none — test-only change, nothing moved")},
+            {"number": 4, "title": "Old", "merged_at": "2026-11-05T00:00:00Z", "body": "No block.",
+             "files": ["src/components/ui/Modal.tsx"]},
+            {"number": 5, "title": "chore: harness", "merged_at": "2026-11-05T00:00:00Z", "body": "",
+             "files": ["thesis-harness/run.py"]},
+        ]
+        commits = [
+            {"sha": "a" * 40, "date": "2026-11-02T00:00:00Z", "subject": "feat: one", "body": "", "files": []},
+            {"sha": "b" * 40, "date": "2026-11-03T00:00:00Z", "subject": "fix: direct", "body": "Body.",
+             "files": ["src/server/auth/config.ts"]},
+        ]
+        led = self.chg.build_ledger(prs, commits, self.sections, "2026-11-01T00:00:00Z", "2026-11-09T00:00:00Z",
+                                    ignore=["thesis-harness/**"])
+        self.assertEqual([s["id"] for s in led["sections"]], ["2.8.10", "2.12"])
+        self.assertEqual([i["ref"] for i in led["sections"][0]["items"]], ["#1", "#2"])
+        self.assertEqual([n["ref"] for n in led["no_change"]], ["#3"])
+        self.assertEqual([(r["ref"], r["suggested"]) for r in led["needs_review"]], [("#4", ["2.12"]), ("bbbbbbb", ["2.10"])])
+        self.assertEqual([(m["ref"], m["sections"]) for m in led["possibly_missed"]], [("#2", ["2.7", "app-1"])])
+        md = self.chg.render_ledger(led, self.sections)
+        self.assertIn("### 2.8.10 Планирани (проактивни) агенти", md)
+        self.assertIn("`#1` feat: one — Risk Radar also flags stalled reviews.", md)
+        self.assertNotIn("chore: harness", md)
+
+    def test_scan_turns_declared_changes_into_leads(self):
+        doc_path = self.tmp / "thesis.docx"
+        d = docx.Document()
+        d.add_heading("Глава втора РЕАЛИЗАЦИЯ", level=1)
+        d.add_heading("2.8. Многоагентна система", level=2)
+        d.add_paragraph("Агентите работят по график.")
+        d.add_heading("2.8.10. Планирани агенти", level=3)
+        d.add_paragraph("Планираните агенти се пускат всяка сутрин.")
+        d.add_heading("2.10. Сигурност", level=2)
+        d.add_paragraph("Паролите се хешират с argon2.")
+        d.add_heading("Приложение 1. Релационен модел", level=2)
+        d.save(str(doc_path))
+        self.write_prs([
+            {"number": 7, "title": "feat(ai): pause", "merged_at": "2026-11-05T00:00:00Z",
+             "files": ["src/server/db/schemas/agents.ts"],
+             "body": pr_body("- 2.8.10 — Scheduled agents can be paused per workspace.\n"
+                             "- 2.8.5 — Drafts of a paused agent stay pending.\n"
+                             "- readme — Mention the pause toggle in the README.")},
+            {"number": 8, "title": "Old", "merged_at": "2026-11-06T00:00:00Z", "body": "No block.",
+             "files": ["src/server/auth/config.ts"]},
+            {"number": 6, "title": "feat: before the sync", "merged_at": "2026-10-01T00:00:00Z",
+             "body": pr_body("- 2.10 — Should not appear: merged before the sync.")},
+        ])
+        out = self.run_cli("scan", str(doc_path))
+        self.assertIn("2 PR", out)
+        heads = {p.key: p.text for p in extract(doc_path).headings()}
+        findings = json.loads((self.tmp / "work/thesis/findings.json").read_text(encoding="utf-8"))["findings"]
+        declared = [(heads[f["para"]], f["message"]) for f in findings if f["check"] == "changes.declared"]
+        self.assertEqual(len(declared), 2)  # readme is outside the thesis
+        self.assertTrue(declared[0][0].startswith("2.8.") and "Drafts of a paused agent" in declared[0][1])
+        self.assertIn("насоката е при 2.8", declared[0][1])  # 2.8.5 is not in this document
+        self.assertTrue(declared[1][0].startswith("2.8.10") and "#7" in declared[1][1])
+        undeclared = {heads[f["para"]].split(".")[0] + "|" + heads[f["para"]][:4]: f["message"]
+                      for f in findings if f["check"] == "changes.undeclared"}
+        self.assertTrue(any("#8" in m for m in undeclared.values()))  # 2.10 from the files of #8
+        self.assertTrue(any("Приложение" in k for k in undeclared))   # app-1: #7 touched the schema
+        self.assertFalse(any("Should not appear" in f["message"] for f in findings))
+        self.assertTrue(all(f.get("lead") for f in findings if f["check"].startswith("changes.")))
+        tasks = json.loads((self.tmp / "work/thesis/tasks.json").read_text(encoding="utf-8"))
+        routed = [l for t in tasks for l in t["leads"] if l["check"] == "changes.declared"]
+        self.assertEqual(len(routed), 2)
+
+    def test_changes_command_and_mark_synced(self):
+        self.write_prs([{"number": 9, "title": "feat: nine", "merged_at": "2026-11-05T00:00:00Z",
+                         "body": pr_body("- 2.12 — New PendingDot on busy buttons.")}])
+        out_md = self.tmp / "ledger.md"
+        self.run_cli("changes", "--out", str(out_md))
+        self.assertIn("feat: nine — New PendingDot on busy buttons.", out_md.read_text(encoding="utf-8"))
+        self.run_cli("changes", "--mark-synced", "--until", "2026-11-07", "--version", "KAIROS_v07-11")
+        text = self.sync.read_text(encoding="utf-8")
+        self.assertTrue(text.startswith("# marker"))
+        import yaml
+        data = yaml.safe_load(text)
+        self.assertEqual((data["last_synced_at"], data["document_version"]), ("2026-11-07T00:00:00Z", "KAIROS_v07-11"))
+        self.run_cli("changes", "--out", str(out_md))
+        self.assertNotIn("feat: nine", out_md.read_text(encoding="utf-8"))
+
+    def test_pr_check_command(self):
+        body = self.tmp / "pr.md"
+        body.write_text(pr_body("- 2.12 — New PendingDot on busy buttons."), encoding="utf-8")
+        files = self.tmp / "files.txt"
+        files.write_text("src/components/ui/PendingDot.tsx\n", encoding="utf-8")
+        out = self.run_cli("pr-check", "--title", "feat(ui): x", "--body-file", str(body), "--files-from", str(files))
+        self.assertIn("Description OK", out)
+        body.write_text("## What changes\n- x\n", encoding="utf-8")
+        with self.assertRaises(AssertionError) as ctx:
+            self.run_cli("pr-check", "--title", "feat(ui): x", "--body-file", str(body), "--files-from", str(files))
+        self.assertIn("Missing a `## Documentation impact`", str(ctx.exception))
 
 
 if __name__ == "__main__":

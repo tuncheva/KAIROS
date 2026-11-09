@@ -34,6 +34,9 @@ python thesis-harness/run.py edit P7 --new "нов текст" --note "по-кр
 python thesis-harness/run.py apply --dry-run
 python thesis-harness/run.py apply                               # → KAIROS_v28-09.revised.docx до оригинала
 python thesis-harness/run.py status
+python thesis-harness/run.py changes                             # какво е слято след последната синхронизация
+python thesis-harness/run.py changes --mark-synced --version KAIROS_v15-10
+python thesis-harness/run.py pr-check --title "feat: …" --body-file pr.md
 ```
 
 Всички команди: `python thesis-harness/run.py --help`.
@@ -74,10 +77,52 @@ python thesis-harness/run.py status
 | `structure.captions` | последователност на номерата на фигури и таблици |
 | `text.mixed-script` | кирилица и латиница в една дума („chИИn“ от замяна AI→ИИ) |
 | `text.doubled-words` | „на на“ |
+| `changes.declared` | всеки ред от „Documentation impact“ на PR, слят след `sync.yaml` – насока към раздела му |
+| `changes.undeclared` | PR без декларация, commit-и без PR и раздели, които PR е пипнал, без да ги назове – насока по раздел |
 | prompt `code-accuracy` | Claude сверява всяко проверимо твърдение за реализацията с кода |
 | prompt `requirements` | Claude оценява смисловите правила от изискванията |
 
 `python thesis-harness/run.py check --list` показва активните проверки.
+
+## Промени от PR
+
+Всеки PR в KAIROS описва какво прави остаряло в дипломната (`CLAUDE.md`,
+`.github/pull_request_template.md`):
+
+```markdown
+## Documentation impact
+- 2.8.10 — Scheduled agents can be paused per workspace until midnight.
+- 2.7, app-1 — New `agent_pause` table (workspace_id, until, created_by).
+```
+
+или `- none — <защо>`. Номерата са от `sections.yaml`.
+
+| Файл / команда | Какво |
+|---|---|
+| `sections.yaml` | разделите на дипломната: номер, заглавие, пътищата в кода, които описват |
+| `sync.yaml` | докъде документът отразява кода (мести се с `changes --mark-synced`) |
+| `changes` | всичко слято след `sync.yaml`, по раздели → `work/changes.md` |
+| `pr-check` | проверява описание на PR; пуска се от CI („PR description“) на всеки PR |
+
+`scan` събира същото във `facts.json → changes`, а `changes.*` го превръщат в
+насоки към заглавието на раздела. Описанието на PR е само насока:
+предложението пак иска доказателство `файл:ред` от кода.
+
+- **Без декларация.** По-стари PR и commit-и директно в `development` влизат
+  „за решение“; разделите се предполагат по променените файлове
+  (`sections.yaml → paths`).
+- **Източник.** GitHub API (`changes.github` в `harness.yaml`; публично репо –
+  без токен, `GH_TOKEN` вдига лимита) и локалният git за commit-ите.
+  `THESIS_HARNESS_OFFLINE=1` спира мрежата, `THESIS_HARNESS_CHANGES=<файл.json>`
+  подава списък с PR (тестове, офлайн).
+- **Шум.** `changes.ignore` изключва промени само в инструментите (харнеса,
+  материалите на дипломната). Промяна без декларация, която пипа повече от
+  `max_sections_per_change` раздела, остава само в списъка.
+- **Карта.** `changes` предупреждава, когато `sections.yaml` и заредената
+  дипломна се разминават (нов раздел, преномериране).
+
+От GitHub: Actions → „Doc ledger“ → Run workflow дава същия списък като
+обобщение на изпълнението.
 
 ## Изисквания
 

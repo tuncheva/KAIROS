@@ -11,6 +11,7 @@ from pathlib import Path
 
 import yaml
 
+from . import changes as chg
 from . import proposals as props
 from .apply import apply as apply_doc
 from .preview import build as build_preview
@@ -145,12 +146,23 @@ def cmd_facts(cfg: Config, ws: Workspace) -> dict:
     facts = collect_all(cfg.repo_root, cfg.data)
     facts["_collected_at"] = now_iso()
     facts["_repo"] = git_head(cfg.repo_root)
+    if chg.settings(cfg)["sections_path"].exists():
+        try:
+            facts["changes"] = chg.collect(cfg)
+            facts["_errors"] += facts["changes"]["errors"]
+        except Exception as e:  # noqa: BLE001 - a broken source must not stop the scan
+            facts["_errors"].append(f"changes: {type(e).__name__}: {e}")
     write_json(ws.p("facts.json"), facts)
     a = facts.get("agents") or {}
     _out(f"Факти от кода ({cfg.repo_root}, commit {facts['_repo'].get('commit')}): "
          f"{a.get('conversational_count', '?')} разговорни + {a.get('scheduled_count', '?')} планирани агента, "
          f"{(facts.get('database') or {}).get('table_count', '?')} таблици, "
          f"{(facts.get('api') or {}).get('router_count', '?')} tRPC рутера")
+    ch = facts.get("changes")
+    if ch:
+        _out(f"Промени след {ch['since'][:10]} ({ch['source']}): {ch['pr_count']} PR, "
+             f"{sum(len(s['items']) for s in ch['sections'])} декларирани реда в {len(ch['sections'])} раздела, "
+             f"{len(ch['needs_review'])} без декларация – пълният списък: `changes`")
     for e in facts["_errors"]:
         _out(f"  ⚠ събирачът се провали: {e}")
     if facts["_repo"].get("dirty"):
@@ -490,6 +502,102 @@ def cmd_requirements(cfg: Config, args) -> None:
         _out("✓ записано")
 
 
+def cmd_changes(cfg: Config, args) -> None:
+    st = chg.settings(cfg)
+    if args.mark_synced:
+        until = chg.iso(args.until)
+        ref = chg.resolve_ref(cfg.repo_root, st["branch"])
+        commit = None
+        if ref:
+            try:
+                commit = chg._git(cfg.repo_root, "rev-parse", ref).strip()
+            except Exception:  # noqa: BLE001
+                commit = None
+        data = {**chg.load_sync(st["sync_path"]), "last_synced_at": until, "last_synced_commit": commit}
+        if args.version:
+            data["document_version"] = args.version
+        chg.save_sync(st["sync_path"], data)
+        _out(f"Синхронизирано до {until}{' (' + commit[:7] + ')' if commit else ''}. Commit-нете {st['sync_path'].name}.")
+        return
+
+    ledger = chg.collect(cfg, since=args.since, until=args.until)
+    sections = chg.load_sections(st["sections_path"])
+    if args.json:
+        _out(json.dumps(ledger, ensure_ascii=False, indent=2))
+        return
+    md = chg.render_ledger(ledger, sections)
+    out = Path(args.out) if args.out else cfg.workspace_root / "changes.md"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(md, encoding="utf-8")
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
+            fh.write(md)
+    _out(f"Промени след {ledger['since']} ({ledger['source']}): {ledger['pr_count']} PR, {ledger['commit_count']} commit(а) без PR")
+    _out(f"  за писане: {len(ledger['sections'])} раздела; за решение: {len(ledger['needs_review'])};"
+         f" вероятно пропуснати: {len(ledger['possibly_missed'])}; без промяна: {len(ledger['no_change'])}")
+    _out(f"  → {out}")
+    for e in ledger["errors"]:
+        _out(f"  ⚠ {e}")
+    ws_slug = cfg.workspace_root / "current"
+    if ws_slug.exists():
+        try:
+            ws = open_workspace(cfg, None)
+            missing, unmapped = chg.map_drift(sections, ws.doc().headings())
+            if missing:
+                _out(f"  ⚠ sections.yaml има раздели, които ги няма в {ws.state().get('source_name')}: {', '.join(missing)}")
+            if unmapped:
+                _out(f"  ⚠ заглавия в документа, които ги няма в sections.yaml: {', '.join(unmapped)}")
+        except Exception:  # noqa: BLE001 - the drift report is a bonus
+            pass
+
+
+def cmd_pr_check(cfg: Config, args) -> None:
+    """Validate a PR description (CI: env PR_TITLE/PR_BODY/PR_BASE_REF/PR_HEAD_REF)."""
+    title = args.title if args.title is not None else os.environ.get("PR_TITLE", "")
+    body = Path(args.body_file).read_text(encoding="utf-8") if args.body_file else os.environ.get("PR_BODY", "")
+    base = args.base or os.environ.get("PR_BASE_REF") or "development"
+    head = args.head or os.environ.get("PR_HEAD_REF") or ""
+    if chg.is_release_rollup(base, head):
+        _out("Release roll-up (development → main): its PRs were checked on the way in. Skipping.")
+        return
+    if args.files_from:
+        files, structural = [x for x in Path(args.files_from).read_text(encoding="utf-8").splitlines() if x], None
+    else:
+        files, structural = [], None
+        for ref in (f"origin/{base}", base):
+            try:
+                files, structural = chg.parse_name_status(chg._git(cfg.repo_root, "diff", "--name-status", f"{ref}...HEAD"))
+                break
+            except Exception:  # noqa: BLE001
+                continue
+        else:
+            _out(f"Could not diff against {base}; skipping the file → section hints.")
+    sections = chg.load_sections(chg.settings(cfg)["sections_path"])
+    res = chg.check_pr(title, body, files, sections, structural)
+    in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
+    esc = lambda m: m.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")  # noqa: E731
+    for w in res.warnings:
+        _out(f"::warning title=PR description::{esc(w)}" if in_ci else f"warning: {w}")
+    for e in res.errors:
+        _out(f"::error title=PR description::{esc(e)}" if in_ci else f"error: {e}")
+    titles = {s["id"]: f"{s['id']} {s['title']} — {s['en']}" for s in sections}
+    summary = ["## Documentation impact", ""]
+    if res.impact.none is not None:
+        summary += [f"No thesis change: {res.impact.none}", ""]
+    summary += [f"- **{'; '.join(titles.get(i, i) for i in ids)}** — {text}" for ids, text in res.impact.entries]
+    if res.suggested:
+        summary += ["", "### Sections the changed files point at", ""]
+        summary += [f"- {titles.get(i, i)} ({len(fs)} files)" for i, fs in res.suggested.items()]
+    summary += ["", f"**{len(res.errors)} error(s)** — see annotations." if res.errors else "Description OK."]
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
+            fh.write("\n".join(summary) + "\n")
+    else:
+        _out("\n" + "\n".join(summary))
+    if res.errors:
+        sys.exit(1)
+
+
 def cmd_scan(cfg: Config, args) -> None:
     ws = cmd_ingest(cfg, args) if args.file else open_workspace(cfg, args.doc_slug)
     cmd_facts(cfg, ws)
@@ -746,6 +854,19 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--dry-run", action="store_true")
     ds.add_parser("html", help="HTML страница за всяка диаграма, галерия out/index.html и GALLERY.md (без прерисуване)")
     ds.add_parser("to-doc", help="предложи рендерираните диаграми като изображения на фигурите в дипломната")
+    s = sub.add_parser("changes", help="какво е слято след последната синхронизация, по раздели (от PR описанията)")
+    s.add_argument("--since", help="начало на прозореца (ISO дата); по подразбиране sync.yaml")
+    s.add_argument("--until", help="край на прозореца; по подразбиране сега")
+    s.add_argument("--out", help="къде да запише списъка (по подразбиране work/changes.md)")
+    s.add_argument("--json", action="store_true", help="целият списък като JSON на stdout")
+    s.add_argument("--mark-synced", action="store_true", help="документът вече отразява всичко до --until: премести sync.yaml")
+    s.add_argument("--version", help="с --mark-synced: името на версията на документа")
+    s = sub.add_parser("pr-check", help="провери описание на PR (CI или преди отваряне на PR)")
+    s.add_argument("--title")
+    s.add_argument("--body-file")
+    s.add_argument("--base")
+    s.add_argument("--head")
+    s.add_argument("--files-from", help="файл с променените пътища, по един на ред (вместо git diff)")
     s = sub.add_parser("requirements", help="официални изисквания")
     rs = s.add_subparsers(dest="req_cmd", required=True)
     r = rs.add_parser("import", help="всички официални документи наведнъж (заменя предишния импорт)")
@@ -778,6 +899,12 @@ def main(argv: list[str] | None = None) -> None:
         return
     if args.cmd == "requirements":
         cmd_requirements(cfg, args)
+        return
+    if args.cmd == "changes":
+        cmd_changes(cfg, args)
+        return
+    if args.cmd == "pr-check":
+        cmd_pr_check(cfg, args)
         return
     if args.cmd == "diagrams":
         cmd_diagrams(cfg, args)

@@ -1,0 +1,56 @@
+# On-demand list of what the thesis has to absorb: every PR merged since
+# thesis-harness/sync.yaml, grouped by thesis section from its
+# `## Documentation impact` block, plus commits that reached `development`
+# without a PR.
+#
+# Actions → "Doc ledger" → Run workflow. The list is the run summary and a
+# downloadable `doc-ledger` artifact. Moving the sync marker stays a local step
+# (`python thesis-harness/run.py changes --mark-synced`), committed with the
+# thesis update, so a CI run never claims the document is up to date.
+
+name: Doc ledger
+
+on:
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Start of the window (ISO date). Empty: last sync in thesis-harness/sync.yaml"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  ledger:
+    name: Build doc ledger
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: development
+          fetch-depth: 0 # commits without a PR are read from local history
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: thesis-harness/requirements.txt
+      - run: pip install -r thesis-harness/requirements.txt
+
+      - name: Build ledger
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SINCE: ${{ inputs.since }}
+        run: |
+          if [ -n "$SINCE" ]; then
+            python thesis-harness/run.py changes --since "$SINCE" --out doc-ledger.md
+          else
+            python thesis-harness/run.py changes --out doc-ledger.md
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: doc-ledger
+          path: doc-ledger.md

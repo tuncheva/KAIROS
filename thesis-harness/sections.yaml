@@ -1,0 +1,75 @@
+# Карта на дипломната работа за проверките на промените (changes.*, pr-check).
+#
+# id       – това, което PR описание пише под `## Documentation impact` (вж. CLAUDE.md).
+#            За номерираните раздели е номерът от заглавието в документа.
+# title    – заглавието в документа.
+# en       – кратко описание на английски (PR описанията са на английски).
+# paths    – пътища в репото, които разделът описва (glob: ** през папки, * в една).
+#            pr-check предупреждава, когато PR пипа тези файлове, без да назове раздела.
+# structural_only – броят се само добавени/изтрити/преименувани файлове
+#            (картата на сайта се мени с нов маршрут, не с редакция на страница).
+# heading  – регулярен израз за заглавие без номер (Увод, Приложения).
+# in_document: false – цел извън дипломната (README).
+#
+# Редът е редът в документа. 2.8.5 е с празно заглавие в .docx; заглавието тук е
+# по първия му абзац.
+
+sections:
+  - {id: "0", title: "Увод", en: "Introduction: goals, limitations, expected results", heading: "^У\\s*В\\s*О\\s*Д"}
+  - {id: "0.5", title: "Ограничения на разработката", en: "Limitations (daily model budget, embeddings, non-determinism)"}
+  - {id: "0.7", title: "Очаквани резултати", en: "Expected results (agent counts, features promised)"}
+  - {id: "1", title: "Глава първа – Теоретична обосновка", en: "Chapter 1: theory"}
+  - {id: "1.2", title: "Подход към изкуствения интелект в KAIROS", en: "AI approach"}
+  - {id: "1.3", title: "Многоагентна архитектура", en: "Multi-agent architecture (theory)"}
+  - {id: "1.4", title: "Търсене в документи", en: "Document search (theory)"}
+  - {id: "1.5", title: "Безопасност и запазване на човешкия контрол", en: "Safety and human control"}
+  - {id: "1.6", title: "Конкурентен анализ", en: "Competitor analysis", paths: ["docs/business/competitor-*"]}
+  - {id: "1.7", title: "SWOT анализ", en: "SWOT"}
+  - {id: "1.8", title: "Икономически аспекти", en: "Economics, pricing, plans", paths: ["docs/business/**", "src/server/billing/**", "src/components/marketing/PricingTable.tsx", "scripts/stripe-*"]}
+  - {id: "2", title: "Глава втора – Проектиране, реализация и оценка", en: "Chapter 2: design and implementation"}
+  - {id: "2.1", title: "Използвани технологии", en: "Technologies and libraries", paths: ["package.json"]}
+  - {id: "2.2", title: "Външни системи и услуги", en: "External services (Resend, UploadThing, Stripe, OAuth, maps, push)", paths: ["src/server/email/**", "src/server/geo/**", "src/server/calendar/**", "src/app/api/stripe/**", "src/app/api/uploadthing/**", "src/app/api/calendar/**", ".env.example"]}
+  - {id: "2.3", title: "Среда за реализация", en: "Development environment"}
+  - {id: "2.3.3", title: "Инструменти за качество на кода", en: "Code-quality tooling (lint, format, CI, guardrail scripts)", paths: ["eslint.config.js", "prettier.config.js", "scripts/check-*", ".github/**", "CLAUDE.md"]}
+  - {id: "2.4", title: "Use Case модел", en: "Use cases (new user-facing capability)"}
+  - {id: "2.5", title: "Site Map", en: "Site map (routes added/removed)", paths: ["src/app/**/page.tsx"], structural_only: true}
+  - {id: "2.6", title: "Архитектура на приложението", en: "Architecture (Next server, WS server, Redis, tRPC root)", paths: ["server.ts", "ws-server/**", "src/server/redis/**", "src/server/ws/**", "src/server/api/root.ts", "src/server/api/trpc.ts"]}
+  - {id: "2.7", title: "Релационен модел на данните", en: "Data model (tables, columns, migrations)", paths: ["src/server/db/schema.ts", "src/server/db/schemas/**", "src/server/db/migrations/**"]}
+  - {id: "2.7.1", title: "Сложни заявки", en: "Complex queries (SQL worth showing)"}
+  - {id: "2.8", title: "Многоагентна система с изкуствен интелект", en: "AI multi-agent system (overview)", paths: ["src/server/llm/**", "src/server/api/routers/agent.ts"]}
+  - {id: "2.8.1", title: "Каталог на агентите", en: "Agent catalogue (agents added/renamed/re-scoped)", paths: ["src/server/llm/agents/**", "src/server/llm/profiles/**"]}
+  - {id: "2.8.2", title: "Оркестратор и делегиране", en: "Orchestrator, routing, handoff", paths: ["src/server/llm/orchestrator/agentOrchestrator.ts", "src/server/llm/orchestrator/handoff.ts", "src/server/llm/prompts/handoffContext.ts"]}
+  - {id: "2.8.3", title: "Агент A1 и цикълът с извикване на инструменти", en: "A1 and the tool-calling loop", paths: ["src/server/llm/orchestrator/a1Concierge.ts", "src/server/llm/core/toolLoop.ts", "src/server/llm/tools/**"]}
+  - {id: "2.8.4", title: "Последователност на един ИИ ход", en: "Sequence of one AI turn (Appendix 3 diagram)"}
+  - {id: "2.8.5", title: "Чернова, потвърждение и прилагане", en: "Draft → confirm → apply lifecycle (Appendix 2 diagram)", paths: ["src/server/llm/orchestrator/autoApply.ts", "src/server/llm/orchestrator/shared.ts"]}
+  - {id: "2.8.6", title: "Отмяна на приложен план", en: "Undo of an applied plan", paths: ["src/server/llm/undo.ts", "src/server/llm/beforeImage.ts"]}
+  - {id: "2.8.7", title: "Валидация на структуриран изход и поправка на JSON", en: "Structured output validation and JSON repair", paths: ["src/server/llm/schemas/**", "src/server/llm/core/jsonRepair.ts", "src/server/llm/core/plainText.ts"]}
+  - {id: "2.8.8", title: "Контекстно инженерство", en: "Context engineering (context builders, memory, summaries, page context)", paths: ["src/server/llm/context/**", "src/server/llm/memory.ts", "src/server/llm/conversations.ts", "src/server/llm/prompts/**"]}
+  - {id: "2.8.9", title: "Извличане с обогатяване над документи", en: "RAG over documents (chunking, embeddings, search)", paths: ["src/server/llm/documents/**", "src/server/llm/core/embeddings.ts", "src/server/llm/core/embedPending.ts", "src/server/llm/core/rankFusion.ts", "src/server/llm/pdf/**"]}
+  - {id: "2.8.10", title: "Планирани (проактивни) агенти", en: "Scheduled (proactive) agents", paths: ["src/server/llm/scheduled/**"]}
+  - {id: "2.8.11", title: "Абстракция на доставчика и верига от модели", en: "Provider abstraction and model fallback chain", paths: ["src/server/llm/core/providers.ts", "src/server/llm/core/modelClient.ts", "src/server/llm/core/effortScope.ts"]}
+  - {id: "2.8.12", title: "Многоезичност на агентите", en: "Agent multilingualism", paths: ["src/server/llm/locale.ts", "src/server/llm/prompts/languageRules.ts", "src/server/llm/prompts/replyLanguage.ts"]}
+  - {id: "2.8.13", title: "Наблюдаемост и ограничаване на разхода", en: "Observability, rate limits, cost control", paths: ["src/server/llm/observability.ts", "src/server/llm/retention.ts", "src/server/security/rateLimit*"]}
+  - {id: "2.9", title: "Ролево-базиран контрол на достъпа", en: "RBAC (roles, permissions, invites)", paths: ["src/server/api/authz.ts", "src/server/orgs/**", "src/server/api/routers/organization.ts", "src/components/orgs/**", "src/components/settings/RoleMatrix.tsx"]}
+  - {id: "2.10", title: "Сигурност", en: "Security (auth, 2FA, encryption, headers, rate limits, webhooks)", paths: ["src/server/auth/**", "src/server/security/**", "src/server/http/**", "src/server/api/webhookSecurity.ts", "src/server/api/apiKeys.ts", "src/app/(auth)/**"]}
+  - {id: "2.11", title: "Функционални модули", en: "Functional modules (projects, tasks, notes, events, chat, calendar, notifications, progress)", paths: ["src/server/api/routers/**", "src/server/notifications/**", "src/server/export/**", "src/components/projects/**", "src/components/notes/**", "src/components/events/**", "src/components/publish/**", "src/components/chat/**", "src/components/calendar/**", "src/components/progress/**", "src/components/notifications/**", "src/components/dashboard/**", "src/components/settings/**"]}
+  - {id: "2.12", title: "Потребителски интерфейс и визуализация", en: "UI, design system, charts, i18n", paths: ["src/components/ui/**", "src/components/layout/**", "src/components/charts/**", "src/styles/**", "docs/theme.md", "src/i18n/**"]}
+  - {id: "2.13", title: "Методология и оценка на ИИ компонента", en: "AI evaluation (golden set, metrics, results)", paths: ["tests/agents/evals/**", "docs/diploma/evals/**", "vitest.eval.config.ts", "scripts/llm-probe.ts", "scripts/effort-probe.ts"]}
+  - {id: "2.14", title: "Тестване на платформата", en: "Testing (unit, component, integration suites)", paths: ["vitest.config.ts", "vitest.integration.config.ts", "tests/integration/**", "tests/setup.tsx"]}
+  - {id: "2.15", title: "Етични аспекти и защита на данните", en: "Ethics and data protection (privacy, retention, export, deletion)", paths: ["src/app/(marketing)/privacy/**", "src/app/(marketing)/terms/**", "src/components/settings/PrivacySettingsClient.tsx", "src/app/api/export/**"]}
+  - {id: "2.16", title: "Внедряване и достъп до системата", en: "Deployment and access", paths: ["next.config.ts", "drizzle.config.ts", ".github/workflows/**"]}
+  - {id: "3", title: "Глава трета – Перспективи", en: "Chapter 3: future work (move items out when they ship)"}
+  - {id: "3.1", title: "Векторно извличане над документи", en: "Future: vector retrieval"}
+  - {id: "3.2", title: "Разширяване на оценката", en: "Future: broader evaluation"}
+  - {id: "3.3", title: "Локални модели", en: "Future: local models"}
+  - {id: "3.4", title: "Видеоразговори", en: "Future: video calls"}
+  - {id: "3.5", title: "Мобилно приложение", en: "Future: mobile app"}
+  - {id: "3.6", title: "Разширяване на интеграциите", en: "Future: integrations"}
+  - {id: "3.7", title: "Усъвършенстване на агентната система", en: "Future: agent system"}
+  - {id: "conclusion", title: "Заключение", en: "Conclusion", heading: "^З\\s*А\\s*К\\s*Л\\s*Ю\\s*Ч\\s*Е\\s*Н\\s*И\\s*Е"}
+  - {id: "app-1", title: "Приложение 1. Релационен модел на базата данни", en: "Appendix 1: ER diagram — redraw when tables change", paths: ["src/server/db/schema.ts", "src/server/db/schemas/**"], heading: "^Приложение\\s*1\\b"}
+  - {id: "app-2", title: "Приложение 2. Жизнен цикъл на действие на ИИ агент", en: "Appendix 2: agent action lifecycle diagram", heading: "^Приложение\\s*2\\b"}
+  - {id: "app-3", title: "Приложение 3. Последователност на един ИИ ход", en: "Appendix 3: AI turn sequence diagram", heading: "^Приложение\\s*3\\b"}
+  - {id: "app-4", title: "Приложение 4. Резултати от прогона на златния набор", en: "Appendix 4: golden-set run results", heading: "^Приложение\\s*4\\b"}
+  - {id: "app-5", title: "Приложение 5. Екранни снимки на платформата", en: "Appendix 5: screenshots — retake when a screen changes visibly", heading: "^Приложение\\s*5\\b"}
+  - {id: "readme", title: "README.md", en: "Repository README", in_document: false}
