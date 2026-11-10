@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { gsap } from "gsap";
 import { HomeClient } from "~/components/homepage/HomeClient";
@@ -48,8 +48,10 @@ describe("HomeClient", () => {
 
   it("renders both header auth buttons", () => {
     render(<HomeClient />);
-    expect(screen.getByText("Log in")).toBeInTheDocument();
-    expect(screen.getByText("Start free")).toBeInTheDocument();
+    // Once in the bar (sm and up) and once inside the phone menu.
+    expect(screen.getAllByRole("button", { name: "Log in" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Start free" })).toHaveLength(2);
+    expect(document.querySelector("#landing-menu")).toHaveTextContent("Start free");
   });
 
   it("does not paint the retired drifting background circles", () => {
@@ -71,16 +73,69 @@ describe("HomeClient", () => {
     expect(panel.querySelectorAll("button, a, input").length).toBe(0);
   });
 
-  it("renders the five agents", () => {
+  it("renders the agent roster as tabs, conversational first, then scheduled", () => {
     render(<HomeClient />);
-    const names = [...document.querySelectorAll("#agents li .font-display")].map((n) => n.textContent);
-    expect(names).toEqual([
-      "Mentor",
-      "Odysseus",
-      "Mnemosyne",
-      "Iris",
-      "Hemera",
+    const lists = screen.getAllByRole("tablist");
+    expect(lists.map((l) => l.getAttribute("aria-labelledby"))).toEqual([
+      "agents-group-live",
+      "agents-group-clock",
     ]);
+    const names = screen.getAllByRole("tab").map((tab) => tab.querySelector(".font-display")?.textContent);
+    expect(names).toEqual(["Mentor", "Odysseus", "Mnemosyne", "Iris", "Solon", "Hemera", "Argus"]);
+    expect(screen.getByRole("tab", { name: /Mentor/ })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("switches the agent replay on click and with the arrow keys", async () => {
+    const user = userEvent.setup();
+    render(<HomeClient />);
+    const panel = screen.getByRole("tabpanel");
+    expect(panel).toHaveTextContent("What needs my attention this week?");
+
+    await user.click(screen.getByRole("tab", { name: /Odysseus/ }));
+    expect(panel).toHaveTextContent("launch-brief.pdf");
+    expect(panel).toHaveAttribute("aria-labelledby", "agent-tab-task_planner");
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("tab", { name: /Mnemosyne/ })).toHaveFocus();
+    expect(panel).toHaveTextContent("locked notes never reach me");
+
+    await user.keyboard("{End}");
+    expect(panel).toHaveTextContent("database query, not a model");
+  });
+
+  it("tells a change as four steps, each one a button", async () => {
+    const user = userEvent.setup();
+    render(<HomeClient />);
+    const how = document.getElementById("how")!;
+    const steps = within(how).getAllByRole("button");
+    ["Ask", "Draft", "Approve", "Apply"].forEach((title, i) => expect(steps[i]).toHaveTextContent(title));
+    expect(steps).toHaveLength(4);
+    expect(within(how).getByText("Step 1 of 4")).toBeInTheDocument();
+    expect(steps[0]).toHaveAttribute("aria-current", "step");
+
+    // With motion the buttons scroll the pinned track; the step follows scroll.
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
+    await user.click(steps[2]!);
+    expect(scrollTo).toHaveBeenCalled();
+    scrollTo.mockRestore();
+  });
+
+  it("lets the moderator permissions be switched", async () => {
+    const user = userEvent.setup();
+    render(<HomeClient />);
+    const remove = screen.getByRole("switch", { name: "Delete projects" });
+    expect(remove).toHaveAttribute("aria-checked", "false");
+    await user.click(remove);
+    expect(remove).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("locks the private note and hides its text from a reader", async () => {
+    const user = userEvent.setup();
+    render(<HomeClient />);
+    const lock = screen.getByRole("button", { name: "Lock" });
+    await user.click(lock);
+    expect(screen.getByRole("button", { name: "Unlock" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText(/the note’s text is encrypted/)).toBeInTheDocument();
   });
 
   it("renders the sample team roster with roles", () => {
@@ -93,7 +148,26 @@ describe("HomeClient", () => {
 
   it("renders the sample event card", () => {
     render(<HomeClient />);
-    expect(screen.getByText("Spring launch evening")).toBeInTheDocument();
+    const events = document.getElementById("events")!;
+    expect(within(events).getByText("Spring launch evening")).toBeInTheDocument();
+    expect(events).toHaveTextContent("24 going");
+  });
+
+  it("counts a visitor in when they RSVP going, and out again", async () => {
+    const user = userEvent.setup();
+    render(<HomeClient />);
+    const events = document.getElementById("events")!;
+    const going = within(events).getByRole("button", { name: "Going" });
+
+    // The count rolls like the app's own figures: mid-roll the outgoing digit is
+    // still in the DOM (hidden), and the value is announced by its label.
+    await user.click(going);
+    expect(going).toHaveAttribute("aria-pressed", "true");
+    expect(within(events).getByLabelText("25")).toBeInTheDocument();
+
+    await user.click(within(events).getByRole("button", { name: "Maybe" }));
+    expect(going).toHaveAttribute("aria-pressed", "false");
+    expect(within(events).getByLabelText("24")).toBeInTheDocument();
   });
 
   it("renders the footer with copyright", () => {
@@ -111,6 +185,17 @@ describe("HomeClient", () => {
     expect(header?.querySelectorAll("[class*=linear-gradient]").length).toBe(0);
   });
 
+  it("pins the header and opens a menu below lg", async () => {
+    const user = userEvent.setup();
+    render(<HomeClient />);
+    const header = document.querySelector("header")!;
+    expect(header.className).toContain("fixed");
+    const toggle = screen.getByRole("button", { name: "Open menu" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    expect(screen.getByRole("button", { name: "Close menu" })).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("runs the header edge to edge rather than capping it mid-screen", () => {
     render(<HomeClient />);
     const bar = document.querySelector("header > div");
@@ -121,7 +206,7 @@ describe("HomeClient", () => {
     const user = userEvent.setup();
     render(<HomeClient />);
 
-    await user.click(screen.getByText("Agents", { selector: "header a" }));
+    await user.click(screen.getByText("Agents", { selector: "header nav a" }));
 
     const scrollTween = vi.mocked(gsap.to).mock.calls.find(
       ([target, vars]) => target === window && (vars as { scrollTo?: unknown }).scrollTo,
@@ -133,7 +218,7 @@ describe("HomeClient", () => {
   it("keeps every top-nav item an in-page anchor, so none reload the page", () => {
     render(<HomeClient />);
     const hrefs = [...document.querySelectorAll("header nav a")].map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(["#agents", "#teams", "#events", "#footer"]);
+    expect(hrefs).toEqual(["#how", "#agents", "#teams", "#events"]);
     for (const href of hrefs) {
       expect(document.getElementById(href!.slice(1))).toBeInTheDocument();
     }

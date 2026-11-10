@@ -1,59 +1,208 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Eyebrow, SectionHeading } from "~/components/homepage/landingParts";
+import { RollingNumber } from "~/components/ui/RollingNumber";
+import { SectionHead } from "~/components/homepage/landingParts";
+import { useInView } from "~/components/homepage/landingMotion";
+import { CountUp } from "~/components/homepage/CountUp";
 
 const GUESTS = ["k-avatar-1", "k-avatar-2", "k-avatar-3"] as const;
+const GOING = 24;
+const RSVP = ["going", "maybe", "no"] as const;
+type Rsvp = (typeof RSVP)[number];
+const RSVP_KEY = { going: "rsvpGoing", maybe: "rsvpMaybe", no: "rsvpNo" } as const;
 
-/** A sample public event page beside the publishing copy. Below `lg` the copy leads. */
+/** Dots lit for the two regions on the abstract field, and where their pins sit. */
+const LIT = new Set([40, 41, 58, 59, 76, 45, 46, 63, 64]);
+const FIELD = Array.from({ length: 18 * 7 }, (_, i) => LIT.has(i));
+
+/**
+ * A sample public event page beside the publishing copy. The RSVP control is
+ * live — choosing "Going" rolls the count like the app's own figures and adds
+ * a guest to the stack. A reminder and the region card sit on their own
+ * parallax depth (`data-parallax`), and the cover's arc draws in as a
+ * countdown to the evening. Below `lg` the copy leads.
+ */
 export function Events() {
     const t = useTranslations("home");
+    const tl = useTranslations("landing.events");
+    const cardRef = useRef<HTMLElement>(null);
+    const seen = useInView(cardRef);
+    const [rsvp, setRsvp] = useState<Rsvp | null>(null);
+    const going = GOING + (rsvp === "going" ? 1 : 0);
 
     return (
         <section
             id="events"
-            className="mx-auto grid w-full max-w-[1440px] grid-cols-1 items-center gap-y-12 px-6 pt-32 lg:grid-cols-12 lg:gap-x-6 lg:px-20 lg:pt-[200px]"
+            aria-labelledby="events-h"
+            className="mx-auto grid w-full max-w-[1440px] scroll-mt-10 grid-cols-1 items-center gap-y-14 px-6 pt-32 lg:grid-cols-12 lg:gap-x-6 lg:px-20 lg:pt-[200px]"
         >
-            <article data-reveal className="k-sheet flex flex-col lg:col-span-6">
-                <div className="flex h-[220px] items-end border-b border-fg-primary/6 bg-bg-surface p-5">
-                    <span className="k-ink-faint text-xs">{t("eventCoverPlaceholder")}</span>
-                </div>
-                <div className="flex flex-col gap-4 px-6 pt-8 pb-[30px] sm:px-9">
-                    <span className="font-mono text-[10px] tracking-[0.2em] text-accent-primary uppercase">
-                        {t("eventLabel")}
-                    </span>
-                    <h3 className="m-0 font-display text-[40px] leading-[1.05] font-normal text-fg-primary">
-                        {t("eventTitle")}
-                    </h3>
-                    <span className="text-[15px] text-fg-tertiary">{t("eventMeta")}</span>
-                    <div className="mt-2.5 flex items-center justify-between gap-4 border-t border-fg-primary/7 pt-[22px]">
-                        <span className="flex items-center gap-3">
-                            <span className="flex" aria-hidden="true">
-                                {GUESTS.map((avatar, i) => (
-                                    <span
-                                        key={avatar}
-                                        className={`${avatar} h-[30px] w-[30px] rounded-full border-2 border-bg-elevated ${i > 0 ? "-ml-[9px]" : ""}`}
-                                    />
-                                ))}
-                            </span>
-                            <span className="text-sm text-fg-tertiary">{t("eventStats")}</span>
-                        </span>
-                        {/* Part of the illustration, not a control. */}
-                        <span
-                            className="inline-flex h-[42px] shrink-0 items-center rounded-full bg-fg-primary px-[22px] text-sm font-semibold text-bg-primary"
+            <div className="lg:col-span-5">
+                <SectionHead
+                    id="events-h"
+                    eyebrow={t("eventsEyebrow")}
+                    lead={t("eventsHeading")}
+                    accent={t("eventsHeadingAccent")}
+                    body={t("eventsBody")}
+                >
+                    <p data-reveal className="text-fg-secondary m-0 text-[15px] leading-[1.7]">
+                        {t("eventsNote")}
+                    </p>
+                </SectionHead>
+            </div>
+
+            <div className="relative sm:pb-[175px] lg:col-span-6 lg:col-start-7">
+                <div data-parallax="-40" className="relative z-[3] mb-3.5 sm:absolute sm:-top-7 sm:-right-2 sm:mb-0">
+                    <div
+                        data-reveal
+                        role="status"
+                        className="border-fg-primary/10 bg-bg-surface text-fg-secondary flex max-w-[320px] items-center gap-3 rounded-lg border px-4 py-3 text-[13px] leading-[1.45] shadow-[0_24px_50px_-24px_rgb(0_0_0/0.9)]"
+                    >
+                        <svg
+                            className="text-accent-primary flex-none"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                             aria-hidden="true"
                         >
-                            {t("eventRsvp")}
+                            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                        </svg>
+                        <span>
+                            <b className="text-fg-primary block font-medium">{tl("reminderTitle")}</b>
+                            {tl("reminderBody")}
                         </span>
                     </div>
                 </div>
-            </article>
 
-            <div data-reveal className="order-first flex flex-col gap-7 lg:order-none lg:col-span-5 lg:col-start-8">
-                <Eyebrow>{t("eventsEyebrow")}</Eyebrow>
-                <SectionHeading lead={t("eventsHeading")} accent={t("eventsHeadingAccent")} />
-                <p className="m-0 text-[17px] leading-[1.75] font-light text-fg-tertiary">{t("eventsBody")}</p>
-                <p className="m-0 text-[15px] leading-[1.7] text-fg-secondary">{t("eventsNote")}</p>
+                <article ref={cardRef} data-reveal className={`k-sheet k-play flex flex-col ${seen ? "is-in" : ""}`}>
+                    <div className="border-fg-primary/6 bg-bg-surface relative h-[240px] overflow-hidden border-b">
+                        <svg
+                            className="absolute top-1/2 -right-[60px] h-[420px] w-[420px] -translate-y-1/2"
+                            viewBox="-210 -210 420 420"
+                            aria-hidden="true"
+                        >
+                            {[200, 160, 120, 80].map((r) => (
+                                <circle key={r} r={r} fill="none" className="stroke-fg-primary/8" />
+                            ))}
+                            <circle className="k-arc" r="160" pathLength={1} transform="rotate(-90)" />
+                        </svg>
+                        <div className="absolute bottom-5 left-[22px] flex flex-col gap-1.5">
+                            <span className="text-fg-tertiary font-mono text-[10px] tracking-[0.18em] uppercase">
+                                {tl("startsIn")}
+                            </span>
+                            <span className="font-display text-fg-primary text-[44px] leading-none tracking-[-0.02em]">
+                                <CountUp to={7} duration={1200} /> {tl("days")}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3.5 px-[22px] py-[30px] sm:px-9">
+                        <span className="text-accent-primary font-mono text-[10px] tracking-[0.2em] uppercase">
+                            {t("eventLabel")}
+                        </span>
+                        <h3 className="font-display text-fg-primary m-0 text-[clamp(30px,3vw,40px)] leading-[1.05] font-normal tracking-[-0.02em]">
+                            {t("eventTitle")}
+                        </h3>
+                        <span className="text-fg-tertiary text-[15px]">{t("eventMeta")}</span>
+                        <div className="border-fg-primary/7 mt-2.5 flex flex-wrap items-center justify-between gap-4 border-t pt-[22px]">
+                            <span className="flex items-center gap-3">
+                                <span className="flex" aria-hidden="true">
+                                    {[...GUESTS, ...(rsvp === "going" ? (["k-avatar-4"] as const) : [])].map(
+                                        (avatar, i) => (
+                                            <span
+                                                key={`${avatar}-${i}`}
+                                                className={`${avatar} border-bg-elevated h-[30px] w-[30px] rounded-full border-2 ${i > 0 ? "-ml-[9px]" : ""} ${
+                                                    i === GUESTS.length ? "k-guest-new" : ""
+                                                }`}
+                                            />
+                                        ),
+                                    )}
+                                </span>
+                                <span className="text-fg-tertiary text-sm">
+                                    <span className="tabular-nums">
+                                        <RollingNumber value={String(going)} />
+                                    </span>{" "}
+                                    {tl("going")} · {tl("comments")}
+                                </span>
+                            </span>
+                            <div
+                                role="group"
+                                aria-label={tl("rsvpLabel")}
+                                className="border-fg-primary/12 inline-flex rounded-full border p-[3px]"
+                            >
+                                {RSVP.map((option) => (
+                                    <button
+                                        key={option}
+                                        type="button"
+                                        aria-pressed={rsvp === option}
+                                        onClick={() => setRsvp((current) => (current === option ? null : option))}
+                                        className={`h-[34px] rounded-full px-3.5 text-[13px] transition-colors duration-300 ${
+                                            rsvp === option
+                                                ? "bg-fg-primary text-bg-primary font-semibold"
+                                                : "text-fg-secondary hover:text-fg-primary"
+                                        }`}
+                                    >
+                                        {tl(RSVP_KEY[option])}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <div
+                    data-parallax="18"
+                    className="relative z-[2] mt-3.5 sm:absolute sm:bottom-0 sm:-left-3 sm:mt-0 sm:w-[300px] lg:-left-16"
+                >
+                    <div data-reveal className="k-sheet bg-bg-surface flex flex-col gap-3.5 p-[18px]">
+                        <div className="flex items-center justify-between">
+                            <span className="text-fg-tertiary font-mono text-[10px] tracking-[0.18em] uppercase">
+                                {tl("regionLabel")}
+                            </span>
+                            <span className="text-accent-primary font-mono text-[10px] tracking-[0.18em] uppercase">
+                                {tl("regionCount")}
+                            </span>
+                        </div>
+                        <div className="relative grid grid-cols-[repeat(18,1fr)] gap-1.5" aria-hidden="true">
+                            {FIELD.map((lit, i) => (
+                                <i
+                                    key={i}
+                                    className={`aspect-square rounded-full ${lit ? "bg-accent-primary" : "bg-fg-primary/12"}`}
+                                />
+                            ))}
+                            {[
+                                { left: "27.8%", top: "50%", label: tl("pinSofia") },
+                                { left: "55.5%", top: "42.8%", label: tl("pinPlovdiv") },
+                            ].map((pin) => (
+                                <span
+                                    key={pin.label}
+                                    className="k-pin bg-accent-primary absolute -mt-[5px] -ml-[5px] h-2.5 w-2.5 rounded-full"
+                                    style={{ left: pin.left, top: pin.top }}
+                                >
+                                    <span className="bg-bg-surface text-fg-primary absolute -top-[5px] left-3.5 rounded-xs px-1 font-mono text-[10px] tracking-[0.1em] whitespace-nowrap uppercase">
+                                        {pin.label}
+                                    </span>
+                                </span>
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                            {[tl("regionSofia"), tl("regionPlovdiv")].map((region) => (
+                                <span
+                                    key={region}
+                                    className="border-accent-primary/45 text-accent-primary inline-flex h-[26px] items-center rounded-sm border px-2.5 text-xs"
+                                >
+                                    {region}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
     );
