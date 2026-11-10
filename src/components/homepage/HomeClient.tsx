@@ -6,13 +6,17 @@ import { SignInModal } from "~/components/auth/SignInModal";
 import { LandingIntro } from "~/components/homepage/LandingIntro";
 import { SiteHeader } from "~/components/homepage/SiteHeader";
 import { Hero } from "~/components/homepage/Hero";
+import { Marquee } from "~/components/homepage/Marquee";
+import { FlowStory } from "~/components/homepage/FlowStory";
 import { Agents } from "~/components/homepage/Agents";
 import { Teams } from "~/components/homepage/Teams";
 import { Events } from "~/components/homepage/Events";
+import { Numbers } from "~/components/homepage/Numbers";
 import { FinalCta } from "~/components/homepage/FinalCta";
 import { SiteFooter } from "~/components/homepage/SiteFooter";
 import { useLandingReveals } from "~/components/homepage/useLandingReveals";
 import { useSmoothAnchors } from "~/components/homepage/useSmoothAnchors";
+import { useLandingPointer } from "~/components/homepage/landingMotion";
 
 /**
  * Pre-auth landing page. Composition only — each section owns its own markup;
@@ -28,8 +32,17 @@ import { useSmoothAnchors } from "~/components/homepage/useSmoothAnchors";
  * palette to the page instead of storing it. `k-landing` then narrows that
  * palette to the landing's warmer one (see `globals.css`).
  *
+ * `overflow-x-clip`, not `-hidden`: hidden makes <main> a scroll container,
+ * and the pinned "How a change happens" story would stick to it instead of
+ * to the viewport.
+ *
  * `k-on` is what starts the hero's CSS entrance; it waits for the intro
- * curtain so the choreography is not spent underneath it.
+ * curtain so the choreography is not spent underneath it. The same moment
+ * starts the hero's assistant replay.
+ *
+ * The motion vocabulary — what plays on load, on scroll and under the
+ * pointer, and how each piece settles under reduced motion — is set out in
+ * `docs/design/landing-redesign-proposal.html`.
  */
 export function HomeClient() {
     const router = useRouter();
@@ -40,15 +53,14 @@ export function HomeClient() {
     // `switchAccount=1` is the same idea from the other direction: "add account"
     // signs the current session out and lands here wanting the sign-in box.
     const [isModalOpen, setIsModalOpen] = useState(
-        () =>
-            searchParams.get("callbackUrl") !== null ||
-            searchParams.get("switchAccount") !== null,
+        () => searchParams.get("callbackUrl") !== null || searchParams.get("switchAccount") !== null,
     );
     const [introCleared, setIntroCleared] = useState(false);
     const rootRef = useRef<HTMLElement>(null);
 
     useLandingReveals(rootRef);
     useSmoothAnchors(rootRef);
+    useLandingPointer(rootRef);
 
     const openModal = useCallback(() => setIsModalOpen(true), []);
     const handleIntroClear = useCallback(() => setIntroCleared(true), []);
@@ -71,7 +83,7 @@ export function HomeClient() {
         <main
             id="main-content"
             ref={rootRef}
-            className={`dark k-landing relative flex min-h-dvh flex-col overflow-x-hidden bg-bg-primary font-sans text-fg-primary ${
+            className={`dark k-landing bg-bg-primary text-fg-primary relative flex min-h-dvh flex-col overflow-x-clip font-sans ${
                 introCleared ? "k-on" : ""
             }`}
         >
@@ -79,10 +91,13 @@ export function HomeClient() {
 
             <div id="top" className="flex flex-grow flex-col">
                 <SiteHeader onSignIn={openModal} />
-                <Hero onSignIn={openModal} />
+                <Hero onSignIn={openModal} active={introCleared} />
+                <Marquee />
+                <FlowStory />
                 <Agents />
                 <Teams />
                 <Events />
+                <Numbers />
                 <FinalCta onSignIn={openModal} onJoin={handleJoin} />
                 <SiteFooter />
             </div>

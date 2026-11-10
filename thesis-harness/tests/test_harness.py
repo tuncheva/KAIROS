@@ -14,6 +14,7 @@ import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from unittest import mock
 from pathlib import Path
 
 HARNESS = Path(__file__).resolve().parent.parent
@@ -108,7 +109,11 @@ class HarnessTest(unittest.TestCase):
 
     def run_cli(self, *args: str) -> str:
         buf = io.StringIO()
-        with redirect_stdout(buf):
+        # On GitHub Actions `pr-check` writes its summary to GITHUB_STEP_SUMMARY
+        # and annotates instead of printing; the tests read stdout, so they run
+        # as they would on a laptop wherever they run.
+        ci_env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS")}
+        with redirect_stdout(buf), mock.patch.dict(os.environ, ci_env, clear=True):
             try:
                 cli.main(list(args))
             except SystemExit as e:
