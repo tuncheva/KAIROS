@@ -392,12 +392,12 @@ function ChatTile() {
                 setCount(0);
                 for (let i = 0; i < CHAT.length; i++) {
                     setTyping(CHAT[i]!.name);
-                    await pause(1100);
+                    await pause(750);
                     setTyping(null);
                     setCount(i + 1);
-                    await pause(900);
+                    await pause(600);
                 }
-                await pause(3800);
+                await pause(2600);
             }
         };
         loop().catch(() => undefined);

@@ -170,6 +170,34 @@ describe("HomeClient", () => {
     expect(within(events).getByLabelText("24")).toBeInTheDocument();
   });
 
+  it("lets Iris's suggested audience be widened region by region", async () => {
+    const user = userEvent.setup();
+    render(<HomeClient />);
+    const regions = screen.getByRole("list", { name: "Regions" });
+    const pressed = () =>
+      within(regions).getAllByRole("button").filter((b) => b.getAttribute("aria-pressed") === "true");
+
+    // Drawn with Iris's suggestion applied: Sofia City and Plovdiv.
+    expect(pressed().map((b) => b.textContent)).toEqual([
+      expect.stringContaining("Sofia City"),
+      expect.stringContaining("Plovdiv"),
+    ]);
+    expect(screen.getByText(/2 regions · waiting for you/)).toBeInTheDocument();
+
+    await user.click(within(regions).getByRole("button", { name: /Varna/ }));
+    expect(screen.getByText(/3 regions · waiting for you/)).toBeInTheDocument();
+  });
+
+  it("states the product in four agent figures", () => {
+    render(<HomeClient />);
+    const figures = screen.getByRole("region", { name: "Kairos in numbers" });
+    expect(figures).toHaveTextContent("Mentor hands each request");
+    expect(figures).toHaveTextContent("every write is a draft first");
+    expect(figures).toHaveTextContent("no agent ever reads");
+    expect(figures).toHaveTextContent("Hemera");
+    expect(figures).toHaveTextContent("Argus");
+  });
+
   it("renders the footer with copyright", () => {
     render(<HomeClient />);
     const year = new Date().getFullYear().toString();

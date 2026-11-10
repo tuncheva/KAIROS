@@ -6,6 +6,7 @@ import { RollingNumber } from "~/components/ui/RollingNumber";
 import { SectionHead } from "~/components/homepage/landingParts";
 import { useInView } from "~/components/homepage/landingMotion";
 import { CountUp } from "~/components/homepage/CountUp";
+import { RegionTargeting } from "~/components/homepage/RegionTargeting";
 
 const GUESTS = ["k-avatar-1", "k-avatar-2", "k-avatar-3"] as const;
 const GOING = 24;
@@ -13,16 +14,13 @@ const RSVP = ["going", "maybe", "no"] as const;
 type Rsvp = (typeof RSVP)[number];
 const RSVP_KEY = { going: "rsvpGoing", maybe: "rsvpMaybe", no: "rsvpNo" } as const;
 
-/** Dots lit for the two regions on the abstract field, and where their pins sit. */
-const LIT = new Set([40, 41, 58, 59, 76, 45, 46, 63, 64]);
-const FIELD = Array.from({ length: 18 * 7 }, (_, i) => LIT.has(i));
-
 /**
  * A sample public event page beside the publishing copy. The RSVP control is
  * live — choosing "Going" rolls the count like the app's own figures and adds
- * a guest to the stack. A reminder and the region card sit on their own
- * parallax depth (`data-parallax`), and the cover's arc draws in as a
- * countdown to the evening. Below `lg` the copy leads.
+ * a guest to the stack. The reminder and the region card (Iris drafting the
+ * audience, `RegionTargeting`) sit on their own parallax depth
+ * (`data-parallax`), and the cover's arc draws in as a countdown to the
+ * evening. Below `lg` the copy leads.
  */
 export function Events() {
     const t = useTranslations("home");
@@ -36,7 +34,7 @@ export function Events() {
         <section
             id="events"
             aria-labelledby="events-h"
-            className="mx-auto grid w-full max-w-[1440px] scroll-mt-10 grid-cols-1 items-center gap-y-14 px-6 pt-32 lg:grid-cols-12 lg:gap-x-6 lg:px-20 lg:pt-[200px]"
+            className="mx-auto grid w-full max-w-[1440px] scroll-mt-10 grid-cols-1 items-start gap-y-14 px-6 pt-32 lg:grid-cols-12 lg:gap-x-6 lg:px-20 lg:pt-[200px]"
         >
             <div className="lg:col-span-5">
                 <SectionHead
@@ -50,9 +48,14 @@ export function Events() {
                         {t("eventsNote")}
                     </p>
                 </SectionHead>
+                <div data-parallax="12" className="mt-10 max-w-[420px]">
+                    <div data-reveal>
+                        <RegionTargeting />
+                    </div>
+                </div>
             </div>
 
-            <div className="relative sm:pb-[175px] lg:col-span-6 lg:col-start-7">
+            <div className="relative lg:col-span-6 lg:col-start-7 lg:mt-28">
                 <div data-parallax="-40" className="relative z-[3] mb-3.5 sm:absolute sm:-top-7 sm:-right-2 sm:mb-0">
                     <div
                         data-reveal
@@ -155,54 +158,6 @@ export function Events() {
                         </div>
                     </div>
                 </article>
-
-                <div
-                    data-parallax="18"
-                    className="relative z-[2] mt-3.5 sm:absolute sm:bottom-0 sm:-left-3 sm:mt-0 sm:w-[300px] lg:-left-16"
-                >
-                    <div data-reveal className="k-sheet bg-bg-surface flex flex-col gap-3.5 p-[18px]">
-                        <div className="flex items-center justify-between">
-                            <span className="text-fg-tertiary font-mono text-[10px] tracking-[0.18em] uppercase">
-                                {tl("regionLabel")}
-                            </span>
-                            <span className="text-accent-primary font-mono text-[10px] tracking-[0.18em] uppercase">
-                                {tl("regionCount")}
-                            </span>
-                        </div>
-                        <div className="relative grid grid-cols-[repeat(18,1fr)] gap-1.5" aria-hidden="true">
-                            {FIELD.map((lit, i) => (
-                                <i
-                                    key={i}
-                                    className={`aspect-square rounded-full ${lit ? "bg-accent-primary" : "bg-fg-primary/12"}`}
-                                />
-                            ))}
-                            {[
-                                { left: "27.8%", top: "50%", label: tl("pinSofia") },
-                                { left: "55.5%", top: "42.8%", label: tl("pinPlovdiv") },
-                            ].map((pin) => (
-                                <span
-                                    key={pin.label}
-                                    className="k-pin bg-accent-primary absolute -mt-[5px] -ml-[5px] h-2.5 w-2.5 rounded-full"
-                                    style={{ left: pin.left, top: pin.top }}
-                                >
-                                    <span className="bg-bg-surface text-fg-primary absolute -top-[5px] left-3.5 rounded-xs px-1 font-mono text-[10px] tracking-[0.1em] whitespace-nowrap uppercase">
-                                        {pin.label}
-                                    </span>
-                                </span>
-                            ))}
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                            {[tl("regionSofia"), tl("regionPlovdiv")].map((region) => (
-                                <span
-                                    key={region}
-                                    className="border-accent-primary/45 text-accent-primary inline-flex h-[26px] items-center rounded-sm border px-2.5 text-xs"
-                                >
-                                    {region}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                </div>
             </div>
         </section>
     );

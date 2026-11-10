@@ -83,29 +83,29 @@ export function HeroAgentPanel({ active }: { active: boolean }) {
                 setCursor((c) => ({ ...c, on: false, press: false }));
                 setStep(0);
                 setTyped("");
-                await pause(first ? 1500 : 400);
+                await pause(first ? 1100 : 300);
                 first = false;
 
                 for (let i = 1; i <= request.length; i++) {
                     setTyped(request.slice(0, i));
-                    await pause(request[i - 1] === " " ? 34 : 22 + Math.random() * 26);
+                    await pause(request[i - 1] === " " ? 24 : 15 + Math.random() * 18);
                 }
                 setArmed(true);
-                await pause(380);
+                await pause(260);
                 setArmed(false);
                 setTyped("");
                 setStep(1);
-                await pause(800);
+                await pause(550);
                 setStep(2);
-                await pause(900);
+                await pause(620);
                 setStep(3);
-                await pause(1100);
+                await pause(760);
                 setStep(4);
-                await pause(700);
+                await pause(480);
                 setStep(5);
-                await pause(1300);
-                setStep(6);
                 await pause(900);
+                setStep(6);
+                await pause(620);
 
                 const fig = figureRef.current?.getBoundingClientRect();
                 const btn = approveRef.current?.getBoundingClientRect();
@@ -118,17 +118,17 @@ export function HeroAgentPanel({ active }: { active: boolean }) {
                         y: btn.top - fig.top + btn.height * 0.5,
                         press: false,
                     });
-                    await pause(1100);
+                    await pause(760);
                     setCursor((c) => ({ ...c, press: true }));
                     await pause(160);
                 }
                 setCursor((c) => ({ ...c, press: false }));
                 setStep(APPLIED);
-                await pause(500);
+                await pause(350);
                 setCursor((c) => ({ ...c, on: false }));
-                await pause(5200);
+                await pause(3800);
                 setFading(true);
-                await pause(600);
+                await pause(450);
                 while (!onScreenRef.current || document.hidden) await pause(500);
             }
         };
@@ -229,7 +229,7 @@ export function HeroAgentPanel({ active }: { active: boolean }) {
                             className={`text-fg-primary flex items-center gap-3 px-3.5 py-[11px] text-sm ${
                                 shown("draft") ? "k-show-row" : ""
                             } ${i > 0 ? "border-fg-primary/6 border-t" : ""}`}
-                            style={{ animationDelay: `${0.25 + i * 0.15}s` }}
+                            style={{ animationDelay: `${0.15 + i * 0.1}s` }}
                         >
                             <span
                                 className="k-box border-fg-primary/25 text-bg-primary inline-flex h-4 w-4 flex-none items-center justify-center rounded-xs border"
