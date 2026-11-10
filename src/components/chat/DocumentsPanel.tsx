@@ -1,15 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import {
-  AlertCircle,
-  FileText,
-  Loader2,
-  RotateCw,
-  ScanLine,
-  Trash2,
-  Upload,
-} from "~/components/ui/icons";
+import { AlertCircle, FileText, RotateCw, ScanLine, Trash2, Upload } from "~/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { useEntitlement } from "~/hooks/useEntitlements";
@@ -19,6 +11,7 @@ import { api } from "~/trpc/react";
 
 import { RailCardsSkeleton } from "./ChatSkeletons";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 type Translator = (key: string, values?: Record<string, unknown>) => string;
 
 /**
@@ -111,7 +104,7 @@ export function DocumentsPanel() {
         className="mb-2 flex w-full flex-col items-center gap-1 rounded-xl border border-dashed border-border-medium px-3 py-4 text-center transition-colors hover:bg-bg-secondary disabled:opacity-60"
       >
         {busy ? (
-          <Loader2 className="h-4 w-4 animate-spin text-fg-tertiary" />
+          <PendingDot />
         ) : (
           <Upload className="h-4 w-4 text-fg-tertiary" />
         )}
@@ -261,7 +254,7 @@ function DocumentStatus({ doc, t }: StatusProps) {
 
   return (
     <p className="flex items-center gap-1.5 pt-1 text-[11px] text-fg-tertiary">
-      <Loader2 className="h-3 w-3 animate-spin" />
+      <PendingDot />
       {t("indexing")}
     </p>
   );

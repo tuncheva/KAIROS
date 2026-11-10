@@ -29,7 +29,6 @@ const requiredHomeKeys = [
   "navAgents",
   "navTeams",
   "navEvents",
-  "navAbout",
   "logIn",
   "startFree",
   "heroEyebrow",
@@ -56,14 +55,6 @@ const requiredHomeKeys = [
   "agentsHeading",
   "agentsHeadingAccent",
   "agentsBody",
-  "agentsPoint1",
-  "agentsPoint2",
-  "agentsPoint3",
-  "agentConciergeBody",
-  "agentPlannerBody",
-  "agentNotesBody",
-  "agentEventsBody",
-  "agentBriefBody",
   "agentTagReadOnly",
   "agentTagDrafts",
   "agentTagPrivate",
@@ -86,12 +77,9 @@ const requiredHomeKeys = [
   "eventsHeadingAccent",
   "eventsBody",
   "eventsNote",
-  "eventCoverPlaceholder",
   "eventLabel",
   "eventTitle",
   "eventMeta",
-  "eventStats",
-  "eventRsvp",
   "finalHeading",
   "finalHeadingAccent",
   "finalSubline",
@@ -179,6 +167,34 @@ describe("i18n locale files", () => {
       });
     });
   }
+
+  /* The landing's motion-era copy lives in `landing`, offered in English and
+     Bulgarian; German, Spanish and French fall back to English key by key
+     (see `i18n/config.ts`), so only the two offered locales must match. */
+  describe("landing namespace", () => {
+    const keysOf = (value: unknown, prefix = ""): string[] =>
+      typeof value === "object" && value !== null
+        ? Object.entries(value).flatMap(([k, v]) => keysOf(v, prefix ? `${prefix}.${k}` : k))
+        : [prefix];
+
+    it("bg.json carries every landing key en.json does", () => {
+      const en = keysOf(loadLocale("en").landing).sort();
+      const bg = keysOf(loadLocale("bg").landing).sort();
+      expect(en.length).toBeGreaterThan(0);
+      expect(bg).toEqual(en);
+    });
+
+    it("has no empty landing strings in the offered locales", () => {
+      for (const locale of ["en", "bg"] as const) {
+        const flat = (value: unknown): unknown[] =>
+          typeof value === "object" && value !== null ? Object.values(value).flatMap(flat) : [value];
+        for (const v of flat(loadLocale(locale).landing)) {
+          expect(typeof v).toBe("string");
+          expect((v as string).trim().length).toBeGreaterThan(0);
+        }
+      }
+    });
+  });
 
   describe("Cross-locale consistency", () => {
     it("all locales have the same home keys", () => {

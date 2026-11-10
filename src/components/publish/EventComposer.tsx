@@ -55,7 +55,7 @@ export function EventComposer({
           maxLength={256}
           placeholder={t("composerPlaceholder")}
           aria-label={t("eventTitle")}
-          className="h-10 min-w-0 flex-1 rounded-lg border border-border-medium bg-bg-secondary px-3 text-sm text-fg-primary placeholder:text-fg-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary/40"
+          className="h-10 min-w-0 flex-1 rounded-md border border-border-medium bg-bg-secondary px-3 text-sm text-fg-primary placeholder:text-fg-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary/40"
         />
       </div>
 
@@ -95,7 +95,7 @@ export function EventComposer({
         <button
           type="button"
           onClick={() => open("title")}
-          className="h-8 rounded-lg bg-accent-primary px-4 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+          className="h-8 rounded-sm bg-accent-primary px-4 text-xs font-semibold text-on-accent transition-colors hover:bg-accent-hover"
         >
           {t("continue")}
         </button>

@@ -273,7 +273,7 @@ export function WorkspaceMenu() {
                     setOpen(false);
                     setShowInvite(true);
                   }}
-                  className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-[13px] font-medium text-tui-accent transition-colors hover:bg-tui-accent/10"
+                  className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-[13px] font-medium text-tui-accent transition-colors hover:bg-tui-accent/10"
                 >
                   <QrCode size={16} />
                   {t("inviteWithQr")}
@@ -284,7 +284,7 @@ export function WorkspaceMenu() {
                 href="/orgs"
                 role="menuitem"
                 onClick={() => setOpen(false)}
-                className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-[13px] text-tui-ink2 transition-colors hover:bg-tui-ink/[0.045] hover:text-tui-ink"
+                className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-[13px] text-tui-ink2 transition-colors hover:bg-tui-ink/[0.045] hover:text-tui-ink"
               >
                 <Building2 size={16} />
                 {t("yourOrgs")}

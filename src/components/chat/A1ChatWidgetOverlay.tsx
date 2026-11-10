@@ -649,10 +649,10 @@ export function A1ChatWidgetOverlay(props: {
                   aria-pressed={pageShared}
                   onClick={() => setPageOff(pageShared ? pageKey : null)}
                   title={pageShared ? t("page.sharing") : t("page.notSharing")}
-                  className={`kairos-tap flex max-w-[170px] items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] transition-colors ${
+                  className={`kairos-tap flex max-w-[170px] items-center gap-1.5 rounded-sm px-2.5 py-1 text-[12px] transition-colors ${
                     pageShared
                       ? "text-fg-secondary shadow-[0_0_0_0.5px_rgb(var(--border-medium)/0.8)] hover:text-fg-primary"
-                      : "text-fg-quaternary line-through shadow-[0_0_0_0.5px_rgb(var(--border-medium)/0.5)] hover:text-fg-tertiary"
+                      : "text-fg-tertiary line-through shadow-[0_0_0_0.5px_rgb(var(--border-medium)/0.5)] hover:text-fg-tertiary"
                   }`}
                 >
                   <PageIcon className="h-3 w-3 shrink-0" />

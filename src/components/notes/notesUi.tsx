@@ -43,14 +43,14 @@ export const STAMP = "text-[11.5px] tabular-nums text-fg-tertiary";
    dialog's confirm button is `bg-fg-primary text-bg-primary` and the accent is
    left alone. */
 export const BTN_ACCENT =
-  "inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-fg-primary px-3.5 text-[13px] font-semibold text-bg-primary transition-opacity hover:opacity-90 active:opacity-80 disabled:pointer-events-none disabled:opacity-40";
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-sm bg-fg-primary px-3.5 text-[13px] font-semibold text-bg-primary transition-opacity hover:opacity-90 active:opacity-80 disabled:pointer-events-none disabled:opacity-40";
 /** A bare icon-only "new note" control — a pen, not a filled square. */
 export const BTN_ACCENT_SQUARE =
   "kairos-tap grid h-[30px] w-[30px] place-items-center rounded-lg text-fg-secondary transition-colors hover:bg-bg-tertiary hover:text-fg-primary active:scale-95";
 export const BTN_GHOST =
-  "inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border-medium px-3.5 text-[13px] font-medium text-fg-secondary transition-colors hover:bg-bg-tertiary hover:text-fg-primary disabled:pointer-events-none disabled:opacity-40";
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-sm border border-border-medium px-3.5 text-[13px] font-medium text-fg-secondary transition-colors hover:bg-bg-tertiary hover:text-fg-primary disabled:pointer-events-none disabled:opacity-40";
 export const BTN_DANGER =
-  "inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-error px-3.5 text-[13px] font-semibold text-bg-primary transition-opacity hover:opacity-90 active:opacity-80 disabled:pointer-events-none disabled:opacity-40";
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-sm border border-status-danger-border bg-status-danger-surface px-3.5 text-[13px] font-semibold text-status-danger-ink transition-colors hover:border-status-danger-ink disabled:pointer-events-none disabled:opacity-40";
 
 /** A 30px icon-only control. Bare on the quiet surface — a hover wash, no border. */
 export const ICON_BTN =
@@ -67,7 +67,7 @@ export const ICON_BTN_ON =
    into the ⌘K command surface in the next pass; until then they stay, dressed
    in the quiet language rather than the terminal one.) */
 export const CHIP =
-  "inline-flex h-[30px] flex-none items-center gap-1.5 rounded-full border px-3 text-[12.5px] whitespace-nowrap transition-colors";
+  "inline-flex h-[30px] flex-none items-center gap-1.5 rounded-sm border px-3 text-[12.5px] whitespace-nowrap transition-colors";
 export const CHIP_IDLE = "border-border-medium text-fg-secondary hover:bg-bg-tertiary hover:text-fg-primary";
 export const CHIP_ON = "border-accent-primary/40 bg-accent-primary/10 text-accent-primary";
 
@@ -82,7 +82,7 @@ export const FIELD_TALL =
   "flex items-start gap-2.5 rounded-lg border border-border-medium bg-bg-surface px-3.5 py-2.5 transition-colors focus-within:border-accent-primary/55";
 /** The input itself, inside a `FIELD`. */
 export const FIELD_INPUT =
-  "min-w-0 flex-1 border-0 bg-transparent text-[14px] text-fg-primary caret-accent-primary outline-none placeholder:text-fg-quaternary";
+  "min-w-0 flex-1 border-0 bg-transparent text-[14px] text-fg-primary caret-accent-primary outline-none placeholder:text-fg-tertiary";
 /** Field label. Quiet grey sans, a touch quieter than the value it labels. */
 export const FIELD_LABEL =
   "mb-1.5 block text-[12px] font-medium text-fg-secondary";
@@ -91,9 +91,9 @@ export const FIELD_LABEL =
    One elevation language for every menu, popover and dialog on the surface —
    a raised warm panel with a hairline and a soft lift. */
 export const POPOVER_SURFACE =
-  "rounded-xl border border-border-medium bg-bg-elevated shadow-xl";
+  "rounded-lg border border-border-medium bg-bg-elevated shadow-xl";
 export const DIALOG_SURFACE =
-  "overflow-hidden rounded-xl border border-border-light bg-bg-elevated shadow-[0_32px_90px_-24px_rgba(0,0,0,0.55)]";
+  "overflow-hidden rounded-xl border border-border-light bg-bg-elevated shadow-2xl";
 
 export function initialOf(user: Pick<NoteUser, "name" | "email"> | null | undefined): string {
   const source = user?.name ?? user?.email ?? "";

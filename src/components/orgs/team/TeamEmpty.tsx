@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
-import { Check, KeyRound, Loader2, Lock, Plus } from "~/components/ui/icons";
+import { Check, KeyRound, Lock, Plus } from "~/components/ui/icons";
 import { OrgBadge } from "~/components/orgs/OrgBadge";
 import { PERMISSION_DISPLAY_ORDER, usePermissionLabel } from "~/components/orgs/PermissionGrid";
 import {
@@ -22,6 +22,7 @@ import {
   shownRole,
 } from "./teamUi";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 export interface FeaturedInvite {
   id: number;
   organizationId: number;
@@ -36,7 +37,7 @@ export interface FeaturedInvite {
 }
 
 const FIELD =
-  "h-10 min-w-0 flex-1 rounded-lg border border-tui-ink/16 bg-tui-pane px-3 text-[14px] text-tui-ink outline-none placeholder:text-tui-ink3 focus:border-tui-accent/50";
+  "h-10 min-w-0 flex-1 rounded-md border border-tui-ink/16 bg-tui-pane px-3 text-[14px] text-tui-ink outline-none placeholder:text-tui-ink3 focus:border-tui-accent/50";
 
 /**
  * The middle pane for someone in no organization yet — a fresh sign-up, or
@@ -142,7 +143,7 @@ export function TeamEmpty({
                   <span key={key} className={cn("flex items-center gap-2.5 text-[13px]", on ? "text-tui-ink" : "text-tui-ink3")}>
                     <span
                       className={cn(
-                        "grid h-4 w-4 flex-none place-items-center rounded-[4px] border",
+                        "grid h-4 w-4 flex-none place-items-center rounded-xs border",
                         on ? "border-tui-accent/45 bg-tui-accent/15" : "border-tui-ink/16",
                       )}
                     >
@@ -160,7 +161,7 @@ export function TeamEmpty({
                 onClick={() => onAccept(invite)}
                 className={cn(TEAM_PRIMARY_BUTTON, "min-w-[140px] flex-1")}
               >
-                {busy ? <Loader2 size={13} className="animate-spin" /> : null}
+                {busy ? <PendingDot /> : null}
                 {t("acceptAndOpen", { org: invite.orgName })}
               </button>
               <button
@@ -206,7 +207,7 @@ export function TeamEmpty({
 
         <div className="mt-[30px] grid w-full max-w-[680px] grid-cols-1 gap-3.5 text-left md:grid-cols-2">
           <form
-            className="flex flex-col gap-3 rounded-[10px] border border-tui-ink/16 bg-tui-bg/55 p-[18px]"
+            className="flex flex-col gap-3 rounded-md border border-tui-ink/16 bg-tui-bg/55 p-[18px]"
             onSubmit={(e) => {
               e.preventDefault();
               if (codeOk && !joining) onJoin(code.trim());
@@ -232,7 +233,7 @@ export function TeamEmpty({
                 className={cn(FIELD, "font-mono tracking-[0.14em] uppercase")}
               />
               <button type="submit" disabled={!codeOk || joining} className={cn(TEAM_PRIMARY_BUTTON, "h-10")}>
-                {joining ? <Loader2 size={13} className="animate-spin" /> : null}
+                {joining ? <PendingDot /> : null}
                 {t("join")}
               </button>
             </div>
@@ -240,7 +241,7 @@ export function TeamEmpty({
           </form>
 
           <form
-            className="flex flex-col gap-3 rounded-[10px] border border-tui-ink/16 bg-tui-bg/55 p-[18px]"
+            className="flex flex-col gap-3 rounded-md border border-tui-ink/16 bg-tui-bg/55 p-[18px]"
             onSubmit={(e) => {
               e.preventDefault();
               if (name.trim() && !creating) onCreate(name.trim());
@@ -265,7 +266,7 @@ export function TeamEmpty({
                 className={FIELD}
               />
               <button type="submit" disabled={!name.trim() || creating} className={cn(TEAM_PRIMARY_BUTTON, "h-10")}>
-                {creating ? <Loader2 size={13} className="animate-spin" /> : null}
+                {creating ? <PendingDot /> : null}
                 {t("create")}
               </button>
             </div>
@@ -274,7 +275,7 @@ export function TeamEmpty({
         </div>
 
         {email ? (
-          <span className="mt-[26px] inline-flex max-w-full items-center gap-[9px] rounded-full border border-tui-ink/8 px-3.5 py-2 text-[12.5px] text-tui-ink3">
+          <span className="mt-[26px] inline-flex max-w-full items-center gap-[9px] rounded-sm border border-tui-ink/8 px-3.5 py-2 text-[12.5px] text-tui-ink3">
             <span className="chat-breathe h-[7px] w-[7px] flex-none rounded-full bg-tui-ok" />
             <span className="truncate">{t("watching", { email })}</span>
           </span>
@@ -309,7 +310,7 @@ export function TeamRolesGuide() {
                   <i
                     key={k}
                     className={cn(
-                      "h-[9px] w-[9px] rounded-[2px] border",
+                      "h-[9px] w-[9px] rounded-xs border",
                       i < granted ? "border-tui-accent bg-tui-accent" : "border-tui-ink/16",
                     )}
                   />

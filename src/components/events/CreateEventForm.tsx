@@ -5,7 +5,7 @@ import { api } from '~/trpc/react';
 import { useSession } from 'next-auth/react';
 import { useUploadThing } from '~/lib/uploadthing';
 import Image from 'next/image';
-import { X, ImagePlus, Loader2, MapPin, Calendar, Clock, ChevronDown } from "~/components/ui/icons.server";
+import { X, ImagePlus, MapPin, Calendar, Clock, ChevronDown } from "~/components/ui/icons.server";
 import { useToast } from "~/components/providers/ToastProvider";
 import { useTranslations } from "next-intl";
 import {
@@ -15,6 +15,7 @@ import {
   type EventDetailValues,
 } from "./EventDetailFields";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 const MAX_EVENT_IMAGE_BYTES = 4 * 1024 * 1024;
 
 const REGIONS = [
@@ -260,12 +261,12 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
     <form onSubmit={handleSubmit} className="flex flex-col max-h-[90dvh]">
       {/* Modal Header — matches create-event.html */}
       <div className="px-6 py-4 border-b border-border-medium flex items-center justify-between shrink-0">
-        <h2 className="text-lg font-display font-bold text-fg-primary tracking-tight">{t("createEvent")}</h2>
+        <h2 className="text-lg font-display font-normal text-fg-primary tracking-tight">{t("createEvent")}</h2>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="kairos-tap text-accent-primary/60 hover:text-accent-primary transition-colors rounded-full p-1.5 dark:hover:bg-white/5 hover:bg-accent-primary/5"
+            className="kairos-tap text-accent-primary/60 hover:text-accent-primary transition-colors rounded-full p-1.5 hover:bg-accent-primary/5"
           >
             <X size={20} />
           </button>
@@ -282,7 +283,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
           onChange={(e) => setTitle(e.target.value)}
           placeholder={t("eventTitle")}
           maxLength={256}
-          className="w-full text-xl sm:text-2xl font-bold font-display text-fg-primary placeholder:text-fg-quaternary border-none focus:ring-0 px-0 bg-transparent"
+          className="w-full text-xl sm:text-2xl font-normal font-display text-fg-primary placeholder:text-fg-tertiary border-none focus:ring-0 px-0 bg-transparent"
           disabled={createEvent.isPending || isUploading}
           required
         />
@@ -303,7 +304,7 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
               <select
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
-                className="w-full pl-8 pr-8 py-2.5 bg-bg-secondary rounded-xl text-sm text-fg-primary dark:border-accent-primary/20 border border-border-medium focus:outline-none focus:ring-1 focus:ring-accent-primary/40 focus:border-accent-primary appearance-none cursor-pointer transition-all"
+                className="w-full pl-8 pr-8 py-2.5 bg-bg-secondary rounded-md text-sm text-fg-primary dark:border-accent-primary/20 border border-border-medium focus:outline-none focus:ring-1 focus:ring-accent-primary/40 focus:border-accent-primary appearance-none cursor-pointer transition-all"
                 disabled={createEvent.isPending || isUploading}
                 required
               >
@@ -429,10 +430,10 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
       </div>
 
       {/* Modal Footer — matches create-event.html */}
-      <div className="px-6 py-4 dark:bg-white/[0.02] bg-accent-primary/[0.02] border-t border-border-medium flex items-center justify-between shrink-0">
+      <div className="px-6 py-4 bg-bg-surface border-t border-border-medium flex items-center justify-between shrink-0">
         <div className="flex gap-2">
           {!imagePreview && (
-            <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-accent-primary dark:hover:bg-white/5 hover:bg-accent-primary/5 transition-all cursor-pointer group">
+            <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-accent-primary hover:bg-accent-primary/5 transition-all cursor-pointer group">
               <ImagePlus size={16} className="text-accent-primary" />
               <span className="text-xs font-semibold">{t("media")}</span>
               <input
@@ -449,11 +450,11 @@ export const CreateEventForm: React.FC<CreateEventFormProps> = ({
         <button
           type="submit"
           disabled={createEvent.isPending || isUploading || !title.trim() || !description.trim() || !eventDate || !region}
-          className="bg-accent-primary hover:bg-accent-hover text-white px-7 py-2.5 rounded-xl font-bold text-sm shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+          className="bg-accent-primary hover:bg-accent-hover text-on-accent px-7 py-2.5 rounded-md font-semibold text-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
         >
           {isUploading || createEvent.isPending ? (
             <>
-              <Loader2 className="animate-spin" size={14} />
+              <PendingDot />
               {isUploading ? t("uploading") : t("publishing")}
             </>
           ) : (

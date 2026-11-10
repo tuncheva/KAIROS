@@ -1,0 +1,28 @@
+%% Фигура 14 – Двуфакторен вход с код или одобрение през линк
+sequenceDiagram
+  autonumber
+  participant B as Браузър
+  participant S as Сървър (NextAuth.js)
+  participant DB as two_factor_challenge
+  participant E as Имейл
+  participant A as Страница за одобрение
+  B->>S: имейл и парола (credentials)
+  S->>S: Argon2id и ограничител на опитите
+  S->>DB: анулира старите, записва SHA-256 на тайна, код и токен (10 минути)
+  S->>E: осемцифрен код и линк
+  S-->>B: отказ и тайна, без сесия
+  alt въвеждане на кода
+    B->>S: тайна и код (two-factor)
+    S->>DB: сравнява хешовете (timingSafeEqual), при 5 грешни – анулира
+  else одобрение през линк
+    E->>A: отваря линка
+    A->>S: GET – само показва заявката
+    A->>S: „Одобри“ (POST)
+    S->>DB: approvedAt = сега
+    Note over A,S: „Откажи“ записва deniedAt и анулира предизвикателството
+    B->>S: twoFactorStatus (на всеки 3 секунди)
+    S-->>B: approved
+    B->>S: тайна без код (two-factor)
+  end
+  S->>DB: еднократно изразходване (consumedAt)
+  S-->>B: JWT сесия

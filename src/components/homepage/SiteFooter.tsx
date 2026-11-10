@@ -44,7 +44,7 @@ export function SiteFooter() {
                             <Image src="/logo_white.png" alt="" width={20} height={20} className="h-5 w-5 object-contain" />
                             <span className="font-display text-[21px] tracking-[0.08em] text-fg-primary">KAIROS</span>
                         </span>
-                        <span className="text-sm text-fg-quaternary">{t("footerTagline")}</span>
+                        <span className="text-sm text-fg-tertiary">{t("footerTagline")}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-10 text-sm sm:flex sm:gap-[88px]">

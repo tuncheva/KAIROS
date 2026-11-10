@@ -52,7 +52,7 @@ export async function LegalPage({
                     <h1 className="mt-10 font-display text-[clamp(2.5rem,6vw,4rem)] leading-[1.05] font-normal">
                         {title}
                     </h1>
-                    <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.18em] text-fg-quaternary">
+                    <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.18em] text-fg-tertiary">
                         Last updated {lastUpdated}
                     </p>
                     <div className="my-8 h-px bg-border-light" />
@@ -62,13 +62,13 @@ export async function LegalPage({
                     aria-label="Sections"
                     className="hidden lg:col-start-1 lg:block lg:self-start lg:sticky lg:top-24"
                 >
-                    <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-fg-quaternary">
+                    <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-fg-tertiary">
                         Contents
                     </div>
                     <ol className="mt-4 flex flex-col gap-2.5">
                         {sections.map((section, i) => (
                             <li key={section.id} className="flex gap-2 text-sm leading-[1.5]">
-                                <span className="font-mono text-[11px] text-fg-quaternary pt-[3px]">
+                                <span className="font-mono text-[11px] text-fg-tertiary pt-[3px]">
                                     {i + 1}
                                 </span>
                                 <a href={`#${section.id}`} className="k-nav text-fg-secondary">
@@ -89,7 +89,7 @@ export async function LegalPage({
                     {sections.map((section, i) => (
                         <section key={section.id} className="mt-14 scroll-mt-24" id={section.id}>
                             <h2 className="font-display text-[26px] leading-[1.25] font-normal text-fg-primary">
-                                <span className="mr-3 font-mono text-[12px] align-middle text-fg-quaternary">
+                                <span className="mr-3 font-mono text-[12px] align-middle text-fg-tertiary">
                                     {String(i + 1).padStart(2, "0")}
                                 </span>
                                 {section.heading}

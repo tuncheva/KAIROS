@@ -6,8 +6,8 @@ import { HEAT_LEGEND, heatClass, type GridWeek } from "./progressModel";
 
 /** Cell edge and gap, in pixels, per size. `sm` is the member drawer's strip. */
 const SIZES = {
-  lg: { cell: 16, gap: 4, radius: "rounded-[3px]" },
-  sm: { cell: 13, gap: 3, radius: "rounded-[3px]" },
+  lg: { cell: 16, gap: 4, radius: "rounded-xs" },
+  sm: { cell: 13, gap: 3, radius: "rounded-xs" },
 } as const;
 /** Width of the weekday gutter, when it is shown. */
 const GUTTER = 30;
@@ -176,7 +176,7 @@ export function HeatLegend({ less, more }: { less: string; more: string }) {
     <span className="text-tui-ink3 flex items-center gap-[5px] text-[11px]">
       {less}
       {HEAT_LEGEND.map((level) => (
-        <span key={level} className={cn("h-2.5 w-2.5 rounded-[2px]", heatClass(level))} />
+        <span key={level} className={cn("h-2.5 w-2.5 rounded-xs", heatClass(level))} />
       ))}
       {more}
     </span>

@@ -41,7 +41,7 @@ export function SkeletonSlow({
       <button
         type="button"
         onClick={() => (onRetry ? onRetry() : router.refresh())}
-        className="flex h-[26px] shrink-0 items-center rounded-full border border-tui-ink/16 px-[11px] font-sans text-[12px] text-tui-ink2 hover:border-tui-ink/30 hover:text-tui-ink"
+        className="flex h-[26px] shrink-0 items-center rounded-sm border border-tui-ink/16 px-[11px] font-sans text-[12px] text-tui-ink2 hover:border-tui-ink/30 hover:text-tui-ink"
       >
         {t("retry")}
       </button>

@@ -1,0 +1,90 @@
+# Настройки на харнеса. Пътищата са спрямо тази папка.
+
+repo_root: ..          # кодът, спрямо който се проверява документацията
+workspace: work        # работни копия (gitignored)
+
+output:
+  dir: null            # null = до оригиналния .docx
+  suffix: .revised     # KAIROS_v28-09.docx → KAIROS_v28-09.revised.docx
+
+chunking:
+  max_chars: 30000     # глава над този брой знаци се разделя по раздели от ниво 2 за паралелен преглед
+
+checks:
+  disabled: []         # напр. [text.doubled-words]
+  plugin_dirs: [plugins]
+  options:
+    code.stack-versions:
+      # Как текстът нарича технологията → кой пакет я доказва.
+      # match е регулярен израз; версията след него се сравнява с pnpm-lock.yaml.
+      technologies:
+        - {name: Next.js, match: 'Next\.?js', package: next}
+        - {name: React, match: 'React(?!\s+(?:Query|Native|Hook))', package: react}
+        - {name: TypeScript, package: typescript}
+        - {name: Tailwind CSS, match: 'Tailwind(?:\s*CSS)?', package: tailwindcss}
+        - {name: tRPC, package: '@trpc/server'}
+        - {name: Drizzle ORM, match: 'Drizzle(?:\s*ORM)?', package: drizzle-orm}
+        - {name: NextAuth.js, match: 'NextAuth(?:\.js)?|Auth\.js', package: next-auth}
+        - {name: Socket.IO, match: 'Socket\.?IO', package: socket.io}
+        - {name: Zod, package: zod}
+        - {name: TanStack Query, match: 'TanStack\s*Query|React\s+Query', package: '@tanstack/react-query'}
+        - {name: next-intl, package: next-intl}
+        - {name: Vitest, package: vitest}
+        - {name: ESLint, package: eslint}
+        - {name: Prettier, package: prettier}
+        - {name: GSAP, package: gsap}
+        - {name: Framer Motion, match: 'Framer\s*Motion', package: framer-motion}
+        - {name: Chart.js, match: 'Chart\.js', package: chart.js}
+        - {name: Resend, package: resend}
+        - {name: UploadThing, package: uploadthing}
+        - {name: Stripe, package: stripe}
+        - {name: Redis, package: redis}
+        - {name: PDF.js, match: 'PDF\.js|pdfjs', package: pdfjs-dist}
+        - {name: argon2, match: 'argon2', package: argon2}
+        - {name: date-fns, package: date-fns}
+        - {name: shadcn/ui, match: 'shadcn(?:/ui)?', present_if_file: components.json}
+    style.agent-names:
+      script: latin      # агентите с имената си (Mentor, Odysseus…), не A1–A6; cyrillic = Ментор, Одисей…
+    code.identifiers:
+      ignore: [macOS]    # токени, които не са код (напр. абревиатури с долна черта)
+    dgm.identifiers:
+      ignore: [macOS]
+    changes.undeclared:
+      # Промяна без декларация, която пипа повече раздели, не дава насоки (рефакторинг,
+      # импорт) – остава само в списъка на `changes`.
+      max_sections_per_change: 4
+
+# Промените след последната синхронизация – от „## Documentation impact“ на всеки PR
+# (вж. CLAUDE.md). Влизат във facts.json → changes и в проверките changes.*.
+changes:
+  github: tuncheva/KAIROS   # откъдето се четат PR описанията; null = само локален git
+  branch: development       # commit-и без PR се търсят тук
+  sections: sections.yaml   # раздели на дипломната ↔ пътища в кода
+  sync: sync.yaml           # докъде документът е синхронизиран
+  ignore:                   # промяна само в тези пътища не е промяна в продукта
+    - thesis-harness/**
+    - docs/diploma/**
+    - docs-audit/**
+    - CLAUDE.md
+    - .github/pull_request_template.md
+
+facts:
+  # Факти от изпълнение на команда – напр. реалният брой тестове.
+  # Изключено по подразбиране, защото пускането отнема време.
+  commands: []
+  #  - key: unit_tests_passed
+  #    run: pnpm test --reporter=dot
+  #    regex: 'Tests\s+(\d+) passed'
+  #    timeout: 900
+
+diagrams:
+  dir: docs/diploma/diagrams    # хранилището с диаграмите (спрямо repo_root)
+  workspace: diagrams           # работна папка в work/
+  ignore_figures: [22, 23, 24, 25, 26, 27, 28, 29, 30]   # екранните снимки не са диаграми
+  # thesis_slug: KAIROS_v09-10_updated   # по подразбиране: последно заредената дипломна
+  # mmdc: npx -y @mermaid-js/mermaid-cli@11.4.2   # как се вика Mermaid CLI
+
+prompts_dir: prompts     # смислови проверки (Claude) – по един .md файл на проверка
+
+requirements:
+  dir: requirements      # source.txt (текстът на официалния документ) + rules.yaml

@@ -99,7 +99,7 @@ export function CalendarDayPeek({
             type="button"
             data-autofocus
             onClick={onCreate}
-            className="flex h-8 items-center gap-1.5 rounded-lg bg-accent-primary px-3 text-xs font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover"
+            className="flex h-8 items-center gap-1.5 rounded-sm bg-accent-primary px-3 text-xs font-semibold text-tui-on-accent transition-colors hover:bg-accent-hover"
           >
             <Plus size={13} />
             {addLabel}
@@ -107,7 +107,7 @@ export function CalendarDayPeek({
           <button
             type="button"
             onClick={onOpenDayView}
-            className="flex h-8 items-center rounded-lg border border-border-medium px-3 text-xs font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
+            className="flex h-8 items-center rounded-sm border border-border-medium px-3 text-xs font-semibold text-fg-secondary transition-colors hover:bg-bg-secondary hover:text-fg-primary"
           >
             {openDayLabel}
           </button>

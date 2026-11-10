@@ -88,7 +88,7 @@ export function UndoApplyButton({ draftId, kind, onUndone }: Props) {
       type="button"
       onClick={() => undo.mutate({ draftId, kind })}
       disabled={undo.isPending}
-      className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-fg-secondary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
+      className="flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium text-fg-secondary transition-colors hover:bg-bg-tertiary disabled:opacity-50"
     >
       <Undo2 className="h-3.5 w-3.5" />
       {undo.isPending ? t("undoing") : t("undo")}

@@ -30,7 +30,16 @@ space-separated RGB triples and consumed as `rgb(var(--x))`, which is what lets
 ### Ink — `text-fg-*`
 
 `--fg-primary` headings and body · `--fg-secondary` supporting copy ·
-`--fg-tertiary` labels and meta · `--fg-quaternary` stamps and disabled text.
+`--fg-tertiary` labels, meta, stamps, eyebrows and placeholders ·
+`--fg-quaternary` disabled states, icons and decorative marks only.
+
+**Contrast.** Every ink a person reads clears 4.5:1 on every ground it sits on,
+in both modes, including the hover and selected wash: `--fg-tertiary` (and
+`--tui-ink3`, which it maps to on refined screens) is the faintest text. In
+light mode `--tui-ink3` is 4.53:1 on the selected wash; in dark, 4.50:1 on it.
+`--fg-quaternary` is tuned to 3:1, enough for an icon, a checkbox edge or a
+disabled control, never for text. If you change an ink, re-check it against
+`--tui-bg`, `--tui-pane` and the wash, and keep the steps apart.
 
 ### Hairlines — `border-border-*`
 
@@ -44,6 +53,28 @@ themes with `[data-accent]` on `<html>`. **Accent is flat ink on a hairline.**
 It is not a gradient: no `bg-gradient-to-*` from accent stops anywhere in the
 app. A neutral or in-progress state ("draft") takes the accent so it follows the
 theme rather than picking a colour of its own.
+
+Text and icons on a solid accent fill take `text-on-accent`, never
+`text-white`. `--on-accent` is white on the classic accents; every edition
+points it at `--tui-on-accent`, because the edition's accent is a muted ink that
+turns light in dark mode, where white on it is unreadable.
+
+### Editions
+
+The refined screens remap the tokens above on a wrapper class, so the semantic
+classes inside them pick up the warm `tui-*` palette without being rewritten:
+`.settings-elegant`, `.chat-refined`, `.calendar-refined`, `.notes-quiet`, and
+`.tui-refined` for everything else. `.tui-refined` sits on the app layout (a
+`display: contents` wrapper around every signed-in route), on the auth layout
+and on the public event page, so no screen is left on the classic palette; the
+screens with an edition of their own nest it inside, and the inner one wins.
+Inside an edition, `--bg-overlay` is the pane, so a dialog shell matches the page.
+
+A dialog or drawer portalled to `<body>` leaves its edition behind. `Modal` and
+`Overlay` carry it across with `EditionScope` (`ui/editionScope.tsx`): a hidden
+anchor reads the edition where the caller sits, and a `display: contents`
+wrapper puts the same class back inside the portal. A new portal that renders
+semantic classes should go through `Modal` or `Overlay`, or use the same hook.
 
 ### Brand ramp
 
@@ -96,16 +127,33 @@ Four steps, tied to the **element class**, not to taste:
 | `--radius-lg` → `rounded-lg` | 12px | cards, panels, menus, bubbles |
 | `--radius-xl` → `rounded-xl` | 16px | dialogs, drawers |
 
+Below the four, one step for **marks smaller than a chip**, where 8px would read
+as a circle:
+
+| Step | Value | Element |
+| --- | --- | --- |
+| `--radius-xs` → `rounded-xs` | 4px | checkboxes, key caps, legend swatches, chart cells and bars |
+
 `rounded-2xl`, `rounded-3xl` and every arbitrary `rounded-[Npx]` are gone. Do not
-reintroduce them.
+reintroduce them. The one exception is `ui/Skeleton.tsx`, whose shapes copy the
+radius of the content they stand in for.
 
 `rounded-full` is **reserved for the marketing pages** — `components/homepage/*`,
 `components/marketing/*` and `app/(marketing)/*` — where the pill is the house
 style. Elsewhere it is allowed only where the shape is circular or capsular by
-geometry: avatars, dots, spinners, toggle tracks, progress bars and round icon
-buttons. A text-bearing pill anywhere else takes its element's step.
+geometry: avatars, dots, count badges, toggle tracks, progress bars and round icon
+buttons. A text-bearing pill anywhere else takes its element's step: `rounded-md`
+for a button (34px and up), `rounded-sm` for a chip, tab or filter.
 
-Hand-written CSS in `globals.css` uses `var(--radius-*)` for the same four steps.
+Hand-written CSS in `globals.css` uses `var(--radius-*)` for the same steps.
+
+### No spinners
+
+A loading region shows the hatched `Skeleton` in the shape of what is coming. A
+button whose action is running is disabled and shows `PendingDot`
+(`ui/PendingDot.tsx`), a small dot in the button's ink that breathes. A status
+line ("Saving…") takes the same dot. Never `animate-spin`, never a spinning
+icon or emoji.
 
 ---
 
@@ -130,17 +178,31 @@ Registered in the spacing namespace, so `h-control-md`, `min-h-control-lg`,
 
 ## 5. Typography
 
-Three faces, three jobs:
+Three faces, self-hosted from Fontsource (imported in `app/layout.tsx`, mapped
+onto the custom properties in `src/styles/fonts.css`). Each ships its `latin`
+and `cyrillic` subsets behind `unicode-range`, so Bulgarian renders in the same
+face.
 
-- **Display serif** (`font-display`, Instrument Serif, Playfair Display for `bg`)
-  — page and section headings, dialog and drawer titles. Set at
-  `font-normal`; the serif carries the weight.
-- **Geist / Nunito Sans** (`font-sans`) — body copy, controls, everything else.
-- **Mono** (`font-mono`, IBM Plex Mono, or the `kairos-stamp` / `kairos-mono`
-  classes) — labels, eyebrows, stamps, timestamps, codes, key names.
+- **Inter Variable** (`font-sans`, `--font-geist-sans`) — body copy, controls,
+  everything else.
+- **Inter Variable, as display** (`font-display`, `--font-display`) — page and
+  section headings, dialog and drawer titles. Set at `font-normal` with tight
+  negative tracking; size carries the heading, not weight. `font-display`
+  stays a separate hook so the heading face can change in one place.
+- **IBM Plex Mono** 400 / 500 (`font-mono`, or the `kairos-stamp` /
+  `kairos-mono` classes) — labels, eyebrows, stamps, timestamps, codes, key
+  names.
 
-No bold-sans headings. A heading at `text-lg` and above is serif; a 13px panel
-title is a UI label and stays sans.
+A fourth face belongs to one surface only: **Source Serif 4 Variable**
+(`--font-quiet-serif`, the `.note-serif` class) is a note's own voice inside
+`.notes-quiet`. The chrome around a note stays sans.
+
+No bold-sans headings. A heading at `text-lg` and above is `font-display` at
+`font-normal`; a 13px panel title is a UI label and stays `font-sans` semibold.
+
+The variable names `--font-geist-sans` and `.settings-serif` are left over from
+the earlier Geist / Instrument Serif setup (replaced on 2026-10-05). Both now
+resolve to Inter; keep the names, since the theme reads them.
 
 Icons come from `src/components/ui/icons.tsx` (or `icons.server.tsx` in a server
 component). Never a text glyph or an emoji standing in for an icon — it renders
@@ -152,9 +214,10 @@ in whatever font the OS supplies and takes no colour from the theme.
 
 | Piece | Where | What it is |
 | --- | --- | --- |
-| `Modal`, `useModalBehavior` | `ui/Modal.tsx` | focus trap, Escape, scroll lock, portal |
+| `Modal`, `useModalBehavior` | `ui/Modal.tsx` | focus trap, Escape, scroll lock, portal that keeps the page's edition |
+| `Overlay`, `EditionScope` | `ui/Overlay.tsx`, `ui/editionScope.tsx` | a bare portal to `<body>` for drawers, carrying the page's edition |
 | `MODAL_SHELL`, `MODAL_SCRIM` | `ui/Modal.tsx` | 16px radius on `bg-overlay`, hairline, blurred scrim |
-| `ModalHeader` | `ui/Modal.tsx` | serif title, optional mono eyebrow, mono `ESC` affordance |
+| `ModalHeader` | `ui/Modal.tsx` | display title, optional mono eyebrow, mono `ESC` affordance |
 | `ModalDismiss` | `ui/Modal.tsx` | the mono `ESC` button itself — the one copy; `ModalHeader` uses it, and dialogs with their own header layout import it directly |
 | `ModalBody`, `ModalActions`, `ModalAction` | `ui/Modal.tsx` | dialog padding; actions right-aligned; tones `quiet` / `primary` / `danger` |
 | `ConfirmDialog` | `ui/ConfirmDialog.tsx` | the one "are you sure" — there is no second copy |

@@ -1,0 +1,92 @@
+# Диаграмите на дипломната. Всяка има Mermaid изходен файл в src/, редактира се
+# там (VS Code с разширение Mermaid или https://mermaid.live), а харнесът ги
+# рендерира, проверява и слага на мястото на фигурата в .docx.
+#
+#   figure   номер(а) на фигурата в дипломната; една диаграма може да е две фигури
+#   caption  надписът (без „Фигура N.“) – сверява се с дипломната
+#   checks   допълнителни проверки: er (ER спрямо схемата), tables-all (всички
+#            таблици), routes (пътищата спрямо src/app)
+#   width    ширина на рендерирането в пиксели (по подразбиране 1200); PNG е 2×
+
+diagrams:
+  - id: swot
+    figure: 1
+    caption: SWOT анализ на платформата KAIROS
+    file: src/01-swot.mmd
+  - id: use-case
+    figure: 2
+    caption: Use Case диаграма на системата KAIROS
+    file: src/02-use-case.mmd
+  - id: site-map
+    figure: 3
+    caption: Site Map на платформата KAIROS
+    file: src/03-site-map.mmd
+    checks: [routes]
+  - id: architecture
+    figure: 4
+    caption: Многослойна архитектура на платформата KAIROS
+    file: src/04-architecture.mmd
+  - id: data-domains
+    figure: 5
+    caption: Домейни в релационния модел на данните
+    file: src/05-data-domains.mmd
+    checks: [tables-all]
+  - id: agent-architecture
+    figure: 6
+    caption: Архитектура на многоагентната система на KAIROS
+    file: src/06-agent-architecture.mmd
+  - id: agent-turn
+    figure: [7, 19]
+    caption: Последователност на един ход на многоагентната система
+    file: src/07-agent-turn.mmd
+  - id: plan-lifecycle
+    figure: [8, 18]
+    caption: "Жизнен цикъл на плана на пишещ агент: чернова, потвърждение, прилагане и отмяна"
+    also_captions: ["Жизнен цикъл Draft → Confirm → Apply → Undo"]
+    file: src/08-plan-lifecycle.mmd
+  - id: rag
+    figure: 9
+    caption: Конвейер за извличане с обогатяване над качени документи
+    file: src/09-rag.mmd
+  - id: scheduled-agents
+    figure: 10
+    caption: "Поток на планираните агенти: детерминистично откриване и формулировка от модела"
+    file: src/10-scheduled-agents.mmd
+  - id: roles
+    figure: 11
+    caption: Функционално взаимодействие между ролите в платформата KAIROS
+    file: src/11-roles.mmd
+  - id: push-architecture
+    figure: 12
+    caption: Архитектура на известията извън приложението
+    file: src/12-push-architecture.mmd
+  - id: push-subscribe
+    figure: 13
+    caption: UML диаграма на абониране на устройство
+    file: src/13-push-subscribe.mmd
+  - id: two-factor-sequence
+    figure: 14
+    caption: Последователност на двуфакторния вход с код или одобрение през линк
+    file: src/14-two-factor-sequence.mmd
+  - id: two-factor-states
+    figure: 15
+    caption: Състояния на предизвикателството за двуфакторен вход
+    file: src/15-two-factor-states.mmd
+  - id: note-lock
+    figure: 16
+    caption: Заключване и отключване на бележка с парола
+    file: src/16-note-lock.mmd
+  - id: er
+    figure: 17
+    caption: Релационен модел (ER диаграма) на базата данни на KAIROS
+    file: src/17-er.mmd
+    checks: [er]
+    width: 2400
+  - id: routing-results
+    figure: 20
+    caption: Резултати от оценката на маршрутизацията
+    file: src/20-routing-results.mmd
+  - id: offline-vs-model
+    figure: 21
+    caption: Сравнение на резултатите без връзка и с реален модел
+    file: src/21-offline-vs-model.mmd

@@ -702,7 +702,7 @@ export function LedgerAction({
   disabled?: boolean;
   title?: string;
 }) {
-  const className = `inline-flex h-8 items-center whitespace-nowrap rounded-[6px] border px-[13px] text-settings-small font-medium transition-colors ${
+  const className = `inline-flex h-8 items-center whitespace-nowrap rounded-sm border px-[13px] text-settings-small font-medium transition-colors ${
     danger
       ? "border-error/45 bg-transparent text-error hover:bg-error/10"
       : "border-transparent bg-fg-primary/5 text-fg-primary hover:bg-fg-primary/10"
@@ -726,7 +726,7 @@ export function LedgerAction({
  * The field look every text control shares: a faint wash of the ink rather
  * than a bordered box, which only draws its edge (in the accent) while focused.
  */
-const FIELD = "rounded-[6px] border border-transparent bg-fg-primary/5 text-settings-body text-fg-primary outline-none transition-colors placeholder:text-fg-quaternary focus:border-accent-primary/50 focus:bg-transparent disabled:opacity-50";
+const FIELD = "rounded-sm border border-transparent bg-fg-primary/5 text-settings-body text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-accent-primary/50 focus:bg-transparent disabled:opacity-50";
 
 export function LedgerInput({
   value,
@@ -886,7 +886,7 @@ export function LedgerCheck({
         <svg
           viewBox="0 0 24 24"
           fill="none"
-          className={`h-[11px] w-[11px] text-white transition-opacity ${
+          className={`h-[11px] w-[11px] text-on-accent transition-opacity ${
             checked ? "opacity-100" : "opacity-0"
           }`}
         >

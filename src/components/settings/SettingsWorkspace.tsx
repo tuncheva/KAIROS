@@ -349,7 +349,7 @@ function SettingsShell({ activeSection, user }: Props) {
     : t(`nav.${spy}`);
 
   const search = (
-    <label className="flex h-[34px] items-center gap-2.5 rounded-[7px] bg-fg-primary/5 pl-3 pr-2 focus-within:bg-fg-primary/[0.07]">
+    <label className="flex h-[34px] items-center gap-2.5 rounded-sm bg-fg-primary/5 pl-3 pr-2 focus-within:bg-fg-primary/[0.07]">
       <Search size={13} className="flex-none text-fg-tertiary" />
       <input
         value={rawQuery}
@@ -385,7 +385,7 @@ function SettingsShell({ activeSection, user }: Props) {
                 <button
                   type="button"
                   onClick={leave}
-                  className="-ml-1.5 flex h-[30px] cursor-pointer items-center gap-2.5 rounded-[6px] pl-1.5 pr-2.5 text-settings-desc text-fg-secondary transition-colors hover:bg-fg-primary/5 hover:text-fg-primary"
+                  className="-ml-1.5 flex h-[30px] cursor-pointer items-center gap-2.5 rounded-sm pl-1.5 pr-2.5 text-settings-desc text-fg-secondary transition-colors hover:bg-fg-primary/5 hover:text-fg-primary"
                 >
                   <ArrowLeft size={14} />
                   {t("elegant.back")}
@@ -430,7 +430,7 @@ function SettingsShell({ activeSection, user }: Props) {
                             e.preventDefault();
                             goToSection(id);
                           }}
-                          className={`flex h-9 items-center gap-[7px] rounded-[7px] pl-3 pr-3.5 transition-colors duration-[250ms] hover:bg-fg-primary/5 hover:text-fg-primary ${
+                          className={`flex h-9 items-center gap-[7px] rounded-sm pl-3 pr-3.5 transition-colors duration-[250ms] hover:bg-fg-primary/5 hover:text-fg-primary ${
                             on ? "bg-fg-primary/5 text-fg-primary" : "text-fg-secondary"
                           } ${dim ? "opacity-35" : ""}`}
                         >
@@ -481,7 +481,7 @@ function SettingsShell({ activeSection, user }: Props) {
                   type="button"
                   onClick={leave}
                   aria-label={t("elegant.back")}
-                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-[7px] text-fg-secondary hover:bg-fg-primary/5 hover:text-fg-primary lg:hidden"
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm text-fg-secondary hover:bg-fg-primary/5 hover:text-fg-primary lg:hidden"
                 >
                   <ArrowLeft size={15} />
                 </button>
@@ -491,7 +491,7 @@ function SettingsShell({ activeSection, user }: Props) {
                   }`}
                 >
                   <span className="text-fg-tertiary">{t("title")}</span>
-                  <span className="text-fg-quaternary">/</span>
+                  <span className="text-fg-tertiary">/</span>
                   <span className="truncate text-fg-primary">{currentTitle}</span>
                 </div>
                 <span className="flex-1" />
@@ -500,7 +500,7 @@ function SettingsShell({ activeSection, user }: Props) {
                   onClick={() => setActivityOpen((open) => !open)}
                   aria-expanded={activityOpen}
                   aria-controls="settings-activity"
-                  className={`flex h-8 cursor-pointer items-center gap-2 rounded-[7px] px-3 text-settings-small font-medium text-fg-secondary transition-colors hover:bg-fg-primary/5 ${
+                  className={`flex h-8 cursor-pointer items-center gap-2 rounded-sm px-3 text-settings-small font-medium text-fg-secondary transition-colors hover:bg-fg-primary/5 ${
                     activityOpen ? "bg-fg-primary/5" : ""
                   }`}
                 >
@@ -513,9 +513,9 @@ function SettingsShell({ activeSection, user }: Props) {
                   onClick={leave}
                   title={t("elegant.close")}
                   aria-label={t("elegant.close")}
-                  className="hidden h-8 cursor-pointer items-center gap-2 rounded-[7px] pl-2.5 pr-2 text-settings-meta text-fg-tertiary transition-colors hover:bg-fg-primary/5 hover:text-fg-primary sm:flex"
+                  className="hidden h-8 cursor-pointer items-center gap-2 rounded-sm pl-2.5 pr-2 text-settings-meta text-fg-tertiary transition-colors hover:bg-fg-primary/5 hover:text-fg-primary sm:flex"
                 >
-                  <kbd className="rounded-[4px] border border-border-medium px-[5px] py-px font-mono text-settings-eyebrow leading-[14px]">
+                  <kbd className="rounded-xs border border-border-medium px-[5px] py-px font-mono text-settings-eyebrow leading-[14px]">
                     esc
                   </kbd>
                   <X size={14} />
@@ -542,7 +542,7 @@ function SettingsShell({ activeSection, user }: Props) {
                           key={id}
                           type="button"
                           onClick={() => goToSection(id)}
-                          className={`h-8 flex-none cursor-pointer whitespace-nowrap rounded-[7px] px-3 text-settings-small font-medium ${
+                          className={`h-8 flex-none cursor-pointer whitespace-nowrap rounded-sm px-3 text-settings-small font-medium ${
                             !filtering && spy === id
                               ? "bg-fg-primary/5 text-fg-primary"
                               : "text-fg-secondary"
@@ -803,7 +803,7 @@ function HealthSummary({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className={`flex cursor-pointer items-center gap-4 rounded-[10px] border px-[18px] py-4 text-left transition-colors hover:bg-fg-primary/5 ${
+        className={`flex cursor-pointer items-center gap-4 rounded-md border px-[18px] py-4 text-left transition-colors hover:bg-fg-primary/5 ${
           allGood ? "border-border-medium" : "border-warning/45"
         }`}
       >
@@ -823,7 +823,7 @@ function HealthSummary({
             {health.checks.map((c) => (
               <span
                 key={c.key}
-                className={`h-[3px] flex-1 rounded-[2px] transition-colors duration-300 ${
+                className={`h-[3px] flex-1 rounded-xs transition-colors duration-300 ${
                   c.ok ? "bg-success" : "bg-warning"
                 }`}
               />

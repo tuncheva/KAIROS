@@ -169,7 +169,7 @@ export function AiThreadRail({
       </div>
 
       <div className="flex-none px-4 pb-3.5">
-        <label className="flex h-[38px] items-center gap-2.5 rounded-full border border-tui-ink/16 bg-tui-bg pr-2 pl-3.5 transition-colors focus-within:border-tui-accent/45">
+        <label className="flex h-[38px] items-center gap-2.5 rounded-md border border-tui-ink/16 bg-tui-bg pr-2 pl-3.5 transition-colors focus-within:border-tui-accent/45">
           <Search size={14} className="flex-none text-tui-ink3" />
           <input
             type="search"

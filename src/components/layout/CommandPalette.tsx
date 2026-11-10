@@ -299,7 +299,7 @@ export function CommandPalette({
           }}
           placeholder={t("placeholder")}
           aria-label={t("placeholder")}
-          className="w-full border-b border-border-light bg-transparent px-4 py-3.5 text-base text-fg-primary outline-none placeholder:text-fg-quaternary"
+          className="w-full border-b border-border-light bg-transparent px-4 py-3.5 text-base text-fg-primary outline-none placeholder:text-fg-tertiary"
         />
 
         {/* Capped at half the screen as well as 20rem: on a phone held
@@ -309,7 +309,7 @@ export function CommandPalette({
           {rows.map((destination, index) => (
             <li key={destination.id}>
               {index === results.length ? (
-                <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-quaternary">
+                <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-tertiary">
                   {t("inYourWorkspace")}
                 </p>
               ) : null}
@@ -325,7 +325,7 @@ export function CommandPalette({
               >
                 <span className="truncate">{destination.label}</span>
                 {destination.hint ? (
-                  <span className="shrink-0 text-xs text-fg-quaternary">
+                  <span className="shrink-0 text-xs text-fg-tertiary">
                     {destination.hint}
                   </span>
                 ) : null}
@@ -335,7 +335,7 @@ export function CommandPalette({
 
           {showHitSkeleton ? (
             <li aria-hidden="true">
-              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-quaternary">
+              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-tertiary">
                 {t("inYourWorkspace")}
               </p>
               {[0, 1, 2].map((i) => (
@@ -373,7 +373,7 @@ export function CommandPalette({
                 <span className="truncate">
                   {t("askAssistant", { query: query.trim() })}
                 </span>
-                <span className="shrink-0 text-xs text-fg-quaternary">
+                <span className="shrink-0 text-xs text-fg-tertiary">
                   {t("enter")}
                 </span>
               </button>

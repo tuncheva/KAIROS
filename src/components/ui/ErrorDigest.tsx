@@ -32,7 +32,7 @@ export function ErrorDigest({
           .then(() => setCopied(true))
           .catch(() => setCopied(false));
       }}
-      className="kairos-tap h-control-sm border-border-light text-fg-quaternary hover:border-border-strong hover:text-fg-tertiary inline-flex items-center rounded-sm border px-3 font-mono text-[10px] tracking-[0.16em] uppercase transition-colors"
+      className="kairos-tap h-control-sm border-border-light text-fg-tertiary hover:border-border-strong hover:text-fg-tertiary inline-flex items-center rounded-sm border px-3 font-mono text-[10px] tracking-[0.16em] uppercase transition-colors"
     >
       {copied ? copiedLabel : copyLabel}
     </button>

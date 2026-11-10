@@ -1,0 +1,173 @@
+%% Фигура 17 – Релационен модел (основни таблици). Генериран от src/server/db/schemas; проверява се спрямо схемата.
+erDiagram
+  user {
+    varchar id PK
+    varchar name
+    varchar email
+    enum language
+  }
+  organizations {
+    integer id PK
+    varchar created_by_id FK
+    varchar name
+    varchar access_code
+    enum plan
+  }
+  organization_members {
+    integer id PK
+    integer organization_id FK
+    varchar user_id FK
+    enum role
+  }
+  organization_roles {
+    integer id PK
+    integer organization_id FK
+    varchar name
+  }
+  projects {
+    integer id PK
+    varchar createdById FK
+    integer organization_id FK
+    varchar title
+    enum status
+  }
+  project_collaborators {
+    integer project_id FK
+    varchar collaboratorId FK
+    enum permission
+  }
+  tasks {
+    integer id PK
+    integer project_id FK
+    integer parent_task_id FK
+    varchar assignedToId FK
+    varchar completed_by_id FK
+    varchar createdById FK
+    varchar last_edited_by_id FK
+    varchar title
+    enum status
+    enum priority
+    timestamp due_date
+  }
+  task_comments {
+    integer id PK
+    integer task_id FK
+    varchar createdById FK
+    text content
+  }
+  task_dependencies {
+    integer id PK
+    integer blocked_task_id FK
+    integer blocking_task_id FK
+    varchar createdById FK
+  }
+  notebooks {
+    integer id PK
+    varchar createdById FK
+    varchar name
+  }
+  sticky_notes {
+    integer id PK
+    varchar createdById FK
+    integer notebook_id FK
+    varchar title
+    enum share_status
+  }
+  event {
+    integer id PK
+    varchar createdById FK
+    varchar title
+    timestamp event_date
+  }
+  event_rsvp {
+    integer id PK
+    integer event_id FK
+    varchar user_id FK
+    enum status
+  }
+  notifications {
+    integer id PK
+    varchar user_id FK
+    enum type
+    boolean read
+  }
+  ai_conversations {
+    varchar id PK
+    varchar user_id FK
+    integer project_id FK
+    varchar title
+  }
+  ai_messages {
+    integer id PK
+    varchar conversation_id FK
+    enum role
+    varchar agent_id
+  }
+  documents {
+    integer id PK
+    varchar user_id FK
+    integer project_id FK
+    varchar filename
+    varchar status
+  }
+  document_chunks {
+    integer id PK
+    integer document_id FK
+    varchar user_id FK
+    integer page
+  }
+  agent_task_planner_drafts {
+    varchar id PK
+    varchar user_id FK
+    integer project_id FK
+    integer org_id FK
+    enum status
+    varchar plan_hash
+  }
+  agent_task_planner_applies {
+    integer id PK
+    varchar draft_id FK
+    varchar user_id FK
+    integer project_id FK
+    text before_json
+    text result_json
+  }
+  agent_task_planner_drafts ||--o{ agent_task_planner_applies : "draft_id"
+  ai_conversations ||--o{ ai_messages : "conversation_id"
+  documents ||--o{ document_chunks : "document_id"
+  event ||--o{ event_rsvp : "event_id"
+  notebooks ||--o{ sticky_notes : "notebook_id"
+  organizations ||--o{ agent_task_planner_drafts : "org_id"
+  organizations ||--o{ organization_members : "organization_id"
+  organizations ||--o{ organization_roles : "organization_id"
+  organizations ||--o{ projects : "organization_id"
+  projects ||--o{ agent_task_planner_applies : "project_id"
+  projects ||--o{ agent_task_planner_drafts : "project_id"
+  projects ||--o{ ai_conversations : "project_id"
+  projects ||--o{ documents : "project_id"
+  projects ||--o{ project_collaborators : "project_id"
+  projects ||--o{ tasks : "project_id"
+  tasks ||--o{ task_comments : "task_id"
+  tasks ||--o{ task_dependencies : "blocked_task_id"
+  tasks ||--o{ task_dependencies : "blocking_task_id"
+  tasks ||--o{ tasks : "parent_task_id"
+  user ||--o{ agent_task_planner_applies : "user_id"
+  user ||--o{ agent_task_planner_drafts : "user_id"
+  user ||--o{ ai_conversations : "user_id"
+  user ||--o{ document_chunks : "user_id"
+  user ||--o{ documents : "user_id"
+  user ||--o{ event : "createdById"
+  user ||--o{ event_rsvp : "user_id"
+  user ||--o{ notebooks : "createdById"
+  user ||--o{ notifications : "user_id"
+  user ||--o{ organization_members : "user_id"
+  user ||--o{ organizations : "created_by_id"
+  user ||--o{ project_collaborators : "collaboratorId"
+  user ||--o{ projects : "createdById"
+  user ||--o{ sticky_notes : "createdById"
+  user ||--o{ task_comments : "createdById"
+  user ||--o{ task_dependencies : "createdById"
+  user ||--o{ tasks : "assignedToId"
+  user ||--o{ tasks : "completed_by_id"
+  user ||--o{ tasks : "createdById"
+  user ||--o{ tasks : "last_edited_by_id"

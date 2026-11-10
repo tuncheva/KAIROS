@@ -55,7 +55,7 @@ export const DIALOG_INPUT =
 const DIALOG_LABEL = "block text-[12px] font-medium text-fg-tertiary";
 
 const DIALOG_BTN =
-  "inline-flex h-10 items-center justify-center gap-2 rounded-lg px-5 text-[13.5px] font-semibold transition-[opacity,background-color,border-color,color,transform] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-35";
+  "inline-flex h-10 items-center justify-center gap-2 rounded-md px-5 text-[13.5px] font-semibold transition-[opacity,background-color,border-color,color,transform] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-35";
 /** The one that does the thing: ink on ground, the accent left for meaning. */
 export const DIALOG_PRIMARY = `${DIALOG_BTN} bg-fg-primary text-bg-primary hover:opacity-90`;
 /** The one that destroys something. */
@@ -243,7 +243,7 @@ export function DialogField({
       >
         {children}
       </div>
-      {hint && <p className="mt-2 text-[11.5px] text-fg-quaternary">{hint}</p>}
+      {hint && <p className="mt-2 text-[11.5px] text-fg-tertiary">{hint}</p>}
     </div>
   );
 }
@@ -317,12 +317,12 @@ export function DialogPasswordField({
           type="button"
           onClick={() => setReveal((previous) => !previous)}
           aria-label={reveal ? t("password.hide") : t("password.show")}
-          className="kairos-tap grid h-6 w-6 flex-none place-items-center rounded-md text-fg-quaternary transition-colors hover:text-fg-primary"
+          className="kairos-tap grid h-6 w-6 flex-none place-items-center rounded-md text-fg-tertiary transition-colors hover:text-fg-primary"
         >
           {reveal ? <EyeOff size={14} /> : <Eye size={14} />}
         </button>
       </div>
-      {hint && <p className="mt-2 text-[11.5px] text-fg-quaternary">{hint}</p>}
+      {hint && <p className="mt-2 text-[11.5px] text-fg-tertiary">{hint}</p>}
     </div>
   );
 }

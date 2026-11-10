@@ -154,7 +154,7 @@ export function ImageUpload({
           {imagePreview ? (
             <Image
               src={imagePreview}
-              alt="Preview"
+              alt={t("imagePreview")}
               width={size === "sm" ? 80 : 96}
               height={size === "sm" ? 80 : 96}
               className={`${imageSize} rounded-full object-cover border-2 border-accent-primary/30`}

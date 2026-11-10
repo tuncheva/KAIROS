@@ -10,13 +10,14 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2 } from "~/components/ui/icons";
+import {  } from "~/components/ui/icons";
 
 import { api } from "~/trpc/react";
 import { useToast } from "~/components/providers/ToastProvider";
 
 import { DIALOG_INPUT, DIALOG_PRIMARY, DIALOG_QUIET, DialogField, NotesDialog } from "./notesDialog";
 
+import { PendingDot } from "~/components/ui/PendingDot";
 export function NotebookDialog({
   notebook,
   onClose,
@@ -83,7 +84,7 @@ export function NotebookDialog({
             {t("common.cancel")}
           </button>
           <button type="submit" disabled={!name.trim() || isPending} className={DIALOG_PRIMARY}>
-            {isPending && <Loader2 size={14} className="animate-spin" />}
+            {isPending && <PendingDot />}
             {notebook ? t("actions.save") : t("actions.create")}
           </button>
         </>

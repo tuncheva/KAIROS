@@ -12,6 +12,7 @@ import Image from "next/image";
 
 import { avatarGradientStyle } from "~/lib/avatarGradient";
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { AlertCircle, Check, X } from "~/components/ui/icons";
 import { Panel, TitledPanel } from "~/components/ui/Panel";
 import { Stamp } from "~/components/ui/Stamp";
@@ -94,7 +95,7 @@ export function BandDivider({
         aria-hidden="true"
         className={`h-px flex-1 ${
           accent
-            ? "bg-gradient-to-r from-accent-primary/45 to-transparent"
+            ? "bg-accent-primary/45"
             : "bg-border-medium"
         }`}
       />
@@ -157,6 +158,7 @@ export function InfoToast({
   info: InfoMessage | null;
   onClose: () => void;
 }) {
+  const t = useTranslations("publish");
   useEffect(() => {
     if (!info) return;
     const timer = setTimeout(onClose, 3000);
@@ -177,15 +179,15 @@ export function InfoToast({
        toast region uses. At `bottom-4` it landed on top of the tab bar. */
     <div
       role="status"
-      className={`fixed inset-x-4 bottom-[calc(6rem+var(--kairos-safe-bottom))] z-50 flex items-center gap-3 rounded-xl border p-4 shadow-lg sm:inset-x-auto sm:right-4 lg:bottom-4 ${tone}`}
+      className={`fixed inset-x-4 bottom-[calc(6rem+var(--kairos-safe-bottom))] z-50 flex items-center gap-3 rounded-lg border p-4 shadow-lg sm:inset-x-auto sm:right-4 lg:bottom-4 ${tone}`}
     >
       <Icon size={18} className="shrink-0" />
       <p className="min-w-0 flex-1 text-sm font-medium">{info.message}</p>
       <button
         type="button"
         onClick={onClose}
-        aria-label="Dismiss"
-        className="kairos-tap rounded-full p-1 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+        aria-label={t("close")}
+        className="kairos-tap rounded-full p-1 transition-colors hover:bg-fg-primary/5"
       >
         <X size={14} />
       </button>

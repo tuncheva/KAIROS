@@ -61,7 +61,7 @@ const { ProjectIntelligenceChat } = await import(
 /** A turn that never finishes, so the thinking state stays on screen. */
 const fetchMock = vi.fn(() =>
   Promise.resolve(
-    new Response(new ReadableStream<Uint8Array>({ start() {} }), {
+    new Response(new ReadableStream<Uint8Array>({ start() { /* never enqueues */ } }), {
       status: 200,
       headers: { "Content-Type": "text/event-stream" },
     }),

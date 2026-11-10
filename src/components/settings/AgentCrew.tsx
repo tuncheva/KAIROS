@@ -508,7 +508,7 @@ function AgentDetail({ id, reduced, t }: { id: AgentId; reduced: boolean; t: Tra
             .join(" · ");
 
   const soon = (
-    <span className="rounded-[4px] border border-fg-primary/12 px-1.5 py-px font-mono text-[10.5px] uppercase tracking-[0.06em] text-fg-tertiary">
+    <span className="rounded-xs border border-fg-primary/12 px-1.5 py-px font-mono text-[10.5px] uppercase tracking-[0.06em] text-fg-tertiary">
       {t("soon")}
     </span>
   );
