@@ -1,6 +1,6 @@
 ---
 name: make-pr
-description: Open (or re-describe) a pull request in KAIROS with the house conventions, including the `## Documentation impact` section the thesis harness reads. Use every time the user asks to make, open, create, raise or send a PR, a pull request, or a release PR (development → main), or to fix a PR description.
+description: Open (or re-describe) a pull request in KAIROS with the house conventions — work on its own branch, PR into `development`, with the `## Documentation impact` section the thesis harness reads. Use every time the user asks to make, open, create, raise or send a PR or pull request, to merge work into development, for a release PR (development → main), or to fix a PR description.
 ---
 
 # Make a PR
@@ -10,12 +10,37 @@ stale. `/thesis-check` later turns those lines into the list of what the
 documentation must include. A hook (`.claude/hooks/pr_check.py`) blocks a PR
 whose description fails `pr-check`, so do it right the first time.
 
-## 1. Decide base and head
+## 1. Branch and base
 
-- Feature branch → `development` (the default).
-- `development` → `main` when the user asks for a release / to merge development
-  into main, or when the work was committed straight to `development`.
-- Make sure the work is committed and pushed (`git push -u origin <head>`).
+Work reaches `development` through PRs from its own branch. `main` only
+receives `development` (a release). The hook and CI refuse a feature branch
+→ `main`.
+
+**A feature PR (the default)** — head: a branch, base: `development`.
+
+- Already on a feature branch: use it.
+- Commits made on local `development` that are **not pushed** yet: move them
+  onto a branch, then put `development` back where the remote is:
+  ```bash
+  git fetch origin development
+  git switch -c <type>/<short-name>            # takes the commits along
+  git branch -f development origin/development  # local development = remote again
+  ```
+- Nothing committed yet: `git switch -c <type>/<short-name> origin/development`,
+  then commit there.
+- Branch name: the conventional type and a few words, e.g.
+  `feat/pause-scheduled-agents`, `fix/workload-timestamps`.
+- Commits already **pushed** to `development` cannot be PR-ed into it. Say so;
+  they go out with the next release PR, which must then carry their
+  Documentation impact.
+- Push the branch: `git push -u origin <branch>`. If the session's git access
+  only allows another branch, stop and tell the user rather than pushing
+  elsewhere.
+
+**A release PR** (only when the user asks to release / merge development into
+main) — head: `development`, base: `main`. Its Documentation impact is
+`- none — release of #17, #18; their PRs carry the documentation impact`,
+plus real entries for any commit in it that did not come through a PR.
 
 ## 2. Read what actually changed
 

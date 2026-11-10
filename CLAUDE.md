@@ -18,9 +18,11 @@ sections it makes stale. The PR description is where that is recorded.
 when the description fails `pr-check`; fix the body and retry, never work
 around it. Release PRs (`development` → `main`) follow the same rules.
 
-Work goes through a PR into `development`. Do not push features straight to
+Work goes on its own branch (`feat/…`, `fix/…`, from `origin/development`) and
+reaches `development` through a PR. Do not push features straight to
 `development`: a commit without a PR has no Documentation impact and shows up
-in the doc ledger as "Needs a decision".
+in the doc ledger as "Needs a decision". `main` only receives `development`
+(release PRs); a feature branch → `main` is refused.
 
 - **Title**: a conventional commit title (`feat(ai): pause scheduled agents`).
 - **Body**: follow `.github/pull_request_template.md`:

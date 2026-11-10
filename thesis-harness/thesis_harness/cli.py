@@ -566,6 +566,9 @@ def cmd_pr_check(cfg: Config, args) -> None:
             _out(f"Could not diff against {base}; skipping the file → section hints.")
     sections = chg.load_sections(chg.settings(cfg)["sections_path"])
     res = chg.check_pr(title, body, files, sections, structural)
+    flow = chg.branch_flow_error(base, head or None)
+    if flow:
+        res.errors.insert(0, flow)
     in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
     esc = lambda m: m.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")  # noqa: E731
     for w in res.warnings:
