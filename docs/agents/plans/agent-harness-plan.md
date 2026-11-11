@@ -1,11 +1,13 @@
 # Agent harness: plan and rules
 
-Date: 2026-11-02
-Status: proposal
+Date: 2026-11-02 (updated 2026-11-11)
+Status: proposal. Owner decisions settled in ADR-0010 to ADR-0015 (§9)
 Scope: `src/server/llm/**`, `src/server/api/routers/agent.ts`, `src/app/api/ai/chat/route.ts`, `src/app/api/internal/ai/run-schedules/route.ts`, `src/server/security/rateLimit.ts`, `src/server/db/schemas/agents.ts`
 Builds on: [agent-system-fix-plan.md](agent-system-fix-plan.md) (2026-09-25). Section 7 maps those PRs onto the phases here. Most of them are still open (see §2.0).
+Companion: [claude-dev-harness-plan.md](claude-dev-harness-plan.md), the Claude Code harness for developing KAIROS (branches, PRs, docs, CI, owner decisions). Its `llm-agents.md` rule file carries this plan's rule ids into every session that touches `src/server/llm/**`.
+Sibling: [harness-plan-2026-11-09.md](../harness-plan-2026-11-09.md), the handoff, reliability and model plan. §11 says which plan owns which workstream and resolves where they disagree.
 
-Paths are relative to `src/` unless they start with `tests/` or `docs/`. **✔** marks a finding I re-read in the code while writing this. Unmarked findings come from the per-agent audits and cite a file and line.
+Paths are relative to `src/` unless they start with `tests/`, `docs/` or `ws-server/` (repo root). **✔** marks a finding I re-read in the code while writing this. Unmarked findings come from the per-agent audits; on 2026-11-03 a second pass re-checked every one of them against the code and corrected the ones that were off (F-11, F-25, AUDIT-3, the operation count).
 
 ---
 
@@ -106,7 +108,7 @@ Severity: **C** critical (data loss, privilege escalation, cross-tenant leak) ·
 | F-3 | H | **A5 invites skip the router's escalation and seat checks.** The router uses `resolveGrant`, `assertSeatAvailable`, an already-a-member check and a pending-invite check. A5 checks only `canAddMembers` plus admin-for-admin. | ✔ `a5OrgAdmin.ts:636-660`; `server/orgs/inviteGrants.ts:63-82`; `organization.ts:2002-2061` |
 | F-9 | H | **A6 archives under weaker rules than the UI.** The router requires the owner plus `canEditProjects`. A6 accepts `canDeleteTasks`, or archives through `patch.status` with only `canEditProjects`. | ✔ `server/api/routers/project.ts:835-839` vs `a6ProjectManager.ts:555-568` |
 | F-10 | H | **A4 adds comments, RSVPs and likes on any `eventId`** without checking the event exists or has RSVP enabled. A replayed like toggles back. RSVP delete-and-reinsert wipes `reminderMinutesBefore`. | ✔ `a4EventsPublisher.ts:492-505`; `:537-549` |
-| F-11 | M | A4, A5 and A6 skip router side effects: realtime emits, geocoding, `activeOrganizationId` reset on removal, `displayRole` clearing. | `a4:397-416`, `a5:574-634` vs `organization.ts:1587-1612` |
+| F-11 | M | A4 and A5 skip router side effects. A4's event update skips `geocodePlace` and the realtime `emitEvent*` calls. A5's removal doesn't reset the removed user's `activeOrganizationId`, and its role change never sets `displayRole`. (A6 is fine here: the project router has no emits, and A6 calls `notifyProjectLifecycle`.) | `a4:395-424` vs `event.ts:1166-1184`; `a5:574-634` vs `organization.ts:1587-1611`; `a5:486-495` vs `organization.ts:1447-1475` |
 
 #### Untrusted content reaching the model with authority (rule set TRUST)
 
@@ -116,7 +118,7 @@ Severity: **C** critical (data loss, privilege escalation, cross-tenant leak) ·
 | F-13 | H | **A1's model-authored `handoff.context` becomes a sub-agent system message** saying "Treat them as given". It overrides the server's page context because the model's keys win. | ✔ `llm/prompts/handoffContext.ts:41`; ✔ `handoff.ts:167-170` |
 | F-14 | H | **Memory can be poisoned.** A1 reads teammates' tasks, comments, shared notes and documents and can call `rememberFact`; the only guard is a prompt line. Facts are injected into every later prompt as "true unless they say otherwise", and agent-scoped facts "take precedence". `FactValueSchema` allows newlines, so a value can forge the `## Rules this user has set` heading. | ✔ `memory.ts:154-181`, ✔ `memory.ts:355` |
 | F-15 | M | Other users' event descriptions (up to 5000 chars each) go into A4's system prompt as "authoritative". Project titles go into A1's system prompt. PDF text is inlined with no data framing. Document snippets reach A1 with no delimiters. | `a4ContextBuilder.ts:58-76`, `a4Prompts.ts:231-234`, `a1Prompts.ts:185, 299-303`, `documents/search.ts:185` |
-| F-16 | H | **Injection → auto-apply with no human in between.** A1 picks `handoffContext.projectId`, A2 drafts, and a small plan auto-applies (up to 3 creates, comments or dependencies) in any project the user can write to. | `a2TaskPlanner.ts:277-283`; ✔ `handoff.ts:196` |
+| F-16 | H | **Injection → auto-apply with no human in between.** When the server supplied no `scope.projectId` (any chat outside a project page), A1's model picks `handoffContext.projectId`, A2 drafts, and a small plan auto-applies (up to 3 creates, comments or dependencies) in any project the user can write to. | `a2TaskPlanner.ts:277-283`; ✔ `handoff.ts:196` |
 | F-17 | M | Confirm cards show model-written names: A5 `targetName` isn't matched to `targetUserId`, A6 `projectTitle` isn't matched to `projectId`. The card can name one person or project while the change hits another. | `a5OrgAdmin` schema `:34`; `a6ProjectManagerSchemas.ts:27,42` |
 
 #### Capability declarations that drifted (rule set CAP)
@@ -145,7 +147,7 @@ Severity: **C** critical (data loss, privilege escalation, cross-tenant leak) ·
 |---|---|---|---|
 | F-23 | C | **No apply is a transaction, and status flips to `applied` only at the end.** Two concurrent applies with one token both run; a failure mid-apply leaves partial writes and a re-appliable draft. | ✔ no `.transaction(` in `server/llm`; ✔ no unique index on `*_applies.draft_id` |
 | F-24 | M | Undo can run repeatedly (no `undone_at`). Cross-project undo skips the access re-check. Comments and dependencies are never reverted, yet auto-apply counts them as undoable. A6 has no undo at all. | `llm/undo.ts:132-171`; `smallPlans.ts:26-31` |
-| F-25 | M | If an auto-apply throws after its auto-confirm, the draft is stranded in `confirmed` and the user's Confirm button is rejected. | `autoApply.ts:70-84`; `a2TaskPlanner.ts:557` |
+| F-25 | M | **A2 only:** if an auto-apply throws after its auto-confirm, the draft is stranded in `confirmed` and the user's Confirm button is rejected, because A2's confirm requires `status === "draft"`. A3's confirm accepts `confirmed` and returns the stored token, so A3 recovers. | `autoApply.ts:70-84`; `a2TaskPlanner.ts:557` vs `a3NotesVault.ts:191-200` |
 | F-26 | H | **A3 overwrites blind.** The prompt lists note metadata and says "(content visible)", but never includes the content. Every `update.nextContent` replaces the whole note, and auto-apply allows it. | ✔ `llm/prompts/a3Prompts.ts:123-134` |
 
 #### Budgets and metering (rule set BUDGET)
@@ -153,7 +155,7 @@ Severity: **C** critical (data loss, privilege escalation, cross-tenant leak) ·
 | # | Sev | Finding | Evidence |
 |---|---|---|---|
 | F-27 | H | **A turn costs up to 4+ agent model calls but is metered as 1.** Sub-agent drafts never call `recordExtraAiCall`; only tool-loop hops and JSON repairs do. Title, summary, the risk-radar pattern call and A3's `generateAndCreate` (≤50 per plan, 4000 tokens each) are unmetered too. | ✔ grep: only `toolLoop.ts:346` and `jsonRepair.ts:141,222` record |
-| F-28 | M | No cap on tool calls per model turn, no per-tool timeout, the abort signal never reaches `execute`, and no `maxTokens` on A1. | ✔ `toolLoop.ts:381-397` |
+| F-28 | M | No cap on tool calls per model turn, no per-tool timeout, and the abort signal never reaches `execute`. A1 sets no `maxTokens` of its own, so every hop gets the 8192 client default. A3's `generateAndCreate` calls run sequentially with no signal and no `userId`. | ✔ `toolLoop.ts:381-397`; ✔ `modelClient.ts:90, 647`; ✔ `a3NotesVault.ts:108-142` |
 | F-29 | M | The limiter checks then records (not atomic) and fails open on Redis errors. `AI_SYSTEM_RATE_LIMIT` is a raw `parseInt`. | ✔ `rateLimit.ts:100-110, 146` |
 | F-30 | M | `previewBrief` has no limit and can send email. `setSchedule` checks no entitlement. The `scheduledAgents`, `emailDelivery` and `priorityModel` flags are never read. Any plan can pick `max` effort. | ✔ `agent.ts:1040`; ✔ grep |
 | F-31 | M | Uncapped `Retry-After`. Scheduled calls pass no signal, so one 429 stalls the whole sweep. | `modelClient.ts:841-844` |
@@ -279,7 +281,7 @@ Every rule is **MUST**, enforced in code at the named point, and has a test. A r
 | APPLY-3 | External effects (email, push, Google Calendar) go to an outbox and are sent **after commit**. Their failure is reported, not rolled into the DB transaction. | `planGateway` outbox | F-23 (A4 calendar) |
 | APPLY-4 | Every operation has an idempotency key computed by the server; replay is a no-op. Toggles (A4 likes) become set-state. | `planGateway` + unique `(scope, client_request_id)` | F-10, F-23 |
 | APPLY-5 | A result reports only rows that actually changed (`.returning()`), and an op that matched nothing is `refused` with a reason. | Domain commands return affected ids | F-21 |
-| APPLY-6 | Optimistic concurrency: each update carries the `updatedAt` it was drafted against; a newer row turns the op into `refused: changed since draft`. | Domain commands | F-24 (stale overwrites) |
+| APPLY-6 | Optimistic concurrency: each update carries the `updatedAt` it was drafted against; a newer row turns the op into `refused: changed since draft`. | Domain commands | No stale-row check exists today: A2 updates by id plus project (`a2TaskPlanner.ts:1060-1062`) and A6 by id alone (`a6ProjectManager.ts:512`), so both overwrite teammates' edits made after the draft |
 | APPLY-7 | `reversible: "undo"` ops store a before-image; undo is claimed once (`undone_at`), re-authorized per row, and refuses rows changed after the apply. Ops that can't be undone are not `autoApplyEligible`. | `planGateway.undo`; manifest | F-24 |
 
 ### TRUST: untrusted content
@@ -290,7 +292,7 @@ Every rule is **MUST**, enforced in code at the named point, and has a test. A r
 | TRUST-2 | Fences use a per-request random nonce, and any occurrence of the fence marker inside the content is neutralized. | `trust.untrusted()` | F-12 |
 | TRUST-3 | Handoff context from A1 is a **typed** object (ids validated against what A1 actually retrieved this run, plus a free-text `userIntent`). It is never framed as "treat as given". Server page context wins over model keys. | `handoff.ts` schema + `run` provenance | F-13 |
 | TRUST-4 | The run is marked **tainted** once it has read content not authored by the principal (another user's task, comment, note, event or document, or any fetched document). | `toolGateway` sets `run.tainted` based on manifest `outputTrust` | — |
-| TRUST-5 | A tainted run may not auto-apply and may not write memory without an explicit confirm. | `policy.decide` | F-14, F-16 |
+| TRUST-5 | A run that read `public` or `fetched` content (other users' public events, documents) may not auto-apply ([ADR-0012](../../decisions/ADR-0012-auto-apply-and-untrusted-content.md)). A run that read any content not authored by the principal may not write memory without an explicit confirm. | `policy.decide` | F-14, F-16 |
 
 ### MEM: memory
 
@@ -317,8 +319,8 @@ Every rule is **MUST**, enforced in code at the named point, and has a test. A r
 |---|---|---|---|
 | AUTO-1 | `mode: scheduled` may only execute `effect: none` capabilities. Derived from the manifest, so a new write tool is excluded by default. | `policy.decide` | F-4 |
 | AUTO-2 | A scheduled run's only output is a message to the schedule's owner. It cannot message anyone else, write data or call external services except the notification and email channels. | `planGateway` refuses `mode: scheduled` | F-4 |
-| AUTO-3 | Model-produced structured findings (risk-radar patterns) are zod-validated, and their ids re-authorized, before persisting. | `riskRadar` through `modelGateway.json()` | infra F-14 |
-| AUTO-4 | Sweeps hold a lease (DB advisory lock), so overlapping ticks cannot double-send. | runner | infra F-9 |
+| AUTO-3 | Model-produced structured findings (risk-radar patterns) are zod-validated, and their ids re-authorized, before persisting. | `riskRadar` through `modelGateway.json()` | Today the model's severity, fingerprint, `projectId` and `taskIds` are persisted unvalidated (`llm/scheduled/riskRadar.ts:350-358`) |
+| AUTO-4 | Sweeps hold a lease (DB advisory lock), so overlapping ticks cannot double-send. | runner | The scheduler aborts its request at 4 min but the server keeps running, so ticks can overlap (`ws-server/scheduler.ts:35, 76`; `llm/scheduled/runner.ts:557-612`, which sets `preppedAt` only after delivery) |
 
 ### DATA: egress and privacy
 
@@ -326,7 +328,7 @@ Every rule is **MUST**, enforced in code at the named point, and has a test. A r
 |---|---|---|---|
 | DATA-1 | Server-side fetches go only to `https:` hosts on an allowlist, with `redirect: "error"`. | `assertStorageUrl` | F-34 |
 | DATA-2 | Provider credentials are lane-scoped: a key is only ever sent to the base URL it was configured for. | `providers.ts` / `embeddings.ts` | F-35 |
-| DATA-3 | Prompts carry the minimum PII: ids, not emails, unless the operation needs the email (A5 invite). | Context builders + test asserting no `@` in A1 system prompt | F-36 |
+| DATA-3 | Prompts carry the minimum PII: ids, not emails, unless the operation needs the email (A5 invite). No provider whose terms forbid personal data is configured ([ADR-0015](../../decisions/ADR-0015-personal-data-and-llm-providers.md): the NVIDIA preset is removed). | Context builders + test asserting no `@` in A1 system prompt; `providers.ts` | F-36 |
 | DATA-4 | Locked-note content never reaches a model or a log, and a locked note is only written through the encrypting command with a verified unlock. | `notes.update` command; unlock token (fix plan 2.1) | F-1 |
 
 ### AUDIT: traceability
@@ -335,14 +337,14 @@ Every rule is **MUST**, enforced in code at the named point, and has a test. A r
 |---|---|---|---|
 | AUDIT-1 | Every run writes an `agent_runs` row: principal, mode, agent(s), entry point, outcome, totals (calls, prompt/completion tokens, latency), tainted flag. | `run.ts` | F-32 |
 | AUDIT-2 | Every model call, tool call, policy decision, applied op and refused op is an `agent_run_events` row with ids, not content. Content stays in `ai_messages` and the drafts. | `trace.ts` | F-32, F-33 |
-| AUDIT-3 | Log lines carry `runId`. The redactor also strips upstream error bodies before they reach `lastError`. | `logger` context | infra §2 |
+| AUDIT-3 | Log lines carry `runId`. The redactor also strips upstream error bodies before they reach `lastError`. | `logger` context | `LlmHttpError` embeds up to 500 chars of the upstream body (`modelClient.ts:535`). When the chain ends on a request-fatal error such as a 400, that text reaches `ai_schedules.lastError` (`runner.ts:924`) and `ai_custom_schedules.lastError` (`:773`). An exhausted chain is wrapped in a generic `LlmUnavailableError` instead (`:516-527`). |
 | AUDIT-4 | `ai_messages` token, model and tool columns are filled from the run totals. | route + `appendMessage` | F-32 |
 
 ### OUT and FAIL: output honesty and failure
 
 | Id | Rule | Enforced by | Fixes |
 |---|---|---|---|
-| OUT-1 | Citations (`ref`) in an answer must point to records retrieved in this run; others are dropped. | `run` retrieved-id set, post-validator | A1 audit |
+| OUT-1 | Citations (`ref`) in an answer must point to records retrieved in this run; others are dropped. | `run` retrieved-id set, post-validator | `ref` is a free string that is never checked (`llm/schemas/a1WorkspaceConciergeSchemas.ts:110-115`); "cite only what you retrieved" is prompt-only (`a1Prompts.ts:112`) |
 | OUT-2 | User-facing errors are mapped to stable codes; raw `Error.message` never reaches the client. | `harness` error mapper | `handoff.ts:145-149` ✔ |
 | FAIL-1 | Any harness component that cannot decide (policy throws, budget store down, manifest missing) **denies**. | `policy`, `budget` | — |
 
@@ -407,10 +409,11 @@ These are live security and data-loss defects. Each is a few lines.
 | F-18 | `getTaskDependencies`: filter the other side by `visibleProjectsWhere`. | Integration: cross-project dep → title hidden |
 | F-30 | `previewBrief` → rate-limited (system window). | Unit |
 | F-34 | Fix-plan PR 3 (allowlist + `redirect: "error"`). | As in the fix plan |
+| F-36 / ADR-0015 | Drop `email` from A1's context pack and prompt. Remove the `nvidia` preset from `LLM_PROVIDERS`/`PRESETS`, change the `.env.example` default, and update `tests/agents/providers.test.ts`. Run the bake-off baseline on `gpt-oss-20b` first (§11.2). | Unit: A1 system prompt contains no `@`; `resolveLlmConfig` rejects `nvidia` |
 
 ### Phase 1: manifest and policy (M, no migration)
 
-- `harness/manifest.ts` declaring all 26 A1 tools and every A2–A6 operation (about 35), with effect, trust, reversibility and permission.
+- `harness/manifest.ts` declaring all 26 A1 tools (4 of which write) and all 26 A2–A6 operation kinds (A2 6, A3 4, A4 9, A5 4, A6 3), with effect, trust, reversibility and permission.
 - `harness/policy.ts`, a pure `decide()`. A table-driven test covers every `(effect × mode × tainted × entitlement)` cell.
 - Derive the A1 allowlist, `SCHEDULED_TOOL_*`, `registry.ts` `writes/tools/operations` and `smallPlans` eligibility from the manifest. Delete the hand-written lists (META-3).
 - Replace `AgentId` in `shared.ts` with the registry-derived type (F-8).
@@ -484,14 +487,20 @@ These are live security and data-loss defects. Each is a few lines.
 
 ---
 
-## 9. Decisions needed before starting
+## 9. Decisions (settled 2026-11-03)
 
-1. **Metering unit.** Count model calls (simple, matches today's UI) or weight by tokens (fairer for `max` effort)? *Recommendation:* calls now (BUDGET-1), with tokens recorded so a switch later is data-driven.
-2. **Budget ceilings.** Are interactive 16 calls / 150 s and scheduled 6 / 60 s acceptable? These are proposals derived from today's worst case (A1 8 hops + 3 sub-agents × (1 + 2 repairs)).
-3. **Auto-apply on tainted runs.** TRUST-5 disables it whenever A1 read teammate-authored content, which is most project questions. Accept that, or limit taint to `public`/`fetched` sources (events from other users, documents)?
-4. **Domain-command extraction order.** Phase 3 touches the largest routers (`organization.ts` is 2,952 lines). Is it acceptable to land it agent by agent across several PRs? *Recommendation:* yes, A6 first.
-5. **Fail-closed limiter.** Confirm that a Redis outage should block AI requests by default (fix-plan decision 5).
-6. **PII in prompts.** Confirm A1 may lose the user's email from its system prompt (DATA-3), and whether the nvidia preset stays allowed in production given its terms.
+The owner answered the six open questions. Each is recorded as an ADR in [`docs/decisions/`](../../decisions/README.md) and is binding for the phases above.
+
+| ADR | Question | Decision |
+|---|---|---|
+| [0010](../../decisions/ADR-0010-ai-metering-unit.md) | Metering unit | Every model call counts as one request: sub-agents, repairs, titles, summaries, per-op generation. Tokens are recorded so a later switch to token metering can be decided on data. |
+| [0011](../../decisions/ADR-0011-agent-run-budgets.md) | Budget ceilings | Interactive run: 16 model calls, 150 s, 8 tool calls per model turn, 10 s per tool. Scheduled run: 6 calls, 60 s. |
+| [0012](../../decisions/ADR-0012-auto-apply-and-untrusted-content.md) | Auto-apply after untrusted content | Blocked only when the run read other users' public events or fetched documents. Teammates' workspace content does not block it (TRUST-5). |
+| [0013](../../decisions/ADR-0013-domain-command-extraction-order.md) | Domain-command extraction order | One agent per PR: A6 → A5 → A4 → A3 → A2. |
+| [0014](../../decisions/ADR-0014-rate-limiter-outage.md) | Redis outage | Fail closed; `RATE_LIMIT_FAIL_OPEN=true` reopens during an incident (BUDGET-3). |
+| [0015](../../decisions/ADR-0015-personal-data-and-llm-providers.md) | Personal data to providers | Remove the user's email from A1's prompt (A5 keeps member emails for invites). Drop the NVIDIA preset entirely. |
+
+Still open, from the sibling plan's §8, recorded as Proposed ADRs: [0016](../../decisions/ADR-0016-model-evaluation-budget.md) (API budget and account for the bake-off and demo), [0017](../../decisions/ADR-0017-dependent-handoffs-scope.md) (dependent handoffs before the defense), [0018](../../decisions/ADR-0018-membership-undo.md) (membership undo).
 
 ---
 
@@ -500,3 +509,44 @@ These are live security and data-loss defects. Each is a few lines.
 - Changing models or providers, prompt wording beyond what TRUST-1 and MEM-1 require, and retrieval relevance.
 - A cross-tenant admin metrics view (needs a platform-admin role that does not exist).
 - Workspace-level (org) AI budgets: the trace tables make this possible later.
+
+---
+
+## 11. Relation to harness-plan-2026-11-09
+
+[harness-plan-2026-11-09.md](../harness-plan-2026-11-09.md) was written a week after this plan, from the reliability side: handoffs, rendering, language, model choice, end-to-end evals. This plan comes from the safety side: authorization, injection, apply integrity, budgets. Neither referenced the other. They overlap on the plan lifecycle, metering and observability, and are otherwise complementary. Both stay, and this section is the single place that says who owns what.
+
+### 11.1 Ownership
+
+| Workstream | Owner | Notes |
+|---|---|---|
+| End-to-end eval through `runAgentTurn` (n ≥ 3), UI payload contract test | 11-09 §5.0 | Add the injection corpus (§8 test 5 here) to the same eval |
+| Render every plan, friendly errors, same-agent merge | 11-09 §5.1.1–5.1.3 | **Render every plan goes first of all.** Today an auto-applied 2nd or 3rd plan changes data with no receipt and no Undo |
+| Auto-apply stranding (F-25 here, B3 there) | 11-09 §5.1.4 | Implements HITL-5 |
+| Stable prompt prefix, structural truncation of tool results | 11-09 §5.1.5–5.1.6 | — |
+| Count every model call, persist tokens (F-27, F-32 here; C6, E2 there) | **This plan**, Phase 2 (BUDGET-1, AUDIT-4) | ADR-0010 settles the 11-09 "or a separate background budget" option: everything counts, scheduled runs keep their own window |
+| Typed handoff envelope, entity resolver, pending questions, dependent handoffs | 11-09 §5.2.1–5.2.4 | The envelope is how TRUST-3 is met: ids filled by the server, never framed as "treat as given" |
+| Read tools for write agents | 11-09 §5.2.5, gated by this plan | Only after CAP-2 and TRUST-4/5 exist, so a specialist's reads taint its run |
+| Plan lifecycle engine, atomic apply, idempotency, undo with conflict detection | **This plan**, Phase 3 (`planGateway`) | Absorbs 11-09 §5.3. Locking choice in 11.2 |
+| Model bake-off, native adapter, tiers | 11-09 §5.4 | Its baseline runs before the NVIDIA preset is removed (11.2) |
+| Lost fixes: A1 grounding, A4 event times, латиница, A2 duplicate guard | 11-09 §5.5 | — |
+| Turn id, turn record, developer view | **Shared** | This plan's `agent_runs` / `agent_run_events` (AUDIT-1, AUDIT-2) are the 11-09 turn record. One table set, not two |
+| Security hotfixes F-1, F-2, F-3, F-4, F-7, F-9, F-12, F-14, F-18, F-30, F-34, F-36 | **This plan**, Phase 0 | Not covered by 11-09 |
+| Capability manifest, policy engine, trust boundary, memory, unattended mode | **This plan**, Phases 1, 4, 5 | Not covered by 11-09 |
+
+### 11.2 Disagreements, resolved
+
+1. **The tool allowlist.** 11-09 §3 keeps "allowlist from the profile". F-6 shows the allowlist bounds only what the model is *told*: the executable registry is the full `A1_READ_TOOLS` (`a1Concierge.ts:189-190`). Keep the idea and fix the mechanism with CAP-2 in Phase 1.
+2. **How apply becomes atomic.** 11-09 §5.3.2 claims the draft with an `applying` status. This plan and the 2026-09-25 fix plan use `SELECT … FOR UPDATE` in one transaction. Use the row lock: draft status is a pg enum, so `applying` means an enum migration on five tables plus a sweeper for rows stuck after a crash, while a row lock is released by the rollback.
+3. **Specialists with read tools.** 11-09 §5.2.5 widens the injection surface that 11-09 §7 itself lists as untested. It lands after the trust boundary (Phase 4), not before.
+4. **Baseline model vs ADR-0015.** The 11-09 bake-off uses `gpt-oss-20b` on NVIDIA as its baseline, and ADR-0015 removes the NVIDIA preset. Run the baseline on seeded data only, store its report, then remove the preset in the PR that switches the default provider.
+
+### 11.3 Combined order
+
+1. 11-09 §5.0 (eval baseline, including the `gpt-oss-20b` run) and §5.1.1 (render every plan).
+2. Phase 0 here (security hotfixes), in parallel with 11-09 §5.1.2–5.1.6.
+3. 11-09 §5.4 bake-off, switch the default provider, remove NVIDIA (ADR-0015).
+4. Phase 1 (manifest, policy) and Phase 2 (run, gateways, metering, trace as the turn record).
+5. 11-09 §5.5 (lost fixes) and §5.2.1–5.2.3 (envelope, resolver, pending questions), built on the Phase 2 run object.
+6. Phase 3 (`planGateway`, domain commands A6 → A2 per ADR-0013). It delivers 11-09 §5.3 and is the base for 11-09 §5.2.4 (dependent handoffs in one transaction).
+7. Phase 4 (trust boundary), then 11-09 §5.2.5 (specialist read tools). Then Phases 5 and 6.
