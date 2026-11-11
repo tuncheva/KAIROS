@@ -12,10 +12,10 @@ import path from "path";
  * docs/theme.md, Ink.
  */
 
-const css = fs.readFileSync(
-  path.resolve(__dirname, "../../src/styles/globals.css"),
-  "utf-8",
-);
+// A Windows checkout (core.autocrlf) has CRLF; the selectors below use \n.
+const css = fs
+  .readFileSync(path.resolve(__dirname, "../../src/styles/globals.css"), "utf-8")
+  .replace(/\r\n/g, "\n");
 
 /** The body of the first `selector {` rule that defines `--token`. */
 function block(selector: string, token = "tui-bg"): string {
