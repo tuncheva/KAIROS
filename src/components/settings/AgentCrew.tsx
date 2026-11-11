@@ -244,6 +244,7 @@ function CrewOrbit({
   // state would re-render the whole settings column sixty times a second.
   useEffect(() => {
     let clock = 0;
+    let speed = reduced ? 0 : 1;
     let last = performance.now();
     let frame = 0;
 
@@ -254,22 +255,27 @@ function CrewOrbit({
     };
 
     const tick = (now: number) => {
-      if (!hovering.current && !reduced) clock += (now - last) / 1000;
+      // Capped so a frame after a backgrounded tab does not jump the rings.
+      const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
       last = now;
+      // Glide to a stop under the pointer and back up after, instead of snapping.
+      const target = hovering.current || reduced ? 0 : 1;
+      speed = reduced ? 0 : speed + (target - speed) * (1 - Math.exp(-dt / 0.28));
+      clock += dt * speed;
 
       for (const agent of CREW) {
         const p = position(agent.id, agent.kind);
         nodes.current
           .get(agent.id)
-          ?.setAttribute("transform", `translate(${p.x.toFixed(2)} ${p.y.toFixed(2)})`);
+          ?.setAttribute("transform", `translate(${p.x.toFixed(3)} ${p.y.toFixed(3)})`);
       }
 
       const line = link.current;
       const current = CREW.find((a) => a.id === selectedRef.current);
       if (line && current) {
         const p = position(current.id, current.kind);
-        const k = reduced ? 1 : Math.min(1, (now - linkStart.current) / 500);
-        const eased = 1 - Math.pow(1 - k, 3);
+        const k = reduced ? 1 : Math.min(1, (now - linkStart.current) / 600);
+        const eased = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
         const dx = p.x - C;
         const dy = p.y - C;
         const d = Math.hypot(dx, dy) || 1;
@@ -304,6 +310,8 @@ function CrewOrbit({
         viewBox="0 0 400 400"
         role="group"
         aria-label={t("orbitLabel")}
+        textRendering="geometricPrecision"
+        shapeRendering="geometricPrecision"
         className="block h-auto w-full overflow-visible"
         onPointerEnter={() => (hovering.current = true)}
         onPointerLeave={() => (hovering.current = false)}

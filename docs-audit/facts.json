@@ -1,0 +1,3061 @@
+{
+  "_meta": {
+    "generated": "2026-11-02",
+    "repo": "C:/Users/ttuncheva/Desktop/Projects/KAIROS",
+    "branch": "development",
+    "head": "fb5a757 (2026-10-22)",
+    "note": "Facts verified against code; schema dumped via drizzle getTableConfig from src/server/db/schemas/index.ts"
+  },
+  "technologies": [
+    {
+      "name": "Next.js (App Router, custom server.ts)",
+      "version": "16.1.1",
+      "evidence": "package.json:56"
+    },
+    {
+      "name": "React",
+      "version": "19.2.3",
+      "evidence": "package.json:63"
+    },
+    {
+      "name": "react-dom",
+      "version": "19.2.3",
+      "evidence": "package.json:64"
+    },
+    {
+      "name": "tRPC (server/client/react-query)",
+      "version": "^11.0.0",
+      "evidence": "package.json:46"
+    },
+    {
+      "name": "@tanstack/react-query",
+      "version": "^5.69.0",
+      "evidence": "package.json:45"
+    },
+    {
+      "name": "superjson",
+      "version": "^2.2.1",
+      "evidence": "package.json:70"
+    },
+    {
+      "name": "drizzle-orm",
+      "version": "^0.41.0",
+      "evidence": "package.json:54"
+    },
+    {
+      "name": "postgres (postgres.js driver)",
+      "version": "^3.4.4",
+      "evidence": "package.json:62"
+    },
+    {
+      "name": "next-auth (Auth.js v5 beta)",
+      "version": "5.0.0-beta.32",
+      "evidence": "package.json:57"
+    },
+    {
+      "name": "@auth/drizzle-adapter",
+      "version": "^1.7.2",
+      "evidence": "package.json:39"
+    },
+    {
+      "name": "argon2",
+      "version": "^0.44.0",
+      "evidence": "package.json:50"
+    },
+    {
+      "name": "zod",
+      "version": "^3.25.76",
+      "evidence": "package.json:74"
+    },
+    {
+      "name": "@t3-oss/env-nextjs (env validation; project bootstrapped with create-t3-app 7.40.0, package.json:118)",
+      "version": "^0.12.0",
+      "evidence": "package.json:44"
+    },
+    {
+      "name": "socket.io (standalone ws-server)",
+      "version": "^4.8.3",
+      "evidence": "package.json:67"
+    },
+    {
+      "name": "socket.io-client",
+      "version": "^4.8.3",
+      "evidence": "package.json:68"
+    },
+    {
+      "name": "@socket.io/redis-adapter (optional)",
+      "version": "^8.3.0",
+      "evidence": "package.json:77"
+    },
+    {
+      "name": "redis (optional)",
+      "version": "^4.7.0",
+      "evidence": "package.json:78"
+    },
+    {
+      "name": "stripe",
+      "version": "^22.6.2",
+      "evidence": "package.json:69"
+    },
+    {
+      "name": "resend (email)",
+      "version": "^6.5.2",
+      "evidence": "package.json:65"
+    },
+    {
+      "name": "uploadthing",
+      "version": "^7.7.4",
+      "evidence": "package.json:72"
+    },
+    {
+      "name": "@uploadthing/react",
+      "version": "^7.3.3",
+      "evidence": "package.json:49"
+    },
+    {
+      "name": "web-push (Web Push / VAPID)",
+      "version": "^3.6.7",
+      "evidence": "package.json:73"
+    },
+    {
+      "name": "next-intl (i18n; offered locales en, bg - src/i18n/locales.ts:23; message files also de/es/fr)",
+      "version": "^4.7.0",
+      "evidence": "package.json:58"
+    },
+    {
+      "name": "next-themes",
+      "version": "^0.4.6",
+      "evidence": "package.json:59"
+    },
+    {
+      "name": "date-fns",
+      "version": "^3.0.0",
+      "evidence": "package.json:53"
+    },
+    {
+      "name": "chart.js",
+      "version": "^4.5.1",
+      "evidence": "package.json:51"
+    },
+    {
+      "name": "gsap (animations)",
+      "version": "^3.13.0",
+      "evidence": "package.json:55"
+    },
+    {
+      "name": "pdfjs-dist (PDF text extraction for AI)",
+      "version": "^5.4.624",
+      "evidence": "package.json:60"
+    },
+    {
+      "name": "qrcode (org join QR)",
+      "version": "^1.5.4",
+      "evidence": "package.json:61"
+    },
+    {
+      "name": "@phosphor-icons/react",
+      "version": "^2.1.10",
+      "evidence": "package.json:43"
+    },
+    {
+      "name": "clsx",
+      "version": "^2.1.1",
+      "evidence": "package.json:52"
+    },
+    {
+      "name": "tailwind-merge",
+      "version": "^3.4.0",
+      "evidence": "package.json:71"
+    },
+    {
+      "name": "@fontsource-variable/inter",
+      "version": "^5.3.0",
+      "evidence": "package.json:40"
+    },
+    {
+      "name": "@fontsource-variable/source-serif-4",
+      "version": "^5.3.0",
+      "evidence": "package.json:41"
+    },
+    {
+      "name": "@fontsource/ibm-plex-mono",
+      "version": "^5.3.0",
+      "evidence": "package.json:42"
+    },
+    {
+      "name": "Tailwind CSS v4 (dev dep, via @tailwindcss/postcss)",
+      "version": "^4.1.17",
+      "evidence": "package.json:111"
+    },
+    {
+      "name": "LLM access",
+      "version": "no SDK - raw fetch to OpenAI-compatible /chat/completions",
+      "evidence": "src/server/llm/core/providers.ts:41-102, src/server/llm/core/modelClient.ts"
+    },
+    {
+      "name": "pgvector (halfvec(2048) + HNSW cosine indexes)",
+      "version": "Postgres extension",
+      "evidence": "src/server/db/migrations/0044_pgvector_embeddings.sql:38, 0049_embedding_halfvec_2048.sql"
+    },
+    {
+      "name": "OpenStreetMap / Nominatim geocoding (events map)",
+      "version": "external service, no key",
+      "evidence": "README.md:73, src/server/api/routers/event.ts, scripts/geocode-backfill.ts"
+    },
+    {
+      "name": "NOT present: shadcn/ui runtime deps (no @radix-ui, no lucide-react), framer-motion, OpenAI/Anthropic SDK, LangChain, Prisma",
+      "version": "-",
+      "evidence": "package.json:38-79 (components.json exists with shadcn config but no radix packages; README.md:67 claims shadcn/ui and Framer Motion - not in dependencies)"
+    }
+  ],
+  "tooling": [
+    {
+      "name": "TypeScript",
+      "version": "^5.8.2",
+      "evidence": "package.json:113"
+    },
+    {
+      "name": "tsx",
+      "version": "^4.21.0",
+      "evidence": "package.json:112"
+    },
+    {
+      "name": "Vitest",
+      "version": "^4.0.18",
+      "evidence": "package.json:115"
+    },
+    {
+      "name": "@vitejs/plugin-react",
+      "version": "^5.1.4",
+      "evidence": "package.json:97"
+    },
+    {
+      "name": "jsdom",
+      "version": "^28.1.0",
+      "evidence": "package.json:106"
+    },
+    {
+      "name": "@testing-library/react",
+      "version": "^16.3.2",
+      "evidence": "package.json:85"
+    },
+    {
+      "name": "@testing-library/jest-dom",
+      "version": "^6.9.1",
+      "evidence": "package.json:84"
+    },
+    {
+      "name": "@testing-library/user-event",
+      "version": "^14.6.1",
+      "evidence": "package.json:86"
+    },
+    {
+      "name": "ESLint (flat config eslint.config.js)",
+      "version": "^9.23.0",
+      "evidence": "package.json:102"
+    },
+    {
+      "name": "typescript-eslint",
+      "version": "^8.27.0",
+      "evidence": "package.json:114"
+    },
+    {
+      "name": "eslint-config-next",
+      "version": "16.1.1",
+      "evidence": "package.json:103"
+    },
+    {
+      "name": "eslint-plugin-drizzle",
+      "version": "^0.2.3",
+      "evidence": "package.json:104"
+    },
+    {
+      "name": "eslint-plugin-react-hooks",
+      "version": "^7.1.1",
+      "evidence": "package.json:105"
+    },
+    {
+      "name": "Prettier",
+      "version": "^3.5.3",
+      "evidence": "package.json:108"
+    },
+    {
+      "name": "prettier-plugin-tailwindcss",
+      "version": "^0.6.11",
+      "evidence": "package.json:109"
+    },
+    {
+      "name": "drizzle-kit",
+      "version": "^0.30.6",
+      "evidence": "package.json:101"
+    },
+    {
+      "name": "dotenv-cli",
+      "version": "^11.0.0",
+      "evidence": "package.json:100"
+    },
+    {
+      "name": "simple-git-hooks (pre-push: pnpm typecheck && pnpm test)",
+      "version": "^2.14.0",
+      "evidence": "package.json:110"
+    },
+    {
+      "name": "pnpm",
+      "version": "10.28.2",
+      "evidence": "package.json:120"
+    },
+    {
+      "name": "GitHub Actions CI (lint, typecheck, theme check, migration journal, unit tests, integration tests vs postgres service, production build; Node 22)",
+      "version": "-",
+      "evidence": ".github/workflows/ci.yml:17-139"
+    },
+    {
+      "name": "NOT present: Playwright/Cypress (no e2e browser tests), Jest, Docker",
+      "version": "-",
+      "evidence": "package.json devDependencies"
+    }
+  ],
+  "database": {
+    "engine": "PostgreSQL (Supabase per README; pooler => postgres.js prepare:false, max 3 conns) + pgvector extension; Drizzle ORM; 48 SQL migration files, latest 0055_invite_privacy.sql",
+    "evidence": "drizzle.config.ts:5 (dialect postgresql), src/server/db/index.ts:18-22, README.md:70, src/server/db/migrations/"
+  },
+  "schema": {
+    "table_count": 59,
+    "note": "Table names have no prefix (pgTableCreator(name=>name), enums.ts:3). Column names as stored in DB (mixed snake_case and camelCase, e.g. createdById).",
+    "tables": [
+      {
+        "name": "agent_task_planner_drafts",
+        "drizzle_export": "agentTaskPlannerDrafts",
+        "columns": [
+          "id varchar(80) NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "project_id integer",
+          "org_id integer",
+          "message text NOT NULL",
+          "plan_json text NOT NULL",
+          "plan_hash varchar(64) NOT NULL",
+          "status agent_task_planner_draft_status NOT NULL",
+          "confirmation_token text",
+          "confirmed_at timestamp with time zone",
+          "applied_at timestamp with time zone",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL",
+          "expires_at timestamp with time zone"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "project_id",
+            "references": "projects.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "org_id",
+            "references": "organizations.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:24"
+      },
+      {
+        "name": "agent_task_planner_applies",
+        "drizzle_export": "agentTaskPlannerApplies",
+        "columns": [
+          "id integer NOT NULL",
+          "draft_id varchar(80) NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "project_id integer",
+          "plan_hash varchar(64) NOT NULL",
+          "before_json text",
+          "result_json text NOT NULL",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "draft_id",
+            "references": "agent_task_planner_drafts.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "project_id",
+            "references": "projects.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:55"
+      },
+      {
+        "name": "agent_notes_vault_drafts",
+        "drizzle_export": "agentNotesVaultDrafts",
+        "columns": [
+          "id varchar(80) NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "message text NOT NULL",
+          "plan_json text NOT NULL",
+          "plan_hash varchar(64) NOT NULL",
+          "status agent_notes_vault_draft_status NOT NULL",
+          "confirmation_token text",
+          "confirmed_at timestamp with time zone",
+          "applied_at timestamp with time zone",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL",
+          "expires_at timestamp with time zone"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:101"
+      },
+      {
+        "name": "agent_notes_vault_applies",
+        "drizzle_export": "agentNotesVaultApplies",
+        "columns": [
+          "id integer NOT NULL",
+          "draft_id varchar(80) NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "plan_hash varchar(64) NOT NULL",
+          "before_json text",
+          "result_json text NOT NULL",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "draft_id",
+            "references": "agent_notes_vault_drafts.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:127"
+      },
+      {
+        "name": "agent_events_publisher_drafts",
+        "drizzle_export": "agentEventsPublisherDrafts",
+        "columns": [
+          "id varchar(80) NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "message text NOT NULL",
+          "plan_json text NOT NULL",
+          "plan_hash varchar(64) NOT NULL",
+          "status agent_events_publisher_draft_status NOT NULL",
+          "confirmation_token text",
+          "confirmed_at timestamp with time zone",
+          "applied_at timestamp with time zone",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL",
+          "expires_at timestamp with time zone"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:179"
+      },
+      {
+        "name": "agent_events_publisher_applies",
+        "drizzle_export": "agentEventsPublisherApplies",
+        "columns": [
+          "id integer NOT NULL",
+          "draft_id varchar(80) NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "plan_hash varchar(64) NOT NULL",
+          "before_json text",
+          "result_json text NOT NULL",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "draft_id",
+            "references": "agent_events_publisher_drafts.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:205"
+      },
+      {
+        "name": "ai_conversations",
+        "drizzle_export": "aiConversations",
+        "columns": [
+          "id varchar(80) NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "project_id integer",
+          "title varchar(256)",
+          "summary text",
+          "summarized_through_id integer",
+          "pinned_agent_id varchar(40)",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "project_id",
+            "references": "projects.id",
+            "on_delete": "set null"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:259"
+      },
+      {
+        "name": "ai_messages",
+        "drizzle_export": "aiMessages",
+        "columns": [
+          "id integer NOT NULL",
+          "conversation_id varchar(80) NOT NULL",
+          "role ai_message_role NOT NULL",
+          "content text NOT NULL",
+          "agent_id varchar(40)",
+          "draft_id varchar(80)",
+          "tool_calls_json text",
+          "model varchar(120)",
+          "prompt_tokens integer",
+          "completion_tokens integer",
+          "latency_ms integer",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "conversation_id",
+            "references": "ai_conversations.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:300"
+      },
+      {
+        "name": "ai_user_memory",
+        "drizzle_export": "aiUserMemory",
+        "columns": [
+          "id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "key varchar(64) NOT NULL",
+          "value text NOT NULL",
+          "scope varchar(40) NOT NULL",
+          "source_conversation_id varchar(80)",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:358"
+      },
+      {
+        "name": "ai_schedules",
+        "drizzle_export": "aiSchedules",
+        "columns": [
+          "id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "kind varchar(40) NOT NULL",
+          "enabled boolean NOT NULL",
+          "hour_utc integer NOT NULL",
+          "day_of_week integer",
+          "channel varchar(16) NOT NULL",
+          "channel_failures integer NOT NULL",
+          "last_run_at timestamp with time zone",
+          "last_error text",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:403"
+      },
+      {
+        "name": "ai_custom_schedules",
+        "drizzle_export": "aiCustomSchedules",
+        "columns": [
+          "id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "name varchar(80) NOT NULL",
+          "prompt text NOT NULL",
+          "day_of_week integer",
+          "hour_local integer NOT NULL",
+          "channel varchar(16) NOT NULL",
+          "channel_failures integer NOT NULL",
+          "enabled boolean NOT NULL",
+          "last_run_at timestamp with time zone",
+          "last_error text",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:496"
+      },
+      {
+        "name": "ai_findings",
+        "drizzle_export": "aiFindings",
+        "columns": [
+          "id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "project_id integer",
+          "fingerprint varchar(128) NOT NULL",
+          "kind varchar(40) NOT NULL",
+          "severity varchar(16) NOT NULL",
+          "title varchar(256) NOT NULL",
+          "detail text NOT NULL",
+          "suggested_draft_id varchar(80)",
+          "source varchar(20) NOT NULL",
+          "status varchar(16) NOT NULL",
+          "dismissed_at timestamp with time zone",
+          "resolved_at timestamp with time zone",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "project_id",
+            "references": "projects.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:540"
+      },
+      {
+        "name": "agent_org_admin_drafts",
+        "drizzle_export": "agentOrgAdminDrafts",
+        "columns": [
+          "id varchar(80) NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "message text NOT NULL",
+          "plan_json text NOT NULL",
+          "plan_hash varchar(64) NOT NULL",
+          "status agent_org_admin_draft_status NOT NULL",
+          "confirmation_token text",
+          "confirmed_at timestamp with time zone",
+          "applied_at timestamp with time zone",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL",
+          "expires_at timestamp with time zone"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:586"
+      },
+      {
+        "name": "agent_org_admin_applies",
+        "drizzle_export": "agentOrgAdminApplies",
+        "columns": [
+          "id integer NOT NULL",
+          "draft_id varchar(80) NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "plan_hash varchar(64) NOT NULL",
+          "before_json text",
+          "result_json text NOT NULL",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "draft_id",
+            "references": "agent_org_admin_drafts.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:612"
+      },
+      {
+        "name": "agent_project_manager_drafts",
+        "drizzle_export": "agentProjectManagerDrafts",
+        "columns": [
+          "id varchar(80) NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "message text NOT NULL",
+          "plan_json text NOT NULL",
+          "plan_hash varchar(64) NOT NULL",
+          "status agent_project_manager_draft_status NOT NULL",
+          "confirmation_token text",
+          "confirmed_at timestamp with time zone",
+          "applied_at timestamp with time zone",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL",
+          "expires_at timestamp with time zone"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:661"
+      },
+      {
+        "name": "agent_project_manager_applies",
+        "drizzle_export": "agentProjectManagerApplies",
+        "columns": [
+          "id integer NOT NULL",
+          "draft_id varchar(80) NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "plan_hash varchar(64) NOT NULL",
+          "result_json text NOT NULL",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "draft_id",
+            "references": "agent_project_manager_drafts.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:687"
+      },
+      {
+        "name": "api_keys",
+        "drizzle_export": "apiKeys",
+        "columns": [
+          "id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "label varchar(80) NOT NULL",
+          "prefix varchar(16) NOT NULL",
+          "key_hash varchar(64) NOT NULL",
+          "last_used_at timestamp with time zone",
+          "revoked_at timestamp with time zone",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:727"
+      },
+      {
+        "name": "webhooks",
+        "drizzle_export": "webhooks",
+        "columns": [
+          "id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "url text NOT NULL",
+          "secret varchar(64) NOT NULL",
+          "events text NOT NULL",
+          "enabled boolean NOT NULL",
+          "failure_count integer NOT NULL",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:779"
+      },
+      {
+        "name": "webhook_deliveries",
+        "drizzle_export": "webhookDeliveries",
+        "columns": [
+          "id integer NOT NULL",
+          "webhook_id integer NOT NULL",
+          "event varchar(64) NOT NULL",
+          "status_code integer",
+          "attempts integer NOT NULL",
+          "detail text",
+          "ok boolean NOT NULL",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "webhook_id",
+            "references": "webhooks.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:820"
+      },
+      {
+        "name": "documents",
+        "drizzle_export": "documents",
+        "columns": [
+          "id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "project_id integer",
+          "filename varchar(256) NOT NULL",
+          "storage_key text NOT NULL",
+          "mime_type varchar(128) NOT NULL",
+          "size_bytes integer NOT NULL",
+          "status varchar(16) NOT NULL",
+          "error text",
+          "page_count integer",
+          "chunk_count integer NOT NULL",
+          "truncated boolean NOT NULL",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "project_id",
+            "references": "projects.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:851"
+      },
+      {
+        "name": "document_chunks",
+        "drizzle_export": "documentChunks",
+        "columns": [
+          "id integer NOT NULL",
+          "document_id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "ordinal integer NOT NULL",
+          "content text NOT NULL",
+          "page integer",
+          "created_at timestamp NOT NULL",
+          "embedding halfvec(2048) (raw SQL migration, not in drizzle schema)"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "document_id",
+            "references": "documents.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:915"
+      },
+      {
+        "name": "calendar_connections",
+        "drizzle_export": "calendarConnections",
+        "columns": [
+          "id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "provider varchar(32) NOT NULL",
+          "account_email varchar(255)",
+          "access_token text NOT NULL",
+          "refresh_token text",
+          "token_salt varchar(64) NOT NULL",
+          "access_token_expires_at timestamp with time zone",
+          "sync_token text",
+          "scope varchar(512)",
+          "last_synced_at timestamp with time zone",
+          "last_error text",
+          "failure_count integer NOT NULL",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:968"
+      },
+      {
+        "name": "external_events",
+        "drizzle_export": "externalEvents",
+        "columns": [
+          "id integer NOT NULL",
+          "connection_id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "external_id varchar(256) NOT NULL",
+          "title varchar(512) NOT NULL",
+          "description text",
+          "location text",
+          "starts_at timestamp with time zone NOT NULL",
+          "ends_at timestamp with time zone",
+          "all_day boolean NOT NULL",
+          "status varchar(16) NOT NULL",
+          "attendee_count integer",
+          "self_response varchar(16)",
+          "prepped_at timestamp with time zone",
+          "updated_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "connection_id",
+            "references": "calendar_connections.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:1037"
+      },
+      {
+        "name": "ai_reminders",
+        "drizzle_export": "aiReminders",
+        "columns": [
+          "id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "text text NOT NULL",
+          "fire_at timestamp with time zone NOT NULL",
+          "source_conversation_id varchar(80)",
+          "fired_at timestamp with time zone",
+          "cancelled_at timestamp with time zone",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/agents.ts:1094"
+      },
+      {
+        "name": "direct_conversations",
+        "drizzle_export": "directConversations",
+        "columns": [
+          "id integer NOT NULL",
+          "project_id integer",
+          "organization_id integer",
+          "user_one_id varchar(255) NOT NULL",
+          "user_two_id varchar(255) NOT NULL",
+          "last_message_at timestamp NOT NULL",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL",
+          "public_id varchar(21)"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "project_id",
+            "references": "projects.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "organization_id",
+            "references": "organizations.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_one_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_two_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/chat.ts:8"
+      },
+      {
+        "name": "direct_messages",
+        "drizzle_export": "directMessages",
+        "columns": [
+          "id integer NOT NULL",
+          "conversation_id integer NOT NULL",
+          "sender_id varchar(255) NOT NULL",
+          "body text NOT NULL",
+          "reply_to_id integer",
+          "edited_at timestamp",
+          "deleted_at timestamp",
+          "pinned_at timestamp",
+          "pinned_by varchar(255)",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "conversation_id",
+            "references": "direct_conversations.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "sender_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "reply_to_id",
+            "references": "direct_messages.id",
+            "on_delete": "set null"
+          },
+          {
+            "column": "pinned_by",
+            "references": "user.id",
+            "on_delete": "set null"
+          }
+        ],
+        "evidence": "src/server/db/schemas/chat.ts:36"
+      },
+      {
+        "name": "conversation_participants",
+        "drizzle_export": "conversationParticipants",
+        "columns": [
+          "id integer NOT NULL",
+          "conversation_id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "last_read_message_id integer",
+          "cleared_before integer",
+          "muted_until timestamp",
+          "archived_at timestamp",
+          "joined_at timestamp NOT NULL",
+          "left_at timestamp"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "conversation_id",
+            "references": "direct_conversations.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/chat.ts:91"
+      },
+      {
+        "name": "direct_message_attachments",
+        "drizzle_export": "directMessageAttachments",
+        "columns": [
+          "id integer NOT NULL",
+          "message_id integer NOT NULL",
+          "url text NOT NULL",
+          "name varchar(255) NOT NULL",
+          "mime varchar(127) NOT NULL",
+          "size_bytes integer NOT NULL",
+          "width integer",
+          "height integer",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "message_id",
+            "references": "direct_messages.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/chat.ts:128"
+      },
+      {
+        "name": "direct_message_reactions",
+        "drizzle_export": "directMessageReactions",
+        "columns": [
+          "id integer NOT NULL",
+          "message_id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "emoji varchar(32) NOT NULL",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "message_id",
+            "references": "direct_messages.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/chat.ts:154"
+      },
+      {
+        "name": "event",
+        "drizzle_export": "events",
+        "columns": [
+          "id integer NOT NULL",
+          "title varchar(256) NOT NULL",
+          "description text NOT NULL",
+          "image_url text",
+          "event_date timestamp with time zone NOT NULL",
+          "ends_at timestamp with time zone",
+          "region region NOT NULL",
+          "venue varchar(160)",
+          "address varchar(255)",
+          "latitude double precision",
+          "longitude double precision",
+          "capacity integer",
+          "topic event_topic",
+          "cover_theme event_cover",
+          "createdById varchar(255) NOT NULL",
+          "enable_rsvp boolean NOT NULL",
+          "send_reminders boolean NOT NULL",
+          "reminder_sent boolean NOT NULL",
+          "createdAt timestamp with time zone NOT NULL",
+          "updated_at timestamp with time zone"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "createdById",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/events.ts:12"
+      },
+      {
+        "name": "event_rsvp",
+        "drizzle_export": "eventRsvps",
+        "columns": [
+          "id integer NOT NULL",
+          "event_id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "status rsvp_status NOT NULL",
+          "reminder_minutes_before integer",
+          "reminder_sent boolean NOT NULL",
+          "createdAt timestamp with time zone NOT NULL",
+          "updatedAt timestamp with time zone NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "event_id",
+            "references": "event.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/events.ts:88"
+      },
+      {
+        "name": "event_comment",
+        "drizzle_export": "eventComments",
+        "columns": [
+          "id integer NOT NULL",
+          "text text NOT NULL",
+          "image_url text",
+          "parent_id integer",
+          "event_id integer NOT NULL",
+          "createdById varchar(255) NOT NULL",
+          "createdAt timestamp with time zone NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "event_id",
+            "references": "event.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "createdById",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/events.ts:122"
+      },
+      {
+        "name": "event_like",
+        "drizzle_export": "eventLikes",
+        "columns": [
+          "event_id integer NOT NULL",
+          "createdById varchar(255) NOT NULL",
+          "createdAt timestamp with time zone NOT NULL"
+        ],
+        "primary_key": "event_id+createdById",
+        "foreign_keys": [
+          {
+            "column": "event_id",
+            "references": "event.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "createdById",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/events.ts:156"
+      },
+      {
+        "name": "event_cohost",
+        "drizzle_export": "eventCoHosts",
+        "columns": [
+          "event_id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "created_at timestamp with time zone NOT NULL"
+        ],
+        "primary_key": "event_id+user_id",
+        "foreign_keys": [
+          {
+            "column": "event_id",
+            "references": "event.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/events.ts:186"
+      },
+      {
+        "name": "event_save",
+        "drizzle_export": "eventSaves",
+        "columns": [
+          "event_id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "created_at timestamp with time zone NOT NULL"
+        ],
+        "primary_key": "event_id+user_id",
+        "foreign_keys": [
+          {
+            "column": "event_id",
+            "references": "event.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/events.ts:215"
+      },
+      {
+        "name": "notebooks",
+        "drizzle_export": "notebooks",
+        "columns": [
+          "id integer NOT NULL",
+          "name varchar(256) NOT NULL",
+          "description text",
+          "createdById varchar(255) NOT NULL",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "createdById",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/notes.ts:6"
+      },
+      {
+        "name": "sticky_notes",
+        "drizzle_export": "stickyNotes",
+        "columns": [
+          "id integer NOT NULL",
+          "title varchar(256)",
+          "content text NOT NULL",
+          "createdById varchar(255) NOT NULL",
+          "notebook_id integer",
+          "calendar_date timestamp",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL",
+          "password_hash varchar(256)",
+          "password_salt varchar(256)",
+          "share_status share_status NOT NULL",
+          "public_id varchar(21)",
+          "embedding halfvec(2048) (raw SQL migration, not in drizzle schema)"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "createdById",
+            "references": "user.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "notebook_id",
+            "references": "notebooks.id",
+            "on_delete": "set null"
+          }
+        ],
+        "evidence": "src/server/db/schemas/notes.ts:28"
+      },
+      {
+        "name": "note_shares",
+        "drizzle_export": "noteShares",
+        "columns": [
+          "id integer NOT NULL",
+          "note_id integer NOT NULL",
+          "shared_with_id varchar(255) NOT NULL",
+          "permission permission NOT NULL",
+          "shared_by_id varchar(255) NOT NULL",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "note_id",
+            "references": "sticky_notes.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "shared_with_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "shared_by_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/notes.ts:66"
+      },
+      {
+        "name": "notifications",
+        "drizzle_export": "notifications",
+        "columns": [
+          "id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "type notification_type NOT NULL",
+          "title varchar(256) NOT NULL",
+          "message text NOT NULL",
+          "link varchar(512)",
+          "read boolean NOT NULL",
+          "created_at timestamp with time zone NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/notifications.ts:6"
+      },
+      {
+        "name": "organizations",
+        "drizzle_export": "organizations",
+        "columns": [
+          "id integer NOT NULL",
+          "name varchar(256) NOT NULL",
+          "access_code varchar(14) NOT NULL",
+          "image text",
+          "agent_names jsonb NOT NULL",
+          "agent_settings jsonb NOT NULL",
+          "created_by_id varchar(255) NOT NULL",
+          "plan plan NOT NULL",
+          "stripe_customer_id varchar(255)",
+          "stripe_subscription_id varchar(255)",
+          "subscription_status subscription_status",
+          "current_period_end timestamp with time zone",
+          "cancel_at_period_end boolean NOT NULL",
+          "seats integer NOT NULL",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "created_by_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/organizations.ts:8"
+      },
+      {
+        "name": "organization_members",
+        "drizzle_export": "organizationMembers",
+        "columns": [
+          "id integer NOT NULL",
+          "organization_id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "role org_role NOT NULL",
+          "display_role varchar(100)",
+          "can_add_members boolean NOT NULL",
+          "can_assign_tasks boolean NOT NULL",
+          "can_create_projects boolean NOT NULL",
+          "can_delete_tasks boolean NOT NULL",
+          "can_kick_members boolean NOT NULL",
+          "can_manage_roles boolean NOT NULL",
+          "can_edit_projects boolean NOT NULL",
+          "can_view_analytics boolean NOT NULL",
+          "joined_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "organization_id",
+            "references": "organizations.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/organizations.ts:75"
+      },
+      {
+        "name": "organization_roles",
+        "drizzle_export": "organizationRoles",
+        "columns": [
+          "id integer NOT NULL",
+          "organization_id integer NOT NULL",
+          "name varchar(100) NOT NULL",
+          "can_add_members boolean NOT NULL",
+          "can_assign_tasks boolean NOT NULL",
+          "can_create_projects boolean NOT NULL",
+          "can_delete_tasks boolean NOT NULL",
+          "can_kick_members boolean NOT NULL",
+          "can_manage_roles boolean NOT NULL",
+          "can_edit_projects boolean NOT NULL",
+          "can_view_analytics boolean NOT NULL",
+          "is_template boolean NOT NULL",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "organization_id",
+            "references": "organizations.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/organizations.ts:112"
+      },
+      {
+        "name": "organization_invites",
+        "drizzle_export": "organizationInvites",
+        "columns": [
+          "id integer NOT NULL",
+          "organization_id integer NOT NULL",
+          "email varchar(255) NOT NULL",
+          "role org_role NOT NULL",
+          "display_role varchar(100)",
+          "permissions jsonb",
+          "accept_token_hash varchar(64)",
+          "invited_by_id varchar(255) NOT NULL",
+          "status varchar(20) NOT NULL",
+          "created_at timestamp NOT NULL",
+          "expires_at timestamp with time zone",
+          "send_count integer NOT NULL",
+          "last_sent_at timestamp with time zone"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "organization_id",
+            "references": "organizations.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "invited_by_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/organizations.ts:138"
+      },
+      {
+        "name": "invite_suppressions",
+        "drizzle_export": "inviteSuppressions",
+        "columns": [
+          "id integer NOT NULL",
+          "email_hash varchar(64) NOT NULL",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [],
+        "evidence": "src/server/db/schemas/organizations.ts:186"
+      },
+      {
+        "name": "organization_join_codes",
+        "drizzle_export": "organizationJoinCodes",
+        "columns": [
+          "id integer NOT NULL",
+          "organization_id integer NOT NULL",
+          "code varchar(64) NOT NULL",
+          "kind varchar(10) NOT NULL",
+          "role org_role NOT NULL",
+          "display_role varchar(100)",
+          "permissions jsonb",
+          "created_by_id varchar(255) NOT NULL",
+          "created_at timestamp with time zone NOT NULL",
+          "expires_at timestamp with time zone NOT NULL",
+          "revoked_at timestamp with time zone",
+          "max_uses integer NOT NULL",
+          "used_count integer NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "organization_id",
+            "references": "organizations.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "created_by_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/organizations.ts:203"
+      },
+      {
+        "name": "projects",
+        "drizzle_export": "projects",
+        "columns": [
+          "id integer NOT NULL",
+          "title varchar(256) NOT NULL",
+          "description text",
+          "image_url varchar(512)",
+          "status project_status NOT NULL",
+          "createdById varchar(255) NOT NULL",
+          "share_status share_status NOT NULL",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL",
+          "organization_id integer"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "createdById",
+            "references": "user.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "organization_id",
+            "references": "organizations.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/projects.ts:7"
+      },
+      {
+        "name": "project_collaborators",
+        "drizzle_export": "projectCollaborators",
+        "columns": [
+          "project_id integer NOT NULL",
+          "collaboratorId varchar(255) NOT NULL",
+          "permission permission NOT NULL",
+          "joined_at timestamp NOT NULL"
+        ],
+        "primary_key": "project_id+collaboratorId",
+        "foreign_keys": [
+          {
+            "column": "project_id",
+            "references": "projects.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "collaboratorId",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/projects.ts:34"
+      },
+      {
+        "name": "push_subscriptions",
+        "drizzle_export": "pushSubscriptions",
+        "columns": [
+          "id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "endpoint text NOT NULL",
+          "p256dh text NOT NULL",
+          "auth text NOT NULL",
+          "user_agent varchar(512)",
+          "created_at timestamp with time zone NOT NULL",
+          "last_success_at timestamp with time zone"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/pushSubscriptions.ts:13"
+      },
+      {
+        "name": "tasks",
+        "drizzle_export": "tasks",
+        "columns": [
+          "id integer NOT NULL",
+          "title varchar(256) NOT NULL",
+          "description text",
+          "project_id integer NOT NULL",
+          "parent_task_id integer",
+          "assignedToId varchar(255)",
+          "status task_status NOT NULL",
+          "priority task_priority NOT NULL",
+          "due_date timestamp with time zone",
+          "completed_at timestamp with time zone",
+          "completed_by_id varchar(255)",
+          "completion_note text",
+          "due_reminder_sent_at timestamp with time zone",
+          "createdById varchar(255) NOT NULL",
+          "last_edited_by_id varchar(255)",
+          "last_edited_at timestamp with time zone",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL",
+          "order_index integer NOT NULL",
+          "client_request_id varchar(128)",
+          "embedding halfvec(2048) (raw SQL migration, not in drizzle schema)"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "project_id",
+            "references": "projects.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "parent_task_id",
+            "references": "tasks.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "assignedToId",
+            "references": "user.id",
+            "on_delete": "set null"
+          },
+          {
+            "column": "completed_by_id",
+            "references": "user.id",
+            "on_delete": "set null"
+          },
+          {
+            "column": "createdById",
+            "references": "user.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "last_edited_by_id",
+            "references": "user.id",
+            "on_delete": "set null"
+          }
+        ],
+        "evidence": "src/server/db/schemas/tasks.ts:15"
+      },
+      {
+        "name": "task_comments",
+        "drizzle_export": "taskComments",
+        "columns": [
+          "id integer NOT NULL",
+          "content text NOT NULL",
+          "task_id integer NOT NULL",
+          "createdById varchar(255) NOT NULL",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "task_id",
+            "references": "tasks.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "createdById",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/tasks.ts:90"
+      },
+      {
+        "name": "task_activity_log",
+        "drizzle_export": "taskActivityLog",
+        "columns": [
+          "id integer NOT NULL",
+          "task_id integer NOT NULL",
+          "userId varchar(255) NOT NULL",
+          "action varchar(100) NOT NULL",
+          "old_value text",
+          "new_value text",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "task_id",
+            "references": "tasks.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "userId",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/tasks.ts:112"
+      },
+      {
+        "name": "task_dependencies",
+        "drizzle_export": "taskDependencies",
+        "columns": [
+          "id integer NOT NULL",
+          "blocked_task_id integer NOT NULL",
+          "blocking_task_id integer NOT NULL",
+          "createdById varchar(255) NOT NULL",
+          "created_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "blocked_task_id",
+            "references": "tasks.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "blocking_task_id",
+            "references": "tasks.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "createdById",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/tasks.ts:136"
+      },
+      {
+        "name": "user",
+        "drizzle_export": "users",
+        "columns": [
+          "id varchar(255) NOT NULL",
+          "name varchar(255)",
+          "email varchar(255) NOT NULL",
+          "emailVerified timestamp with time zone",
+          "image text",
+          "usage_mode usage_mode",
+          "active_organization_id integer",
+          "agent_names jsonb NOT NULL",
+          "agent_settings jsonb NOT NULL",
+          "password varchar(255)",
+          "reset_pin_hash varchar(255)",
+          "reset_pin_hint text",
+          "reset_pin_failed_attempts integer NOT NULL",
+          "reset_pin_locked_until timestamp with time zone",
+          "reset_pin_last_failed_at timestamp with time zone",
+          "login_failed_attempts integer NOT NULL",
+          "login_locked_until timestamp with time zone",
+          "login_last_failed_at timestamp with time zone",
+          "bio text",
+          "in_app_notifications boolean NOT NULL",
+          "direct_message_notifications boolean NOT NULL",
+          "project_updates_notifications boolean NOT NULL",
+          "task_assignment_notifications boolean NOT NULL",
+          "task_due_reminders_notifications boolean NOT NULL",
+          "event_reminders_notifications boolean NOT NULL",
+          "event_updates_notifications boolean NOT NULL",
+          "event_rsvp_notifications boolean NOT NULL",
+          "social_notifications boolean NOT NULL",
+          "invite_notifications boolean NOT NULL",
+          "workspace_notifications boolean NOT NULL",
+          "email_notifications boolean NOT NULL",
+          "marketing_emails_notifications boolean NOT NULL",
+          "notification_position notification_position NOT NULL",
+          "language language NOT NULL",
+          "timezone varchar(100) NOT NULL",
+          "date_format date_format NOT NULL",
+          "theme theme NOT NULL",
+          "accent_color varchar(20) NOT NULL",
+          "notes_keep_unlocked_until_close boolean NOT NULL",
+          "profile_visibility boolean NOT NULL",
+          "profile_audience profile_audience NOT NULL",
+          "show_online_status boolean NOT NULL",
+          "allow_followers boolean NOT NULL",
+          "show_activity_feed boolean NOT NULL",
+          "discoverable_by_email boolean NOT NULL",
+          "last_seen_at timestamp with time zone",
+          "activity_tracking boolean NOT NULL",
+          "data_collection boolean NOT NULL",
+          "calendar_feed_token varchar(64)",
+          "two_factor_enabled boolean NOT NULL",
+          "two_factor_secret varchar(255)",
+          "plan plan NOT NULL",
+          "stripe_customer_id varchar(255)",
+          "stripe_subscription_id varchar(255)",
+          "subscription_status subscription_status",
+          "current_period_end timestamp with time zone",
+          "cancel_at_period_end boolean NOT NULL",
+          "created_at timestamp NOT NULL",
+          "updated_at timestamp NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [],
+        "evidence": "src/server/db/schemas/users.ts:28"
+      },
+      {
+        "name": "account",
+        "drizzle_export": "accounts",
+        "columns": [
+          "userId varchar(255) NOT NULL",
+          "type varchar(255) NOT NULL",
+          "provider varchar(255) NOT NULL",
+          "providerAccountId varchar(255) NOT NULL",
+          "refresh_token text",
+          "access_token text",
+          "expires_at integer",
+          "token_type varchar(255)",
+          "scope varchar(255)",
+          "id_token text",
+          "session_state varchar(255)"
+        ],
+        "primary_key": "provider+providerAccountId",
+        "foreign_keys": [
+          {
+            "column": "userId",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/users.ts:319"
+      },
+      {
+        "name": "session",
+        "drizzle_export": "sessions",
+        "columns": [
+          "sessionToken varchar(255) NOT NULL",
+          "userId varchar(255) NOT NULL",
+          "expires timestamp with time zone NOT NULL"
+        ],
+        "primary_key": "sessionToken",
+        "foreign_keys": [
+          {
+            "column": "userId",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/users.ts:343"
+      },
+      {
+        "name": "verification_token",
+        "drizzle_export": "verificationTokens",
+        "columns": [
+          "identifier varchar(255) NOT NULL",
+          "token varchar(255) NOT NULL",
+          "expires timestamp with time zone NOT NULL"
+        ],
+        "primary_key": "identifier+token",
+        "foreign_keys": [],
+        "evidence": "src/server/db/schemas/users.ts:356"
+      },
+      {
+        "name": "verification_code",
+        "drizzle_export": "verificationCodes",
+        "columns": [
+          "id integer NOT NULL",
+          "purpose verification_code_purpose NOT NULL",
+          "email varchar(255) NOT NULL",
+          "code_hash varchar(64) NOT NULL",
+          "expires_at timestamp with time zone NOT NULL",
+          "consumed_at timestamp with time zone",
+          "attempts integer NOT NULL",
+          "created_at timestamp with time zone NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [],
+        "evidence": "src/server/db/schemas/users.ts:385"
+      },
+      {
+        "name": "two_factor_challenge",
+        "drizzle_export": "twoFactorChallenges",
+        "columns": [
+          "id integer NOT NULL",
+          "user_id varchar(255) NOT NULL",
+          "secret_hash varchar(64) NOT NULL",
+          "code_hash varchar(64) NOT NULL",
+          "link_token_hash varchar(64) NOT NULL",
+          "attempts integer NOT NULL",
+          "expires_at timestamp with time zone NOT NULL",
+          "approved_at timestamp with time zone",
+          "denied_at timestamp with time zone",
+          "consumed_at timestamp with time zone",
+          "created_at timestamp with time zone NOT NULL"
+        ],
+        "primary_key": "id",
+        "foreign_keys": [
+          {
+            "column": "user_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/users.ts:424"
+      },
+      {
+        "name": "user_follow",
+        "drizzle_export": "userFollows",
+        "columns": [
+          "follower_id varchar(255) NOT NULL",
+          "following_id varchar(255) NOT NULL",
+          "created_at timestamp with time zone NOT NULL"
+        ],
+        "primary_key": "follower_id+following_id",
+        "foreign_keys": [
+          {
+            "column": "follower_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          },
+          {
+            "column": "following_id",
+            "references": "user.id",
+            "on_delete": "cascade"
+          }
+        ],
+        "evidence": "src/server/db/schemas/users.ts:459"
+      }
+    ]
+  },
+  "enums": [
+    {
+      "name": "agent_events_publisher_draft_status",
+      "values": [
+        "draft",
+        "confirmed",
+        "applied",
+        "expired"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:123"
+    },
+    {
+      "name": "agent_notes_vault_draft_status",
+      "values": [
+        "draft",
+        "confirmed",
+        "applied",
+        "expired"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:119"
+    },
+    {
+      "name": "agent_org_admin_draft_status",
+      "values": [
+        "draft",
+        "confirmed",
+        "applied",
+        "expired"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:127"
+    },
+    {
+      "name": "agent_project_manager_draft_status",
+      "values": [
+        "draft",
+        "confirmed",
+        "applied",
+        "expired"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:131"
+    },
+    {
+      "name": "agent_task_planner_draft_status",
+      "values": [
+        "draft",
+        "confirmed",
+        "applied",
+        "expired"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:115"
+    },
+    {
+      "name": "ai_message_role",
+      "values": [
+        "user",
+        "assistant",
+        "tool",
+        "system"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:145"
+    },
+    {
+      "name": "date_format",
+      "values": [
+        "MM/DD/YYYY",
+        "DD/MM/YYYY",
+        "YYYY-MM-DD"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:63"
+    },
+    {
+      "name": "event_cover",
+      "values": [
+        "dusk",
+        "ember",
+        "meadow",
+        "blush",
+        "sand",
+        "tide"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:94"
+    },
+    {
+      "name": "event_topic",
+      "values": [
+        "tech",
+        "music",
+        "food",
+        "sport",
+        "art",
+        "business",
+        "education",
+        "community"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:77"
+    },
+    {
+      "name": "language",
+      "values": [
+        "en",
+        "bg",
+        "es",
+        "fr",
+        "de"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:25"
+    },
+    {
+      "name": "notification_position",
+      "values": [
+        "top-left",
+        "top-center",
+        "top-right",
+        "bottom-left",
+        "bottom-center",
+        "bottom-right"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:52"
+    },
+    {
+      "name": "notification_type",
+      "values": [
+        "event",
+        "task",
+        "project",
+        "system",
+        "like",
+        "comment",
+        "reply",
+        "message",
+        "event_reminder"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:68"
+    },
+    {
+      "name": "org_role",
+      "values": [
+        "admin",
+        "member",
+        "guest",
+        "worker",
+        "mentor"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:10"
+    },
+    {
+      "name": "permission",
+      "values": [
+        "read",
+        "write"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:6"
+    },
+    {
+      "name": "plan",
+      "values": [
+        "free",
+        "pro",
+        "team"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:182"
+    },
+    {
+      "name": "profile_audience",
+      "values": [
+        "everyone",
+        "organization",
+        "shared"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:35"
+    },
+    {
+      "name": "project_status",
+      "values": [
+        "active",
+        "archived"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:11"
+    },
+    {
+      "name": "region",
+      "values": [
+        "sofia",
+        "plovdiv",
+        "varna",
+        "burgas",
+        "ruse",
+        "stara_zagora",
+        "pleven",
+        "sliven",
+        "dobrich",
+        "shumen"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:103"
+    },
+    {
+      "name": "rsvp_status",
+      "values": [
+        "going",
+        "maybe",
+        "not_going"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:69"
+    },
+    {
+      "name": "share_status",
+      "values": [
+        "private",
+        "shared_read",
+        "shared_write"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:5"
+    },
+    {
+      "name": "subscription_status",
+      "values": [
+        "active",
+        "trialing",
+        "past_due",
+        "canceled",
+        "incomplete"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:198"
+    },
+    {
+      "name": "task_priority",
+      "values": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:8"
+    },
+    {
+      "name": "task_status",
+      "values": [
+        "pending",
+        "in_progress",
+        "completed",
+        "blocked"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:7"
+    },
+    {
+      "name": "theme",
+      "values": [
+        "light",
+        "dark",
+        "system"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:12"
+    },
+    {
+      "name": "usage_mode",
+      "values": [
+        "personal",
+        "organization"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:9"
+    },
+    {
+      "name": "verification_code_purpose",
+      "values": [
+        "email_verify",
+        "password_reset",
+        "two_factor_toggle"
+      ],
+      "evidence": "src/server/db/schemas/enums.ts:160"
+    }
+  ],
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/account-switch/list",
+      "evidence": "src/app/api/account-switch/list/route.ts:13"
+    },
+    {
+      "method": "POST",
+      "path": "/api/account-switch/register",
+      "evidence": "src/app/api/account-switch/register/route.ts:13"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/chat",
+      "evidence": "src/app/api/ai/chat/route.ts:92",
+      "note": "One AI turn streamed as Server-Sent Events: start, tool_call, answer_delta, sub_agent, result"
+    },
+    {
+      "method": "GET,POST",
+      "path": "/api/auth/[...nextauth]",
+      "evidence": "src/app/api/auth/[...nextauth]/route.ts:3",
+      "note": "Auth.js handlers"
+    },
+    {
+      "method": "GET",
+      "path": "/api/calendar/feed/[token]",
+      "evidence": "src/app/api/calendar/feed/[token]/route.ts:42",
+      "note": "ICS calendar subscription feed by secret token"
+    },
+    {
+      "method": "GET",
+      "path": "/api/calendar/google/connect",
+      "evidence": "src/app/api/calendar/google/connect/route.ts:25",
+      "note": "Start Google Calendar OAuth (signed state)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/calendar/google/callback",
+      "evidence": "src/app/api/calendar/google/callback/route.ts:46"
+    },
+    {
+      "method": "GET",
+      "path": "/api/export/[format]",
+      "evidence": "src/app/api/export/[format]/route.ts:49",
+      "note": "format = csv | markdown | ics; Free = tasks CSV only, Pro = everything"
+    },
+    {
+      "method": "POST",
+      "path": "/api/internal/ai/run-schedules",
+      "evidence": "src/app/api/internal/ai/run-schedules/route.ts:76",
+      "note": "Called by ws-server scheduler; authenticated with shared WS_SECRET (timingSafeEqual, line 73)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/invite-optout/[token]",
+      "evidence": "src/app/api/invite-optout/[token]/route.ts:22",
+      "note": "Invitation email opt-out (suppression)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/stripe/webhook",
+      "evidence": "src/app/api/stripe/webhook/route.ts:64",
+      "note": "Stripe signature verified via constructEvent on raw body"
+    },
+    {
+      "method": "GET,POST",
+      "path": "/api/trpc/[trpc]",
+      "evidence": "src/app/api/trpc/[trpc]/route.ts:31",
+      "note": "tRPC v11 fetch adapter; 17 routers / 231 procedures (see trpc_routers)"
+    },
+    {
+      "method": "GET,POST",
+      "path": "/api/uploadthing",
+      "evidence": "src/app/api/uploadthing/route.ts:5",
+      "note": "Upload routes: imageUploader (image 4MB x1), chatAttachment (image 4MB x5, pdf 16MB x3), documentUploader (pdf 16MB x5, text 4MB x5) - src/app/api/uploadthing/core.ts:7,16,41"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ws/token",
+      "evidence": "src/app/api/ws/token/route.ts:13",
+      "note": "Issues HMAC-SHA256 signed short-lived WS ticket"
+    },
+    {
+      "method": "GET",
+      "path": "ws-server /health (separate HTTP server)",
+      "evidence": "ws-server/index.ts",
+      "note": "plus internal emit endpoint (dev fallback; Redis pub/sub in prod)"
+    }
+  ],
+  "routes": [
+    {
+      "path": "/",
+      "evidence": "src/app/page.tsx",
+      "description": "Landing page (public)"
+    },
+    {
+      "path": "/events/[id]",
+      "evidence": "src/app/events/[id]/page.tsx",
+      "description": "Public event page"
+    },
+    {
+      "path": "/dashboard",
+      "evidence": "src/app/(app)/dashboard/page.tsx"
+    },
+    {
+      "path": "/calendar",
+      "evidence": "src/app/(app)/calendar/page.tsx"
+    },
+    {
+      "path": "/chat",
+      "evidence": "src/app/(app)/chat/page.tsx",
+      "description": "Direct/project messaging"
+    },
+    {
+      "path": "/chat/[conversationId]",
+      "evidence": "src/app/(app)/chat/[conversationId]/page.tsx"
+    },
+    {
+      "path": "/chat/ai",
+      "evidence": "src/app/(app)/chat/ai/page.tsx",
+      "description": "AI console (AIChatPageClient + AiThreadRail)"
+    },
+    {
+      "path": "/notes",
+      "evidence": "src/app/(app)/notes/(workspace)/page.tsx"
+    },
+    {
+      "path": "/notes/new",
+      "evidence": "src/app/(app)/notes/(workspace)/new/page.tsx"
+    },
+    {
+      "path": "/notes/[noteId]",
+      "evidence": "src/app/(app)/notes/(workspace)/[noteId]/page.tsx"
+    },
+    {
+      "path": "/notes/[noteId]/recover",
+      "evidence": "src/app/(app)/notes/[noteId]/recover/page.tsx",
+      "description": "Locked-note PIN recovery"
+    },
+    {
+      "path": "/projects",
+      "evidence": "src/app/(app)/projects/page.tsx"
+    },
+    {
+      "path": "/progress",
+      "evidence": "src/app/(app)/progress/page.tsx"
+    },
+    {
+      "path": "/publish",
+      "evidence": "src/app/(app)/publish/page.tsx",
+      "description": "Events feed / publishing"
+    },
+    {
+      "path": "/orgs",
+      "evidence": "src/app/(app)/orgs/page.tsx"
+    },
+    {
+      "path": "/invite/[token]",
+      "evidence": "src/app/(app)/invite/[token]/page.tsx"
+    },
+    {
+      "path": "/join/[code]",
+      "evidence": "src/app/(app)/join/[code]/page.tsx",
+      "description": "Join org via QR/code"
+    },
+    {
+      "path": "/profile/[userId]",
+      "evidence": "src/app/(app)/profile/[userId]/page.tsx"
+    },
+    {
+      "path": "/settings",
+      "evidence": "src/app/(app)/settings/page.tsx"
+    },
+    {
+      "path": "/auth-error",
+      "evidence": "src/app/(auth)/auth-error/page.tsx"
+    },
+    {
+      "path": "/invite-optout/[token]",
+      "evidence": "src/app/(auth)/invite-optout/[token]/page.tsx"
+    },
+    {
+      "path": "/security",
+      "evidence": "src/app/(auth)/security/page.tsx"
+    },
+    {
+      "path": "/verify-email",
+      "evidence": "src/app/(auth)/verify-email/page.tsx"
+    },
+    {
+      "path": "/verify-login",
+      "evidence": "src/app/(auth)/verify-login/page.tsx",
+      "description": "Two-step sign-in link"
+    },
+    {
+      "path": "/about",
+      "evidence": "src/app/(marketing)/about/page.tsx"
+    },
+    {
+      "path": "/careers",
+      "evidence": "src/app/(marketing)/careers/page.tsx"
+    },
+    {
+      "path": "/contact",
+      "evidence": "src/app/(marketing)/contact/page.tsx"
+    },
+    {
+      "path": "/pricing",
+      "evidence": "src/app/(marketing)/pricing/page.tsx"
+    },
+    {
+      "path": "/privacy",
+      "evidence": "src/app/(marketing)/privacy/page.tsx"
+    },
+    {
+      "path": "/terms",
+      "evidence": "src/app/(marketing)/terms/page.tsx"
+    }
+  ],
+  "features": [
+    {
+      "name": "Authentication (credentials + Google + Microsoft Entra ID)",
+      "description": "Email/password sign-up with argon2id, email verification by token, password reset by emailed code, login lockout, OAuth via Google and Microsoft Entra ID.",
+      "evidence": "src/server/auth/config.ts:6-8,163-204; src/server/api/routers/auth.ts:49-344"
+    },
+    {
+      "name": "Two-factor / two-step sign-in",
+      "description": "Optional 2FA: sign-in approved via emailed link/code (two_factor_challenge table, /verify-login page).",
+      "evidence": "src/server/auth/twoFactor.ts; src/server/auth/config.ts:482-483; src/app/(auth)/verify-login/page.tsx"
+    },
+    {
+      "name": "Account switching",
+      "description": "Switch between multiple signed-in accounts on one device.",
+      "evidence": "src/app/api/account-switch/*; src/server/security/accountSwitch.ts; src/server/auth/config.ts:204-205"
+    },
+    {
+      "name": "Personal / organization usage modes + onboarding",
+      "description": "User chooses personal or organization mode; onboarding gate, role selection and onboarding sheet.",
+      "evidence": "enum usage_mode (enums.ts:9); src/components/auth/OnboardingGate.tsx, RoleSelectionModal.tsx; src/components/onboarding/OnboardingSheet.tsx"
+    },
+    {
+      "name": "Organizations & team management",
+      "description": "Create/join orgs, roles (admin/member/guest/worker/mentor), custom roles, 8 per-member permission flags, invites by email/link, QR join codes, invite history, seats.",
+      "evidence": "src/server/api/routers/organization.ts (36 procedures); src/components/orgs/*; tables organizations, organization_members, organization_roles, organization_invites, organization_join_codes"
+    },
+    {
+      "name": "Invitation email policy & suppression",
+      "description": "Invite opt-out link stores hashed email in invite_suppressions; resend tracking (send_count, last_sent_at).",
+      "evidence": "commit e5d2676; src/app/api/invite-optout/[token]/route.ts:22; src/server/db/schemas/organizations.ts:186"
+    },
+    {
+      "name": "Projects",
+      "description": "Create/archive/reopen projects, collaborators with read/write permission, share status.",
+      "evidence": "src/server/api/routers/project.ts; src/components/projects/*"
+    },
+    {
+      "name": "Tasks & subtasks",
+      "description": "Tasks with status/priority/due date/assignee, completion note, ordering, subtasks (parent_task_id), comments, dependencies, activity log, due reminders.",
+      "evidence": "src/server/api/routers/task.ts; src/server/db/schemas/tasks.ts:15-156; commit eedfc97 (subtasks)"
+    },
+    {
+      "name": "Notes & notebooks",
+      "description": "Notes in notebooks with autosave, sharing (read/write), optional numeric-password lock with PIN reset, pin to calendar date.",
+      "evidence": "src/server/api/routers/note.ts (18 procedures); src/components/notes/*; commit 73882dd"
+    },
+    {
+      "name": "Calendar",
+      "description": "Month/time-grid/agenda views of tasks, events, notes and synced external events, with accessibility support.",
+      "evidence": "src/components/calendar/*; src/server/api/routers/calendar.ts:15; task.getForCalendar"
+    },
+    {
+      "name": "Google Calendar sync & ICS feed",
+      "description": "OAuth connect to Google Calendar (encrypted tokens, incremental sync tokens) and a private ICS subscription feed URL.",
+      "evidence": "src/server/calendar/{google,sync,tokens,sweep}.ts; src/app/api/calendar/*; tables calendar_connections, external_events"
+    },
+    {
+      "name": "Events (publish feed)",
+      "description": "Events with region, topic, cover theme, venue/map (OSM geocoding), capacity, RSVP (going/maybe/not going), reminders, comments, likes, saves, co-hosts, host stats.",
+      "evidence": "src/server/api/routers/event.ts (14); src/components/publish/*, src/components/events/*; commit ea4c16d (geocoding)"
+    },
+    {
+      "name": "Direct & project chat",
+      "description": "Real-time 1:1 and project conversations with replies, edits, deletes, pins, reactions, attachments, read receipts, mute/archive, search, typing indicators and presence.",
+      "evidence": "src/server/api/routers/chat.ts (19); src/components/chat/*; tables direct_conversations, direct_messages, conversation_participants, direct_message_attachments, direct_message_reactions"
+    },
+    {
+      "name": "Notifications (in-app)",
+      "description": "Typed notifications (event, task, project, system, like, comment, reply, message, event_reminder) shown as floating cards with auto-dismiss at a configurable screen position.",
+      "evidence": "src/server/api/routers/notification.ts; src/components/notifications/NotificationSystem.tsx; commit 6c54d36; enum notification_position"
+    },
+    {
+      "name": "Web Push notifications",
+      "description": "Browser push via VAPID/web-push with per-device subscriptions and test push.",
+      "evidence": "commit 78978a3; src/server/notifications/push.ts; table push_subscriptions; src/components/notifications/PushRegistrar.tsx"
+    },
+    {
+      "name": "Email (Resend)",
+      "description": "Welcome, verification, password reset code, two-factor sign-in, 2FA toggle code, org invite and AI brief emails.",
+      "evidence": "src/server/email/email.ts:939-1002"
+    },
+    {
+      "name": "Progress / analytics",
+      "description": "Leaderboard, personal record, team view and pulse charts (Chart.js).",
+      "evidence": "src/server/api/routers/progress.ts:182-560; src/components/progress/*"
+    },
+    {
+      "name": "Dashboard",
+      "description": "Overview of work plus Risk Radar findings.",
+      "evidence": "src/components/dashboard/DashboardClient.tsx, RadarFindings.tsx"
+    },
+    {
+      "name": "Profiles & social",
+      "description": "Profile drawer with audience control, follow/unfollow, suggestions, activity feed, online presence heartbeat.",
+      "evidence": "src/server/api/routers/profile.ts; src/components/profile/*; table user_follow"
+    },
+    {
+      "name": "Workspace search & command palette",
+      "description": "Global workspace search and command palette.",
+      "evidence": "src/server/api/routers/search.ts:25; src/components/layout/CommandPalette.tsx, SearchTrigger.tsx"
+    },
+    {
+      "name": "Settings",
+      "description": "Profile, notifications (12 toggles), language/region/timezone/date format, appearance (theme, accent), privacy, security (2FA, reset PIN), AI, developer, billing, workspace, delete all data.",
+      "evidence": "src/server/api/routers/settings.ts; src/components/settings/*"
+    },
+    {
+      "name": "AI agent crew (6 interactive + 4 scheduled agents)",
+      "description": "Default names (Greek mythology): Mentor (workspace_concierge), Odysseus (task_planner), Mnemosyne (notes_vault), Iris (events_publisher), Solon (org_admin), Daedalus (project_manager), Hemera (daily_brief), Argus (risk_radar), Clio (weekly_retro), Nestor (meeting_prep).",
+      "evidence": "src/lib/agentNames.ts:32-43; src/server/llm/agents/registry.ts:74-190; commit bbc48dc"
+    },
+    {
+      "name": "Per-agent settings & custom names",
+      "description": "Users/orgs can rename agents and set per-agent settings (e.g. approval mode autoSmall, opener).",
+      "evidence": "commits 579b338, 5841ee8; src/lib/agentSettings.ts; columns user.agent_names/agent_settings, organizations.agent_names/agent_settings; src/components/settings/AgentCrew.tsx"
+    },
+    {
+      "name": "LLM orchestrator with handoff",
+      "description": "A1 concierge answers or hands off to up to 3 write sub-agents, run concurrently in the same server turn.",
+      "evidence": "src/server/llm/orchestrator/agentOrchestrator.ts:37-45; src/server/llm/orchestrator/handoff.ts (E-2, bounded at 3)"
+    },
+    {
+      "name": "Draft -> confirm -> apply, undo & auto-apply",
+      "description": "Write agents store a draft plan with hash and confirmation token; user confirms then applies; before-images enable undo of creates/edits (not deletes); small plans can auto-apply if opted in and undo is available.",
+      "evidence": "tables agent_*_drafts/agent_*_applies; src/server/llm/undo.ts; src/server/llm/orchestrator/autoApply.ts; src/server/llm/beforeImage.ts"
+    },
+    {
+      "name": "Streaming AI chat (SSE) & thinking-effort switch",
+      "description": "AI turns stream as SSE with tool-call progress and answer deltas; user can choose reasoning effort.",
+      "evidence": "src/app/api/ai/chat/route.ts:1-92; src/components/chat/EffortMenu.tsx; commit f44adb7"
+    },
+    {
+      "name": "AI console & AiThreadRail",
+      "description": "Full-page AI console with day-grouped thread list and server-side message search; AiThreadRail has variant 'column' | 'sheet'.",
+      "evidence": "src/components/chat/AiThreadRail.tsx:31,75; src/app/(app)/chat/ai/page.tsx; commit 74e77bf"
+    },
+    {
+      "name": "Global AI widget / Ask KAIROS launcher",
+      "description": "Floating assistant available on every app page (bottom-right launcher, overlay).",
+      "evidence": "src/components/layout/GlobalAIWidget.tsx; src/components/chat/AskKairosLauncher.tsx, A1ChatWidgetOverlay.tsx"
+    },
+    {
+      "name": "Page-aware assistant context",
+      "description": "Client sends only ids of the current page; server resolves title/content after the same access check as agent tools and injects a late system message so 'this note/project' resolves; ask-about-page action and configurable opener.",
+      "evidence": "commit 5a51e5f; src/lib/pageContext.ts; src/server/llm/context/pageContext.ts; src/server/llm/prompts/pageContext.ts"
+    },
+    {
+      "name": "Project intelligence chat & plan diff",
+      "description": "Per-project AI chat; plan diff preview card for task plans (Pro).",
+      "evidence": "src/components/projects/ProjectIntelligenceChat.tsx, PlanDiffCard.tsx, UndoApplyButton.tsx; agent.taskPlanDiff"
+    },
+    {
+      "name": "Task generation from prompt / PDF",
+      "description": "Generate candidate tasks from text or an uploaded PDF (pdfjs-dist extraction).",
+      "evidence": "src/server/llm/orchestrator/taskGeneration.ts; src/server/llm/pdf/pdfExtractor.ts; agent.generateTaskDrafts, agent.extractTasksFromPdf"
+    },
+    {
+      "name": "AI memory",
+      "description": "Durable user facts saved only when the user explicitly asks (rememberFact/forgetFact), visible and deletable, capped.",
+      "evidence": "src/server/llm/memory.ts; table ai_user_memory; src/components/agents/MemoryPanel.tsx"
+    },
+    {
+      "name": "AI reminders",
+      "description": "Assistant can schedule, list and cancel reminders.",
+      "evidence": "tools scheduleReminder/listReminders/cancelReminder (src/server/llm/tools/a1/toolDefinitions.ts:460-496); table ai_reminders"
+    },
+    {
+      "name": "Scheduled agents",
+      "description": "Daily brief, risk radar, weekly retro, meeting prep, deadlines and user custom schedules; ws-server scheduler ticks the app's internal endpoint and due runs are claimed transactionally.",
+      "evidence": "ws-server/scheduler.ts; src/server/llm/scheduled/*; tables ai_schedules, ai_custom_schedules, ai_findings"
+    },
+    {
+      "name": "Documents & RAG",
+      "description": "Upload PDFs/text, chunk, embed and search (hybrid vector + full-text merged by reciprocal rank fusion).",
+      "evidence": "src/server/llm/documents/{ingest,chunker,embedChunks,search}.ts; src/server/llm/core/rankFusion.ts; tables documents, document_chunks"
+    },
+    {
+      "name": "Tool inspector / turn trail",
+      "description": "Shows the tool calls made during an AI turn.",
+      "evidence": "src/components/agents/ToolInspector.tsx; src/components/chat/TurnTrailPanel.tsx"
+    },
+    {
+      "name": "Developer API keys & webhooks",
+      "description": "Create/revoke hashed API keys; outgoing webhooks with delivery log.",
+      "evidence": "src/server/api/routers/integration.ts:81-520; tables api_keys, webhooks, webhook_deliveries"
+    },
+    {
+      "name": "Data export",
+      "description": "Export to CSV / Markdown / ICS.",
+      "evidence": "src/app/api/export/[format]/route.ts:1-49; src/server/export/*"
+    },
+    {
+      "name": "Billing & plans (Stripe)",
+      "description": "Free / Pro (EUR 12 per seat/month, EUR 120/year) / Team (EUR 22 per seat/month, EUR 220/year, min 3 seats) via Stripe Checkout, Customer Portal and webhooks; free month without card; optional automatic tax.",
+      "evidence": "src/lib/plans.ts:80-114; src/lib/entitlements.ts (Free 15 AI requests/day, Pro 200); src/server/billing/*; commits 6ab044a..b2ec211"
+    },
+    {
+      "name": "i18n",
+      "description": "English and Bulgarian offered; es/fr/de message files exist but are not offered.",
+      "evidence": "src/i18n/locales.ts:23; src/i18n/messages/*.json"
+    },
+    {
+      "name": "Theming / design system",
+      "description": "Light/dark/system theme, accent colour, design tokens enforced by scripts/check-theme.ts; self-hosted fonts (Inter, Source Serif 4, IBM Plex Mono).",
+      "evidence": "src/components/providers/ThemeProvider.tsx; docs/theme.md; commits 864127a, b98b019"
+    },
+    {
+      "name": "Image upload with downscaling",
+      "description": "Images via UploadThing with client-side downscaling of large files.",
+      "evidence": "src/components/ui/ImageUpload.tsx; commit 4169eff"
+    },
+    {
+      "name": "Realtime presence & typing",
+      "description": "Socket.IO presence (online users) and typing indicators.",
+      "evidence": "ws-server/presence.ts; src/components/chat/usePresence.ts, useTypingIndicator.ts"
+    }
+  ],
+  "ai": {
+    "provider(s)": "Any OpenAI-compatible /chat/completions endpoint via raw fetch (no vendor SDK). Presets: nvidia (NIM, https://integrate.api.nvidia.com/v1), velocity (https://chat.velocity.online/api/v1), deepseek (https://api.deepseek.com/v1), gemini (OpenAI-compat https://generativelanguage.googleapis.com/v1beta/openai). Chosen by LLM_PROVIDER or explicit LLM_BASE_URL/LLM_MODEL; optional LLM_BACKUP_PROVIDER as a second failure domain.",
+    "models": [
+      "openai/gpt-oss-20b (nvidia preset main + fast; model used in all evals)",
+      "deepseek/deepseek-v4-flash (velocity)",
+      "deepseek-chat (deepseek)",
+      "gemini-3.8-flash main, gemini-3.1-flash-lite fallback/fast (gemini; marked unverified in code)",
+      "embeddings: LLM_EMBEDDING_MODEL (env-configured), default dims 2048"
+    ],
+    "orchestrator": "agentOrchestrator composes A1 Concierge (read-only; native tool calling through a bounded toolLoop with allowlisted tools, each authorized with the caller's tRPC context) + write agents A2 Task Planner, A3 Notes Vault, A4 Events Publisher, A5 Org Admin, A6 Project Manager, plus taskGeneration. A1 returns JSON with intent type answer|handoff|clarify|draft_plan; handoff.ts runs up to 3 sub-agents concurrently in the same request. Write agents produce zod-validated JSON plans (JSON repair via fast model) -> draft (plan hash + confirmation token) -> confirm -> apply, with before-image undo and optional auto-apply of small plans. Rolling conversation summary, reply-language rules, reasoning-effort control, stable system prompt for provider caching, primary->fallback->backup-provider model chain.",
+    "a1_tools": [
+      "getSessionContext",
+      "listOrganizations",
+      "listProjects",
+      "getProjectDetail",
+      "listTasks",
+      "getTaskDetail",
+      "listNotifications",
+      "listEventsPublic",
+      "searchDocuments",
+      "searchWorkspace",
+      "listMyWork",
+      "getWorkloadByAssignee",
+      "getCalendarRange",
+      "getProjectHealth",
+      "listProjectCollaborators",
+      "listOrgMembers",
+      "listTaskComments",
+      "getTaskActivity",
+      "listNotesMetadata",
+      "listEventRsvps",
+      "rememberFact",
+      "forgetFact",
+      "getTaskDependencies",
+      "scheduleReminder",
+      "listReminders",
+      "cancelReminder"
+    ],
+    "a1_tools_count": 26,
+    "rag_or_embeddings": "pgvector halfvec(2048) embedding columns on tasks, sticky_notes, document_chunks with HNSW halfvec_cosine_ops indexes (migration 0049; created by raw SQL, intentionally not in the drizzle schema). Hybrid search: vector + Postgres full-text (to_tsvector 'simple' GIN) merged with reciprocal rank fusion. Embeddings via OpenAI-compatible /embeddings endpoint. Backfill script db:embed.",
+    "rate_limit": "Per-user 24h sliding window with plan ceiling (Free 15/day, Pro 200/day; AI_RATE_LIMIT env default); Redis-backed when configured.",
+    "evals": "55-case A1 routing golden set (tests/agents/evals/cases.ts). Live run 2026-09-25 with gpt-oss-20b: routing accuracy 72.7% (40/55), schema validity 96.4% first pass / 98.2% after repair, tool selection 76.5% (13/17), tool-argument validity 70.6%. Persona 'Desi' eval 2026-10-17 (17 A1 + 2 A2 + 3 A4 scenarios, 2 runs): 2 of 9 criteria pass fully (C3 routing ~94%, C8), 1 partly (C4).",
+    "evidence": "src/server/llm/core/providers.ts:41-102; src/server/llm/core/modelClient.ts; src/server/llm/core/toolLoop.ts; src/server/llm/orchestrator/*; src/server/llm/tools/a1/toolDefinitions.ts:20-496; src/server/llm/schemas/a1WorkspaceConciergeSchemas.ts; src/server/llm/core/embeddings.ts:37; src/server/db/migrations/0049_embedding_halfvec_2048.sql; src/server/security/rateLimit.ts; docs/diploma/evals/"
+  },
+  "auth": {
+    "library": "Auth.js / NextAuth v5 (next-auth 5.0.0-beta.32) with @auth/drizzle-adapter; providers: Google, MicrosoftEntraID, Credentials (password), Credentials id 'account-switch', Credentials id 'two-factor'",
+    "hashing": "argon2id (memoryCost 65536, timeCost 3, parallelism 4) for account passwords; argon2 for note passwords; verification tokens/codes stored hashed; calendar OAuth tokens encrypted with AES-256-GCM",
+    "session": "JWT strategy (cookie authjs.session-token); edge proxy only checks cookie presence; real validation in auth() / protectedProcedure",
+    "roles": "org_role enum admin|member|guest|worker|mentor + custom organization_roles + 8 permission flags (can_add_members, can_assign_tasks, can_create_projects, can_delete_tasks, can_kick_members, can_manage_roles, can_edit_projects, can_view_analytics). Project collaborators read|write. NOTE: README.md:19 says roles 'moderator, member, individual', which does not match the enum.",
+    "extras": "Email verification required before credentials sign-in, password reset by emailed code, reset PIN for locked notes, login lockout (login_failed_attempts/login_locked_until), optional 2FA",
+    "evidence": "src/server/auth/config.ts:6-12,159-161,163-205,281,482; src/server/api/routers/auth.ts:78-83; src/server/security/encryption.ts:33; src/proxy.ts; src/server/db/schemas/enums.ts:10"
+  },
+  "security": {
+    "validation": "zod input schemas on tRPC procedures and LLM outputs; env validated with @t3-oss/env-nextjs + zod (src/env.js)",
+    "rate_limiting": "Sliding-window limiter (Redis-backed when REDIS_NATIVE_URL set, else in-memory): AI 24h window per plan; auth 5 attempts / 15 min; separate system AI limit (AI_SYSTEM_RATE_LIMIT)",
+    "csrf/headers": "Security headers on every response via proxy: X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Content-Security-Policy (enforced by default; report-only via CSP_REPORT_ONLY). OAuth state check; Google Calendar connect uses signed state.",
+    "other": "WS tickets HMAC-SHA256 short-lived; internal scheduler endpoint secret compared with timingSafeEqual; Stripe webhook signature verification; per-tool authorization in AI tool loop; prompt-injection scope guard covered by evals",
+    "evidence": "src/server/security/rateLimit.ts:17-20; src/server/security/authRateLimit.ts:24-27; src/server/http/securityHeaders.ts:96-226; src/proxy.ts; ws-server/auth.ts; src/app/api/internal/ai/run-schedules/route.ts:64-73"
+  },
+  "realtime": {
+    "description": "Standalone Socket.IO 4.8 server process (ws-server/index.ts; `pnpm ws:dev`) separate from the Next.js custom HTTP server (server.ts). Clients authenticate with an HMAC-signed short-lived ticket from GET /api/ws/token sent in the Socket.IO auth frame. Rooms for events, orgs, projects and conversations; membership verified against the DB on join. Presence tracking and typing indicators. The Next.js app emits through Redis pub/sub (REDIS_NATIVE_URL, optional @socket.io/redis-adapter) or an HTTP internal-emit fallback in dev. ws-server also hosts the scheduler that periodically POSTs /api/internal/ai/run-schedules. Health endpoint.",
+    "evidence": "ws-server/index.ts:1-10,201-225; ws-server/auth.ts:1-10; ws-server/rooms.ts:244-299; ws-server/presence.ts; ws-server/scheduler.ts:1-20; server.ts:1-19"
+  },
+  "tests": {
+    "framework": "Vitest 4 (jsdom for unit/component, node for integration/eval) + Testing Library; no Playwright/Cypress e2e",
+    "total_test_files": 163,
+    "total_it_test_occurrences": 2122,
+    "unit": {
+      "files": 148,
+      "it_test_occurrences": 2039,
+      "by_folder": {
+        "tests/agents": "41 files / 542 (incl. evals/routing.test.ts, excl. nothing)",
+        "tests/components": "42 / 650",
+        "tests/server": "34 / 527",
+        "tests/lib": "12 / 118",
+        "tests/pages": "5 / 51",
+        "tests/styles": "5 / 52",
+        "tests/config": "4 / 49",
+        "tests/i18n": "6 / 35",
+        "tests/hooks": "2 / 13"
+      },
+      "note": "tests/agents totals above include the 3 live eval files (3 it occurrences); unit = all minus integration (12/80) minus live (3/3)"
+    },
+    "integration": {
+      "files": 12,
+      "it_test_occurrences": 80,
+      "config": "vitest.integration.config.ts (real Postgres; CI uses a postgres service container)"
+    },
+    "eval": {
+      "files": 3,
+      "live_files": [
+        "tests/agents/evals/routing.live.test.ts",
+        "tests/agents/evals/persona.live.test.ts",
+        "tests/agents/evals/pageContext.live.test.ts"
+      ],
+      "golden_routing_cases": 55,
+      "config": "vitest.eval.config.ts (pnpm eval:live; real LLM, stubbed tools)"
+    },
+    "e2e/ui": "0 browser e2e; UI covered by component tests (tests/components 42 files, tests/pages 5 files) in jsdom",
+    "note": "Counts are static occurrences of it(/test( (17 it.each/test.each expand to more cases at runtime).",
+    "evidence": "tests/; vitest.config.ts:9-16; vitest.integration.config.ts:46-47; vitest.eval.config.ts:86-87"
+  },
+  "scripts": [
+    {
+      "name": "build",
+      "command": "next build"
+    },
+    {
+      "name": "check",
+      "command": "pnpm run lint && tsc --noEmit && tsx scripts/check-theme.ts && tsx scripts/fix-migration-journal.ts"
+    },
+    {
+      "name": "check:theme",
+      "command": "tsx scripts/check-theme.ts"
+    },
+    {
+      "name": "db:generate",
+      "command": "drizzle-kit generate --config=drizzle.config.ts && tsx scripts/fix-migration-journal.ts"
+    },
+    {
+      "name": "db:migrate",
+      "command": "dotenv -e .env -- drizzle-kit migrate --config=drizzle.config.ts"
+    },
+    {
+      "name": "db:push",
+      "command": "dotenv -e .env -- drizzle-kit push --config=drizzle.config.ts"
+    },
+    {
+      "name": "db:studio",
+      "command": "dotenv -e .env -- drizzle-kit studio --config=drizzle.config.ts"
+    },
+    {
+      "name": "db:embed",
+      "command": "dotenv -e .env -- tsx --conditions=react-server scripts/embed-backfill.ts"
+    },
+    {
+      "name": "db:geocode",
+      "command": "dotenv -e .env -- tsx --conditions=react-server scripts/geocode-backfill.ts"
+    },
+    {
+      "name": "db:verify",
+      "command": "dotenv -e .env -- tsx scripts/verify-schema.ts"
+    },
+    {
+      "name": "dev",
+      "command": "node --max-old-space-size=8192 --disable-warning=ExperimentalWarning server.ts"
+    },
+    {
+      "name": "dev:next",
+      "command": "next dev --webpack"
+    },
+    {
+      "name": "eval:live",
+      "command": "dotenv -e .env -- vitest run --config vitest.eval.config.ts"
+    },
+    {
+      "name": "format:check",
+      "command": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache"
+    },
+    {
+      "name": "format:write",
+      "command": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache"
+    },
+    {
+      "name": "lint",
+      "command": "eslint ."
+    },
+    {
+      "name": "lint:fix",
+      "command": "eslint . --fix"
+    },
+    {
+      "name": "llm:effort",
+      "command": "dotenv -e .env -- tsx scripts/effort-probe.ts"
+    },
+    {
+      "name": "llm:probe",
+      "command": "dotenv -e .env -- tsx scripts/llm-probe.ts"
+    },
+    {
+      "name": "preview",
+      "command": "next build && node --import tsx server.ts"
+    },
+    {
+      "name": "start",
+      "command": "node --import tsx server.ts"
+    },
+    {
+      "name": "stripe:cli",
+      "command": "dotenv -e .env -- node scripts/stripe-cli.mjs"
+    },
+    {
+      "name": "stripe:listen",
+      "command": "dotenv -e .env -- node scripts/stripe-listen.mjs"
+    },
+    {
+      "name": "stripe:prices",
+      "command": "dotenv -e .env -- tsx scripts/stripe-prices.ts"
+    },
+    {
+      "name": "test",
+      "command": "vitest run"
+    },
+    {
+      "name": "test:integration",
+      "command": "dotenv -e .env -- vitest run --config vitest.integration.config.ts"
+    },
+    {
+      "name": "test:watch",
+      "command": "vitest"
+    },
+    {
+      "name": "typecheck",
+      "command": "tsc --noEmit"
+    },
+    {
+      "name": "ws:dev",
+      "command": "dotenv -e .env -- tsx watch ws-server/index.ts"
+    },
+    {
+      "name": "prepare",
+      "command": "simple-git-hooks"
+    }
+  ],
+  "deployment": {
+    "description": "No Dockerfile or hosting config (no vercel.json/fly/render) in repo. Production start: `node --import tsx server.ts` (custom Next server) plus a separate ws-server process (`node --import tsx ws-server/index.ts`). DB on Supabase PostgreSQL. CI on GitHub Actions (Node 22). .env.example present.",
+    "env_vars": [
+      "DATABASE_URL",
+      "DATABASE_DIRECT_URL (drizzle.config.ts)",
+      "AUTH_SECRET",
+      "AUTH_GOOGLE_ID/SECRET",
+      "AUTH_MICROSOFT_ID/SECRET",
+      "AUTH_DISCORD_ID/SECRET (declared in env.js, no Discord provider configured)",
+      "LLM_PROVIDER",
+      "LLM_BASE_URL",
+      "LLM_MODEL",
+      "LLM_FALLBACK_MODEL",
+      "LLM_MODEL_FAST",
+      "LLM_API_KEY (+_NVIDIA/_VELOCITY/_DEEPSEEK/_GEMINI)",
+      "LLM_BACKUP_PROVIDER/BASE_URL/API_KEY/MODEL/MODEL_FAST",
+      "LLM_EMBEDDING_MODEL/BASE_URL/API_KEY/DIMS/INPUT_TYPE",
+      "LLM_REASONING_EFFORT",
+      "AI_RATE_LIMIT",
+      "AI_SYSTEM_RATE_LIMIT",
+      "RESEND_API_KEY",
+      "RESEND_FROM_EMAIL",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET",
+      "STRIPE_PRICE_PRO_MONTHLY/ANNUAL",
+      "STRIPE_PRICE_TEAM_MONTHLY/ANNUAL",
+      "STRIPE_AUTOMATIC_TAX",
+      "VAPID_PRIVATE_KEY",
+      "VAPID_SUBJECT",
+      "NEXT_PUBLIC_VAPID_PUBLIC_KEY",
+      "NEXT_PUBLIC_APP_URL",
+      "NEXT_PUBLIC_WS_URL",
+      "WS_INTERNAL_URL",
+      "WS_SECRET",
+      "REDIS_NATIVE_URL",
+      "CSP_REPORT_ONLY",
+      "LOG_LEVEL",
+      "NODE_ENV"
+    ],
+    "evidence": "package.json:26-27,35; server.ts:18; ws-server/index.ts:7-9; src/env.js; .github/workflows/ci.yml; README.md:70"
+  },
+  "recent_changes": [
+    "Repo history: first commit 2025-11-18, 478 commits total; HEAD fb5a757 on 2026-10-22 (no commits after that); 78 commits since 2026-09-01.",
+    "2026-10-22 fb5a757 docs(eval): persona 'Desi' eval harness (tests/agents/evals/persona.live.test.ts), 2 runs with gpt-oss-20b, findings and audit (docs/diploma/evals/).",
+    "2026-10-22 5a51e5f feat(ai): page-aware assistant context (src/lib/pageContext.ts, server/llm/context/pageContext.ts, prompts/pageContext.ts), ask-about-page action, configurable opener, chat hydration race fix, pageContext live eval.",
+    "2026-10-17 f7ac3f7 refactor: LLM orchestrator and handoff context handling (prompts/handoffContext.ts).",
+    "2026-10-09 74e77bf AiThreadRail variant prop ('column' | 'sheet'); 84ee05f calendar/layout accessibility; 0f2ef0b Microsoft sign-in + email verification logic; e5d2676 invitation email policy + suppression (invite_suppressions table, invite-optout route/page, migration 0055).",
+    "2026-10-08 eedfc97 subtasks (tasks.parent_task_id, migration 0054).",
+    "2026-10-05..07 per-agent settings for the AI crew (5841ee8, migration 0053), agent names as Greek mythological figures (bbc48dc, 579b338, migration 0052), floating notification cards with auto-dismiss (6c54d36), dashboard localization (f67dd73).",
+    "2026-10-04 Web Push notifications (78978a3, push_subscriptions table, migration 0051), schedulePush (7c54ef9), notification handlers for event/org/work changes (deb27ac), self-hosted Fontsource fonts (864127a), image upload downscaling (4169eff).",
+    "2026-10-02 team management features + loading skeletons (f2b6c7c), chat UI refactor (f7b0dbb).",
+    "2026-09-29 event geocoding (ea4c16d, migration 0050 event coordinates), numeric-only note passwords (73882dd), embedding invalidation/resize to halfvec(2048) (778ef9f, migration 0049), assignee workload logic (bcfd307).",
+    "2026-09-25 live A1 routing eval (367666c), thinking-effort switch in UI (f44adb7), monetisation audit fixes merged (PR #11).",
+    "2026-09-17..19 Stripe billing: subscriptions, live plan handling, seats, cancellation, free month with no card, tax flag, annual plan, Team purchasable (6ab044a..b2ec211); theme/design-token overhaul (b98b019..d3de4d0, docs/theme.md).",
+    "2026-09-09..11 AI reminders + project manager agent (c14c359, 93d737b), dedicated embedding endpoints (405dea2), pgvector migrations (567c372, d3c2ea8), privacy policy update (8847275).",
+    "2026-09-02..07 onboarding sheet (1848f24), calendar enhancements + accessibility (7816190), PDF task extraction tests (fff2b44)."
+  ],
+  "docs_in_repo": "docs/: PROJECT_DOCUMENTATION.md, agent-env-vars.md, agent-implementation-plan.md, codebase-audit-2026-08-19.md, conversation-summary.md, crm-implementation-plan.md, crm-research-and-spec-kairos.md, llm-provider-research-2026-08-21.md, llm-free-provider-research-2026-10-09.md, model-research.md, pro-features-implementation-plan.md, theme.md; additions/ (agent perf/handoff, user feedback, extension, tech-stack analysis, video-chat plan, websockets implementation); agents/ (per-agent docs 1-5, suite plan, roadmap, Bulgarian agent docs kairos-ai-agents-documentation-bg.md, plans/); business/ (competitor-audit-2026-09-27, monetisation-audit-2026-09-19, pricing-strategy.html); design/calendar-concept.html; ui/ (UX audit/fix plans, notes redesign); diploma/evals/ (a1-routing-2026-09-25 results, persona-desi definition, 2 persona runs md+json, findings 2026-10-17, audit-2026-10-18).",
+  "server_actions": {
+    "count": 0,
+    "evidence": "no 'use server' directive found in src/ - all mutations go through tRPC or route handlers"
+  },
+  "trpc_routers": {
+    "evidence": "src/server/api/root.ts:21-39; procedures in src/server/api/routers/*.ts; base procedures src/server/api/trpc.ts:168 (publicProcedure), :178 (protectedProcedure); rateLimitedProcedure src/server/api/routers/agent.ts:104",
+    "total_procedures": 231,
+    "routers": {
+      "agent": "49 - rateLimitStatus, draft, projectChatbot, conversation, latestConversation, taskPlannerDraft/Confirm/Apply, notesVaultDraft/Confirm/Apply, generateTaskDrafts, extractTasksFromPdf, eventsPublisherDraft/Confirm/Apply, orgAdminDraft/Confirm/Apply, projectManagerDraft/Confirm/Apply, agents, names, setName, settings, setSetting, memory, upsertMemory, forgetMemory, clearMemory, searchMessages, conversations, deleteConversation, findings, dismissFinding, findingStats, latestBrief, schedules, setSchedule, customSchedules, create/update/deleteCustomSchedule, previewBrief, taskPlanDiff, undoAvailability, undoApply, metrics",
+      "auth": "9 (public) - signup, verifyEmail, resendVerification, twoFactorStatus, reviewTwoFactorLink, decideTwoFactorLink, requestPasswordReset, verifyResetCode, resetPassword",
+      "billing": "4 - entitlements, summary, createCheckoutSession, createPortalSession",
+      "calendar": "1 - getForRange",
+      "chat": "19 - getParticipantSuggestions, listProjectUsers, getOrCreateProjectConversation, listMessages, sendMessage, listProjectConversations, listAllConversations, getOrCreateDirectConversation, markRead, getUnreadTotal, setConversationPrefs, toggleReaction, editMessage, deleteMessage, togglePin, searchMessages, getConversationDetails, clearHistory, leaveConversation",
+      "event": "14 - createEvent, getFeed(public), getFacets(public), getMySummary, addComment, toggleLike, updateRsvp, deleteEvent, updateEvent, getById(public), getComments(public), getAttendees(public), toggleSave, getHostStats",
+      "integration": "15 - keys, createKey, revokeKey, webhooks, createWebhook, updateWebhook, deleteWebhook, calendar, syncCalendar, disconnectCalendar, documents, addDocument, reindexDocument, deleteDocument, webhookDeliveries",
+      "note": "18 - create, getAll, getSharedWithMe, shareNote, unshareNote, getNoteShares, getNotebooks, createNotebook, updateNotebook, deleteNotebook, moveToNotebook, update, setCalendarDate, delete, setPassword, removePassword, verifyPassword, resetPasswordWithPin",
+      "notification": "10 - getAll, getUnreadCount, markAsRead, markAllAsRead, delete, deleteAll, pushStatus, pushSubscribe, pushUnsubscribe, pushTest",
+      "organization": "36 - listMine, getActive, updateImage, setActive, create, join, getMembers, getProjectInviteCandidates, leave, delete, updateMemberPermissions, updateMemberRole, removeMember, getRoles, createRole, updateRole, deleteRole, lookupInvitee, inviteMember, resendInvite, getMyInvites, acceptInvite, peekInvite, acceptInviteByToken, declineInvite, getInvites, getInviteHistory, cancelInvite, getJoinQr, rotateJoinQr, revokeJoinQr, createInviteLink, listInviteLinks, revokeInviteLink, peekJoinQr, joinWithQr",
+      "profile": "8 - getPublicProfile, getSharedContext, getSuggestions, getActivity, follow, unfollow, listFollows, heartbeat",
+      "progress": "4 - getLeaderboard, getRecord, getTeam, getPulse",
+      "project": "11 - create, getMyProjects, getArchivedProjects, getAllProjectsAcrossOrgs, getById, addCollaborator, removeCollaborator, updateCollaboratorPermission, delete, archiveProject, reopenProject",
+      "search": "1 - workspace",
+      "settings": "15 - get, updateProfile, rotateCalendarFeedToken, revokeCalendarFeedToken, updateNotifications, updateLanguageRegion, sendEmailVerificationCode, confirmEmailVerificationCode, sendTwoFactorCode, setTwoFactor, updateSecurity, updateResetPin, updateAppearance, updatePrivacy, deleteAllData",
+      "task": "11 - create, updateStatus, update, delete, adminDiscard, setCompletionNote, getByProject, getActivityLog, getProjectActivity, getOrgActivity, getForCalendar",
+      "user": "6 - getCurrentUser, setPersonalMode, getProfile, checkOnboardingStatus, uploadProfileImage, searchByEmail"
+    }
+  },
+  "ws_messages": {
+    "client_to_server": [
+      "join:events",
+      "leave:events",
+      "join:org",
+      "leave:org",
+      "join:project",
+      "leave:project",
+      "join:conversation",
+      "leave:conversation",
+      "message:typing",
+      "presence:query"
+    ],
+    "server_to_client": [
+      "presence:snapshot",
+      "presence:update",
+      "message:new",
+      "message:updated",
+      "message:reaction",
+      "message:read",
+      "message:typing",
+      "conversation:updated",
+      "event:created",
+      "event:updated",
+      "event:deleted",
+      "task:created",
+      "task:updated",
+      "task:deleted",
+      "task:assigned",
+      "notification:new",
+      "org:member_joined",
+      "agent:thinking",
+      "agent:result"
+    ],
+    "evidence": "ws-server/rooms.ts:244-299, ws-server/index.ts:221-222, ws-server/presence.ts:99, src/server/ws/emit.ts + routers"
+  },
+  "routes_note": "30 page.tsx files; route guard in src/proxy.ts (Next 16 proxy, replaces middleware.ts) checks the Auth.js session cookie; PUBLIC_PATHS set in src/proxy.ts; src/app/manifest.ts provides a web app manifest"
+}
