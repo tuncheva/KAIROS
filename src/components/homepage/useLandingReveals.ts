@@ -48,12 +48,12 @@ export function useLandingReveals(rootRef: RefObject<HTMLElement | null>): void 
 
         const ctx = gsap.context(() => {
             ups.forEach((el) => {
-                gsap.set(el, { opacity: 0, y: 44, filter: "blur(8px)" });
+                gsap.set(el, { opacity: 0, y: 32, filter: "blur(6px)" });
                 gsap.to(el, {
                     opacity: 1,
                     y: 0,
                     filter: "blur(0px)",
-                    duration: 1.1,
+                    duration: 0.8,
                     ease: ENTER_EASE,
                     scrollTrigger: { trigger: el, start: "top 88%", once: true },
                 });
@@ -63,7 +63,7 @@ export function useLandingReveals(rootRef: RefObject<HTMLElement | null>): void 
                 gsap.set(el, { scaleX: 0, transformOrigin: "left center" });
                 gsap.to(el, {
                     scaleX: 1,
-                    duration: 1.2,
+                    duration: 0.9,
                     ease: ENTER_EASE,
                     scrollTrigger: { trigger: el, start: "top 92%", once: true },
                 });
@@ -74,8 +74,8 @@ export function useLandingReveals(rootRef: RefObject<HTMLElement | null>): void 
                 gsap.set(words, { yPercent: 110 });
                 gsap.to(words, {
                     yPercent: 0,
-                    duration: 1.1,
-                    stagger: 0.055,
+                    duration: 0.8,
+                    stagger: 0.04,
                     ease: "expo.out",
                     scrollTrigger: { trigger: el, start: "top 88%", once: true },
                 });
@@ -87,9 +87,9 @@ export function useLandingReveals(rootRef: RefObject<HTMLElement | null>): void 
                 gsap.to(children, {
                     opacity: 1,
                     y: 0,
-                    duration: 0.9,
-                    stagger: 0.08,
-                    delay: 0.15,
+                    duration: 0.6,
+                    stagger: 0.06,
+                    delay: 0.08,
                     ease: ENTER_EASE,
                     scrollTrigger: { trigger: el, start: "top 88%", once: true },
                 });

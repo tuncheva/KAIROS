@@ -3835,17 +3835,26 @@
       "rsvpMaybe": "Maybe",
       "rsvpNo": "Can’t go",
       "regionLabel": "Region targeting",
-      "regionCount": "2 regions",
       "regionSofia": "Sofia City",
       "regionPlovdiv": "Plovdiv",
-      "pinSofia": "Sofia",
-      "pinPlovdiv": "Plovdiv"
+      "regionsLabel": "Regions",
+      "regionSuggested": "Suggested",
+      "regionFooter": "{count, plural, =0 {No regions yet} one {# region} other {# regions}} · waiting for you",
+      "regionApprove": "Approve",
+      "regionVarna": "Varna",
+      "regionStaraZagora": "Stara Zagora"
     },
     "numbers": {
-      "agents": "agents behind one conversation — you never pick one",
-      "scheduled": "helpers on the clock, opt-in: Daily Brief and Risk Radar",
-      "approval": "changes made without your approval",
-      "encryption": "-bit AES-GCM on every locked note"
+      "agents": "agents behind one chat — Mentor hands each request to the one that owns it",
+      "scheduled": "agents on the clock, opt-in: a morning brief and a risk scan",
+      "approval": "changes land without your approval — every write is a draft first",
+      "encryption": "-bit AES-GCM on locked notes, which no agent ever reads",
+      "label": "Kairos in numbers",
+      "pipeDraft": "Draft",
+      "pipeYou": "You",
+      "pipeApplied": "Applied",
+      "hemeraWhen": "your hour",
+      "argusWhen": "daily scan"
     },
     "now": "Now"
   }
