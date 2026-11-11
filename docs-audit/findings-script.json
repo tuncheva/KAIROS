@@ -1,0 +1,2760 @@
+{
+  "docaudit_schema": 1,
+  "document": "C:\\Users\\ttuncheva\\Downloads\\KAIROS_v09-10.docx",
+  "profile": "pgkmks-diploma",
+  "profile_version": "1",
+  "counts": {
+    "needs_model": 67,
+    "pass": 24,
+    "fail": 41,
+    "not_applicable": 5
+  },
+  "findings": [
+    {
+      "rule": "R-STYLE-010",
+      "title": "Книжовен български език",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "all_text",
+      "expects": "Целият текст е на книжовен български език, без диалектни или чуждоезични вставки извън утвърдените термини.",
+      "source": "§1",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STYLE-020",
+      "title": "Научен (академичен) стил",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "all_text",
+      "expects": "Изложението е в трето лице, безличен научен стил, без обръщения към читателя и без първо лице единствено число.",
+      "source": "§1",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STYLE-030",
+      "title": "Логическа свързаност и структурираност",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "all_text",
+      "expects": "Текстът е логически свързан; всяко твърдение произтича от предходното изложение.",
+      "source": "§1",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STYLE-040",
+      "title": "Цялостно изложение, не кратки бележки",
+      "tag": "mandatory",
+      "check": "script+model",
+      "fix": "draft",
+      "target": "all_sections",
+      "expects": "Всеки раздел е написан като свързано изложение. Раздел, съставен предимно от изброявания или изречения под 40 знака, е нарушение.",
+      "source": "§1",
+      "status": "needs_model",
+      "detail": "No section is structurally fragmentary; the model must still judge whether the exposition is substantive.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STYLE-050",
+      "title": "Без разговорен стил",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "all_text",
+      "expects": "Липсват разговорни изрази, съкратени форми и битова лексика.",
+      "source": "§1",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STYLE-060",
+      "title": "Без жаргон",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "all_text",
+      "expects": "Липсва професионален жаргон и сленг; използват се утвърдените термини.",
+      "source": "§1",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STYLE-070",
+      "title": "Без емоджита",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "all_text",
+      "expects": "no_emoji",
+      "source": "§1",
+      "status": "pass",
+      "detail": "No emoji found.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STYLE-080",
+      "title": "Съкращенията се изписват изцяло при първата употреба",
+      "tag": "mandatory",
+      "check": "script+model",
+      "fix": "draft",
+      "target": "all_text",
+      "expects": "Всяко съкращение е изписано изцяло при първата си употреба.",
+      "source": "§1",
+      "status": "needs_model",
+      "detail": "55 distinct abbreviation(s) found; the model must confirm each is spelled out at its first use.",
+      "evidence": [
+        {
+          "abbreviation": "ПРОЕКТ",
+          "paragraph": 3,
+          "text": "ДИПЛОМЕН ПРОЕКТ"
+        },
+        {
+          "abbreviation": "КАЙРОС",
+          "paragraph": 5,
+          "text": "КАЙРОС (KAIROS) – МУЛТИФУНКЦИОНАЛНА ДИГИТАЛНА ПЛАТФОРМА"
+        },
+        {
+          "abbreviation": "KAIROS",
+          "paragraph": 5,
+          "text": "КАЙРОС (KAIROS) – МУЛТИФУНКЦИОНАЛНА ДИГИТАЛНА ПЛАТФОРМА"
+        },
+        {
+          "abbreviation": "ЗА",
+          "paragraph": 6,
+          "text": "ЗА УПРАВЛЕНИЕ НА ПРОЕКТИ, ЗАДАЧИ И СЪБИТИЯ"
+        },
+        {
+          "abbreviation": "НА",
+          "paragraph": 6,
+          "text": "ЗА УПРАВЛЕНИЕ НА ПРОЕКТИ, ЗАДАЧИ И СЪБИТИЯ"
+        },
+        {
+          "abbreviation": "ЗАДАЧИ",
+          "paragraph": 6,
+          "text": "ЗА УПРАВЛЕНИЕ НА ПРОЕКТИ, ЗАДАЧИ И СЪБИТИЯ"
+        },
+        {
+          "abbreviation": "LLM",
+          "paragraph": 21,
+          "text": "Актуалността на темата произтича от две тенденции. Първата е нарастващата нужда от единна среда, която обхваща целия жиз…"
+        },
+        {
+          "abbreviation": "ИИ",
+          "paragraph": 28,
+          "text": "Проектиране на релационен модел на данните, който описва връзките между потребители, организации, проекти, задачи, бележ…"
+        }
+      ],
+      "evidence_total": 55
+    },
+    {
+      "rule": "R-STYLE-090",
+      "title": "Плавни преходи между разделите",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "all_sections",
+      "expects": "Между разделите има преходни изречения, които свързват изложението.",
+      "source": "§1 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STYLE-100",
+      "title": "Кратко въведение в началото на всеки раздел",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "all_sections",
+      "expects": "Всеки раздел започва с кратко въведение за предмета му.",
+      "source": "§1 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STYLE-110",
+      "title": "Кратко обобщение в края на всеки раздел",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "all_sections",
+      "expects": "Всеки раздел завършва с кратко обобщение на изложеното.",
+      "source": "§1 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STRUCT-010",
+      "title": "Титулна страница",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "structure",
+      "expects": "section_present:cover",
+      "source": "§2",
+      "status": "pass",
+      "detail": "Section 'cover' found at paragraph 0.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STRUCT-020",
+      "title": "Задание за дипломния проект",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "manual",
+      "target": "structure",
+      "expects": "section_present:zadanie",
+      "source": "§2",
+      "status": "fail",
+      "detail": "Required section 'zadanie' was not found in the document.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STRUCT-030",
+      "title": "Съдържание",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "structure",
+      "expects": "section_present:toc",
+      "source": "§2",
+      "status": "pass",
+      "detail": "Section 'toc' found at paragraph 15.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STRUCT-040",
+      "title": "Увод",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "draft",
+      "target": "structure",
+      "expects": "section_present:uvod",
+      "source": "§2",
+      "status": "fail",
+      "detail": "Required section 'uvod' was not found in the document.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STRUCT-050",
+      "title": "Глава I – Теоретична обосновка",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "draft",
+      "target": "structure",
+      "expects": "section_present:chapter1",
+      "source": "§2",
+      "status": "pass",
+      "detail": "Section 'chapter1' found at paragraph 67.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STRUCT-060",
+      "title": "Глава II – Проектиране",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "draft",
+      "target": "structure",
+      "expects": "section_present:chapter2",
+      "source": "§2",
+      "status": "pass",
+      "detail": "Section 'chapter2' found at paragraph 146.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STRUCT-070",
+      "title": "Глава III – Реализация",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "draft",
+      "target": "structure",
+      "expects": "section_present:chapter3",
+      "source": "§2",
+      "status": "pass",
+      "detail": "Section 'chapter3' found at paragraph 400.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STRUCT-080",
+      "title": "Заключение",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "draft",
+      "target": "structure",
+      "expects": "section_present:zaklyuchenie",
+      "source": "§2",
+      "status": "fail",
+      "detail": "Required section 'zaklyuchenie' was not found in the document.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STRUCT-090",
+      "title": "Използвана литература",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "draft",
+      "target": "structure",
+      "expects": "section_present:literatura",
+      "source": "§2",
+      "status": "pass",
+      "detail": "Section 'literatura' found at paragraph 444.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STRUCT-100",
+      "title": "Приложения",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "manual",
+      "target": "structure",
+      "expects": "section_present:prilozheniya",
+      "source": "§2",
+      "status": "not_applicable",
+      "detail": "Skipped because the document has no appendices.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-STRUCT-110",
+      "title": "Точна последователност на разделите",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "manual",
+      "target": "structure",
+      "expects": "section_order:cover,zadanie,toc,uvod,chapter1,chapter2,chapter3,zaklyuchenie,literatura,prilozheniya",
+      "source": "§2",
+      "status": "pass",
+      "detail": "Sections appear in the required order: cover, toc, chapter1, chapter2, chapter3, literatura.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-FMT-010",
+      "title": "Размер на страницата A4",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "page_setup",
+      "expects": "page_size=A4",
+      "source": "§3",
+      "status": "pass",
+      "detail": "All 1 section(s) are A4.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-FMT-020",
+      "title": "Ориентация Portrait",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "page_setup",
+      "expects": "orientation=portrait",
+      "source": "§3",
+      "status": "pass",
+      "detail": "All sections are portrait.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-FMT-030",
+      "title": "Стандартни полета",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "page_setup",
+      "expects": "margins=standard",
+      "source": "§3",
+      "status": "fail",
+      "detail": "4 margin(s) deviate from 2.54 cm by more than 0.3 cm.",
+      "evidence": [
+        {
+          "section": 0,
+          "side": "top",
+          "found": 2.0
+        },
+        {
+          "section": 0,
+          "side": "bottom",
+          "found": 2.0
+        },
+        {
+          "section": 0,
+          "side": "left",
+          "found": 3.0
+        },
+        {
+          "section": 0,
+          "side": "right",
+          "found": 2.0
+        }
+      ],
+      "evidence_total": 4
+    },
+    {
+      "rule": "R-FMT-040",
+      "title": "Всяка глава започва на нова страница",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "chapter_starts",
+      "expects": "preceded_by_page_break",
+      "source": "§3",
+      "status": "fail",
+      "detail": "3 chapter/section heading(s) do not start on a new page.",
+      "evidence": [
+        {
+          "section": "chapter1",
+          "paragraph": 67,
+          "text": "Глава първа"
+        },
+        {
+          "section": "chapter3",
+          "paragraph": 400,
+          "text": "Глава трета"
+        },
+        {
+          "section": "literatura",
+          "paragraph": 444,
+          "text": "ИЗПОЛЗВАНА ЛИТЕРАТУРА"
+        }
+      ],
+      "evidence_total": 3
+    },
+    {
+      "rule": "R-FMT-050",
+      "title": "Номерация след титулната страница",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "page_numbering",
+      "expects": "starts_after_cover",
+      "source": "§3",
+      "status": "fail",
+      "detail": "Page numbering exists but starts on the title page: neither 'different first page' nor a separate section break is set.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-FMT-060",
+      "title": "Основен текст Times New Roman",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "body_paragraphs",
+      "expects": "font=Times New Roman",
+      "source": "§3",
+      "status": "fail",
+      "detail": "205 of 205 body paragraphs are not entirely Times New Roman.",
+      "evidence": [
+        {
+          "paragraph": 71,
+          "found": "unset",
+          "text": "Управлението на проекти и инициативи в малки и средни организации, уче…"
+        },
+        {
+          "paragraph": 72,
+          "found": "unset",
+          "text": "Тази ситуация поражда няколко конкретни трудности. Информацията се раз…"
+        },
+        {
+          "paragraph": 73,
+          "found": "unset",
+          "text": "Фрагментарността затруднява и анализа. Когато данните за задачите, съб…"
+        },
+        {
+          "paragraph": 74,
+          "found": "unset",
+          "text": "Затова е нужна една сигурна среда, която обединява тези процеси. В нея…"
+        },
+        {
+          "paragraph": 76,
+          "found": "unset",
+          "text": "Изкуственият интелект в KAIROS използва готов голям езиков модел, дост…"
+        },
+        {
+          "paragraph": 77,
+          "found": "unset",
+          "text": "Използваният модел в KAIROS е модел с разсъждение (reasoning model) – …"
+        },
+        {
+          "paragraph": 78,
+          "found": "unset",
+          "text": "Връзката с модела е осъществена чрез широко разпространения формат на …"
+        },
+        {
+          "paragraph": 79,
+          "found": "unset",
+          "text": "Поведението на всеки агент се определя от текстова инструкция (system …"
+        }
+      ],
+      "evidence_total": 205
+    },
+    {
+      "rule": "R-FMT-070",
+      "title": "Размер 12 pt",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "body_paragraphs",
+      "expects": "size=12",
+      "source": "§3",
+      "status": "fail",
+      "detail": "205 of 205 body paragraphs are not 12 pt.",
+      "evidence": [
+        {
+          "paragraph": 71,
+          "found": "unset",
+          "text": "Управлението на проекти и инициативи в малки и средни организации, уче…"
+        },
+        {
+          "paragraph": 72,
+          "found": "unset",
+          "text": "Тази ситуация поражда няколко конкретни трудности. Информацията се раз…"
+        },
+        {
+          "paragraph": 73,
+          "found": "unset",
+          "text": "Фрагментарността затруднява и анализа. Когато данните за задачите, съб…"
+        },
+        {
+          "paragraph": 74,
+          "found": "unset",
+          "text": "Затова е нужна една сигурна среда, която обединява тези процеси. В нея…"
+        },
+        {
+          "paragraph": 76,
+          "found": "unset",
+          "text": "Изкуственият интелект в KAIROS използва готов голям езиков модел, дост…"
+        },
+        {
+          "paragraph": 77,
+          "found": "unset",
+          "text": "Използваният модел в KAIROS е модел с разсъждение (reasoning model) – …"
+        },
+        {
+          "paragraph": 78,
+          "found": "unset",
+          "text": "Връзката с модела е осъществена чрез широко разпространения формат на …"
+        },
+        {
+          "paragraph": 79,
+          "found": "unset",
+          "text": "Поведението на всеки агент се определя от текстова инструкция (system …"
+        }
+      ],
+      "evidence_total": 205
+    },
+    {
+      "rule": "R-FMT-080",
+      "title": "Подравняване Justify",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "body_paragraphs",
+      "expects": "alignment=justify",
+      "source": "§3",
+      "status": "fail",
+      "detail": "39 of 205 body paragraphs are not justify.",
+      "evidence": [
+        {
+          "paragraph": 76,
+          "found": "left (unset)",
+          "text": "Изкуственият интелект в KAIROS използва готов голям езиков модел, дост…"
+        },
+        {
+          "paragraph": 77,
+          "found": "left (unset)",
+          "text": "Използваният модел в KAIROS е модел с разсъждение (reasoning model) – …"
+        },
+        {
+          "paragraph": 78,
+          "found": "left (unset)",
+          "text": "Връзката с модела е осъществена чрез широко разпространения формат на …"
+        },
+        {
+          "paragraph": 79,
+          "found": "left (unset)",
+          "text": "Поведението на всеки агент се определя от текстова инструкция (system …"
+        },
+        {
+          "paragraph": 80,
+          "found": "left (unset)",
+          "text": "Езиковият модел поставя три изисквания към архитектурата на приложение…"
+        },
+        {
+          "paragraph": 81,
+          "found": "left (unset)",
+          "text": "Второто изискване е структурата на отговора от модела – за да може про…"
+        },
+        {
+          "paragraph": 82,
+          "found": "left (unset)",
+          "text": "Третото изискване е разделяне на отговорностите при извикване на инстр…"
+        },
+        {
+          "paragraph": 83,
+          "found": "left (unset)",
+          "text": "При всяка заявка моделът получава следните параметри: инструкции, съоб…"
+        }
+      ],
+      "evidence_total": 39
+    },
+    {
+      "rule": "R-FMT-090",
+      "title": "Разстояние между редовете 1.0",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "body_paragraphs",
+      "expects": "line_spacing=1.0",
+      "source": "§3",
+      "status": "fail",
+      "detail": "4 of 205 body paragraphs are not spaced 1.",
+      "evidence": [
+        {
+          "paragraph": 278,
+          "found": "1.5 (direct)",
+          "text": "Всеки агент носи име на персонаж. Работното пространство може да ги пр…"
+        },
+        {
+          "paragraph": 279,
+          "found": "1.5 (direct)",
+          "text": "Освен името всеки агент има собствени настройки – общо 19, описани в к…"
+        },
+        {
+          "paragraph": 309,
+          "found": "1.5 (direct)",
+          "text": "Логиката на сървъра е еднаква за всички устройства. Това, което се раз…"
+        },
+        {
+          "paragraph": 312,
+          "found": "1.5 (direct)",
+          "text": "При отваряне на приложението абонаментът се обновява, за да се поддърж…"
+        }
+      ],
+      "evidence_total": 4
+    },
+    {
+      "rule": "R-FMT-100",
+      "title": "Йерархична номерация на заглавията",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "manual",
+      "target": "headings",
+      "expects": "hierarchical_numbering",
+      "source": "§3",
+      "status": "fail",
+      "detail": "7 heading(s) skip a numbering level.",
+      "evidence": [
+        {
+          "paragraph": 19,
+          "found": "0.1",
+          "text": "0.1. Актуалност на темата",
+          "why": "level 2 heading without a 0 above it"
+        },
+        {
+          "paragraph": 22,
+          "found": "0.2",
+          "text": "0.2. Научен проблем",
+          "why": "level 2 heading without a 0 above it"
+        },
+        {
+          "paragraph": 24,
+          "found": "0.3",
+          "text": "0.3. Цел и задачи на разработката",
+          "why": "level 2 heading without a 0 above it"
+        },
+        {
+          "paragraph": 37,
+          "found": "0.4",
+          "text": "0.4. Методи на изследване",
+          "why": "level 2 heading without a 0 above it"
+        },
+        {
+          "paragraph": 39,
+          "found": "0.5",
+          "text": "0.5. Ограничения на разработката",
+          "why": "level 2 heading without a 0 above it"
+        },
+        {
+          "paragraph": 43,
+          "found": "0.6",
+          "text": "0.6. Структура на разработката",
+          "why": "level 2 heading without a 0 above it"
+        },
+        {
+          "paragraph": 45,
+          "found": "0.7",
+          "text": "0.7. Очаквани резултати",
+          "why": "level 2 heading without a 0 above it"
+        }
+      ],
+      "evidence_total": 7
+    },
+    {
+      "rule": "R-FMT-110",
+      "title": "Изброяванията са с булети, не с тирета",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "enumerations",
+      "expects": "no_dash_bullets",
+      "source": "§3",
+      "status": "pass",
+      "detail": "No dash-style enumerations found.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-FMT-120",
+      "title": "Без излишни празни редове",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "paragraph_spacing",
+      "expects": "no_consecutive_empty_paragraphs",
+      "source": "§3",
+      "status": "fail",
+      "detail": "9 run(s) of two or more consecutive empty paragraphs.",
+      "evidence": [
+        {
+          "paragraphs": "0–2",
+          "count": 3
+        },
+        {
+          "paragraphs": "8–10",
+          "count": 3
+        },
+        {
+          "paragraphs": "13–14",
+          "count": 2
+        },
+        {
+          "paragraphs": "16–17",
+          "count": 2
+        },
+        {
+          "paragraphs": "47–66",
+          "count": 20
+        },
+        {
+          "paragraphs": "281–282",
+          "count": 2
+        },
+        {
+          "paragraphs": "366–367",
+          "count": 2
+        },
+        {
+          "paragraphs": "419–432",
+          "count": 14
+        }
+      ],
+      "evidence_total": 9
+    },
+    {
+      "rule": "R-COVER-010",
+      "title": "Лого на ПГКМКС на корицата",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "manual",
+      "target": "cover_page",
+      "expects": "contains_image",
+      "source": "§3",
+      "status": "pass",
+      "detail": "The cover page contains an image.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-COVER-020",
+      "title": "Пълно име на училището",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "cover_page",
+      "expects": "contains_text:ПГКМКС",
+      "source": "§3",
+      "status": "fail",
+      "detail": "Cover does not contain 'ПГКМКС'.",
+      "evidence": [
+        {
+          "cover_text": "ДИПЛОМЕН ПРОЕКТ / Тема: / КАЙРОС (KAIROS) – МУЛТИФУНКЦИОНАЛНА ДИГИТАЛНА ПЛАТФОРМА / ЗА УПРАВЛЕНИЕ НА ПРОЕКТИ, ЗАДАЧИ И СЪБИТИЯ / С ВГРАДЕНА МНОГОАГЕНТНА СИСТЕМА С ИЗКУСТВЕН ИНТЕЛЕКТ / Варна / 2027 г."
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-COVER-030",
+      "title": "Заглавие „ПРОЕКТ\"",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "cover_page",
+      "expects": "contains_text:ПРОЕКТ",
+      "source": "§3",
+      "status": "pass",
+      "detail": "Cover contains 'ПРОЕКТ'.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-COVER-040",
+      "title": "Заглавие „ДИПЛОМЕН ПРОЕКТ\"",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "cover_page",
+      "expects": "contains_text:ДИПЛОМЕН ПРОЕКТ",
+      "source": "§3",
+      "status": "pass",
+      "detail": "Cover contains 'ДИПЛОМЕН ПРОЕКТ'.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-COVER-050",
+      "title": "Тема",
+      "tag": "mandatory",
+      "check": "script+model",
+      "fix": "auto",
+      "target": "cover_page",
+      "expects": "На корицата е изписана темата на дипломния проект.",
+      "source": "§3",
+      "status": "needs_model",
+      "detail": "Cover matches /(?i)тема/. The model must still judge the substance.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-COVER-060",
+      "title": "Име на ученика",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "manual",
+      "target": "cover_page",
+      "expects": "На корицата е изписано пълното име на ученика.",
+      "source": "§3",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-COVER-070",
+      "title": "Клас",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "manual",
+      "target": "cover_page",
+      "expects": "contains_pattern:\\b\\d{1,2}\\s*[А-Я]\\b|клас",
+      "source": "§3",
+      "status": "fail",
+      "detail": "Cover does not match /\\b\\d{1,2}\\s*[А-Я]\\b|клас/.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-COVER-080",
+      "title": "Име на ръководителя",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "manual",
+      "target": "cover_page",
+      "expects": "На корицата е изписано името на ръководителя на проекта.",
+      "source": "§3",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-COVER-090",
+      "title": "Варна",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "cover_page",
+      "expects": "contains_text:Варна",
+      "source": "§3",
+      "status": "pass",
+      "detail": "Cover contains 'Варна'.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-COVER-100",
+      "title": "Година",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "cover_page",
+      "expects": "contains_pattern:20\\d{2}",
+      "source": "§3",
+      "status": "pass",
+      "detail": "Cover matches /20\\d{2}/.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-VIS-010",
+      "title": "Лого на приложението",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "manual",
+      "target": "document",
+      "expects": "Документът съдържа лого на разработеното приложение.",
+      "source": "§3 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-VIS-020",
+      "title": "Цветова идентичност на документа",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "manual",
+      "target": "document",
+      "expects": "Документът следва последователна цветова идентичност.",
+      "source": "§3 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-VIS-030",
+      "title": "Hero банер на проекта",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "manual",
+      "target": "document",
+      "expects": "Документът съдържа въвеждащ банер на проекта.",
+      "source": "§3 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-VIS-040",
+      "title": "Банери за отделните глави",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "manual",
+      "target": "document",
+      "expects": "Всяка глава започва с банер в единен стил.",
+      "source": "§3 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-VIS-050",
+      "title": "Икони с единен стил",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "manual",
+      "target": "document",
+      "expects": "Използваните икони са в единен стил.",
+      "source": "§3 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-INTRO-010",
+      "title": "Обем 1–5 машинописни страници",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "draft",
+      "target": "section:uvod",
+      "expects": "pages_between=1,5",
+      "source": "§4",
+      "status": "fail",
+      "detail": "Section 'uvod' is missing, so this rule cannot be satisfied.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-INTRO-020",
+      "title": "Актуалност на темата",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:uvod",
+      "expects": "Уводът обосновава актуалността на темата с конкретни аргументи.",
+      "source": "§4",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-INTRO-030",
+      "title": "Научен проблем",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:uvod",
+      "expects": "Уводът формулира изрично научния проблем.",
+      "source": "§4",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-INTRO-040",
+      "title": "Основна цел",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:uvod",
+      "expects": "Уводът формулира една ясна основна цел на разработката.",
+      "source": "§4",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-INTRO-050",
+      "title": "Основни задачи",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:uvod",
+      "expects": "Уводът изброява основните задачи, произтичащи от целта.",
+      "source": "§4",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-INTRO-060",
+      "title": "Използвани методи",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:uvod",
+      "expects": "Уводът описва използваните методи на изследване и разработка.",
+      "source": "§4",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-INTRO-070",
+      "title": "Ограничения на разработката",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:uvod",
+      "expects": "Уводът посочва ограниченията на разработката.",
+      "source": "§4",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH1-010",
+      "title": "1.1 Проблем",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter1",
+      "expects": "Подраздел 1.1 описва текущото състояние, съществуващия проблем, недостатъците на съществуващите решения и защо е необходимо ново решение — и четирите елемента.",
+      "source": "§5.1",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH1-020",
+      "title": "1.2 Решение и цел",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter1",
+      "expects": "Подраздел 1.2 описва разработваната система, предназначението ѝ, основната цел и конкретните задачи.",
+      "source": "§5.2",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH1-030",
+      "title": "1.3 Конкурентен анализ",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter1",
+      "expects": "За всеки конкурент са дадени описание, функции, предимства и недостатъци. Анализът покрива поне два конкурента.",
+      "source": "§5.3",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH1-040",
+      "title": "Отличаване на проекта след конкурентния анализ",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter1",
+      "expects": "След конкурентния анализ е обяснено какво отличава проекта от разгледаните решения.",
+      "source": "§5.3",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH1-050",
+      "title": "1.4 SWOT анализ",
+      "tag": "mandatory",
+      "check": "script+model",
+      "fix": "draft",
+      "target": "section:chapter1",
+      "expects": "Присъстват и четирите елемента — Strengths, Weaknesses, Opportunities, Threats.",
+      "source": "§5.4",
+      "status": "fail",
+      "detail": "'chapter1' is missing 4 required element(s): Strengths, Weaknesses, Opportunities, Threats.",
+      "evidence": [
+        {
+          "missing": [
+            "Strengths",
+            "Weaknesses",
+            "Opportunities",
+            "Threats"
+          ],
+          "found": []
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-CH1-060",
+      "title": "Анализ след SWOT таблицата",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter1",
+      "expects": "След SWOT таблицата следва текстови анализ на изводите от нея.",
+      "source": "§5.4",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH1-070",
+      "title": "1.5 Икономически аспекти",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter1",
+      "expects": "Описани са разходи за разработка, разходи за поддръжка, потенциални приходи и бизнес модел.",
+      "source": "§5.5",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH1-080",
+      "title": "Business Model Canvas",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter1",
+      "expects": "Включен е Business Model Canvas.",
+      "source": "§5 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH1-090",
+      "title": "ROI анализ",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter1",
+      "expects": "Включен е анализ на възвръщаемостта на инвестицията.",
+      "source": "§5 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH1-100",
+      "title": "Анализ на пазара",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter1",
+      "expects": "Включен е анализ на пазара.",
+      "source": "§5 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH1-110",
+      "title": "Целева аудитория",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter1",
+      "expects": "Описана е целевата аудитория на решението.",
+      "source": "§5 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH1-120",
+      "title": "User Persona",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "document",
+      "expects": "Включен е поне един профил на типичен потребител (User Persona).",
+      "source": "§17 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH1-130",
+      "title": "User Stories",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "document",
+      "expects": "Включени са потребителски истории (User Stories).",
+      "source": "§17 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH2-010",
+      "title": "2.1 Използвани технологии",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter2",
+      "expects": "За всяка технология са дадени описание, причина за избора, място на използване и предимства.",
+      "source": "§6.1",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH2-020",
+      "title": "2.2 Среда за разработка",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter2",
+      "expects": "Описани са използваните инструменти за разработка.",
+      "source": "§6.2",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH2-030",
+      "title": "2.3 Use Case диаграма",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "generate",
+      "target": "figures",
+      "expects": "diagram_present:use_case",
+      "source": "§6.3",
+      "status": "pass",
+      "detail": "Found 2 figure(s) identified as 'use_case'.",
+      "evidence": [
+        {
+          "figure": 2,
+          "caption": "Фигура 2. Use Case диаграма на системата KAIROS"
+        },
+        {
+          "figure": 3,
+          "caption": "Фигура 3. Site Map на платформата KAIROS"
+        }
+      ],
+      "evidence_total": 2
+    },
+    {
+      "rule": "R-CH2-040",
+      "title": "Подробно описание след Use Case диаграмата",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter2",
+      "expects": "След Use Case диаграмата следва подробно описание на ролите и действията.",
+      "source": "§6.3",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH2-050",
+      "title": "2.4 Site Map",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "generate",
+      "target": "figures",
+      "expects": "diagram_present:site_map",
+      "source": "§6.4",
+      "status": "pass",
+      "detail": "Found 2 figure(s) identified as 'site_map'.",
+      "evidence": [
+        {
+          "figure": 2,
+          "caption": "Фигура 2. Use Case диаграма на системата KAIROS"
+        },
+        {
+          "figure": 3,
+          "caption": "Фигура 3. Site Map на платформата KAIROS"
+        }
+      ],
+      "evidence_total": 2
+    },
+    {
+      "rule": "R-CH2-060",
+      "title": "2.5 Mind Map",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "generate",
+      "target": "figures",
+      "expects": "diagram_present:mind_map",
+      "source": "§6.5",
+      "status": "fail",
+      "detail": "No figure identified as a 'mind_map' diagram.",
+      "evidence": [
+        {
+          "figures_present": [
+            "Фигура 1. SWOT анализ на платформата KAIROS",
+            "Фигура 2. Use Case диаграма на системата KAIROS",
+            "Фигура 3. Site Map на платформата KAIROS",
+            "Фигура 4. Многослойна архитектура на платформата KAIROS",
+            "Фигура 5. Домейни в релационния модел на данните",
+            "Фигура 6. Архитектура на многоагентната система на KAIROS",
+            "Фигура 7. Последователност на един ход на многоагентната система",
+            "Фигура 8. Жизнен цикъл на плана на пишещ агент: чернова, потвърждение, прилагане и отмяна"
+          ]
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-CH2-070",
+      "title": "2.6 Архитектура на приложението",
+      "tag": "mandatory",
+      "check": "script+model",
+      "fix": "generate",
+      "target": "section:chapter2",
+      "expects": "Присъства архитектурна диаграма и описание на връзките между Frontend, Backend, база данни и външни услуги.",
+      "source": "§6.6",
+      "status": "fail",
+      "detail": "'chapter2' contains none of: Frontend, фронтенд, клиентска част, Backend, бекенд, сървърна част.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH2-080",
+      "title": "Class Diagram",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "generate",
+      "target": "figures",
+      "expects": "diagram_present:class",
+      "source": "§6 (препоръчително)",
+      "status": "fail",
+      "detail": "No figure identified as a 'class' diagram.",
+      "evidence": [
+        {
+          "figures_present": [
+            "Фигура 1. SWOT анализ на платформата KAIROS",
+            "Фигура 2. Use Case диаграма на системата KAIROS",
+            "Фигура 3. Site Map на платформата KAIROS",
+            "Фигура 4. Многослойна архитектура на платформата KAIROS",
+            "Фигура 5. Домейни в релационния модел на данните",
+            "Фигура 6. Архитектура на многоагентната система на KAIROS",
+            "Фигура 7. Последователност на един ход на многоагентната система",
+            "Фигура 8. Жизнен цикъл на плана на пишещ агент: чернова, потвърждение, прилагане и отмяна"
+          ]
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-CH2-090",
+      "title": "Activity Diagram",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "generate",
+      "target": "figures",
+      "expects": "diagram_present:activity",
+      "source": "§6 (препоръчително)",
+      "status": "fail",
+      "detail": "No figure identified as a 'activity' diagram.",
+      "evidence": [
+        {
+          "figures_present": [
+            "Фигура 1. SWOT анализ на платформата KAIROS",
+            "Фигура 2. Use Case диаграма на системата KAIROS",
+            "Фигура 3. Site Map на платформата KAIROS",
+            "Фигура 4. Многослойна архитектура на платформата KAIROS",
+            "Фигура 5. Домейни в релационния модел на данните",
+            "Фигура 6. Архитектура на многоагентната система на KAIROS",
+            "Фигура 7. Последователност на един ход на многоагентната система",
+            "Фигура 8. Жизнен цикъл на плана на пишещ агент: чернова, потвърждение, прилагане и отмяна"
+          ]
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-CH2-100",
+      "title": "Sequence Diagram",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "generate",
+      "target": "figures",
+      "expects": "diagram_present:sequence",
+      "source": "§6 (препоръчително)",
+      "status": "fail",
+      "detail": "No figure identified as a 'sequence' diagram.",
+      "evidence": [
+        {
+          "figures_present": [
+            "Фигура 1. SWOT анализ на платформата KAIROS",
+            "Фигура 2. Use Case диаграма на системата KAIROS",
+            "Фигура 3. Site Map на платформата KAIROS",
+            "Фигура 4. Многослойна архитектура на платформата KAIROS",
+            "Фигура 5. Домейни в релационния модел на данните",
+            "Фигура 6. Архитектура на многоагентната система на KAIROS",
+            "Фигура 7. Последователност на един ход на многоагентната система",
+            "Фигура 8. Жизнен цикъл на плана на пишещ агент: чернова, потвърждение, прилагане и отмяна"
+          ]
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-CH2-110",
+      "title": "Component Diagram",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "generate",
+      "target": "figures",
+      "expects": "diagram_present:component",
+      "source": "§6 (препоръчително)",
+      "status": "fail",
+      "detail": "No figure identified as a 'component' diagram.",
+      "evidence": [
+        {
+          "figures_present": [
+            "Фигура 1. SWOT анализ на платформата KAIROS",
+            "Фигура 2. Use Case диаграма на системата KAIROS",
+            "Фигура 3. Site Map на платформата KAIROS",
+            "Фигура 4. Многослойна архитектура на платформата KAIROS",
+            "Фигура 5. Домейни в релационния модел на данните",
+            "Фигура 6. Архитектура на многоагентната система на KAIROS",
+            "Фигура 7. Последователност на един ход на многоагентната система",
+            "Фигура 8. Жизнен цикъл на плана на пишещ агент: чернова, потвърждение, прилагане и отмяна"
+          ]
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-CH2-120",
+      "title": "Deployment Diagram",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "generate",
+      "target": "figures",
+      "expects": "diagram_present:deployment",
+      "source": "§6 (препоръчително)",
+      "status": "fail",
+      "detail": "No figure identified as a 'deployment' diagram.",
+      "evidence": [
+        {
+          "figures_present": [
+            "Фигура 1. SWOT анализ на платформата KAIROS",
+            "Фигура 2. Use Case диаграма на системата KAIROS",
+            "Фигура 3. Site Map на платформата KAIROS",
+            "Фигура 4. Многослойна архитектура на платформата KAIROS",
+            "Фигура 5. Домейни в релационния модел на данните",
+            "Фигура 6. Архитектура на многоагентната система на KAIROS",
+            "Фигура 7. Последователност на един ход на многоагентната система",
+            "Фигура 8. Жизнен цикъл на плана на пишещ агент: чернова, потвърждение, прилагане и отмяна"
+          ]
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-CH3-010",
+      "title": "3.1 ER диаграма",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "generate",
+      "target": "figures",
+      "expects": "diagram_present:er",
+      "source": "§7.1",
+      "status": "pass",
+      "detail": "Found 1 figure(s) identified as 'er'.",
+      "evidence": [
+        {
+          "figure": 17,
+          "caption": "Фигура 17. Релационен модел (ER диаграма) на базата данни на KAIROS"
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-CH3-020",
+      "title": "Описание след ER диаграмата",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter3",
+      "expects": "След ER диаграмата следва описание на таблиците, връзките, първичните и външните ключове.",
+      "source": "§7.1",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH3-030",
+      "title": "3.1.1 SQL заявки",
+      "tag": "mandatory",
+      "check": "script+model",
+      "fix": "draft",
+      "target": "section:chapter3",
+      "expects": "Представени са реално използвани SQL заявки, включващи SELECT, JOIN, INSERT, UPDATE и DELETE.",
+      "source": "§7.1.1",
+      "status": "fail",
+      "detail": "'chapter3' is missing 5 required element(s): SELECT, JOIN, INSERT, UPDATE, DELETE.",
+      "evidence": [
+        {
+          "missing": [
+            "SELECT",
+            "JOIN",
+            "INSERT",
+            "UPDATE",
+            "DELETE"
+          ],
+          "found": []
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-CH3-040",
+      "title": "3.2 Функционалности",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter3",
+      "expects": "За всяка реализирана функционалност са описани предназначение, начин на работа, входни данни и резултат.",
+      "source": "§7.2",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH3-050",
+      "title": "3.3 Алгоритми",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter3",
+      "expects": "Описани са използваните алгоритми — регистрация, вход, обработка на данни, хеширане на пароли, валидиране.",
+      "source": "§7.3",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH3-060",
+      "title": "3.4 Сигурност",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter3",
+      "expects": "Описани са защитата на паролите, защитата на данните, валидирането и защитата от атаки.",
+      "source": "§7.4",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH3-070",
+      "title": "REST API документация",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter3",
+      "expects": "Включена е документация на REST API.",
+      "source": "§7 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH3-080",
+      "title": "Swagger",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter3",
+      "expects": "Включена е Swagger/OpenAPI спецификация или препратка към нея.",
+      "source": "§7 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH3-090",
+      "title": "Описание на всички endpoints",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter3",
+      "expects": "Описани са всички налични endpoints на системата.",
+      "source": "§7 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH3-100",
+      "title": "Производителност",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter3",
+      "expects": "Описана е производителността на системата.",
+      "source": "§7 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH3-110",
+      "title": "Оптимизации",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter3",
+      "expects": "Описани са приложените оптимизации.",
+      "source": "§7 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-CH3-120",
+      "title": "Кеширане",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "section:chapter3",
+      "expects": "Описан е механизмът на кеширане.",
+      "source": "§7 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-DIAG-010",
+      "title": "SWOT диаграма",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "generate",
+      "target": "figures",
+      "expects": "diagram_present:swot",
+      "source": "§8",
+      "status": "pass",
+      "detail": "Found 1 figure(s) identified as 'swot'.",
+      "evidence": [
+        {
+          "figure": 1,
+          "caption": "Фигура 1. SWOT анализ на платформата KAIROS"
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-DIAG-070",
+      "title": "Всяка диаграма има номер, заглавие, описание и препратка",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "draft",
+      "target": "figures",
+      "expects": "figure_has:number,title,caption_below,in_text_reference",
+      "source": "§8",
+      "status": "fail",
+      "detail": "17 figure(s) lack a required caption element.",
+      "evidence": [
+        {
+          "figure": 1,
+          "caption": "Фигура 1. SWOT анализ на платформата KAIROS",
+          "missing": "in_text_reference"
+        },
+        {
+          "figure": 2,
+          "caption": "Фигура 2. Use Case диаграма на системата KAIROS",
+          "missing": "in_text_reference"
+        },
+        {
+          "figure": 3,
+          "caption": "Фигура 3. Site Map на платформата KAIROS",
+          "missing": "in_text_reference"
+        },
+        {
+          "figure": 5,
+          "caption": "Фигура 5. Домейни в релационния модел на данните",
+          "missing": "in_text_reference"
+        },
+        {
+          "figure": 6,
+          "caption": "Фигура 6. Архитектура на многоагентната система на KAIROS",
+          "missing": "in_text_reference"
+        },
+        {
+          "figure": 7,
+          "caption": "Фигура 7. Последователност на един ход на многоагентната система",
+          "missing": "in_text_reference"
+        },
+        {
+          "figure": 8,
+          "caption": "Фигура 8. Жизнен цикъл на плана на пишещ агент: чернова, потвърждение, прилагане и отмяна",
+          "missing": "in_text_reference"
+        },
+        {
+          "figure": 9,
+          "caption": "Фигура 9. Конвейер за извличане с обогатяване над качени документи",
+          "missing": "in_text_reference"
+        }
+      ],
+      "evidence_total": 17,
+      "fix_reason": "an uncaptioned figure needs a title and description written"
+    },
+    {
+      "rule": "R-DIAG-080",
+      "title": "Activity Diagram",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "generate",
+      "target": "figures",
+      "expects": "diagram_present:activity",
+      "source": "§8 (препоръчително)",
+      "status": "fail",
+      "detail": "No figure identified as a 'activity' diagram.",
+      "evidence": [
+        {
+          "figures_present": [
+            "Фигура 1. SWOT анализ на платформата KAIROS",
+            "Фигура 2. Use Case диаграма на системата KAIROS",
+            "Фигура 3. Site Map на платформата KAIROS",
+            "Фигура 4. Многослойна архитектура на платформата KAIROS",
+            "Фигура 5. Домейни в релационния модел на данните",
+            "Фигура 6. Архитектура на многоагентната система на KAIROS",
+            "Фигура 7. Последователност на един ход на многоагентната система",
+            "Фигура 8. Жизнен цикъл на плана на пишещ агент: чернова, потвърждение, прилагане и отмяна"
+          ]
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-DIAG-120",
+      "title": "Flowchart",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "generate",
+      "target": "figures",
+      "expects": "diagram_present:flowchart",
+      "source": "§8 (препоръчително)",
+      "status": "fail",
+      "detail": "No figure identified as a 'flowchart' diagram.",
+      "evidence": [
+        {
+          "figures_present": [
+            "Фигура 1. SWOT анализ на платформата KAIROS",
+            "Фигура 2. Use Case диаграма на системата KAIROS",
+            "Фигура 3. Site Map на платформата KAIROS",
+            "Фигура 4. Многослойна архитектура на платформата KAIROS",
+            "Фигура 5. Домейни в релационния модел на данните",
+            "Фигура 6. Архитектура на многоагентната система на KAIROS",
+            "Фигура 7. Последователност на един ход на многоагентната система",
+            "Фигура 8. Жизнен цикъл на плана на пишещ агент: чернова, потвърждение, прилагане и отмяна"
+          ]
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-FIG-010",
+      "title": "Формат на надписа „Фигура N. Име.\"",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "draft",
+      "target": "figures",
+      "expects": "caption_pattern:^Фигура\\s+\\d+\\.\\s+.+",
+      "source": "§9",
+      "status": "fail",
+      "detail": "0 malformed caption(s) and 2 uncaptioned image(s).",
+      "evidence": [
+        {
+          "paragraph": 489,
+          "found": "image with no 'Фигура N.' caption"
+        },
+        {
+          "paragraph": 489,
+          "found": "image with no 'Фигура N.' caption"
+        }
+      ],
+      "evidence_total": 2,
+      "fix_reason": "an image with no caption needs a title written for it, not just renumbering"
+    },
+    {
+      "rule": "R-FIG-020",
+      "title": "Подробно описание след фигурата",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "figures",
+      "expects": "След всяка фигура следва подробно описание на съдържанието ѝ.",
+      "source": "§9",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-FIG-030",
+      "title": "Препратка в текста",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "draft",
+      "target": "figures",
+      "expects": "in_text_reference",
+      "source": "§9",
+      "status": "fail",
+      "detail": "15 figure(s) are never referenced in the running text.",
+      "evidence": [
+        {
+          "figure": 1,
+          "caption": "Фигура 1. SWOT анализ на платформата KAIROS"
+        },
+        {
+          "figure": 2,
+          "caption": "Фигура 2. Use Case диаграма на системата KAIROS"
+        },
+        {
+          "figure": 3,
+          "caption": "Фигура 3. Site Map на платформата KAIROS"
+        },
+        {
+          "figure": 5,
+          "caption": "Фигура 5. Домейни в релационния модел на данните"
+        },
+        {
+          "figure": 6,
+          "caption": "Фигура 6. Архитектура на многоагентната система на KAIROS"
+        },
+        {
+          "figure": 7,
+          "caption": "Фигура 7. Последователност на един ход на многоагентната система"
+        },
+        {
+          "figure": 8,
+          "caption": "Фигура 8. Жизнен цикъл на плана на пишещ агент: чернова, потвърждение, прилагане и отмяна"
+        },
+        {
+          "figure": 9,
+          "caption": "Фигура 9. Конвейер за извличане с обогатяване над качени документи"
+        }
+      ],
+      "evidence_total": 15
+    },
+    {
+      "rule": "R-FIG-040",
+      "title": "Последователна номерация на фигурите",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "figures",
+      "expects": "sequential_numbering",
+      "source": "§9",
+      "status": "fail",
+      "detail": "Figure numbering is not 1..N in document order.",
+      "evidence": [
+        {
+          "found": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            19,
+            20
+          ],
+          "expected": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19
+          ]
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-FIG-050",
+      "title": "Screenshots на основните функционалности",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "manual",
+      "target": "figures",
+      "expects": "Включени са екранни снимки на основните функционалности.",
+      "source": "§9 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-TBL-010",
+      "title": "Заглавие „Таблица N. Име.\" над таблицата",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "draft",
+      "target": "tables",
+      "expects": "caption_pattern_above:^Таблица\\s+\\d+\\.\\s+.+",
+      "source": "§10",
+      "status": "fail",
+      "detail": "12 of 12 table(s) lack a correct title above the table.",
+      "evidence": [
+        {
+          "table": 0,
+          "first_row": [
+            "Изготвил:",
+            "Ръководител-консултант:"
+          ],
+          "found": "no 'Таблица N.' caption"
+        },
+        {
+          "table": 1,
+          "found": "Таблица 1 сравнява KAIROS с преките конкуренти. „Шаблон“ означава, че функцията може да се сглоби от потребителя чрез шаблон или форма, но не е вградена в продукта. Atlassian (Rovo) е сравнен само по слабостите и цената (таблици 2 и 4)."
+        },
+        {
+          "table": 2,
+          "found": "Таблица 2: Слабости на конкурентите и решението в KAIROS"
+        },
+        {
+          "table": 3,
+          "found": "Таблица 3: Икономически параметри на проекта"
+        },
+        {
+          "table": 4,
+          "found": "Таблица 4: Как конкурентите таксуват ИИ (към септември 2026 г.)"
+        },
+        {
+          "table": 5,
+          "found": "Таблица 5: Технологичен стек по слоеве"
+        },
+        {
+          "table": 6,
+          "found": "Таблица 6: Домейни и таблици в базата данни"
+        },
+        {
+          "table": 7,
+          "found": "Таблица 7: Разговорни агенти на платформата KAIROS"
+        }
+      ],
+      "evidence_total": 12,
+      "fix_reason": "a table with no title needs one written for it, not just renumbering"
+    },
+    {
+      "rule": "R-TBL-020",
+      "title": "Центрирана таблица",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "tables",
+      "expects": "alignment=center",
+      "source": "§10",
+      "status": "fail",
+      "detail": "1 of 12 table(s) are not center-aligned.",
+      "evidence": [
+        {
+          "table": 0,
+          "found": "left",
+          "first_row": [
+            "Изготвил:",
+            "Ръководител-консултант:"
+          ]
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-TBL-030",
+      "title": "Без големи празни пространства",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "manual",
+      "target": "tables",
+      "expects": "max_empty_cell_ratio=0.3",
+      "source": "§10",
+      "status": "pass",
+      "detail": "No table exceeds 30% empty cells.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-TBL-040",
+      "title": "Таблицата е описана в текста",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "tables",
+      "expects": "Всяка таблица е описана и коментирана в текста.",
+      "source": "§10",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-TBL-050",
+      "title": "Последователна номерация на таблиците",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "tables",
+      "expects": "sequential_numbering",
+      "source": "§10",
+      "status": "fail",
+      "detail": "Table numbering is not 1..N in document order.",
+      "evidence": [
+        {
+          "found": [
+            1,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          "expected": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        }
+      ],
+      "evidence_total": 1
+    },
+    {
+      "rule": "R-FRM-010",
+      "title": "Номерирани формули",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "formulas",
+      "expects": "numbered",
+      "source": "§11",
+      "status": "not_applicable",
+      "detail": "Skipped because the document contains no formulas.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-FRM-020",
+      "title": "Въведени с Equation Editor",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "manual",
+      "target": "formulas",
+      "expects": "is_omml",
+      "source": "§11",
+      "status": "not_applicable",
+      "detail": "Skipped because the document contains no formulas.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-FRM-030",
+      "title": "Описание на означенията след формулата",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "draft",
+      "target": "formulas",
+      "expects": "След всяка формула са описани означенията на използваните величини.",
+      "source": "§11",
+      "status": "not_applicable",
+      "detail": "Skipped because the document contains no formulas.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-LIT-010",
+      "title": "Допустими източници",
+      "tag": "mandatory",
+      "check": "script+model",
+      "fix": "manual",
+      "target": "section:literatura",
+      "expects": "Източниците са само книги, научни статии, официална документация и официални сайтове.",
+      "source": "§12",
+      "status": "needs_model",
+      "detail": "53 literature entr(ies) and 11 URL(s) extracted; the model must judge whether every source type is permitted.",
+      "evidence": [
+        {
+          "paragraph": 445,
+          "text": "1. Vaswani, A., Shazeer, N., Parmar, N. et al. (2017). Attention Is All You Need. Advances in Neural Information Process…"
+        },
+        {
+          "paragraph": 446,
+          "text": "2. Brown, T., Mann, B., Ryder, N. et al. (2020). Language Models are Few-Shot Learners. Advances in Neural Information P…"
+        },
+        {
+          "paragraph": 447,
+          "text": "3. Ouyang, L., Wu, J., Jiang, X. et al. (2022). Training Language Models to Follow Instructions with Human Feedback. – О…"
+        },
+        {
+          "paragraph": 448,
+          "text": "4. Lewis, P., Perez, E., Piktus, A. et al. (2020). Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks. Adv…"
+        },
+        {
+          "paragraph": 449,
+          "text": "5. Yao, S., Zhao, J., Yu, D. et al. (2023). ReAct: Synergizing Reasoning and Acting in Language Models. International Co…"
+        },
+        {
+          "paragraph": 450,
+          "text": "6. Schick, T., Dwivedi-Yu, J., Dessì, R. et al. (2023). Toolformer: Language Models Can Teach Themselves to Use Tools. –…"
+        },
+        {
+          "paragraph": 451,
+          "text": "7. Wu, Q., Bansal, G., Zhang, J. et al. (2023). AutoGen: Enabling Next-Generation LLM Applications via Multi-Agent Conve…"
+        },
+        {
+          "paragraph": 452,
+          "text": "8. Biryukov, A., Dinu, D., Khovratovich, D. (2016). Argon2: The Memory-Hard Function for Password Hashing and Other Appl…"
+        }
+      ],
+      "evidence_total": 53
+    },
+    {
+      "rule": "R-LIT-020",
+      "title": "Стил на цитиране",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "manual",
+      "target": "section:literatura",
+      "expects": "citation_pattern:[А-ЯA-Z][^()\\n]{2,60}\\((19|20)\\d{2}\\)",
+      "source": "§12",
+      "status": "fail",
+      "detail": "20 of 53 literature entries do not use the Author (Year) citation style.",
+      "evidence": [
+        {
+          "paragraph": 460,
+          "found": "16. Регламент (ЕС) 2016/679 на Европейския парламент и на Съвета (Общ регламент за защита на данните…"
+        },
+        {
+          "paragraph": 475,
+          "found": "31. monday.com (2026). The pricing model for monday AI portfolio; Available languages for monday.com…"
+        },
+        {
+          "paragraph": 480,
+          "found": "36. Регламент (ЕС) 2024/1689 на Европейския парламент и на Съвета за определяне на хармонизирани пра…"
+        },
+        {
+          "paragraph": 483,
+          "found": "В настоящия раздел са представени допълнителни материали, илюстриращи реализацията на платформата."
+        },
+        {
+          "paragraph": 485,
+          "found": "Диаграмата представя таблиците и външните ключове между тях. Показани са основните таблици и по няко…"
+        },
+        {
+          "paragraph": 486,
+          "found": "Фигура 17. Релационен модел (ER диаграма) на базата данни на KAIROS"
+        },
+        {
+          "paragraph": 488,
+          "found": "Приложението възпроизвежда схемата от т. 2.8.5 като самостоятелна фигура. Тя е втори екземпляр на гр…"
+        },
+        {
+          "paragraph": 493,
+          "found": "Фигура 19. Последователност на един ход на многоагентната система (втори екземпляр)"
+        }
+      ],
+      "evidence_total": 20
+    },
+    {
+      "rule": "R-LIT-030",
+      "title": "Забранени източници",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "manual",
+      "target": "section:literatura",
+      "expects": "forbidden_sources:google,wikipedia,search engine,търсачка",
+      "source": "§12",
+      "status": "pass",
+      "detail": "No forbidden sources in the literature section.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-LIT-040",
+      "title": "Обем на литературата",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "manual",
+      "target": "section:literatura",
+      "expects": "pages_between=1,2",
+      "source": "§18 (препоръчително)",
+      "status": "fail",
+      "detail": "'literatura' is ~2.6 pages, outside the required 1–2.",
+      "evidence": [
+        {
+          "found_pages": 2.6,
+          "measurement": "prorated_from_word_page_count",
+          "chars": 6689
+        }
+      ],
+      "evidence_total": 1,
+      "estimated": true
+    },
+    {
+      "rule": "R-APP-010",
+      "title": "Допустимо съдържание на приложенията",
+      "tag": "mandatory",
+      "check": "model",
+      "fix": "manual",
+      "target": "section:prilozheniya",
+      "expects": "Приложенията съдържат SQL код, диаграми, големи таблици или допълнителни изображения.",
+      "source": "§13",
+      "status": "not_applicable",
+      "detail": "Skipped because the document has no appendices.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-VMAT-010",
+      "title": "Висока резолюция на изображенията",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "manual",
+      "target": "images",
+      "expects": "min_width_px=800",
+      "source": "§14",
+      "status": "fail",
+      "detail": "10 image(s) are narrower than 800 px (10 could not be measured).",
+      "evidence": [
+        {
+          "paragraph": 130,
+          "found": "1×1 px"
+        },
+        {
+          "paragraph": 215,
+          "found": "1×1 px"
+        },
+        {
+          "paragraph": 235,
+          "found": "1×1 px"
+        },
+        {
+          "paragraph": 241,
+          "found": "1×1 px"
+        },
+        {
+          "paragraph": 257,
+          "found": "1×1 px"
+        },
+        {
+          "paragraph": 264,
+          "found": "1×1 px"
+        },
+        {
+          "paragraph": 289,
+          "found": "1×1 px"
+        },
+        {
+          "paragraph": 489,
+          "found": "1×1 px"
+        }
+      ],
+      "evidence_total": 10
+    },
+    {
+      "rule": "R-VMAT-020",
+      "title": "Центрирани изображения",
+      "tag": "mandatory",
+      "check": "script",
+      "fix": "auto",
+      "target": "images",
+      "expects": "alignment=center",
+      "source": "§14",
+      "status": "fail",
+      "detail": "8 of 31 image(s) are not center-aligned.",
+      "evidence": [
+        {
+          "paragraph": 190,
+          "found": "justify"
+        },
+        {
+          "paragraph": 215,
+          "found": "justify"
+        },
+        {
+          "paragraph": 215,
+          "found": "justify"
+        },
+        {
+          "paragraph": 235,
+          "found": "justify"
+        },
+        {
+          "paragraph": 235,
+          "found": "justify"
+        },
+        {
+          "paragraph": 295,
+          "found": "left (inherited)"
+        },
+        {
+          "paragraph": 305,
+          "found": "left (inherited)"
+        },
+        {
+          "paragraph": 485,
+          "found": "justify"
+        }
+      ],
+      "evidence_total": 8
+    },
+    {
+      "rule": "R-VMAT-030",
+      "title": "Wireframes",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "manual",
+      "target": "document",
+      "expects": "Включени са wireframes на интерфейса.",
+      "source": "§14 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-VMAT-040",
+      "title": "Mockups",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "manual",
+      "target": "document",
+      "expects": "Включени са mockups на интерфейса.",
+      "source": "§14 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-TEST-010",
+      "title": "Unit тестове",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "document",
+      "expects": "Описани са unit тестовете на системата.",
+      "source": "§15 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-TEST-020",
+      "title": "Integration тестове",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "document",
+      "expects": "Описани са интеграционните тестове.",
+      "source": "§15 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-TEST-030",
+      "title": "UI тестове",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "document",
+      "expects": "Описани са UI тестовете.",
+      "source": "§15 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-TEST-040",
+      "title": "Test Cases",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "document",
+      "expects": "Представени са конкретни тестови случаи с очакван резултат.",
+      "source": "§15 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-UX-010",
+      "title": "Design System",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "document",
+      "expects": "Описана е дизайн системата на приложението.",
+      "source": "§16 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-UX-020",
+      "title": "Цветова палитра",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "document",
+      "expects": "Представена е цветовата палитра.",
+      "source": "§16 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-UX-030",
+      "title": "Типография",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "document",
+      "expects": "Описана е използваната типография.",
+      "source": "§16 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-UX-040",
+      "title": "Responsive дизайн",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "document",
+      "expects": "Описано е адаптивното поведение на интерфейса.",
+      "source": "§16 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-PERF-010",
+      "title": "Lighthouse анализ",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "manual",
+      "target": "document",
+      "expects": "Представен е Lighthouse анализ.",
+      "source": "§17 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-PERF-020",
+      "title": "Оптимизация на изображенията",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "document",
+      "expects": "Описана е оптимизацията на изображенията.",
+      "source": "§17 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-PERF-030",
+      "title": "Lazy Loading",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "document",
+      "expects": "Описано е отложеното зареждане на ресурси.",
+      "source": "§17 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-PERF-040",
+      "title": "Caching",
+      "tag": "recommended",
+      "check": "model",
+      "fix": "draft",
+      "target": "document",
+      "expects": "Описан е механизмът на кеширане.",
+      "source": "§17 (препоръчително)",
+      "status": "needs_model",
+      "detail": "Requires the model's judgment.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-VOL-010",
+      "title": "Увод: 1–3 страници",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "draft",
+      "target": "section:uvod",
+      "expects": "pages_between=1,3",
+      "source": "§18 (препоръчително)",
+      "status": "fail",
+      "detail": "Section 'uvod' is missing, so this rule cannot be satisfied.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-VOL-020",
+      "title": "Глава I: 8–12 страници",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "draft",
+      "target": "section:chapter1",
+      "expects": "pages_between=8,12",
+      "source": "§18 (препоръчително)",
+      "status": "pass",
+      "detail": "'chapter1' is ~8.1 pages, within 8–12.",
+      "evidence": [
+        {
+          "measurement": "prorated_from_word_page_count"
+        }
+      ],
+      "evidence_total": 1,
+      "estimated": true
+    },
+    {
+      "rule": "R-VOL-030",
+      "title": "Глава II: 10–15 страници",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "draft",
+      "target": "section:chapter2",
+      "expects": "pages_between=10,15",
+      "source": "§18 (препоръчително)",
+      "status": "fail",
+      "detail": "'chapter2' is ~19.4 pages, outside the required 10–15.",
+      "evidence": [
+        {
+          "found_pages": 19.4,
+          "measurement": "prorated_from_word_page_count",
+          "chars": 50192
+        }
+      ],
+      "evidence_total": 1,
+      "estimated": true
+    },
+    {
+      "rule": "R-VOL-040",
+      "title": "Глава III: 15–25 страници",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "draft",
+      "target": "section:chapter3",
+      "expects": "pages_between=15,25",
+      "source": "§18 (препоръчително)",
+      "status": "fail",
+      "detail": "'chapter3' is ~2.8 pages, outside the required 15–25.",
+      "evidence": [
+        {
+          "found_pages": 2.8,
+          "measurement": "prorated_from_word_page_count",
+          "chars": 7260
+        }
+      ],
+      "evidence_total": 1,
+      "estimated": true
+    },
+    {
+      "rule": "R-VOL-050",
+      "title": "Заключение: 1–2 страници",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "draft",
+      "target": "section:zaklyuchenie",
+      "expects": "pages_between=1,2",
+      "source": "§18 (препоръчително)",
+      "status": "fail",
+      "detail": "Section 'zaklyuchenie' is missing, so this rule cannot be satisfied.",
+      "evidence": [],
+      "evidence_total": 0
+    },
+    {
+      "rule": "R-VOL-060",
+      "title": "Общ обем 35–55 страници без приложенията",
+      "tag": "recommended",
+      "check": "script",
+      "fix": "draft",
+      "target": "document",
+      "expects": "pages_between=35,55",
+      "source": "§18 (препоръчително)",
+      "status": "pass",
+      "detail": "The document is ~35.2 pages, within 35–55.",
+      "evidence": [
+        {
+          "measurement": "estimated_from_char_count"
+        }
+      ],
+      "evidence_total": 1,
+      "estimated": true
+    }
+  ]
+}
